@@ -2,7 +2,8 @@ import { Router } from "express";
 
 export const healthRouter = Router();
 
-healthRouter.get("/", (_req, res) => {
+export function healthHandler(_req: unknown, res: { json: (body: unknown) => void }) {
   res.json({ ok: true });
-});
+}
 
+healthRouter.get("/", healthHandler);

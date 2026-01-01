@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "npm run -ws dev",
     "build": "npm run -ws build",
+    "test": "npm run --workspaces --if-present test",
+    "test:watch": "npm run --workspaces --if-present test:watch",
     "typecheck": "npm run -ws typecheck",
     "lint": "npm run -ws lint",
     "format": "npm run -ws format",
@@ -18,4 +20,3 @@
     "db:down": "docker compose -f infra/docker-compose.yml down -v"
   }
 }
-
