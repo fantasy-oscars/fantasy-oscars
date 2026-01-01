@@ -1,0 +1,21 @@
+{
+  "name": "fantasy-oscars",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run -ws dev",
+    "build": "npm run -ws build",
+    "typecheck": "npm run -ws typecheck",
+    "lint": "npm run -ws lint",
+    "format": "npm run -ws format",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down -v"
+  }
+}
+
