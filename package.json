@@ -16,6 +16,7 @@
     "globals": "^15.14.0"
   },
   "scripts": {
+    "ci": "npm run lint && npm run typecheck && npm test && npm run build",
     "dev": "npm run --workspaces --if-present dev",
     "build": "npm run --workspaces --if-present build",
     "test": "npm run --workspaces --if-present test",
