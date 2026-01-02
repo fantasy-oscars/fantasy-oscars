@@ -8,14 +8,21 @@
   "engines": {
     "node": ">=20"
   },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0"
+  },
   "scripts": {
-    "dev": "npm run -ws dev",
-    "build": "npm run -ws build",
+    "dev": "npm run --workspaces --if-present dev",
+    "build": "npm run --workspaces --if-present build",
     "test": "npm run --workspaces --if-present test",
     "test:watch": "npm run --workspaces --if-present test:watch",
-    "typecheck": "npm run -ws typecheck",
-    "lint": "npm run -ws lint",
-    "format": "npm run -ws format",
+    "typecheck": "npm run --workspaces --if-present typecheck",
+    "lint": "npm run --workspaces --if-present lint",
+    "format": "npm run --workspaces --if-present format",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down -v"
   }
