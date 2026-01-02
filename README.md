@@ -18,8 +18,11 @@ npm install
 npm run dev
 ```
 
+## Tests
+- Run the full suite (matches CI): `npm run ci`
+- Requires Docker for database-backed tests (Testcontainers launches an isolated Postgres)
+
 ## Database (optional)
 ```bash
 npm run db:up
 ```
-
