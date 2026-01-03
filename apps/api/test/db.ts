@@ -50,4 +50,3 @@ export async function truncateAllTables(pool: Pool) {
   const joined = tables.map((t) => `"${t}"`).join(", ");
   await pool.query(`TRUNCATE ${joined} RESTART IDENTITY CASCADE;`);
 }
-

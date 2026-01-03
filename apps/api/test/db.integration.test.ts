@@ -16,18 +16,18 @@ describe("database integration", () => {
 
   it("applies migrations and allows basic CRUD", async () => {
     const insert = await db.pool.query(
-      "INSERT INTO sample_items (name) VALUES ($1) RETURNING id, name",
-      ["first"]
+      "INSERT INTO app_user (handle, email, display_name) VALUES ($1, $2, $3) RETURNING id, handle",
+      ["user1", "user1@example.com", "User One"]
     );
-    expect(insert.rows[0].name).toBe("first");
+    expect(insert.rows[0].handle).toBe("user1");
 
-    const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM sample_items");
+    const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM app_user");
     expect(rows[0].count).toBe(1);
   });
 
   it("clears state between tests", async () => {
     await truncateAllTables(db.pool);
-    const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM sample_items");
+    const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM app_user");
     expect(rows[0].count).toBe(0);
   });
 });
