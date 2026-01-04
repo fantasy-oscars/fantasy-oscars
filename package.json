@@ -32,6 +32,8 @@
     "docs:links": "remark README.md docs --use remark-validate-links --quiet --frail",
     "docs:check": "npm run docs:lint && npm run docs:links",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
-    "db:down": "docker compose -f infra/docker-compose.yml down -v"
+    "db:down": "docker compose -f infra/docker-compose.yml down -v",
+    "ticket:comment": "node .github/scripts/comment-ticket.mjs",
+    "ticket:status": "node .github/scripts/ticket-status.mjs"
   }
 }
