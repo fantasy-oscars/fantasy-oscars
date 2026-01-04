@@ -162,7 +162,9 @@ export function buildIcon(overrides: Partial<Icon> = {}): Icon {
   };
 }
 
-export function buildDisplayTemplate(overrides: Partial<DisplayTemplate> = {}): DisplayTemplate {
+export function buildDisplayTemplate(
+  overrides: Partial<DisplayTemplate> = {}
+): DisplayTemplate {
   const n = nextSeq();
   return {
     id: n,
@@ -187,7 +189,9 @@ export function buildCeremony(overrides: Partial<Ceremony> = {}): Ceremony {
   };
 }
 
-export function buildCategoryFamily(overrides: Partial<CategoryFamily> = {}): CategoryFamily {
+export function buildCategoryFamily(
+  overrides: Partial<CategoryFamily> = {}
+): CategoryFamily {
   const n = nextSeq();
   return {
     id: n,
@@ -201,7 +205,9 @@ export function buildCategoryFamily(overrides: Partial<CategoryFamily> = {}): Ca
   };
 }
 
-export function buildCategoryEdition(overrides: Partial<CategoryEdition> = {}): CategoryEdition {
+export function buildCategoryEdition(
+  overrides: Partial<CategoryEdition> = {}
+): CategoryEdition {
   const n = nextSeq();
   return {
     id: n,

@@ -24,7 +24,10 @@ import {
  * Each will create required dependencies if not provided via overrides.
  */
 
-export async function insertIcon(pool: Pool, overrides: Partial<ReturnType<typeof buildIcon>> = {}) {
+export async function insertIcon(
+  pool: Pool,
+  overrides: Partial<ReturnType<typeof buildIcon>> = {}
+) {
   const icon = buildIcon(overrides);
   await pool.query(
     `INSERT INTO icon (id, code, name, asset_path) VALUES ($1, $2, $3, $4)`,
@@ -51,12 +54,10 @@ export async function insertCeremony(
   overrides: Partial<ReturnType<typeof buildCeremony>> = {}
 ) {
   const ceremony = buildCeremony(overrides);
-  await pool.query(`INSERT INTO ceremony (id, code, name, year) VALUES ($1, $2, $3, $4)`, [
-    ceremony.id,
-    ceremony.code,
-    ceremony.name,
-    ceremony.year
-  ]);
+  await pool.query(
+    `INSERT INTO ceremony (id, code, name, year) VALUES ($1, $2, $3, $4)`,
+    [ceremony.id, ceremony.code, ceremony.name, ceremony.year]
+  );
   return ceremony;
 }
 
@@ -65,9 +66,12 @@ export async function insertCategoryFamily(
   overrides: Partial<ReturnType<typeof buildCategoryFamily>> = {}
 ) {
   const icon = overrides.icon_id ? null : await insertIcon(pool);
-  const pillTpl = overrides.default_pill_template_id ? null : await insertDisplayTemplate(pool);
+  const pillTpl = overrides.default_pill_template_id
+    ? null
+    : await insertDisplayTemplate(pool);
   const expTpl =
-    overrides.default_expanded_template_id && overrides.default_expanded_template_id !== pillTpl?.id
+    overrides.default_expanded_template_id &&
+    overrides.default_expanded_template_id !== pillTpl?.id
       ? null
       : pillTpl || (await insertDisplayTemplate(pool, { scope: "EXPANDED" }));
 
@@ -112,7 +116,8 @@ export async function insertCategoryEdition(
     ceremony_id: overrides.ceremony_id ?? ceremony?.id ?? 1,
     family_id: overrides.family_id ?? fam?.id ?? 1,
     pill_template_id: overrides.pill_template_id ?? pillTpl?.id ?? 1,
-    expanded_template_id: overrides.expanded_template_id ?? expTpl?.id ?? pillTpl?.id ?? 1,
+    expanded_template_id:
+      overrides.expanded_template_id ?? expTpl?.id ?? pillTpl?.id ?? 1,
     ...overrides
   });
 
@@ -134,7 +139,10 @@ export async function insertCategoryEdition(
   return cat;
 }
 
-export async function insertFilm(pool: Pool, overrides: Partial<ReturnType<typeof buildFilm>> = {}) {
+export async function insertFilm(
+  pool: Pool,
+  overrides: Partial<ReturnType<typeof buildFilm>> = {}
+) {
   const film = buildFilm(overrides);
   await pool.query(`INSERT INTO film (id, title, country) VALUES ($1, $2, $3)`, [
     film.id,
@@ -149,11 +157,17 @@ export async function insertPerson(
   overrides: Partial<ReturnType<typeof buildPerson>> = {}
 ) {
   const person = buildPerson(overrides);
-  await pool.query(`INSERT INTO person (id, full_name) VALUES ($1, $2)`, [person.id, person.full_name]);
+  await pool.query(`INSERT INTO person (id, full_name) VALUES ($1, $2)`, [
+    person.id,
+    person.full_name
+  ]);
   return person;
 }
 
-export async function insertSong(pool: Pool, overrides: Partial<ReturnType<typeof buildSong>> = {}) {
+export async function insertSong(
+  pool: Pool,
+  overrides: Partial<ReturnType<typeof buildSong>> = {}
+) {
   const film = overrides.film_id ? null : await insertFilm(pool);
   const song = buildSong({ film_id: overrides.film_id ?? film?.id ?? 1, ...overrides });
   await pool.query(`INSERT INTO song (id, title, film_id) VALUES ($1, $2, $3)`, [
@@ -175,11 +189,10 @@ export async function insertPerformance(
     person_id: overrides.person_id ?? person?.id ?? 1,
     ...overrides
   });
-  await pool.query(`INSERT INTO performance (id, film_id, person_id) VALUES ($1, $2, $3)`, [
-    perf.id,
-    perf.film_id,
-    perf.person_id
-  ]);
+  await pool.query(
+    `INSERT INTO performance (id, film_id, person_id) VALUES ($1, $2, $3)`,
+    [perf.id, perf.film_id, perf.person_id]
+  );
   return perf;
 }
 
@@ -187,7 +200,9 @@ export async function insertNomination(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildNomination>> = {}
 ) {
-  const category = overrides.category_edition_id ? null : await insertCategoryEdition(pool);
+  const category = overrides.category_edition_id
+    ? null
+    : await insertCategoryEdition(pool);
   const film = overrides.film_id ? null : await insertFilm(pool);
   const nomination = buildNomination({
     category_edition_id: overrides.category_edition_id ?? category?.id ?? 1,
@@ -228,7 +243,10 @@ export async function insertAuthPassword(
   overrides: Partial<ReturnType<typeof buildAuthPassword>> = {}
 ) {
   const user = overrides.user_id ? null : await insertUser(pool);
-  const auth = buildAuthPassword({ user_id: overrides.user_id ?? user?.id ?? 1, ...overrides });
+  const auth = buildAuthPassword({
+    user_id: overrides.user_id ?? user?.id ?? 1,
+    ...overrides
+  });
   await pool.query(
     `INSERT INTO auth_password (user_id, password_hash, password_algo, password_set_at)
      VALUES ($1, $2, $3, $4)`,
@@ -291,7 +309,10 @@ export async function insertDraft(
   overrides: Partial<ReturnType<typeof buildDraft>> = {}
 ) {
   const league = overrides.league_id ? null : await insertLeague(pool);
-  const draft = buildDraft({ league_id: overrides.league_id ?? league?.id ?? 1, ...overrides });
+  const draft = buildDraft({
+    league_id: overrides.league_id ?? league?.id ?? 1,
+    ...overrides
+  });
   await pool.query(
     `INSERT INTO draft (id, league_id, status, draft_order_type, current_pick_number, started_at, completed_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7)`,

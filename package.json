@@ -20,7 +20,7 @@
     "remark-validate-links": "^13.0.1"
   },
   "scripts": {
-    "ci": "npm run lint && npm run typecheck && npm test && npm run build",
+    "ci": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
     "dev": "npm run --workspaces --if-present dev",
     "build": "npm run --workspaces --if-present build",
     "test": "npm run --workspaces --if-present test",
@@ -36,6 +36,7 @@
     "ticket:comment": "node .github/scripts/comment-ticket.mjs",
     "ticket:status": "node .github/scripts/ticket-status.mjs",
     "ticket:pull": "node .github/scripts/ticket-pull.mjs",
-    "lint:scripts": "eslint .github/scripts"
+    "lint:scripts": "eslint .github/scripts",
+    "format:check": "npm run --workspaces --if-present format:check"
   }
 }

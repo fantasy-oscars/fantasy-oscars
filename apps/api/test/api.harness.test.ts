@@ -1,10 +1,21 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { apiRequest, expectJson, expectStatus, startApiServer, type ApiTestServer } from "./support/api.js";
+import {
+  apiRequest,
+  expectJson,
+  expectStatus,
+  startApiServer,
+  type ApiTestServer
+} from "./support/api.js";
 
 let server: ApiTestServer;
 
 function isListenPermissionError(error: unknown) {
-  return Boolean(error && typeof error === "object" && "code" in (error as { code?: string }) && (error as { code?: string }).code === "EPERM");
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in (error as { code?: string }) &&
+    (error as { code?: string }).code === "EPERM"
+  );
 }
 
 describe("API test harness", () => {

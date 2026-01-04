@@ -47,7 +47,11 @@ export async function startSocketTestServer(
       })
       .on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "EPERM") {
-          reject(new ListenPermissionError("Cannot bind test socket server (permission denied)"));
+          reject(
+            new ListenPermissionError(
+              "Cannot bind test socket server (permission denied)"
+            )
+          );
         } else {
           reject(err);
         }

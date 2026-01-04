@@ -11,7 +11,8 @@
     "test:watch": "node -e \"process.exit(0)\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "format": "prettier -w ."
+    "format": "prettier -w . --ignore-path ../../.prettierignore",
+    "format:check": "prettier -c . --ignore-path ../../.prettierignore"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

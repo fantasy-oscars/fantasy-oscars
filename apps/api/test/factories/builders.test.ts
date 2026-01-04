@@ -63,9 +63,17 @@ describe("builders (pure, deterministic)", () => {
   it("builds fantasy domain entities with overrides", () => {
     const user = buildUser({ handle: "alice" });
     const league = buildLeague({ created_by_user_id: user.id, ceremony_id: 99 });
-    const member = buildLeagueMember({ league_id: league.id, user_id: user.id, role: "OWNER" });
+    const member = buildLeagueMember({
+      league_id: league.id,
+      user_id: user.id,
+      role: "OWNER"
+    });
     const draft = buildDraft({ league_id: league.id, status: "IN_PROGRESS" });
-    const seat = buildDraftSeat({ draft_id: draft.id, league_member_id: member.id, seat_number: 2 });
+    const seat = buildDraftSeat({
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 2
+    });
     const nomination = buildNomination({ category_edition_id: 77, film_id: 55 });
     const pick = buildDraftPick({
       draft_id: draft.id,
@@ -85,4 +93,3 @@ describe("builders (pure, deterministic)", () => {
     expect(pick.nomination_id).toBe(nomination.id);
   });
 });
-

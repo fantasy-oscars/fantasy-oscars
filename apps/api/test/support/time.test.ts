@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TEST_BASE_TIME, addSeconds, advanceSeconds, freezeTime, withFrozenTime } from "./time.js";
+import {
+  TEST_BASE_TIME,
+  addSeconds,
+  advanceSeconds,
+  freezeTime,
+  withFrozenTime
+} from "./time.js";
 
 afterEach(() => {
   vi.useRealTimers();

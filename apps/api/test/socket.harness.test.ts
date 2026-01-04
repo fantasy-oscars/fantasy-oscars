@@ -34,9 +34,12 @@ describe("Socket.IO test harness", () => {
             socket.emit("left", room);
           });
 
-          socket.on("ping-room", ({ room, message }: { room: string; message: string }) => {
-            socket.to(room).emit("pinged", message);
-          });
+          socket.on(
+            "ping-room",
+            ({ room, message }: { room: string; message: string }) => {
+              socket.to(room).emit("pinged", message);
+            }
+          );
         });
       });
     } catch (err) {

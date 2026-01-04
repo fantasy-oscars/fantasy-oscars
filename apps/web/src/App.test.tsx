@@ -8,4 +8,3 @@ describe("<App />", () => {
     expect(screen.getByRole("heading", { name: "Fantasy Oscars" })).toBeInTheDocument();
   });
 });
-

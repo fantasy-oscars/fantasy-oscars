@@ -7,4 +7,3 @@ export function createServer() {
   app.use("/health", healthRouter);
   return app;
 }
-

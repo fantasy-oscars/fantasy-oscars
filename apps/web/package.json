@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
-    "format": "prettier -w ."
+    "format": "prettier -w . --ignore-path ../../.prettierignore",
+    "format:check": "prettier -c . --ignore-path ../../.prettierignore"
   },
   "dependencies": {
     "react": "^18.3.1",

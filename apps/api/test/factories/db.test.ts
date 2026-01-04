@@ -69,7 +69,10 @@ describe("db factories (integration)", () => {
       user_id: user.id,
       role: "OWNER"
     });
-    const draft = await insertDraft(db.pool, { league_id: league.id, status: "IN_PROGRESS" });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS"
+    });
     await insertDraftSeat(db.pool, {
       draft_id: draft.id,
       league_member_id: member.id,
