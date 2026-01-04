@@ -36,6 +36,7 @@
     "ticket:comment": "node .github/scripts/comment-ticket.mjs",
     "ticket:status": "node .github/scripts/ticket-status.mjs",
     "ticket:pull": "node .github/scripts/ticket-pull.mjs",
+    "ticket:create": "node .github/scripts/ticket-create.mjs",
     "lint:scripts": "eslint .github/scripts",
     "format:check": "npm run --workspaces --if-present format:check"
   }
