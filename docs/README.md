@@ -5,6 +5,7 @@ Use this as the map. Start with the section that matches your intent.
 - **Architecture**
   - [Overview](architecture/overview.md)
   - [Runtime](architecture/runtime.md)
+  - [Domain Model](architecture/domain-model.md)
   - [Data](architecture/data.md)
 - **Standards**
   - [Engineering Standard](standards/engineering-standard.md)

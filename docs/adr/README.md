@@ -22,3 +22,4 @@ ADRs capture decisions that could be questioned later. They keep the project int
 ## Links
 
 - Template: [template.md](template.md)
+- 0001 – Canonical Domain Model (Fantasy Oscars): [0001-domain-model.md](0001-domain-model.md)
