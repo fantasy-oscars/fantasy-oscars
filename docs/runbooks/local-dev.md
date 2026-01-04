@@ -21,6 +21,10 @@
 - Typecheck only: `npm run typecheck`
 - Tests only: `npm test`
 
+## Required Environment
+
+- `PORT`: API listen port (e.g., `PORT=3001`). Missing or non-numeric values will fail startup.
+
 ## Troubleshooting
 
 - Testcontainers fails: ensure Docker is running and accessible (`docker ps`).
