@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
-import { DbClient } from "../data/db.js";
-import { query } from "../data/db.js";
+import { DbClient, query } from "../data/db.js";
+import { AppError, validationError } from "../errors.js";
 
 export function createAuthRouter(client: DbClient) {
   const router = express.Router();
@@ -9,7 +9,12 @@ export function createAuthRouter(client: DbClient) {
   router.post("/register", async (req, res) => {
     const { handle, email, display_name, password } = req.body ?? {};
     if (!handle || !email || !display_name || !password) {
-      return res.status(400).json({ error: "MISSING_FIELDS" });
+      throw validationError("Missing required fields", [
+        "handle",
+        "email",
+        "display_name",
+        "password"
+      ]);
     }
 
     const password_hash = crypto.createHash("sha256").update(password).digest("hex");
@@ -35,16 +40,16 @@ export function createAuthRouter(client: DbClient) {
     } catch (err) {
       const msg = (err as Error).message ?? "";
       if (msg.includes("app_user_handle_key") || msg.includes("app_user_email_key")) {
-        return res.status(409).json({ error: "USER_EXISTS" });
+        throw new AppError("USER_EXISTS", 409, "User with handle/email already exists");
       }
-      return res.status(500).json({ error: "INTERNAL_ERROR" });
+      throw err;
     }
   });
 
   router.post("/login", async (req, res) => {
     const { handle, password } = req.body ?? {};
     if (!handle || !password) {
-      return res.status(400).json({ error: "MISSING_FIELDS" });
+      throw validationError("Missing required fields", ["handle", "password"]);
     }
 
     const { rows } = await query(
@@ -57,11 +62,11 @@ export function createAuthRouter(client: DbClient) {
     );
 
     const user = rows[0];
-    if (!user) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+    if (!user) throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
 
     const hash = crypto.createHash("sha256").update(password).digest("hex");
     if (hash !== user.password_hash) {
-      return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+      throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
     }
 
     // Skeleton: return placeholder token (non-secure) for v0.
