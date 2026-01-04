@@ -5,6 +5,7 @@
 - “Done” means `npm run ci` passes (lint, typecheck, tests, build) and docs are updated.
 - Prefer conventional solutions; deviations require an ADR.
 - Small, readable changes with clear intent; tests for behavior, not just coverage.
+- Commit messages follow Conventional Commits: `type(scope): summary` (scope optional).
 
 ## Definition of Done
 
