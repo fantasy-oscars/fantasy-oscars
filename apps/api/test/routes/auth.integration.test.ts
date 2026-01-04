@@ -89,9 +89,9 @@ describe("auth integration", () => {
       password: "pw"
     };
     await post("/auth/register", payload);
-    const res = await post<{ error: string }>("/auth/register", payload);
+    const res = await post<{ error: { code: string } }>("/auth/register", payload);
     expect(res.status).toBe(409);
-    expect(res.json.error).toBe("USER_EXISTS");
+    expect(res.json.error.code).toBe("USER_EXISTS");
   });
 
   it("logs in with valid credentials", async () => {
@@ -121,11 +121,11 @@ describe("auth integration", () => {
       password: "pw123"
     };
     await post("/auth/register", payload);
-    const res = await post<{ error: string }>("/auth/login", {
+    const res = await post<{ error: { code: string } }>("/auth/login", {
       handle: payload.handle,
       password: "wrong"
     });
     expect(res.status).toBe(401);
-    expect(res.json.error).toBe("INVALID_CREDENTIALS");
+    expect(res.json.error.code).toBe("INVALID_CREDENTIALS");
   });
 });
