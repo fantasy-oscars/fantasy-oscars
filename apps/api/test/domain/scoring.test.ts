@@ -22,7 +22,7 @@ describe("scoreDraft", () => {
   it("uses the default strategy to score winners", () => {
     const scores = scoreDraft({ picks, results });
     expect(scores).toEqual([
-      { seat_number: 1, points: 4 }, // 3 + 1
+      { seat_number: 1, points: 2 },
       { seat_number: 2, points: 0 }
     ]);
   });

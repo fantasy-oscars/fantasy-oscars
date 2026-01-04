@@ -47,21 +47,15 @@ export function scoreDraft(input: {
 
 export const defaultScoringStrategy: ScoringStrategy = {
   score: ({ picks, results }) => {
-    const winPoints = new Map(
-      results.filter((r) => r.won).map((r) => [r.nomination_id, r.points ?? 1])
-    );
+    const winners = new Set(results.filter((r) => r.won).map((r) => r.nomination_id));
 
     const pointsBySeat = new Map<number, number>();
     for (const pick of picks) {
       if (!pointsBySeat.has(pick.seat_number)) {
         pointsBySeat.set(pick.seat_number, 0);
       }
-      if (!winPoints.has(pick.nomination_id)) continue;
-      const points = winPoints.get(pick.nomination_id) ?? 0;
-      pointsBySeat.set(
-        pick.seat_number,
-        (pointsBySeat.get(pick.seat_number) ?? 0) + points
-      );
+      if (!winners.has(pick.nomination_id)) continue;
+      pointsBySeat.set(pick.seat_number, (pointsBySeat.get(pick.seat_number) ?? 0) + 1);
     }
 
     return [...pointsBySeat.entries()]
