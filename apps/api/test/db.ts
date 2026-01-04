@@ -24,7 +24,8 @@ async function applyMigrations(pool: Pool) {
 
 export async function startTestDatabase() {
   const container = await new PostgreSqlContainer().start();
-  const pool = new Pool({ connectionString: container.getConnectionUri() });
+  const connectionString = container.getConnectionUri();
+  const pool = new Pool({ connectionString });
   await applyMigrations(pool);
 
   async function stop() {
@@ -32,7 +33,7 @@ export async function startTestDatabase() {
     await container.stop();
   }
 
-  return { pool, stop };
+  return { pool, stop, connectionString };
 }
 
 export async function truncateAllTables(pool: Pool) {
