@@ -60,6 +60,11 @@ async function getBody(body, bodyFile) {
   return null;
 }
 
+function normalizeBody(body) {
+  // Allow users to pass --body "Line1\nLine2" without needing $'...' shell escapes.
+  return body?.includes("\\n") ? body.replace(/\\n/g, "\n") : body;
+}
+
 async function main() {
   const { issue, body, bodyFile, repo: repoArg } = parseArgs(process.argv.slice(2));
   const token = process.env.GITHUB_TOKEN;
@@ -75,7 +80,7 @@ async function main() {
     throw new Error("Unable to infer repo; provide --repo owner/name");
   }
 
-  const commentBody = await getBody(body, bodyFile);
+  const commentBody = normalizeBody(await getBody(body, bodyFile));
   if (!commentBody) {
     throw new Error("Comment body is required (use --body, --body-file, or pipe stdin)");
   }
