@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   defaultScoringStrategy,
+  negativeScoringStrategy,
   scoreDraft,
   ScoringError,
   ScoringStrategy
@@ -53,6 +54,16 @@ describe("defaultScoringStrategy", () => {
     expect(scores).toEqual([
       { seat_number: 1, points: 0 },
       { seat_number: 2, points: 0 }
+    ]);
+  });
+});
+
+describe("negativeScoringStrategy (stub)", () => {
+  it("awards +1 for winners and -1 for non-winners", () => {
+    const scores = negativeScoringStrategy.score({ picks, results });
+    expect(scores).toEqual([
+      { seat_number: 1, points: 2 }, // +1 for nom-1, +1 for nom-3
+      { seat_number: 2, points: -1 }
     ]);
   });
 });

@@ -63,3 +63,26 @@ export const defaultScoringStrategy: ScoringStrategy = {
       .sort((a, b) => a.seat_number - b.seat_number);
   }
 };
+
+/**
+ * Optional alternate strategy: +1 for winning picks, -1 for non-winning picks.
+ * Not wired to any caller yet; serves as a compile-ready strategy stub for future selection.
+ */
+export const negativeScoringStrategy: ScoringStrategy = {
+  score: ({ picks, results }) => {
+    const winners = new Set(results.filter((r) => r.won).map((r) => r.nomination_id));
+    const pointsBySeat = new Map<number, number>();
+
+    for (const pick of picks) {
+      const delta = winners.has(pick.nomination_id) ? 1 : -1;
+      pointsBySeat.set(
+        pick.seat_number,
+        (pointsBySeat.get(pick.seat_number) ?? 0) + delta
+      );
+    }
+
+    return [...pointsBySeat.entries()]
+      .map(([seat_number, points]) => ({ seat_number, points }))
+      .sort((a, b) => a.seat_number - b.seat_number);
+  }
+};
