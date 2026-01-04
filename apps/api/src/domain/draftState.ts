@@ -56,13 +56,10 @@ export function mapDraftStateError(error: unknown) {
   return undefined;
 }
 
-/**
- * Placeholder for integrating state enforcement into mutation flows.
- * When draft mutations are implemented, call `transitionDraftState` before persisting.
- */
-export function applyDraftStateTransition(draftId: number, to: DraftState) {
-  throw new DraftStateError("Not implemented in API layer", "INVALID_TRANSITION", {
-    from: undefined,
-    to
-  });
+export function applyDraftStateTransition(
+  draft: DraftRecord,
+  to: DraftState,
+  now: Clock = defaultClock
+) {
+  return transitionDraftState(draft, to, now);
 }
