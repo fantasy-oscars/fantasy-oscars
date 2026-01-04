@@ -4,11 +4,29 @@ import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
+import { buildRequestLog, log } from "./logger.js";
 
 export function createServer(deps?: { db?: Pool }) {
   const app = express();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");
   app.use(express.json());
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      log(
+        buildRequestLog({
+          method: req.method,
+          path: req.originalUrl ?? req.url,
+          status: res.statusCode,
+          duration_ms: Date.now() - start,
+          body: req.body
+        })
+      );
+    });
+    next();
+  });
+
   app.use("/health", healthRouter);
   app.use("/auth", createAuthRouter(pool));
 
@@ -22,6 +40,12 @@ export function createServer(deps?: { db?: Pool }) {
       void _next;
       const appErr = err instanceof AppError ? err : undefined;
       const status = appErr?.status ?? 500;
+      log({
+        level: "error",
+        msg: "request_error",
+        status,
+        code: appErr?.code ?? "INTERNAL_ERROR"
+      });
       res.status(status).json(errorBody(appErr ?? (err as Error)));
     }
   );
