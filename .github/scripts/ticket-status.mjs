@@ -170,12 +170,10 @@ async function main() {
   const itemId = await getOrCreateProjectItem(token, projectId, issueNodeId);
   await updateStatus(token, projectId, itemId, statusField.id, option.id);
 
-  // eslint-disable-next-line no-console
   console.log(`Issue #${issue} set to status "${option.name}"`);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err.message);
   process.exit(1);
 });

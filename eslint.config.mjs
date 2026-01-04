@@ -56,6 +56,18 @@ export default [
     }
   },
   {
+    files: [".github/scripts/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        fetch: "readonly"
+      }
+    },
+    rules: {
+      "no-console": "off"
+    }
+  },
+  {
     ignores: ["**/dist/**", "**/build/**", "**/node_modules/**"]
   }
 ];

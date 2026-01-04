@@ -101,12 +101,10 @@ async function main() {
   }
 
   const data = await res.json();
-  // eslint-disable-next-line no-console
   console.log(`Comment created: ${data.html_url}`);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err.message);
   process.exit(1);
 });
