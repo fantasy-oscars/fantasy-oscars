@@ -5,9 +5,11 @@ import { createAuthRouter } from "./routes/auth.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
 import { buildRequestLog, log } from "./logger.js";
+import { loadConfig } from "./config/env.js";
 
 export function createServer(deps?: { db?: Pool }) {
   const app = express();
+  const config = loadConfig();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");
   app.use(express.json());
 
@@ -28,7 +30,7 @@ export function createServer(deps?: { db?: Pool }) {
   });
 
   app.use("/health", healthRouter);
-  app.use("/auth", createAuthRouter(pool));
+  app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
 
   app.use(
     (

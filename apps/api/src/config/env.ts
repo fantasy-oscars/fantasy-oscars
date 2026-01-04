@@ -23,9 +23,11 @@ function parsePort(portValue: string): number {
 
 export type ApiConfig = {
   port: number;
+  authSecret: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = parsePort(requireEnv(env, "PORT"));
-  return { port };
+  const authSecret = requireEnv(env, "AUTH_SECRET");
+  return { port, authSecret };
 }

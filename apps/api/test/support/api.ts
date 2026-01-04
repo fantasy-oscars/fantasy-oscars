@@ -10,6 +10,8 @@ export type ApiTestServer = {
 type RequestOptions = RequestInit & { authToken?: string };
 
 export async function startApiServer(): Promise<ApiTestServer> {
+  process.env.PORT = process.env.PORT ?? "3101";
+  process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
   const app = createServer();
   return await new Promise<ApiTestServer>((resolve, reject) => {
     const server = app

@@ -13,23 +13,27 @@ function withEnv(env: Record<string, string>, fn: () => void) {
 
 describe("loadConfig", () => {
   it("loads required values when present", () => {
-    withEnv({ PORT: "4000" }, () => {
+    withEnv({ PORT: "4000", AUTH_SECRET: "secret" }, () => {
       const cfg = loadConfig();
       expect(cfg.port).toBe(4000);
+      expect(cfg.authSecret).toBe("secret");
     });
   });
 
   it("throws when required vars are missing", () => {
-    withEnv({ PORT: "" }, () => {
+    withEnv({ PORT: "", AUTH_SECRET: "secret" }, () => {
+      expect(() => loadConfig()).toThrow(ConfigError);
+    });
+    withEnv({ PORT: "4000", AUTH_SECRET: "" }, () => {
       expect(() => loadConfig()).toThrow(ConfigError);
     });
   });
 
   it("validates port as positive integer", () => {
-    withEnv({ PORT: "not-a-number" }, () => {
+    withEnv({ PORT: "not-a-number", AUTH_SECRET: "secret" }, () => {
       expect(() => loadConfig()).toThrow(ConfigError);
     });
-    withEnv({ PORT: "-1" }, () => {
+    withEnv({ PORT: "-1", AUTH_SECRET: "secret" }, () => {
       expect(() => loadConfig()).toThrow(ConfigError);
     });
   });

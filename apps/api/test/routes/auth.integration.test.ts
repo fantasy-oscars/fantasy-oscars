@@ -10,23 +10,40 @@ let server: Server | null = null;
 let baseUrl: string | null = null;
 let skip = false;
 
-async function post<T>(
+async function requestJson<T>(
   path: string,
-  body: unknown
+  init: RequestInit = {}
 ): Promise<{ status: number; json: T }> {
   if (!baseUrl) throw new Error("Test server not started");
-  const res = await fetch(`${baseUrl}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  const res = await fetch(`${baseUrl}${path}`, init);
   const json = (await res.json()) as T;
   return { status: res.status, json };
+}
+
+async function post<T>(
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; json: T }> {
+  return requestJson<T>(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+}
+
+async function getJson<T>(
+  path: string,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; json: T }> {
+  return requestJson<T>(path, { method: "GET", headers });
 }
 
 describe("auth integration", () => {
   beforeAll(async () => {
     try {
+      process.env.PORT = process.env.PORT ?? "3101";
+      process.env.AUTH_SECRET = "test-secret";
       db = await startTestDatabase();
       process.env.DATABASE_URL = db.connectionString;
       const app = createServer({ db: db.pool });
@@ -110,6 +127,12 @@ describe("auth integration", () => {
     expect(res.status).toBe(200);
     expect(res.json.user.handle).toBe(payload.handle);
     expect(res.json.token).toBeDefined();
+
+    const me = await getJson<{ user: { sub: string; handle: string } }>("/auth/me", {
+      Authorization: `Bearer ${res.json.token}`
+    });
+    expect(me.status).toBe(200);
+    expect(me.json.user.handle).toBe(payload.handle);
   });
 
   it("rejects invalid credentials", async () => {

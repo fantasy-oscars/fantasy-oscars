@@ -2,9 +2,12 @@ import express from "express";
 import crypto from "crypto";
 import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
+import { signToken } from "../auth/token.js";
+import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 
-export function createAuthRouter(client: DbClient) {
+export function createAuthRouter(client: DbClient, opts: { authSecret: string }) {
   const router = express.Router();
+  const { authSecret } = opts;
 
   router.post("/register", async (req, res, next) => {
     try {
@@ -75,7 +78,11 @@ export function createAuthRouter(client: DbClient) {
       }
 
       // Skeleton: return placeholder token (non-secure) for v0.
-      const token = `mock-token-${user.id}`;
+      const token = signToken(
+        { sub: String(user.id), handle: user.handle },
+        authSecret,
+        60 * 60
+      );
       return res.json({
         user: {
           id: user.id,
@@ -88,6 +95,10 @@ export function createAuthRouter(client: DbClient) {
     } catch (err) {
       next(err);
     }
+  });
+
+  router.get("/me", requireAuth(authSecret), (req: AuthedRequest, res) => {
+    return res.json({ user: req.auth });
   });
 
   return router;
