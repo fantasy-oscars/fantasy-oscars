@@ -4,114 +4,87 @@
  *
  * Usage:
  *   node .github/scripts/ticket-pull.mjs --issue 6 --repo owner/name
+ *   node .github/scripts/ticket-pull.mjs --issue 6 --write [--out path]
+ *
  * Notes:
  *   - Requires GITHUB_TOKEN with repo access.
  *   - Defaults repo from GITHUB_REPOSITORY if not provided.
- *   - Prints a concise JSON summary (title, state, project status/iteration/workstream).
+ *   - Prints JSON by default; --write updates the local snapshot file (same shape as ticket:sync).
  */
 
+import { readFile } from "node:fs/promises";
+
+import { requireGitHubToken, inferRepoFullName } from "./lib/github.mjs";
+import { fetchIssue } from "./lib/sync-issues.mjs";
+import { defaultIssuesSnapshotPath, writeJsonAtomic } from "./lib/local-snapshot.mjs";
+
 function parseArgs(argv) {
-  const args = { issue: undefined, repo: undefined };
+  const args = { issue: undefined, repo: undefined, write: false, out: undefined };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--issue") args.issue = Number(argv[++i]);
     else if (arg === "--repo") args.repo = argv[++i];
+    else if (arg === "--write") args.write = true;
+    else if (arg === "--out") args.out = argv[++i];
   }
   return args;
 }
 
-function requireToken() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN is required");
-  return token;
-}
-
-function inferRepo(repoArg) {
-  if (repoArg) return repoArg;
-  if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  throw new Error("Provide --repo owner/name or set GITHUB_REPOSITORY");
-}
-
-async function graphql(token, query, variables) {
-  const res = await fetch("https://api.github.com/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query, variables })
-  });
-  const data = await res.json();
-  if (!res.ok || data.errors) {
-    const message = data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
-    throw new Error(`GitHub GraphQL error: ${message}`);
+async function loadSnapshot(path) {
+  try {
+    const raw = await readFile(path, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
   }
-  return data.data;
 }
 
-async function pullIssue(token, repoFullName, issueNumber) {
-  const [owner, name] = repoFullName.split("/");
-  const query = `
-    query($owner: String!, $name: String!, $number: Int!) {
-      repository(owner: $owner, name: $name) {
-        issue(number: $number) {
-          number
-          title
-          state
-          url
-          body
-          projectItems(first: 5) {
-            nodes {
-              project { title number }
-              fieldValues(first: 20) {
-                nodes {
-                  __typename
-                  ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } }
-                  ... on ProjectV2ItemFieldIterationValue { title field { ... on ProjectV2FieldCommon { name } } }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const data = await graphql(token, query, { owner, name, number: issueNumber });
-  const issue = data.repository?.issue;
-  if (!issue) throw new Error(`Issue #${issueNumber} not found`);
-
-  const fields = {};
-  const project = issue.projectItems?.nodes?.[0];
-  if (project) {
-    for (const fv of project.fieldValues?.nodes ?? []) {
-      if (fv.__typename === "ProjectV2ItemFieldSingleSelectValue" && fv.field?.name) {
-        fields[fv.field.name] = fv.name;
-      }
-      if (fv.__typename === "ProjectV2ItemFieldIterationValue" && fv.field?.name) {
-        fields[fv.field.name] = fv.title;
-      }
-    }
+async function upsertIssueInSnapshot(snapshot, issue) {
+  if (!snapshot) {
+    return {
+      version: 1,
+      repo: "",
+      fetchedAt: new Date().toISOString(),
+      issues: [issue]
+    };
   }
 
-  return {
-    number: issue.number,
-    title: issue.title,
-    state: issue.state,
-    url: issue.url,
-    body: issue.body,
-    project: project?.project?.title,
-    fields
-  };
+  const next = { ...snapshot, fetchedAt: new Date().toISOString() };
+  const idx = (next.issues ?? []).findIndex((i) => i.number === issue.number);
+  if (idx >= 0) {
+    next.issues[idx] = issue;
+  } else {
+    next.issues = [...(next.issues ?? []), issue];
+  }
+  return next;
 }
 
 async function main() {
-  const { issue, repo } = parseArgs(process.argv.slice(2));
+  const { issue, repo, write, out } = parseArgs(process.argv.slice(2));
   if (!issue || Number.isNaN(issue)) throw new Error("Issue number required (--issue)");
-  const token = requireToken();
-  const repoFullName = inferRepo(repo);
-  const summary = await pullIssue(token, repoFullName, issue);
-  console.log(JSON.stringify(summary, null, 2));
+
+  const token = requireGitHubToken();
+  const repoFullName = inferRepoFullName(repo);
+
+  const detailed = await fetchIssue({
+    token,
+    repoFullName,
+    number: issue,
+    includeBody: true,
+    includeProjects: true
+  });
+
+  if (!write) {
+    console.log(JSON.stringify(detailed, null, 2));
+    return;
+  }
+
+  const outPath = out ?? defaultIssuesSnapshotPath(repoFullName);
+  const snapshot = await loadSnapshot(outPath);
+  const updated = await upsertIssueInSnapshot(snapshot, detailed);
+  updated.repo = repoFullName;
+  await writeJsonAtomic(outPath, updated);
+  console.log(`Updated issue #${issue} in ${outPath}`);
 }
 
 main().catch((err) => {

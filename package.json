@@ -37,6 +37,8 @@
     "ticket:status": "node .github/scripts/ticket-status.mjs",
     "ticket:pull": "node .github/scripts/ticket-pull.mjs",
     "ticket:create": "node .github/scripts/ticket-create.mjs",
+    "ticket:sync": "node .github/scripts/ticket-sync.mjs",
+    "test:scripts": "node --test .github/scripts/lib/*.test.mjs",
     "lint:scripts": "eslint .github/scripts",
     "format:check": "npm run --workspaces --if-present format:check"
   }
