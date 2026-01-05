@@ -8,6 +8,15 @@ import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 export function createAuthRouter(client: DbClient, opts: { authSecret: string }) {
   const router = express.Router();
   const { authSecret } = opts;
+  const isProd = process.env.NODE_ENV === "production";
+  const cookieConfig = {
+    name: "auth_token",
+    maxAgeMs: 60 * 60 * 1000, // 1 hour
+    sameSite: "lax" as const,
+    httpOnly: true,
+    secure: isProd,
+    path: "/" as const
+  };
 
   router.post("/register", async (req, res, next) => {
     try {
@@ -83,6 +92,13 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         authSecret,
         60 * 60
       );
+      res.cookie(cookieConfig.name, token, {
+        httpOnly: cookieConfig.httpOnly,
+        sameSite: cookieConfig.sameSite,
+        secure: cookieConfig.secure,
+        maxAge: cookieConfig.maxAgeMs,
+        path: cookieConfig.path
+      });
       return res.json({
         user: {
           id: user.id,
@@ -99,6 +115,18 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
   router.get("/me", requireAuth(authSecret), (req: AuthedRequest, res) => {
     return res.json({ user: req.auth });
+  });
+
+  router.post("/logout", (_req, res) => {
+    res
+      .clearCookie(cookieConfig.name, {
+        httpOnly: cookieConfig.httpOnly,
+        sameSite: cookieConfig.sameSite,
+        secure: cookieConfig.secure,
+        path: cookieConfig.path
+      })
+      .status(204)
+      .end();
   });
 
   return router;

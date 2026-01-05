@@ -13,18 +13,24 @@ let skip = false;
 async function requestJson<T>(
   path: string,
   init: RequestInit = {}
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Headers }> {
   if (!baseUrl) throw new Error("Test server not started");
   const res = await fetch(`${baseUrl}${path}`, init);
-  const json = (await res.json()) as T;
-  return { status: res.status, json };
+  let json: T;
+  try {
+    json = (await res.json()) as T;
+  } catch {
+    // Allow endpoints like logout (204/no body) to be exercised without JSON.
+    json = {} as T;
+  }
+  return { status: res.status, json, headers: res.headers };
 }
 
 async function post<T>(
   path: string,
   body: unknown,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Headers }> {
   return requestJson<T>(path, {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
@@ -35,7 +41,7 @@ async function post<T>(
 async function getJson<T>(
   path: string,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Headers }> {
   return requestJson<T>(path, { method: "GET", headers });
 }
 
@@ -150,5 +156,54 @@ describe("auth integration", () => {
     });
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("INVALID_CREDENTIALS");
+  });
+
+  it("sets auth cookie on login and accepts cookie for /auth/me", async () => {
+    if (skip) return;
+    const payload = {
+      handle: "cookieuser",
+      email: "cookie@example.com",
+      display_name: "Cookie User",
+      password: "pw123"
+    };
+    await post("/auth/register", payload);
+    const res = await post<{ user: { handle: string }; token: string }>("/auth/login", {
+      handle: payload.handle,
+      password: payload.password
+    });
+    const setCookie = res.headers.get("set-cookie");
+    expect(setCookie).toMatch(/auth_token=/);
+    const cookieHeader = setCookie?.split(";")[0] ?? "";
+    const me = await getJson<{ user: { handle: string } }>("/auth/me", {
+      Cookie: cookieHeader
+    });
+    expect(me.status).toBe(200);
+    expect(me.json.user.handle).toBe(payload.handle);
+  });
+
+  it("clears auth cookie on logout and rejects missing token", async () => {
+    if (skip) return;
+    const payload = {
+      handle: "logoutuser",
+      email: "logout@example.com",
+      display_name: "Logout User",
+      password: "pw123"
+    };
+    await post("/auth/register", payload);
+    const res = await post<{ token: string }>("/auth/login", {
+      handle: payload.handle,
+      password: payload.password
+    });
+    const setCookie = res.headers.get("set-cookie");
+    const cookieHeader = setCookie?.split(";")[0] ?? "";
+
+    const logout = await post("/auth/logout", undefined, { Cookie: cookieHeader });
+    expect(logout.status).toBe(204);
+    const cleared = logout.headers.get("set-cookie") ?? "";
+    expect(cleared).toMatch(/auth_token=;/);
+
+    const me = await getJson<{ error: { code: string } }>("/auth/me");
+    expect(me.status).toBe(401);
+    expect(me.json.error.code).toBe("UNAUTHORIZED");
   });
 });
