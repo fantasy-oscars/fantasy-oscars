@@ -141,7 +141,7 @@ function FormStatus(props: {
 
 type Snapshot = {
   draft: { id: number; status: string; current_pick_number: number | null };
-  seats: Array<{ seat_number: number; league_member_id: number }>;
+  seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
 };
@@ -176,12 +176,19 @@ function useAuth() {
   return { user, setUser, loading, error, refresh, logout };
 }
 
-function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean }) {
-  const { initialDraftId, disabled } = props;
+function DraftRoom(props: {
+  initialDraftId?: string | number;
+  disabled?: boolean;
+  user?: AuthUser | null;
+}) {
+  const { initialDraftId, disabled, user } = props;
   const [draftId, setDraftId] = useState(String(initialDraftId ?? "1"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [pickNominationId, setPickNominationId] = useState("");
+  const [pickState, setPickState] = useState<ApiResult | null>(null);
+  const [pickLoading, setPickLoading] = useState(false);
 
   async function loadSnapshot(id: string) {
     setLoading(true);
@@ -195,6 +202,66 @@ function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean
     }
     setLoading(false);
   }
+
+  const activeSeatNumber = useMemo(() => {
+    if (!snapshot?.draft.current_pick_number || snapshot.seats.length === 0) return null;
+    const pickNumber = snapshot.draft.current_pick_number;
+    const seatCount = snapshot.seats.length;
+    const round = Math.ceil(pickNumber / seatCount);
+    const idx = (pickNumber - 1) % seatCount;
+    return round % 2 === 1 ? idx + 1 : seatCount - idx;
+  }, [snapshot]);
+
+  const mySeatNumber = useMemo(() => {
+    if (!user || !snapshot) return null;
+    const userId = Number(user.sub);
+    if (!Number.isFinite(userId)) return null;
+    const seat = snapshot.seats.find((s) => s.user_id === userId);
+    return seat?.seat_number ?? null;
+  }, [snapshot, user]);
+
+  const canPick =
+    !!snapshot &&
+    snapshot.draft.status === "IN_PROGRESS" &&
+    activeSeatNumber !== null &&
+    mySeatNumber !== null &&
+    activeSeatNumber === mySeatNumber &&
+    !disabled;
+
+  const pickDisabledReason = useMemo(() => {
+    if (disabled) return "Sign in to make picks.";
+    if (!snapshot) return "Load a draft snapshot first.";
+    if (snapshot.draft.status !== "IN_PROGRESS") return "Draft is not in progress.";
+    if (activeSeatNumber === null) return "Turn information unavailable.";
+    if (mySeatNumber === null) return "You are not seated in this draft.";
+    if (activeSeatNumber !== mySeatNumber)
+      return `Waiting for seat ${activeSeatNumber} to pick.`;
+    return null;
+  }, [disabled, snapshot, activeSeatNumber, mySeatNumber]);
+
+  const submitPick = useCallback(async () => {
+    if (!snapshot) return;
+    const nominationIdNum = Number(pickNominationId);
+    if (!Number.isFinite(nominationIdNum) || nominationIdNum <= 0) {
+      setPickState({ ok: false, message: "Enter a valid nomination id." });
+      return;
+    }
+    setPickLoading(true);
+    setPickState(null);
+    const res = await fetchJson(`/drafts/${snapshot.draft.id}/picks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nomination_id: nominationIdNum })
+    });
+    if (res.ok) {
+      setPickState({ ok: true, message: "Pick submitted" });
+      setPickNominationId("");
+      await loadSnapshot(String(snapshot.draft.id));
+    } else {
+      setPickState({ ok: false, message: res.error ?? "Pick failed" });
+    }
+    setPickLoading(false);
+  }, [pickNominationId, snapshot]);
 
   return (
     <section className="card draft-card">
@@ -246,41 +313,72 @@ function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean
       )}
 
       {snapshot && (
-        <div className="draft-grid">
-          <div className="summary">
-            <p className="eyebrow">Draft #{snapshot.draft?.id ?? "?"}</p>
-            <h3>Status: {snapshot.draft?.status ?? "UNKNOWN"}</h3>
-            <p className="muted">
-              Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
-              {snapshot.version}
-            </p>
-          </div>
-          <div>
-            <h4>Seats</h4>
-            <ul className="pill-list">
-              {snapshot.seats.map((seat) => (
-                <li key={seat.seat_number} className="pill">
-                  Seat {seat.seat_number} · Member {seat.league_member_id}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4>Picks</h4>
-            {snapshot.picks.length === 0 ? (
-              <p className="muted">No picks yet.</p>
-            ) : (
-              <ol className="pick-list">
-                {snapshot.picks.map((pick) => (
-                  <li key={pick.pick_number}>
-                    #{pick.pick_number} · Seat {pick.seat_number} · Nomination{" "}
-                    {pick.nomination_id}
+        <>
+          <div className="draft-grid">
+            <div className="summary">
+              <p className="eyebrow">Draft #{snapshot.draft?.id ?? "?"}</p>
+              <h3>Status: {snapshot.draft?.status ?? "UNKNOWN"}</h3>
+              <p className="muted">
+                Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
+                {snapshot.version}
+              </p>
+            </div>
+            <div>
+              <h4>Seats</h4>
+              <ul className="pill-list">
+                {snapshot.seats.map((seat) => (
+                  <li key={seat.seat_number} className="pill">
+                    Seat {seat.seat_number} · Member {seat.league_member_id}
                   </li>
                 ))}
-              </ol>
-            )}
+              </ul>
+            </div>
+            <div>
+              <h4>Picks</h4>
+              {snapshot.picks.length === 0 ? (
+                <p className="muted">No picks yet.</p>
+              ) : (
+                <ol className="pick-list">
+                  {snapshot.picks.map((pick) => (
+                    <li key={pick.pick_number}>
+                      #{pick.pick_number} · Seat {pick.seat_number} · Nomination{" "}
+                      {pick.nomination_id}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           </div>
-        </div>
+          <div className="pick-panel">
+            <h4>Make a pick</h4>
+            <p className="muted">
+              Your seat: {mySeatNumber ?? "—"} · Active seat: {activeSeatNumber ?? "—"}
+            </p>
+            <div className="inline-form">
+              <label className="field">
+                <span>Nomination ID</span>
+                <input
+                  value={pickNominationId}
+                  onChange={(e) => setPickNominationId(e.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="e.g. 12"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={submitPick}
+                disabled={!canPick || pickLoading}
+              >
+                {pickLoading ? "Submitting..." : "Submit pick"}
+              </button>
+            </div>
+            {pickDisabledReason && (
+              <div className="status status-error">{pickDisabledReason}</div>
+            )}
+            <FormStatus loading={pickLoading} result={pickState} />
+          </div>
+        </>
       )}
     </section>
   );
@@ -748,7 +846,11 @@ export function App() {
       )}
 
       {view === "draft" && (
-        <DraftRoom initialDraftId={draftRoomId ?? undefined} disabled={!user} />
+        <DraftRoom
+          initialDraftId={draftRoomId ?? undefined}
+          disabled={!user}
+          user={user}
+        />
       )}
 
       <section className="card">

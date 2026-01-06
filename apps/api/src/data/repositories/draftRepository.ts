@@ -16,6 +16,7 @@ export type DraftSeatRecord = {
   league_member_id: number;
   seat_number: number;
   is_active: boolean;
+  user_id?: number;
 };
 
 export type DraftPickRecord = {
@@ -158,14 +159,16 @@ export async function listDraftSeats(
   const { rows } = await query<DraftSeatRecord>(
     client,
     `SELECT
-       id::int,
-       draft_id::int,
-       league_member_id::int,
-       seat_number::int,
-       is_active
-     FROM draft_seat
-     WHERE draft_id = $1
-     ORDER BY seat_number ASC`,
+       ds.id::int,
+       ds.draft_id::int,
+       ds.league_member_id::int,
+       ds.seat_number::int,
+       ds.is_active,
+       lm.user_id::int AS user_id
+     FROM draft_seat ds
+     JOIN league_member lm ON lm.id = ds.league_member_id
+     WHERE ds.draft_id = $1
+     ORDER BY ds.seat_number ASC`,
     [draftId]
   );
   return rows;
