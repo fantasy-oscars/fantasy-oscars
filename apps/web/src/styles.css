@@ -151,3 +151,69 @@ button:hover:not(:disabled) {
 small.error {
   font-size: 12px;
 }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-loading {
+  color: var(--muted);
+}
+
+.status-success {
+  color: var(--success);
+  border-color: rgba(79, 209, 197, 0.4);
+}
+
+.status-error {
+  color: var(--error);
+  border-color: rgba(255, 107, 107, 0.45);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  animation: spin 640ms linear infinite;
+}
+
+.ghost {
+  background: transparent;
+  color: inherit;
+  border: 1px solid currentColor;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.status-tray {
+  margin: 8px 0 12px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(247, 201, 72, 0.12);
+  border: 1px solid rgba(247, 201, 72, 0.35);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

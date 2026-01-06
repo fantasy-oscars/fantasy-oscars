@@ -11,10 +11,12 @@ function buildUrl(path: string) {
 function useApiAction<T extends Record<string, unknown>>(path: string) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiResult | null>(null);
+  const [lastPayload, setLastPayload] = useState<T | null>(null);
 
   async function run(payload: T) {
     setLoading(true);
     setResult(null);
+    setLastPayload(payload);
     try {
       const res = await fetch(buildUrl(path), {
         method: "POST",
@@ -37,7 +39,19 @@ function useApiAction<T extends Record<string, unknown>>(path: string) {
     }
   }
 
-  return { loading, result, run };
+  async function retry() {
+    if (lastPayload) await run(lastPayload);
+  }
+
+  const state: "idle" | "loading" | "success" | "error" = loading
+    ? "loading"
+    : result
+      ? result.ok
+        ? "success"
+        : "error"
+      : "idle";
+
+  return { loading, result, run, retry, state };
 }
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -72,6 +86,38 @@ function FormField(props: {
       {error && <small className="error">{error}</small>}
     </label>
   );
+}
+
+function FormStatus(props: {
+  loading: boolean;
+  result: ApiResult | null;
+  onRetry?: () => void;
+}) {
+  const { loading, result, onRetry } = props;
+  if (loading) {
+    return (
+      <div className="status status-loading" role="status" aria-live="polite">
+        <span className="spinner" aria-hidden="true" /> Working...
+      </div>
+    );
+  }
+  if (result) {
+    return (
+      <div
+        className={`status ${result.ok ? "status-success" : "status-error"}`}
+        role="status"
+        aria-live="polite"
+      >
+        {result.ok ? "Success" : `Error: ${result.message}`}
+        {!result.ok && onRetry && (
+          <button type="button" className="ghost" onClick={onRetry}>
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+  return null;
 }
 
 function RegisterForm() {
@@ -118,11 +164,7 @@ function RegisterForm() {
           {api.loading ? "Submitting..." : "Register"}
         </button>
       </form>
-      {api.result && (
-        <p className={api.result.ok ? "success" : "error"} role="status">
-          {api.result.message}
-        </p>
-      )}
+      <FormStatus loading={api.loading} result={api.result} onRetry={api.retry} />
     </section>
   );
 }
@@ -162,11 +204,7 @@ function LoginForm() {
           {api.loading ? "Signing in..." : "Login"}
         </button>
       </form>
-      {api.result && (
-        <p className={api.result.ok ? "success" : "error"} role="status">
-          {api.result.message}
-        </p>
-      )}
+      <FormStatus loading={api.loading} result={api.result} onRetry={api.retry} />
     </section>
   );
 }
@@ -197,11 +235,7 @@ function ResetRequestForm() {
           {api.loading ? "Sending..." : "Send reset link"}
         </button>
       </form>
-      {api.result && (
-        <p className={api.result.ok ? "success" : "error"} role="status">
-          {api.result.message}
-        </p>
-      )}
+      <FormStatus loading={api.loading} result={api.result} onRetry={api.retry} />
     </section>
   );
 }
@@ -241,11 +275,7 @@ function ResetConfirmForm() {
           {api.loading ? "Updating..." : "Update password"}
         </button>
       </form>
-      {api.result && (
-        <p className={api.result.ok ? "success" : "error"} role="status">
-          {api.result.message}
-        </p>
-      )}
+      <FormStatus loading={api.loading} result={api.result} onRetry={api.retry} />
     </section>
   );
 }
@@ -263,6 +293,12 @@ export function App() {
           </p>
         </div>
       </header>
+      <div className="status-tray" aria-live="polite">
+        <div className="status-pill">
+          Loading and error states are now surfaced on every action. If something fails,
+          use the Retry button to re-submit.
+        </div>
+      </div>
       <div className="grid">
         <RegisterForm />
         <LoginForm />
