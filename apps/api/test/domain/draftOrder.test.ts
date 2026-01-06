@@ -59,4 +59,46 @@ describe("computeSeatForPick", () => {
       })
     ).toThrow(DraftOrderError);
   });
+
+  it("satisfies snake ordering invariants across rounds and seats", () => {
+    const seatCounts = [2, 3, 4, 5, 6];
+    const rounds = 5;
+
+    for (const seat_count of seatCounts) {
+      const picksPerRound = seat_count;
+      const totalPicks = picksPerRound * rounds;
+      const assignments = Array.from({ length: totalPicks }, (_, i) =>
+        computePickAssignment({
+          draft_order_type: "SNAKE",
+          seat_count,
+          pick_number: i + 1,
+          status: "IN_PROGRESS"
+        })
+      );
+
+      // No out-of-range seats
+      for (const a of assignments) {
+        expect(a.seat_number).toBeGreaterThanOrEqual(1);
+        expect(a.seat_number).toBeLessThanOrEqual(seat_count);
+      }
+
+      // Per-round invariants
+      for (let round = 1; round <= rounds; round++) {
+        const roundSeats = assignments
+          .filter((a) => a.round_number === round)
+          .map((a) => a.seat_number);
+
+        // Each participant once per round
+        const sortedSeats = [...roundSeats].sort((a, b) => a - b);
+        expect(sortedSeats).toEqual(Array.from({ length: seat_count }, (_, i) => i + 1));
+
+        // Direction alternates per round
+        const expectedOrder =
+          round % 2 === 1
+            ? Array.from({ length: seat_count }, (_, i) => i + 1)
+            : Array.from({ length: seat_count }, (_, i) => seat_count - i);
+        expect(roundSeats).toEqual(expectedOrder);
+      }
+    }
+  });
 });
