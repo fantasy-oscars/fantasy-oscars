@@ -40,7 +40,8 @@ describe("leagues integration", () => {
   beforeAll(async () => {
     try {
       process.env.PORT = process.env.PORT ?? "3104";
-      authSecret = process.env.AUTH_SECRET ?? "test-secret";
+      process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
+      authSecret = process.env.AUTH_SECRET;
       db = await startTestDatabase();
       process.env.DATABASE_URL = db.connectionString;
       const app = createServer({ db: db.pool });

@@ -29,7 +29,16 @@ export async function createLeague(
     `
       INSERT INTO league (code, name, ceremony_id, max_members, roster_size, is_public, created_by_user_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
+      RETURNING
+        id::int,
+        code,
+        name,
+        ceremony_id::int,
+        max_members,
+        roster_size,
+        is_public,
+        created_by_user_id::int,
+        created_at
     `,
     [
       input.code,
