@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { NomineePill } from "./components/NomineePill";
 
 type ApiResult = { ok: boolean; message: string };
 
@@ -749,6 +750,22 @@ export function App() {
       {view === "draft" && (
         <DraftRoom initialDraftId={draftRoomId ?? undefined} disabled={!user} />
       )}
+
+      <section className="card">
+        <header>
+          <h2>Nominee pill density preview</h2>
+          <p>Baseline styles with truncation and distinct states.</p>
+        </header>
+        <div className="pill-demo">
+          <NomineePill
+            name="An Incredibly Long Nominee Name That Should Truncate Gracefully On One Line"
+            category="Best Picture"
+          />
+          <NomineePill name="First pick" category="Best Actor" state="active" />
+          <NomineePill name="Already picked" category="Best Actress" state="picked" />
+          <NomineePill name="Locked out" category="Editing" state="disabled" />
+        </div>
+      </section>
     </main>
   );
 }
