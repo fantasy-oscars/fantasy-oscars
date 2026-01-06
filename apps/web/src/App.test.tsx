@@ -7,19 +7,39 @@ describe("<App />", () => {
     vi.restoreAllMocks();
   });
 
+  type MockResponse = { ok: boolean; json: () => Promise<unknown> };
+  type Responder = (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ) => Promise<MockResponse>;
+
+  function mockFetchSequence(...responders: Responder[]) {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+        const idx = fetchMock.mock.calls.length - 1;
+        const responder = responders[idx] ?? responders[responders.length - 1];
+        return responder(input, init);
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
   it("renders the heading", () => {
+    mockFetchSequence(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ user: null }) })
+    );
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: "Sign up, sign in, and recover access" })
+      screen.getByRole("heading", { name: "Event setup and draft room" })
     ).toBeInTheDocument();
   });
 
   it("submits register form and shows success", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({})
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetchSequence(
+      () => Promise.resolve({ ok: true, json: () => Promise.resolve({ user: null }) }),
+      () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    );
 
     render(<App />);
     const registerCard = screen
@@ -44,8 +64,9 @@ describe("<App />", () => {
   });
 
   it("blocks login submit when required fields missing", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetchSequence(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ user: null }) })
+    );
     render(<App />);
     const loginCard = screen
       .getAllByRole("heading", { name: "Login" })[0]
@@ -57,15 +78,14 @@ describe("<App />", () => {
       const required = within(loginCard).getAllByText(/Required/i, { selector: "small" });
       expect(required.length).toBeGreaterThan(0);
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only auth/me
   });
 
   it("submits reset confirm with token", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({})
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetchSequence(
+      () => Promise.resolve({ ok: true, json: () => Promise.resolve({ user: null }) }),
+      () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    );
     render(<App />);
     const resetCard = screen
       .getAllByRole("heading", { name: "Set New Password" })[0]
@@ -79,8 +99,8 @@ describe("<App />", () => {
     });
     fireEvent.click(within(resetCard).getByRole("button", { name: /Update password/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const body = JSON.parse(fetchMock.mock.calls[1][1]?.body as string);
     expect(body.token).toBe("t-123");
     expect(body.password).toBe("newpass");
   });
@@ -95,14 +115,31 @@ describe("<App />", () => {
       picks: [{ pick_number: 1, seat_number: 1, nomination_id: 99 }],
       version: 1
     };
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(snapshot)
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetchSequence(
+      // auth/me returns logged-in user so Draft tab is enabled
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      // snapshot call
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        })
+    );
 
     render(<App />);
-    const loadBtn = screen.getAllByRole("button", { name: /Load snapshot/i })[0];
+    let draftBtn: HTMLElement | undefined;
+    await waitFor(() => {
+      draftBtn = screen
+        .getAllByRole("button", { name: /Draft room/i })
+        .find((b) => !b.hasAttribute("disabled"));
+      expect(draftBtn).toBeDefined();
+    });
+    fireEvent.click(draftBtn!);
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
     fireEvent.click(loadBtn);
 
     expect(screen.getByText(/Loading draft snapshot/i)).toBeInTheDocument();
@@ -110,5 +147,6 @@ describe("<App />", () => {
     await screen.findByText(/Status: IN_PROGRESS/);
     expect(screen.getByText(/Seat 1 · Member 11/)).toBeInTheDocument();
     expect(screen.getByText(/Nomination 99/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -224,6 +224,59 @@ small.error {
   margin-top: 12px;
 }
 
+.tab-bar {
+  display: inline-flex;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.tab {
+  background: transparent;
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: rgba(247, 201, 72, 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(247, 201, 72, 0.35);
+}
+
+.pill-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.two-col {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+select {
+  border: 1px solid var(--border);
+  background: #0c1226;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
 .pill-list {
   list-style: none;
   margin: 0;
