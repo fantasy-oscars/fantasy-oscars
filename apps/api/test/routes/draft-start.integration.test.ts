@@ -3,7 +3,12 @@ import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
-import { insertDraft, insertLeague, insertDraftSeat } from "../factories/db.js";
+import {
+  insertDraft,
+  insertLeague,
+  insertDraftSeat,
+  insertNomination
+} from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
 let server: Server | null = null;
@@ -69,6 +74,7 @@ describe("draft start integration", () => {
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id });
+    await insertNomination(db.pool);
 
     const res = await post<{
       draft: { id: number; status: string; current_pick_number: number };
@@ -98,6 +104,17 @@ describe("draft start integration", () => {
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
     expect(res.status).toBe(400);
     expect(res.json.error.code).toBe("PREREQ_MISSING_SEATS");
+  });
+
+  it("rejects when no nominations loaded", async () => {
+    if (skip || !db) return;
+    const league = await insertLeague(db.pool);
+    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
+    await insertDraftSeat(db.pool, { draft_id: draft.id });
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
+    expect(res.status).toBe(400);
+    expect(res.json.error.code).toBe("PREREQ_MISSING_NOMINATIONS");
   });
 
   it("rejects when draft missing", async () => {

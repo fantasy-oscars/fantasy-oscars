@@ -5,7 +5,8 @@ import {
   getDraftById,
   getDraftByLeagueId,
   updateDraftOnStart,
-  countDraftSeats
+  countDraftSeats,
+  countNominations
 } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -72,6 +73,15 @@ export function createDraftsRouter(client: DbClient) {
       const seats = await countDraftSeats(client, draftId);
       if (seats <= 0) {
         throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+      }
+
+      const nominationCount = await countNominations(client);
+      if (nominationCount <= 0) {
+        throw new AppError(
+          "PREREQ_MISSING_NOMINATIONS",
+          400,
+          "No nominations loaded; load nominees before starting draft"
+        );
       }
 
       const now = new Date();

@@ -123,3 +123,11 @@ export async function countDraftSeats(
   );
   return rows[0]?.count ? Number(rows[0].count) : 0;
 }
+
+export async function countNominations(client: DbClient): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM nomination`
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}
