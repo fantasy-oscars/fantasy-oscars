@@ -20,3 +20,4 @@ This repo includes a few small scripts under `.github/scripts/` for working with
 - Create a new issue and add it to the project: `npm run ticket:create -- --title "..." --body-file ...`
 - Post a comment to an issue: `npm run ticket:comment -- --issue 6 --body "..."` (or pipe stdin)
 - Update a project “Status” field for an issue: `npm run ticket:status -- --issue 6 --status doing`
+- Load the golden nominees dataset into the DB: `npm run nominees:load --workspace @fantasy-oscars/api`
