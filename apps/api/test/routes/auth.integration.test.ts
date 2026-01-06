@@ -206,4 +206,104 @@ describe("auth integration", () => {
     expect(me.status).toBe(401);
     expect(me.json.error.code).toBe("UNAUTHORIZED");
   });
+
+  describe("password reset", () => {
+    it("returns inline token in non-prod and creates reset record", async () => {
+      if (skip || !db) return;
+      const payload = {
+        handle: "reset1",
+        email: "reset1@example.com",
+        display_name: "Reset One",
+        password: "oldpw"
+      };
+      await post("/auth/register", payload);
+
+      const res = await post<{ token: string; delivery: string }>("/auth/reset-request", {
+        email: payload.email
+      });
+      expect(res.status).toBe(200);
+      expect(res.json.delivery).toBe("inline");
+      expect(res.json.token).toBeDefined();
+
+      const { rows } = await db!.pool.query(
+        `SELECT token_hash FROM auth_password_reset WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`,
+        [payload.email]
+      );
+      expect(rows.length).toBe(1);
+    });
+
+    it("resets password with token and allows login", async () => {
+      if (skip) return;
+      const payload = {
+        handle: "reset2",
+        email: "reset2@example.com",
+        display_name: "Reset Two",
+        password: "oldpw"
+      };
+      await post("/auth/register", payload);
+      const request = await post<{ token: string }>("/auth/reset-request", {
+        email: payload.email
+      });
+      const token = request.json.token;
+      expect(token).toBeDefined();
+
+      const confirm = await post("/auth/reset-confirm", { token, password: "newpw" });
+      expect(confirm.status).toBe(200);
+
+      const login = await post<{ token: string }>("/auth/login", {
+        handle: payload.handle,
+        password: "newpw"
+      });
+      expect(login.status).toBe(200);
+      expect(login.json.token).toBeDefined();
+    });
+
+    it("rejects expired tokens", async () => {
+      if (skip || !db) return;
+      const { json } = await post<{ user: { id: number } }>("/auth/register", {
+        handle: "expired",
+        email: "expired@example.com",
+        display_name: "Expired",
+        password: "pw"
+      });
+      const rawToken = "expired-token";
+      const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
+      await db.pool.query(
+        `INSERT INTO auth_password_reset (user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [json.user.id, hash, new Date(Date.now() - 3600_000)]
+      );
+
+      const res = await post<{ error: { code: string } }>("/auth/reset-confirm", {
+        token: rawToken,
+        password: "newpw"
+      });
+      expect(res.status).toBe(400);
+      expect(res.json.error.code).toBe("RESET_TOKEN_EXPIRED");
+    });
+
+    it("rejects reused tokens", async () => {
+      if (skip || !db) return;
+      const { json } = await post<{ user: { id: number } }>("/auth/register", {
+        handle: "used",
+        email: "used@example.com",
+        display_name: "Used",
+        password: "pw"
+      });
+      const rawToken = "used-token";
+      const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
+      await db.pool.query(
+        `INSERT INTO auth_password_reset (user_id, token_hash, expires_at, consumed_at)
+         VALUES ($1, $2, now() + interval '1 hour', now())`,
+        [json.user.id, hash]
+      );
+
+      const res = await post<{ error: { code: string } }>("/auth/reset-confirm", {
+        token: rawToken,
+        password: "newpw"
+      });
+      expect(res.status).toBe(400);
+      expect(res.json.error.code).toBe("RESET_TOKEN_USED");
+    });
+  });
 });

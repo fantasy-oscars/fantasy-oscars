@@ -28,7 +28,7 @@ describe("migrations", () => {
             'icon','person','film','song','performance',
             'ceremony','category_family','category_edition',
             'nomination','nomination_contributor',
-            'app_user','auth_password',
+            'app_user','auth_password','auth_password_reset',
             'league','league_member','draft','draft_seat','draft_pick'
           )
       `);
