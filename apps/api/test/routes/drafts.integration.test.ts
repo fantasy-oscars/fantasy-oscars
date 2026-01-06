@@ -13,15 +13,19 @@ let skip = false;
 
 async function requestJson<T>(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  opts: { auth?: boolean } = {}
 ): Promise<{ status: number; json: T }> {
   if (!baseUrl) throw new Error("Test server not started");
-  const token = signToken(
-    { sub: "1", handle: "tester" },
-    process.env.AUTH_SECRET ?? "test-secret"
-  );
+  const token =
+    opts.auth === false
+      ? null
+      : signToken(
+          { sub: "1", handle: "tester" },
+          process.env.AUTH_SECRET ?? "test-secret"
+        );
   const headers = {
-    authorization: `Bearer ${token}`,
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
     ...(init.headers ?? {})
   };
   const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
@@ -31,13 +35,18 @@ async function requestJson<T>(
 
 async function post<T>(
   path: string,
-  body: unknown
+  body: unknown,
+  opts: { auth?: boolean } = {}
 ): Promise<{ status: number; json: T }> {
-  return requestJson<T>(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
+  return requestJson<T>(
+    path,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body)
+    },
+    opts
+  );
 }
 
 describe("drafts integration", () => {
@@ -71,6 +80,18 @@ describe("drafts integration", () => {
   beforeEach(async () => {
     if (skip || !db) return;
     await truncateAllTables(db.pool);
+  });
+
+  it("rejects draft creation when unauthenticated", async () => {
+    if (skip || !db) return;
+    const league = await insertLeague(db.pool);
+    const res = await post<{ error: { code: string } }>(
+      "/drafts",
+      { league_id: league.id, draft_order_type: "SNAKE" },
+      { auth: false }
+    );
+    expect(res.status).toBe(401);
+    expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
   it("creates a draft in pending state", async () => {

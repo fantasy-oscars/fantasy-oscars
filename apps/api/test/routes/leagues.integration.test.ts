@@ -155,4 +155,31 @@ describe("leagues integration", () => {
     expect(res.status).toBe(200);
     expect(res.json.league.id).toBe(leagueId);
   });
+
+  it("requires auth for get by id", async () => {
+    if (skip || !db) return;
+    const ceremony = await insertCeremony(db.pool);
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      {
+        code: "no-auth-get",
+        name: "No Auth Get",
+        ceremony_id: ceremony.id,
+        max_members: 8,
+        roster_size: 4,
+        is_public: true
+      },
+      token
+    );
+    const leagueId = createRes.json.league.id;
+
+    const res = await requestJson<{ error: { code: string } }>(`/leagues/${leagueId}`, {
+      method: "GET"
+    });
+
+    expect(res.status).toBe(401);
+    expect(res.json.error.code).toBe("UNAUTHORIZED");
+  });
 });
