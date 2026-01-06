@@ -194,6 +194,18 @@ export async function listDraftPicks(
   return rows;
 }
 
+export async function countDraftPicks(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
+    [draftId]
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}
+
 export async function getPickByNumber(
   client: DbClient,
   draftId: number,
@@ -283,6 +295,57 @@ export async function updateDraftCurrentPick(
      WHERE id = $1
      RETURNING *`,
     [draftId, nextPickNumber]
+  );
+  return rows[0] ?? null;
+}
+
+export async function updateDraftOnComplete(
+  client: DbClient,
+  draftId: number,
+  completedAt: Date
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET status = 'COMPLETED',
+         completed_at = $2,
+         current_pick_number = NULL
+     WHERE id = $1
+     RETURNING id::int,
+       league_id::int,
+       status,
+       draft_order_type,
+       current_pick_number::int,
+       started_at,
+       completed_at`,
+    [draftId, completedAt]
+  );
+  return rows[0] ?? null;
+}
+
+export async function completeDraftIfReady(
+  client: DbClient,
+  draftId: number,
+  completedAt: Date,
+  requiredPickCount: number
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET status = 'COMPLETED',
+         completed_at = $2,
+         current_pick_number = NULL
+     WHERE id = $1
+       AND status <> 'COMPLETED'
+       AND (SELECT COUNT(*) FROM draft_pick WHERE draft_id = $1) >= $3
+     RETURNING id::int,
+       league_id::int,
+       status,
+       draft_order_type,
+       current_pick_number::int,
+       started_at,
+       completed_at`,
+    [draftId, completedAt, requiredPickCount]
   );
   return rows[0] ?? null;
 }

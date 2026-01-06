@@ -6,13 +6,16 @@ import {
   getDraftByLeagueId,
   updateDraftOnStart,
   updateDraftCurrentPick,
+  updateDraftOnComplete,
   countDraftSeats,
   countNominations,
   listDraftSeats,
   listDraftPicks,
+  countDraftPicks,
   getPickByNomination,
   insertDraftPickRecord,
-  getNominationById
+  getNominationById,
+  completeDraftIfReady
 } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -149,6 +152,43 @@ export function buildSnapshotDraftHandler(client: DbClient) {
       const picks = await listDraftPicks(client, draftId);
       const version = picks.length;
 
+      // If all required picks are made but status not updated, complete draft lazily.
+      const league = await getLeagueById(client, draft.league_id);
+      const rosterSizeRaw = Number(league?.roster_size);
+      const rosterSize =
+        Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
+      const totalRequired = seats.length * rosterSize;
+      if (
+        totalRequired > 0 &&
+        picks.length >= totalRequired &&
+        draft.status !== "COMPLETED"
+      ) {
+        const completed = transitionDraftState(
+          {
+            id: draft.id,
+            status: draft.status,
+            started_at: draft.started_at,
+            completed_at: draft.completed_at
+          },
+          "COMPLETED"
+        );
+        const updated =
+          (await completeDraftIfReady(
+            client,
+            draft.id,
+            completed.completed_at ?? new Date(),
+            totalRequired
+          )) ??
+          (await updateDraftOnComplete(
+            client,
+            draft.id,
+            completed.completed_at ?? new Date()
+          ));
+        draft.status = updated?.status ?? completed.status;
+        draft.completed_at = updated?.completed_at ?? completed.completed_at;
+        draft.current_pick_number = null;
+      }
+
       return res.status(200).json({ draft, seats, picks, version });
     } catch (err) {
       next(err);
@@ -186,10 +226,27 @@ export function buildSubmitPickHandler(pool: Pool) {
       }
 
       const result = await runInTransaction(pool, async (tx) => {
+        const league = await getLeagueById(tx, draft.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+
         const seats = await listDraftSeats(tx, draftId);
         const seatCount = seats.length;
         if (seatCount === 0) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+        }
+
+        const rosterSizeRaw = Number(league.roster_size);
+        const rosterSize =
+          Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
+        const totalRequiredPicks = seatCount * rosterSize;
+        const existingPickCount = await countDraftPicks(tx, draftId);
+        const draftCurrent = draft.current_pick_number ?? 0;
+        const currentPick = Math.max(
+          existingPickCount + 1,
+          draftCurrent || existingPickCount + 1
+        );
+        if (existingPickCount >= totalRequiredPicks) {
+          throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is completed");
         }
 
         const nomination = await getNominationById(tx, nominationIdNum);
@@ -206,7 +263,6 @@ export function buildSubmitPickHandler(pool: Pool) {
           );
         }
 
-        const currentPick = draft.current_pick_number ?? 1;
         const assignment = computePickAssignment({
           draft_order_type: draft.draft_order_type,
           seat_count: seatCount,
@@ -219,24 +275,66 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("TURN_RESOLUTION_ERROR", 500, "Seat not found for turn");
         }
 
+        // If this is the final required pick, allow it to proceed even if the in-memory
+        // turn resolver drifted (prevents getting stuck on completion edge cases).
+        const isFinalRequiredPick =
+          totalRequiredPicks > 0 && currentPick >= totalRequiredPicks;
         const userSeat = await getDraftSeatForUser(tx, draftId, userId);
-        if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
+        if (!isFinalRequiredPick) {
+          if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
+            throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
+          }
+        } else if (!userSeat) {
           throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
         }
+
+        const seatNumberForPick =
+          isFinalRequiredPick && userSeat ? userSeat.seat_number : assignment.seat_number;
+        const seatForInsert =
+          seats.find((s) => s.seat_number === seatNumberForPick) ?? expectedSeat;
 
         const now = new Date();
         const pick = await insertDraftPickRecord(tx, {
           draft_id: draftId,
           pick_number: currentPick,
           round_number: assignment.round_number,
-          seat_number: assignment.seat_number,
-          league_member_id: expectedSeat.league_member_id,
+          seat_number: seatNumberForPick,
+          league_member_id: seatForInsert.league_member_id,
           nomination_id: nominationIdNum,
           made_at: now
         });
 
-        const nextPick = currentPick + 1;
-        await updateDraftCurrentPick(tx, draftId, nextPick);
+        // Complete immediately when this pick satisfies the total required picks.
+        const newPickCount = existingPickCount + 1;
+        // Recompute seat count defensively in case earlier read was stale.
+        const seatTotal = await countDraftSeats(tx, draftId);
+        const requiredPicks = seatTotal * rosterSize;
+        if (requiredPicks > 0 && newPickCount >= requiredPicks) {
+          const updated =
+            (await completeDraftIfReady(tx, draftId, now, requiredPicks)) ??
+            (await updateDraftOnComplete(tx, draftId, now));
+          if (!updated) {
+            throw new AppError("INTERNAL_ERROR", 500, "Failed to complete draft");
+          }
+          const completedDraft = transitionDraftState(
+            {
+              id: draft.id,
+              status: draft.status,
+              started_at: draft.started_at,
+              completed_at: draft.completed_at
+            },
+            "COMPLETED",
+            () => now
+          );
+          // Keep in-memory draft aligned for rest of handler (though not reused here)
+          draft.status = "COMPLETED";
+          draft.completed_at = updated.completed_at ?? completedDraft.completed_at ?? now;
+          draft.current_pick_number = null;
+        } else {
+          const nextPickNumber = newPickCount + 1;
+          await updateDraftCurrentPick(tx, draftId, nextPickNumber);
+          draft.current_pick_number = nextPickNumber;
+        }
 
         return pick;
       });

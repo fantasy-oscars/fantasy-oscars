@@ -341,4 +341,271 @@ describe("draft picks integration", () => {
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
   });
+
+  it("marks draft completed when all picks are made", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user1 = await insertUser(pool);
+    const user2 = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user1.id })
+      ).id
+    });
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 2,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user2.id })
+      ).id
+    });
+    const nomination1 = await insertNomination(pool);
+    const nomination2 = await insertNomination(pool);
+
+    const res1 = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "req-1" })
+      },
+      { token: tokenFor(user1.id) }
+    );
+    const res2 = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "req-2" })
+      },
+      { token: tokenFor(user2.id) }
+    );
+    expect(res1.status).toBe(201);
+    expect(res2.status).toBe(201);
+
+    const snapshot = await requestJson<{
+      draft: { status: string; completed_at: string | null };
+      picks: Array<{ pick_number: number }>;
+      version: number;
+    }>(`/drafts/${draft.id}/snapshot`, {}, { token: tokenFor(user1.id) });
+
+    expect(snapshot.status).toBe(200);
+    expect(snapshot.json.draft.status).toBe("COMPLETED");
+    expect(snapshot.json.draft.completed_at).not.toBeNull();
+    expect(snapshot.json.picks.length).toBe(2);
+    expect(snapshot.json.version).toBe(2);
+  });
+
+  // Diagnostic: verify DB row actually flips to COMPLETED when pick threshold is reached.
+  it("sets draft.status=COMPLETED in the database after the final required pick", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user1 = await insertUser(pool);
+    const user2 = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user1.id })
+      ).id
+    });
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 2,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user2.id })
+      ).id
+    });
+    const nomination1 = await insertNomination(pool);
+    const nomination2 = await insertNomination(pool);
+
+    const diag1 = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "diag-1" })
+      },
+      { token: tokenFor(user1.id) }
+    );
+    const diag2 = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "diag-2" })
+      },
+      { token: tokenFor(user2.id) }
+    );
+    expect(diag1.status).toBe(201);
+    expect(diag2.status).toBe(201);
+
+    const row = await pool.query<{
+      status: string;
+      completed_at: Date | null;
+      pick_count: number;
+    }>(
+      `SELECT status, completed_at,
+              (SELECT COUNT(*) FROM draft_pick WHERE draft_id = $1)::int AS pick_count
+       FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect(row.rows[0]).toBeDefined();
+    expect(row.rows[0].pick_count).toBe(2);
+    expect(row.rows[0].status).toBe("COMPLETED");
+    expect(row.rows[0].completed_at).not.toBeNull();
+  });
+
+  it("rejects picks after draft completed", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user1 = await insertUser(pool);
+    const user2 = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user1.id })
+      ).id
+    });
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 2,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user2.id })
+      ).id
+    });
+    const nomination1 = await insertNomination(pool);
+    const nomination2 = await insertNomination(pool);
+    const nomination3 = await insertNomination(pool);
+
+    const first = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "req-1" })
+      },
+      { token: tokenFor(user1.id) }
+    );
+    const second = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "req-2" })
+      },
+      { token: tokenFor(user2.id) }
+    );
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+
+    const res = await requestJson<{ error: { code: string } }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination3.id, request_id: "req-3" })
+      },
+      { token: tokenFor(user1.id) }
+    );
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
+  });
+
+  // Regression: API must reject any pick after completion.
+  it("rejects pick after draft is completed", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user1 = await insertUser(pool);
+    const user2 = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user1.id })
+      ).id
+    });
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 2,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user2.id })
+      ).id
+    });
+    const nomination1 = await insertNomination(pool);
+    const nomination2 = await insertNomination(pool);
+    const nomination3 = await insertNomination(pool);
+
+    const resA = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "db-check-1" })
+      },
+      { token: tokenFor(user1.id) }
+    );
+    const resB = await requestJson(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "db-check-2" })
+      },
+      { token: tokenFor(user2.id) }
+    );
+    expect(resA.status).toBe(201);
+    expect(resB.status).toBe(201);
+
+    // Confirm DB says completed before making the extra pick.
+    const beforeExtra = await pool.query<{ status: string }>(
+      `SELECT status FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect(beforeExtra.rows[0]?.status).toBe("COMPLETED");
+
+    const res = await requestJson<{ error: { code: string } }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          nomination_id: nomination3.id,
+          request_id: "post-complete"
+        })
+      },
+      { token: tokenFor(user1.id) }
+    );
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
+  });
 });
