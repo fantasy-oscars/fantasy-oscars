@@ -1,5 +1,6 @@
 import { githubGraphql, splitRepoFullName } from "./github.mjs";
 import { extractDependsOn } from "./dependencies.mjs";
+import { listBlockedBy, listBlocking } from "./issue-dependencies.mjs";
 import { extractProjectFields } from "./project-fields.mjs";
 
 function coerceStateFilter(state) {
@@ -50,7 +51,8 @@ export async function fetchIssue({
   repoFullName,
   number,
   includeBody = true,
-  includeProjects = true
+  includeProjects = true,
+  includeIssueDependencies = true
 }) {
   const { owner, name } = splitRepoFullName(repoFullName);
   const query = `
@@ -93,7 +95,17 @@ export async function fetchIssue({
   const data = await githubGraphql(token, query, { owner, name, number });
   const issue = data.repository?.issue;
   if (!issue) throw new Error(`Issue #${number} not found`);
-  return mapIssueNode(issue, { includeBody, includeProjects });
+  const mapped = mapIssueNode(issue, { includeBody, includeProjects });
+  if (!includeIssueDependencies) return mapped;
+
+  const blockedBy = await listBlockedBy(token, { repo: repoFullName, issue: number }).catch(
+    () => []
+  );
+  const blocking = await listBlocking(token, { repo: repoFullName, issue: number }).catch(
+    () => []
+  );
+
+  return { ...mapped, issueDependencies: { blockedBy, blocking } };
 }
 
 export async function fetchIssuesSnapshot({
