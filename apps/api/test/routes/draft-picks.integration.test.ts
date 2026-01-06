@@ -276,4 +276,69 @@ describe("draft picks integration", () => {
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("NOMINATION_ALREADY_PICKED");
   });
+
+  it("rejects unknown nomination id", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool);
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user.id })
+      ).id
+    });
+
+    const res = await requestJson<{ error: { code: string } }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: 9999, request_id: "req-missing" })
+      },
+      { token: tokenFor(user.id) }
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.json.error.code).toBe("NOMINATION_NOT_FOUND");
+  });
+
+  it("rejects pick when draft not in progress", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool);
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "PENDING",
+      current_pick_number: 1
+    });
+    const user = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user.id })
+      ).id
+    });
+    const nomination = await insertNomination(pool);
+
+    const res = await requestJson<{ error: { code: string } }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination.id, request_id: "req-pending" })
+      },
+      { token: tokenFor(user.id) }
+    );
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
+  });
 });

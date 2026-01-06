@@ -11,7 +11,8 @@ import {
   listDraftSeats,
   listDraftPicks,
   getPickByNomination,
-  insertDraftPickRecord
+  insertDraftPickRecord,
+  getNominationById
 } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -179,6 +180,10 @@ export function buildSubmitPickHandler(pool: Pool) {
       if (!nomination_id) {
         throw validationError("Missing nomination_id", ["nomination_id"]);
       }
+      const nominationIdNum = Number(nomination_id);
+      if (Number.isNaN(nominationIdNum)) {
+        throw validationError("Invalid nomination_id", ["nomination_id"]);
+      }
 
       const result = await runInTransaction(pool, async (tx) => {
         const seats = await listDraftSeats(tx, draftId);
@@ -187,7 +192,12 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
         }
 
-        const existingNom = await getPickByNomination(tx, draftId, Number(nomination_id));
+        const nomination = await getNominationById(tx, nominationIdNum);
+        if (!nomination) {
+          throw new AppError("NOMINATION_NOT_FOUND", 404, "Nomination not found");
+        }
+
+        const existingNom = await getPickByNomination(tx, draftId, nominationIdNum);
         if (existingNom) {
           throw new AppError(
             "NOMINATION_ALREADY_PICKED",
@@ -221,7 +231,7 @@ export function buildSubmitPickHandler(pool: Pool) {
           round_number: assignment.round_number,
           seat_number: assignment.seat_number,
           league_member_id: expectedSeat.league_member_id,
-          nomination_id: Number(nomination_id),
+          nomination_id: nominationIdNum,
           made_at: now
         });
 

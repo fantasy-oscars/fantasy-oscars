@@ -220,6 +220,18 @@ export async function getPickByNomination(
   return rows[0] ?? null;
 }
 
+export async function getNominationById(
+  client: DbClient,
+  nominationId: number
+): Promise<{ id: number } | null> {
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT id::int FROM nomination WHERE id = $1`,
+    [nominationId]
+  );
+  return rows[0] ?? null;
+}
+
 export async function insertDraftPickRecord(
   client: DbClient,
   input: {
