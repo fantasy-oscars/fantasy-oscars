@@ -9,7 +9,7 @@
 
 ## Definition of Done
 
-- All checks green: `npm run ci`.
+- All checks green: `npm run ci:all` (matches GitHub Actions: `npm run ci` + `npm run docs:check`).
 - Docs updated (root README and relevant docs under `docs/`).
 - No unexplained TODOs; follow-up items captured (issue or TODO with owner).
 - Errors handled deliberately; no leaking stack traces to clients.
