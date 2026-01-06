@@ -50,7 +50,17 @@ export async function getLeagueById(
 ): Promise<LeagueRecord | null> {
   const { rows } = await query<LeagueRecord>(
     client,
-    `SELECT * FROM league WHERE id = $1`,
+    `SELECT
+       id::int,
+       code,
+       name,
+       ceremony_id::int,
+       max_members,
+       roster_size,
+       is_public,
+       created_by_user_id::int,
+       created_at
+     FROM league WHERE id = $1`,
     [id]
   );
   return rows[0] ?? null;

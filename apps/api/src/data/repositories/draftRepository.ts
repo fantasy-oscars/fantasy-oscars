@@ -85,3 +85,41 @@ export async function getDraftByLeagueId(
   );
   return rows[0] ?? null;
 }
+
+export async function updateDraftOnStart(
+  client: DbClient,
+  id: number,
+  current_pick_number: number,
+  started_at: Date
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET status = 'IN_PROGRESS',
+         current_pick_number = $2,
+         started_at = $3
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       started_at,
+       completed_at`,
+    [id, current_pick_number, started_at]
+  );
+  return rows[0] ?? null;
+}
+
+export async function countDraftSeats(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM draft_seat WHERE draft_id = $1`,
+    [draftId]
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}

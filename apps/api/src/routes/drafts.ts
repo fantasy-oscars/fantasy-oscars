@@ -1,8 +1,15 @@
 import express from "express";
 import { AppError, validationError } from "../errors.js";
-import { createDraft, getDraftByLeagueId } from "../data/repositories/draftRepository.js";
+import {
+  createDraft,
+  getDraftById,
+  getDraftByLeagueId,
+  updateDraftOnStart,
+  countDraftSeats
+} from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
+import { transitionDraftState } from "../domain/draftState.js";
 
 export function createDraftsRouter(client: DbClient) {
   const router = express.Router();
@@ -41,6 +48,53 @@ export function createDraftsRouter(client: DbClient) {
       });
 
       return res.status(201).json({ draft });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/:id/start", async (req, res, next) => {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const draft = await getDraftById(client, draftId);
+      if (!draft) {
+        throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      }
+
+      if (draft.status !== "PENDING") {
+        throw new AppError("DRAFT_ALREADY_STARTED", 409, "Draft already started");
+      }
+
+      const seats = await countDraftSeats(client, draftId);
+      if (seats <= 0) {
+        throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+      }
+
+      const now = new Date();
+      const transitioned = transitionDraftState(
+        {
+          id: draft.id,
+          status: draft.status,
+          started_at: draft.started_at,
+          completed_at: draft.completed_at
+        },
+        "IN_PROGRESS",
+        () => now
+      );
+
+      const updated = await updateDraftOnStart(
+        client,
+        draft.id,
+        draft.current_pick_number ?? 1,
+        transitioned.started_at ?? now
+      );
+      if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to start draft");
+
+      return res.status(200).json({ draft: updated });
     } catch (err) {
       next(err);
     }
