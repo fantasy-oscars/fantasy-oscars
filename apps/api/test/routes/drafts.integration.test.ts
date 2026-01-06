@@ -2,6 +2,7 @@ import { AddressInfo } from "net";
 import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
+import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 import { insertLeague } from "../factories/db.js";
 
@@ -15,7 +16,15 @@ async function requestJson<T>(
   init: RequestInit = {}
 ): Promise<{ status: number; json: T }> {
   if (!baseUrl) throw new Error("Test server not started");
-  const res = await fetch(`${baseUrl}${path}`, init);
+  const token = signToken(
+    { sub: "1", handle: "tester" },
+    process.env.AUTH_SECRET ?? "test-secret"
+  );
+  const headers = {
+    authorization: `Bearer ${token}`,
+    ...(init.headers ?? {})
+  };
+  const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
   const json = (await res.json()) as T;
   return { status: res.status, json };
 }

@@ -34,7 +34,7 @@ export function createServer(deps?: { db?: Pool }) {
   app.use("/health", healthRouter);
   app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
-  app.use("/drafts", createDraftsRouter(pool));
+  app.use("/drafts", createDraftsRouter(pool, config.authSecret));
 
   app.use(
     (

@@ -11,11 +11,14 @@ import {
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
 import { transitionDraftState } from "../domain/draftState.js";
+import { requireAuth } from "../auth/middleware.js";
 
-export function createDraftsRouter(client: DbClient) {
-  const router = express.Router();
-
-  router.post("/", async (req, res, next) => {
+export function buildCreateDraftHandler(client: DbClient) {
+  return async function handleCreateDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
     try {
       const { league_id, draft_order_type } = req.body ?? {};
 
@@ -52,9 +55,15 @@ export function createDraftsRouter(client: DbClient) {
     } catch (err) {
       next(err);
     }
-  });
+  };
+}
 
-  router.post("/:id/start", async (req, res, next) => {
+export function buildStartDraftHandler(client: DbClient) {
+  return async function handleStartDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
     try {
       const draftId = Number(req.params.id);
       if (Number.isNaN(draftId)) {
@@ -108,7 +117,15 @@ export function createDraftsRouter(client: DbClient) {
     } catch (err) {
       next(err);
     }
-  });
+  };
+}
+
+export function createDraftsRouter(client: DbClient, authSecret: string) {
+  const router = express.Router();
+
+  router.use(requireAuth(authSecret));
+  router.post("/", buildCreateDraftHandler(client));
+  router.post("/:id/start", buildStartDraftHandler(client));
 
   return router;
 }
