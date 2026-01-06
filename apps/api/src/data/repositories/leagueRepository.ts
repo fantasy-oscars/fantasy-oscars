@@ -146,3 +146,26 @@ export async function createLeagueMember(
   );
   return rows[0];
 }
+
+export async function getDraftSeatForUser(
+  client: DbClient,
+  draftId: number,
+  userId: number
+): Promise<{ seat_id: number; seat_number: number; league_member_id: number } | null> {
+  const { rows } = await query<{
+    seat_id: number;
+    seat_number: number;
+    league_member_id: number;
+  }>(
+    client,
+    `SELECT
+       ds.id::int AS seat_id,
+       ds.seat_number::int,
+       ds.league_member_id::int
+     FROM draft_seat ds
+     JOIN league_member lm ON lm.id = ds.league_member_id
+     WHERE ds.draft_id = $1 AND lm.user_id = $2`,
+    [draftId, userId]
+  );
+  return rows[0] ?? null;
+}

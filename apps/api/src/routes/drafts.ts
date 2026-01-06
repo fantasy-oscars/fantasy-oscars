@@ -5,15 +5,22 @@ import {
   getDraftById,
   getDraftByLeagueId,
   updateDraftOnStart,
+  updateDraftCurrentPick,
   countDraftSeats,
   countNominations,
   listDraftSeats,
-  listDraftPicks
+  listDraftPicks,
+  getPickByNomination,
+  insertDraftPickRecord
 } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
+import { runInTransaction } from "../data/db.js";
 import { transitionDraftState } from "../domain/draftState.js";
-import { requireAuth } from "../auth/middleware.js";
+import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
+import { computePickAssignment } from "../domain/draftOrder.js";
+import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
+import type { Pool } from "pg";
 
 export function buildCreateDraftHandler(client: DbClient) {
   return async function handleCreateDraft(
@@ -148,6 +155,89 @@ export function buildSnapshotDraftHandler(client: DbClient) {
   };
 }
 
+export function buildSubmitPickHandler(pool: Pool) {
+  return async function handleSubmitPick(
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      if (draft.status !== "IN_PROGRESS") {
+        throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
+      }
+
+      const { nomination_id } = req.body ?? {};
+      const userId = Number(req.auth?.sub);
+      if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+      if (!nomination_id) {
+        throw validationError("Missing nomination_id", ["nomination_id"]);
+      }
+
+      const result = await runInTransaction(pool, async (tx) => {
+        const seats = await listDraftSeats(tx, draftId);
+        const seatCount = seats.length;
+        if (seatCount === 0) {
+          throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+        }
+
+        const existingNom = await getPickByNomination(tx, draftId, Number(nomination_id));
+        if (existingNom) {
+          throw new AppError(
+            "NOMINATION_ALREADY_PICKED",
+            409,
+            "Nomination already picked"
+          );
+        }
+
+        const currentPick = draft.current_pick_number ?? 1;
+        const assignment = computePickAssignment({
+          draft_order_type: draft.draft_order_type,
+          seat_count: seatCount,
+          pick_number: currentPick,
+          status: draft.status
+        });
+
+        const expectedSeat = seats.find((s) => s.seat_number === assignment.seat_number);
+        if (!expectedSeat) {
+          throw new AppError("TURN_RESOLUTION_ERROR", 500, "Seat not found for turn");
+        }
+
+        const userSeat = await getDraftSeatForUser(tx, draftId, userId);
+        if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
+          throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
+        }
+
+        const now = new Date();
+        const pick = await insertDraftPickRecord(tx, {
+          draft_id: draftId,
+          pick_number: currentPick,
+          round_number: assignment.round_number,
+          seat_number: assignment.seat_number,
+          league_member_id: expectedSeat.league_member_id,
+          nomination_id: Number(nomination_id),
+          made_at: now
+        });
+
+        const nextPick = currentPick + 1;
+        await updateDraftCurrentPick(tx, draftId, nextPick);
+
+        return pick;
+      });
+
+      return res.status(201).json({ pick: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createDraftsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
@@ -155,6 +245,7 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client));
+  router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
 
   return router;
 }

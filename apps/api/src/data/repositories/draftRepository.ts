@@ -193,3 +193,84 @@ export async function listDraftPicks(
   );
   return rows;
 }
+
+export async function getPickByNumber(
+  client: DbClient,
+  draftId: number,
+  pickNumber: number
+): Promise<DraftPickRecord | null> {
+  const { rows } = await query<DraftPickRecord>(
+    client,
+    `SELECT * FROM draft_pick WHERE draft_id = $1 AND pick_number = $2`,
+    [draftId, pickNumber]
+  );
+  return rows[0] ?? null;
+}
+
+export async function getPickByNomination(
+  client: DbClient,
+  draftId: number,
+  nominationId: number
+): Promise<DraftPickRecord | null> {
+  const { rows } = await query<DraftPickRecord>(
+    client,
+    `SELECT * FROM draft_pick WHERE draft_id = $1 AND nomination_id = $2`,
+    [draftId, nominationId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function insertDraftPickRecord(
+  client: DbClient,
+  input: {
+    draft_id: number;
+    pick_number: number;
+    round_number: number;
+    seat_number: number;
+    league_member_id: number;
+    nomination_id: number;
+    made_at: Date;
+  }
+): Promise<DraftPickRecord> {
+  const { rows } = await query<DraftPickRecord>(
+    client,
+    `INSERT INTO draft_pick
+     (draft_id, pick_number, round_number, seat_number, league_member_id, nomination_id, made_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     RETURNING
+       id::int,
+       draft_id::int,
+       pick_number::int,
+       round_number::int,
+       seat_number::int,
+       league_member_id::int,
+       nomination_id::int,
+       made_at`,
+    [
+      input.draft_id,
+      input.pick_number,
+      input.round_number,
+      input.seat_number,
+      input.league_member_id,
+      input.nomination_id,
+      input.made_at
+    ]
+  );
+  return rows[0];
+}
+
+export async function updateDraftCurrentPick(
+  client: DbClient,
+  draftId: number,
+  nextPickNumber: number | null
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET current_pick_number = $2
+     WHERE id = $1
+     RETURNING *`,
+    [draftId, nextPickNumber]
+  );
+  return rows[0] ?? null;
+}

@@ -23,6 +23,15 @@ async function applyMigrations(pool: Pool) {
 }
 
 export async function startTestDatabase() {
+  // Ensure docker host is set for environments that have Docker available but DOCKER_HOST unset.
+  if (!process.env.DOCKER_HOST) {
+    const candidates = ["/var/run/docker.sock", "/run/docker.sock"];
+    const socket = candidates.find((p) => fs.existsSync(p));
+    if (socket) {
+      process.env.DOCKER_HOST = `unix://${socket}`;
+    }
+  }
+
   const container = await new PostgreSqlContainer().start();
   const connectionString = container.getConnectionUri();
   const pool = new Pool({ connectionString });
