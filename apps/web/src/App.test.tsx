@@ -84,4 +84,31 @@ describe("<App />", () => {
     expect(body.token).toBe("t-123");
     expect(body.password).toBe("newpass");
   });
+
+  it("shows loading and renders snapshot data", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 3 },
+      seats: [
+        { seat_number: 1, league_member_id: 11 },
+        { seat_number: 2, league_member_id: 22 }
+      ],
+      picks: [{ pick_number: 1, seat_number: 1, nomination_id: 99 }],
+      version: 1
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(snapshot)
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    const loadBtn = screen.getAllByRole("button", { name: /Load snapshot/i })[0];
+    fireEvent.click(loadBtn);
+
+    expect(screen.getByText(/Loading draft snapshot/i)).toBeInTheDocument();
+
+    await screen.findByText(/Status: IN_PROGRESS/);
+    expect(screen.getByText(/Seat 1 · Member 11/)).toBeInTheDocument();
+    expect(screen.getByText(/Nomination 99/)).toBeInTheDocument();
+  });
 });
