@@ -12,6 +12,14 @@ export type LeagueRecord = {
   created_at: Date;
 };
 
+export type LeagueMemberRecord = {
+  id: number;
+  league_id: number;
+  user_id: number;
+  role: "OWNER" | "CO_OWNER" | "MEMBER";
+  joined_at: Date;
+};
+
 export async function createLeague(
   client: DbClient,
   input: {
@@ -90,4 +98,51 @@ export async function updateLeagueName(
 
 export async function deleteLeague(client: DbClient, id: number): Promise<void> {
   await query(client, `DELETE FROM league WHERE id = $1`, [id]);
+}
+
+export async function getLeagueMember(
+  client: DbClient,
+  leagueId: number,
+  userId: number
+): Promise<LeagueMemberRecord | null> {
+  const { rows } = await query<LeagueMemberRecord>(
+    client,
+    `SELECT
+       id::int,
+       league_id::int,
+       user_id::int,
+       role,
+       joined_at
+     FROM league_member
+     WHERE league_id = $1 AND user_id = $2`,
+    [leagueId, userId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function countLeagueMembers(
+  client: DbClient,
+  leagueId: number
+): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1`,
+    [leagueId]
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}
+
+export async function createLeagueMember(
+  client: DbClient,
+  input: { league_id: number; user_id: number; role?: LeagueMemberRecord["role"] }
+): Promise<LeagueMemberRecord> {
+  const role = input.role ?? "MEMBER";
+  const { rows } = await query<LeagueMemberRecord>(
+    client,
+    `INSERT INTO league_member (league_id, user_id, role)
+     VALUES ($1, $2, $3)
+     RETURNING id::int, league_id::int, user_id::int, role, joined_at`,
+    [input.league_id, input.user_id, role]
+  );
+  return rows[0];
 }
