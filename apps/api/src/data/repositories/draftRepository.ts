@@ -10,6 +10,25 @@ export type DraftRecord = {
   completed_at?: Date | null;
 };
 
+export type DraftSeatRecord = {
+  id: number;
+  draft_id: number;
+  league_member_id: number;
+  seat_number: number;
+  is_active: boolean;
+};
+
+export type DraftPickRecord = {
+  id: number;
+  draft_id: number;
+  pick_number: number;
+  round_number: number;
+  seat_number: number;
+  league_member_id: number;
+  nomination_id: number;
+  made_at: Date | null;
+};
+
 export async function createDraft(
   client: DbClient,
   input: {
@@ -130,4 +149,47 @@ export async function countNominations(client: DbClient): Promise<number> {
     `SELECT COUNT(*)::int AS count FROM nomination`
   );
   return rows[0]?.count ? Number(rows[0].count) : 0;
+}
+
+export async function listDraftSeats(
+  client: DbClient,
+  draftId: number
+): Promise<DraftSeatRecord[]> {
+  const { rows } = await query<DraftSeatRecord>(
+    client,
+    `SELECT
+       id::int,
+       draft_id::int,
+       league_member_id::int,
+       seat_number::int,
+       is_active
+     FROM draft_seat
+     WHERE draft_id = $1
+     ORDER BY seat_number ASC`,
+    [draftId]
+  );
+  return rows;
+}
+
+export async function listDraftPicks(
+  client: DbClient,
+  draftId: number
+): Promise<DraftPickRecord[]> {
+  const { rows } = await query<DraftPickRecord>(
+    client,
+    `SELECT
+       id::int,
+       draft_id::int,
+       pick_number::int,
+       round_number::int,
+       seat_number::int,
+       league_member_id::int,
+       nomination_id::int,
+       made_at
+     FROM draft_pick
+     WHERE draft_id = $1
+     ORDER BY pick_number ASC`,
+    [draftId]
+  );
+  return rows;
 }

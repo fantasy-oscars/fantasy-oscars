@@ -6,7 +6,9 @@ import {
   getDraftByLeagueId,
   updateDraftOnStart,
   countDraftSeats,
-  countNominations
+  countNominations,
+  listDraftSeats,
+  listDraftPicks
 } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -120,12 +122,39 @@ export function buildStartDraftHandler(client: DbClient) {
   };
 }
 
+export function buildSnapshotDraftHandler(client: DbClient) {
+  return async function handleSnapshotDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const draft = await getDraftById(client, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+      const seats = await listDraftSeats(client, draftId);
+      const picks = await listDraftPicks(client, draftId);
+      const version = picks.length;
+
+      return res.status(200).json({ draft, seats, picks, version });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createDraftsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
   router.use(requireAuth(authSecret));
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client));
+  router.get("/:id/snapshot", buildSnapshotDraftHandler(client));
 
   return router;
 }
