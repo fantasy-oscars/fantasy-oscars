@@ -6,6 +6,8 @@ export type DraftRecord = {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
+  started_at?: Date | null;
+  completed_at?: Date | null;
 };
 
 export async function createDraft(
@@ -15,20 +17,31 @@ export async function createDraft(
     status: DraftRecord["status"];
     draft_order_type: DraftRecord["draft_order_type"];
     current_pick_number?: number | null;
+    started_at?: Date | null;
+    completed_at?: Date | null;
   }
 ): Promise<DraftRecord> {
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, status, draft_order_type, current_pick_number)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
+      INSERT INTO draft (league_id, status, draft_order_type, current_pick_number, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING
+        id::int,
+        league_id::int,
+        status,
+        draft_order_type,
+        current_pick_number,
+        started_at,
+        completed_at
     `,
     [
       input.league_id,
       input.status,
       input.draft_order_type,
-      input.current_pick_number ?? null
+      input.current_pick_number ?? null,
+      input.started_at ?? null,
+      input.completed_at ?? null
     ]
   );
   return rows[0];
@@ -59,4 +72,16 @@ export async function updateDraftStatus(
 
 export async function deleteDraft(client: DbClient, id: number): Promise<void> {
   await query(client, `DELETE FROM draft WHERE id = $1`, [id]);
+}
+
+export async function getDraftByLeagueId(
+  client: DbClient,
+  leagueId: number
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `SELECT * FROM draft WHERE league_id = $1`,
+    [leagueId]
+  );
+  return rows[0] ?? null;
 }
