@@ -19,9 +19,11 @@ export function createServer(deps?: { db?: Pool }) {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     const allowlist =
-      process.env.CORS_ALLOWED_ORIGINS ??
-      "http://localhost:5173,http://127.0.0.1:5173";
-    const allowedOrigins = allowlist.split(",").map((s) => s.trim()).filter(Boolean);
+      process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173";
+    const allowedOrigins = allowlist
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const isAllowed = origin ? allowedOrigins.some((o) => origin.startsWith(o)) : false;
 
     if (isAllowed && origin) {
