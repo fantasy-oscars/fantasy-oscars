@@ -13,10 +13,12 @@ import {
   listDraftPicks,
   countDraftPicks,
   getPickByNomination,
+  getPickByRequestId,
   insertDraftPickRecord,
   getNominationById,
   completeDraftIfReady
 } from "../data/repositories/draftRepository.js";
+import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
@@ -202,19 +204,15 @@ export function buildSubmitPickHandler(pool: Pool) {
     res: express.Response,
     next: express.NextFunction
   ) {
+    let requestId: string | null = null;
+    let draftId: number | null = null;
     try {
-      const draftId = Number(req.params.id);
+      draftId = Number(req.params.id);
       if (Number.isNaN(draftId)) {
         throw validationError("Invalid draft id", ["id"]);
       }
 
-      const draft = await getDraftById(pool, draftId);
-      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
-      if (draft.status !== "IN_PROGRESS") {
-        throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
-      }
-
-      const { nomination_id } = req.body ?? {};
+      const { nomination_id, request_id } = req.body ?? {};
       const userId = Number(req.auth?.sub);
       if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
       if (!nomination_id) {
@@ -224,8 +222,42 @@ export function buildSubmitPickHandler(pool: Pool) {
       if (Number.isNaN(nominationIdNum)) {
         throw validationError("Invalid nomination_id", ["nomination_id"]);
       }
+      requestId = String(request_id ?? "").trim();
+      if (!requestId) {
+        throw validationError("Missing request_id", ["request_id"]);
+      }
+      if (requestId.length > 128) {
+        throw validationError("request_id too long", ["request_id"]);
+      }
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+      // Idempotent repeat is allowed even if the draft has since completed.
+      const priorOutside = await getPickByRequestId(pool, draftId, requestId);
+      if (priorOutside) {
+        return res.status(200).json({ pick: priorOutside });
+      }
+
+      if (draft.status !== "IN_PROGRESS") {
+        throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
+      }
+
+      // Fast path: if this exact request was already processed, return the prior pick
+      // without performing any further validation. This ensures idempotency even if
+      // the draft state has advanced since the original submission.
+      const pickByRequest = await getPickByRequestId(pool, draftId, requestId);
+      if (pickByRequest) {
+        return res.status(200).json({ pick: pickByRequest });
+      }
 
       const result = await runInTransaction(pool, async (tx) => {
+        // Idempotency: if this request_id already succeeded, return the same pick.
+        const prior = await getPickByRequestId(tx, draftId, requestId);
+        if (prior) {
+          return { pick: prior, reused: true };
+        }
+
         const league = await getLeagueById(tx, draft.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
@@ -256,6 +288,10 @@ export function buildSubmitPickHandler(pool: Pool) {
 
         const existingNom = await getPickByNomination(tx, draftId, nominationIdNum);
         if (existingNom) {
+          // If the same logical request already picked this nomination, treat as idempotent.
+          if (existingNom.request_id && existingNom.request_id === requestId) {
+            return { pick: existingNom, reused: true };
+          }
           throw new AppError(
             "NOMINATION_ALREADY_PICKED",
             409,
@@ -282,9 +318,13 @@ export function buildSubmitPickHandler(pool: Pool) {
         const userSeat = await getDraftSeatForUser(tx, draftId, userId);
         if (!isFinalRequiredPick) {
           if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
+            const priorPick = await getPickByRequestId(tx, draftId, requestId);
+            if (priorPick) return { pick: priorPick, reused: true };
             throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
           }
         } else if (!userSeat) {
+          const priorPick = await getPickByRequestId(tx, draftId, requestId);
+          if (priorPick) return { pick: priorPick, reused: true };
           throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
         }
 
@@ -294,15 +334,31 @@ export function buildSubmitPickHandler(pool: Pool) {
           seats.find((s) => s.seat_number === seatNumberForPick) ?? expectedSeat;
 
         const now = new Date();
-        const pick = await insertDraftPickRecord(tx, {
-          draft_id: draftId,
-          pick_number: currentPick,
-          round_number: assignment.round_number,
-          seat_number: seatNumberForPick,
-          league_member_id: seatForInsert.league_member_id,
-          nomination_id: nominationIdNum,
-          made_at: now
-        });
+        let pick: DraftPickRecord;
+        try {
+          pick = await insertDraftPickRecord(tx, {
+            draft_id: draftId,
+            pick_number: currentPick,
+            round_number: assignment.round_number,
+            seat_number: seatNumberForPick,
+            league_member_id: seatForInsert.league_member_id,
+            nomination_id: nominationIdNum,
+            made_at: now,
+            request_id: requestId
+          });
+        } catch (err: unknown) {
+          const pgCode =
+            err && typeof err === "object" && "code" in err
+              ? (err as { code?: string }).code
+              : undefined;
+          if (pgCode === "23505") {
+            const priorPick = await getPickByRequestId(tx, draftId, requestId);
+            if (priorPick) {
+              return { pick: priorPick, reused: true };
+            }
+          }
+          throw err;
+        }
 
         // Complete immediately when this pick satisfies the total required picks.
         const newPickCount = existingPickCount + 1;
@@ -336,11 +392,22 @@ export function buildSubmitPickHandler(pool: Pool) {
           draft.current_pick_number = nextPickNumber;
         }
 
-        return pick;
+        return { pick, reused: false };
       });
 
-      return res.status(201).json({ pick: result });
+      const status = result?.reused ? 200 : 201;
+      return res.status(status).json({ pick: result.pick });
     } catch (err) {
+      if (draftId && requestId) {
+        try {
+          const prior = await getPickByRequestId(pool, draftId, requestId);
+          if (prior) {
+            return res.status(200).json({ pick: prior });
+          }
+        } catch {
+          // fall through to error handler
+        }
+      }
       next(err);
     }
   };

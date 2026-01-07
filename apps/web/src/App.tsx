@@ -248,10 +248,13 @@ function DraftRoom(props: {
     }
     setPickLoading(true);
     setPickState(null);
+    const requestId =
+      crypto?.randomUUID?.() ??
+      `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const res = await fetchJson(`/drafts/${snapshot.draft.id}/picks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nomination_id: nominationIdNum })
+      body: JSON.stringify({ nomination_id: nominationIdNum, request_id: requestId })
     });
     if (res.ok) {
       setPickState({ ok: true, message: "Pick submitted" });

@@ -28,6 +28,7 @@ export type DraftPickRecord = {
   league_member_id: number;
   nomination_id: number;
   made_at: Date | null;
+  request_id?: string | null;
 };
 
 export async function createDraft(
@@ -257,13 +258,14 @@ export async function insertDraftPickRecord(
     league_member_id: number;
     nomination_id: number;
     made_at: Date;
+    request_id?: string | null;
   }
 ): Promise<DraftPickRecord> {
   const { rows } = await query<DraftPickRecord>(
     client,
     `INSERT INTO draft_pick
-     (draft_id, pick_number, round_number, seat_number, league_member_id, nomination_id, made_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     (draft_id, pick_number, round_number, seat_number, league_member_id, nomination_id, made_at, request_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING
        id::int,
        draft_id::int,
@@ -272,7 +274,8 @@ export async function insertDraftPickRecord(
        seat_number::int,
        league_member_id::int,
        nomination_id::int,
-       made_at`,
+       made_at,
+       request_id`,
     [
       input.draft_id,
       input.pick_number,
@@ -280,10 +283,35 @@ export async function insertDraftPickRecord(
       input.seat_number,
       input.league_member_id,
       input.nomination_id,
-      input.made_at
+      input.made_at,
+      input.request_id ?? null
     ]
   );
   return rows[0];
+}
+
+export async function getPickByRequestId(
+  client: DbClient,
+  draftId: number,
+  requestId: string
+): Promise<DraftPickRecord | null> {
+  const { rows } = await query<DraftPickRecord>(
+    client,
+    `SELECT
+       id::int,
+       draft_id::int,
+       pick_number::int,
+       round_number::int,
+       seat_number::int,
+       league_member_id::int,
+       nomination_id::int,
+       made_at,
+       request_id
+     FROM draft_pick
+     WHERE draft_id = $1 AND request_id = $2`,
+    [draftId, requestId]
+  );
+  return rows[0] ?? null;
 }
 
 export async function updateDraftCurrentPick(

@@ -90,7 +90,10 @@ describe("draft picks integration", () => {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id })
+        body: JSON.stringify({
+          nomination_id: nomination.id,
+          request_id: "req-not-active"
+        })
       },
       { token: tokenFor(seat1.league_member_id + 1) }
     );
@@ -275,6 +278,103 @@ describe("draft picks integration", () => {
 
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("NOMINATION_ALREADY_PICKED");
+  });
+
+  it("returns prior pick when request_id is repeated (same payload)", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user.id })
+      ).id
+    });
+    const nomination = await insertNomination(pool);
+
+    const first = await requestJson<{
+      pick: { id: number; pick_number: number; nomination_id: number };
+    }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination.id, request_id: "same-req" })
+      },
+      { token: tokenFor(user.id) }
+    );
+    const second = await requestJson<{
+      pick: { id: number; pick_number: number; nomination_id: number };
+    }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination.id, request_id: "same-req" })
+      },
+      { token: tokenFor(user.id) }
+    );
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(200);
+    expect(second.json.pick.id).toBe(first.json.pick.id);
+    expect(second.json.pick.pick_number).toBe(1);
+  });
+
+  it("returns prior pick when request_id is repeated (different payload)", async () => {
+    if (skip || !db) return;
+    const pool = db.pool;
+    const league = await insertLeague(pool, { roster_size: 1 });
+    const draft = await insertDraft(pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    const user = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user.id })
+      ).id
+    });
+    const nomination1 = await insertNomination(pool);
+    const nomination2 = await insertNomination(pool);
+
+    const first = await requestJson<{
+      pick: { id: number; pick_number: number; nomination_id: number };
+    }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "mixed-req" })
+      },
+      { token: tokenFor(user.id) }
+    );
+    const second = await requestJson<{
+      pick: { id: number; pick_number: number; nomination_id: number };
+    }>(
+      `/drafts/${draft.id}/picks`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "mixed-req" })
+      },
+      { token: tokenFor(user.id) }
+    );
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(200);
+    expect(second.json.pick.id).toBe(first.json.pick.id);
+    expect(second.json.pick.nomination_id).toBe(nomination1.id);
   });
 
   it("rejects unknown nomination id", async () => {
