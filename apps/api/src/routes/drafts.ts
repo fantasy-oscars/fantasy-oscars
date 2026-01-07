@@ -211,6 +211,7 @@ export function buildSubmitPickHandler(pool: Pool) {
       if (Number.isNaN(draftId)) {
         throw validationError("Invalid draft id", ["id"]);
       }
+      const draftIdNum = draftId;
 
       const { nomination_id, request_id } = req.body ?? {};
       const userId = Number(req.auth?.sub);
@@ -229,12 +230,13 @@ export function buildSubmitPickHandler(pool: Pool) {
       if (requestId.length > 128) {
         throw validationError("request_id too long", ["request_id"]);
       }
+      const requestIdVal = requestId;
 
-      const draft = await getDraftById(pool, draftId);
+      const draft = await getDraftById(pool, draftIdNum);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
 
       // Idempotent repeat is allowed even if the draft has since completed.
-      const priorOutside = await getPickByRequestId(pool, draftId, requestId);
+      const priorOutside = await getPickByRequestId(pool, draftIdNum, requestIdVal);
       if (priorOutside) {
         return res.status(200).json({ pick: priorOutside });
       }
@@ -253,7 +255,7 @@ export function buildSubmitPickHandler(pool: Pool) {
 
       const result = await runInTransaction(pool, async (tx) => {
         // Idempotency: if this request_id already succeeded, return the same pick.
-        const prior = await getPickByRequestId(tx, draftId, requestId);
+        const prior = await getPickByRequestId(tx, draftIdNum, requestIdVal);
         if (prior) {
           return { pick: prior, reused: true };
         }
@@ -261,7 +263,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         const league = await getLeagueById(tx, draft.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
-        const seats = await listDraftSeats(tx, draftId);
+        const seats = await listDraftSeats(tx, draftIdNum);
         const seatCount = seats.length;
         if (seatCount === 0) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
@@ -271,7 +273,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         const rosterSize =
           Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
         const totalRequiredPicks = seatCount * rosterSize;
-        const existingPickCount = await countDraftPicks(tx, draftId);
+        const existingPickCount = await countDraftPicks(tx, draftIdNum);
         const draftCurrent = draft.current_pick_number ?? 0;
         const currentPick = Math.max(
           existingPickCount + 1,
@@ -286,10 +288,10 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("NOMINATION_NOT_FOUND", 404, "Nomination not found");
         }
 
-        const existingNom = await getPickByNomination(tx, draftId, nominationIdNum);
+        const existingNom = await getPickByNomination(tx, draftIdNum, nominationIdNum);
         if (existingNom) {
           // If the same logical request already picked this nomination, treat as idempotent.
-          if (existingNom.request_id && existingNom.request_id === requestId) {
+          if (existingNom.request_id && existingNom.request_id === requestIdVal) {
             return { pick: existingNom, reused: true };
           }
           throw new AppError(
@@ -315,15 +317,15 @@ export function buildSubmitPickHandler(pool: Pool) {
         // turn resolver drifted (prevents getting stuck on completion edge cases).
         const isFinalRequiredPick =
           totalRequiredPicks > 0 && currentPick >= totalRequiredPicks;
-        const userSeat = await getDraftSeatForUser(tx, draftId, userId);
+        const userSeat = await getDraftSeatForUser(tx, draftIdNum, userId);
         if (!isFinalRequiredPick) {
           if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
-            const priorPick = await getPickByRequestId(tx, draftId, requestId);
+            const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
             if (priorPick) return { pick: priorPick, reused: true };
             throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
           }
         } else if (!userSeat) {
-          const priorPick = await getPickByRequestId(tx, draftId, requestId);
+          const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
           if (priorPick) return { pick: priorPick, reused: true };
           throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
         }
@@ -337,14 +339,14 @@ export function buildSubmitPickHandler(pool: Pool) {
         let pick: DraftPickRecord;
         try {
           pick = await insertDraftPickRecord(tx, {
-            draft_id: draftId,
+            draft_id: draftIdNum,
             pick_number: currentPick,
             round_number: assignment.round_number,
             seat_number: seatNumberForPick,
             league_member_id: seatForInsert.league_member_id,
             nomination_id: nominationIdNum,
             made_at: now,
-            request_id: requestId
+            request_id: requestIdVal
           });
         } catch (err: unknown) {
           const pgCode =
@@ -352,7 +354,7 @@ export function buildSubmitPickHandler(pool: Pool) {
               ? (err as { code?: string }).code
               : undefined;
           if (pgCode === "23505") {
-            const priorPick = await getPickByRequestId(tx, draftId, requestId);
+            const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
             if (priorPick) {
               return { pick: priorPick, reused: true };
             }
@@ -363,12 +365,12 @@ export function buildSubmitPickHandler(pool: Pool) {
         // Complete immediately when this pick satisfies the total required picks.
         const newPickCount = existingPickCount + 1;
         // Recompute seat count defensively in case earlier read was stale.
-        const seatTotal = await countDraftSeats(tx, draftId);
+        const seatTotal = await countDraftSeats(tx, draftIdNum);
         const requiredPicks = seatTotal * rosterSize;
         if (requiredPicks > 0 && newPickCount >= requiredPicks) {
           const updated =
-            (await completeDraftIfReady(tx, draftId, now, requiredPicks)) ??
-            (await updateDraftOnComplete(tx, draftId, now));
+            (await completeDraftIfReady(tx, draftIdNum, now, requiredPicks)) ??
+            (await updateDraftOnComplete(tx, draftIdNum, now));
           if (!updated) {
             throw new AppError("INTERNAL_ERROR", 500, "Failed to complete draft");
           }
@@ -388,7 +390,7 @@ export function buildSubmitPickHandler(pool: Pool) {
           draft.current_pick_number = null;
         } else {
           const nextPickNumber = newPickCount + 1;
-          await updateDraftCurrentPick(tx, draftId, nextPickNumber);
+          await updateDraftCurrentPick(tx, draftIdNum, nextPickNumber);
           draft.current_pick_number = nextPickNumber;
         }
 
@@ -398,7 +400,7 @@ export function buildSubmitPickHandler(pool: Pool) {
       const status = result?.reused ? 200 : 201;
       return res.status(status).json({ pick: result.pick });
     } catch (err) {
-      if (draftId && requestId) {
+      if (draftId !== null && requestId) {
         try {
           const prior = await getPickByRequestId(pool, draftId, requestId);
           if (prior) {
