@@ -1,10 +1,21 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 describe("<App />", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   type MockResponse = { ok: boolean; json: () => Promise<unknown> };
@@ -153,7 +164,7 @@ describe("<App />", () => {
   it("starts a pending draft and refreshes snapshot", async () => {
     const pendingSnapshot = {
       draft: { id: 7, status: "PENDING", current_pick_number: 1 },
-      seats: [{ seat_number: 1, league_member_id: 11 }],
+      seats: [{ seat_number: 1, league_member_id: 11, user_id: 1 }],
       picks: [],
       version: 0
     };
@@ -210,5 +221,117 @@ describe("<App />", () => {
     await screen.findByText(/Draft started/);
     await screen.findByText(/Status: IN_PROGRESS/);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("disables pick controls when it is not your turn", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 1 },
+      seats: [
+        { seat_number: 1, league_member_id: 11, user_id: 1 },
+        { seat_number: 2, league_member_id: 22, user_id: 2 }
+      ],
+      picks: [],
+      version: 1
+    };
+    mockFetchSequence(
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "2", handle: "bob" } })
+        }),
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        })
+    );
+
+    render(<App />);
+
+    await screen.findByText(/Signed in as/i);
+    const draftBtn = await screen.findByRole("button", { name: /Draft room/i });
+    await waitFor(() => expect(draftBtn).not.toBeDisabled());
+    fireEvent.click(draftBtn);
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+
+    await screen.findByText(/Status: IN_PROGRESS/);
+    const pickInput = screen.getByLabelText(/Nomination ID/i);
+    const submitBtn = screen.getByRole("button", { name: /Submit pick/i });
+    await waitFor(() => expect(pickInput).toBeDisabled());
+    await waitFor(() => expect(submitBtn).toBeDisabled());
+    expect(
+      screen.getByText(/Waiting for seat 1 to pick|It is not your turn/i)
+    ).toBeInTheDocument();
+  });
+
+  it("submits pick when it is your turn and shows success", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 1 },
+      seats: [
+        { seat_number: 1, league_member_id: 11, user_id: 1 },
+        { seat_number: 2, league_member_id: 22, user_id: 2 }
+      ],
+      picks: [],
+      version: 1
+    };
+    const postPickSnapshot = {
+      ...snapshot,
+      draft: { ...snapshot.draft, current_pick_number: 2 },
+      picks: [{ pick_number: 1, seat_number: 1, nomination_id: 12 }],
+      version: 2
+    };
+
+    const fetchMock = mockFetchSequence(
+      // auth/me
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      // initial snapshot load
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        }),
+      // submit pick
+      (input, init) => {
+        expect(String(input)).toContain("/drafts/7/picks");
+        expect(init?.method).toBe("POST");
+        const body = JSON.parse(init?.body as string);
+        expect(body.nomination_id).toBe(12);
+        expect(body.request_id).toBeDefined();
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ pick: postPickSnapshot.picks[0] })
+        });
+      },
+      // refresh snapshot
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(postPickSnapshot)
+        })
+    );
+
+    render(<App />);
+    await screen.findByText(/Signed in as/i);
+    const draftBtn = await screen.findByRole("button", { name: /Draft room/i });
+    await waitFor(() => expect(draftBtn).not.toBeDisabled());
+    fireEvent.click(draftBtn);
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+    await screen.findByText(/Status: IN_PROGRESS/);
+
+    const pickInput = screen.getByLabelText(/Nomination ID/i);
+    fireEvent.change(pickInput, { target: { value: "12" } });
+    const submitBtn = screen.getByRole("button", { name: /Submit pick/i });
+    fireEvent.click(submitBtn);
+
+    await screen.findByText(/Pick submitted/);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(screen.getByText(/Status: IN_PROGRESS/)).toBeInTheDocument();
+    expect(screen.getByText(/Nomination 12/)).toBeInTheDocument();
   });
 });

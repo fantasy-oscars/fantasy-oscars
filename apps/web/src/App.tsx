@@ -411,6 +411,7 @@ function DraftRoom(props: {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="e.g. 12"
+                  disabled={!canPick}
                 />
               </label>
               <button
