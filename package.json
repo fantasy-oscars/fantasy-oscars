@@ -22,7 +22,7 @@
   "scripts": {
     "ci": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
     "dev": "npm run --workspaces --if-present dev",
-    "build": "npm run --workspaces --if-present build",
+    "build": "npm run build --workspace @fantasy-oscars/shared && npm run build --workspace @fantasy-oscars/api && npm run build --workspace @fantasy-oscars/web",
     "test": "npm run --workspaces --if-present test",
     "test:watch": "npm run --workspaces --if-present test:watch",
     "typecheck": "npm run --workspaces --if-present typecheck",

@@ -37,7 +37,7 @@ export function computeSeatForPick(input: SnakeOrderInput): number {
   }
   try {
     return getSnakeSeatForPick(input.seat_count, input.pick_number);
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof DraftStateError) {
       throw new DraftOrderError(err.message, "INVALID_INPUT", err.details);
     }
