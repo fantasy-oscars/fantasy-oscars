@@ -16,6 +16,7 @@
     "format:check": "prettier -c . --ignore-path ../../.prettierignore"
   },
   "dependencies": {
+    "@fantasy-oscars/shared": "workspace:*",
     "express": "^4.21.2",
     "pg": "^8.13.1"
   },

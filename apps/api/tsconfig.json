@@ -4,10 +4,6 @@
     "lib": ["ES2022"],
     "module": "ES2022",
     "moduleResolution": "Bundler",
-    "baseUrl": ".",
-    "paths": {
-      "@fantasy-oscars/shared": ["../../packages/shared/dist/index.d.ts"]
-    },
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
