@@ -64,6 +64,9 @@ export function createServer(deps?: { db?: Pool }) {
   app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
+  app.get("/", (_req, res) => {
+    res.json({ ok: true, service: "api", status: "healthy" });
+  });
 
   app.use(
     (
