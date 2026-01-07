@@ -17,12 +17,14 @@ export function createServer(deps?: { db?: Pool }) {
 
   // Minimal CORS for local dev and web preview
   app.use((req, res, next) => {
-    const origin = req.headers.origin ?? "*";
-    const allowed =
-      origin === "*" ||
-      origin.startsWith("http://localhost:5173") ||
-      origin.startsWith("http://127.0.0.1:5173");
-    if (allowed) {
+    const origin = req.headers.origin;
+    const allowlist =
+      process.env.CORS_ALLOWED_ORIGINS ??
+      "http://localhost:5173,http://127.0.0.1:5173";
+    const allowedOrigins = allowlist.split(",").map((s) => s.trim()).filter(Boolean);
+    const isAllowed = origin ? allowedOrigins.some((o) => origin.startsWith(o)) : false;
+
+    if (isAllowed && origin) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header("Access-Control-Allow-Credentials", "true");
       res.header(
@@ -31,6 +33,8 @@ export function createServer(deps?: { db?: Pool }) {
       );
       res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
     }
+    res.header("Vary", "Origin");
+
     if (req.method === "OPTIONS") {
       res.sendStatus(200);
       return;
