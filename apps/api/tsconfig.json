@@ -17,5 +17,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src", "../../packages/shared/dist/index.d.ts"]
+  "include": ["src", "../../packages/shared/dist/index.d.ts"],
+  "references": [{ "path": "../../packages/shared/tsconfig.json" }]
 }
