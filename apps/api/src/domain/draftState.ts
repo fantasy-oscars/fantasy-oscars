@@ -60,6 +60,6 @@ export function applyDraftStateTransition(
   draft: DraftRecord,
   to: DraftState,
   now: Clock = defaultClock
-) {
+): DraftRecord {
   return transitionDraftState(draft, to, now);
 }
