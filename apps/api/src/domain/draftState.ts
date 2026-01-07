@@ -3,7 +3,7 @@ import {
   DraftStateError,
   enforceDraftTransition,
   getAllowedTransitionsFrom
-} from "@fantasy-oscars/shared";
+} from "../../../../packages/shared/dist/index.js";
 
 export type DraftRecord = {
   id: number;
@@ -52,6 +52,9 @@ export function allowedTransitions(status: DraftState): DraftState[] {
 export function mapDraftStateError(error: unknown) {
   if (error instanceof DraftStateError) {
     return { code: error.code, message: error.message, details: error.details };
+  }
+  if (error instanceof Error) {
+    return { code: "INTERNAL_ERROR", message: error.message, details: {} };
   }
   return undefined;
 }

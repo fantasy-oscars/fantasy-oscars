@@ -5,11 +5,6 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "baseUrl": ".",
-    "rootDirs": ["src", "../../packages/shared/dist"],
-    "paths": {
-      "@fantasy-oscars/shared": ["../../packages/shared/dist/index.d.ts"],
-      "@fantasy-oscars/shared/*": ["../../packages/shared/dist/*"]
-    },
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,

@@ -1,4 +1,8 @@
-import { DraftState, DraftStateError, getSnakeSeatForPick } from "@fantasy-oscars/shared";
+import {
+  DraftState,
+  DraftStateError,
+  getSnakeSeatForPick
+} from "../../../../packages/shared/dist/index.js";
 
 type SnakeOrderInput = {
   draft_order_type: "SNAKE" | "LINEAR";
