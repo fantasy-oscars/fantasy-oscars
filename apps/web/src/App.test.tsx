@@ -149,4 +149,66 @@ describe("<App />", () => {
     expect(screen.getByText(/Nomination 99/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("starts a pending draft and refreshes snapshot", async () => {
+    const pendingSnapshot = {
+      draft: { id: 7, status: "PENDING", current_pick_number: 1 },
+      seats: [{ seat_number: 1, league_member_id: 11 }],
+      picks: [],
+      version: 0
+    };
+    const inProgressSnapshot = {
+      ...pendingSnapshot,
+      draft: { ...pendingSnapshot.draft, status: "IN_PROGRESS" },
+      version: 1
+    };
+
+    const fetchMock = mockFetchSequence(
+      // auth/me
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      // initial snapshot load
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(pendingSnapshot)
+        }),
+      // start draft
+      (input, init) => {
+        expect(String(input)).toContain("/drafts/7/start");
+        expect(init?.method).toBe("POST");
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ draft: inProgressSnapshot.draft })
+        });
+      },
+      // refreshed snapshot after start
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(inProgressSnapshot)
+        })
+    );
+
+    render(<App />);
+
+    const draftBtns = await screen.findAllByRole("button", { name: /Draft room/i });
+    const draftBtn =
+      draftBtns.find((btn) => !btn.hasAttribute("disabled")) ?? draftBtns[0];
+    fireEvent.click(draftBtn);
+
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+    await screen.findByText(/Status: PENDING/);
+
+    const startBtn = screen.getByRole("button", { name: /Start draft/i });
+    fireEvent.click(startBtn);
+
+    await screen.findByText(/Draft started/);
+    await screen.findByText(/Status: IN_PROGRESS/);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
 });

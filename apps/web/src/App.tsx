@@ -121,13 +121,19 @@ function FormStatus(props: {
     );
   }
   if (result) {
+    const message =
+      result.ok && result.message
+        ? result.message
+        : result.ok
+          ? "Success"
+          : result.message;
     return (
       <div
         className={`status ${result.ok ? "status-success" : "status-error"}`}
         role="status"
         aria-live="polite"
       >
-        {result.ok ? "Success" : `Error: ${result.message}`}
+        {result.ok ? message : `Error: ${result.message}`}
         {!result.ok && onRetry && (
           <button type="button" className="ghost" onClick={onRetry}>
             Retry
@@ -189,6 +195,8 @@ function DraftRoom(props: {
   const [pickNominationId, setPickNominationId] = useState("");
   const [pickState, setPickState] = useState<ApiResult | null>(null);
   const [pickLoading, setPickLoading] = useState(false);
+  const [startState, setStartState] = useState<ApiResult | null>(null);
+  const [startLoading, setStartLoading] = useState(false);
 
   async function loadSnapshot(id: string) {
     setLoading(true);
@@ -266,6 +274,29 @@ function DraftRoom(props: {
     setPickLoading(false);
   }, [pickNominationId, snapshot]);
 
+  const canStartDraft =
+    !!snapshot && snapshot.draft.status === "PENDING" && !disabled && !startLoading;
+
+  const startDraft = useCallback(async () => {
+    if (!snapshot) return;
+    setStartLoading(true);
+    setStartState(null);
+    const res = await fetchJson<{ draft: Snapshot["draft"] }>(
+      `/drafts/${snapshot.draft.id}/start`,
+      { method: "POST", headers: { "Content-Type": "application/json" } }
+    );
+    if (res.ok) {
+      setStartState({ ok: true, message: "Draft started" });
+      await loadSnapshot(String(snapshot.draft.id));
+    } else {
+      setStartState({
+        ok: false,
+        message: res.error ?? "Failed to start draft"
+      });
+    }
+    setStartLoading(false);
+  }, [snapshot]);
+
   return (
     <section className="card draft-card">
       <header>
@@ -325,6 +356,20 @@ function DraftRoom(props: {
                 Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
                 {snapshot.version}
               </p>
+              {snapshot.draft.status === "PENDING" && (
+                <div className="inline-actions">
+                  <button type="button" onClick={startDraft} disabled={!canStartDraft}>
+                    {startLoading ? "Starting..." : "Start draft"}
+                  </button>
+                </div>
+              )}
+              {startState && (
+                <FormStatus
+                  loading={startLoading}
+                  result={startState}
+                  onRetry={startDraft}
+                />
+              )}
             </div>
             <div>
               <h4>Seats</h4>
