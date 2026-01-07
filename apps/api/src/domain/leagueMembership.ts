@@ -1,4 +1,4 @@
-import { DraftState } from "../../../../packages/shared/dist/index.js";
+import { DraftState } from "@fantasy-oscars/shared";
 
 export type LeagueMembershipGuard = {
   draft_status: DraftState;

@@ -3,7 +3,7 @@ import {
   DraftStateError,
   enforceDraftTransition,
   getAllowedTransitionsFrom
-} from "../../../../packages/shared/dist/index.js";
+} from "@fantasy-oscars/shared";
 
 export type DraftRecord = {
   id: number;
