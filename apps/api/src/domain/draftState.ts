@@ -16,6 +16,16 @@ type Clock = () => Date;
 
 const defaultClock: Clock = () => new Date();
 
+function isDraftStateError(err: unknown): err is DraftStateError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    "message" in err &&
+    "details" in err
+  );
+}
+
 export function transitionDraftState(
   draft: DraftRecord,
   to: DraftState,
@@ -50,11 +60,15 @@ export function allowedTransitions(status: DraftState): DraftState[] {
 }
 
 export function mapDraftStateError(error: unknown) {
-  if (error instanceof DraftStateError) {
+  if (isDraftStateError(error)) {
     return { code: error.code, message: error.message, details: error.details };
   }
-  if (error instanceof Error) {
-    return { code: "INTERNAL_ERROR", message: error.message, details: {} };
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return {
+      code: "INTERNAL_ERROR",
+      message: String((error as { message: unknown }).message),
+      details: {}
+    };
   }
   return undefined;
 }

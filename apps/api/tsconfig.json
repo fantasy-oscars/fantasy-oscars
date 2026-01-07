@@ -20,7 +20,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "useUnknownInCatchVariables": false
   },
   "include": ["src", "../../packages/shared/dist/index.d.ts"],
   "references": [{ "path": "../../packages/shared/tsconfig.json" }]

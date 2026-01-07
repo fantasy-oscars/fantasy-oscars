@@ -20,6 +20,20 @@ export class DraftOrderError extends Error {
   }
 }
 
+function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+function isDraftStateError(err: unknown): err is DraftStateError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    "message" in err &&
+    "details" in err
+  );
+}
+
 export function computeSeatForPick(input: SnakeOrderInput): number {
   if (input.draft_order_type !== "SNAKE") {
     throw new DraftOrderError("Only snake ordering is supported", "INVALID_INPUT", {
@@ -38,13 +52,11 @@ export function computeSeatForPick(input: SnakeOrderInput): number {
   try {
     return getSnakeSeatForPick(input.seat_count, input.pick_number);
   } catch (err: unknown) {
-    if (err instanceof DraftStateError) {
+    if (isDraftStateError(err)) {
       throw new DraftOrderError(err.message, "INVALID_INPUT", err.details);
     }
-    if (err instanceof Error) {
-      throw new DraftOrderError(err.message, "INVALID_INPUT");
-    }
-    throw err;
+    const normalized = toError(err);
+    throw new DraftOrderError(normalized.message, "INVALID_INPUT");
   }
 }
 
