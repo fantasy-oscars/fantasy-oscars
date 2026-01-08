@@ -1,14 +1,17 @@
 # Idea Log
 
 ## 2026-01-08 — Nominee Watch Tracking
+
 **One-liner:** Allow users to mark nominees they’ve watched and show completion matrices per league.
 
-**Why it might matter**
+### Why it might matter
+
 - Increases engagement outside draft night
 - Creates low-stakes social comparison
 - Extends app relevance through Oscar season
 
-**Why it might not**
+### Why it might not
+
 - Non-draft feature creep
 - Requires per-user state + UI density
 - Could distract from core fantasy mechanic
@@ -27,6 +30,7 @@
 ### Purpose
 
 Define a shared understanding of:
+
 - What classes of failure are expected for this project
 - What defensive layers are likely required
 - Which responsibilities belong to **application code** vs **external services**
@@ -38,6 +42,7 @@ This exists to prevent re-litigation during shaping and to avoid premature plann
 ### Threat & Failure Model (Non-Exhaustive)
 
 The project should assume exposure to:
+
 - Untrusted public internet traffic
 - Accidental misuse (double submits, refresh storms)
 - Malicious but unsophisticated actors (bots, cheating attempts)
@@ -45,6 +50,7 @@ The project should assume exposure to:
 - Application bugs during live, time-sensitive events
 
 This project does **not** assume:
+
 - Nation-state adversaries
 - Handling of financial data
 - Handling of sensitive personal data
@@ -55,17 +61,20 @@ This project does **not** assume:
 
 #### 1. Network / Edge Layer (Service-Owned)
 
-**Responsibilities**
+##### Responsibilities (Network / Edge Layer)
+
 - Absorb volumetric traffic
 - Filter obvious malicious requests
 - Provide TLS termination
 
-**Expected Capabilities**
+##### Expected Capabilities
+
 - CDN
 - Web Application Firewall (WAF)
 - Basic IP / bot-based rate limiting
 
-**Notes**
+##### Notes
+
 - This layer exists to keep garbage away from the app.
 - It does not understand application semantics.
 
@@ -73,12 +82,14 @@ This project does **not** assume:
 
 #### 2. Authentication & Authorization (Application Code)
 
-**Responsibilities**
+##### Responsibilities (Authentication & Authorization)
+
 - Identify users
 - Enforce role-based permissions
 - Enforce league membership and draft participation rules
 
-**Expectations**
+##### Expectations (Authentication & Authorization)
+
 - All mutating actions are authenticated
 - Authorization is checked server-side for every action
 - Client claims are never trusted
@@ -87,12 +98,14 @@ This project does **not** assume:
 
 #### 3. Server-Authoritative State (Application Code)
 
-**Responsibilities**
+##### Responsibilities (Server-Authoritative State)
+
 - Maintain the canonical draft state
 - Validate all proposed actions
 - Reject illegal or out-of-order actions
 
-**Principles**
+##### Principles
+
 - Clients send *intent*, not state
 - Server is the sole authority
 - State transitions are explicit and validated
@@ -101,12 +114,14 @@ This project does **not** assume:
 
 #### 4. Real-Time Safety & Correctness (Application Code)
 
-**Responsibilities**
+##### Responsibilities (Real-Time Safety & Correctness)
+
 - Prevent double actions
 - Handle reconnects safely
 - Prevent race conditions
 
-**Expected Mechanisms**
+##### Expected Mechanisms
+
 - Idempotent action handling
 - Action IDs and/or versioning
 - Monotonic state progression
@@ -116,25 +131,30 @@ This project does **not** assume:
 
 #### 5. Application-Level Rate Limiting (Hybrid)
 
-**Service Layer**
+##### Service Layer
+
 - Coarse IP-based limits
 
-**Application Layer**
+##### Application Layer
+
 - Per-user limits
 - Per-league limits
 - Per-action limits
 
-**Rationale**
+##### Rationale
+
 - Only the application understands fairness and legality.
 
 ---
 
 #### 6. Data Integrity (Database Layer)
 
-**Responsibilities**
+##### Responsibilities (Data Integrity)
+
 - Enforce invariants regardless of application bugs
 
-**Expectations**
+##### Expectations (Data Integrity)
+
 - Foreign keys for all relations
 - Uniqueness constraints for draft-critical entities
 - NOT NULL constraints on required state
@@ -144,10 +164,12 @@ This project does **not** assume:
 
 #### 7. Draft Integrity Controls (Application Code)
 
-**Responsibilities**
+##### Responsibilities (Draft Integrity Controls)
+
 - Ensure fairness and clarity during live drafts
 
-**Expected Features**
+##### Expected Features
+
 - Single-action locking (one pick at a time)
 - Server-enforced timers
 - Explicit draft state machine (e.g. CREATED → LIVE → PAUSED → COMPLETE)
@@ -157,16 +179,19 @@ This project does **not** assume:
 
 #### 8. Observability & Diagnostics (Hybrid)
 
-**Application Code**
+##### Application Code
+
 - Structured logging
 - Request / action IDs
 - User and league identifiers in logs
 
-**Services**
+##### Services
+
 - Centralized error tracking
 - Alerting for crashes and high error rates
 
-**Goal**
+##### Goal
+
 - Fail loudly and visibly, not silently.
 
 ---
@@ -174,6 +199,7 @@ This project does **not** assume:
 ### Explicit Non-Goals (for Now)
 
 This document does not assume:
+
 - Multi-region availability
 - Zero-trust networking
 - Custom cryptography
@@ -183,4 +209,5 @@ This document does not assume:
 These may be revisited if the project scope changes.
 
 ## 2026-01-08 Minimal Compliance & Responsibility Baseline for Public-Facing App
+
 **2026-01-08: moved to shaping** [compliance-baseline.md](./shaping/compliance-baseline.md)
