@@ -40,6 +40,8 @@ This includes:
 - A lightweight age confirmation during registration
 - A termination clause for misrepresented age
 
+**Decision: The app is intended for users 13 years of age and older.**
+
 ---
 
 ### 2. Personal Data Definition & Disclosure
