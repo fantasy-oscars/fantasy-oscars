@@ -37,6 +37,7 @@ To the fullest extent permitted by law, the project owner will not be liable for
 We may update these Terms of Service from time to time. Continued use of the app after changes become effective constitutes acceptance of the updated terms.
 
 ## Contact
+
 If you have questions about these Terms of Service, you may contact us at:
 
-support@fantasyoscars.com
+[support@fantasyoscars.com](mailto:support@fantasyoscars.com)

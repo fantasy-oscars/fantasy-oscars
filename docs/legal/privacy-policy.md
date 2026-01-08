@@ -43,4 +43,4 @@ We may update this Privacy Policy from time to time. When we do, we will update 
 
 If you have questions about this Privacy Policy or how your information is handled, you may contact us at:
 
-support@fantasyoscars.com
+[support@fantasyoscars.com](mailto:support@fantasyoscars.com)

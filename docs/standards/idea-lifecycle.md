@@ -17,6 +17,7 @@ docs/ideas/inbox.md
 This file is the single canonical dumping ground for raw, unshaped ideas.
 
 Rules:
+
 - Ideas may be incomplete, speculative, or contradictory
 - No idea in this file is scheduled work
 - No idea in this file may block other work
@@ -37,21 +38,26 @@ Each stage has a distinct purpose and contract.
 ## Stage 1: Idea Inbox (Unshaped)
 
 ### Intent
+
 Capture thoughts quickly without commitment or overthinking.
 
 ### Required Fields
+
 Each idea entry must include:
+
 - Date
 - Title
 - One-liner description
 
 ### Optional Fields
+
 - Why it might matter
 - Why it might not
 - Related areas of the product
 - Open questions
 
 ### Explicit Non-Goals
+
 - No scope definition
 - No UX decisions
 - No technical approach
@@ -67,17 +73,21 @@ Example:
 ## Stage 2: Shaping Notes (Evaluated, Not Committed)
 
 ### Trigger to Enter Shaping
+
 An idea may move to shaping if:
+
 - It continues to resurface over time
 - It aligns with a strategic goal
 - It solves a clearly articulated user problem
 
 ### Location
+
 Each shaped idea lives in its own file:
 
-docs/ideas/shaping/<idea-name>.md
+`docs/ideas/shaping/idea-name.md` (where `idea-name` is a kebab-case slug)
 
 ### Required Content
+
 - Problem statement
 - Target users
 - Success definition (qualitative)
@@ -85,6 +95,7 @@ docs/ideas/shaping/<idea-name>.md
 - Key tradeoffs and risks
 
 ### Still Not Allowed
+
 - Story points
 - Sprint assignment
 - Engineering task breakdown
@@ -96,7 +107,9 @@ Shaping clarifies viability, not schedule.
 ## Stage 3: Backlog / Roadmap (Committed Work)
 
 ### Promotion Criteria
+
 An idea may enter the backlog only when:
+
 - Scope is bounded
 - Tradeoffs are understood
 - Failure modes are acceptable
