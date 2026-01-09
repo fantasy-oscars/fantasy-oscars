@@ -4,7 +4,7 @@ This repo includes a few small scripts under `.github/scripts/` for working with
 
 ## Requirements
 
-- Set `GITHUB_TOKEN` (repo access; project access only needed for project field operations).
+- Authenticate `gh` CLI (`gh auth login`); ensure it has repo access and project access for project field operations.
 - Run from inside the repo (or pass `--repo owner/name`).
 
 ## Scripts

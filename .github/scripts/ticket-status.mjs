@@ -8,11 +8,12 @@
  * Assumptions:
  * - Project: users/alexvornsand/projects/1
  * - Status field exists with options like Todo/Doing/Review (case-insensitive match).
- * - GITHUB_TOKEN has project/issue write scopes.
+ * - `gh` CLI is authenticated with project/issue write scopes.
  */
+import { githubGraphql, inferRepoFullName, requireGitHubToken, splitRepoFullName } from "./lib/github.mjs";
+
 const PROJECT_OWNER = "alexvornsand";
 const PROJECT_NUMBER = 1;
-const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
 
 function parseArgs(argv) {
   const args = { issue: undefined, status: undefined, repo: undefined };
@@ -25,37 +26,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function requireToken() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN is required");
-  return token;
-}
-
-async function graphql(token, query, variables = {}) {
-  const res = await fetch("https://api.github.com/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query, variables })
-  });
-  const data = await res.json();
-  if (!res.ok || data.errors) {
-    const message = data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
-    throw new Error(`GitHub GraphQL error: ${message}`);
-  }
-  return data.data;
-}
-
-async function getRepoOwnerAndName(repoArg) {
-  const repoFull = repoArg ?? process.env.GITHUB_REPOSITORY ?? DEFAULT_REPO;
-  const [owner, name] = repoFull.split("/");
-  if (!owner || !name) throw new Error(`Invalid repo: ${repoFull} (expected owner/name)`);
-  return { owner, name };
-}
-
-async function getProjectInfo(token) {
+async function getProjectInfo() {
   const query = `
     query($owner: String!, $number: Int!) {
       user(login: $owner) {
@@ -74,7 +45,10 @@ async function getProjectInfo(token) {
       }
     }
   `;
-  const data = await graphql(token, query, { owner: PROJECT_OWNER, number: PROJECT_NUMBER });
+  const data = await githubGraphql(null, query, {
+    owner: PROJECT_OWNER,
+    number: PROJECT_NUMBER
+  });
   const project = data.user?.projectV2;
   if (!project) throw new Error("Project not found");
   const statusField = project.fields.nodes.find(
@@ -84,7 +58,7 @@ async function getProjectInfo(token) {
   return { projectId: project.id, statusField };
 }
 
-async function getIssueNodeId(token, owner, name, issueNumber) {
+async function getIssueNodeId(owner, name, issueNumber) {
   const query = `
     query($owner: String!, $name: String!, $number: Int!) {
       repository(owner: $owner, name: $name) {
@@ -92,13 +66,13 @@ async function getIssueNodeId(token, owner, name, issueNumber) {
       }
     }
   `;
-  const data = await graphql(token, query, { owner, name, number: issueNumber });
+  const data = await githubGraphql(null, query, { owner, name, number: issueNumber });
   const id = data.repository?.issue?.id;
   if (!id) throw new Error(`Issue #${issueNumber} not found`);
   return id;
 }
 
-async function getOrCreateProjectItem(token, projectId, contentId) {
+async function getOrCreateProjectItem(projectId, contentId) {
   const query = `
     query($id: ID!) {
       node(id: $id) {
@@ -110,7 +84,7 @@ async function getOrCreateProjectItem(token, projectId, contentId) {
       }
     }
   `;
-  const data = await graphql(token, query, { id: contentId });
+  const data = await githubGraphql(null, query, { id: contentId });
   const existing = data.node?.projectItems?.nodes?.find((n) => n.project?.id === projectId);
   if (existing) return existing.id;
 
@@ -121,11 +95,11 @@ async function getOrCreateProjectItem(token, projectId, contentId) {
       }
     }
   `;
-  const addData = await graphql(token, mutation, { projectId, contentId });
+  const addData = await githubGraphql(null, mutation, { projectId, contentId });
   return addData.addProjectV2ItemById?.item?.id;
 }
 
-async function updateStatus(token, projectId, itemId, fieldId, optionId) {
+async function updateStatus(projectId, itemId, fieldId, optionId) {
   const mutation = `
     mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
       updateProjectV2ItemFieldValue(
@@ -138,7 +112,7 @@ async function updateStatus(token, projectId, itemId, fieldId, optionId) {
       ) { clientMutationId }
     }
   `;
-  await graphql(token, mutation, {
+  await githubGraphql(null, mutation, {
     projectId,
     itemId,
     fieldId,
@@ -151,20 +125,20 @@ async function main() {
   if (!issue || Number.isNaN(issue)) throw new Error("Issue number required (--issue)");
   if (!status) throw new Error("Status required (--status todo|doing|review)");
 
-  const token = requireToken();
+  requireGitHubToken();
   const desiredStatus = status.toLowerCase();
 
-  const { projectId, statusField } = await getProjectInfo(token);
+  const { projectId, statusField } = await getProjectInfo();
   const option = statusField.options.find((o) => o.name.toLowerCase() === desiredStatus);
   if (!option) {
     const available = statusField.options.map((o) => o.name).join(", ");
     throw new Error(`Status option "${status}" not found. Available: ${available}`);
   }
 
-  const { owner, name } = await getRepoOwnerAndName(repo);
-  const issueNodeId = await getIssueNodeId(token, owner, name, issue);
-  const itemId = await getOrCreateProjectItem(token, projectId, issueNodeId);
-  await updateStatus(token, projectId, itemId, statusField.id, option.id);
+  const { owner, name } = splitRepoFullName(inferRepoFullName(repo));
+  const issueNodeId = await getIssueNodeId(owner, name, issue);
+  const itemId = await getOrCreateProjectItem(projectId, issueNodeId);
+  await updateStatus(projectId, itemId, statusField.id, option.id);
 
   console.log(`Issue #${issue} set to status "${option.name}"`);
 }

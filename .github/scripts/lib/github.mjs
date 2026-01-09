@@ -1,11 +1,14 @@
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
 
 export function requireGitHubToken() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN is required");
-  return token;
+  try {
+    execFileSync("gh", ["auth", "status", "-h", "github.com"], { stdio: "pipe" });
+  } catch {
+    throw new Error("gh auth is required (run `gh auth login`)");
+  }
+  return "gh";
 }
 
 export function inferRepoFullName(repoArg) {
@@ -29,20 +32,16 @@ export function splitRepoFullName(repoFullName) {
   return { owner, name };
 }
 
-export async function githubGraphql(token, query, variables = {}) {
-  const res = await fetch("https://api.github.com/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query, variables })
-  });
-
-  const data = await res.json();
-  if (!res.ok || data.errors) {
-    const message = data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
+export async function githubGraphql(_token, query, variables = {}) {
+  const args = ["api", "graphql", "-f", `query=${query}`];
+  if (variables && Object.keys(variables).length > 0) {
+    args.push("-f", `variables=${JSON.stringify(variables)}`);
+  }
+  const output = execFileSync("gh", args, { encoding: "utf8" });
+  const parsed = output ? JSON.parse(output) : {};
+  if (parsed.errors?.length) {
+    const message = parsed.errors.map((e) => e.message).join("; ");
     throw new Error(`GitHub GraphQL error: ${message}`);
   }
-  return data.data;
+  return parsed.data ?? parsed;
 }
