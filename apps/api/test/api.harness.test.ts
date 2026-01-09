@@ -34,7 +34,7 @@ describe("API test harness", () => {
     }
     const res = await apiRequest(server, "/health");
     expectStatus(res, 200);
-    await expectJson(res, { ok: true });
+    await expectJson(res, { ok: true, service: "api", status: "healthy" });
   });
 
   it("allows simple auth/unauth flows via helper", async () => {
@@ -47,6 +47,6 @@ describe("API test harness", () => {
     const res = await apiRequest(server, "/health", { authToken: "fake-token" });
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
     expectStatus(res, 200);
-    await expectJson(res, { ok: true });
+    await expectJson(res, { ok: true, service: "api", status: "healthy" });
   });
 });

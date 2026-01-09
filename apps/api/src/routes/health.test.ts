@@ -11,6 +11,6 @@ describe("GET /health", () => {
     };
 
     healthHandler({}, res);
-    expect(jsonBody).toEqual({ ok: true });
+    expect(jsonBody).toEqual({ ok: true, service: "api", status: "healthy" });
   });
 });
