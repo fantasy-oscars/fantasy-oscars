@@ -14,6 +14,7 @@ import {
   listDraftPicks,
   countDraftPicks,
   getPickByNomination,
+  getPickByNumber,
   getPickByRequestId,
   insertDraftPickRecord,
   getNominationById,
@@ -385,6 +386,22 @@ export function buildSubmitPickHandler(pool: Pool) {
             const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
             if (priorPick) {
               return { pick: priorPick, reused: true };
+            }
+            const pickByNumber = await getPickByNumber(tx, draftIdNum, currentPick);
+            if (pickByNumber) {
+              throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
+            }
+            const pickByNomination = await getPickByNomination(
+              tx,
+              draftIdNum,
+              nominationIdNum
+            );
+            if (pickByNomination) {
+              throw new AppError(
+                "NOMINATION_ALREADY_PICKED",
+                409,
+                "Nomination already picked"
+              );
             }
           }
           throw err;
