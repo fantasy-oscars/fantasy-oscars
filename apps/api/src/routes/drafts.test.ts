@@ -203,3 +203,4 @@ describe("POST /drafts", () => {
     expect(createDraftSpy).not.toHaveBeenCalled();
   });
 });
+// Rate limiting is covered in utils/rateLimiter.test.ts

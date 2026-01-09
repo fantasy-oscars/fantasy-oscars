@@ -27,6 +27,12 @@ import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { computePickAssignment } from "../domain/draftOrder.js";
 import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
 import type { Pool } from "pg";
+import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
+
+const pickRateLimiter = new SlidingWindowRateLimiter({
+  windowMs: 2000,
+  max: 3
+});
 
 export function buildCreateDraftHandler(client: DbClient) {
   return async function handleCreateDraft(
@@ -256,6 +262,11 @@ export function buildSubmitPickHandler(pool: Pool) {
         throw validationError("request_id too long", ["request_id"]);
       }
       const requestIdVal = requestId;
+
+      const rateKey = `${draftIdNum}:${userId}`;
+      if (!pickRateLimiter.allow(rateKey)) {
+        throw new AppError("RATE_LIMITED", 429, "Too many pick attempts; slow down.");
+      }
 
       const draft = await getDraftById(pool, draftIdNum);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
