@@ -47,13 +47,35 @@ export function createServer(deps?: { db?: Pool }) {
   app.use((req, res, next) => {
     const start = Date.now();
     res.on("finish", () => {
+      const sanitize = (value: unknown): unknown => {
+        if (Array.isArray(value)) {
+          return value.map((item) => sanitize(item));
+        }
+        if (value && typeof value === "object") {
+          const entries = Object.entries(value as Record<string, unknown>).map(
+            ([key, val]) => {
+              const lower = key.toLowerCase();
+              if (
+                lower.includes("password") ||
+                lower.includes("token") ||
+                lower.includes("secret")
+              ) {
+                return [key, "[REDACTED]"];
+              }
+              return [key, sanitize(val)];
+            }
+          );
+          return Object.fromEntries(entries);
+        }
+        return value;
+      };
       log(
         buildRequestLog({
           method: req.method,
           path: req.originalUrl ?? req.url,
           status: res.statusCode,
           duration_ms: Date.now() - start,
-          body: req.body
+          body: sanitize(req.body)
         })
       );
     });
