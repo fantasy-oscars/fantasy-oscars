@@ -12,6 +12,7 @@
  */
 const PROJECT_OWNER = "alexvornsand";
 const PROJECT_NUMBER = 1;
+const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
 
 function parseArgs(argv) {
   const args = { issue: undefined, status: undefined, repo: undefined };
@@ -48,15 +49,10 @@ async function graphql(token, query, variables = {}) {
 }
 
 async function getRepoOwnerAndName(repoArg) {
-  if (repoArg) {
-    const [owner, name] = repoArg.split("/");
-    return { owner, name };
-  }
-  if (process.env.GITHUB_REPOSITORY) {
-    const [owner, name] = process.env.GITHUB_REPOSITORY.split("/");
-    return { owner, name };
-  }
-  throw new Error("Provide --repo owner/name or set GITHUB_REPOSITORY");
+  const repoFull = repoArg ?? process.env.GITHUB_REPOSITORY ?? DEFAULT_REPO;
+  const [owner, name] = repoFull.split("/");
+  if (!owner || !name) throw new Error(`Invalid repo: ${repoFull} (expected owner/name)`);
+  return { owner, name };
 }
 
 async function getProjectInfo(token) {
