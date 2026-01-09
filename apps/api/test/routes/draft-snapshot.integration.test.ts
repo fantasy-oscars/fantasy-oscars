@@ -12,10 +12,9 @@ import {
   insertNomination
 } from "../factories/db.js";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 
 async function requestJson<T>(
   path: string,
@@ -41,23 +40,14 @@ async function requestJson<T>(
 
 describe("draft snapshot integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3108";
-      process.env.AUTH_SECRET = "test-secret";
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3108";
+    process.env.AUTH_SECRET = "test-secret";
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -68,12 +58,10 @@ describe("draft snapshot integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
   it("requires auth", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id });
 
@@ -88,7 +76,6 @@ describe("draft snapshot integration", () => {
   });
 
   it("returns snapshot for pending draft with seats and no picks", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
@@ -109,7 +96,6 @@ describe("draft snapshot integration", () => {
   });
 
   it("returns snapshot with picks in order and version equals pick count", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
@@ -151,7 +137,6 @@ describe("draft snapshot integration", () => {
   });
 
   it("returns 404 when draft not found", async () => {
-    if (skip) return;
     const res = await requestJson<{ error: { code: string } }>(`/drafts/9999/snapshot`, {
       method: "GET"
     });

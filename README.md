@@ -24,6 +24,7 @@ npm run dev
 ## Tests
 
 - Run the full suite (matches CI): `npm run ci`
+- Run non-Docker checks only: `npm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`)
 - Requires Docker for database-backed tests (Testcontainers launches an isolated Postgres)
 
 ## Documentation

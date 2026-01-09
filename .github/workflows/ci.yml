@@ -33,4 +33,4 @@ jobs:
       - name: Install
         run: npm ci
       - name: Docs Check
-        run: npm run docs:check
+        run: npm run test:docs

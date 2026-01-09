@@ -6,10 +6,9 @@ import { startTestDatabase, truncateAllTables } from "../db.js";
 import { insertCeremony, insertUser, insertDraft } from "../factories/db.js";
 import crypto from "crypto";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 let authSecret = "test-secret";
 
 async function requestJson<T>(
@@ -38,24 +37,15 @@ async function post<T>(
 
 describe("leagues integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3104";
-      process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
-      authSecret = process.env.AUTH_SECRET;
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3104";
+    process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
+    authSecret = process.env.AUTH_SECRET;
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -66,7 +56,6 @@ describe("leagues integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
@@ -83,7 +72,6 @@ describe("leagues integration", () => {
   }
 
   it("creates a league and returns it", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
@@ -105,7 +93,6 @@ describe("leagues integration", () => {
   });
 
   it("requires auth for create", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const res = await post<{ error: { code: string } }>("/leagues", {
       code: "unauth",
@@ -119,7 +106,6 @@ describe("leagues integration", () => {
   });
 
   it("rejects missing required fields", async () => {
-    if (skip || !db) return;
     const token = signToken({ sub: "1", handle: "u1" });
     const res = await post<{ error: { code: string } }>(
       "/leagues",
@@ -131,7 +117,6 @@ describe("leagues integration", () => {
   });
 
   it("gets a league by id", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
@@ -157,7 +142,6 @@ describe("leagues integration", () => {
   });
 
   it("requires auth for get by id", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
@@ -184,7 +168,6 @@ describe("leagues integration", () => {
   });
 
   it("allows a user to join a league before draft start", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const leagueCreator = await insertUser(db.pool);
     const member = await insertUser(db.pool);
@@ -219,7 +202,6 @@ describe("leagues integration", () => {
   });
 
   it("rejects join after league is full", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const owner = await insertUser(db.pool);
     const first = await insertUser(db.pool);
@@ -255,7 +237,6 @@ describe("leagues integration", () => {
   });
 
   it("rejects join when draft already started", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const owner = await insertUser(db.pool);
     const member = await insertUser(db.pool);
@@ -292,7 +273,6 @@ describe("leagues integration", () => {
   });
 
   it("is idempotent when a member joins twice", async () => {
-    if (skip || !db) return;
     const ceremony = await insertCeremony(db.pool);
     const owner = await insertUser(db.pool);
     const member = await insertUser(db.pool);
