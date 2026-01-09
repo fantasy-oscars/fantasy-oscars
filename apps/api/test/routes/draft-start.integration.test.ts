@@ -8,7 +8,8 @@ import {
   insertDraft,
   insertLeague,
   insertDraftSeat,
-  insertNomination
+  insertNomination,
+  insertUser
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -88,8 +89,9 @@ describe("draft start integration", () => {
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("starts a draft and sets current_pick_number", async () => {
-    const league = await insertLeague(db.pool);
+  it("starts a draft and sets current_pick_number when commissioner", async () => {
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id });
     await insertNomination(db.pool);
@@ -103,7 +105,8 @@ describe("draft start integration", () => {
   });
 
   it("rejects when already started", async () => {
-    const league = await insertLeague(db.pool);
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
       status: "IN_PROGRESS",
@@ -115,7 +118,8 @@ describe("draft start integration", () => {
   });
 
   it("rejects when no seats", async () => {
-    const league = await insertLeague(db.pool);
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
     expect(res.status).toBe(400);
@@ -123,7 +127,8 @@ describe("draft start integration", () => {
   });
 
   it("rejects when no nominations loaded", async () => {
-    const league = await insertLeague(db.pool);
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id });
 
@@ -136,5 +141,18 @@ describe("draft start integration", () => {
     const res = await post<{ error: { code: string } }>(`/drafts/999/start`, {});
     expect(res.status).toBe(404);
     expect(res.json.error.code).toBe("DRAFT_NOT_FOUND");
+  });
+
+  it("rejects start when user is not a commissioner", async () => {
+    await insertUser(db.pool, { id: 1 });
+    await insertUser(db.pool, { id: 2 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 2 });
+    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
+    await insertDraftSeat(db.pool, { draft_id: draft.id });
+    await insertNomination(db.pool);
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
+    expect(res.status).toBe(403);
+    expect(res.json.error.code).toBe("FORBIDDEN");
   });
 });

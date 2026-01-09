@@ -19,7 +19,7 @@ import {
   completeDraftIfReady
 } from "../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
-import { getLeagueById } from "../data/repositories/leagueRepository.js";
+import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
 import { transitionDraftState } from "../domain/draftState.js";
@@ -50,6 +50,16 @@ export function buildCreateDraftHandler(client: DbClient) {
       const league = await getLeagueById(client, leagueIdNum);
       if (!league) {
         throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+      }
+
+      const userId = Number((req as AuthedRequest).auth?.sub);
+      const leagueMember = await getLeagueMember(client, leagueIdNum, userId);
+      const isCommissioner =
+        league.created_by_user_id === userId ||
+        (leagueMember &&
+          (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
+      if (!isCommissioner) {
+        throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
       }
 
       const existing = await getDraftByLeagueId(client, leagueIdNum);
@@ -88,6 +98,21 @@ export function buildStartDraftHandler(client: DbClient) {
       const draft = await getDraftById(client, draftId);
       if (!draft) {
         throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      }
+
+      const league = await getLeagueById(client, draft.league_id);
+      if (!league) {
+        throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+      }
+
+      const userId = Number((req as AuthedRequest).auth?.sub);
+      const leagueMember = await getLeagueMember(client, league.id, userId);
+      const isCommissioner =
+        league.created_by_user_id === userId ||
+        (leagueMember &&
+          (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
+      if (!isCommissioner) {
+        throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
       }
 
       if (draft.status !== "PENDING") {
