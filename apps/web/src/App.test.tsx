@@ -1,11 +1,5 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within
-} from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -146,7 +140,7 @@ describe("<App />", () => {
     await waitFor(() => {
       draftBtn = screen
         .getAllByRole("button", { name: /Draft room/i })
-        .find((b) => !b.hasAttribute("disabled"));
+        .find((b: HTMLElement) => !b.hasAttribute("disabled"));
       expect(draftBtn).toBeDefined();
     });
     fireEvent.click(draftBtn!);
@@ -208,7 +202,7 @@ describe("<App />", () => {
 
     const draftBtns = await screen.findAllByRole("button", { name: /Draft room/i });
     const draftBtn =
-      draftBtns.find((btn) => !btn.hasAttribute("disabled")) ?? draftBtns[0];
+      draftBtns.find((btn: HTMLElement) => !btn.hasAttribute("disabled")) ?? draftBtns[0];
     fireEvent.click(draftBtn);
 
     const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });

@@ -6,6 +6,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.resolve(__dirname, "../../../db/migrations");
+const postgresImage = "postgres:16";
 
 function getSortedMigrationFiles() {
   if (!fs.existsSync(migrationsDir)) return [];
@@ -32,7 +33,7 @@ export async function startTestDatabase() {
     }
   }
 
-  const container = await new PostgreSqlContainer().start();
+  const container = await new PostgreSqlContainer(postgresImage).start();
   const connectionString = container.getConnectionUri();
   const pool = new Pool({ connectionString });
   await applyMigrations(pool);
