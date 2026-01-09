@@ -1,12 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildCreateDraftHandler } from "./drafts.js";
+import { buildCreateDraftHandler, buildSubmitPickHandler } from "./drafts.js";
 import { signToken } from "../auth/token.js";
 import { AppError } from "../errors.js";
 import * as draftRepo from "../data/repositories/draftRepository.js";
 import * as leagueRepo from "../data/repositories/leagueRepository.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { DbClient } from "../data/db.js";
+import * as db from "../data/db.js";
+import * as draftEvents from "../realtime/draftEvents.js";
+import type { Pool } from "pg";
 
 const AUTH_SECRET = "test-secret";
 
@@ -206,3 +209,63 @@ describe("POST /drafts", () => {
   });
 });
 // Rate limiting is covered in utils/rateLimiter.test.ts
+
+describe("POST /drafts/:id/picks", () => {
+  const getPickByRequestIdSpy = vi.spyOn(draftRepo, "getPickByRequestId");
+  const runInTransactionSpy = vi.spyOn(db, "runInTransaction");
+  const emitDraftEventSpy = vi.spyOn(draftEvents, "emitDraftEvent");
+  const handler = buildSubmitPickHandler({} as unknown as Pool);
+
+  beforeEach(() => {
+    getPickByRequestIdSpy.mockResolvedValue(null);
+    emitDraftEventSpy.mockClear();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("emits pick events with the assigned version", async () => {
+    const pick = {
+      id: 77,
+      draft_id: 1,
+      pick_number: 1,
+      round_number: 1,
+      seat_number: 1,
+      league_member_id: 10,
+      user_id: 22,
+      nomination_id: 99,
+      made_at: new Date("2024-01-01T00:00:00Z"),
+      request_id: "req-1"
+    };
+    const event = {
+      id: 501,
+      draft_id: 1,
+      version: 7,
+      event_type: "draft.pick.submitted",
+      payload: {
+        pick: {
+          pick_number: pick.pick_number,
+          seat_number: pick.seat_number,
+          nomination_id: pick.nomination_id
+        }
+      },
+      created_at: new Date("2024-01-01T00:00:01Z")
+    };
+    runInTransactionSpy.mockResolvedValue({ pick, reused: false, event });
+
+    const req = mockReq({
+      params: { id: "1" },
+      body: { nomination_id: 99, request_id: "req-1" }
+    }) as Request & { auth?: { sub: string } };
+    req.auth = { sub: "22" };
+
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res, next);
+
+    expect(state.status).toBe(201);
+    expect(emitDraftEventSpy).toHaveBeenCalledWith(event);
+  });
+});
