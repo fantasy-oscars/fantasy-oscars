@@ -354,7 +354,8 @@ describe("<App />", () => {
     const resyncedSnapshot = {
       ...snapshot,
       version: 2,
-      draft: { ...snapshot.draft, current_pick_number: 3 }
+      draft: { ...snapshot.draft, current_pick_number: 3 },
+      picks: []
     };
 
     let resolveResync: ((value: MockResponse) => void) | undefined;
@@ -413,6 +414,8 @@ describe("<App />", () => {
       json: () => Promise.resolve(resyncedSnapshot)
     });
     await screen.findByText(/Version 2/);
+    await screen.findByText(/No picks yet/i);
+    expect(screen.queryByText(/Nomination 99/)).not.toBeInTheDocument();
   });
 
   it("reloads snapshot after reconnect", async () => {
