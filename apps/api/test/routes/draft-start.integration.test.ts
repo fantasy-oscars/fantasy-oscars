@@ -102,6 +102,19 @@ describe("draft start integration", () => {
     expect(res.status).toBe(200);
     expect(res.json.draft.status).toBe("IN_PROGRESS");
     expect(res.json.draft.current_pick_number).toBe(1);
+    const { rows: events } = await db.pool.query<{
+      version: number;
+      event_type: string;
+    }>(
+      `SELECT version::int AS version, event_type
+       FROM draft_event
+       WHERE draft_id = $1
+       ORDER BY version ASC`,
+      [draft.id]
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].version).toBe(1);
+    expect(events[0].event_type).toBe("draft.started");
   });
 
   it("rejects when already started", async () => {

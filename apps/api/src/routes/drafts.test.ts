@@ -75,6 +75,7 @@ describe("POST /drafts", () => {
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      version: 0,
       started_at: null,
       completed_at: null
     });
@@ -180,6 +181,7 @@ describe("POST /drafts", () => {
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      version: 0,
       started_at: null,
       completed_at: null
     });
