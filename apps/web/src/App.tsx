@@ -1,4 +1,5 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io, type Socket } from "socket.io-client";
 import { NomineePill } from "./components/NomineePill";
 
 type ApiResult = { ok: boolean; message: string };
@@ -168,7 +169,12 @@ function mapPickError(code?: string, fallback?: string) {
 }
 
 type Snapshot = {
-  draft: { id: number; status: string; current_pick_number: number | null };
+  draft: {
+    id: number;
+    status: string;
+    current_pick_number: number | null;
+    version?: number;
+  };
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
@@ -219,6 +225,10 @@ function DraftRoom(props: {
   const [pickLoading, setPickLoading] = useState(false);
   const [startState, setStartState] = useState<ApiResult | null>(null);
   const [startLoading, setStartLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "reconnecting" | "disconnected"
+  >("disconnected");
+  const socketRef = useRef<Socket | null>(null);
 
   async function loadSnapshot(id: string) {
     setLoading(true);
@@ -300,6 +310,54 @@ function DraftRoom(props: {
   const canStartDraft =
     !!snapshot && snapshot.draft.status === "PENDING" && !disabled && !startLoading;
 
+  useEffect(() => {
+    if (!snapshot || disabled) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setConnectionStatus("disconnected");
+      return;
+    }
+
+    const socketBase = API_BASE
+      ? new URL(API_BASE, window.location.origin).origin
+      : window.location.origin;
+    const socket = io(`${socketBase}/drafts`, {
+      transports: ["websocket"],
+      autoConnect: false,
+      auth: { draftId: Number(snapshot.draft.id) }
+    });
+    socketRef.current = socket;
+
+    const onConnect = () => setConnectionStatus("connected");
+    const onDisconnect = () => setConnectionStatus("disconnected");
+    const onConnectError = () => setConnectionStatus("disconnected");
+    const onReconnectAttempt = () => setConnectionStatus("reconnecting");
+    const onReconnect = () => setConnectionStatus("connected");
+    const onReconnectFailed = () => setConnectionStatus("disconnected");
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.io.on("reconnect_attempt", onReconnectAttempt);
+    socket.io.on("reconnect", onReconnect);
+    socket.io.on("reconnect_failed", onReconnectFailed);
+
+    socket.connect();
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.io.off("reconnect_attempt", onReconnectAttempt);
+      socket.io.off("reconnect", onReconnect);
+      socket.io.off("reconnect_failed", onReconnectFailed);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [snapshot, disabled]);
+
   const startDraft = useCallback(async () => {
     if (!snapshot) return;
     setStartLoading(true);
@@ -379,6 +437,18 @@ function DraftRoom(props: {
                 Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
                 {snapshot.version}
               </p>
+              <div className="status-tray">
+                <span
+                  className="connection-status"
+                  data-state={connectionStatus}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {connectionStatus === "connected" && "Connected"}
+                  {connectionStatus === "reconnecting" && "Reconnecting..."}
+                  {connectionStatus === "disconnected" && "Disconnected"}
+                </span>
+              </div>
               {snapshot.draft.status === "PENDING" && (
                 <div className="inline-actions">
                   <button type="button" onClick={startDraft} disabled={!canStartDraft}>
