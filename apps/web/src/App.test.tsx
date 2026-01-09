@@ -1,7 +1,81 @@
 import { cleanup, render } from "@testing-library/react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/dom";
 import { afterEach, beforeEach, describe, expect, it, vi, Mock } from "vitest";
+import { io } from "socket.io-client";
 import { App } from "./App";
+
+type MockSocket = {
+  on: (event: string, cb: (...args: unknown[]) => void) => MockSocket;
+  off: (event: string, cb: (...args: unknown[]) => void) => MockSocket;
+  connect: () => MockSocket;
+  disconnect: () => MockSocket;
+  io: {
+    on: (event: string, cb: (...args: unknown[]) => void) => MockSocket["io"];
+    off: (event: string, cb: (...args: unknown[]) => void) => MockSocket["io"];
+  };
+  __emit: (event: string, ...args: unknown[]) => void;
+  __emitIo: (event: string, ...args: unknown[]) => void;
+};
+
+vi.mock("socket.io-client", () => {
+  const makeEmitter = () => {
+    const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
+    const on = (event: string, cb: (...args: unknown[]) => void) => {
+      const bucket = listeners.get(event) ?? new Set();
+      bucket.add(cb);
+      listeners.set(event, bucket);
+    };
+    const off = (event: string, cb: (...args: unknown[]) => void) => {
+      listeners.get(event)?.delete(cb);
+    };
+    const emit = (event: string, ...args: unknown[]) => {
+      listeners.get(event)?.forEach((cb) => cb(...args));
+    };
+    return { on, off, emit };
+  };
+
+  const ioMock = vi.fn(() => {
+    const socketEmitter = makeEmitter();
+    const ioEmitter = makeEmitter();
+    const socket: MockSocket = {
+      on(event, cb) {
+        socketEmitter.on(event, cb);
+        return socket;
+      },
+      off(event, cb) {
+        socketEmitter.off(event, cb);
+        return socket;
+      },
+      connect() {
+        socketEmitter.emit("connect");
+        return socket;
+      },
+      disconnect() {
+        socketEmitter.emit("disconnect");
+        return socket;
+      },
+      io: {
+        on(event, cb) {
+          ioEmitter.on(event, cb);
+          return socket.io;
+        },
+        off(event, cb) {
+          ioEmitter.off(event, cb);
+          return socket.io;
+        }
+      },
+      __emit(event, ...args) {
+        socketEmitter.emit(event, ...args);
+      },
+      __emitIo(event, ...args) {
+        ioEmitter.emit(event, ...args);
+      }
+    };
+    return socket;
+  });
+
+  return { io: ioMock };
+});
 
 describe("<App />", () => {
   beforeEach(() => {
@@ -153,6 +227,118 @@ describe("<App />", () => {
     expect(screen.getByText(/Seat 1 · Member 11/)).toBeInTheDocument();
     expect(screen.getByText(/Nomination 99/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("applies sequential draft events and updates version", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 2 },
+      seats: [
+        { seat_number: 1, league_member_id: 11, user_id: 1 },
+        { seat_number: 2, league_member_id: 22, user_id: 2 }
+      ],
+      picks: [{ pick_number: 1, seat_number: 1, nomination_id: 99 }],
+      version: 1
+    };
+
+    mockFetchSequence(
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        })
+    );
+
+    render(<App />);
+    const draftBtn = await waitFor(() => {
+      const btn = screen
+        .getAllByRole("button", { name: /Draft room/i })
+        .find((candidate: HTMLElement) => !candidate.hasAttribute("disabled"));
+      if (!btn) throw new Error("Draft room tab not enabled yet");
+      return btn;
+    });
+    fireEvent.click(draftBtn);
+
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+    await screen.findByText(/Status: IN_PROGRESS/);
+
+    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    socket.__emit("draft:event", {
+      draft_id: 7,
+      version: 2,
+      event_type: "draft.pick.submitted",
+      payload: {
+        pick: { pick_number: 2, seat_number: 2, nomination_id: 101 },
+        draft: { status: "IN_PROGRESS", current_pick_number: 3 }
+      },
+      created_at: new Date().toISOString()
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Version 2/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/#2 · Seat 2 · Nomination 101/)).toBeInTheDocument();
+  });
+
+  it("ignores out-of-order draft events", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 2 },
+      seats: [
+        { seat_number: 1, league_member_id: 11, user_id: 1 },
+        { seat_number: 2, league_member_id: 22, user_id: 2 }
+      ],
+      picks: [{ pick_number: 1, seat_number: 1, nomination_id: 99 }],
+      version: 1
+    };
+
+    mockFetchSequence(
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        })
+    );
+
+    render(<App />);
+    const draftBtn = await waitFor(() => {
+      const btn = screen
+        .getAllByRole("button", { name: /Draft room/i })
+        .find((candidate: HTMLElement) => !candidate.hasAttribute("disabled"));
+      if (!btn) throw new Error("Draft room tab not enabled yet");
+      return btn;
+    });
+    fireEvent.click(draftBtn);
+
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+    await screen.findByText(/Status: IN_PROGRESS/);
+
+    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    socket.__emit("draft:event", {
+      draft_id: 7,
+      version: 3,
+      event_type: "draft.pick.submitted",
+      payload: {
+        pick: { pick_number: 3, seat_number: 1, nomination_id: 202 },
+        draft: { status: "IN_PROGRESS", current_pick_number: 4 }
+      },
+      created_at: new Date().toISOString()
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Version 1/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Nomination 202/)).not.toBeInTheDocument();
   });
 
   it("starts a pending draft and refreshes snapshot", async () => {
