@@ -13,10 +13,9 @@ import {
   insertUser
 } from "../factories/db.js";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 
 async function requestJson<T>(
   path: string,
@@ -58,23 +57,14 @@ async function post<T>(
 
 describe("draft submit pick integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3103";
-      process.env.AUTH_SECRET = "test-secret";
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3103";
+    process.env.AUTH_SECRET = "test-secret";
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -85,12 +75,10 @@ describe("draft submit pick integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
   it("rejects when unauthenticated", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
@@ -110,7 +98,6 @@ describe("draft submit pick integration", () => {
   });
 
   it("rejects invalid payloads", async () => {
-    if (skip || !db) return;
     const draft = await insertDraft(db.pool, {
       status: "IN_PROGRESS",
       current_pick_number: 1
@@ -127,7 +114,6 @@ describe("draft submit pick integration", () => {
   });
 
   it("creates a pick, advances the turn, and enforces auth seat", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool, { roster_size: 1 });
     await insertUser(db.pool, { id: 1 });
     await insertUser(db.pool, { id: 2 });
@@ -175,7 +161,6 @@ describe("draft submit pick integration", () => {
   });
 
   it("returns the existing pick for duplicate request_id (idempotent)", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool, { roster_size: 1 });
     await insertUser(db.pool, { id: 1 });
     const member = await insertLeagueMember(db.pool, {

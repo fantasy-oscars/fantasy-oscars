@@ -2,7 +2,8 @@
 
 ## TL;DR
 
-- Canonical command: `npm run ci` (lint, typecheck, tests, build).
+- Canonical command: `npm run ci` (runs `test:*` categories, including Docker integration).
+- Non-Docker suite: `npm run test:format && npm run test:lint && npm run test:typecheck && npm run test:unit && npm run test:build && npm run test:docs`.
 - Unit tests for pure logic; integration tests for behavior and DB.
 - DB tests run in isolated Postgres via Testcontainers; migrations auto-apply; state resets per suite.
 
@@ -14,6 +15,8 @@
 ## How to Run
 
 - Full suite: `npm run ci` (matches CI).
+- Non-Docker checks: `npm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`).
+- Integration tests only (Docker required): `npm run test:integration`
 - API tests only: `npm run test --workspace @fantasy-oscars/api`
 - Web tests only: `npm run test --workspace @fantasy-oscars/web`
 - Typecheck tests too: `npm run typecheck --workspace @fantasy-oscars/api` (includes test TS config).

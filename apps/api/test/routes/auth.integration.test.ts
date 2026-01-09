@@ -5,10 +5,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 
 async function requestJson<T>(
   path: string,
@@ -47,23 +46,14 @@ async function getJson<T>(
 
 describe("auth integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3101";
-      process.env.AUTH_SECRET = "test-secret";
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3101";
+    process.env.AUTH_SECRET = "test-secret";
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -74,12 +64,10 @@ describe("auth integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
   it("registers a user and stores hashed password", async () => {
-    if (skip) return;
     const payload = {
       handle: "user1",
       email: "user1@example.com",
@@ -91,7 +79,6 @@ describe("auth integration", () => {
     expect(res.status).toBe(201);
     expect(res.json.user.handle).toBe("user1");
 
-    if (!db) throw new Error("DB not started");
     const { rows } = await db.pool.query(
       `SELECT password_hash FROM auth_password ap JOIN app_user u ON u.id = ap.user_id WHERE u.handle = $1`,
       ["user1"]
@@ -104,7 +91,6 @@ describe("auth integration", () => {
   });
 
   it("rejects duplicate registrations", async () => {
-    if (skip) return;
     const payload = {
       handle: "dupe",
       email: "dupe@example.com",
@@ -118,7 +104,6 @@ describe("auth integration", () => {
   });
 
   it("logs in with valid credentials", async () => {
-    if (skip) return;
     const payload = {
       handle: "loginuser",
       email: "login@example.com",
@@ -142,7 +127,6 @@ describe("auth integration", () => {
   });
 
   it("rejects invalid credentials", async () => {
-    if (skip) return;
     const payload = {
       handle: "badpw",
       email: "badpw@example.com",
@@ -159,7 +143,6 @@ describe("auth integration", () => {
   });
 
   it("sets auth cookie on login and accepts cookie for /auth/me", async () => {
-    if (skip) return;
     const payload = {
       handle: "cookieuser",
       email: "cookie@example.com",
@@ -182,7 +165,6 @@ describe("auth integration", () => {
   });
 
   it("clears auth cookie on logout and rejects missing token", async () => {
-    if (skip) return;
     const payload = {
       handle: "logoutuser",
       email: "logout@example.com",
@@ -209,7 +191,6 @@ describe("auth integration", () => {
 
   describe("password reset", () => {
     it("returns inline token in non-prod and creates reset record", async () => {
-      if (skip || !db) return;
       const payload = {
         handle: "reset1",
         email: "reset1@example.com",
@@ -225,7 +206,7 @@ describe("auth integration", () => {
       expect(res.json.delivery).toBe("inline");
       expect(res.json.token).toBeDefined();
 
-      const { rows } = await db!.pool.query(
+      const { rows } = await db.pool.query(
         `SELECT token_hash FROM auth_password_reset WHERE user_id = (SELECT id FROM app_user WHERE email = $1)`,
         [payload.email]
       );
@@ -233,7 +214,6 @@ describe("auth integration", () => {
     });
 
     it("resets password with token and allows login", async () => {
-      if (skip) return;
       const payload = {
         handle: "reset2",
         email: "reset2@example.com",
@@ -259,7 +239,6 @@ describe("auth integration", () => {
     });
 
     it("rejects expired tokens", async () => {
-      if (skip || !db) return;
       const { json } = await post<{ user: { id: number } }>("/auth/register", {
         handle: "expired",
         email: "expired@example.com",
@@ -283,7 +262,6 @@ describe("auth integration", () => {
     });
 
     it("rejects reused tokens", async () => {
-      if (skip || !db) return;
       const { json } = await post<{ user: { id: number } }>("/auth/register", {
         handle: "used",
         email: "used@example.com",

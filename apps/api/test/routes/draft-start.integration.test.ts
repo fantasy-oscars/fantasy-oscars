@@ -11,10 +11,9 @@ import {
   insertNomination
 } from "../factories/db.js";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 
 async function requestJson<T>(
   path: string,
@@ -56,23 +55,14 @@ async function post<T>(
 
 describe("draft start integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3103";
-      process.env.AUTH_SECRET = "test-secret";
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3103";
+    process.env.AUTH_SECRET = "test-secret";
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -83,12 +73,10 @@ describe("draft start integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
   it("rejects start when unauthenticated", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     const res = await post<{ error: { code: string } }>(
@@ -101,7 +89,6 @@ describe("draft start integration", () => {
   });
 
   it("starts a draft and sets current_pick_number", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id });
@@ -116,7 +103,6 @@ describe("draft start integration", () => {
   });
 
   it("rejects when already started", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
@@ -129,7 +115,6 @@ describe("draft start integration", () => {
   });
 
   it("rejects when no seats", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
@@ -138,7 +123,6 @@ describe("draft start integration", () => {
   });
 
   it("rejects when no nominations loaded", async () => {
-    if (skip || !db) return;
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id });
@@ -149,7 +133,6 @@ describe("draft start integration", () => {
   });
 
   it("rejects when draft missing", async () => {
-    if (skip) return;
     const res = await post<{ error: { code: string } }>(`/drafts/999/start`, {});
     expect(res.status).toBe(404);
     expect(res.json.error.code).toBe("DRAFT_NOT_FOUND");

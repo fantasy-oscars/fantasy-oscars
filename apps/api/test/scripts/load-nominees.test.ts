@@ -20,13 +20,7 @@ function readDataset() {
 describe("load-nominees script", () => {
   it("loads the golden dataset idempotently", async () => {
     let db;
-    try {
-      db = await startTestDatabase();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) return;
-      throw err;
-    }
+    db = await startTestDatabase();
 
     const { pool, stop } = db;
     const dataset = readDataset();

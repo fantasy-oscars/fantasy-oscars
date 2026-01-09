@@ -13,10 +13,9 @@ import {
   insertNomination
 } from "../factories/db.js";
 
-let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
+let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
 let baseUrl: string | null = null;
-let skip = false;
 
 async function requestJson<T>(
   path: string,
@@ -33,23 +32,14 @@ async function requestJson<T>(
 
 describe("draft picks integration", () => {
   beforeAll(async () => {
-    try {
-      process.env.PORT = process.env.PORT ?? "3110";
-      process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
-      db = await startTestDatabase();
-      process.env.DATABASE_URL = db.connectionString;
-      const app = createServer({ db: db.pool });
-      server = app.listen(0);
-      const address = server.address() as AddressInfo;
-      baseUrl = `http://127.0.0.1:${address.port}`;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        skip = true;
-        return;
-      }
-      throw err;
-    }
+    process.env.PORT = process.env.PORT ?? "3110";
+    process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    server = app.listen(0);
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
   }, 120_000);
 
   afterAll(async () => {
@@ -60,7 +50,6 @@ describe("draft picks integration", () => {
   });
 
   beforeEach(async () => {
-    if (skip || !db) return;
     await truncateAllTables(db.pool);
   });
 
@@ -72,8 +61,6 @@ describe("draft picks integration", () => {
   }
 
   it("rejects pick when not active turn", async () => {
-    if (skip || !db) return;
-    if (!db) throw new Error("db not started");
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(db.pool, {
@@ -103,8 +90,6 @@ describe("draft picks integration", () => {
   });
 
   it("accepts pick for active seat and advances turn", async () => {
-    if (skip || !db) return;
-    if (!db) throw new Error("db not started");
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(pool, {
@@ -163,8 +148,6 @@ describe("draft picks integration", () => {
   });
 
   it("enforces snake reversal across rounds", async () => {
-    if (skip || !db) return;
-    if (!db) throw new Error("db not started");
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(pool, {
@@ -228,8 +211,6 @@ describe("draft picks integration", () => {
   });
 
   it("rejects duplicate nomination", async () => {
-    if (skip || !db) return;
-    if (!db) throw new Error("db not started");
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(pool, {
@@ -281,7 +262,6 @@ describe("draft picks integration", () => {
   });
 
   it("returns prior pick when request_id is repeated (same payload)", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {
@@ -329,7 +309,6 @@ describe("draft picks integration", () => {
   });
 
   it("returns prior pick when request_id is repeated (different payload)", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {
@@ -378,7 +357,6 @@ describe("draft picks integration", () => {
   });
 
   it("rejects unknown nomination id", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(pool, {
@@ -410,7 +388,6 @@ describe("draft picks integration", () => {
   });
 
   it("rejects pick when draft not in progress", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool);
     const draft = await insertDraft(pool, {
@@ -443,7 +420,6 @@ describe("draft picks integration", () => {
   });
 
   it("marks draft completed when all picks are made", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {
@@ -506,7 +482,6 @@ describe("draft picks integration", () => {
 
   // Diagnostic: verify DB row actually flips to COMPLETED when pick threshold is reached.
   it("sets draft.status=COMPLETED in the database after the final required pick", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {
@@ -571,7 +546,6 @@ describe("draft picks integration", () => {
   });
 
   it("rejects picks after draft completed", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {
@@ -636,7 +610,6 @@ describe("draft picks integration", () => {
 
   // Regression: API must reject any pick after completion.
   it("rejects pick after draft is completed", async () => {
-    if (skip || !db) return;
     const pool = db.pool;
     const league = await insertLeague(pool, { roster_size: 1 });
     const draft = await insertDraft(pool, {

@@ -34,7 +34,7 @@ describe("getSnakeSeatForPick", () => {
   });
 
   it("works for large pick numbers", () => {
-    expect(getSnakeSeatForPick(5, 25)).toBe(1); // end of round 5 (odd -> reverse, last seat)
-    expect(getSnakeSeatForPick(5, 26)).toBe(1); // start of round 6 (even -> forward, first seat)
+    expect(getSnakeSeatForPick(5, 25)).toBe(5); // end of round 5 (forward, last seat)
+    expect(getSnakeSeatForPick(5, 26)).toBe(5); // start of round 6 (reverse, first seat)
   });
 });

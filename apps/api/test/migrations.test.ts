@@ -6,18 +6,9 @@ describe("migrations", () => {
     let pool;
     let stop;
 
-    try {
-      const started = await startTestDatabase();
-      pool = started.pool;
-      stop = started.stop;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("container runtime")) {
-        // Environment without Docker/testcontainers; skip instead of failing the suite.
-        return;
-      }
-      throw err;
-    }
+    const started = await startTestDatabase();
+    pool = started.pool;
+    stop = started.stop;
 
     try {
       const { rows } = await pool.query(`

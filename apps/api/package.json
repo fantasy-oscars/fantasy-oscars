@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "nominees:load": "tsx src/scripts/load-nominees.ts --file ../../db/fixtures/golden-nominees.json",
     "test": "vitest run",
+    "test:unit": "vitest run -c vitest.unit.config.ts",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint .",
