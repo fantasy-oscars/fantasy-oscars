@@ -1,4 +1,5 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { io as createClient, type Socket } from "socket.io-client";
 import {
   DRAFT_NAMESPACE,
   emitToDraft,
@@ -17,11 +18,36 @@ import {
 let server: SocketTestServer | undefined;
 let clients: TestClient[] = [];
 
+async function waitForConnectFailure(socket: Socket, timeoutMs = 2000): Promise<Error> {
+  return await new Promise<Error>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("Expected connection failure")),
+      timeoutMs
+    );
+    const onError = (err: Error) => {
+      clearTimeout(timer);
+      socket.off("connect", onConnect);
+      resolve(err);
+    };
+    const onConnect = () => {
+      clearTimeout(timer);
+      socket.off("connect_error", onError);
+      reject(new Error("Expected connection failure"));
+    };
+
+    socket.once("connect_error", onError);
+    socket.once("connect", onConnect);
+    socket.connect();
+  });
+}
+
 describe("draft namespace routing", () => {
-  afterAll(async () => {
+  afterEach(async () => {
     await Promise.all(clients.map(disconnectClient));
+    clients = [];
     if (server) {
       await server.close();
+      server = undefined;
     }
   });
 
@@ -68,5 +94,26 @@ describe("draft namespace routing", () => {
     await expect(waitForEvent(draft2Client, "draft-ping", 200)).rejects.toThrow(
       /Timed out waiting for event/
     );
+  });
+
+  it("rejects connections without a draft id", async () => {
+    try {
+      server = await startSocketTestServer((io) => {
+        registerDraftNamespace(io);
+      });
+    } catch (err) {
+      if (err instanceof ListenPermissionError) return;
+      throw err;
+    }
+
+    const socket = createClient(`${server.url}${DRAFT_NAMESPACE}`, {
+      transports: ["websocket"],
+      forceNew: true,
+      autoConnect: false
+    });
+
+    const error = await waitForConnectFailure(socket);
+    expect(error.message).toContain("INVALID_DRAFT_ID");
+    socket.disconnect();
   });
 });
