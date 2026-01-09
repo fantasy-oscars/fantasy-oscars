@@ -1,7 +1,12 @@
 import { createServer } from "http";
 import type { AddressInfo } from "net";
 import { Server } from "socket.io";
-import { io as createClient, type Socket } from "socket.io-client";
+import {
+  io as createClient,
+  type ManagerOptions,
+  type Socket,
+  type SocketOptions
+} from "socket.io-client";
 
 export class ListenPermissionError extends Error {
   constructor(message: string) {
@@ -19,6 +24,11 @@ export type SocketTestServer = {
 export type TestClient = {
   socket: Socket;
   events: Array<{ event: string; args: unknown[] }>;
+};
+
+export type CreateTestClientOptions = {
+  namespace?: string;
+  socketOptions?: Partial<ManagerOptions & SocketOptions>;
 };
 
 async function closeServer(io: Server, httpServer: ReturnType<typeof createServer>) {
@@ -77,12 +87,16 @@ function waitForConnect(socket: Socket, timeoutMs = 2000) {
   });
 }
 
-export async function createTestClient(server: SocketTestServer): Promise<TestClient> {
+export async function createTestClient(
+  server: SocketTestServer,
+  options?: CreateTestClientOptions
+): Promise<TestClient> {
   const events: Array<{ event: string; args: unknown[] }> = [];
-  const socket = createClient(server.url, {
+  const socket = createClient(server.url + (options?.namespace ?? ""), {
     transports: ["websocket"],
     autoConnect: true,
-    forceNew: true
+    forceNew: true,
+    ...options?.socketOptions
   });
 
   socket.onAny((event, ...args) => {
