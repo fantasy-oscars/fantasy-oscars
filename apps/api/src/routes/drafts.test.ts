@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildCreateDraftHandler,
+  buildExportDraftHandler,
   buildSubmitPickHandler,
   buildSnapshotDraftHandler
 } from "./drafts.js";
@@ -182,6 +183,17 @@ describe("POST /drafts", () => {
   });
 
   it("rejects when a draft already exists for the league", async () => {
+    getLeagueByIdSpy.mockResolvedValueOnce({
+      id: 1,
+      code: "L1",
+      name: "Test League",
+      ceremony_id: 99,
+      max_members: 10,
+      roster_size: 5,
+      is_public: true,
+      created_by_user_id: 1,
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
     getDraftByLeagueIdSpy.mockResolvedValueOnce({
       id: 1,
       league_id: 1,
@@ -271,6 +283,112 @@ describe("POST /drafts/:id/picks", () => {
 
     expect(state.status).toBe(201);
     expect(emitDraftEventSpy).toHaveBeenCalledWith(event);
+  });
+});
+
+describe("GET /drafts/:id/export", () => {
+  const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
+  const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
+  const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
+  const handler = buildExportDraftHandler({} as unknown as Pool);
+
+  beforeEach(() => {
+    getDraftByIdSpy.mockResolvedValue({
+      id: 99,
+      league_id: 5,
+      status: "COMPLETED",
+      draft_order_type: "SNAKE",
+      current_pick_number: 3,
+      version: 7,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: new Date("2024-01-01T01:00:00Z")
+    });
+    listDraftSeatsSpy.mockResolvedValue([
+      {
+        id: 1,
+        draft_id: 99,
+        league_member_id: 10,
+        seat_number: 1,
+        is_active: true,
+        user_id: 100
+      },
+      {
+        id: 2,
+        draft_id: 99,
+        league_member_id: 11,
+        seat_number: 2,
+        is_active: true,
+        user_id: 101
+      }
+    ]);
+    listDraftPicksSpy.mockResolvedValue([
+      {
+        id: 50,
+        draft_id: 99,
+        pick_number: 1,
+        round_number: 1,
+        seat_number: 1,
+        league_member_id: 10,
+        user_id: 100,
+        nomination_id: 200,
+        made_at: new Date("2024-01-01T00:05:00Z")
+      },
+      {
+        id: 51,
+        draft_id: 99,
+        pick_number: 2,
+        round_number: 1,
+        seat_number: 2,
+        league_member_id: 11,
+        user_id: 101,
+        nomination_id: 201,
+        made_at: new Date("2024-01-01T00:06:00Z")
+      }
+    ]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("exports draft participants, picks, and final state", async () => {
+    const req = mockReq({
+      params: { id: "99" },
+      headers: { authorization: authHeader() }
+    });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    const body = state.body as {
+      draft: { id: number; status: string; version: number };
+      seats: Array<{ seat_number: number }>;
+      picks: Array<{ pick_number: number }>;
+    };
+    expect(body.draft).toMatchObject({
+      id: 99,
+      status: "COMPLETED",
+      version: 7
+    });
+    expect(body.seats.map((seat) => seat.seat_number)).toEqual([1, 2]);
+    expect(body.picks.map((pick) => pick.pick_number)).toEqual([1, 2]);
+  });
+
+  it("rejects invalid draft id", async () => {
+    const req = mockReq({ params: { id: "abc" } });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).toHaveBeenCalledWith(expect.any(AppError));
+    const err = next.mock.calls[0][0] as AppError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.status).toBe(400);
+    expect(state.body).toBeUndefined();
   });
 });
 
