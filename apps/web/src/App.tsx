@@ -256,6 +256,7 @@ function DraftRoom(props: {
   const lastVersionRef = useRef<number | null>(null);
   const [desynced, setDesynced] = useState(false);
   const [resyncing, setResyncing] = useState(false);
+  const needsReconnectSyncRef = useRef(false);
 
   async function loadSnapshot(id: string, options?: { preserveSnapshot?: boolean }) {
     setLoading(true);
@@ -388,11 +389,27 @@ function DraftRoom(props: {
     });
     socketRef.current = socket;
 
-    const onConnect = () => setConnectionStatus("connected");
-    const onDisconnect = () => setConnectionStatus("disconnected");
+    const triggerReconnectSync = () => {
+      if (!needsReconnectSyncRef.current) return;
+      needsReconnectSyncRef.current = false;
+      const current = snapshotRef.current;
+      if (!current) return;
+      void loadSnapshot(String(current.draft.id), { preserveSnapshot: true });
+    };
+    const onConnect = () => {
+      setConnectionStatus("connected");
+      triggerReconnectSync();
+    };
+    const onDisconnect = () => {
+      needsReconnectSyncRef.current = true;
+      setConnectionStatus("disconnected");
+    };
     const onConnectError = () => setConnectionStatus("disconnected");
     const onReconnectAttempt = () => setConnectionStatus("reconnecting");
-    const onReconnect = () => setConnectionStatus("connected");
+    const onReconnect = () => {
+      setConnectionStatus("connected");
+      triggerReconnectSync();
+    };
     const onReconnectFailed = () => setConnectionStatus("disconnected");
 
     socket.on("connect", onConnect);

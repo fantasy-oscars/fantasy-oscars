@@ -415,6 +415,64 @@ describe("<App />", () => {
     await screen.findByText(/Version 2/);
   });
 
+  it("reloads snapshot after reconnect", async () => {
+    const snapshot = {
+      draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 2 },
+      seats: [
+        { seat_number: 1, league_member_id: 11, user_id: 1 },
+        { seat_number: 2, league_member_id: 22, user_id: 2 }
+      ],
+      picks: [{ pick_number: 1, seat_number: 1, nomination_id: 99 }],
+      version: 1
+    };
+    const resyncedSnapshot = {
+      ...snapshot,
+      version: 2,
+      draft: { ...snapshot.draft, current_pick_number: 3 }
+    };
+
+    const fetchMock = mockFetchSequence(
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        }),
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(snapshot)
+        }),
+      () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(resyncedSnapshot)
+        })
+    );
+
+    render(<App />);
+    const draftBtn = await waitFor(() => {
+      const btn = screen
+        .getAllByRole("button", { name: /Draft room/i })
+        .find((candidate: HTMLElement) => !candidate.hasAttribute("disabled"));
+      if (!btn) throw new Error("Draft room tab not enabled yet");
+      return btn;
+    });
+    fireEvent.click(draftBtn);
+
+    const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
+    fireEvent.click(loadBtn);
+    await screen.findByText(/Version 1/);
+
+    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    socket.__emit("disconnect");
+    socket.__emitIo("reconnect");
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+    await screen.findByText(/Version 2/);
+  });
+
   it("starts a pending draft and refreshes snapshot", async () => {
     const pendingSnapshot = {
       draft: { id: 7, status: "PENDING", current_pick_number: 1 },
