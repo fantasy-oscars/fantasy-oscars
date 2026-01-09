@@ -174,10 +174,32 @@ type Snapshot = {
     status: string;
     current_pick_number: number | null;
     version?: number;
+    started_at?: string | null;
+    completed_at?: string | null;
   };
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
+};
+
+type DraftEventMessage = {
+  draft_id: number;
+  version: number;
+  event_type: string;
+  payload?: {
+    draft?: {
+      status?: string;
+      current_pick_number?: number | null;
+      completed_at?: string | null;
+      started_at?: string | null;
+    };
+    pick?: {
+      pick_number: number;
+      seat_number: number;
+      nomination_id: number;
+    };
+  };
+  created_at: string;
 };
 
 type AuthUser = { sub: string; handle?: string; email?: string; display_name?: string };
@@ -229,6 +251,9 @@ function DraftRoom(props: {
     "connected" | "reconnecting" | "disconnected"
   >("disconnected");
   const socketRef = useRef<Socket | null>(null);
+  const snapshotRef = useRef<Snapshot | null>(null);
+  const [lastVersion, setLastVersion] = useState<number | null>(null);
+  const lastVersionRef = useRef<number | null>(null);
 
   async function loadSnapshot(id: string) {
     setLoading(true);
@@ -236,7 +261,15 @@ function DraftRoom(props: {
     setSnapshot(null);
     const res = await fetchJson<Snapshot>(`/drafts/${id}/snapshot`, { method: "GET" });
     if (res.ok && res.data) {
-      setSnapshot(res.data);
+      const normalized = {
+        ...res.data,
+        draft: {
+          ...res.data.draft,
+          version: res.data.draft.version ?? res.data.version
+        }
+      };
+      setSnapshot(normalized);
+      setLastVersion(normalized.version);
     } else {
       setError(res.error ?? "Failed to load snapshot");
     }
@@ -311,7 +344,16 @@ function DraftRoom(props: {
     !!snapshot && snapshot.draft.status === "PENDING" && !disabled && !startLoading;
 
   useEffect(() => {
-    if (!snapshot || disabled) {
+    snapshotRef.current = snapshot;
+  }, [snapshot]);
+
+  useEffect(() => {
+    lastVersionRef.current = lastVersion;
+  }, [lastVersion]);
+
+  useEffect(() => {
+    const draftIdForSocket = snapshot?.draft.id;
+    if (!draftIdForSocket || disabled) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -326,7 +368,7 @@ function DraftRoom(props: {
     const socket = io(`${socketBase}/drafts`, {
       transports: ["websocket"],
       autoConnect: false,
-      auth: { draftId: Number(snapshot.draft.id) }
+      auth: { draftId: Number(draftIdForSocket) }
     });
     socketRef.current = socket;
 
@@ -343,6 +385,48 @@ function DraftRoom(props: {
     socket.io.on("reconnect_attempt", onReconnectAttempt);
     socket.io.on("reconnect", onReconnect);
     socket.io.on("reconnect_failed", onReconnectFailed);
+    const onDraftEvent = (event: DraftEventMessage) => {
+      const current = snapshotRef.current;
+      const currentVersion = lastVersionRef.current;
+      if (!current || currentVersion === null) return;
+      if (event.draft_id !== current.draft.id) return;
+      if (event.version !== currentVersion + 1) return;
+
+      setSnapshot((prev) => {
+        if (!prev || prev.draft.id !== event.draft_id) return prev;
+        const nextDraft = { ...prev.draft };
+        if (event.payload?.draft) {
+          if (event.payload.draft.status) {
+            nextDraft.status = event.payload.draft.status;
+          }
+          if ("current_pick_number" in event.payload.draft) {
+            nextDraft.current_pick_number =
+              event.payload.draft.current_pick_number ?? null;
+          }
+          if (event.payload.draft.completed_at !== undefined) {
+            nextDraft.completed_at = event.payload.draft.completed_at ?? null;
+          }
+          if (event.payload.draft.started_at !== undefined) {
+            nextDraft.started_at = event.payload.draft.started_at ?? null;
+          }
+        }
+        nextDraft.version = event.version;
+        const nextPick = event.payload?.pick;
+        const nextPicks = nextPick
+          ? prev.picks.some((pick) => pick.pick_number === nextPick.pick_number)
+            ? prev.picks
+            : [...prev.picks, nextPick].sort((a, b) => a.pick_number - b.pick_number)
+          : prev.picks;
+        return {
+          ...prev,
+          draft: nextDraft,
+          picks: nextPicks,
+          version: event.version
+        };
+      });
+      setLastVersion(event.version);
+    };
+    socket.on("draft:event", onDraftEvent);
 
     socket.connect();
 
@@ -350,13 +434,14 @@ function DraftRoom(props: {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      socket.off("draft:event", onDraftEvent);
       socket.io.off("reconnect_attempt", onReconnectAttempt);
       socket.io.off("reconnect", onReconnect);
       socket.io.off("reconnect_failed", onReconnectFailed);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [snapshot, disabled]);
+  }, [snapshot?.draft.id, disabled]);
 
   const startDraft = useCallback(async () => {
     if (!snapshot) return;
