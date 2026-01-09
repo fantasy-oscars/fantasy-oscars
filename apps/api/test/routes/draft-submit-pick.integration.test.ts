@@ -1,6 +1,15 @@
 import { AddressInfo } from "net";
 import type { Server } from "http";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from "vitest";
 import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
@@ -12,6 +21,7 @@ import {
   insertNomination,
   insertUser
 } from "../factories/db.js";
+import * as draftRepo from "../../src/data/repositories/draftRepository.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
@@ -76,6 +86,10 @@ describe("draft submit pick integration", () => {
 
   beforeEach(async () => {
     await truncateAllTables(db.pool);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("rejects when unauthenticated", async () => {
@@ -197,5 +211,47 @@ describe("draft submit pick integration", () => {
       [draft.id]
     );
     expect(rows[0].count).toBe(1);
+  });
+
+  it("rolls back pick and turn when a failure occurs after insert", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 1
+    });
+    const nomination = await insertNomination(db.pool);
+
+    vi.spyOn(draftRepo, "completeDraftIfReady").mockRejectedValueOnce(new Error("boom"));
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/picks`, {
+      nomination_id: nomination.id,
+      request_id: "rollback-1"
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.json.error.code).toBe("INTERNAL_ERROR");
+
+    const { rows: pickRows } = await db.pool.query(
+      `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
+      [draft.id]
+    );
+    expect(pickRows[0].count).toBe(0);
+
+    const { rows: draftRows } = await db.pool.query(
+      `SELECT current_pick_number FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect(draftRows[0].current_pick_number).toBe(1);
   });
 });
