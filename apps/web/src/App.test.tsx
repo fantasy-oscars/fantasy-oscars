@@ -200,9 +200,13 @@ describe("<App />", () => {
 
     render(<App />);
 
-    const draftBtns = await screen.findAllByRole("button", { name: /Draft room/i });
-    const draftBtn =
-      draftBtns.find((btn: HTMLElement) => !btn.hasAttribute("disabled")) ?? draftBtns[0];
+    const draftBtn = await waitFor(() => {
+      const btn = screen
+        .getAllByRole("button", { name: /Draft room/i })
+        .find((candidate: HTMLElement) => !candidate.hasAttribute("disabled"));
+      if (!btn) throw new Error("Draft room tab not enabled yet");
+      return btn;
+    });
     fireEvent.click(draftBtn);
 
     const loadBtn = await screen.findByRole("button", { name: /Load snapshot/i });
