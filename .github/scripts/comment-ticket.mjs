@@ -13,6 +13,8 @@
 import { readFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
 
+const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
+
 function parseArgs(argv) {
   const args = { issue: undefined, body: undefined, bodyFile: undefined, repo: undefined };
   for (let i = 0; i < argv.length; i++) {
@@ -42,7 +44,7 @@ function inferRepo() {
   } catch {
     // ignore
   }
-  return null;
+  return DEFAULT_REPO;
 }
 
 async function getBody(body, bodyFile) {

@@ -70,6 +70,8 @@ const OPTION_IDS = {
   }
 };
 
+const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
+
 function parseArgs(argv) {
   const args = {
     title: undefined,
@@ -110,7 +112,7 @@ function requireToken() {
 function inferRepo(repoArg) {
   if (repoArg) return repoArg;
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  throw new Error("Provide --repo owner/name or set GITHUB_REPOSITORY");
+  return DEFAULT_REPO;
 }
 
 async function getBody(body, bodyFile, depends) {

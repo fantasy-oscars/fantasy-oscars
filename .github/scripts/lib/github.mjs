@@ -1,5 +1,7 @@
 import { execSync } from "node:child_process";
 
+const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
+
 export function requireGitHubToken() {
   const token = process.env.GITHUB_TOKEN;
   if (!token) throw new Error("GITHUB_TOKEN is required");
@@ -18,7 +20,7 @@ export function inferRepoFullName(repoArg) {
     // ignore
   }
 
-  throw new Error("Provide --repo owner/name or set GITHUB_REPOSITORY");
+  return DEFAULT_REPO;
 }
 
 export function splitRepoFullName(repoFullName) {
@@ -44,4 +46,3 @@ export async function githubGraphql(token, query, variables = {}) {
   }
   return data.data;
 }
-
