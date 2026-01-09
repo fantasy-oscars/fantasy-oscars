@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildCreateDraftHandler, buildSubmitPickHandler } from "./drafts.js";
+import {
+  buildCreateDraftHandler,
+  buildSubmitPickHandler,
+  buildSnapshotDraftHandler
+} from "./drafts.js";
 import { signToken } from "../auth/token.js";
 import { AppError } from "../errors.js";
 import * as draftRepo from "../data/repositories/draftRepository.js";
@@ -267,5 +271,91 @@ describe("POST /drafts/:id/picks", () => {
 
     expect(state.status).toBe(201);
     expect(emitDraftEventSpy).toHaveBeenCalledWith(event);
+  });
+});
+
+describe("GET /drafts/:id/snapshot", () => {
+  const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
+  const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
+  const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
+  const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
+  const handler = buildSnapshotDraftHandler({} as unknown as Pool);
+
+  beforeEach(() => {
+    getDraftByIdSpy.mockResolvedValue({
+      id: 10,
+      league_id: 22,
+      status: "IN_PROGRESS",
+      draft_order_type: "SNAKE",
+      current_pick_number: 2,
+      version: 5,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: null
+    });
+    listDraftSeatsSpy.mockResolvedValue([
+      {
+        id: 1,
+        draft_id: 10,
+        league_member_id: 11,
+        seat_number: 1,
+        is_active: true,
+        user_id: 201
+      },
+      {
+        id: 2,
+        draft_id: 10,
+        league_member_id: 12,
+        seat_number: 2,
+        is_active: true,
+        user_id: 202
+      }
+    ]);
+    listDraftPicksSpy.mockResolvedValue([
+      {
+        id: 100,
+        draft_id: 10,
+        pick_number: 1,
+        round_number: 1,
+        seat_number: 1,
+        league_member_id: 11,
+        user_id: 201,
+        nomination_id: 300,
+        made_at: new Date("2024-01-01T00:01:00Z"),
+        request_id: "req-1"
+      }
+    ]);
+    getLeagueByIdSpy.mockResolvedValue({
+      id: 22,
+      code: "L1",
+      name: "Test League",
+      ceremony_id: 99,
+      max_members: 10,
+      roster_size: 10,
+      is_public: true,
+      created_by_user_id: 1,
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns snapshot with draft version from storage", async () => {
+    const req = mockReq({ params: { id: "10" } });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    const body = state.body as {
+      draft: { id: number; version: number };
+      version: number;
+    };
+    expect(body.draft.id).toBe(10);
+    expect(body.draft.version).toBe(5);
+    expect(body.version).toBe(5);
   });
 });
