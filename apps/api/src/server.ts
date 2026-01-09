@@ -89,6 +89,9 @@ export function createServer(deps?: { db?: Pool }) {
   app.get("/", (_req, res) => {
     res.json({ ok: true, service: "api", status: "healthy" });
   });
+  app.use((_req, res) => {
+    res.status(404).json(errorBody(new AppError("NOT_FOUND", 404, "Not found")));
+  });
 
   app.use(
     (
