@@ -80,14 +80,14 @@ describe("auth integration", () => {
     expect(res.json.user.handle).toBe("user1");
 
     const { rows } = await db.pool.query(
-      `SELECT password_hash FROM auth_password ap JOIN app_user u ON u.id = ap.user_id WHERE u.handle = $1`,
+      `SELECT password_hash, password_algo
+       FROM auth_password ap
+       JOIN app_user u ON u.id = ap.user_id
+       WHERE u.handle = $1`,
       ["user1"]
     );
-    const expectedHash = crypto
-      .createHash("sha256")
-      .update(payload.password)
-      .digest("hex");
-    expect(rows[0].password_hash).toBe(expectedHash);
+    expect(rows[0].password_algo).toBe("scrypt");
+    expect(rows[0].password_hash).toMatch(/^scrypt\$.+/);
   });
 
   it("rejects duplicate registrations", async () => {
@@ -95,7 +95,7 @@ describe("auth integration", () => {
       handle: "dupe",
       email: "dupe@example.com",
       display_name: "Dupe",
-      password: "pw"
+      password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ error: { code: string } }>("/auth/register", payload);
@@ -108,7 +108,7 @@ describe("auth integration", () => {
       handle: "loginuser",
       email: "login@example.com",
       display_name: "Login User",
-      password: "pw123"
+      password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ user: { handle: string }; token: string }>("/auth/login", {
@@ -131,12 +131,12 @@ describe("auth integration", () => {
       handle: "badpw",
       email: "badpw@example.com",
       display_name: "Bad Pw",
-      password: "pw123"
+      password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ error: { code: string } }>("/auth/login", {
       handle: payload.handle,
-      password: "wrong"
+      password: "wrongpass"
     });
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("INVALID_CREDENTIALS");
@@ -147,16 +147,22 @@ describe("auth integration", () => {
       handle: "cookieuser",
       email: "cookie@example.com",
       display_name: "Cookie User",
-      password: "pw123"
+      password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ user: { handle: string }; token: string }>("/auth/login", {
       handle: payload.handle,
       password: payload.password
     });
-    const setCookie = res.headers.get("set-cookie");
+    const rawSetCookie = res.headers.get("set-cookie") as unknown;
+    const setCookie =
+      typeof rawSetCookie === "string"
+        ? rawSetCookie
+        : Array.isArray(rawSetCookie)
+          ? rawSetCookie.join(",")
+          : "";
     expect(setCookie).toMatch(/auth_token=/);
-    const cookieHeader = setCookie?.split(";")[0] ?? "";
+    const cookieHeader = setCookie.split(";")[0] ?? "";
     const me = await getJson<{ user: { handle: string } }>("/auth/me", {
       Cookie: cookieHeader
     });
@@ -169,7 +175,7 @@ describe("auth integration", () => {
       handle: "logoutuser",
       email: "logout@example.com",
       display_name: "Logout User",
-      password: "pw123"
+      password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ token: string }>("/auth/login", {
@@ -195,7 +201,7 @@ describe("auth integration", () => {
         handle: "reset1",
         email: "reset1@example.com",
         display_name: "Reset One",
-        password: "oldpw"
+        password: "oldpw123"
       };
       await post("/auth/register", payload);
 
@@ -218,7 +224,7 @@ describe("auth integration", () => {
         handle: "reset2",
         email: "reset2@example.com",
         display_name: "Reset Two",
-        password: "oldpw"
+        password: "oldpw123"
       };
       await post("/auth/register", payload);
       const request = await post<{ token: string }>("/auth/reset-request", {
@@ -227,12 +233,15 @@ describe("auth integration", () => {
       const token = request.json.token;
       expect(token).toBeDefined();
 
-      const confirm = await post("/auth/reset-confirm", { token, password: "newpw" });
+      const confirm = await post("/auth/reset-confirm", {
+        token,
+        password: "newpw123"
+      });
       expect(confirm.status).toBe(200);
 
       const login = await post<{ token: string }>("/auth/login", {
         handle: payload.handle,
-        password: "newpw"
+        password: "newpw123"
       });
       expect(login.status).toBe(200);
       expect(login.json.token).toBeDefined();
@@ -243,7 +252,7 @@ describe("auth integration", () => {
         handle: "expired",
         email: "expired@example.com",
         display_name: "Expired",
-        password: "pw"
+        password: "pw123456"
       });
       const rawToken = "expired-token";
       const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -255,7 +264,7 @@ describe("auth integration", () => {
 
       const res = await post<{ error: { code: string } }>("/auth/reset-confirm", {
         token: rawToken,
-        password: "newpw"
+        password: "newpw123"
       });
       expect(res.status).toBe(400);
       expect(res.json.error.code).toBe("RESET_TOKEN_EXPIRED");
@@ -266,7 +275,7 @@ describe("auth integration", () => {
         handle: "used",
         email: "used@example.com",
         display_name: "Used",
-        password: "pw"
+        password: "pw123456"
       });
       const rawToken = "used-token";
       const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -278,7 +287,7 @@ describe("auth integration", () => {
 
       const res = await post<{ error: { code: string } }>("/auth/reset-confirm", {
         token: rawToken,
-        password: "newpw"
+        password: "newpw123"
       });
       expect(res.status).toBe(400);
       expect(res.json.error.code).toBe("RESET_TOKEN_USED");

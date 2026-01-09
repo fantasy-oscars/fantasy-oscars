@@ -5,8 +5,68 @@ import { AppError, validationError } from "../errors.js";
 import { signToken } from "../auth/token.js";
 import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 
-function hashPassword(password: string) {
-  return crypto.createHash("sha256").update(password).digest("hex");
+const PASSWORD_MIN_LENGTH = 8;
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
+
+function scryptAsync(
+  password: string,
+  salt: crypto.BinaryLike,
+  keylen: number,
+  options: crypto.ScryptOptions
+) {
+  return new Promise<Buffer>((resolve, reject) => {
+    crypto.scrypt(password, salt, keylen, options, (err, derivedKey) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(derivedKey as Buffer);
+    });
+  });
+}
+
+async function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16);
+  const derived = await scryptAsync(password, salt, SCRYPT_PARAMS.keylen, {
+    N: SCRYPT_PARAMS.N,
+    r: SCRYPT_PARAMS.r,
+    p: SCRYPT_PARAMS.p
+  });
+  return [
+    "scrypt",
+    SCRYPT_PARAMS.N,
+    SCRYPT_PARAMS.r,
+    SCRYPT_PARAMS.p,
+    salt.toString("base64"),
+    derived.toString("base64")
+  ].join("$");
+}
+
+function verifySha256(password: string, passwordHash: string) {
+  const hash = crypto.createHash("sha256").update(password).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(passwordHash));
+}
+
+async function verifyPassword(
+  password: string,
+  passwordHash: string,
+  passwordAlgo: string
+) {
+  if (passwordAlgo === "sha256") {
+    return verifySha256(password, passwordHash);
+  }
+  if (passwordAlgo !== "scrypt") return false;
+  const parts = passwordHash.split("$");
+  if (parts.length !== 6 || parts[0] !== "scrypt") return false;
+  const [, nRaw, rRaw, pRaw, saltB64, hashB64] = parts;
+  const salt = Buffer.from(saltB64, "base64");
+  const keyLen = Buffer.from(hashB64, "base64").length;
+  const derived = await scryptAsync(password, salt, keyLen, {
+    N: Number(nRaw),
+    r: Number(rRaw),
+    p: Number(pRaw)
+  });
+  return crypto.timingSafeEqual(derived, Buffer.from(hashB64, "base64"));
 }
 
 function hashResetToken(token: string) {
@@ -37,9 +97,37 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           "password"
         ]);
       }
+      if (
+        typeof handle !== "string" ||
+        typeof email !== "string" ||
+        typeof display_name !== "string" ||
+        typeof password !== "string"
+      ) {
+        throw validationError("Invalid field types", [
+          "handle",
+          "email",
+          "display_name",
+          "password"
+        ]);
+      }
+      const trimmedHandle = handle.trim();
+      const trimmedEmail = email.trim();
+      const trimmedDisplayName = display_name.trim();
+      const invalidFields: string[] = [];
+      if (trimmedHandle.length < 2 || /\s/.test(trimmedHandle)) {
+        invalidFields.push("handle");
+      }
+      if (trimmedEmail.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        invalidFields.push("email");
+      }
+      if (trimmedDisplayName.length < 1) invalidFields.push("display_name");
+      if (password.length < PASSWORD_MIN_LENGTH) invalidFields.push("password");
+      if (invalidFields.length) {
+        throw validationError("Invalid field values", invalidFields);
+      }
 
-      const password_hash = hashPassword(password);
-      const password_algo = "sha256";
+      const password_hash = await hashPassword(password);
+      const password_algo = "scrypt";
 
       try {
         const { rows } = await query(
@@ -47,7 +135,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           `INSERT INTO app_user (handle, email, display_name)
            VALUES ($1, $2, $3)
            RETURNING id, handle, email, display_name, created_at`,
-          [handle, email, display_name]
+          [trimmedHandle, trimmedEmail, trimmedDisplayName]
         );
 
         const user = rows[0];
@@ -76,21 +164,31 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       if (!handle || !password) {
         throw validationError("Missing required fields", ["handle", "password"]);
       }
+      if (typeof handle !== "string" || typeof password !== "string") {
+        throw validationError("Invalid field types", ["handle", "password"]);
+      }
+      if (handle.trim().length < 2 || password.length < PASSWORD_MIN_LENGTH) {
+        throw validationError("Invalid credentials", ["handle", "password"]);
+      }
 
       const { rows } = await query(
         client,
-        `SELECT u.id, u.handle, u.email, u.display_name, p.password_hash
+        `SELECT u.id, u.handle, u.email, u.display_name, p.password_hash, p.password_algo
          FROM app_user u
          JOIN auth_password p ON p.user_id = u.id
          WHERE u.handle = $1`,
-        [handle]
+        [handle.trim()]
       );
 
       const user = rows[0];
       if (!user) throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
 
-      const hash = hashPassword(password);
-      if (hash !== user.password_hash) {
+      const isValid = await verifyPassword(
+        password,
+        user.password_hash,
+        user.password_algo
+      );
+      if (!isValid) {
         throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
       }
 
@@ -143,6 +241,12 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       if (!email) {
         throw validationError("Missing required fields", ["email"]);
       }
+      if (typeof email !== "string") {
+        throw validationError("Invalid field types", ["email"]);
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        throw validationError("Invalid field values", ["email"]);
+      }
 
       const { rows } = await query(
         client,
@@ -184,6 +288,12 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       if (!token || !password) {
         throw validationError("Missing required fields", ["token", "password"]);
       }
+      if (typeof token !== "string" || typeof password !== "string") {
+        throw validationError("Invalid field types", ["token", "password"]);
+      }
+      if (password.length < PASSWORD_MIN_LENGTH) {
+        throw validationError("Invalid field values", ["password"]);
+      }
       const tokenHash = hashResetToken(token);
 
       const { rows } = await query(
@@ -204,11 +314,11 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         throw new AppError("RESET_TOKEN_EXPIRED", 400, "Reset token expired");
       }
 
-      const newHash = hashPassword(password);
+      const newHash = await hashPassword(password);
       await query(
         client,
         `UPDATE auth_password
-         SET password_hash = $2, password_algo = 'sha256', password_set_at = now()
+         SET password_hash = $2, password_algo = 'scrypt', password_set_at = now()
          WHERE user_id = $1`,
         [reset.user_id, newHash]
       );
