@@ -35,7 +35,16 @@ export function splitRepoFullName(repoFullName) {
 export async function githubGraphql(_token, query, variables = {}) {
   const args = ["api", "graphql", "-f", `query=${query}`];
   if (variables && Object.keys(variables).length > 0) {
-    args.push("-f", `variables=${JSON.stringify(variables)}`);
+    for (const [key, value] of Object.entries(variables)) {
+      if (value === undefined) continue;
+      if (typeof value === "string") {
+        args.push("-f", `${key}=${value}`);
+      } else if (typeof value === "number" || typeof value === "boolean") {
+        args.push("-F", `${key}=${String(value)}`);
+      } else {
+        args.push("-F", `${key}=${JSON.stringify(value)}`);
+      }
+    }
   }
   const output = execFileSync("gh", args, { encoding: "utf8" });
   const parsed = output ? JSON.parse(output) : {};
