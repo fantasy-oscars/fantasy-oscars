@@ -12,14 +12,17 @@ import {
   countNominations,
   listDraftSeats,
   listDraftPicks,
+  listDraftResults,
   countDraftPicks,
   getPickByNomination,
   getPickByNumber,
   getPickByRequestId,
   insertDraftPickRecord,
   getNominationById,
+  listNominationIds,
   completeDraftIfReady,
-  createDraftEvent
+  createDraftEvent,
+  upsertDraftResults
 } from "../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
@@ -32,6 +35,7 @@ import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
 import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
+import { scoreDraft } from "../domain/scoring.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -609,6 +613,149 @@ export function buildExportDraftHandler(pool: Pool) {
   };
 }
 
+export function buildDraftResultsHandler(pool: Pool) {
+  return async function handleDraftResults(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+      const { results } = req.body ?? {};
+      if (!Array.isArray(results)) {
+        throw validationError("Missing results array", ["results"]);
+      }
+      const parsed = results.map((entry) => ({
+        nomination_id: Number(entry?.nomination_id),
+        won: entry?.won,
+        points:
+          entry?.points === undefined || entry?.points === null
+            ? null
+            : Number(entry.points)
+      }));
+      const invalid = parsed.some(
+        (entry) =>
+          !Number.isFinite(entry.nomination_id) ||
+          entry.nomination_id <= 0 ||
+          typeof entry.won !== "boolean" ||
+          (entry.points !== null && !Number.isFinite(entry.points))
+      );
+      if (invalid) {
+        throw validationError("Invalid results payload", ["results"]);
+      }
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+      const nominationIds = parsed.map((entry) => entry.nomination_id);
+      const existing = await listNominationIds(pool, nominationIds);
+      if (existing.length !== nominationIds.length) {
+        throw validationError("Unknown nomination_id in results", ["results"]);
+      }
+
+      await upsertDraftResults(
+        pool,
+        draftId,
+        parsed.map((entry) => ({
+          nomination_id: entry.nomination_id,
+          won: entry.won,
+          points: entry.points
+        }))
+      );
+
+      return res.status(200).json({ ok: true, results: parsed });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+export function buildDraftStandingsHandler(pool: Pool) {
+  return async function handleDraftStandings(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+      const seats = await listDraftSeats(pool, draftId);
+      const picks = await listDraftPicks(pool, draftId);
+      const results = await listDraftResults(pool, draftId);
+
+      const scores = scoreDraft({
+        picks: picks.map((pick) => ({
+          pick_number: pick.pick_number,
+          seat_number: pick.seat_number,
+          nomination_id: String(pick.nomination_id)
+        })),
+        results: results.map((result) => ({
+          nomination_id: String(result.nomination_id),
+          won: result.won,
+          points: result.points ?? undefined
+        }))
+      });
+
+      const pointsBySeat = new Map(
+        scores.map((score) => [score.seat_number, score.points])
+      );
+      const picksBySeat = new Map<number, typeof picks>();
+      for (const pick of picks) {
+        if (!picksBySeat.has(pick.seat_number)) {
+          picksBySeat.set(pick.seat_number, []);
+        }
+        picksBySeat.get(pick.seat_number)?.push(pick);
+      }
+
+      const standings = seats
+        .map((seat) => ({
+          seat_number: seat.seat_number,
+          league_member_id: seat.league_member_id,
+          user_id: seat.user_id ?? null,
+          points: pointsBySeat.get(seat.seat_number) ?? 0,
+          picks:
+            picksBySeat.get(seat.seat_number)?.map((pick) => ({
+              pick_number: pick.pick_number,
+              round_number: pick.round_number,
+              nomination_id: pick.nomination_id,
+              made_at: pick.made_at
+            })) ?? []
+        }))
+        .sort((a, b) => a.seat_number - b.seat_number);
+
+      return res.status(200).json({
+        draft: {
+          id: draft.id,
+          league_id: draft.league_id,
+          status: draft.status,
+          draft_order_type: draft.draft_order_type,
+          current_pick_number: draft.current_pick_number,
+          started_at: draft.started_at ?? null,
+          completed_at: draft.completed_at ?? null,
+          version: draft.version
+        },
+        standings,
+        results: results.map((result) => ({
+          nomination_id: result.nomination_id,
+          won: result.won,
+          points: result.points ?? null
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createDraftsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
@@ -617,6 +764,8 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.post("/:id/start", buildStartDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
   router.get("/:id/export", buildExportDraftHandler(client as Pool));
+  router.post("/:id/results", buildDraftResultsHandler(client as Pool));
+  router.get("/:id/standings", buildDraftStandingsHandler(client as Pool));
   router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
 
   return router;

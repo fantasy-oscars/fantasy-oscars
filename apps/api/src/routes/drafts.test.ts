@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildCreateDraftHandler,
   buildExportDraftHandler,
+  buildDraftResultsHandler,
+  buildDraftStandingsHandler,
   buildSubmitPickHandler,
   buildSnapshotDraftHandler
 } from "./drafts.js";
@@ -286,6 +288,96 @@ describe("POST /drafts/:id/picks", () => {
   });
 });
 
+describe("POST /drafts/:id/results", () => {
+  const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
+  const listNominationIdsSpy = vi.spyOn(draftRepo, "listNominationIds");
+  const upsertDraftResultsSpy = vi.spyOn(draftRepo, "upsertDraftResults");
+  const handler = buildDraftResultsHandler({} as unknown as Pool);
+
+  beforeEach(() => {
+    getDraftByIdSpy.mockResolvedValue({
+      id: 55,
+      league_id: 9,
+      status: "COMPLETED",
+      draft_order_type: "SNAKE",
+      current_pick_number: null,
+      version: 4,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: new Date("2024-01-01T01:00:00Z")
+    });
+    listNominationIdsSpy.mockResolvedValue([100, 101]);
+    upsertDraftResultsSpy.mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects invalid draft id", async () => {
+    const req = mockReq({
+      params: { id: "abc" },
+      body: { results: [] }
+    });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).toHaveBeenCalledWith(expect.any(AppError));
+    const err = next.mock.calls[0][0] as AppError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.status).toBe(400);
+    expect(state.body).toBeUndefined();
+  });
+
+  it("rejects unknown nominations", async () => {
+    listNominationIdsSpy.mockResolvedValueOnce([100]);
+    const req = mockReq({
+      params: { id: "55" },
+      body: {
+        results: [
+          { nomination_id: 100, won: true },
+          { nomination_id: 101, won: false }
+        ]
+      }
+    });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).toHaveBeenCalledWith(expect.any(AppError));
+    const err = next.mock.calls[0][0] as AppError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.status).toBe(400);
+    expect(state.body).toBeUndefined();
+    expect(upsertDraftResultsSpy).not.toHaveBeenCalled();
+  });
+
+  it("upserts results", async () => {
+    const req = mockReq({
+      params: { id: "55" },
+      body: {
+        results: [
+          { nomination_id: 100, won: true, points: 1 },
+          { nomination_id: 101, won: false }
+        ]
+      }
+    });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    expect(upsertDraftResultsSpy).toHaveBeenCalledWith(expect.anything(), 55, [
+      { nomination_id: 100, won: true, points: 1 },
+      { nomination_id: 101, won: false, points: null }
+    ]);
+  });
+});
+
 describe("GET /drafts/:id/export", () => {
   const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
   const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
@@ -389,6 +481,111 @@ describe("GET /drafts/:id/export", () => {
     expect(err.code).toBe("VALIDATION_ERROR");
     expect(err.status).toBe(400);
     expect(state.body).toBeUndefined();
+  });
+});
+
+describe("GET /drafts/:id/standings", () => {
+  const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
+  const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
+  const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
+  const listDraftResultsSpy = vi.spyOn(draftRepo, "listDraftResults");
+  const handler = buildDraftStandingsHandler({} as unknown as Pool);
+
+  beforeEach(() => {
+    getDraftByIdSpy.mockResolvedValue({
+      id: 77,
+      league_id: 5,
+      status: "COMPLETED",
+      draft_order_type: "SNAKE",
+      current_pick_number: null,
+      version: 9,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: new Date("2024-01-01T01:00:00Z")
+    });
+    listDraftSeatsSpy.mockResolvedValue([
+      {
+        id: 1,
+        draft_id: 77,
+        league_member_id: 10,
+        seat_number: 1,
+        is_active: true,
+        user_id: 100
+      },
+      {
+        id: 2,
+        draft_id: 77,
+        league_member_id: 11,
+        seat_number: 2,
+        is_active: true,
+        user_id: 101
+      }
+    ]);
+    listDraftPicksSpy.mockResolvedValue([
+      {
+        id: 1,
+        draft_id: 77,
+        pick_number: 1,
+        round_number: 1,
+        seat_number: 1,
+        league_member_id: 10,
+        user_id: 100,
+        nomination_id: 200,
+        made_at: new Date("2024-01-01T00:10:00Z")
+      },
+      {
+        id: 2,
+        draft_id: 77,
+        pick_number: 2,
+        round_number: 1,
+        seat_number: 2,
+        league_member_id: 11,
+        user_id: 101,
+        nomination_id: 201,
+        made_at: new Date("2024-01-01T00:11:00Z")
+      }
+    ]);
+    listDraftResultsSpy.mockResolvedValue([
+      {
+        draft_id: 77,
+        nomination_id: 200,
+        won: true,
+        points: null,
+        created_at: new Date("2024-01-01T00:30:00Z"),
+        updated_at: new Date("2024-01-01T00:30:00Z")
+      },
+      {
+        draft_id: 77,
+        nomination_id: 201,
+        won: false,
+        points: null,
+        created_at: new Date("2024-01-01T00:30:00Z"),
+        updated_at: new Date("2024-01-01T00:30:00Z")
+      }
+    ]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns standings with points and picks", async () => {
+    const req = mockReq({ params: { id: "77" } });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    const body = state.body as {
+      standings: Array<{ seat_number: number; points: number }>;
+    };
+    expect(body.standings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ seat_number: 1, points: 1 }),
+        expect.objectContaining({ seat_number: 2, points: 0 })
+      ])
+    );
   });
 });
 
