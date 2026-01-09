@@ -254,11 +254,15 @@ function DraftRoom(props: {
   const snapshotRef = useRef<Snapshot | null>(null);
   const [lastVersion, setLastVersion] = useState<number | null>(null);
   const lastVersionRef = useRef<number | null>(null);
+  const [desynced, setDesynced] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
 
-  async function loadSnapshot(id: string) {
+  async function loadSnapshot(id: string, options?: { preserveSnapshot?: boolean }) {
     setLoading(true);
     setError(null);
-    setSnapshot(null);
+    if (!options?.preserveSnapshot) {
+      setSnapshot(null);
+    }
     const res = await fetchJson<Snapshot>(`/drafts/${id}/snapshot`, { method: "GET" });
     if (res.ok && res.data) {
       const normalized = {
@@ -270,10 +274,20 @@ function DraftRoom(props: {
       };
       setSnapshot(normalized);
       setLastVersion(normalized.version);
+      if (!options?.preserveSnapshot) {
+        setDesynced(false);
+        setResyncing(false);
+      }
+      setLoading(false);
+      return true;
     } else {
       setError(res.error ?? "Failed to load snapshot");
+      if (!options?.preserveSnapshot) {
+        setResyncing(false);
+      }
     }
     setLoading(false);
+    return false;
   }
 
   const activeSeatNumber = useMemo(() => {
@@ -359,6 +373,8 @@ function DraftRoom(props: {
         socketRef.current = null;
       }
       setConnectionStatus("disconnected");
+      setDesynced(false);
+      setResyncing(false);
       return;
     }
 
@@ -390,6 +406,17 @@ function DraftRoom(props: {
       const currentVersion = lastVersionRef.current;
       if (!current || currentVersion === null) return;
       if (event.draft_id !== current.draft.id) return;
+      if (event.version > currentVersion + 1) {
+        setDesynced(true);
+        setResyncing(true);
+        void loadSnapshot(String(current.draft.id), { preserveSnapshot: true }).then(
+          (ok) => {
+            setResyncing(false);
+            if (ok) setDesynced(false);
+          }
+        );
+        return;
+      }
       if (event.version !== currentVersion + 1) return;
 
       setSnapshot((prev) => {
@@ -533,6 +560,16 @@ function DraftRoom(props: {
                   {connectionStatus === "reconnecting" && "Reconnecting..."}
                   {connectionStatus === "disconnected" && "Disconnected"}
                 </span>
+                {desynced && (
+                  <span
+                    className="status-pill"
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Draft desynced"
+                  >
+                    {resyncing ? "Resyncing..." : "Desynced"}
+                  </span>
+                )}
               </div>
               {snapshot.draft.status === "PENDING" && (
                 <div className="inline-actions">
