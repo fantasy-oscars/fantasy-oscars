@@ -116,4 +116,41 @@ describe("draft namespace routing", () => {
     expect(error.message).toContain("INVALID_DRAFT_ID");
     socket.disconnect();
   });
+
+  it("rejoins the draft room after reconnect", async () => {
+    try {
+      server = await startSocketTestServer((io) => {
+        const nsp = registerDraftNamespace(io);
+        nsp.on("connection", (socket) => {
+          socket.on("ping-draft", (message: string) => {
+            emitToDraft(nsp, (socket.data as { draftId: number }).draftId, "draft-ping", {
+              message
+            });
+          });
+        });
+      });
+    } catch (err) {
+      if (err instanceof ListenPermissionError) return;
+      throw err;
+    }
+
+    const client = await createTestClient(server, {
+      namespace: DRAFT_NAMESPACE,
+      socketOptions: { query: { draftId: 1 } }
+    });
+    clients = [client];
+
+    expect(await waitForEvent(client, "joined")).toEqual([{ draftId: 1 }]);
+
+    client.socket.disconnect();
+    client.events.length = 0;
+    client.socket.connect();
+
+    expect(await waitForEvent(client, "joined")).toEqual([{ draftId: 1 }]);
+
+    client.socket.emit("ping-draft", "reconnected");
+    expect(await waitForEvent(client, "draft-ping")).toEqual([
+      { message: "reconnected" }
+    ]);
+  });
 });
