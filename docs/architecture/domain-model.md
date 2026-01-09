@@ -16,9 +16,10 @@
 - **App User / Auth Password**: users and credential placeholder.
 - **League**: scoped to a ceremony; owner, roster/max members, visibility.
 - **League Member**: user in league with role; unique per league/user.
-- **Draft**: single per league; status/order type/current pick.
+- **Draft**: single per league; status/order type/current pick; monotonic version for authoritative mutations.
 - **Draft Seat**: seat binding to league_member; unique per draft seat_number and draft/member.
 - **Draft Pick**: pick made by a seat/member; unique pick_number per draft, unique nomination per draft, unique (round_number, seat_number) per draft.
+- **Draft Event**: immutable stream of draft mutations (versioned per draft).
 
 ## Invariants (selected)
 
@@ -27,6 +28,7 @@
 - Draft uniqueness: one draft per league.
 - Draft seat uniqueness: per draft seat_number and per draft league_member.
 - Draft pick uniqueness: per draft pick_number, per draft nomination, per (round_number, seat_number).
+- Draft versioning: each authoritative mutation increments draft.version and inserts a draft_event with the same version.
 - League membership uniqueness: per league/user.
 
 ## Usage Guidance

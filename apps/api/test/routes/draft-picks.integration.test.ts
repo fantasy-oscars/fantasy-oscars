@@ -154,6 +154,22 @@ describe("draft picks integration", () => {
     expect(res2.status).toBe(201);
     expect(res2.json.pick.pick_number).toBe(2);
     expect(res2.json.pick.seat_number).toBe(2);
+
+    const { rows: events } = await db.pool.query<{
+      version: number;
+      event_type: string;
+    }>(
+      `SELECT version::int AS version, event_type
+       FROM draft_event
+       WHERE draft_id = $1
+       ORDER BY version ASC`,
+      [draft.id]
+    );
+    expect(events.map((event) => event.version)).toEqual([1, 2]);
+    expect(events.map((event) => event.event_type)).toEqual([
+      "draft.pick.submitted",
+      "draft.pick.submitted"
+    ]);
   });
 
   it("enforces snake reversal across rounds", async () => {

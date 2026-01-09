@@ -6,6 +6,7 @@ export type DraftRecord = {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
+  version: number;
   started_at?: Date | null;
   completed_at?: Date | null;
 };
@@ -32,6 +33,15 @@ export type DraftPickRecord = {
   request_id?: string | null;
 };
 
+export type DraftEventRecord = {
+  id: number;
+  draft_id: number;
+  version: number;
+  event_type: string;
+  payload: unknown;
+  created_at: Date;
+};
+
 export async function createDraft(
   client: DbClient,
   input: {
@@ -54,6 +64,7 @@ export async function createDraft(
         status,
         draft_order_type,
         current_pick_number,
+        version::int,
         started_at,
         completed_at
     `,
@@ -139,6 +150,7 @@ export async function updateDraftOnStart(
        status,
        draft_order_type,
        current_pick_number,
+       version::int,
        started_at,
        completed_at`,
     [id, current_pick_number, started_at]
@@ -365,6 +377,7 @@ export async function updateDraftOnComplete(
        status,
        draft_order_type,
        current_pick_number::int,
+       version::int,
        started_at,
        completed_at`,
     [draftId, completedAt]
@@ -392,9 +405,67 @@ export async function completeDraftIfReady(
        status,
        draft_order_type,
        current_pick_number::int,
+       version::int,
        started_at,
        completed_at`,
     [draftId, completedAt, requiredPickCount]
   );
   return rows[0] ?? null;
+}
+
+export async function incrementDraftVersion(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
+  const { rows } = await query<{ version: number }>(
+    client,
+    `UPDATE draft
+     SET version = version + 1
+     WHERE id = $1
+     RETURNING version::int`,
+    [draftId]
+  );
+  return rows[0]?.version ?? 0;
+}
+
+export async function insertDraftEvent(
+  client: DbClient,
+  input: {
+    draft_id: number;
+    version: number;
+    event_type: string;
+    payload: unknown;
+  }
+): Promise<DraftEventRecord> {
+  const { rows } = await query<DraftEventRecord>(
+    client,
+    `INSERT INTO draft_event (draft_id, version, event_type, payload)
+     VALUES ($1, $2, $3, $4::jsonb)
+     RETURNING
+       id::int,
+       draft_id::int,
+       version::int,
+       event_type,
+       payload,
+       created_at`,
+    [input.draft_id, input.version, input.event_type, JSON.stringify(input.payload ?? {})]
+  );
+  return rows[0];
+}
+
+export async function createDraftEvent(
+  client: DbClient,
+  input: {
+    draft_id: number;
+    event_type: string;
+    payload: unknown;
+  }
+): Promise<DraftEventRecord> {
+  const version = await incrementDraftVersion(client, input.draft_id);
+  return insertDraftEvent(client, {
+    draft_id: input.draft_id,
+    version,
+    event_type: input.event_type,
+    payload: input.payload
+  });
 }

@@ -314,14 +314,15 @@ export async function insertDraft(
     ...overrides
   });
   await pool.query(
-    `INSERT INTO draft (id, league_id, status, draft_order_type, current_pick_number, started_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    `INSERT INTO draft (id, league_id, status, draft_order_type, current_pick_number, version, started_at, completed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
     [
       draft.id,
       draft.league_id,
       draft.status,
       draft.draft_order_type,
       draft.current_pick_number,
+      draft.version,
       draft.started_at,
       draft.completed_at
     ]
@@ -379,6 +380,36 @@ export async function insertDraftPick(
       pick.user_id,
       pick.nomination_id,
       pick.made_at
+    ]
+  );
+  const { rows: versionRows } = await pool.query<{ version: number }>(
+    `UPDATE draft
+     SET version = version + 1
+     WHERE id = $1
+     RETURNING version::int`,
+    [pick.draft_id]
+  );
+  const version = versionRows[0]?.version ?? 0;
+  await pool.query(
+    `INSERT INTO draft_event (draft_id, version, event_type, payload)
+     VALUES ($1, $2, $3, $4::jsonb)`,
+    [
+      pick.draft_id,
+      version,
+      "draft.pick.submitted",
+      JSON.stringify({
+        pick: {
+          id: pick.id,
+          draft_id: pick.draft_id,
+          pick_number: pick.pick_number,
+          round_number: pick.round_number,
+          seat_number: pick.seat_number,
+          league_member_id: pick.league_member_id,
+          user_id: pick.user_id,
+          nomination_id: pick.nomination_id,
+          made_at: pick.made_at
+        }
+      })
     ]
   );
   return pick;

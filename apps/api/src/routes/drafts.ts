@@ -18,7 +18,8 @@ import {
   getPickByRequestId,
   insertDraftPickRecord,
   getNominationById,
-  completeDraftIfReady
+  completeDraftIfReady,
+  createDraftEvent
 } from "../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
@@ -30,6 +31,7 @@ import { computePickAssignment } from "../domain/draftOrder.js";
 import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
 import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
+import { emitDraftEvent } from "../realtime/draftEvents.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -91,7 +93,7 @@ export function buildCreateDraftHandler(client: DbClient) {
   };
 }
 
-export function buildStartDraftHandler(client: DbClient) {
+export function buildStartDraftHandler(pool: Pool) {
   return async function handleStartDraft(
     req: express.Request,
     res: express.Response,
@@ -103,72 +105,94 @@ export function buildStartDraftHandler(client: DbClient) {
         throw validationError("Invalid draft id", ["id"]);
       }
 
-      const draft = await getDraftById(client, draftId);
-      if (!draft) {
-        throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
-      }
-
-      const league = await getLeagueById(client, draft.league_id);
-      if (!league) {
-        throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-      }
-
       const userId = Number((req as AuthedRequest).auth?.sub);
-      const leagueMember = await getLeagueMember(client, league.id, userId);
-      const isCommissioner =
-        league.created_by_user_id === userId ||
-        (leagueMember &&
-          (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
-      if (!isCommissioner) {
-        throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
-      }
 
-      if (draft.status !== "PENDING") {
-        throw new AppError("DRAFT_ALREADY_STARTED", 409, "Draft already started");
-      }
+      const result = await runInTransaction(pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) {
+          throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        }
 
-      const seats = await countDraftSeats(client, draftId);
-      if (seats <= 0) {
-        throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
-      }
+        const league = await getLeagueById(tx, draft.league_id);
+        if (!league) {
+          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        }
 
-      const nominationCount = await countNominations(client);
-      if (nominationCount <= 0) {
-        throw new AppError(
-          "PREREQ_MISSING_NOMINATIONS",
-          400,
-          "No nominations loaded; load nominees before starting draft"
+        const leagueMember = await getLeagueMember(tx, league.id, userId);
+        const isCommissioner =
+          league.created_by_user_id === userId ||
+          (leagueMember &&
+            (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
+        if (!isCommissioner) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+
+        if (draft.status !== "PENDING") {
+          throw new AppError("DRAFT_ALREADY_STARTED", 409, "Draft already started");
+        }
+
+        const seats = await countDraftSeats(tx, draftId);
+        if (seats <= 0) {
+          throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+        }
+
+        const nominationCount = await countNominations(tx);
+        if (nominationCount <= 0) {
+          throw new AppError(
+            "PREREQ_MISSING_NOMINATIONS",
+            400,
+            "No nominations loaded; load nominees before starting draft"
+          );
+        }
+
+        const now = new Date();
+        const transitioned = transitionDraftState(
+          {
+            id: draft.id,
+            status: draft.status,
+            started_at: draft.started_at,
+            completed_at: draft.completed_at
+          },
+          "IN_PROGRESS",
+          () => now
         );
-      }
 
-      const now = new Date();
-      const transitioned = transitionDraftState(
-        {
-          id: draft.id,
-          status: draft.status,
-          started_at: draft.started_at,
-          completed_at: draft.completed_at
-        },
-        "IN_PROGRESS",
-        () => now
-      );
+        const updated = await updateDraftOnStart(
+          tx,
+          draft.id,
+          draft.current_pick_number ?? 1,
+          transitioned.started_at ?? now
+        );
+        if (!updated) {
+          throw new AppError("INTERNAL_ERROR", 500, "Failed to start draft");
+        }
 
-      const updated = await updateDraftOnStart(
-        client,
-        draft.id,
-        draft.current_pick_number ?? 1,
-        transitioned.started_at ?? now
-      );
-      if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to start draft");
+        const event = await createDraftEvent(tx, {
+          draft_id: draft.id,
+          event_type: "draft.started",
+          payload: {
+            draft: {
+              id: updated.id,
+              status: updated.status,
+              current_pick_number: updated.current_pick_number,
+              started_at: updated.started_at,
+              completed_at: updated.completed_at
+            }
+          }
+        });
 
-      return res.status(200).json({ draft: updated });
+        return { draft: { ...updated, version: event.version }, event };
+      });
+
+      emitDraftEvent(result.event);
+      return res.status(200).json({ draft: result.draft });
     } catch (err) {
       next(err);
     }
   };
 }
 
-export function buildSnapshotDraftHandler(client: DbClient) {
+export function buildSnapshotDraftHandler(pool: Pool) {
   return async function handleSnapshotDraft(
     req: express.Request,
     res: express.Response,
@@ -180,15 +204,14 @@ export function buildSnapshotDraftHandler(client: DbClient) {
         throw validationError("Invalid draft id", ["id"]);
       }
 
-      const draft = await getDraftById(client, draftId);
+      let draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
 
-      const seats = await listDraftSeats(client, draftId);
-      const picks = await listDraftPicks(client, draftId);
-      const version = picks.length;
+      let seats = await listDraftSeats(pool, draftId);
+      let picks = await listDraftPicks(pool, draftId);
 
       // If all required picks are made but status not updated, complete draft lazily.
-      const league = await getLeagueById(client, draft.league_id);
+      const league = await getLeagueById(pool, draft.league_id);
       const rosterSizeRaw = Number(league?.roster_size);
       const rosterSize =
         Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
@@ -198,33 +221,81 @@ export function buildSnapshotDraftHandler(client: DbClient) {
         picks.length >= totalRequired &&
         draft.status !== "COMPLETED"
       ) {
-        const completed = transitionDraftState(
-          {
-            id: draft.id,
-            status: draft.status,
-            started_at: draft.started_at,
-            completed_at: draft.completed_at
-          },
-          "COMPLETED"
-        );
-        const updated =
-          (await completeDraftIfReady(
-            client,
-            draft.id,
-            completed.completed_at ?? new Date(),
-            totalRequired
-          )) ??
-          (await updateDraftOnComplete(
-            client,
-            draft.id,
-            completed.completed_at ?? new Date()
-          ));
-        draft.status = updated?.status ?? completed.status;
-        draft.completed_at = updated?.completed_at ?? completed.completed_at;
-        draft.current_pick_number = null;
+        const result = await runInTransaction(pool, async (tx) => {
+          const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
+          if (!lockedDraft) {
+            throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+          }
+          const freshSeats = await listDraftSeats(tx, draftId);
+          const freshPicks = await listDraftPicks(tx, draftId);
+          const freshTotalRequired = freshSeats.length * rosterSize;
+          if (
+            freshTotalRequired <= 0 ||
+            freshPicks.length < freshTotalRequired ||
+            lockedDraft.status === "COMPLETED"
+          ) {
+            return {
+              draft: lockedDraft,
+              seats: freshSeats,
+              picks: freshPicks,
+              event: null
+            };
+          }
+
+          const completed = transitionDraftState(
+            {
+              id: lockedDraft.id,
+              status: lockedDraft.status,
+              started_at: lockedDraft.started_at,
+              completed_at: lockedDraft.completed_at
+            },
+            "COMPLETED"
+          );
+          const updated =
+            (await completeDraftIfReady(
+              tx,
+              lockedDraft.id,
+              completed.completed_at ?? new Date(),
+              freshTotalRequired
+            )) ??
+            (await updateDraftOnComplete(
+              tx,
+              lockedDraft.id,
+              completed.completed_at ?? new Date()
+            ));
+          const nextDraft = {
+            ...lockedDraft,
+            status: updated?.status ?? completed.status,
+            completed_at: updated?.completed_at ?? completed.completed_at,
+            current_pick_number: null
+          };
+          const event = await createDraftEvent(tx, {
+            draft_id: lockedDraft.id,
+            event_type: "draft.completed",
+            payload: {
+              draft: {
+                id: nextDraft.id,
+                status: nextDraft.status,
+                current_pick_number: nextDraft.current_pick_number,
+                started_at: nextDraft.started_at,
+                completed_at: nextDraft.completed_at
+              }
+            }
+          });
+
+          return { draft: nextDraft, seats: freshSeats, picks: freshPicks, event };
+        });
+
+        draft = result.draft;
+        seats = result.seats;
+        picks = result.picks;
+        if (result.event) {
+          draft.version = result.event.version;
+          emitDraftEvent(result.event);
+        }
       }
 
-      return res.status(200).json({ draft, seats, picks, version });
+      return res.status(200).json({ draft, seats, picks, version: draft.version });
     } catch (err) {
       next(err);
     }
@@ -440,10 +511,37 @@ export function buildSubmitPickHandler(pool: Pool) {
           draft.current_pick_number = nextPickNumber;
         }
 
-        return { pick, reused: false };
+        const event = await createDraftEvent(tx, {
+          draft_id: draftIdNum,
+          event_type: "draft.pick.submitted",
+          payload: {
+            pick: {
+              id: pick.id,
+              draft_id: pick.draft_id,
+              pick_number: pick.pick_number,
+              round_number: pick.round_number,
+              seat_number: pick.seat_number,
+              league_member_id: pick.league_member_id,
+              user_id: pick.user_id,
+              nomination_id: pick.nomination_id,
+              made_at: pick.made_at,
+              request_id: pick.request_id ?? null
+            },
+            draft: {
+              status: draft.status,
+              current_pick_number: draft.current_pick_number,
+              completed_at: draft.completed_at ?? null
+            }
+          }
+        });
+
+        return { pick, reused: false, event };
       });
 
       const status = result?.reused ? 200 : 201;
+      if (result?.event) {
+        emitDraftEvent(result.event);
+      }
       return res.status(status).json({ pick: result.pick });
     } catch (err) {
       if (draftId !== null && requestId) {
@@ -466,8 +564,8 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
 
   router.use(requireAuth(authSecret));
   router.post("/", buildCreateDraftHandler(client));
-  router.post("/:id/start", buildStartDraftHandler(client));
-  router.get("/:id/snapshot", buildSnapshotDraftHandler(client));
+  router.post("/:id/start", buildStartDraftHandler(client as Pool));
+  router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
   router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
 
   return router;

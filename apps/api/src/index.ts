@@ -3,6 +3,7 @@ import { loadConfig } from "./config/env.js";
 import { createServer as createHttpServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { registerDraftNamespace } from "./realtime/draftNamespace.js";
+import { registerDraftEventEmitter } from "./realtime/draftEvents.js";
 
 const config = loadConfig();
 const app = createServer();
@@ -15,7 +16,8 @@ const io = new SocketIOServer(httpServer, {
   cors: { origin: allowedOrigins, credentials: true },
   serveClient: false
 });
-registerDraftNamespace(io);
+const draftNamespace = registerDraftNamespace(io);
+registerDraftEventEmitter(draftNamespace);
 
 httpServer.listen(config.port, () => {
   // eslint-disable-next-line no-console
