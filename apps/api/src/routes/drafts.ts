@@ -559,6 +559,56 @@ export function buildSubmitPickHandler(pool: Pool) {
   };
 }
 
+export function buildExportDraftHandler(pool: Pool) {
+  return async function handleExportDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+      const seats = await listDraftSeats(pool, draftId);
+      const picks = await listDraftPicks(pool, draftId);
+
+      return res.status(200).json({
+        draft: {
+          id: draft.id,
+          league_id: draft.league_id,
+          status: draft.status,
+          draft_order_type: draft.draft_order_type,
+          current_pick_number: draft.current_pick_number,
+          started_at: draft.started_at ?? null,
+          completed_at: draft.completed_at ?? null,
+          version: draft.version
+        },
+        seats: seats.map((seat) => ({
+          seat_number: seat.seat_number,
+          league_member_id: seat.league_member_id,
+          user_id: seat.user_id ?? null
+        })),
+        picks: picks.map((pick) => ({
+          pick_number: pick.pick_number,
+          round_number: pick.round_number,
+          seat_number: pick.seat_number,
+          league_member_id: pick.league_member_id,
+          user_id: pick.user_id,
+          nomination_id: pick.nomination_id,
+          made_at: pick.made_at
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createDraftsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
@@ -566,6 +616,7 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
+  router.get("/:id/export", buildExportDraftHandler(client as Pool));
   router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
 
   return router;
