@@ -24,10 +24,22 @@ function parsePort(portValue: string): number {
 export type ApiConfig = {
   port: number;
   authSecret: string;
+  realtimeEnabled: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = parsePort(requireEnv(env, "PORT"));
   const authSecret = requireEnv(env, "AUTH_SECRET");
-  return { port, authSecret };
+  const realtimeEnabled = parseOptionalBool(env.REALTIME_ENABLED, true);
+  return { port, authSecret, realtimeEnabled };
+}
+
+function parseOptionalBool(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value.trim() === "") return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "off"].includes(normalized)) return false;
+  throw new ConfigError(
+    `REALTIME_ENABLED must be a boolean (true/false), received: ${value}`
+  );
 }
