@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, Mock } from "vitest";
 import { App } from "./App";
 
 describe("<App />", () => {
@@ -327,5 +327,56 @@ describe("<App />", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(screen.getByText(/Status: IN_PROGRESS/)).toBeInTheDocument();
     expect(screen.getByText(/Nomination 12/)).toBeInTheDocument();
+  });
+
+  it("shows a clear reason when pick is rejected and keeps controls usable", async () => {
+    (globalThis.fetch as Mock).mockImplementationOnce(async () => {
+      return {
+        ok: true,
+        json: async () => ({ user: { sub: "1", handle: "tester" } })
+      } as unknown as Response;
+    });
+    (globalThis.fetch as Mock).mockImplementationOnce(async () => {
+      return {
+        ok: true,
+        json: async () => ({
+          draft: { id: 7, status: "IN_PROGRESS", current_pick_number: 1 },
+          seats: [{ seat_number: 1, league_member_id: 1, user_id: 1 }],
+          picks: []
+        })
+      } as unknown as Response;
+    });
+    (globalThis.fetch as Mock).mockImplementationOnce(async () => {
+      return {
+        ok: false,
+        json: async () => ({
+          error: { code: "NOT_ACTIVE_TURN", message: "It is not your turn" }
+        })
+      } as unknown as Response;
+    });
+
+    render(<App />);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Draft room/i })).toBeEnabled()
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Draft room/i }));
+
+    const input = await screen.findByLabelText(/Draft ID/i);
+    fireEvent.change(input, { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: /Load snapshot/i }));
+
+    await waitFor(() => expect(screen.getByText(/Current pick: 1/i)).toBeInTheDocument());
+
+    const pickInput = screen.getByLabelText(/Nomination ID/i);
+    fireEvent.change(pickInput, { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: /Submit pick/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/It is not your turn. Wait for the active seat to pick./i)
+      ).toBeInTheDocument()
+    );
+    expect(pickInput).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /Submit pick/i })).not.toBeDisabled();
   });
 });

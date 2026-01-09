@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { NomineePill } from "./components/NomineePill";
 
 type ApiResult = { ok: boolean; message: string };
+type ApiError = { code?: string; message?: string };
 
 type Env = { VITE_API_BASE?: string };
 const API_BASE = (
@@ -15,17 +16,21 @@ function buildUrl(path: string) {
 async function fetchJson<T>(
   path: string,
   init?: RequestInit
-): Promise<{ ok: boolean; data?: T; error?: string }> {
+): Promise<{ ok: boolean; data?: T; error?: string; errorCode?: string }> {
   try {
     const res = await fetch(buildUrl(path), {
       credentials: "include",
       ...init
     });
-    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const json = (await res.json().catch(() => ({}))) as { error?: ApiError } & Record<
+      string,
+      unknown
+    >;
     if (!res.ok) {
-      const msg =
-        (json.error as { message?: string } | undefined)?.message ?? "Request failed";
-      return { ok: false, error: msg };
+      const err = json.error ?? {};
+      const msg = err.message ?? "Request failed";
+      const code = err.code;
+      return { ok: false, error: msg, errorCode: code };
     }
     return { ok: true, data: json as T };
   } catch (err) {
@@ -143,6 +148,23 @@ function FormStatus(props: {
     );
   }
   return null;
+}
+
+function mapPickError(code?: string, fallback?: string) {
+  switch (code) {
+    case "NOT_ACTIVE_TURN":
+      return "It is not your turn. Wait for the active seat to pick.";
+    case "NOMINATION_ALREADY_PICKED":
+      return "That nomination is already picked. Choose another nomination.";
+    case "DRAFT_NOT_IN_PROGRESS":
+      return "Draft is not in progress. Refresh the draft state.";
+    case "PREREQ_MISSING_SEATS":
+      return "Draft has no seats configured. Ask the commissioner to set seats.";
+    case "PREREQ_MISSING_NOMINATIONS":
+      return "Nominees not loaded. Ask the commissioner to load nominees.";
+    default:
+      return fallback ?? "Pick failed. Please try again.";
+  }
 }
 
 type Snapshot = {
@@ -269,7 +291,8 @@ function DraftRoom(props: {
       setPickNominationId("");
       await loadSnapshot(String(snapshot.draft.id));
     } else {
-      setPickState({ ok: false, message: res.error ?? "Pick failed" });
+      const reason = mapPickError(res.errorCode, res.error);
+      setPickState({ ok: false, message: reason });
     }
     setPickLoading(false);
   }, [pickNominationId, snapshot]);
