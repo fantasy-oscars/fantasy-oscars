@@ -354,17 +354,21 @@ export async function insertDraftPick(
 ) {
   const draft = overrides.draft_id ? null : await insertDraft(pool);
   const member = overrides.league_member_id ? null : await insertLeagueMember(pool);
+  const ensuredUser =
+    overrides.user_id || member?.user_id ? null : await insertUser(pool);
+  const userId = overrides.user_id ?? member?.user_id ?? ensuredUser?.id;
   const nomination = overrides.nomination_id ? null : await insertNomination(pool);
   const pick = buildDraftPick({
     draft_id: overrides.draft_id ?? draft?.id ?? 1,
     league_member_id: overrides.league_member_id ?? member?.id ?? 1,
+    user_id: userId ?? 1,
     nomination_id: overrides.nomination_id ?? nomination?.id ?? 1,
     ...overrides
   });
   await pool.query(
     `INSERT INTO draft_pick
-     (id, draft_id, pick_number, round_number, seat_number, league_member_id, nomination_id, made_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+     (id, draft_id, pick_number, round_number, seat_number, league_member_id, user_id, nomination_id, made_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [
       pick.id,
       pick.draft_id,
@@ -372,6 +376,7 @@ export async function insertDraftPick(
       pick.round_number,
       pick.seat_number,
       pick.league_member_id,
+      pick.user_id,
       pick.nomination_id,
       pick.made_at
     ]

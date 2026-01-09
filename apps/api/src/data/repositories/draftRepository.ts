@@ -26,6 +26,7 @@ export type DraftPickRecord = {
   round_number: number;
   seat_number: number;
   league_member_id: number;
+  user_id: number;
   nomination_id: number;
   made_at: Date | null;
   request_id?: string | null;
@@ -200,6 +201,7 @@ export async function listDraftPicks(
        round_number::int,
        seat_number::int,
        league_member_id::int,
+       user_id::int,
        nomination_id::int,
        made_at
      FROM draft_pick
@@ -268,6 +270,7 @@ export async function insertDraftPickRecord(
     round_number: number;
     seat_number: number;
     league_member_id: number;
+    user_id: number;
     nomination_id: number;
     made_at: Date;
     request_id?: string | null;
@@ -276,8 +279,8 @@ export async function insertDraftPickRecord(
   const { rows } = await query<DraftPickRecord>(
     client,
     `INSERT INTO draft_pick
-     (draft_id, pick_number, round_number, seat_number, league_member_id, nomination_id, made_at, request_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     (draft_id, pick_number, round_number, seat_number, league_member_id, user_id, nomination_id, made_at, request_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING
        id::int,
        draft_id::int,
@@ -285,6 +288,7 @@ export async function insertDraftPickRecord(
        round_number::int,
        seat_number::int,
        league_member_id::int,
+       user_id::int,
        nomination_id::int,
        made_at,
        request_id`,
@@ -294,6 +298,7 @@ export async function insertDraftPickRecord(
       input.round_number,
       input.seat_number,
       input.league_member_id,
+      input.user_id,
       input.nomination_id,
       input.made_at,
       input.request_id ?? null
@@ -316,6 +321,7 @@ export async function getPickByRequestId(
        round_number::int,
        seat_number::int,
        league_member_id::int,
+       user_id::int,
        nomination_id::int,
        made_at,
        request_id
