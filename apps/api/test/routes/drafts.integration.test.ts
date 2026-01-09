@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
-import { insertLeague } from "../factories/db.js";
+import { insertLeague, insertUser } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let server: Server | null = null;
@@ -82,8 +82,9 @@ describe("drafts integration", () => {
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("creates a draft in pending state", async () => {
-    const league = await insertLeague(db.pool);
+  it("creates a draft in pending state when commissioner", async () => {
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const res = await post<{ draft: { id: number; league_id: number; status: string } }>(
       "/drafts",
       { league_id: league.id, draft_order_type: "SNAKE" }
@@ -116,7 +117,8 @@ describe("drafts integration", () => {
   });
 
   it("rejects when draft already exists for league", async () => {
-    const league = await insertLeague(db.pool);
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     await post("/drafts", { league_id: league.id, draft_order_type: "SNAKE" });
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
@@ -124,5 +126,17 @@ describe("drafts integration", () => {
     });
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("DRAFT_EXISTS");
+  });
+
+  it("rejects draft creation when user is not a commissioner", async () => {
+    await insertUser(db.pool, { id: 1 });
+    await insertUser(db.pool, { id: 2 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 2 });
+    const res = await post<{ error: { code: string } }>("/drafts", {
+      league_id: league.id,
+      draft_order_type: "SNAKE"
+    });
+    expect(res.status).toBe(403);
+    expect(res.json.error.code).toBe("FORBIDDEN");
   });
 });

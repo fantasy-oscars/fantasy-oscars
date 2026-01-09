@@ -11,7 +11,7 @@ import type { DbClient } from "../data/db.js";
 const AUTH_SECRET = "test-secret";
 
 function authHeader() {
-  return `Bearer ${signToken({ sub: "user-1", handle: "tester" }, AUTH_SECRET, 3600)}`;
+  return `Bearer ${signToken({ sub: "1", handle: "tester" }, AUTH_SECRET, 3600)}`;
 }
 
 function mockReq(opts: {
@@ -45,6 +45,7 @@ describe("POST /drafts", () => {
   const createDraftSpy = vi.spyOn(draftRepo, "createDraft");
   const getDraftByLeagueIdSpy = vi.spyOn(draftRepo, "getDraftByLeagueId");
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
+  const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
   const auth = requireAuth(AUTH_SECRET);
   const handler = buildCreateDraftHandler({} as unknown as DbClient);
 
@@ -61,6 +62,13 @@ describe("POST /drafts", () => {
       created_at: new Date("2024-01-01T00:00:00Z")
     });
     getDraftByLeagueIdSpy.mockResolvedValue(null);
+    getLeagueMemberSpy.mockResolvedValue({
+      id: 10,
+      league_id: 1,
+      user_id: 1,
+      role: "OWNER",
+      joined_at: new Date("2024-01-01T00:00:00Z")
+    });
     createDraftSpy.mockResolvedValue({
       id: 42,
       league_id: 1,
