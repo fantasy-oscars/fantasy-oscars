@@ -213,6 +213,60 @@ describe("draft submit pick integration", () => {
     expect(rows[0].count).toBe(1);
   });
 
+  it("rejects a simultaneous pick attempt for the same turn", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 1
+    });
+    const nominationA = await insertNomination(db.pool);
+    const nominationB = await insertNomination(db.pool);
+
+    const [first, second] = await Promise.all([
+      post<{ pick?: { id: number }; error?: { code: string } }>(
+        `/drafts/${draft.id}/picks`,
+        { nomination_id: nominationA.id, request_id: "race-1" },
+        { authUserId: 1 }
+      ),
+      post<{ pick?: { id: number }; error?: { code: string } }>(
+        `/drafts/${draft.id}/picks`,
+        { nomination_id: nominationB.id, request_id: "race-2" },
+        { authUserId: 1 }
+      )
+    ]);
+
+    const statuses = [first.status, second.status];
+    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 409)).toHaveLength(1);
+
+    const rejected =
+      first.status === 409 ? first.json?.error?.code : second.json?.error?.code;
+    expect(["NOT_ACTIVE_TURN", "DRAFT_NOT_IN_PROGRESS"]).toContain(rejected);
+
+    const { rows: pickRows } = await db.pool.query(
+      `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
+      [draft.id]
+    );
+    expect(pickRows[0].count).toBe(1);
+
+    const { rows: draftRows } = await db.pool.query(
+      `SELECT current_pick_number FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect([2, null]).toContain(draftRows[0].current_pick_number);
+  });
+
   it("rolls back pick and turn when a failure occurs after insert", async () => {
     const league = await insertLeague(db.pool, { roster_size: 1 });
     await insertUser(db.pool, { id: 1 });

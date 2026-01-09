@@ -37,6 +37,17 @@ export async function githubGraphql(_token, query, variables = {}) {
   if (variables && Object.keys(variables).length > 0) {
     for (const [key, value] of Object.entries(variables)) {
       if (value === undefined) continue;
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item === undefined) continue;
+          if (typeof item === "string") {
+            args.push("-F", `${key}=${item}`);
+          } else {
+            args.push("-F", `${key}=${JSON.stringify(item)}`);
+          }
+        }
+        continue;
+      }
       if (typeof value === "string") {
         args.push("-f", `${key}=${value}`);
       } else if (typeof value === "number" || typeof value === "boolean") {
