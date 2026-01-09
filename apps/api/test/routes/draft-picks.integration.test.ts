@@ -115,7 +115,14 @@ describe("draft picks integration", () => {
     });
     const nomination1 = await insertNomination(pool);
 
-    const res = await requestJson<{ pick: { pick_number: number; seat_number: number } }>(
+    const res = await requestJson<{
+      pick: {
+        pick_number: number;
+        seat_number: number;
+        user_id: number;
+        made_at: string;
+      };
+    }>(
       `/drafts/${draft.id}/picks`,
       {
         method: "POST",
@@ -128,6 +135,8 @@ describe("draft picks integration", () => {
     expect(res.status).toBe(201);
     expect(res.json.pick.pick_number).toBe(1);
     expect(res.json.pick.seat_number).toBe(1);
+    expect(res.json.pick.user_id).toBe(user1.id);
+    expect(res.json.pick.made_at).toBeTruthy();
 
     // Second pick should now be seat 2
     const nomination2 = await insertNomination(db.pool);

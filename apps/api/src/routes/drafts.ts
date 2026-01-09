@@ -373,6 +373,7 @@ export function buildSubmitPickHandler(pool: Pool) {
             round_number: assignment.round_number,
             seat_number: seatNumberForPick,
             league_member_id: seatForInsert.league_member_id,
+            user_id: userId,
             nomination_id: nominationIdNum,
             made_at: now,
             request_id: requestIdVal

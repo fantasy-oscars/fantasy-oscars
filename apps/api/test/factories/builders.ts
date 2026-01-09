@@ -147,6 +147,7 @@ export type DraftPick = {
   round_number: number;
   seat_number: number;
   league_member_id: number;
+  user_id: number;
   nomination_id: number;
   made_at: Date | null;
 };
@@ -358,6 +359,7 @@ export function buildDraftPick(overrides: Partial<DraftPick> = {}): DraftPick {
     round_number: overrides.round_number ?? 1,
     seat_number: overrides.seat_number ?? 1,
     league_member_id: overrides.league_member_id ?? n,
+    user_id: overrides.user_id ?? n,
     nomination_id: overrides.nomination_id ?? n,
     made_at: overrides.made_at ?? addSeconds(baseTime, n),
     ...overrides
