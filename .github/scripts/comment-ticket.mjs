@@ -7,11 +7,11 @@
  *   node .github/scripts/comment-ticket.mjs --issue 4 --body-file path/to/body.md
  *
  * Requirements:
- *   - GITHUB_TOKEN must be set with repo:issues scope.
+ *   - `gh` CLI must be authenticated.
  *   - Runs from inside the repo (for git remote lookup) unless --repo is provided.
  */
 import { readFile } from "node:fs/promises";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
 
@@ -69,10 +69,6 @@ function normalizeBody(body) {
 
 async function main() {
   const { issue, body, bodyFile, repo: repoArg } = parseArgs(process.argv.slice(2));
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error("GITHUB_TOKEN is required");
-  }
   if (!issue || Number.isNaN(issue)) {
     throw new Error("Issue number is required (use --issue <number>)");
   }
@@ -87,23 +83,20 @@ async function main() {
     throw new Error("Comment body is required (use --body, --body-file, or pipe stdin)");
   }
 
-  const url = `https://api.github.com/repos/${repo}/issues/${issue}/comments`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Accept": "application/vnd.github+json"
-    },
-    body: JSON.stringify({ body: commentBody })
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GitHub API error (${res.status}): ${text}`);
-  }
-
-  const data = await res.json();
-  console.log(`Comment created: ${data.html_url}`);
+  const output = execFileSync(
+    "gh",
+    [
+      "api",
+      `repos/${repo}/issues/${issue}/comments`,
+      "-H",
+      "Accept: application/vnd.github+json",
+      "--input",
+      "-"
+    ],
+    { encoding: "utf8", input: JSON.stringify({ body: commentBody }) }
+  );
+  const data = output ? JSON.parse(output) : null;
+  console.log(`Comment created: ${data?.html_url ?? "unknown"}`);
 }
 
 main().catch((err) => {

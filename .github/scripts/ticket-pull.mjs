@@ -7,7 +7,7 @@
  *   node .github/scripts/ticket-pull.mjs --issue 6 --write [--out path]
  *
  * Notes:
- *   - Requires GITHUB_TOKEN with repo access.
+ *   - Requires authenticated `gh` CLI.
  *   - Defaults repo from GITHUB_REPOSITORY if not provided.
  *   - Prints JSON by default; --write updates the local snapshot file (same shape as ticket:sync).
  */

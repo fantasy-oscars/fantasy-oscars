@@ -7,7 +7,7 @@
  *   npm run ticket:deps -- --issue 95 --repo owner/name --apply
  *
  * Notes:
- * - Requires GITHUB_TOKEN with repo access.
+ * - Requires authenticated `gh` CLI.
  * - By default, prints what it would do. Use --apply to mutate GitHub.
  */
 
@@ -67,4 +67,3 @@ main().catch((err) => {
   console.error(err.message);
   process.exit(1);
 });
-

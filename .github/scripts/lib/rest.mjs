@@ -1,24 +1,17 @@
-export async function githubRestJson(token, { method, path, body }) {
-  const res = await fetch(`https://api.github.com${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...(body ? { "Content-Type": "application/json" } : {})
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
+import { execFileSync } from "node:child_process";
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`GitHub REST error (${res.status}): ${text || res.statusText}`);
+export async function githubRestJson(_token, { method, path, body }) {
+  const cleanPath = path.replace(/^\/+/, "");
+  const args = ["api", cleanPath, "-H", "Accept: application/vnd.github+json"];
+  if (method && method.toUpperCase() !== "GET") {
+    args.push("-X", method.toUpperCase());
   }
-
-  if (res.status === 204) return null;
-
-  const text = await res.text();
-  if (!text) return null;
-  return JSON.parse(text);
+  let input;
+  if (body) {
+    args.push("-H", "Content-Type: application/json", "--input", "-");
+    input = JSON.stringify(body);
+  }
+  const output = execFileSync("gh", args, { encoding: "utf8", input });
+  if (!output) return null;
+  return JSON.parse(output);
 }
-

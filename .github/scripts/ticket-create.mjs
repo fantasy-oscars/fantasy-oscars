@@ -15,12 +15,14 @@
  *     --depends 9,10
  *
  * Notes:
- * - GITHUB_TOKEN required with repo + project access.
+ * - `gh` CLI must be authenticated with repo + project access.
  * - Repo inferred from GITHUB_REPOSITORY unless --repo provided.
  * - `--depends` (comma-separated issue numbers) appends a Depends On section to the body.
  */
 
 import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { githubGraphql, inferRepoFullName, requireGitHubToken } from "./lib/github.mjs";
 
 const PROJECT_ID = "PVT_kwHOAcmJV84BLqvu";
 const FIELD_IDS = {
@@ -70,8 +72,6 @@ const OPTION_IDS = {
   }
 };
 
-const DEFAULT_REPO = "fantasy-oscars/fantasy-oscars";
-
 function parseArgs(argv) {
   const args = {
     title: undefined,
@@ -103,18 +103,6 @@ function parseArgs(argv) {
   return args;
 }
 
-function requireToken() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) throw new Error("GITHUB_TOKEN is required");
-  return token;
-}
-
-function inferRepo(repoArg) {
-  if (repoArg) return repoArg;
-  if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  return DEFAULT_REPO;
-}
-
 async function getBody(body, bodyFile, depends) {
   if (bodyFile) {
     body = await readFile(bodyFile, "utf8");
@@ -127,41 +115,25 @@ async function getBody(body, bodyFile, depends) {
   return body;
 }
 
-async function createIssue(token, repoFullName, title, body) {
-  const url = `https://api.github.com/repos/${repoFullName}/issues`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Accept": "application/vnd.github+json"
-    },
-    body: JSON.stringify({ title, body })
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Issue creation failed (${res.status}): ${text}`);
-  }
-  return await res.json();
+async function createIssue(repoFullName, title, body) {
+  const output = execFileSync(
+    "gh",
+    [
+      "api",
+      `repos/${repoFullName}/issues`,
+      "-H",
+      "Accept: application/vnd.github+json",
+      "-f",
+      `title=${title}`,
+      "-f",
+      `body=${body}`
+    ],
+    { encoding: "utf8" }
+  );
+  return output ? JSON.parse(output) : null;
 }
 
-async function graphql(token, query, variables) {
-  const res = await fetch("https://api.github.com/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query, variables })
-  });
-  const data = await res.json();
-  if (!res.ok || data.errors) {
-    const message = data.errors?.map((e) => e.message).join("; ") ?? res.statusText;
-    throw new Error(`GraphQL error: ${message}`);
-  }
-  return data.data;
-}
-
-async function addToProject(token, contentId) {
+async function addToProject(contentId) {
   const query = `
     mutation($projectId:ID!, $contentId:ID!) {
       addProjectV2ItemById(input:{projectId:$projectId, contentId:$contentId}) {
@@ -169,7 +141,7 @@ async function addToProject(token, contentId) {
       }
     }
   `;
-  const data = await graphql(token, query, { projectId: PROJECT_ID, contentId });
+  const data = await githubGraphql(null, query, { projectId: PROJECT_ID, contentId });
   return data.addProjectV2ItemById.item.id;
 }
 
@@ -181,7 +153,7 @@ function getOptionId(map, key, label) {
   return value;
 }
 
-async function setProjectFields(token, itemId, selections) {
+async function setProjectFields(itemId, selections) {
   const query = `
     mutation($projectId:ID!, $itemId:ID!, $statusField:ID!, $statusOpt:String!, $workstreamField:ID!, $workstreamOpt:String!, $scopeField:ID!, $scopeOpt:String!, $blockField:ID!, $blockOpt:String!, $riskField:ID!, $riskOpt:String!, $iterField:ID!, $iterOpt:String!) {
       status: updateProjectV2ItemFieldValue(input:{projectId:$projectId, itemId:$itemId, fieldId:$statusField, value:{singleSelectOptionId:$statusOpt}}){ clientMutationId }
@@ -193,7 +165,7 @@ async function setProjectFields(token, itemId, selections) {
     }
   `;
 
-  await graphql(token, query, {
+  await githubGraphql(null, query, {
     projectId: PROJECT_ID,
     itemId,
     statusField: FIELD_IDS.status,
@@ -215,13 +187,14 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.title) throw new Error("Title is required (--title)");
 
-  const token = requireToken();
-  const repo = inferRepo(args.repo);
+  requireGitHubToken();
+  const repo = inferRepoFullName(args.repo);
   const body = await getBody(args.body, args.bodyFile, args.depends);
 
-  const issue = await createIssue(token, repo, args.title, body);
+  const issue = await createIssue(repo, args.title, body);
+  if (!issue?.node_id) throw new Error("Issue creation failed (missing node_id)");
 
-  const itemId = await addToProject(token, issue.node_id);
+  const itemId = await addToProject(issue.node_id);
 
   const selections = {
     status: getOptionId(OPTION_IDS.status, args.status, "status"),
@@ -236,7 +209,7 @@ async function main() {
     )
   };
 
-  await setProjectFields(token, itemId, selections);
+  await setProjectFields(itemId, selections);
 
   console.log(
     JSON.stringify(

@@ -8,7 +8,7 @@
  *   npm run ticket:sync -- --repo owner/name --out .dev/issues.json
  *
  * Notes:
- * - Requires `GITHUB_TOKEN` with repo read access.
+ * - Requires authenticated `gh` CLI.
  * - Output defaults to `.dev/github-issues/<owner>_<repo>.json`.
  */
 
@@ -69,4 +69,3 @@ main().catch((err) => {
   console.error(err.message);
   process.exit(1);
 });
-
