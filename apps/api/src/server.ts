@@ -6,8 +6,29 @@ import { createDraftsRouter } from "./routes/drafts.js";
 import { createLeaguesRouter } from "./routes/leagues.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
-import { buildRequestLog, log } from "./logger.js";
+import { buildRequestLog, deriveDraftContext, log } from "./logger.js";
 import { loadConfig } from "./config/env.js";
+
+function sanitizeBody(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeBody(item));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).map(([key, val]) => {
+      const lower = key.toLowerCase();
+      if (
+        lower.includes("password") ||
+        lower.includes("token") ||
+        lower.includes("secret")
+      ) {
+        return [key, "[REDACTED]"];
+      }
+      return [key, sanitizeBody(val)];
+    });
+    return Object.fromEntries(entries);
+  }
+  return value;
+}
 
 export function createServer(deps?: { db?: Pool }) {
   const app = express();
@@ -47,35 +68,14 @@ export function createServer(deps?: { db?: Pool }) {
   app.use((req, res, next) => {
     const start = Date.now();
     res.on("finish", () => {
-      const sanitize = (value: unknown): unknown => {
-        if (Array.isArray(value)) {
-          return value.map((item) => sanitize(item));
-        }
-        if (value && typeof value === "object") {
-          const entries = Object.entries(value as Record<string, unknown>).map(
-            ([key, val]) => {
-              const lower = key.toLowerCase();
-              if (
-                lower.includes("password") ||
-                lower.includes("token") ||
-                lower.includes("secret")
-              ) {
-                return [key, "[REDACTED]"];
-              }
-              return [key, sanitize(val)];
-            }
-          );
-          return Object.fromEntries(entries);
-        }
-        return value;
-      };
+      const sanitizedBody = sanitizeBody(req.body);
       log(
         buildRequestLog({
           method: req.method,
           path: req.originalUrl ?? req.url,
           status: res.statusCode,
           duration_ms: Date.now() - start,
-          body: sanitize(req.body)
+          body: sanitizedBody
         })
       );
     });
@@ -101,12 +101,19 @@ export function createServer(deps?: { db?: Pool }) {
       const appErr = err instanceof AppError ? err : undefined;
       const status = appErr?.status ?? 500;
       const message = appErr?.message ?? (err as Error)?.message ?? "Unexpected error";
+      const sanitizedBody = sanitizeBody(_req.body);
+      const context = deriveDraftContext(sanitizedBody);
       log({
         level: "error",
         msg: "request_error",
+        method: _req.method,
+        path: _req.originalUrl ?? _req.url,
         status,
         code: appErr?.code ?? "INTERNAL_ERROR",
-        error: message
+        error: message,
+        error_name: err instanceof Error ? err.name : undefined,
+        error_stack: err instanceof Error ? err.stack : undefined,
+        ...context
       });
       if (!appErr && err instanceof Error) {
         // Emit stack to stderr during dev for quicker debugging.
