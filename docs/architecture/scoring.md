@@ -6,3 +6,9 @@
   - `scoreDraft({ picks, results })` → fixed
   - `scoreDraft({ picks, results, strategyName: "negative" })` → negative
   - or pass a custom `strategy` implementing `{ score({ picks, results }) }`.
+
+## Results ingestion + standings
+
+- Results are stored per draft via `POST /drafts/:id/results` with payload:
+  - `{ results: [{ nomination_id, won, points? }] }`
+- Standings are computed via `GET /drafts/:id/standings`, returning draft state, results, and per-seat points + picks.
