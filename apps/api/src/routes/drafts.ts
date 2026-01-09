@@ -7,6 +7,7 @@ import {
   updateDraftOnStart,
   updateDraftCurrentPick,
   updateDraftOnComplete,
+  getDraftByIdForUpdate,
   countDraftSeats,
   countNominations,
   listDraftSeats,
@@ -268,25 +269,10 @@ export function buildSubmitPickHandler(pool: Pool) {
         throw new AppError("RATE_LIMITED", 429, "Too many pick attempts; slow down.");
       }
 
-      const draft = await getDraftById(pool, draftIdNum);
-      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
-
       // Idempotent repeat is allowed even if the draft has since completed.
       const priorOutside = await getPickByRequestId(pool, draftIdNum, requestIdVal);
       if (priorOutside) {
         return res.status(200).json({ pick: priorOutside });
-      }
-
-      if (draft.status !== "IN_PROGRESS") {
-        throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
-      }
-
-      // Fast path: if this exact request was already processed, return the prior pick
-      // without performing any further validation. This ensures idempotency even if
-      // the draft state has advanced since the original submission.
-      const pickByRequest = await getPickByRequestId(pool, draftId, requestId);
-      if (pickByRequest) {
-        return res.status(200).json({ pick: pickByRequest });
       }
 
       const result = await runInTransaction(pool, async (tx) => {
@@ -294,6 +280,12 @@ export function buildSubmitPickHandler(pool: Pool) {
         const prior = await getPickByRequestId(tx, draftIdNum, requestIdVal);
         if (prior) {
           return { pick: prior, reused: true };
+        }
+
+        const draft = await getDraftByIdForUpdate(tx, draftIdNum);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        if (draft.status !== "IN_PROGRESS") {
+          throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
         }
 
         const league = await getLeagueById(tx, draft.league_id);

@@ -78,6 +78,18 @@ export async function getDraftById(
   return rows[0] ?? null;
 }
 
+export async function getDraftByIdForUpdate(
+  client: DbClient,
+  id: number
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `SELECT * FROM draft WHERE id = $1 FOR UPDATE`,
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
 export async function updateDraftStatus(
   client: DbClient,
   id: number,
