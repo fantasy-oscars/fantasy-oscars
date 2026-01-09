@@ -25,6 +25,7 @@
 
 - `PORT`: API listen port (e.g., `PORT=3001`). Missing or non-numeric values will fail startup.
 - `AUTH_SECRET`: Secret for signing/verifying auth tokens (any sufficiently random string for local dev).
+- `REALTIME_ENABLED`: Optional kill switch for Socket.IO realtime drafting (`true`/`false`, defaults to `true`).
 
 ## Troubleshooting
 

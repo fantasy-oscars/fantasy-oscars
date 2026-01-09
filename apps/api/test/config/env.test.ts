@@ -17,6 +17,7 @@ describe("loadConfig", () => {
       const cfg = loadConfig();
       expect(cfg.port).toBe(4000);
       expect(cfg.authSecret).toBe("secret");
+      expect(cfg.realtimeEnabled).toBe(true);
     });
   });
 
@@ -35,6 +36,15 @@ describe("loadConfig", () => {
     });
     withEnv({ PORT: "-1", AUTH_SECRET: "secret" }, () => {
       expect(() => loadConfig()).toThrow(ConfigError);
+    });
+  });
+
+  it("parses REALTIME_ENABLED when provided", () => {
+    withEnv({ PORT: "4000", AUTH_SECRET: "secret", REALTIME_ENABLED: "false" }, () => {
+      expect(loadConfig().realtimeEnabled).toBe(false);
+    });
+    withEnv({ PORT: "4000", AUTH_SECRET: "secret", REALTIME_ENABLED: "true" }, () => {
+      expect(loadConfig().realtimeEnabled).toBe(true);
     });
   });
 });
