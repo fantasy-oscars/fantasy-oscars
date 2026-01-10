@@ -9,6 +9,14 @@ import { AppError, errorBody } from "./errors.js";
 import { buildRequestLog, deriveDraftContext, log } from "./logger.js";
 import { loadConfig } from "./config/env.js";
 
+function isTestRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "test" ||
+    process.env.VITEST === "true" ||
+    typeof process.env.VITEST_WORKER_ID === "string"
+  );
+}
+
 function sanitizeBody(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => sanitizeBody(item));
@@ -106,8 +114,10 @@ export function createServer(deps?: { db?: Pool }) {
       const message = appErr?.message ?? (err as Error)?.message ?? "Unexpected error";
       const sanitizedBody = sanitizeBody(_req.body);
       const context = deriveDraftContext(sanitizedBody);
+      // 4xx are client errors (expected sometimes); 5xx are server errors.
+      const level = status >= 500 ? "error" : "info";
       log({
-        level: "error",
+        level,
         msg: "request_error",
         method: _req.method,
         path: _req.originalUrl ?? _req.url,
@@ -115,13 +125,21 @@ export function createServer(deps?: { db?: Pool }) {
         code: appErr?.code ?? "INTERNAL_ERROR",
         error: message,
         error_name: err instanceof Error ? err.name : undefined,
-        error_stack: err instanceof Error ? err.stack : undefined,
+        error_stack:
+          (status >= 500 && !isTestRuntime()) || process.env.LOG_STACK === "1"
+            ? err instanceof Error
+              ? err.stack
+              : undefined
+            : undefined,
         ...context
       });
       if (!appErr && err instanceof Error) {
         // Emit stack to stderr during dev for quicker debugging.
-        // eslint-disable-next-line no-console
-        console.error(err);
+        // (In tests, this is usually noise; use LOG_STACK=1 to force it.)
+        if (!isTestRuntime() || process.env.LOG_STACK === "1") {
+          // eslint-disable-next-line no-console
+          console.error(err);
+        }
       }
       res.status(status).json(errorBody(appErr ?? (err as Error)));
     }

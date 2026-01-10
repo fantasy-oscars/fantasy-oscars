@@ -2,8 +2,8 @@
 
 ## TL;DR
 
-- Canonical command: `npm run ci` (runs `test:*` categories, including Docker integration).
-- Non-Docker suite: `npm run test:format && npm run test:lint && npm run test:typecheck && npm run test:unit && npm run test:build && npm run test:docs`.
+- Canonical command: `npm run ci` (runs `ci:tests` + `ci:docs`).
+- Non-Docker suite: `npm run test:format && npm run test:lint && npm run test:typecheck && npm run test:unit && npm run test:build && npm run test:e2e && npm run test:docs`.
 - Unit tests for pure logic; integration tests for behavior and DB.
 - DB tests run in isolated Postgres via Testcontainers; migrations auto-apply; state resets per suite.
 
@@ -11,15 +11,28 @@
 
 - Unit: pure functions, no IO.
 - Integration (API/DB): use Testcontainers Postgres; apply migrations from `db/migrations`; truncate + restart identities between tests.
+- E2E (web smoke): Playwright; runs against `apps/web` via `vite preview` to ensure the web app loads.
 
 ## How to Run
 
 - Full suite: `npm run ci` (matches CI).
+- Tests only: `npm run ci:tests`
+- Docs only: `npm run ci:docs`
 - Non-Docker checks: `npm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`).
 - Integration tests only (Docker required): `npm run test:integration`
+- Integration tests (bail early): `npm run test:integration:bail`
+- E2E smoke tests: `npm run test:e2e`
+- Install Playwright Chromium (one-time per machine): `npm run test:e2e:install`
 - API tests only: `npm run test --workspace @fantasy-oscars/api`
 - Web tests only: `npm run test --workspace @fantasy-oscars/web`
 - Typecheck tests too: `npm run typecheck --workspace @fantasy-oscars/api` (includes test TS config).
+
+## Tips
+
+- Make API logs readable during tests (if you need them):
+  - Default is silent during tests (`LOG_LEVEL=silent`).
+  - Opt in to readable request logs: `LOG_LEVEL=info LOG_FORMAT=pretty npm run test:integration --workspace @fantasy-oscars/api`
+  - If you need error stack traces from the API during tests: set `LOG_STACK=1`
 
 ## Isolation Rules
 

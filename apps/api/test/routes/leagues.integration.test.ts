@@ -1,38 +1,33 @@
-import { AddressInfo } from "net";
-import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 import { insertCeremony, insertUser, insertDraft } from "../factories/db.js";
 import crypto from "crypto";
+import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
-let server: Server | null = null;
-let baseUrl: string | null = null;
 let authSecret = "test-secret";
-
-async function requestJson<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<{ status: number; json: T }> {
-  if (!baseUrl) throw new Error("Test server not started");
-  const res = await fetch(`${baseUrl}${path}`, init);
-  const json = (await res.json()) as T;
-  return { status: res.status, json };
-}
+let api: ApiAgent;
 
 async function post<T>(
   path: string,
-  body: unknown,
+  body: Record<string, unknown>,
   token?: string
 ): Promise<{ status: number; json: T }> {
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return requestJson<T>(path, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
+  const req = api.post(path).set("content-type", "application/json").send(body);
+  if (token) req.set("Authorization", `Bearer ${token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
+}
+
+async function getJson<T>(
+  path: string,
+  token?: string
+): Promise<{ status: number; json: T }> {
+  const req = api.get(path);
+  if (token) req.set("Authorization", `Bearer ${token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
 }
 
 describe("leagues integration", () => {
@@ -43,15 +38,10 @@ describe("leagues integration", () => {
     db = await startTestDatabase();
     process.env.DATABASE_URL = db.connectionString;
     const app = createServer({ db: db.pool });
-    server = app.listen(0);
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    api = createApiAgent(app);
   }, 120_000);
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
     if (db) await db.stop();
   });
 
@@ -133,10 +123,7 @@ describe("leagues integration", () => {
       token
     );
     const leagueId = createRes.json.league.id;
-    const res = await requestJson<{ league: { id: number } }>(`/leagues/${leagueId}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await getJson<{ league: { id: number } }>(`/leagues/${leagueId}`, token);
     expect(res.status).toBe(200);
     expect(res.json.league.id).toBe(leagueId);
   });
@@ -159,9 +146,7 @@ describe("leagues integration", () => {
     );
     const leagueId = createRes.json.league.id;
 
-    const res = await requestJson<{ error: { code: string } }>(`/leagues/${leagueId}`, {
-      method: "GET"
-    });
+    const res = await getJson<{ error: { code: string } }>(`/leagues/${leagueId}`);
 
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("UNAUTHORIZED");
