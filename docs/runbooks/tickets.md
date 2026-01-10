@@ -39,5 +39,6 @@ Apply to GitHub (creates milestones/labels/issues):
 `npm run ticket:import-roadmap -- --roadmap .dev/github-issues/fantasy-oscars-mvp-mar1-2026.json --apply`
 
 Notes:
+
 - Output Markdown is written under `.dev/github-issues/generated/<owner>_<repo>/...` for review.
 - The importer assigns labels for `scope:*`, `ws:*`, `risk:*`, `blocking:true`, and `batch:*`.
