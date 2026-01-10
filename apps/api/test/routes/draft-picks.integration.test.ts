@@ -1,9 +1,8 @@
-import { AddressInfo } from "net";
-import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
+import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import {
   insertDraft,
   insertDraftSeat,
@@ -14,20 +13,27 @@ import {
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
-let server: Server | null = null;
-let baseUrl: string | null = null;
+let api: ApiAgent;
 
-async function requestJson<T>(
+async function postJson<T>(
   path: string,
-  init: RequestInit = {},
+  body: Record<string, unknown>,
   opts: { token?: string } = {}
 ): Promise<{ status: number; json: T }> {
-  if (!baseUrl) throw new Error("Test server not started");
-  const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
-  if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
-  const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  const json = (await res.json()) as T;
-  return { status: res.status, json };
+  const req = api.post(path).set("content-type", "application/json").send(body);
+  if (opts.token) req.set("Authorization", `Bearer ${opts.token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
+}
+
+async function getJson<T>(
+  path: string,
+  opts: { token?: string } = {}
+): Promise<{ status: number; json: T }> {
+  const req = api.get(path);
+  if (opts.token) req.set("Authorization", `Bearer ${opts.token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
 }
 
 describe("draft picks integration", () => {
@@ -37,15 +43,10 @@ describe("draft picks integration", () => {
     db = await startTestDatabase();
     process.env.DATABASE_URL = db.connectionString;
     const app = createServer({ db: db.pool });
-    server = app.listen(0);
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    api = createApiAgent(app);
   }, 120_000);
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
     if (db) await db.stop();
   });
 
@@ -72,16 +73,9 @@ describe("draft picks integration", () => {
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
     const nomination = await insertNomination(db.pool);
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          nomination_id: nomination.id,
-          request_id: "req-not-active"
-        })
-      },
+      { nomination_id: nomination.id, request_id: "req-not-active" },
       { token: tokenFor(seat1.league_member_id + 1) }
     );
 
@@ -115,7 +109,7 @@ describe("draft picks integration", () => {
     });
     const nomination1 = await insertNomination(pool);
 
-    const res = await requestJson<{
+    const res = await postJson<{
       pick: {
         pick_number: number;
         seat_number: number;
@@ -124,11 +118,7 @@ describe("draft picks integration", () => {
       };
     }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "req-1" })
-      },
+      { nomination_id: nomination1.id, request_id: "req-1" },
       { token: tokenFor(user1.id) }
     );
 
@@ -140,15 +130,9 @@ describe("draft picks integration", () => {
 
     // Second pick should now be seat 2
     const nomination2 = await insertNomination(db.pool);
-    const res2 = await requestJson<{
-      pick: { pick_number: number; seat_number: number };
-    }>(
+    const res2 = await postJson<{ pick: { pick_number: number; seat_number: number } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "req-2" })
-      },
+      { nomination_id: nomination2.id, request_id: "req-2" },
       { token: tokenFor(user2.id) }
     );
     expect(res2.status).toBe(201);
@@ -201,33 +185,18 @@ describe("draft picks integration", () => {
 
     // picks 1,2,3
     for (let i = 0; i < 3; i++) {
-      const res = await requestJson<{
-        pick: { pick_number: number; seat_number: number };
-      }>(
+      const res = await postJson<{ pick: { pick_number: number; seat_number: number } }>(
         `/drafts/${draft.id}/picks`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            nomination_id: nominationIds[i],
-            request_id: `req-${i + 1}`
-          })
-        },
+        { nomination_id: nominationIds[i], request_id: `req-${i + 1}` },
         { token: tokenFor(users[i].id) }
       );
       expect(res.status).toBe(201);
     }
 
     // pick 4 should be seat 3 again (snake)
-    const res4 = await requestJson<{
-      pick: { pick_number: number; seat_number: number };
-    }>(
+    const res4 = await postJson<{ pick: { pick_number: number; seat_number: number } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nominationIds[3], request_id: "req-4" })
-      },
+      { nomination_id: nominationIds[3], request_id: "req-4" },
       { token: tokenFor(users[2].id) }
     );
     expect(res4.status).toBe(201);
@@ -261,24 +230,15 @@ describe("draft picks integration", () => {
     });
     const nomination = await insertNomination(pool);
 
-    await requestJson(
+    await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id, request_id: "req-a" })
-        // use seat 1 token
-      },
+      { nomination_id: nomination.id, request_id: "req-a" },
       { token: tokenFor(user1.id) }
     );
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id, request_id: "req-b" })
-      },
+      { nomination_id: nomination.id, request_id: "req-b" },
       { token: tokenFor(user1.id) }
     );
 
@@ -304,26 +264,18 @@ describe("draft picks integration", () => {
     });
     const nomination = await insertNomination(pool);
 
-    const first = await requestJson<{
+    const first = await postJson<{
       pick: { id: number; pick_number: number; nomination_id: number };
     }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id, request_id: "same-req" })
-      },
+      { nomination_id: nomination.id, request_id: "same-req" },
       { token: tokenFor(user.id) }
     );
-    const second = await requestJson<{
+    const second = await postJson<{
       pick: { id: number; pick_number: number; nomination_id: number };
     }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id, request_id: "same-req" })
-      },
+      { nomination_id: nomination.id, request_id: "same-req" },
       { token: tokenFor(user.id) }
     );
 
@@ -352,26 +304,18 @@ describe("draft picks integration", () => {
     const nomination1 = await insertNomination(pool);
     const nomination2 = await insertNomination(pool);
 
-    const first = await requestJson<{
+    const first = await postJson<{
       pick: { id: number; pick_number: number; nomination_id: number };
     }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "mixed-req" })
-      },
+      { nomination_id: nomination1.id, request_id: "mixed-req" },
       { token: tokenFor(user.id) }
     );
-    const second = await requestJson<{
+    const second = await postJson<{
       pick: { id: number; pick_number: number; nomination_id: number };
     }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "mixed-req" })
-      },
+      { nomination_id: nomination2.id, request_id: "mixed-req" },
       { token: tokenFor(user.id) }
     );
 
@@ -398,13 +342,9 @@ describe("draft picks integration", () => {
       ).id
     });
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: 9999, request_id: "req-missing" })
-      },
+      { nomination_id: 9999, request_id: "req-missing" },
       { token: tokenFor(user.id) }
     );
 
@@ -430,13 +370,9 @@ describe("draft picks integration", () => {
     });
     const nomination = await insertNomination(pool);
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination.id, request_id: "req-pending" })
-      },
+      { nomination_id: nomination.id, request_id: "req-pending" },
       { token: tokenFor(user.id) }
     );
 
@@ -471,32 +407,24 @@ describe("draft picks integration", () => {
     const nomination1 = await insertNomination(pool);
     const nomination2 = await insertNomination(pool);
 
-    const res1 = await requestJson(
+    const res1 = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "req-1" })
-      },
+      { nomination_id: nomination1.id, request_id: "req-1" },
       { token: tokenFor(user1.id) }
     );
-    const res2 = await requestJson(
+    const res2 = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "req-2" })
-      },
+      { nomination_id: nomination2.id, request_id: "req-2" },
       { token: tokenFor(user2.id) }
     );
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);
 
-    const snapshot = await requestJson<{
+    const snapshot = await getJson<{
       draft: { status: string; completed_at: string | null };
       picks: Array<{ pick_number: number }>;
       version: number;
-    }>(`/drafts/${draft.id}/snapshot`, {}, { token: tokenFor(user1.id) });
+    }>(`/drafts/${draft.id}/snapshot`, { token: tokenFor(user1.id) });
 
     expect(snapshot.status).toBe(200);
     expect(snapshot.json.draft.status).toBe("COMPLETED");
@@ -533,22 +461,14 @@ describe("draft picks integration", () => {
     const nomination1 = await insertNomination(pool);
     const nomination2 = await insertNomination(pool);
 
-    const diag1 = await requestJson(
+    const diag1 = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "diag-1" })
-      },
+      { nomination_id: nomination1.id, request_id: "diag-1" },
       { token: tokenFor(user1.id) }
     );
-    const diag2 = await requestJson(
+    const diag2 = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "diag-2" })
-      },
+      { nomination_id: nomination2.id, request_id: "diag-2" },
       { token: tokenFor(user2.id) }
     );
     expect(diag1.status).toBe(201);
@@ -598,34 +518,22 @@ describe("draft picks integration", () => {
     const nomination2 = await insertNomination(pool);
     const nomination3 = await insertNomination(pool);
 
-    const first = await requestJson(
+    const first = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "req-1" })
-      },
+      { nomination_id: nomination1.id, request_id: "req-1" },
       { token: tokenFor(user1.id) }
     );
-    const second = await requestJson(
+    const second = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "req-2" })
-      },
+      { nomination_id: nomination2.id, request_id: "req-2" },
       { token: tokenFor(user2.id) }
     );
     expect(first.status).toBe(201);
     expect(second.status).toBe(201);
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination3.id, request_id: "req-3" })
-      },
+      { nomination_id: nomination3.id, request_id: "req-3" },
       { token: tokenFor(user1.id) }
     );
 
@@ -662,22 +570,14 @@ describe("draft picks integration", () => {
     const nomination2 = await insertNomination(pool);
     const nomination3 = await insertNomination(pool);
 
-    const resA = await requestJson(
+    const resA = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination1.id, request_id: "db-check-1" })
-      },
+      { nomination_id: nomination1.id, request_id: "db-check-1" },
       { token: tokenFor(user1.id) }
     );
-    const resB = await requestJson(
+    const resB = await postJson(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nomination_id: nomination2.id, request_id: "db-check-2" })
-      },
+      { nomination_id: nomination2.id, request_id: "db-check-2" },
       { token: tokenFor(user2.id) }
     );
     expect(resA.status).toBe(201);
@@ -690,16 +590,9 @@ describe("draft picks integration", () => {
     );
     expect(beforeExtra.rows[0]?.status).toBe("COMPLETED");
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          nomination_id: nomination3.id,
-          request_id: "post-complete"
-        })
-      },
+      { nomination_id: nomination3.id, request_id: "post-complete" },
       { token: tokenFor(user1.id) }
     );
 

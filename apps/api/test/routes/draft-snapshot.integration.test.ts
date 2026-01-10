@@ -1,9 +1,8 @@
-import { AddressInfo } from "net";
-import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
+import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import {
   insertDraft,
   insertDraftPick,
@@ -13,15 +12,12 @@ import {
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
-let server: Server | null = null;
-let baseUrl: string | null = null;
+let api: ApiAgent;
 
-async function requestJson<T>(
+async function getJson<T>(
   path: string,
-  init: RequestInit = {},
   opts: { auth?: boolean } = {}
 ): Promise<{ status: number; json: T }> {
-  if (!baseUrl) throw new Error("Test server not started");
   const token =
     opts.auth === false
       ? null
@@ -29,13 +25,10 @@ async function requestJson<T>(
           { sub: "1", handle: "tester" },
           process.env.AUTH_SECRET ?? "test-secret"
         );
-  const headers = {
-    ...(token ? { authorization: `Bearer ${token}` } : {}),
-    ...(init.headers ?? {})
-  };
-  const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  const json = (await res.json()) as T;
-  return { status: res.status, json };
+  const req = api.get(path);
+  if (token) req.set("authorization", `Bearer ${token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
 }
 
 describe("draft snapshot integration", () => {
@@ -45,15 +38,10 @@ describe("draft snapshot integration", () => {
     db = await startTestDatabase();
     process.env.DATABASE_URL = db.connectionString;
     const app = createServer({ db: db.pool });
-    server = app.listen(0);
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    api = createApiAgent(app);
   }, 120_000);
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
     if (db) await db.stop();
   });
 
@@ -65,10 +53,11 @@ describe("draft snapshot integration", () => {
     const league = await insertLeague(db.pool);
     const draft = await insertDraft(db.pool, { league_id: league.id });
 
-    const res = await requestJson<{ error: { code: string } }>(
+    const res = await getJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/snapshot`,
-      { method: "GET" },
-      { auth: false }
+      {
+        auth: false
+      }
     );
 
     expect(res.status).toBe(401);
@@ -81,7 +70,7 @@ describe("draft snapshot integration", () => {
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
 
-    const res = await requestJson<{
+    const res = await getJson<{
       draft: { status: string; current_pick_number: number | null };
       seats: Array<{ seat_number: number }>;
       picks: unknown[];
@@ -124,7 +113,7 @@ describe("draft snapshot integration", () => {
       nomination_id: nomination2.id
     });
 
-    const res = await requestJson<{
+    const res = await getJson<{
       draft: { status: string; current_pick_number: number | null };
       picks: Array<{ pick_number: number; seat_number: number }>;
       version: number;
@@ -137,9 +126,7 @@ describe("draft snapshot integration", () => {
   });
 
   it("returns 404 when draft not found", async () => {
-    const res = await requestJson<{ error: { code: string } }>(`/drafts/9999/snapshot`, {
-      method: "GET"
-    });
+    const res = await getJson<{ error: { code: string } }>(`/drafts/9999/snapshot`);
     expect(res.status).toBe(404);
     expect(res.json.error.code).toBe("DRAFT_NOT_FOUND");
   });

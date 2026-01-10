@@ -1,5 +1,3 @@
-import { AddressInfo } from "net";
-import type { Server } from "http";
 import {
   afterAll,
   afterEach,
@@ -13,6 +11,7 @@ import {
 import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
+import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import {
   insertDraft,
   insertDraftSeat,
@@ -24,15 +23,13 @@ import {
 import * as draftRepo from "../../src/data/repositories/draftRepository.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
-let server: Server | null = null;
-let baseUrl: string | null = null;
+let api: ApiAgent;
 
-async function requestJson<T>(
+async function post<T>(
   path: string,
-  init: RequestInit = {},
+  body: Record<string, unknown>,
   opts: { authUserId?: number; auth?: boolean } = {}
 ): Promise<{ status: number; json: T }> {
-  if (!baseUrl) throw new Error("Test server not started");
   const token =
     opts.auth === false
       ? null
@@ -40,29 +37,10 @@ async function requestJson<T>(
           { sub: String(opts.authUserId ?? 1), handle: "tester" },
           process.env.AUTH_SECRET ?? "test-secret"
         );
-  const headers = {
-    ...(token ? { authorization: `Bearer ${token}` } : {}),
-    ...(init.headers ?? {})
-  };
-  const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  const json = (await res.json()) as T;
-  return { status: res.status, json };
-}
-
-async function post<T>(
-  path: string,
-  body: unknown,
-  opts: { authUserId?: number; auth?: boolean } = {}
-): Promise<{ status: number; json: T }> {
-  return requestJson<T>(
-    path,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body)
-    },
-    opts
-  );
+  const req = api.post(path).set("content-type", "application/json").send(body);
+  if (token) req.set("authorization", `Bearer ${token}`);
+  const res = await req;
+  return { status: res.status, json: res.body as T };
 }
 
 describe("draft submit pick integration", () => {
@@ -72,15 +50,10 @@ describe("draft submit pick integration", () => {
     db = await startTestDatabase();
     process.env.DATABASE_URL = db.connectionString;
     const app = createServer({ db: db.pool });
-    server = app.listen(0);
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    api = createApiAgent(app);
   }, 120_000);
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
     if (db) await db.stop();
   });
 

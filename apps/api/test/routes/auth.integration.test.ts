@@ -1,47 +1,38 @@
-import { AddressInfo } from "net";
-import type { Server } from "http";
 import crypto from "crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
+import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
-let server: Server | null = null;
-let baseUrl: string | null = null;
-
-async function requestJson<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<{ status: number; json: T; headers: Headers }> {
-  if (!baseUrl) throw new Error("Test server not started");
-  const res = await fetch(`${baseUrl}${path}`, init);
-  let json: T;
-  try {
-    json = (await res.json()) as T;
-  } catch {
-    // Allow endpoints like logout (204/no body) to be exercised without JSON.
-    json = {} as T;
-  }
-  return { status: res.status, json, headers: res.headers };
-}
+let api: ApiAgent;
 
 async function post<T>(
   path: string,
-  body: unknown,
+  body?: Record<string, unknown>,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T; headers: Headers }> {
-  return requestJson<T>(path, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...headers },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
+): Promise<{
+  status: number;
+  json: T;
+  headers: Record<string, string | string[] | undefined>;
+}> {
+  const res = await api
+    .post(path)
+    .set({ "content-type": "application/json", ...headers })
+    .send(body ?? {});
+  return { status: res.status, json: res.body as T, headers: res.headers };
 }
 
 async function getJson<T>(
   path: string,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T; headers: Headers }> {
-  return requestJson<T>(path, { method: "GET", headers });
+): Promise<{
+  status: number;
+  json: T;
+  headers: Record<string, string | string[] | undefined>;
+}> {
+  const res = await api.get(path).set(headers);
+  return { status: res.status, json: res.body as T, headers: res.headers };
 }
 
 describe("auth integration", () => {
@@ -51,15 +42,10 @@ describe("auth integration", () => {
     db = await startTestDatabase();
     process.env.DATABASE_URL = db.connectionString;
     const app = createServer({ db: db.pool });
-    server = app.listen(0);
-    const address = server.address() as AddressInfo;
-    baseUrl = `http://127.0.0.1:${address.port}`;
+    api = createApiAgent(app);
   }, 120_000);
 
   afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
     if (db) await db.stop();
   });
 
@@ -154,18 +140,13 @@ describe("auth integration", () => {
       handle: payload.handle,
       password: payload.password
     });
-    const rawSetCookie = res.headers.get("set-cookie") as unknown;
-    const setCookie =
-      typeof rawSetCookie === "string"
-        ? rawSetCookie
-        : Array.isArray(rawSetCookie)
-          ? rawSetCookie.join(",")
-          : "";
+    const setCookie = Array.isArray(res.headers["set-cookie"])
+      ? res.headers["set-cookie"].join(",")
+      : String(res.headers["set-cookie"] ?? "");
     expect(setCookie).toMatch(/auth_token=/);
-    const cookieHeader = setCookie.split(";")[0] ?? "";
-    const me = await getJson<{ user: { handle: string } }>("/auth/me", {
-      Cookie: cookieHeader
-    });
+
+    // Agent should include cookie automatically.
+    const me = await getJson<{ user: { handle: string } }>("/auth/me");
     expect(me.status).toBe(200);
     expect(me.json.user.handle).toBe(payload.handle);
   });
@@ -182,12 +163,16 @@ describe("auth integration", () => {
       handle: payload.handle,
       password: payload.password
     });
-    const setCookie = res.headers.get("set-cookie");
-    const cookieHeader = setCookie?.split(";")[0] ?? "";
+    const setCookie = Array.isArray(res.headers["set-cookie"])
+      ? res.headers["set-cookie"].join(",")
+      : String(res.headers["set-cookie"] ?? "");
+    expect(setCookie).toMatch(/auth_token=/);
 
-    const logout = await post("/auth/logout", undefined, { Cookie: cookieHeader });
+    const logout = await post("/auth/logout", undefined);
     expect(logout.status).toBe(204);
-    const cleared = logout.headers.get("set-cookie") ?? "";
+    const cleared = Array.isArray(logout.headers["set-cookie"])
+      ? logout.headers["set-cookie"].join(",")
+      : String(logout.headers["set-cookie"] ?? "");
     expect(cleared).toMatch(/auth_token=;/);
 
     const me = await getJson<{ error: { code: string } }>("/auth/me");

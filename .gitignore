@@ -6,6 +6,8 @@ dist/
 build/
 .turbo/
 .vite/
+playwright-report/
+test-results/
 
 # env/local
 .env
