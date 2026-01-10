@@ -21,3 +21,24 @@ This repo includes a few small scripts under `.github/scripts/` for working with
 - Post a comment to an issue: `npm run ticket:comment -- --issue 6 --body "..."` (or pipe stdin)
 - Update a project “Status” field for an issue: `npm run ticket:status -- --issue 6 --status doing`
 - Load the golden nominees dataset into the DB: `npm run nominees:load --workspace @fantasy-oscars/api`
+
+## Roadmap import (issues-only, no Project)
+
+For MVP, prefer plain issues + labels + milestones (no GitHub Project). This repo provides a safe importer that:
+
+- Renders each ticket into a clean Markdown issue body (for review).
+- Optionally creates the required milestones/labels.
+- Optionally creates issues in the repository, in index order.
+
+Dry-run (recommended first):
+
+`npm run ticket:import-roadmap -- --roadmap .dev/github-issues/fantasy-oscars-mvp-mar1-2026.json`
+
+Apply to GitHub (creates milestones/labels/issues):
+
+`npm run ticket:import-roadmap -- --roadmap .dev/github-issues/fantasy-oscars-mvp-mar1-2026.json --apply`
+
+Notes:
+
+- Output Markdown is written under `.dev/github-issues/generated/<owner>_<repo>/...` for review.
+- The importer assigns labels for `scope:*`, `ws:*`, `risk:*`, `blocking:true`, and `batch:*`.

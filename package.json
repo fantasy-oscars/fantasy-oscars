@@ -45,6 +45,7 @@
     "ticket:status": "node .github/scripts/ticket-status.mjs",
     "ticket:pull": "node .github/scripts/ticket-pull.mjs",
     "ticket:create": "node .github/scripts/ticket-create.mjs",
+    "ticket:import-roadmap": "node .github/scripts/roadmap-import.mjs",
     "ticket:sync": "node .github/scripts/ticket-sync.mjs",
     "ticket:deps": "node .github/scripts/ticket-deps.mjs",
     "test:scripts": "node --test .github/scripts/lib/*.test.mjs",
