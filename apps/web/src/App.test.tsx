@@ -77,6 +77,16 @@ vi.mock("socket.io-client", () => {
   return { io: ioMock };
 });
 
+async function getFirstMockSocket(): Promise<MockSocket> {
+  await waitFor(() => {
+    expect(io).toHaveBeenCalled();
+  });
+  const results = (io as Mock).mock.results ?? [];
+  const socket = results.map((r) => r?.value).find(Boolean) as MockSocket | undefined;
+  if (!socket) throw new Error("Expected socket.io-client io() to return a socket");
+  return socket;
+}
+
 describe("<App />", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -267,7 +277,7 @@ describe("<App />", () => {
     fireEvent.click(loadBtn);
     await screen.findByText(/Status: IN_PROGRESS/);
 
-    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    const socket = await getFirstMockSocket();
     socket.__emit("draft:event", {
       draft_id: 7,
       version: 2,
@@ -323,7 +333,7 @@ describe("<App />", () => {
     fireEvent.click(loadBtn);
     await screen.findByText(/Status: IN_PROGRESS/);
 
-    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    const socket = await getFirstMockSocket();
     socket.__emit("draft:event", {
       draft_id: 7,
       version: 3,
@@ -390,7 +400,7 @@ describe("<App />", () => {
     fireEvent.click(loadBtn);
     await screen.findByText(/Version 1/);
 
-    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    const socket = await getFirstMockSocket();
     socket.__emit("draft:event", {
       draft_id: 7,
       version: 3,
@@ -466,7 +476,7 @@ describe("<App />", () => {
     fireEvent.click(loadBtn);
     await screen.findByText(/Version 1/);
 
-    const socket = (io as Mock).mock.results[0].value as MockSocket;
+    const socket = await getFirstMockSocket();
     socket.__emit("disconnect");
     socket.__emitIo("reconnect");
 
