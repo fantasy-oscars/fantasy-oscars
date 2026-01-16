@@ -9,6 +9,7 @@
 - Admin role: `app_user.is_admin` (boolean) flags admins; tokens carry `is_admin` and admin routes require it.
 - Active ceremony: `app_config.active_ceremony_id` stores the single active ceremony; participatory actions (league/draft flow) are restricted to this ceremony.
 - Seasons: `season` links a league to a ceremony; at most one EXTANT season per (league, ceremony); drafts belong to a season (one draft per season).
+- League membership: invite-only per season for MVP; the legacy `POST /leagues/:id/join` endpoint is disabled and returns `INVITE_ONLY_MEMBERSHIP`.
 
 ## Principles
 
