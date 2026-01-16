@@ -272,9 +272,16 @@ export async function insertSeason(
     ...overrides
   });
   await pool.query(
-    `INSERT INTO season (id, league_id, ceremony_id, status, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [season.id, season.league_id, season.ceremony_id, season.status, season.created_at]
+    `INSERT INTO season (id, league_id, ceremony_id, status, scoring_strategy_name, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      season.id,
+      season.league_id,
+      season.ceremony_id,
+      season.status,
+      season.scoring_strategy_name,
+      season.created_at
+    ]
   );
   return season;
 }

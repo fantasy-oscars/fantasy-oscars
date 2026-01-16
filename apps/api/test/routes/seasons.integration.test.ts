@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
-import { insertCeremony, insertUser } from "../factories/db.js";
+import { insertCeremony, insertNomination, insertUser } from "../factories/db.js";
 import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import crypto from "crypto";
 
@@ -139,5 +139,108 @@ describe("seasons integration", () => {
     );
     expect(listRes.status).toBe(200);
     expect(listRes.json.seasons.length).toBe(0);
+  });
+
+  it("allows commissioner to set scoring strategy while draft pending", async () => {
+    await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+
+    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+      "/leagues",
+      { code: "score-1", name: "Score League", max_members: 3 },
+      token
+    );
+    expect(leagueRes.status).toBe(201);
+
+    const seasonId = leagueRes.json.season.id;
+    const draftRes = await post<{ draft: { id: number } }>(
+      "/drafts",
+      { league_id: leagueRes.json.league.id },
+      token
+    );
+    expect(draftRes.status).toBe(201);
+
+    const updateRes = await post<{ season: { scoring_strategy_name: string } }>(
+      `/seasons/seasons/${seasonId}/scoring`,
+      { scoring_strategy_name: "negative" },
+      token
+    );
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.json.season.scoring_strategy_name).toBe("negative");
+
+    const listRes = await getJson<{ seasons: Array<{ scoring_strategy_name: string }> }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      token
+    );
+    expect(listRes.status).toBe(200);
+    expect(listRes.json.seasons[0].scoring_strategy_name).toBe("negative");
+  });
+
+  it("blocks scoring strategy change after draft start", async () => {
+    const ceremony = await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    const user2 = await insertUser(db.pool, { id: user.id + 1 });
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+
+    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+      "/leagues",
+      { code: "score-2", name: "Score Lock League", max_members: 3 },
+      token
+    );
+    expect(leagueRes.status).toBe(201);
+
+    const draftRes = await post<{ draft: { id: number } }>(
+      "/drafts",
+      { league_id: leagueRes.json.league.id },
+      token
+    );
+    expect(draftRes.status).toBe(201);
+
+    // add second participant
+    const ownerLm = await db.pool.query<{ id: number }>(
+      `SELECT id::int FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [leagueRes.json.league.id, user.id]
+    );
+    const lm = await db.pool.query<{ id: number }>(
+      `INSERT INTO league_member (league_id, user_id, role)
+       VALUES ($1,$2,'MEMBER') RETURNING id::int`,
+      [leagueRes.json.league.id, user2.id]
+    );
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1,$2,$3,'OWNER')`,
+      [leagueRes.json.season.id, user.id, ownerLm.rows[0].id]
+    );
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1,$2,$3,'MEMBER')`,
+      [leagueRes.json.season.id, user2.id, lm.rows[0].id]
+    );
+
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1) ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1) ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+    await insertNomination(db.pool, { ceremony_id: ceremony.id });
+
+    await db.pool.query(
+      `UPDATE draft SET status = 'IN_PROGRESS', current_pick_number = 1 WHERE id = $1`,
+      [draftRes.json.draft.id]
+    );
+
+    const updateRes = await post<{ error: { code: string } }>(
+      `/seasons/seasons/${leagueRes.json.season.id}/scoring`,
+      { scoring_strategy_name: "negative" },
+      token
+    );
+    expect(updateRes.status).toBe(409);
+    expect(updateRes.json.error.code).toBe("SEASON_SCORING_LOCKED");
   });
 });

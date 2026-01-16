@@ -93,6 +93,7 @@ describe("POST /drafts", () => {
       league_id: 1,
       ceremony_id: 99,
       status: "EXTANT",
+      scoring_strategy_name: "fixed",
       created_at: new Date("2024-01-01T00:00:00Z")
     });
     createSeasonSpy.mockResolvedValue({
@@ -100,6 +101,7 @@ describe("POST /drafts", () => {
       league_id: 1,
       ceremony_id: 99,
       status: "EXTANT",
+      scoring_strategy_name: "fixed",
       created_at: new Date("2024-01-01T00:00:00Z")
     });
     createDraftSpy.mockResolvedValue({
@@ -304,6 +306,7 @@ describe("POST /drafts/:id/pause and /resume", () => {
       league_id: 10,
       ceremony_id: 99,
       status: "EXTANT",
+      scoring_strategy_name: "fixed",
       created_at: new Date("2024-01-01T00:00:00Z")
     });
     getLeagueByIdSpy.mockResolvedValue({
@@ -857,6 +860,7 @@ describe("GET /drafts/:id/snapshot", () => {
       league_id: 22,
       ceremony_id: 99,
       status: "EXTANT",
+      scoring_strategy_name: "fixed",
       created_at: new Date("2024-01-01T00:00:00Z")
     });
     countNominationsByCeremonySpy.mockResolvedValue(10);

@@ -15,7 +15,8 @@ import {
   getMostRecentSeason,
   listSeasonsForLeague,
   cancelSeason,
-  getSeasonById
+  getSeasonById,
+  updateSeasonScoringStrategy
 } from "../data/repositories/seasonRepository.js";
 import { runInTransaction, query } from "../data/db.js";
 import type { DbClient } from "../data/db.js";
@@ -206,6 +207,56 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
         if (result.event) {
           emitDraftEvent(result.event);
         }
+
+        return res.status(200).json({ season: result.season });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/seasons/:id/scoring",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const { scoring_strategy_name } = req.body ?? {};
+        const actorId = Number(req.auth?.sub);
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid season id", ["id"]);
+        }
+        if (!["fixed", "negative"].includes(scoring_strategy_name)) {
+          throw validationError("Invalid scoring_strategy_name", [
+            "scoring_strategy_name"
+          ]);
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const season = await getSeasonById(tx, seasonId);
+          if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+          const league = await getLeagueById(tx, season.league_id);
+          if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          const member = await getLeagueMember(tx, league.id, actorId);
+          ensureCommissioner(member);
+
+          const draft = await getDraftBySeasonId(tx, season.id);
+          if (draft && draft.status !== "PENDING") {
+            throw new AppError(
+              "SEASON_SCORING_LOCKED",
+              409,
+              "Cannot change scoring after draft has started"
+            );
+          }
+
+          const updated =
+            (await updateSeasonScoringStrategy(
+              tx,
+              season.id,
+              scoring_strategy_name as "fixed" | "negative"
+            )) ?? season;
+
+          return { season: updated };
+        });
 
         return res.status(200).json({ season: result.season });
       } catch (err) {
@@ -529,6 +580,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           id: s.id,
           ceremony_id: s.ceremony_id,
           status: s.status,
+          scoring_strategy_name: s.scoring_strategy_name,
           created_at: s.created_at,
           is_active_ceremony: activeCeremonyId
             ? Number(activeCeremonyId) === Number(s.ceremony_id)
