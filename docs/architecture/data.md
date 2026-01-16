@@ -21,7 +21,7 @@
 
 - Add migration: create `db/migrations/NNN_description.sql`.
 - Apply in tests: automatic (see `apps/api/test/db.ts`).
-- Local DB (if running docker-compose later): `npm run db:up` (future detail).
+- Local DB (docker-compose): `npm run db:up` / `npm run db:down`.
 
 ## Links
 

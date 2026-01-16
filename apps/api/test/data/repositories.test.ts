@@ -19,16 +19,13 @@ async function seedBase(pool: Pool) {
   const icon = await pool.query(
     `INSERT INTO icon (code, name, asset_path) VALUES ('icon', 'Icon', '/icon') RETURNING id`
   );
-  const template = await pool.query(
-    `INSERT INTO display_template (code, scope, unit_kind, body) VALUES ('pill', 'PILL', 'FILM', '{{name}}') RETURNING id`
-  );
   const ceremony = await pool.query(
     `INSERT INTO ceremony (code, name, year) VALUES ('2025', '2025 Oscars', 2025) RETURNING id`
   );
   await pool.query(
-    `INSERT INTO category_family (code, name, icon_id, default_unit_kind, default_pill_template_id, default_expanded_template_id)
-     VALUES ('fam', 'Family', $1, 'FILM', $2, $2)`,
-    [icon.rows[0].id, template.rows[0].id]
+    `INSERT INTO category_family (code, name, icon_id, default_unit_kind)
+     VALUES ('fam', 'Family', $1, 'FILM')`,
+    [icon.rows[0].id]
   );
   await pool.query(
     `INSERT INTO app_user (handle, email, display_name) VALUES ('user1','u1@example.com','User One')`

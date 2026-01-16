@@ -4,15 +4,6 @@ import { fileURLToPath } from "url";
 import { Pool } from "pg";
 
 type IconInput = { id: number; code: string; name: string; asset_path: string };
-type DisplayTemplateInput = {
-  id: number;
-  code: string;
-  scope: "PILL" | "EXPANDED";
-  unit_kind: "FILM" | "SONG" | "PERFORMANCE" | "ANY";
-  body: string;
-  notes: string | null;
-  is_locked: boolean;
-};
 type CeremonyInput = { id: number; code: string; name: string; year: number };
 type CategoryFamilyInput = {
   id: number;
@@ -20,16 +11,12 @@ type CategoryFamilyInput = {
   name: string;
   icon_id: number;
   default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  default_pill_template_id: number;
-  default_expanded_template_id: number;
 };
 type CategoryEditionInput = {
   id: number;
   ceremony_id: number;
   family_id: number;
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  pill_template_id: number;
-  expanded_template_id: number;
   icon_id: number | null;
   sort_index: number;
 };
@@ -54,7 +41,6 @@ type NominationContributorInput = {
 
 type Dataset = {
   icons: IconInput[];
-  display_templates: DisplayTemplateInput[];
   ceremonies: CeremonyInput[];
   category_families: CategoryFamilyInput[];
   category_editions: CategoryEditionInput[];
@@ -81,40 +67,17 @@ export async function loadNominees(pool: Pool, dataset: Dataset) {
   await pool.query("BEGIN");
   try {
     await insertAll(pool, "icon", ["id", "code", "name", "asset_path"], dataset.icons);
-    await insertAll(
-      pool,
-      "display_template",
-      ["id", "code", "scope", "unit_kind", "body", "notes", "is_locked"],
-      dataset.display_templates
-    );
     await insertAll(pool, "ceremony", ["id", "code", "name", "year"], dataset.ceremonies);
     await insertAll(
       pool,
       "category_family",
-      [
-        "id",
-        "code",
-        "name",
-        "icon_id",
-        "default_unit_kind",
-        "default_pill_template_id",
-        "default_expanded_template_id"
-      ],
+      ["id", "code", "name", "icon_id", "default_unit_kind"],
       dataset.category_families
     );
     await insertAll(
       pool,
       "category_edition",
-      [
-        "id",
-        "ceremony_id",
-        "family_id",
-        "unit_kind",
-        "pill_template_id",
-        "expanded_template_id",
-        "icon_id",
-        "sort_index"
-      ],
+      ["id", "ceremony_id", "family_id", "unit_kind", "icon_id", "sort_index"],
       dataset.category_editions
     );
     await insertAll(pool, "person", ["id", "full_name"], dataset.people);

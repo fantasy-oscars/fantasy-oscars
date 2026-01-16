@@ -4,7 +4,6 @@ import {
   buildCategoryEdition,
   buildCategoryFamily,
   buildCeremony,
-  buildDisplayTemplate,
   buildDraft,
   buildDraftPick,
   buildDraftSeat,
@@ -36,19 +35,6 @@ export async function insertIcon(
   return icon;
 }
 
-export async function insertDisplayTemplate(
-  pool: Pool,
-  overrides: Partial<ReturnType<typeof buildDisplayTemplate>> = {}
-) {
-  const tpl = buildDisplayTemplate(overrides);
-  await pool.query(
-    `INSERT INTO display_template (id, code, scope, unit_kind, body, notes, is_locked)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [tpl.id, tpl.code, tpl.scope, tpl.unit_kind, tpl.body, tpl.notes, tpl.is_locked]
-  );
-  return tpl;
-}
-
 export async function insertCeremony(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildCeremony>> = {}
@@ -66,36 +52,17 @@ export async function insertCategoryFamily(
   overrides: Partial<ReturnType<typeof buildCategoryFamily>> = {}
 ) {
   const icon = overrides.icon_id ? null : await insertIcon(pool);
-  const pillTpl = overrides.default_pill_template_id
-    ? null
-    : await insertDisplayTemplate(pool);
-  const expTpl =
-    overrides.default_expanded_template_id &&
-    overrides.default_expanded_template_id !== pillTpl?.id
-      ? null
-      : pillTpl || (await insertDisplayTemplate(pool, { scope: "EXPANDED" }));
 
   const fam = buildCategoryFamily({
     icon_id: overrides.icon_id ?? icon?.id ?? 1,
-    default_pill_template_id: overrides.default_pill_template_id ?? pillTpl?.id ?? 1,
-    default_expanded_template_id:
-      overrides.default_expanded_template_id ?? expTpl?.id ?? pillTpl?.id ?? 1,
     ...overrides
   });
 
   await pool.query(
     `INSERT INTO category_family
-     (id, code, name, icon_id, default_unit_kind, default_pill_template_id, default_expanded_template_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [
-      fam.id,
-      fam.code,
-      fam.name,
-      fam.icon_id,
-      fam.default_unit_kind,
-      fam.default_pill_template_id,
-      fam.default_expanded_template_id
-    ]
+     (id, code, name, icon_id, default_unit_kind)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [fam.id, fam.code, fam.name, fam.icon_id, fam.default_unit_kind]
   );
   return fam;
 }
@@ -106,35 +73,18 @@ export async function insertCategoryEdition(
 ) {
   const ceremony = overrides.ceremony_id ? null : await insertCeremony(pool);
   const fam = overrides.family_id ? null : await insertCategoryFamily(pool);
-  const pillTpl = overrides.pill_template_id ? null : await insertDisplayTemplate(pool);
-  const expTpl =
-    overrides.expanded_template_id && overrides.expanded_template_id !== pillTpl?.id
-      ? null
-      : pillTpl || (await insertDisplayTemplate(pool, { scope: "EXPANDED" }));
 
   const cat = buildCategoryEdition({
     ceremony_id: overrides.ceremony_id ?? ceremony?.id ?? 1,
     family_id: overrides.family_id ?? fam?.id ?? 1,
-    pill_template_id: overrides.pill_template_id ?? pillTpl?.id ?? 1,
-    expanded_template_id:
-      overrides.expanded_template_id ?? expTpl?.id ?? pillTpl?.id ?? 1,
     ...overrides
   });
 
   await pool.query(
     `INSERT INTO category_edition
-     (id, ceremony_id, family_id, unit_kind, pill_template_id, expanded_template_id, icon_id, sort_index)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [
-      cat.id,
-      cat.ceremony_id,
-      cat.family_id,
-      cat.unit_kind,
-      cat.pill_template_id,
-      cat.expanded_template_id,
-      cat.icon_id,
-      cat.sort_index
-    ]
+     (id, ceremony_id, family_id, unit_kind, icon_id, sort_index)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [cat.id, cat.ceremony_id, cat.family_id, cat.unit_kind, cat.icon_id, cat.sort_index]
   );
   return cat;
 }

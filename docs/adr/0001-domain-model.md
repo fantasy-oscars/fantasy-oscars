@@ -24,7 +24,7 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 - **Draft**: one per league; status (PENDING/IN_PROGRESS/COMPLETED/CANCELLED), order type (SNAKE/LINEAR), current pick.
 - **Draft Seat**: seat number per draft bound to a league member; unique per draft/seat and draft/member; active flag.
 - **Draft Pick**: made by a seat/member in a draft; unique pick number per draft, unique nomination per draft, unique combo of (round, seat) per draft.
-- **Catalog**: icon, display_template, person, film, song, performance as supporting objects.
+- **Catalog**: icon, person, film, song, performance as supporting objects.
 
 ## Key invariants
 

@@ -31,7 +31,6 @@ describe("load-nominees script", () => {
 
       const tables = [
         "icon",
-        "display_template",
         "ceremony",
         "category_family",
         "category_edition",

@@ -55,6 +55,7 @@
     "ticket:import-roadmap": "node .github/scripts/roadmap-import.mjs",
     "ticket:sync": "node .github/scripts/ticket-sync.mjs",
     "ticket:deps": "node .github/scripts/ticket-deps.mjs",
+    "ticket:link-linear": "node .github/scripts/ticket-link-linear.mjs",
     "test:scripts": "node --test .github/scripts/lib/*.test.mjs",
     "lint:scripts": "eslint .github/scripts",
     "format:check": "npm run --workspaces --if-present format:check"

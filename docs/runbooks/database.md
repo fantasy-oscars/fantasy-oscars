@@ -4,7 +4,7 @@
 
 - Tests use Testcontainers Postgres; migrations auto-apply from `db/migrations`.
 - Reset between test suites via truncate + identity restart.
-- Local DB via docker-compose (future) will use the same migrations.
+- Local DB is provided via docker-compose and uses the same migrations.
 
 ## Migrations
 
@@ -18,10 +18,12 @@
 - Migrations apply on container startup.
 - Cleanup: truncate all public tables and restart identities between suites.
 
-## Local DB (future)
+## Local DB
 
-- Use `npm run db:up` / `db:down` (when docker-compose is wired).
-- Apply migrations using the same scripts (to be added alongside compose).
+- Start/stop Postgres: `npm run db:up` / `npm run db:down`.
+- Only the DB is containerized (by design). Run `apps/api` / `apps/web` on the host for faster iteration and better debugging.
+- Connect with: `DATABASE_URL=postgres://fantasy:fantasy@localhost:5433/fantasy_oscars`
+- Apply migrations by running the app/tests that auto-apply migrations (or the dedicated migration command once it exists).
 
 ## Troubleshooting
 
