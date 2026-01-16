@@ -147,6 +147,17 @@ export async function createLeagueMember(
   return rows[0];
 }
 
+export async function deleteLeagueMember(
+  client: DbClient,
+  leagueId: number,
+  userId: number
+): Promise<void> {
+  await query(client, `DELETE FROM league_member WHERE league_id = $1 AND user_id = $2`, [
+    leagueId,
+    userId
+  ]);
+}
+
 export async function listLeaguesForUser(
   client: DbClient,
   userId: number
