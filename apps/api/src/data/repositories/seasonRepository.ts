@@ -49,3 +49,22 @@ export async function createExtantSeason(
   );
   return rows[0];
 }
+
+export async function getSeasonById(
+  client: DbClient,
+  id: number
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `SELECT
+       id::int,
+       league_id::int,
+       ceremony_id::int,
+       status,
+       created_at
+     FROM season
+     WHERE id = $1`,
+    [id]
+  );
+  return rows[0] ?? null;
+}

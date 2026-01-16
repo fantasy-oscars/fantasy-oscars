@@ -161,9 +161,23 @@ export async function insertNomination(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildNomination>> = {}
 ) {
+  // Allow callers to hint the ceremony; not part of buildNomination's shape so accept loosely.
+  const overrideCeremony =
+    (overrides as { ceremony_id?: number | null }).ceremony_id ?? null;
+  let ceremonyIdOverride = overrideCeremony;
+  if (!ceremonyIdOverride) {
+    const { rows } = await pool.query<{ active_ceremony_id: number | null }>(
+      `SELECT active_ceremony_id FROM app_config WHERE id = TRUE`
+    );
+    ceremonyIdOverride = rows[0]?.active_ceremony_id ?? null;
+  }
+
   const category = overrides.category_edition_id
     ? null
-    : await insertCategoryEdition(pool);
+    : await insertCategoryEdition(
+        pool,
+        ceremonyIdOverride ? { ceremony_id: ceremonyIdOverride } : {}
+      );
   const film = overrides.film_id ? null : await insertFilm(pool);
   const nomination = buildNomination({
     category_edition_id: overrides.category_edition_id ?? category?.id ?? 1,

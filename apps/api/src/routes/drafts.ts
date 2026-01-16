@@ -9,7 +9,7 @@ import {
   updateDraftOnComplete,
   getDraftByIdForUpdate,
   countDraftSeats,
-  countNominations,
+  countNominationsByCeremony,
   listDraftSeats,
   listDraftPicks,
   listDraftResults,
@@ -18,7 +18,7 @@ import {
   getPickByNumber,
   getPickByRequestId,
   insertDraftPickRecord,
-  getNominationById,
+  getNominationByIdForCeremony,
   listNominationIds,
   completeDraftIfReady,
   createDraftEvent,
@@ -28,7 +28,8 @@ import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
 import {
   createExtantSeason,
-  getExtantSeasonForLeague
+  getExtantSeasonForLeague,
+  getSeasonById
 } from "../data/repositories/seasonRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -146,10 +147,14 @@ export function buildStartDraftHandler(pool: Pool) {
           throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
         }
 
-        const league = await getLeagueById(tx, draft.league_id);
-        if (!league) {
-          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        if (season.status !== "EXTANT") {
+          throw new AppError("SEASON_INACTIVE", 409, "Season is not active");
         }
+
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
         const activeCeremonyId = await getActiveCeremonyId(tx);
         if (!activeCeremonyId) {
@@ -159,7 +164,7 @@ export function buildStartDraftHandler(pool: Pool) {
             "Active ceremony is not configured"
           );
         }
-        if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+        if (Number(season.ceremony_id) !== Number(activeCeremonyId)) {
           throw new AppError(
             "CEREMONY_INACTIVE",
             409,
@@ -185,7 +190,7 @@ export function buildStartDraftHandler(pool: Pool) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
         }
 
-        const nominationCount = await countNominations(tx);
+        const nominationCount = await countNominationsByCeremony(tx, season.ceremony_id);
         if (nominationCount <= 0) {
           throw new AppError(
             "PREREQ_MISSING_NOMINATIONS",
@@ -409,7 +414,13 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
         }
 
-        const league = await getLeagueById(tx, draft.league_id);
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        if (season.status !== "EXTANT") {
+          throw new AppError("SEASON_INACTIVE", 409, "Season is not active");
+        }
+
+        const league = await getLeagueById(tx, season.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
         const activeCeremonyId = await getActiveCeremonyId(tx);
@@ -420,7 +431,7 @@ export function buildSubmitPickHandler(pool: Pool) {
             "Active ceremony is not configured"
           );
         }
-        if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+        if (Number(season.ceremony_id) !== Number(activeCeremonyId)) {
           throw new AppError(
             "CEREMONY_INACTIVE",
             409,
@@ -448,7 +459,11 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is completed");
         }
 
-        const nomination = await getNominationById(tx, nominationIdNum);
+        const nomination = await getNominationByIdForCeremony(
+          tx,
+          nominationIdNum,
+          season.ceremony_id
+        );
         if (!nomination) {
           throw new AppError("NOMINATION_NOT_FOUND", 404, "Nomination not found");
         }
