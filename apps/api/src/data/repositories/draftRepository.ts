@@ -193,6 +193,24 @@ export async function getDraftBySeasonId(
   return rows[0] ?? null;
 }
 
+export async function hasDraftsStartedForCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<boolean> {
+  const { rows } = await query<{ exists: boolean }>(
+    client,
+    `SELECT EXISTS (
+       SELECT 1
+       FROM draft d
+       JOIN season s ON s.id = d.season_id
+       WHERE s.ceremony_id = $1
+         AND d.status <> 'PENDING'
+     ) AS exists`,
+    [ceremonyId]
+  );
+  return Boolean(rows[0]?.exists);
+}
+
 export async function countNominationsByCeremony(
   client: DbClient,
   ceremonyId: number
