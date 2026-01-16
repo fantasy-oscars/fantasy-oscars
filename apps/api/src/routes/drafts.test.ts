@@ -17,6 +17,7 @@ import type { DbClient } from "../data/db.js";
 import * as db from "../data/db.js";
 import * as draftEvents from "../realtime/draftEvents.js";
 import type { Pool } from "pg";
+import * as appConfigRepo from "../data/repositories/appConfigRepository.js";
 
 const AUTH_SECRET = "test-secret";
 
@@ -56,6 +57,7 @@ describe("POST /drafts", () => {
   const getDraftByLeagueIdSpy = vi.spyOn(draftRepo, "getDraftByLeagueId");
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
   const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+  const getActiveCeremonySpy = vi.spyOn(appConfigRepo, "getActiveCeremonyId");
   const auth = requireAuth(AUTH_SECRET);
   const handler = buildCreateDraftHandler({} as unknown as DbClient);
 
@@ -79,6 +81,7 @@ describe("POST /drafts", () => {
       role: "OWNER",
       joined_at: new Date("2024-01-01T00:00:00Z")
     });
+    getActiveCeremonySpy.mockResolvedValue(99);
     createDraftSpy.mockResolvedValue({
       id: 42,
       league_id: 1,

@@ -9,6 +9,7 @@ import {
   countLeagueMembers
 } from "../data/repositories/leagueRepository.js";
 import { getDraftByLeagueId } from "../data/repositories/draftRepository.js";
+import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 
 export function createLeaguesRouter(client: DbClient, authSecret: string) {
@@ -31,6 +32,22 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
           "max_members",
           "roster_size"
         ]);
+      }
+
+      const activeCeremonyId = await getActiveCeremonyId(client);
+      if (!activeCeremonyId) {
+        throw new AppError(
+          "ACTIVE_CEREMONY_NOT_SET",
+          409,
+          "Active ceremony is not configured"
+        );
+      }
+      if (Number(ceremony_id) !== Number(activeCeremonyId)) {
+        throw new AppError(
+          "CEREMONY_INACTIVE",
+          409,
+          "Leagues can only be created for the active ceremony"
+        );
       }
 
       const league = await createLeague(client, {
@@ -75,6 +92,22 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
 
         const league = await getLeagueById(client, leagueId);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+
+        const activeCeremonyId = await getActiveCeremonyId(client);
+        if (!activeCeremonyId) {
+          throw new AppError(
+            "ACTIVE_CEREMONY_NOT_SET",
+            409,
+            "Active ceremony is not configured"
+          );
+        }
+        if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+          throw new AppError(
+            "CEREMONY_INACTIVE",
+            409,
+            "This league is not in the active ceremony"
+          );
+        }
 
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
