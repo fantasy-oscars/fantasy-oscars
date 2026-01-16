@@ -3,6 +3,7 @@ import { DbClient, query } from "../db.js";
 export type DraftRecord = {
   id: number;
   league_id: number;
+  season_id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
@@ -55,6 +56,7 @@ export async function createDraft(
   client: DbClient,
   input: {
     league_id: number;
+    season_id: number;
     status: DraftRecord["status"];
     draft_order_type: DraftRecord["draft_order_type"];
     current_pick_number?: number | null;
@@ -65,11 +67,12 @@ export async function createDraft(
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, status, draft_order_type, current_pick_number, started_at, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING
         id::int,
         league_id::int,
+        season_id::int,
         status,
         draft_order_type,
         current_pick_number,
@@ -79,6 +82,7 @@ export async function createDraft(
     `,
     [
       input.league_id,
+      input.season_id,
       input.status,
       input.draft_order_type,
       input.current_pick_number ?? null,
@@ -134,7 +138,11 @@ export async function getDraftByLeagueId(
 ): Promise<DraftRecord | null> {
   const { rows } = await query<DraftRecord>(
     client,
-    `SELECT * FROM draft WHERE league_id = $1`,
+    `SELECT d.*
+     FROM draft d
+     JOIN season s ON s.id = d.season_id
+     WHERE s.league_id = $1
+       AND s.status = 'EXTANT'`,
     [leagueId]
   );
   return rows[0] ?? null;

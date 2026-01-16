@@ -5,6 +5,7 @@
 - Tests use Testcontainers Postgres; migrations auto-apply from `db/migrations`.
 - Reset between test suites via truncate + identity restart.
 - Local DB is provided via docker-compose and uses the same migrations.
+- Backfill note: migration 010 creates `season` rows for each league (extant per ceremony) and links existing drafts to seasons. If you had local data pre-010, rerun migrations or recreate the DB to ensure drafts have `season_id`.
 
 ## Migrations
 
