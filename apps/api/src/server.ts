@@ -4,6 +4,7 @@ import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createDraftsRouter } from "./routes/drafts.js";
 import { createLeaguesRouter } from "./routes/leagues.js";
+import { createSeasonsRouter } from "./routes/seasons.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { createCeremonyRouter } from "./routes/ceremony.js";
 import { requireAdmin, requireAuth } from "./auth/middleware.js";
@@ -96,6 +97,7 @@ export function createServer(deps?: { db?: Pool }) {
   app.use("/health", healthRouter);
   app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
+  app.use("/seasons", createSeasonsRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
   app.use("/ceremony", createCeremonyRouter(pool));
   app.use(
