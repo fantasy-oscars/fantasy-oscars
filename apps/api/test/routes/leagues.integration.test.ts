@@ -228,4 +228,112 @@ describe("leagues integration", () => {
     expect(res.status).toBe(410);
     expect(res.json.error.code).toBe("INVITE_ONLY_MEMBERSHIP");
   });
+
+  it("returns roster for commissioners with roles and handles", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const member = await insertUser(db.pool, {
+      handle: "member1",
+      display_name: "Member One"
+    });
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "r-1", name: "Roster", max_members: 5 },
+      ownerToken
+    );
+    const leagueId = createRes.json.league.id;
+    await db.pool.query(
+      `INSERT INTO league_member (league_id, user_id, role) VALUES ($1,$2,'MEMBER')`,
+      [leagueId, member.id]
+    );
+
+    const res = await getJson<{
+      members: Array<{
+        user_id: number;
+        role: string;
+        handle: string;
+        display_name: string;
+      }>;
+    }>(`/leagues/${leagueId}/members`, ownerToken);
+
+    expect(res.status).toBe(200);
+    const handles = res.json.members.map((m) => m.handle).sort();
+    expect(handles).toEqual([member.handle, owner.handle].sort());
+  });
+
+  it("owner can transfer ownership to a member", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const target = await insertUser(db.pool, { handle: "new-owner" });
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "transfer-1", name: "Transfer", max_members: 5 },
+      ownerToken
+    );
+    const leagueId = createRes.json.league.id;
+    await db.pool.query(
+      `INSERT INTO league_member (league_id, user_id, role) VALUES ($1,$2,'MEMBER')`,
+      [leagueId, target.id]
+    );
+
+    const res = await post<{ ok: boolean }>(
+      `/leagues/${leagueId}/transfer`,
+      { user_id: target.id },
+      ownerToken
+    );
+    expect(res.status).toBe(200);
+
+    const { rows } = await db.pool.query<{ role: string }>(
+      `SELECT role FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [leagueId, target.id]
+    );
+    expect(rows[0].role).toBe("OWNER");
+  });
+
+  it("prevents removing the last commissioner", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "remove-1", name: "Remove", max_members: 5 },
+      ownerToken
+    );
+    const leagueId = createRes.json.league.id;
+
+    const res = await api
+      .delete(`/leagues/${leagueId}/members/${owner.id}`)
+      .set("Authorization", `Bearer ${ownerToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("commissioner can remove a member", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const member = await insertUser(db.pool, { handle: "dropme" });
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "remove-2", name: "Remove2", max_members: 5 },
+      ownerToken
+    );
+    const leagueId = createRes.json.league.id;
+    await db.pool.query(
+      `INSERT INTO league_member (league_id, user_id, role) VALUES ($1,$2,'MEMBER')`,
+      [leagueId, member.id]
+    );
+
+    const res = await api
+      .delete(`/leagues/${leagueId}/members/${member.id}`)
+      .set("Authorization", `Bearer ${ownerToken}`);
+    expect(res.status).toBe(200);
+
+    const { rows } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [leagueId, member.id]
+    );
+    expect(Number(rows[0].count)).toBe(0);
+  });
 });
