@@ -201,4 +201,31 @@ describe("leagues integration", () => {
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
+
+  it("returns invite-only error for legacy join endpoint", async () => {
+    const ceremony = await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const createRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      {
+        code: "join-legacy",
+        name: "Join Legacy",
+        ceremony_id: ceremony.id,
+        max_members: 10,
+        roster_size: 5,
+        is_public: true
+      },
+      token
+    );
+
+    const res = await post<{ error: { code: string } }>(
+      `/leagues/${createRes.json.league.id}/join`,
+      {},
+      token
+    );
+
+    expect(res.status).toBe(410);
+    expect(res.json.error.code).toBe("INVITE_ONLY_MEMBERSHIP");
+  });
 });

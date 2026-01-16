@@ -8,6 +8,7 @@ import type { DbClient } from "../data/db.js";
 export function createLeaguesRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
+  // League membership is invite-only for MVP; open joins are disabled.
   router.post("/", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
     try {
       const { code, name, ceremony_id, max_members, roster_size, is_public } =
@@ -58,6 +59,22 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
       next(err);
     }
   });
+
+  router.post(
+    "/:id/join",
+    requireAuth(authSecret),
+    async (_req: AuthedRequest, res, next) => {
+      try {
+        throw new AppError(
+          "INVITE_ONLY_MEMBERSHIP",
+          410,
+          "League membership is invite-only for MVP seasons"
+        );
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   router.get("/:id", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
     try {
