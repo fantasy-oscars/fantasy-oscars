@@ -27,6 +27,7 @@
     "test:lint": "npm run lint",
     "test:typecheck": "npm run typecheck",
     "test:unit": "npm run test:scripts && npm run --workspaces --if-present test:unit",
+    "test:migrations": "node --test .github/scripts/migration-order.test.mjs",
     "test:integration": "npm run --workspaces --if-present test:integration",
     "test:integration:bail": "npm run --workspaces --if-present test:integration -- --bail=1",
     "test:build": "npm run build",
@@ -56,7 +57,7 @@
     "ticket:sync": "node .github/scripts/ticket-sync.mjs",
     "ticket:deps": "node .github/scripts/ticket-deps.mjs",
     "ticket:link-linear": "node .github/scripts/ticket-link-linear.mjs",
-    "test:scripts": "node --test .github/scripts/lib/*.test.mjs",
+    "test:scripts": "node --test .github/scripts/lib/*.test.mjs .github/scripts/migration-order.test.mjs",
     "lint:scripts": "eslint .github/scripts",
     "format:check": "npm run --workspaces --if-present format:check"
   }
