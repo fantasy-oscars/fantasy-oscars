@@ -86,6 +86,32 @@ export async function getPlaceholderInviteById(
   return rows[0] ? mapInvite(rows[0]) : null;
 }
 
+export async function getPlaceholderInviteByTokenHash(
+  client: DbClient,
+  tokenHash: string
+): Promise<SeasonInviteRecord | null> {
+  const { rows } = await query(
+    client,
+    `SELECT
+       id,
+       season_id,
+       intended_user_id,
+       token_hash,
+       kind,
+       status,
+       label,
+       created_by_user_id,
+       claimed_by_user_id,
+       claimed_at,
+       created_at,
+       updated_at
+     FROM season_invite
+     WHERE kind = 'PLACEHOLDER' AND token_hash = $1`,
+    [tokenHash]
+  );
+  return rows[0] ? mapInvite(rows[0]) : null;
+}
+
 export async function createPlaceholderInvite(
   client: DbClient,
   input: {
@@ -171,6 +197,37 @@ export async function updatePlaceholderInviteLabel(
        created_at,
        updated_at`,
     [inviteId, seasonId, label]
+  );
+  return rows[0] ? mapInvite(rows[0]) : null;
+}
+
+export async function markPlaceholderInviteClaimed(
+  client: DbClient,
+  inviteId: number,
+  userId: number,
+  claimedAt: Date
+): Promise<SeasonInviteRecord | null> {
+  const { rows } = await query(
+    client,
+    `UPDATE season_invite
+     SET status = 'CLAIMED',
+         claimed_by_user_id = $2,
+         claimed_at = $3
+     WHERE id = $1 AND kind = 'PLACEHOLDER' AND status = 'PENDING'
+     RETURNING
+       id,
+       season_id,
+       intended_user_id,
+       token_hash,
+       kind,
+       status,
+       label,
+       created_by_user_id,
+       claimed_by_user_id,
+       claimed_at,
+       created_at,
+       updated_at`,
+    [inviteId, userId, claimedAt]
   );
   return rows[0] ? mapInvite(rows[0]) : null;
 }

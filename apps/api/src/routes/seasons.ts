@@ -42,11 +42,303 @@ import {
   createUserTargetedInvite,
   listPendingUserInvitesForUser,
   updateUserInviteStatus,
+  getPlaceholderInviteByTokenHash,
+  markPlaceholderInviteClaimed,
   type SeasonInviteRecord
 } from "../data/repositories/seasonInviteRepository.js";
 
 export function createSeasonsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
+
+  function hashInviteToken(token: string) {
+    return crypto.createHash("sha256").update(token).digest("hex");
+  }
+
+  function ensureCommissioner(member: { role: string } | null) {
+    if (!member || (member.role !== "OWNER" && member.role !== "CO_OWNER")) {
+      throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+    }
+  }
+
+  function sanitizeInvite(invite: {
+    id: number;
+    season_id: number;
+    status: string;
+    label: string | null;
+    created_at: Date;
+    updated_at: Date;
+    claimed_at: Date | null;
+    kind: string;
+  }) {
+    return {
+      id: invite.id,
+      season_id: invite.season_id,
+      kind: invite.kind,
+      status: invite.status,
+      label: invite.label,
+      created_at: invite.created_at,
+      updated_at: invite.updated_at,
+      claimed_at: invite.claimed_at
+    };
+  }
+
+  async function getUserById(client: DbClient, userId: number) {
+    const { rows } = await query<{ id: number }>(
+      client,
+      `SELECT id::int FROM app_user WHERE id = $1`,
+      [userId]
+    );
+    return rows[0] ?? null;
+  }
+
+  router.get(
+    "/invites/preview/:token",
+    async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      try {
+        const token = req.params.token;
+        if (!token || typeof token !== "string") {
+          throw validationError("Invalid token", ["token"]);
+        }
+        const tokenHash = hashInviteToken(token);
+
+        const { rows } = await query<{
+          status: string;
+          season_status: string;
+          league_name: string;
+          ceremony_year: number;
+        }>(
+          client,
+          `SELECT si.status,
+                  s.status AS season_status,
+                  l.name AS league_name,
+                  c.year::int AS ceremony_year
+           FROM season_invite si
+           JOIN season s ON s.id = si.season_id
+           JOIN league l ON l.id = s.league_id
+           JOIN ceremony c ON c.id = s.ceremony_id
+           WHERE si.kind = 'PLACEHOLDER' AND si.token_hash = $1`,
+          [tokenHash]
+        );
+        const invite = rows[0];
+        if (!invite) {
+          throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+        }
+        if (invite.season_status === "CANCELLED") {
+          throw new AppError("SEASON_CANCELLED", 410, "Season is cancelled");
+        }
+        if (invite.status === "REVOKED") {
+          throw new AppError("INVITE_REVOKED", 410, "Invite was revoked");
+        }
+        if (invite.status === "DECLINED") {
+          throw new AppError("INVITE_DECLINED", 410, "Invite was declined");
+        }
+        if (invite.status === "CLAIMED") {
+          throw new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed");
+        }
+
+        return res.json({
+          invite: {
+            league_name: invite.league_name,
+            ceremony_year: invite.ceremony_year
+          }
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/invites/claim/register",
+    async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { token, handle, email, display_name, password } = req.body ?? {};
+        if (!token || typeof token !== "string") {
+          throw validationError("Invalid token", ["token"]);
+        }
+        if (
+          !handle ||
+          !email ||
+          !display_name ||
+          !password ||
+          typeof handle !== "string" ||
+          typeof email !== "string" ||
+          typeof display_name !== "string" ||
+          typeof password !== "string"
+        ) {
+          throw validationError("Missing required fields", [
+            "handle",
+            "email",
+            "display_name",
+            "password"
+          ]);
+        }
+        const trimmedHandle = handle.trim();
+        const trimmedEmail = email.trim();
+        const normalizedHandle = trimmedHandle.toLowerCase();
+        const normalizedEmail = trimmedEmail.toLowerCase();
+        const trimmedDisplayName = display_name.trim();
+        const invalidFields: string[] = [];
+        if (trimmedHandle.length < 2 || /\s/.test(trimmedHandle)) {
+          invalidFields.push("handle");
+        }
+        if (trimmedEmail.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+          invalidFields.push("email");
+        }
+        if (trimmedDisplayName.length < 1) invalidFields.push("display_name");
+        if (password.length < 8) invalidFields.push("password");
+        if (invalidFields.length) {
+          throw validationError("Invalid field values", invalidFields);
+        }
+
+        const tokenHash = hashInviteToken(token);
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows } = await query<{
+            id: number;
+            season_id: number;
+            league_id: number;
+            ceremony_id: number;
+            status: string;
+            season_status: string;
+            created_by_user_id: number;
+          }>(
+            tx,
+            `SELECT si.id::int,
+                    si.season_id::int,
+                    s.league_id::int,
+                    s.ceremony_id::int,
+                    si.status,
+                    s.status AS season_status,
+                    si.created_by_user_id::int
+             FROM season_invite si
+             JOIN season s ON s.id = si.season_id
+             WHERE si.kind = 'PLACEHOLDER' AND si.token_hash = $1
+             FOR UPDATE`,
+            [tokenHash]
+          );
+          const invite = rows[0];
+          if (!invite) {
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          }
+          if (invite.season_status === "CANCELLED") {
+            return {
+              error: new AppError("SEASON_CANCELLED", 410, "Season is cancelled")
+            };
+          }
+          if (invite.status === "REVOKED") {
+            return { error: new AppError("INVITE_REVOKED", 410, "Invite was revoked") };
+          }
+          if (invite.status === "DECLINED") {
+            return { error: new AppError("INVITE_DECLINED", 410, "Invite was declined") };
+          }
+          if (invite.status === "CLAIMED") {
+            return {
+              error: new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed")
+            };
+          }
+
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, invite.ceremony_id);
+          if (draftsStarted) {
+            return {
+              error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")
+            };
+          }
+
+          const passwordHash = await (async () => {
+            const salt = crypto.randomBytes(16);
+            const derived = await new Promise<Buffer>((resolve, reject) => {
+              crypto.scrypt(password, salt, 64, { N: 16384, r: 8, p: 1 }, (err, dk) => {
+                if (err) reject(err);
+                else resolve(dk as Buffer);
+              });
+            });
+            return [
+              "scrypt",
+              16384,
+              8,
+              1,
+              salt.toString("base64"),
+              derived.toString("base64")
+            ].join("$");
+          })();
+
+          let userId: number;
+          try {
+            const { rows: userRows } = await query<{ id: number }>(
+              tx,
+              `INSERT INTO app_user (handle, email, display_name)
+               VALUES ($1, $2, $3)
+               RETURNING id::int`,
+              [normalizedHandle, normalizedEmail, trimmedDisplayName]
+            );
+            userId = userRows[0].id;
+            await query(
+              tx,
+              `INSERT INTO auth_password (user_id, password_hash, password_algo)
+               VALUES ($1, $2, $3)`,
+              [userId, passwordHash, "scrypt"]
+            );
+          } catch (err) {
+            const pgErr = err as { constraint?: string; message?: string };
+            const constraint = pgErr.constraint ?? pgErr.message ?? "";
+            if (
+              constraint.includes("app_user_handle_key") ||
+              constraint.includes("app_user_email_key") ||
+              constraint.includes("app_user_handle_lower_key") ||
+              constraint.includes("app_user_email_lower_key")
+            ) {
+              return {
+                error: new AppError(
+                  "USER_EXISTS",
+                  409,
+                  "User with handle/email already exists"
+                )
+              };
+            }
+            throw err;
+          }
+
+          let leagueMember = await getLeagueMember(tx, invite.league_id, userId);
+          if (!leagueMember) {
+            leagueMember = await createLeagueMember(tx, {
+              league_id: invite.league_id,
+              user_id: userId,
+              role: "MEMBER"
+            });
+          }
+
+          await addSeasonMember(tx, {
+            season_id: invite.season_id,
+            user_id: userId,
+            league_member_id: leagueMember.id,
+            role: "MEMBER"
+          });
+
+          const claimed = await markPlaceholderInviteClaimed(
+            tx,
+            invite.id,
+            userId,
+            new Date()
+          );
+          if (!claimed) {
+            return {
+              error: new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed")
+            };
+          }
+
+          return { invite: claimed };
+        });
+
+        if ("error" in result && result.error) {
+          throw result.error;
+        }
+
+        return res.status(201).json({ invite: sanitizeInvite(result.invite!) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   router.use(requireAuth(authSecret));
 
@@ -113,43 +405,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
       }
     }
   );
-
-  function ensureCommissioner(member: { role: string } | null) {
-    if (!member || (member.role !== "OWNER" && member.role !== "CO_OWNER")) {
-      throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
-    }
-  }
-
-  function sanitizeInvite(invite: {
-    id: number;
-    season_id: number;
-    status: string;
-    label: string | null;
-    created_at: Date;
-    updated_at: Date;
-    claimed_at: Date | null;
-    kind: string;
-  }) {
-    return {
-      id: invite.id,
-      season_id: invite.season_id,
-      kind: invite.kind,
-      status: invite.status,
-      label: invite.label,
-      created_at: invite.created_at,
-      updated_at: invite.updated_at,
-      claimed_at: invite.claimed_at
-    };
-  }
-
-  async function getUserById(client: DbClient, userId: number) {
-    const { rows } = await query<{ id: number }>(
-      client,
-      `SELECT id::int FROM app_user WHERE id = $1`,
-      [userId]
-    );
-    return rows[0] ?? null;
-  }
 
   router.post(
     "/seasons/:id/cancel",
@@ -862,6 +1117,114 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
   );
 
   router.post(
+    "/invites/claim",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { token } = req.body ?? {};
+        const userId = Number(req.auth?.sub);
+        if (!token || typeof token !== "string" || !userId) {
+          throw validationError("Invalid token", ["token"]);
+        }
+        const tokenHash = hashInviteToken(token);
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows } = await query<{
+            id: number;
+            season_id: number;
+            league_id: number;
+            ceremony_id: number;
+            status: string;
+            season_status: string;
+            claimed_by_user_id: number | null;
+          }>(
+            tx,
+            `SELECT si.id::int,
+                    si.season_id::int,
+                    s.league_id::int,
+                    s.ceremony_id::int,
+                    si.status,
+                    s.status AS season_status,
+                    si.claimed_by_user_id::int
+             FROM season_invite si
+             JOIN season s ON s.id = si.season_id
+             WHERE si.kind = 'PLACEHOLDER' AND si.token_hash = $1
+             FOR UPDATE`,
+            [tokenHash]
+          );
+          const invite = rows[0];
+          if (!invite) {
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          }
+          if (invite.season_status === "CANCELLED") {
+            return {
+              error: new AppError("SEASON_CANCELLED", 410, "Season is cancelled")
+            };
+          }
+          if (invite.status === "REVOKED") {
+            return { error: new AppError("INVITE_REVOKED", 410, "Invite was revoked") };
+          }
+          if (invite.status === "DECLINED") {
+            return { error: new AppError("INVITE_DECLINED", 410, "Invite was declined") };
+          }
+          if (invite.status === "CLAIMED") {
+            if (invite.claimed_by_user_id === userId) {
+              const full = await getPlaceholderInviteByTokenHash(tx, tokenHash);
+              return { invite: full ?? (invite as unknown as SeasonInviteRecord) };
+            }
+            return {
+              error: new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed")
+            };
+          }
+
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, invite.ceremony_id);
+          if (draftsStarted) {
+            return {
+              error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")
+            };
+          }
+
+          let leagueMember = await getLeagueMember(tx, invite.league_id, userId);
+          if (!leagueMember) {
+            leagueMember = await createLeagueMember(tx, {
+              league_id: invite.league_id,
+              user_id: userId,
+              role: "MEMBER"
+            });
+          }
+          await addSeasonMember(tx, {
+            season_id: invite.season_id,
+            user_id: userId,
+            league_member_id: leagueMember.id,
+            role: "MEMBER"
+          });
+
+          const claimed = await markPlaceholderInviteClaimed(
+            tx,
+            invite.id,
+            userId,
+            new Date()
+          );
+          if (!claimed) {
+            return {
+              error: new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed")
+            };
+          }
+
+          return { invite: claimed };
+        });
+
+        if ("error" in result && result.error) {
+          throw result.error;
+        }
+
+        return res.status(200).json({ invite: sanitizeInvite(result.invite!) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
     "/invites/:inviteId/accept",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
@@ -880,6 +1243,11 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
             status: string;
             kind: string;
             intended_user_id: number | null;
+            claimed_by_user_id: number | null;
+            label: string | null;
+            created_at: Date;
+            updated_at: Date;
+            claimed_at: Date | null;
           }>(
             tx,
             `SELECT si.id::int,
@@ -888,7 +1256,12 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
                     s.ceremony_id::int,
                     si.status,
                     si.kind,
-                    si.intended_user_id::int
+                    si.intended_user_id::int,
+                    si.claimed_by_user_id::int,
+                    si.label,
+                    si.created_at,
+                    si.updated_at,
+                    si.claimed_at
              FROM season_invite si
              JOIN season s ON s.id = si.season_id
              WHERE si.id = $1
@@ -903,9 +1276,30 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           if (
             !inviteRow ||
             inviteRow.kind !== "USER_TARGETED" ||
-            intendedUserId !== userId ||
-            inviteRow.status !== "PENDING"
+            intendedUserId !== userId
           ) {
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          }
+
+          if (inviteRow.status === "REVOKED") {
+            return { error: new AppError("INVITE_REVOKED", 410, "Invite was revoked") };
+          }
+          if (inviteRow.status === "DECLINED") {
+            return { error: new AppError("INVITE_DECLINED", 410, "Invite was declined") };
+          }
+          const claimedBy =
+            inviteRow.claimed_by_user_id !== null
+              ? Number(inviteRow.claimed_by_user_id)
+              : null;
+          if (inviteRow.status === "CLAIMED") {
+            if (claimedBy === userId) {
+              return { invite: inviteRow };
+            }
+            return {
+              error: new AppError("INVITE_ALREADY_CLAIMED", 409, "Invite already claimed")
+            };
+          }
+          if (inviteRow.status !== "PENDING") {
             return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
           }
 

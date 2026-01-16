@@ -447,3 +447,116 @@ describe("seasons user-targeted invites", () => {
     expect(res.json.error.code).toBe("INVITES_LOCKED");
   });
 });
+
+describe("placeholder invite claim flow", () => {
+  beforeAll(async () => {
+    process.env.PORT = process.env.PORT ?? "3105";
+    process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
+    authSecret = process.env.AUTH_SECRET;
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    api = createApiAgent(app);
+  }, 120_000);
+
+  afterAll(async () => {
+    if (db) await db.stop();
+  });
+
+  beforeEach(async () => {
+    await truncateAllTables(db.pool);
+  });
+
+  async function createPlaceholderInviteWithToken(seasonId: number, ownerToken: string) {
+    const res = await postJson<{
+      invite: { id: number; status: string };
+      token: string;
+    }>(`/seasons/${seasonId}/invites`, {}, ownerToken);
+    expect(res.status).toBe(201);
+    return res.json.token;
+  }
+
+  it("previews a placeholder invite token", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const token = await createPlaceholderInviteWithToken(season.id, ownerToken);
+
+    const res = await getJson<{ invite: { league_name: string; ceremony_year: number } }>(
+      `/seasons/invites/preview/${token}`
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.json.invite.league_name).toBe(league.name);
+  });
+
+  it("claims a placeholder invite as an existing user (idempotent for same user)", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { handle: "claimant" });
+    const inviteeToken = signToken({ sub: String(invitee.id), handle: invitee.handle });
+    const token = await createPlaceholderInviteWithToken(season.id, ownerToken);
+
+    const res = await postJson<{ invite: { status: string } }>(
+      "/seasons/invites/claim",
+      { token },
+      inviteeToken
+    );
+    expect(res.status).toBe(200);
+    expect(res.json.invite.status).toBe("CLAIMED");
+
+    // idempotent for same user
+    const res2 = await postJson<{ invite: { status: string } }>(
+      "/seasons/invites/claim",
+      { token },
+      inviteeToken
+    );
+    expect(res2.status).toBe(200);
+
+    const { rows: seasonMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = $1 AND user_id = $2`,
+      [season.id, invitee.id]
+    );
+    expect(Number(seasonMembers[0].count)).toBe(1);
+
+    const { rows: leagueMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [league.id, invitee.id]
+    );
+    expect(Number(leagueMembers[0].count)).toBe(1);
+  });
+
+  it("registers a new user and claims a placeholder invite atomically", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const token = await createPlaceholderInviteWithToken(season.id, ownerToken);
+
+    const res = await postJson<{ invite: { status: string } }>(
+      "/seasons/invites/claim/register",
+      {
+        token,
+        handle: "newuser",
+        email: "new@example.com",
+        display_name: "New User",
+        password: "strongpass"
+      }
+    );
+
+    expect(res.status).toBe(201);
+    expect(res.json.invite.status).toBe("CLAIMED");
+
+    const { rows: seasonMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count
+       FROM season_member sm
+       JOIN app_user u ON u.id = sm.user_id
+       WHERE sm.season_id = $1 AND u.handle = 'newuser'`,
+      [season.id]
+    );
+    expect(Number(seasonMembers[0].count)).toBe(1);
+
+    const { rows: leagueMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count
+       FROM league_member lm
+       JOIN app_user u ON u.id = lm.user_id
+       WHERE lm.league_id = $1 AND u.handle = 'newuser'`,
+      [league.id]
+    );
+    expect(Number(leagueMembers[0].count)).toBe(1);
+  });
+});
