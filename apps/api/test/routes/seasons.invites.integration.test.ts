@@ -296,3 +296,154 @@ describe("seasons placeholder invites", () => {
     expect(res.json.error.code).toBe("INVITES_LOCKED");
   });
 });
+
+describe("seasons user-targeted invites", () => {
+  beforeAll(async () => {
+    process.env.PORT = process.env.PORT ?? "3105";
+    process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret";
+    authSecret = process.env.AUTH_SECRET;
+    db = await startTestDatabase();
+    process.env.DATABASE_URL = db.connectionString;
+    const app = createServer({ db: db.pool });
+    api = createApiAgent(app);
+  }, 120_000);
+
+  afterAll(async () => {
+    if (db) await db.stop();
+  });
+
+  beforeEach(async () => {
+    await truncateAllTables(db.pool);
+  });
+
+  it("creates a user-targeted invite and returns existing pending invite idempotently", async () => {
+    const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { handle: "invitee" });
+
+    const first = await postJson<{ invite: { id: number; status: string } }>(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    expect(first.status).toBe(201);
+
+    const second = await postJson<{ invite: { id: number; status: string } }>(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    expect(second.status).toBe(200);
+    expect(second.json.invite.id).toBe(first.json.invite.id);
+  });
+
+  it("lists pending invites in the invitee inbox", async () => {
+    const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { handle: "inbox" });
+    await postJson(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+
+    const inbox = await getJson<{
+      invites: Array<{ season_id: number; league_id: number | null }>;
+    }>(
+      `/seasons/invites/inbox`,
+      signToken({ sub: String(invitee.id), handle: invitee.handle })
+    );
+
+    expect(inbox.status).toBe(200);
+    expect(inbox.json.invites.length).toBe(1);
+    expect(inbox.json.invites[0].season_id).toBe(season.id);
+  });
+
+  it("accepts a user-targeted invite and creates memberships", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { handle: "accept" });
+    await postJson(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    const inviteeToken = signToken({ sub: String(invitee.id), handle: invitee.handle });
+
+    const inbox = await getJson<{ invites: Array<{ id: number }> }>(
+      `/seasons/invites/inbox`,
+      inviteeToken
+    );
+    const inviteId = inbox.json.invites[0].id;
+
+    const res = await postJson<{ invite: { status: string } }>(
+      `/seasons/invites/${inviteId}/accept`,
+      {},
+      inviteeToken
+    );
+    if (res.status !== 200) {
+      // surface helpful failure info
+      // eslint-disable-next-line no-console
+      console.error("accept invite failure", res.status, res.json);
+    }
+    expect(res.status).toBe(200);
+    expect(res.json.invite.status).toBe("CLAIMED");
+
+    const { rows: seasonMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = $1 AND user_id = $2`,
+      [season.id, invitee.id]
+    );
+    expect(Number(seasonMembers[0].count)).toBe(1);
+
+    const { rows: leagueMembers } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [league.id, invitee.id]
+    );
+    expect(Number(leagueMembers[0].count)).toBe(1);
+  });
+
+  it("declines an invite and removes it from inbox", async () => {
+    const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { handle: "decline" });
+    await postJson(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    const inviteeToken = signToken({ sub: String(invitee.id), handle: invitee.handle });
+    const inbox = await getJson<{ invites: Array<{ id: number }> }>(
+      `/seasons/invites/inbox`,
+      inviteeToken
+    );
+    const inviteId = inbox.json.invites[0].id;
+
+    const res = await postJson<{ invite: { status: string } }>(
+      `/seasons/invites/${inviteId}/decline`,
+      {},
+      inviteeToken
+    );
+    expect(res.status).toBe(200);
+    expect(res.json.invite.status).toBe("DECLINED");
+
+    const inboxAfter = await getJson<{ invites: Array<{ id: number }> }>(
+      `/seasons/invites/inbox`,
+      inviteeToken
+    );
+    expect(inboxAfter.json.invites.length).toBe(0);
+  });
+
+  it("locks creation when drafts have started", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "IN_PROGRESS"
+    });
+    const invitee = await insertUser(db.pool, { handle: "locked" });
+
+    const res = await postJson<{ error: { code: string } }>(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("INVITES_LOCKED");
+  });
+});

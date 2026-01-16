@@ -6,6 +6,7 @@ import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js
 import {
   getLeagueById,
   getLeagueMember,
+  createLeagueMember,
   deleteLeagueMember
 } from "../data/repositories/leagueRepository.js";
 import {
@@ -38,6 +39,9 @@ import {
   listPlaceholderInvites,
   revokePendingPlaceholderInvite,
   updatePlaceholderInviteLabel,
+  createUserTargetedInvite,
+  listPendingUserInvitesForUser,
+  updateUserInviteStatus,
   type SeasonInviteRecord
 } from "../data/repositories/seasonInviteRepository.js";
 
@@ -136,6 +140,15 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
       updated_at: invite.updated_at,
       claimed_at: invite.claimed_at
     };
+  }
+
+  async function getUserById(client: DbClient, userId: number) {
+    const { rows } = await query<{ id: number }>(
+      client,
+      `SELECT id::int FROM app_user WHERE id = $1`,
+      [userId]
+    );
+    return rows[0] ?? null;
   }
 
   router.post(
@@ -743,6 +756,235 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
         }
 
         return res.status(200).json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/:id/user-invites",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        const { user_id } = req.body ?? {};
+        const targetUserId = Number(user_id);
+        if (Number.isNaN(seasonId) || Number.isNaN(targetUserId) || !actorId) {
+          throw validationError("Invalid payload", ["id", "user_id"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          season.ceremony_id
+        );
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        const targetUser = await getUserById(client, targetUserId);
+        if (!targetUser) {
+          throw new AppError("USER_NOT_FOUND", 404, "User not found");
+        }
+
+        const { invite, created } = await createUserTargetedInvite(client, {
+          season_id: seasonId,
+          intended_user_id: targetUserId,
+          created_by_user_id: actorId
+        });
+
+        return res.status(created ? 201 : 200).json({ invite: sanitizeInvite(invite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/invites/inbox",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const userId = Number(req.auth?.sub);
+        if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+
+        const invites = await listPendingUserInvitesForUser(client, userId);
+        const seasonIds = invites.map((i) => i.season_id);
+        const metaRows: Array<{
+          season_id: number;
+          league_id: number;
+          league_name: string;
+          ceremony_id: number;
+        }> =
+          seasonIds.length === 0
+            ? []
+            : (
+                await query<{
+                  season_id: number;
+                  league_id: number;
+                  league_name: string;
+                  ceremony_id: number;
+                }>(
+                  client,
+                  `SELECT s.id AS season_id,
+                          s.league_id,
+                          l.name AS league_name,
+                          s.ceremony_id
+                   FROM season s
+                   JOIN league l ON l.id = s.league_id
+                   WHERE s.id = ANY($1::bigint[])`,
+                  [seasonIds]
+                )
+              ).rows;
+        const metaMap = new Map(metaRows.map((m) => [Number(m.season_id), m]));
+        const response = invites.map((invite) => {
+          const m = metaMap.get(invite.season_id);
+          return {
+            ...sanitizeInvite(invite),
+            league_id: m?.league_id ? Number(m.league_id) : null,
+            league_name: m?.league_name ?? null,
+            ceremony_id: m?.ceremony_id ? Number(m.ceremony_id) : null
+          };
+        });
+
+        return res.json({ invites: response });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/invites/:inviteId/accept",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const inviteId = Number(req.params.inviteId);
+        const userId = Number(req.auth?.sub);
+        if (Number.isNaN(inviteId) || !userId) {
+          throw validationError("Invalid invite id", ["inviteId"]);
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows } = await query<{
+            id: number;
+            season_id: number;
+            league_id: number;
+            ceremony_id: number;
+            status: string;
+            kind: string;
+            intended_user_id: number | null;
+          }>(
+            tx,
+            `SELECT si.id::int,
+                    si.season_id::int,
+                    s.league_id::int,
+                    s.ceremony_id::int,
+                    si.status,
+                    si.kind,
+                    si.intended_user_id::int
+             FROM season_invite si
+             JOIN season s ON s.id = si.season_id
+             WHERE si.id = $1
+             FOR UPDATE`,
+            [inviteId]
+          );
+          const inviteRow = rows[0];
+          const intendedUserId =
+            inviteRow && inviteRow.intended_user_id !== null
+              ? Number(inviteRow.intended_user_id)
+              : null;
+          if (
+            !inviteRow ||
+            inviteRow.kind !== "USER_TARGETED" ||
+            intendedUserId !== userId ||
+            inviteRow.status !== "PENDING"
+          ) {
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          }
+
+          const season = await getSeasonById(tx, inviteRow.season_id);
+          if (!season || season.status !== "EXTANT") {
+            return {
+              error: new AppError("SEASON_NOT_FOUND", 404, "Season not found")
+            };
+          }
+
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, season.ceremony_id);
+          if (draftsStarted) {
+            return {
+              error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")
+            };
+          }
+
+          let leagueMember = await getLeagueMember(tx, season.league_id, userId);
+          if (!leagueMember) {
+            leagueMember = await createLeagueMember(tx, {
+              league_id: season.league_id,
+              user_id: userId,
+              role: "MEMBER"
+            });
+          }
+
+          const member = await addSeasonMember(tx, {
+            season_id: season.id,
+            user_id: userId,
+            league_member_id: leagueMember.id,
+            role: "MEMBER"
+          });
+
+          const updated = await updateUserInviteStatus(
+            tx,
+            inviteId,
+            userId,
+            "CLAIMED",
+            new Date()
+          );
+          return { invite: updated, member };
+        });
+
+        if ("error" in result && result.error) {
+          throw result.error;
+        }
+        if (!result.invite) {
+          throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+        }
+
+        return res.status(200).json({ invite: sanitizeInvite(result.invite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/invites/:inviteId/decline",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const inviteId = Number(req.params.inviteId);
+        const userId = Number(req.auth?.sub);
+        if (Number.isNaN(inviteId) || !userId) {
+          throw validationError("Invalid invite id", ["inviteId"]);
+        }
+
+        const updated = await updateUserInviteStatus(
+          client,
+          inviteId,
+          userId,
+          "DECLINED",
+          new Date()
+        );
+        if (!updated) {
+          throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+        }
+
+        return res.status(200).json({ invite: sanitizeInvite(updated) });
       } catch (err) {
         next(err);
       }
