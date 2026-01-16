@@ -2,6 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 import { createApiAgent, type ApiAgent } from "../support/supertest.js";
+import {
+  insertCategoryEdition,
+  insertNomination,
+  insertCeremony
+} from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -95,5 +100,54 @@ describe("admin routes", () => {
 
     expect(res.status).toBe(200);
     expect(res.json.ceremony.name).toBe("Updated Oscars");
+  });
+
+  it("upserts winner for active ceremony and locks drafts on first write", async () => {
+    const ceremony = await insertCeremony(db.pool, { code: "oscars-2028", year: 2028 });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id) VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+    const category = await insertCategoryEdition(db.pool, { ceremony_id: ceremony.id });
+    const nomination = await insertNomination(db.pool, {
+      category_edition_id: category.id
+    });
+
+    const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
+      handle: "admin2",
+      email: "admin2@example.com",
+      display_name: "Admin Two",
+      password: "secret123"
+    });
+    await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
+      reg.user.id
+    ]);
+    const login = await post<{ token: string }>("/auth/login", {
+      handle: "admin2",
+      password: "secret123"
+    });
+
+    const res = await post<{
+      winner: { nomination_id: number };
+      draft_locked_at: string;
+    }>(
+      "/admin/winners",
+      {
+        category_edition_id: category.id,
+        nomination_id: nomination.id
+      },
+      { Authorization: `Bearer ${login.json.token}` }
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.json.winner.nomination_id).toBe(nomination.id);
+    expect(res.json.draft_locked_at).toBeTruthy();
+
+    const { rows } = await db.pool.query<{ draft_locked_at: Date }>(
+      `SELECT draft_locked_at FROM ceremony WHERE id = $1`,
+      [ceremony.id]
+    );
+    expect(rows[0].draft_locked_at).toBeTruthy();
   });
 });
