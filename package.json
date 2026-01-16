@@ -15,7 +15,7 @@
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.1.0",
     "globals": "^17.0.0",
-    "markdownlint": "^0.34.0",
+    "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.20.0",
     "remark-cli": "^12.0.0",
     "remark-validate-links": "^13.0.1"
