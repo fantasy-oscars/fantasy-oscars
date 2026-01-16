@@ -8,6 +8,7 @@ import {
   getCeremonyDraftLockedAt
 } from "../data/repositories/ceremonyRepository.js";
 import { upsertWinner } from "../data/repositories/winnerRepository.js";
+import { loadNominees } from "../scripts/load-nominees.js";
 import type { Pool } from "pg";
 
 export function createAdminRouter(client: DbClient) {
@@ -148,6 +149,66 @@ export function createAdminRouter(client: DbClient) {
         return res
           .status(200)
           .json({ winner: result.winner, draft_locked_at: result.draft_locked_at });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/nominees/upload",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const dataset = req.body;
+        if (!dataset || typeof dataset !== "object") {
+          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
+            fields: ["body"]
+          });
+        }
+
+        const activeCeremonyRows = await query<{ active_ceremony_id: number | null }>(
+          client,
+          `SELECT active_ceremony_id FROM app_config WHERE id = TRUE`
+        );
+        const activeCeremonyId = activeCeremonyRows.rows?.[0]?.active_ceremony_id ?? null;
+        if (!activeCeremonyId) {
+          throw new AppError(
+            "ACTIVE_CEREMONY_NOT_SET",
+            409,
+            "Active ceremony is not configured"
+          );
+        }
+
+        // Basic shape validation: ensure ceremonies array has only the active ceremony id.
+        const ceremonies = (dataset as { ceremonies?: unknown[] }).ceremonies;
+        if (!Array.isArray(ceremonies) || ceremonies.length === 0) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "Dataset must include ceremonies",
+            {
+              fields: ["ceremonies"]
+            }
+          );
+        }
+        const ceremonyIds = ceremonies
+          .map((c) => (c as { id?: number })?.id)
+          .filter((v) => Number.isFinite(v));
+        const includesActive = ceremonyIds.some(
+          (id) => Number(id) === Number(activeCeremonyId)
+        );
+        if (!includesActive) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "Dataset ceremonies must include the active ceremony",
+            { fields: ["ceremonies"] }
+          );
+        }
+
+        await loadNominees(client as unknown as Pool, dataset as never);
+
+        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }

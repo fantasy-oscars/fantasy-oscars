@@ -150,4 +150,104 @@ describe("admin routes", () => {
     );
     expect(rows[0].draft_locked_at).toBeTruthy();
   });
+
+  it("uploads nominees dataset idempotently for active ceremony", async () => {
+    const ceremony = await insertCeremony(db.pool, { code: "oscars-2029", year: 2029 });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+
+    const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
+      handle: "admin3",
+      email: "admin3@example.com",
+      display_name: "Admin Three",
+      password: "secret123"
+    });
+    await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
+      reg.user.id
+    ]);
+    const login = await post<{ token: string }>("/auth/login", {
+      handle: "admin3",
+      password: "secret123"
+    });
+
+    const dataset = {
+      icons: [],
+      ceremonies: [
+        { id: ceremony.id, code: "oscars-2029", name: "Oscars 2029", year: 2029 }
+      ],
+      category_families: [],
+      category_editions: [],
+      films: [],
+      songs: [],
+      performances: [],
+      people: [],
+      nominations: [],
+      nomination_contributors: []
+    };
+
+    const first = await post<{ ok: boolean }>("/admin/nominees/upload", dataset, {
+      Authorization: `Bearer ${login.json.token}`
+    });
+    expect(first.status).toBe(200);
+    expect(first.json.ok).toBe(true);
+
+    const second = await post<{ ok: boolean }>("/admin/nominees/upload", dataset, {
+      Authorization: `Bearer ${login.json.token}`
+    });
+    expect(second.status).toBe(200);
+
+    const { rows } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM ceremony`
+    );
+    expect(Number(rows[0].count)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rejects nominee upload when ceremonies mismatch active", async () => {
+    const ceremony = await insertCeremony(db.pool, { code: "oscars-2030", year: 2030 });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+
+    const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
+      handle: "admin4",
+      email: "admin4@example.com",
+      display_name: "Admin Four",
+      password: "secret123"
+    });
+    await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
+      reg.user.id
+    ]);
+    const login = await post<{ token: string }>("/auth/login", {
+      handle: "admin4",
+      password: "secret123"
+    });
+
+    const badDataset = {
+      icons: [],
+      ceremonies: [{ id: ceremony.id + 1, code: "other", name: "Other", year: 2031 }],
+      category_families: [],
+      category_editions: [],
+      films: [],
+      songs: [],
+      performances: [],
+      people: [],
+      nominations: [],
+      nomination_contributors: []
+    };
+
+    const res = await post<{ error: { code: string; details?: unknown } }>(
+      "/admin/nominees/upload",
+      badDataset,
+      { Authorization: `Bearer ${login.json.token}` }
+    );
+    expect(res.status).toBe(400);
+    expect(res.json.error.code).toBe("VALIDATION_FAILED");
+  });
 });
