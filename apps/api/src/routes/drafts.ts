@@ -8,6 +8,7 @@ import {
   updateDraftCurrentPick,
   updateDraftOnComplete,
   getDraftByIdForUpdate,
+  updateDraftStatus,
   countDraftSeats,
   createDraftSeats,
   countNominationsByCeremony,
@@ -36,7 +37,7 @@ import { listSeasonMembers } from "../data/repositories/seasonMemberRepository.j
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
-import { transitionDraftState } from "../domain/draftState.js";
+import { mapDraftStateError, transitionDraftState } from "../domain/draftState.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { computePickAssignment } from "../domain/draftOrder.js";
 import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
@@ -291,6 +292,194 @@ export function buildStartDraftHandler(pool: Pool) {
   };
 }
 
+function requireCommissionerOrOwner(
+  userId: number,
+  league: { created_by_user_id: number },
+  leagueMember: { role: string } | null
+) {
+  return (
+    league.created_by_user_id === userId ||
+    (leagueMember && (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"))
+  );
+}
+
+export function buildPauseDraftHandler(pool: Pool) {
+  return async function handlePauseDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const userId = Number((req as AuthedRequest).auth?.sub);
+
+      const result = await runInTransaction(pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const activeCeremonyId = await getActiveCeremonyId(tx);
+        if (
+          !activeCeremonyId ||
+          Number(season.ceremony_id) !== Number(activeCeremonyId)
+        ) {
+          throw new AppError(
+            "CEREMONY_INACTIVE",
+            409,
+            "Draft actions are limited to the active ceremony"
+          );
+        }
+        const leagueMember = await getLeagueMember(tx, league.id, userId);
+        const isCommissioner = requireCommissionerOrOwner(userId, league, leagueMember);
+        if (!isCommissioner) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+        if (draft.status === "PAUSED") {
+          throw new AppError("DRAFT_ALREADY_PAUSED", 409, "Draft already paused");
+        }
+        if (draft.status !== "IN_PROGRESS") {
+          throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
+        }
+
+        let transitioned;
+        try {
+          transitioned = transitionDraftState(
+            {
+              id: draft.id,
+              status: draft.status,
+              started_at: draft.started_at,
+              completed_at: draft.completed_at
+            },
+            "PAUSED"
+          );
+        } catch (err) {
+          const mapped = mapDraftStateError(err);
+          if (mapped) {
+            throw new AppError("INVALID_STATE", 400, mapped.message);
+          }
+          throw err;
+        }
+
+        const updated = await updateDraftStatus(tx, draft.id, transitioned.status);
+        if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to pause draft");
+
+        const event = await createDraftEvent(tx, {
+          draft_id: draft.id,
+          event_type: "draft.paused",
+          payload: {
+            draft: {
+              id: updated.id,
+              status: updated.status,
+              current_pick_number: updated.current_pick_number,
+              started_at: updated.started_at,
+              completed_at: updated.completed_at
+            }
+          }
+        });
+
+        return { draft: { ...updated, version: event.version }, event };
+      });
+
+      emitDraftEvent(result.event);
+      return res.status(200).json({ draft: result.draft });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+export function buildResumeDraftHandler(pool: Pool) {
+  return async function handleResumeDraft(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const userId = Number((req as AuthedRequest).auth?.sub);
+
+      const result = await runInTransaction(pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const activeCeremonyId = await getActiveCeremonyId(tx);
+        if (
+          !activeCeremonyId ||
+          Number(season.ceremony_id) !== Number(activeCeremonyId)
+        ) {
+          throw new AppError(
+            "CEREMONY_INACTIVE",
+            409,
+            "Draft actions are limited to the active ceremony"
+          );
+        }
+        const leagueMember = await getLeagueMember(tx, league.id, userId);
+        const isCommissioner = requireCommissionerOrOwner(userId, league, leagueMember);
+        if (!isCommissioner) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+        if (draft.status !== "PAUSED") {
+          throw new AppError("DRAFT_NOT_PAUSED", 409, "Draft is not paused");
+        }
+
+        let transitioned;
+        try {
+          transitioned = transitionDraftState(
+            {
+              id: draft.id,
+              status: draft.status,
+              started_at: draft.started_at,
+              completed_at: draft.completed_at
+            },
+            "IN_PROGRESS"
+          );
+        } catch (err) {
+          const mapped = mapDraftStateError(err);
+          if (mapped) {
+            throw new AppError("INVALID_STATE", 400, mapped.message);
+          }
+          throw err;
+        }
+
+        const updated = await updateDraftStatus(tx, draft.id, transitioned.status);
+        if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to resume draft");
+
+        const event = await createDraftEvent(tx, {
+          draft_id: draft.id,
+          event_type: "draft.resumed",
+          payload: {
+            draft: {
+              id: updated.id,
+              status: updated.status,
+              current_pick_number: updated.current_pick_number,
+              started_at: updated.started_at,
+              completed_at: updated.completed_at
+            }
+          }
+        });
+
+        return { draft: { ...updated, version: event.version }, event };
+      });
+
+      emitDraftEvent(result.event);
+      return res.status(200).json({ draft: result.draft });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function buildSnapshotDraftHandler(pool: Pool) {
   return async function handleSnapshotDraft(
     req: express.Request,
@@ -412,7 +601,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         direction: "FORWARD" | "REVERSE";
       } | null = null;
       if (
-        draft.status === "IN_PROGRESS" &&
+        (draft.status === "IN_PROGRESS" || draft.status === "PAUSED") &&
         draft.current_pick_number &&
         seats.length > 0
       ) {
@@ -500,6 +689,9 @@ export function buildSubmitPickHandler(pool: Pool) {
 
         const draft = await getDraftByIdForUpdate(tx, draftIdNum);
         if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        if (draft.status === "PAUSED") {
+          throw new AppError("DRAFT_PAUSED", 409, "Draft is paused");
+        }
         if (draft.status !== "IN_PROGRESS") {
           throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
         }
@@ -925,6 +1117,8 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.use(requireAuth(authSecret));
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client as Pool));
+  router.post("/:id/pause", buildPauseDraftHandler(client as Pool));
+  router.post("/:id/resume", buildResumeDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
   router.get("/:id/export", buildExportDraftHandler(client as Pool));
   router.post("/:id/results", buildDraftResultsHandler(client as Pool));

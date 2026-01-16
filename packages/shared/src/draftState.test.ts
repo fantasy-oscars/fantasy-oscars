@@ -51,7 +51,12 @@ describe("draftState", () => {
     ]);
     expect(getAllowedTransitionsFrom("IN_PROGRESS").sort()).toEqual([
       "CANCELLED",
-      "COMPLETED"
+      "COMPLETED",
+      "PAUSED"
+    ]);
+    expect(getAllowedTransitionsFrom("PAUSED").sort()).toEqual([
+      "CANCELLED",
+      "IN_PROGRESS"
     ]);
     expect(getAllowedTransitionsFrom("COMPLETED")).toEqual([]);
     expect(getAllowedTransitionsFrom("CANCELLED")).toEqual([]);

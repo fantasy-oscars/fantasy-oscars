@@ -4,7 +4,7 @@ export type DraftRecord = {
   id: number;
   league_id: number;
   season_id: number;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "IN_PROGRESS" | "PAUSED" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
   picks_per_seat: number | null;

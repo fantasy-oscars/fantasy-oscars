@@ -84,6 +84,39 @@ describe("draft submit pick integration", () => {
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("rejects pick submission when draft is paused", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "PAUSED",
+      current_pick_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 1
+    });
+    const nomination = await insertNomination(db.pool);
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/picks`, {
+      nomination_id: nomination.id,
+      request_id: "paused-1"
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_PAUSED");
+    const { rows } = await db.pool.query(
+      `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
+      [draft.id]
+    );
+    expect(rows[0].count).toBe(0);
+  });
+
   it("rejects invalid payloads", async () => {
     const draft = await insertDraft(db.pool, {
       status: "IN_PROGRESS",

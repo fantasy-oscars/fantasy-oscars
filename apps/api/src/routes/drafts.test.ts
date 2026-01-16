@@ -6,7 +6,9 @@ import {
   buildDraftResultsHandler,
   buildDraftStandingsHandler,
   buildSubmitPickHandler,
-  buildSnapshotDraftHandler
+  buildSnapshotDraftHandler,
+  buildPauseDraftHandler,
+  buildResumeDraftHandler
 } from "./drafts.js";
 import { signToken } from "../auth/token.js";
 import { AppError } from "../errors.js";
@@ -17,8 +19,9 @@ import { requireAuth } from "../auth/middleware.js";
 import type { DbClient } from "../data/db.js";
 import * as db from "../data/db.js";
 import * as draftEvents from "../realtime/draftEvents.js";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import * as appConfigRepo from "../data/repositories/appConfigRepository.js";
+import * as draftState from "../domain/draftState.js";
 
 const AUTH_SECRET = "test-secret";
 
@@ -268,6 +271,151 @@ describe("POST /drafts", () => {
     expect(err.status).toBe(409);
     expect(state.body).toBeUndefined();
     expect(createDraftSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /drafts/:id/pause and /resume", () => {
+  const getDraftByIdForUpdateSpy = vi.spyOn(draftRepo, "getDraftByIdForUpdate");
+  const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
+  const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
+  const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+  const getActiveCeremonySpy = vi.spyOn(appConfigRepo, "getActiveCeremonyId");
+  const updateDraftStatusSpy = vi.spyOn(draftRepo, "updateDraftStatus");
+  const createDraftEventSpy = vi.spyOn(draftRepo, "createDraftEvent");
+  const emitDraftEventSpy = vi.spyOn(draftEvents, "emitDraftEvent");
+  const runInTransactionSpy = vi.spyOn(db, "runInTransaction");
+  const transitionDraftStateSpy = vi.spyOn(draftState, "transitionDraftState");
+
+  beforeEach(() => {
+    getDraftByIdForUpdateSpy.mockResolvedValue({
+      id: 1,
+      league_id: 10,
+      season_id: 500,
+      status: "IN_PROGRESS",
+      draft_order_type: "SNAKE",
+      current_pick_number: 3,
+      picks_per_seat: 2,
+      version: 4,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: null
+    });
+    getSeasonByIdSpy.mockResolvedValue({
+      id: 500,
+      league_id: 10,
+      ceremony_id: 99,
+      status: "EXTANT",
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+    getLeagueByIdSpy.mockResolvedValue({
+      id: 10,
+      code: "L1",
+      name: "Test League",
+      ceremony_id: 99,
+      max_members: 10,
+      roster_size: 5,
+      is_public: true,
+      created_by_user_id: 1,
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+    getLeagueMemberSpy.mockResolvedValue({
+      id: 10,
+      league_id: 10,
+      user_id: 1,
+      role: "OWNER",
+      joined_at: new Date("2024-01-01T00:00:00Z")
+    });
+    getActiveCeremonySpy.mockResolvedValue(99);
+    updateDraftStatusSpy.mockImplementation(async (_client, _id, status) => ({
+      id: 1,
+      league_id: 10,
+      season_id: 500,
+      status,
+      draft_order_type: "SNAKE",
+      current_pick_number: 3,
+      picks_per_seat: 2,
+      version: 5,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: null
+    }));
+    createDraftEventSpy.mockResolvedValue({
+      id: 99,
+      draft_id: 1,
+      version: 6,
+      event_type: "draft.paused",
+      payload: {},
+      created_at: new Date("2024-01-01T00:00:10Z")
+    });
+    runInTransactionSpy.mockImplementation(async (_pool, fn) =>
+      fn({} as unknown as PoolClient)
+    );
+    transitionDraftStateSpy.mockImplementation((draft, to) => ({
+      ...draft,
+      status: to
+    }));
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("pauses a draft and emits event", async () => {
+    const handler = buildPauseDraftHandler({} as unknown as Pool);
+    const req = mockReq({
+      params: { id: "1" },
+      headers: { authorization: authHeader() }
+    }) as Request & { auth?: { sub: string } };
+    req.auth = { sub: "1" };
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    expect(updateDraftStatusSpy).toHaveBeenCalledWith(expect.anything(), 1, "PAUSED");
+    expect(emitDraftEventSpy).toHaveBeenCalled();
+  });
+
+  it("resumes a draft and emits event", async () => {
+    getDraftByIdForUpdateSpy.mockResolvedValueOnce({
+      id: 1,
+      league_id: 10,
+      season_id: 500,
+      status: "PAUSED",
+      draft_order_type: "SNAKE",
+      current_pick_number: 3,
+      picks_per_seat: 2,
+      version: 4,
+      started_at: new Date("2024-01-01T00:00:00Z"),
+      completed_at: null
+    });
+    createDraftEventSpy.mockResolvedValueOnce({
+      id: 100,
+      draft_id: 1,
+      version: 7,
+      event_type: "draft.resumed",
+      payload: {},
+      created_at: new Date("2024-01-01T00:00:20Z")
+    });
+    const handler = buildResumeDraftHandler({} as unknown as Pool);
+    const req = mockReq({
+      params: { id: "1" },
+      headers: { authorization: authHeader() }
+    }) as Request & { auth?: { sub: string } };
+    req.auth = { sub: "1" };
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(state.status).toBe(200);
+    expect(updateDraftStatusSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      "IN_PROGRESS"
+    );
+    expect(emitDraftEventSpy).toHaveBeenCalled();
   });
 });
 // Rate limiting is covered in utils/rateLimiter.test.ts
