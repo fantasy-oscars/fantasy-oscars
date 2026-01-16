@@ -281,4 +281,90 @@ describe("draft submit pick integration", () => {
     );
     expect(draftRows[0].current_pick_number).toBe(1);
   });
+
+  it("completes using picks_per_seat (remainder nominations stay undrafted)", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 5 });
+    const owner = await insertUser(db.pool, { id: 1 });
+    const user2 = await insertUser(db.pool, { id: 2 });
+    const user3 = await insertUser(db.pool, { id: 3 });
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: owner.id,
+      role: "OWNER"
+    });
+    const lm2 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: user2.id
+    });
+    const lm3 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: user3.id
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      draft_order_type: "SNAKE",
+      current_pick_number: 1,
+      picks_per_seat: 2
+    });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [league.ceremony_id]
+    );
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lmOwner.id,
+      seat_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lm2.id,
+      seat_number: 2
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lm3.id,
+      seat_number: 3
+    });
+    const nominations = await Promise.all(
+      Array.from({ length: 7 }).map(() =>
+        insertNomination(db.pool, { ceremony_id: league.ceremony_id })
+      )
+    );
+
+    const pickPlan = [
+      { userId: owner.id, nominationId: nominations[0]!.id, requestId: "pseat-1" },
+      { userId: user2.id, nominationId: nominations[1]!.id, requestId: "pseat-2" },
+      { userId: user3.id, nominationId: nominations[2]!.id, requestId: "pseat-3" },
+      { userId: user3.id, nominationId: nominations[3]!.id, requestId: "pseat-4" },
+      { userId: user2.id, nominationId: nominations[4]!.id, requestId: "pseat-5" },
+      { userId: owner.id, nominationId: nominations[5]!.id, requestId: "pseat-6" }
+    ];
+
+    for (const plan of pickPlan) {
+      const res = await post<{ pick?: { id: number }; error?: { code: string } }>(
+        `/drafts/${draft.id}/picks`,
+        { nomination_id: plan.nominationId, request_id: plan.requestId },
+        { authUserId: plan.userId }
+      );
+      expect([200, 201]).toContain(res.status);
+      expect(res.json.error).toBeUndefined();
+    }
+
+    const { rows: pickRows } = await db.pool.query(
+      `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
+      [draft.id]
+    );
+    expect(pickRows[0].count).toBe(6);
+
+    const { rows: draftRows } = await db.pool.query(
+      `SELECT status, current_pick_number, picks_per_seat FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect(draftRows[0].status).toBe("COMPLETED");
+    expect(draftRows[0].current_pick_number).toBeNull();
+    expect(Number(draftRows[0].picks_per_seat)).toBe(2);
+  });
 });

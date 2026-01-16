@@ -114,7 +114,9 @@ describe("draft start integration", () => {
       season_id: season.id,
       status: "PENDING"
     });
-    await insertNomination(db.pool);
+    for (let i = 0; i < 6; i += 1) {
+      await insertNomination(db.pool);
+    }
     // create two pending invites that should be revoked
     await db.pool.query(
       `INSERT INTO season_invite (season_id, token_hash, kind, status, created_by_user_id)
@@ -123,11 +125,17 @@ describe("draft start integration", () => {
     );
 
     const res = await post<{
-      draft: { id: number; status: string; current_pick_number: number };
+      draft: {
+        id: number;
+        status: string;
+        current_pick_number: number;
+        picks_per_seat: number;
+      };
     }>(`/drafts/${draft.id}/start`, {});
     expect(res.status).toBe(200);
     expect(res.json.draft.status).toBe("IN_PROGRESS");
     expect(res.json.draft.current_pick_number).toBe(1);
+    expect(res.json.draft.picks_per_seat).toBe(2);
     const { rows: seats } = await db.pool.query<{
       seat_number: number;
       league_member_id: number;
