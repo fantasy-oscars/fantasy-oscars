@@ -15,6 +15,7 @@ import { AppError } from "../errors.js";
 import * as draftRepo from "../data/repositories/draftRepository.js";
 import * as leagueRepo from "../data/repositories/leagueRepository.js";
 import * as seasonRepo from "../data/repositories/seasonRepository.js";
+import * as winnerRepo from "../data/repositories/winnerRepository.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { DbClient } from "../data/db.js";
 import * as db from "../data/db.js";
@@ -687,7 +688,8 @@ describe("GET /drafts/:id/standings", () => {
   const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
   const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
   const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
-  const listDraftResultsSpy = vi.spyOn(draftRepo, "listDraftResults");
+  const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
+  const listWinnersByCeremonySpy = vi.spyOn(winnerRepo, "listWinnersByCeremony");
   const handler = buildDraftStandingsHandler({} as unknown as Pool);
 
   beforeEach(() => {
@@ -745,22 +747,18 @@ describe("GET /drafts/:id/standings", () => {
         made_at: new Date("2024-01-01T00:11:00Z")
       }
     ]);
-    listDraftResultsSpy.mockResolvedValue([
+    getSeasonByIdSpy.mockResolvedValue({
+      id: 500,
+      league_id: 5,
+      ceremony_id: 99,
+      status: "EXTANT",
+      scoring_strategy_name: "fixed",
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+    listWinnersByCeremonySpy.mockResolvedValue([
       {
-        draft_id: 77,
-        nomination_id: 200,
-        won: true,
-        points: null,
-        created_at: new Date("2024-01-01T00:30:00Z"),
-        updated_at: new Date("2024-01-01T00:30:00Z")
-      },
-      {
-        draft_id: 77,
-        nomination_id: 201,
-        won: false,
-        points: null,
-        created_at: new Date("2024-01-01T00:30:00Z"),
-        updated_at: new Date("2024-01-01T00:30:00Z")
+        category_edition_id: 123,
+        nomination_id: 200
       }
     ]);
   });

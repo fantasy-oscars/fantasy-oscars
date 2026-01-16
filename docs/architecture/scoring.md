@@ -9,6 +9,6 @@
 
 ## Results ingestion + standings
 
-- Results are stored per draft via `POST /drafts/:id/results` with payload:
-  - `{ results: [{ nomination_id, won, points? }] }`
-- Standings are computed via `GET /drafts/:id/standings`, returning draft state, results, and per-seat points + picks.
+- Ceremony winners are entered centrally (admin-only) and stored in `ceremony_winner` (one winning `nomination_id` per `category_edition`).
+- Standings are derived from ceremony winners for the draft’s season/corresponding ceremony; all drafts for that ceremony see the same winners.
+- `GET /drafts/:id/standings` recomputes on demand using the season’s scoring strategy, returning draft state, per-pick results (won/lose), and per-seat points.
