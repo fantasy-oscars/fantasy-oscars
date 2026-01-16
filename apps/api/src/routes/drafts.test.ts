@@ -133,7 +133,7 @@ describe("POST /drafts", () => {
 
   it("creates a draft when payload is valid", async () => {
     const req = mockReq({
-      body: { league_id: 1, draft_order_type: "linear" },
+      body: { league_id: 1, draft_order_type: "snake" },
       headers: { authorization: authHeader() }
     });
     const { res, state } = mockRes();
@@ -158,9 +158,29 @@ describe("POST /drafts", () => {
       expect.objectContaining({
         league_id: 1,
         status: "PENDING",
-        draft_order_type: "LINEAR"
+        draft_order_type: "SNAKE"
       })
     );
+  });
+
+  it("rejects non-snake draft_order_type", async () => {
+    const req = mockReq({
+      body: { league_id: 1, draft_order_type: "linear" },
+      headers: { authorization: authHeader() }
+    });
+    const { res, state } = mockRes();
+    const next = vi.fn();
+
+    auth(req as Request, res as Response, next as NextFunction);
+    expect(next).toHaveBeenCalledWith();
+
+    await handler(req as Request, res as Response, next as NextFunction);
+
+    const err = next.mock.calls[1][0] as AppError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.status).toBe(400);
+    expect(state.body).toBeUndefined();
+    expect(createDraftSpy).not.toHaveBeenCalled();
   });
 
   it("rejects invalid league_id", async () => {

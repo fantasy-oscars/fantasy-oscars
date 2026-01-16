@@ -78,8 +78,10 @@ export function buildCreateDraftHandler(client: DbClient) {
       }
 
       const order = (draft_order_type ?? "SNAKE").toUpperCase();
-      if (order !== "SNAKE" && order !== "LINEAR") {
-        throw validationError("Invalid draft_order_type", ["draft_order_type"]);
+      if (order !== "SNAKE") {
+        throw validationError("Invalid draft_order_type (MVP supports SNAKE only)", [
+          "draft_order_type"
+        ]);
       }
 
       const league = await getLeagueById(client, leagueIdNum);
@@ -129,7 +131,7 @@ export function buildCreateDraftHandler(client: DbClient) {
         league_id: leagueIdNum,
         season_id: season.id,
         status: "PENDING",
-        draft_order_type: order,
+        draft_order_type: "SNAKE",
         current_pick_number: null,
         started_at: null,
         completed_at: null
@@ -403,13 +405,40 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
       }
 
+      let turn: {
+        current_pick_number: number;
+        seat_number: number;
+        round_number: number;
+        direction: "FORWARD" | "REVERSE";
+      } | null = null;
+      if (
+        draft.status === "IN_PROGRESS" &&
+        draft.current_pick_number &&
+        seats.length > 0
+      ) {
+        const assignment = computePickAssignment({
+          draft_order_type: "SNAKE",
+          seat_count: seats.length,
+          pick_number: draft.current_pick_number,
+          status: draft.status
+        });
+        const direction = assignment.round_number % 2 === 1 ? "FORWARD" : "REVERSE";
+        turn = {
+          current_pick_number: draft.current_pick_number,
+          seat_number: assignment.seat_number,
+          round_number: assignment.round_number,
+          direction
+        };
+      }
+
       return res.status(200).json({
         draft,
         seats,
         picks,
         version: draft.version,
         picks_per_seat: picksPerSeat,
-        nominee_pool_size: nomineePoolSize
+        nominee_pool_size: nomineePoolSize,
+        turn
       });
     } catch (err) {
       next(err);
@@ -540,7 +569,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         }
 
         const assignment = computePickAssignment({
-          draft_order_type: draft.draft_order_type,
+          draft_order_type: "SNAKE",
           seat_count: seatCount,
           pick_number: currentPick,
           status: draft.status

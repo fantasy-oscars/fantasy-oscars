@@ -100,6 +100,17 @@ describe("drafts integration", () => {
     expect(res.json.error.code).toBe("LEAGUE_NOT_FOUND");
   });
 
+  it("rejects non-snake draft order", async () => {
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+    const res = await post<{ error: { code: string } }>("/drafts", {
+      league_id: league.id,
+      draft_order_type: "LINEAR"
+    });
+    expect(res.status).toBe(400);
+    expect(res.json.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("rejects when draft already exists for league", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });

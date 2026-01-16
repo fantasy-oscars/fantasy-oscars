@@ -117,12 +117,16 @@ describe("draft snapshot integration", () => {
       draft: { status: string; current_pick_number: number | null };
       picks: Array<{ pick_number: number; seat_number: number }>;
       version: number;
+      turn: { seat_number: number; round_number: number; direction: string };
     }>(`/drafts/${draft.id}/snapshot`);
 
     expect(res.status).toBe(200);
     expect(res.json.draft.status).toBe("IN_PROGRESS");
     expect(res.json.picks.map((p) => p.pick_number)).toEqual([1, 2]);
     expect(res.json.version).toBe(2);
+    expect(res.json.turn.seat_number).toBe(2);
+    expect(res.json.turn.round_number).toBe(2);
+    expect(res.json.turn.direction).toBe("REVERSE");
   });
 
   it("returns 404 when draft not found", async () => {

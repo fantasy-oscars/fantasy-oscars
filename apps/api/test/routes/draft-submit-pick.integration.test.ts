@@ -367,4 +367,118 @@ describe("draft submit pick integration", () => {
     expect(draftRows[0].current_pick_number).toBeNull();
     expect(Number(draftRows[0].picks_per_seat)).toBe(2);
   });
+
+  it("enforces snake order across rounds (3 seats, 2 rounds)", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 5 });
+    const owner = await insertUser(db.pool, { id: 1 });
+    const user2 = await insertUser(db.pool, { id: 2 });
+    const user3 = await insertUser(db.pool, { id: 3 });
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: owner.id,
+      role: "OWNER"
+    });
+    const lm2 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: user2.id
+    });
+    const lm3 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: user3.id
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      draft_order_type: "SNAKE",
+      current_pick_number: 1,
+      picks_per_seat: 2
+    });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [league.ceremony_id]
+    );
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lmOwner.id,
+      seat_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lm2.id,
+      seat_number: 2
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: lm3.id,
+      seat_number: 3
+    });
+    const nominations = await Promise.all(
+      Array.from({ length: 6 }).map(() =>
+        insertNomination(db.pool, { ceremony_id: league.ceremony_id })
+      )
+    );
+
+    const sequence = [
+      { userId: owner.id, nominationId: nominations[0]!.id, requestId: "snake-1" },
+      { userId: user2.id, nominationId: nominations[1]!.id, requestId: "snake-2" },
+      { userId: user3.id, nominationId: nominations[2]!.id, requestId: "snake-3" }
+    ];
+
+    for (const step of sequence) {
+      const res = await post<{
+        pick?: { seat_number: number };
+        error?: { code: string };
+      }>(
+        `/drafts/${draft.id}/picks`,
+        { nomination_id: step.nominationId, request_id: step.requestId },
+        { authUserId: step.userId }
+      );
+      expect(res.status).toBe(201);
+    }
+
+    // Wrong seat attempts the 4th pick (should still be seat 3).
+    const wrongTurn = await post<{ error?: { code: string } }>(
+      `/drafts/${draft.id}/picks`,
+      { nomination_id: nominations[3]!.id, request_id: "snake-wrong" },
+      { authUserId: user2.id }
+    );
+    expect(wrongTurn.status).toBe(409);
+    expect(wrongTurn.json.error?.code).toBe("NOT_ACTIVE_TURN");
+
+    const rest = [
+      { userId: user3.id, nominationId: nominations[3]!.id, requestId: "snake-4" },
+      { userId: user2.id, nominationId: nominations[4]!.id, requestId: "snake-5" },
+      { userId: owner.id, nominationId: nominations[5]!.id, requestId: "snake-6" }
+    ];
+
+    for (const step of rest) {
+      const res = await post<{
+        pick?: { seat_number: number };
+        error?: { code: string };
+      }>(
+        `/drafts/${draft.id}/picks`,
+        { nomination_id: step.nominationId, request_id: step.requestId },
+        { authUserId: step.userId }
+      );
+      expect(res.status).toBe(201);
+    }
+
+    const { rows: pickRows } = await db.pool.query<{
+      seat_number: number;
+      pick_number: number;
+    }>(
+      `SELECT seat_number, pick_number FROM draft_pick WHERE draft_id = $1 ORDER BY pick_number`,
+      [draft.id]
+    );
+    expect(pickRows.map((p) => p.seat_number)).toEqual([1, 2, 3, 3, 2, 1]);
+
+    const { rows: draftRows } = await db.pool.query<{
+      status: string;
+      current_pick_number: number | null;
+    }>(`SELECT status, current_pick_number FROM draft WHERE id = $1`, [draft.id]);
+    expect(draftRows[0].status).toBe("COMPLETED");
+    expect(draftRows[0].current_pick_number).toBeNull();
+  });
 });
