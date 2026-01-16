@@ -32,4 +32,4 @@ pnpm-debug.log*
 .dev/
 
 # Local data files
-2026-films.json
+.data/
