@@ -12,6 +12,7 @@
 - League membership: invite-only per season for MVP; the legacy `POST /leagues/:id/join` endpoint is disabled and returns `INVITE_ONLY_MEMBERSHIP`.
 - League creation: creating a league automatically creates the initial EXTANT season for the active ceremony and adds the creator as OWNER/member in the same transaction.
 - Additional seasons: commissioners can add a new EXTANT season for the active ceremony (one per ceremony). Season lists include an `is_active_ceremony` marker; season creation is blocked if no active ceremony or an extant season already exists for that ceremony.
+- Ceremony winners: `ceremony_winner` stores the winning `nomination_id` per `category_edition` (unique). `ceremony.draft_locked_at` records when winners entry begins; it is set once and never unlocked in MVP.
 
 ## Principles
 
