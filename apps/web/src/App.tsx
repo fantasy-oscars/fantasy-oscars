@@ -25,9 +25,22 @@ import { NomineePill } from "./components/NomineePill";
 type ApiResult = { ok: boolean; message: string };
 type ApiError = { code?: string; message?: string };
 
-type Env = { VITE_API_BASE?: string };
+type Env = {
+  VITE_API_BASE?: string;
+  VITE_RESET_MODE?: string;
+  VITE_RESET_SUPPORT?: string;
+};
 const API_BASE = (
   (import.meta as unknown as { env: Env }).env.VITE_API_BASE ?? ""
+).trim();
+const RESET_MODE = (
+  (import.meta as unknown as { env: Env }).env.VITE_RESET_MODE ?? "auto"
+)
+  .toLowerCase()
+  .trim();
+const RESET_SUPPORT_TEXT = (
+  (import.meta as unknown as { env: Env }).env.VITE_RESET_SUPPORT ??
+  "Contact your league admin or commissioner to reset your password manually. No email will be sent."
 ).trim();
 
 function buildUrl(path: string) {
@@ -410,6 +423,11 @@ function LoginPage() {
             type="password"
             error={errors.password}
           />
+          <div className="inline-actions">
+            <Link to="/reset" className="ghost">
+              Forgot password?
+            </Link>
+          </div>
           <button type="submit" disabled={loading}>
             {loading ? "Signing in..." : "Login"}
           </button>
@@ -500,8 +518,16 @@ function RegisterPage() {
 function ResetRequestPage() {
   const validator = useRequiredFields(["email"]);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
+  const [result, setResult] = useState<
+    | (ApiResult & {
+        delivery?: "inline" | "email" | "suppressed" | "manual";
+        token?: string;
+      })
+    | null
+  >(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const manualMode = RESET_MODE === "manual";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -516,9 +542,38 @@ function ResetRequestPage() {
       body: JSON.stringify({ email: String(data.get("email")) })
     });
     setLoading(false);
+    if (!res.ok) {
+      setResult({
+        ok: false,
+        message: res.error ?? "Request failed"
+      });
+      return;
+    }
+
+    const delivery = manualMode
+      ? "manual"
+      : ((res.data as { delivery?: "inline" | "email" | "suppressed"; token?: string })
+          ?.delivery ?? "suppressed");
+
+    const token =
+      delivery === "inline"
+        ? ((res.data as { token?: string | null })?.token ?? undefined)
+        : undefined;
+
+    let message = "If the email exists, you will receive reset instructions.";
+    if (delivery === "inline") {
+      message = "Reset token generated. Paste it into the form below.";
+    } else if (delivery === "email") {
+      message = "Check your email for the reset link. It expires soon.";
+    } else if (delivery === "manual") {
+      message = RESET_SUPPORT_TEXT;
+    }
+
     setResult({
-      ok: res.ok,
-      message: res.ok ? "Reset link sent" : (res.error ?? "Request failed")
+      ok: true,
+      message,
+      delivery,
+      token
     });
   }
 
@@ -528,6 +583,12 @@ function ResetRequestPage() {
         <h2>Reset Password</h2>
         <p>Request a password reset link.</p>
       </header>
+      {manualMode && (
+        <div className="callout callout-warning" role="note">
+          <strong>Manual reset</strong>
+          <span>{RESET_SUPPORT_TEXT}</span>
+        </div>
+      )}
       <form onSubmit={onSubmit}>
         <FormField label="Email" name="email" type="email" error={errors.email} />
         <button type="submit" disabled={loading}>
@@ -535,6 +596,59 @@ function ResetRequestPage() {
         </button>
       </form>
       <FormStatus loading={loading} result={result} />
+      {result?.ok && (
+        <div className="callout callout-success">
+          <div className="stack">
+            <strong>Status</strong>
+            <span>{result.message}</span>
+            {result.delivery === "email" && (
+              <span className="muted">
+                Didn’t get it? Check spam or try again after a minute.
+              </span>
+            )}
+            {result.delivery === "suppressed" && (
+              <span className="muted">
+                For security, we don’t say whether an account exists. If it does, you’ll
+                receive instructions.
+              </span>
+            )}
+            {result.delivery === "manual" && (
+              <span className="muted">
+                You can still submit the form to log your request, but no email will be
+                sent.
+              </span>
+            )}
+            {result.delivery === "inline" && result.token && (
+              <div className="token-box">
+                <div className="token-box__label">Dev token</div>
+                <code>{result.token}</code>
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(result.token ?? "");
+                    }}
+                  >
+                    Copy token
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() =>
+                      navigate(
+                        `/reset/confirm?token=${encodeURIComponent(result.token!)}`
+                      )
+                    }
+                  >
+                    Open reset form with token
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -544,6 +658,12 @@ function ResetConfirmPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const initialToken = useMemo(() => {
+    const fromState = (location.state as { token?: string } | null)?.token;
+    const fromQuery = new URLSearchParams(location.search).get("token");
+    return (fromState ?? fromQuery ?? "").trim();
+  }, [location]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -561,9 +681,26 @@ function ResetConfirmPage() {
       })
     });
     setLoading(false);
+    if (!res.ok) {
+      const mapped: FieldErrors = { ...fieldErrors };
+      res.errorFields?.forEach((field) => {
+        mapped[field] = mapped[field] ?? "Invalid";
+      });
+      setErrors(mapped);
+      let message = res.error ?? "Update failed";
+      if (res.errorCode === "INVALID_RESET_TOKEN") {
+        message = "Reset token is invalid or expired.";
+      } else if (res.errorCode === "RESET_TOKEN_USED") {
+        message = "That token was already used. Request a new one.";
+      } else if (res.errorCode === "RESET_TOKEN_EXPIRED") {
+        message = "Token expired. Request a fresh reset link.";
+      }
+      setResult({ ok: false, message });
+      return;
+    }
     setResult({
-      ok: res.ok,
-      message: res.ok ? "Password updated" : (res.error ?? "Update failed")
+      ok: true,
+      message: "Password updated. You can now log in with the new password."
     });
   }
 
@@ -574,7 +711,12 @@ function ResetConfirmPage() {
         <p>Paste the reset token and choose a new password.</p>
       </header>
       <form onSubmit={onSubmit}>
-        <FormField label="Reset token" name="token" error={errors.token} />
+        <FormField
+          label="Reset token"
+          name="token"
+          error={errors.token}
+          defaultValue={initialToken}
+        />
         <FormField
           label="New password"
           name="password"

@@ -153,4 +153,44 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(accountLink);
     await screen.findByRole("heading", { name: /Account/i });
   });
+
+  it("shows forgot password link on login", async () => {
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: null })
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: /Login/i });
+    expect(screen.getByRole("link", { name: /Forgot password/i })).toHaveAttribute(
+      "href",
+      "/reset"
+    );
+  });
+
+  it("surfaces inline reset token and pre-fills confirm form", async () => {
+    window.history.pushState({}, "", "/reset");
+    mockFetchSequence(
+      {
+        ok: true,
+        json: () => Promise.resolve({ user: null })
+      },
+      {
+        ok: true,
+        json: () => Promise.resolve({ delivery: "inline", token: "devtoken123" })
+      }
+    );
+
+    render(<App />);
+    const emailInput = await screen.findByLabelText(/Email/i);
+    await userEvent.type(emailInput, "user@example.com");
+    await userEvent.click(screen.getByRole("button", { name: /Send reset link/i }));
+
+    await screen.findByText(/dev token/i);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Open reset form with token/i })
+    );
+
+    await screen.findByRole("heading", { name: /Set New Password/i });
+    expect(screen.getByLabelText(/Reset token/i)).toHaveValue("devtoken123");
+  });
 });
