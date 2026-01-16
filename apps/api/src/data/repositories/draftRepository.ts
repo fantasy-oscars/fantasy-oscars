@@ -170,6 +170,29 @@ export async function getDraftByLeagueId(
   return rows[0] ?? null;
 }
 
+export async function getDraftBySeasonId(
+  client: DbClient,
+  seasonId: number
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `SELECT
+       id::int,
+       league_id::int,
+       season_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       version::int,
+       started_at,
+       completed_at
+     FROM draft
+     WHERE season_id = $1`,
+    [seasonId]
+  );
+  return rows[0] ?? null;
+}
+
 export async function countNominationsByCeremony(
   client: DbClient,
   ceremonyId: number

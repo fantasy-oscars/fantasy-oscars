@@ -153,7 +153,7 @@ export async function listLeaguesForUser(
 ): Promise<LeagueRecord[]> {
   const { rows } = await query<LeagueRecord>(
     client,
-    `SELECT
+    `SELECT DISTINCT ON (l.id)
        l.id::int,
        l.code,
        l.name,
@@ -165,8 +165,9 @@ export async function listLeaguesForUser(
        l.created_at
      FROM league l
      JOIN league_member lm ON lm.league_id = l.id
+     JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
      WHERE lm.user_id = $1
-     ORDER BY l.created_at DESC`,
+     ORDER BY l.id, l.created_at DESC`,
     [userId]
   );
   return rows;

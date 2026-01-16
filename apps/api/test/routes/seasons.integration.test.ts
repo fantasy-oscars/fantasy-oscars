@@ -112,4 +112,32 @@ describe("seasons integration", () => {
       )
     ).toBe(true);
   });
+
+  it("cancels a season and hides it from listings", async () => {
+    await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+
+    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+      "/leagues",
+      { code: "cancel-1", name: "Cancel League", max_members: 3 },
+      token
+    );
+    expect(leagueRes.status).toBe(201);
+
+    const cancelRes = await post<{ season: { id: number; status: string } }>(
+      `/seasons/seasons/${leagueRes.json.season.id}/cancel`,
+      {},
+      token
+    );
+    expect(cancelRes.status).toBe(200);
+    expect(cancelRes.json.season.status).toBe("CANCELLED");
+
+    const listRes = await getJson<{ seasons: Array<{ id: number }> }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      token
+    );
+    expect(listRes.status).toBe(200);
+    expect(listRes.json.seasons.length).toBe(0);
+  });
 });
