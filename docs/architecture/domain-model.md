@@ -2,17 +2,17 @@
 
 ## TL;DR
 
-- Core entities: ceremony, category family/edition, nomination (+ contributors), app user/auth, league, league member, draft, draft seat, draft pick, and supporting catalog (icon, display templates, film/song/performance, person).
+- Core entities: ceremony, category family/edition, nomination (+ contributors), app user/auth, league, league member, draft, draft seat, draft pick, and supporting catalog (icon, film/song/performance, person).
 - Invariants: nomination has exactly one subject (film OR song OR performance); unique category edition per ceremony/family; one draft per league; unique draft seats per draft/seat and draft/member; draft picks unique per draft pick_number, per draft nomination, and per (round, seat); league membership unique per league/user.
 - Sources of truth: schema `db/migrations/001_init.sql`, test factories (`apps/api/test/factories`), and ADR [0001-domain-model.md](../adr/0001-domain-model.md).
 
 ## Entities and Relationships
 
 - **Ceremony**: yearly event; owns category editions.
-- **Category Family / Category Edition**: reusable template; edition ties a family to a ceremony with unit_kind, display templates, optional icon.
+- **Category Family / Category Edition**: reusable template; edition ties a family to a ceremony with unit_kind and optional icon.
 - **Nomination**: belongs to a category edition; subject is exactly one of film, song, performance (exclusive).
 - **Nomination Contributor**: people linked to a nomination (roles, order).
-- **Catalog**: icon, display_template, person, film, song, performance.
+- **Catalog**: icon, person, film, song, performance.
 - **App User / Auth Password**: users and credential placeholder.
 - **League**: scoped to a ceremony; owner, roster/max members, visibility.
 - **League Member**: user in league with role; unique per league/user.

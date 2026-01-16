@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # Local dev artifacts
 .dev/
+
+# Local data files
+2026-films.json

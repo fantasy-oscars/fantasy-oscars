@@ -2,26 +2,6 @@
   "icons": [
     { "id": 1, "code": "icon-film", "name": "Film Icon", "asset_path": "/icons/film.svg" }
   ],
-  "display_templates": [
-    {
-      "id": 1,
-      "code": "tpl-film-pill",
-      "scope": "PILL",
-      "unit_kind": "FILM",
-      "body": "<div>{{title}}</div>",
-      "notes": null,
-      "is_locked": false
-    },
-    {
-      "id": 2,
-      "code": "tpl-film-expanded",
-      "scope": "EXPANDED",
-      "unit_kind": "FILM",
-      "body": "<div>{{title}} - expanded</div>",
-      "notes": null,
-      "is_locked": false
-    }
-  ],
   "ceremonies": [
     { "id": 1, "code": "oscars-2024", "name": "Oscars 2024", "year": 2024 }
   ],
@@ -31,9 +11,7 @@
       "code": "best-picture",
       "name": "Best Picture",
       "icon_id": 1,
-      "default_unit_kind": "FILM",
-      "default_pill_template_id": 1,
-      "default_expanded_template_id": 2
+      "default_unit_kind": "FILM"
     }
   ],
   "category_editions": [
@@ -42,8 +20,6 @@
       "ceremony_id": 1,
       "family_id": 1,
       "unit_kind": "FILM",
-      "pill_template_id": 1,
-      "expanded_template_id": 2,
       "icon_id": 1,
       "sort_index": 0
     }

@@ -18,16 +18,6 @@ export type Icon = {
   asset_path: string;
 };
 
-export type DisplayTemplate = {
-  id: number;
-  code: string;
-  scope: "PILL" | "EXPANDED";
-  unit_kind: "FILM" | "SONG" | "PERFORMANCE" | "ANY";
-  body: string;
-  notes: string | null;
-  is_locked: boolean;
-};
-
 export type Ceremony = {
   id: number;
   code: string;
@@ -41,8 +31,6 @@ export type CategoryFamily = {
   name: string;
   icon_id: number;
   default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  default_pill_template_id: number;
-  default_expanded_template_id: number;
 };
 
 export type CategoryEdition = {
@@ -50,8 +38,6 @@ export type CategoryEdition = {
   ceremony_id: number;
   family_id: number;
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  pill_template_id: number;
-  expanded_template_id: number;
   icon_id: number | null;
   sort_index: number;
 };
@@ -164,22 +150,6 @@ export function buildIcon(overrides: Partial<Icon> = {}): Icon {
   };
 }
 
-export function buildDisplayTemplate(
-  overrides: Partial<DisplayTemplate> = {}
-): DisplayTemplate {
-  const n = nextSeq();
-  return {
-    id: n,
-    code: `tpl-${n}`,
-    scope: "PILL",
-    unit_kind: "FILM",
-    body: `<div>Template ${n}</div>`,
-    notes: null,
-    is_locked: false,
-    ...overrides
-  };
-}
-
 export function buildCeremony(overrides: Partial<Ceremony> = {}): Ceremony {
   const n = nextSeq();
   return {
@@ -201,8 +171,6 @@ export function buildCategoryFamily(
     name: `Category Family ${n}`,
     icon_id: overrides.icon_id ?? n,
     default_unit_kind: "FILM",
-    default_pill_template_id: overrides.default_pill_template_id ?? n,
-    default_expanded_template_id: overrides.default_expanded_template_id ?? n,
     ...overrides
   };
 }
@@ -216,8 +184,6 @@ export function buildCategoryEdition(
     ceremony_id: overrides.ceremony_id ?? n,
     family_id: overrides.family_id ?? n,
     unit_kind: "FILM",
-    pill_template_id: overrides.pill_template_id ?? n,
-    expanded_template_id: overrides.expanded_template_id ?? n,
     icon_id: overrides.icon_id ?? null,
     sort_index: overrides.sort_index ?? 0,
     ...overrides

@@ -3,7 +3,6 @@ import {
   buildCategoryEdition,
   buildCategoryFamily,
   buildCeremony,
-  buildDisplayTemplate,
   buildDraft,
   buildDraftPick,
   buildDraftSeat,
@@ -26,18 +25,11 @@ describe("builders (pure, deterministic)", () => {
 
   it("builds core catalog entities deterministically", () => {
     const icon = buildIcon();
-    const tpl = buildDisplayTemplate();
     const ceremony = buildCeremony();
-    const fam = buildCategoryFamily({
-      icon_id: icon.id,
-      default_pill_template_id: tpl.id,
-      default_expanded_template_id: tpl.id
-    });
+    const fam = buildCategoryFamily({ icon_id: icon.id });
     const edition = buildCategoryEdition({
       ceremony_id: ceremony.id,
-      family_id: fam.id,
-      pill_template_id: tpl.id,
-      expanded_template_id: tpl.id
+      family_id: fam.id
     });
     const film = buildFilm();
     const person = buildPerson();
@@ -51,9 +43,8 @@ describe("builders (pure, deterministic)", () => {
     });
 
     expect(icon.code).toBe("icon-1");
-    expect(tpl.code).toBe("tpl-2");
-    expect(ceremony.code).toBe("cer-3");
-    expect(fam.code).toBe("catfam-4");
+    expect(ceremony.code).toBe("cer-2");
+    expect(fam.code).toBe("catfam-3");
     expect(edition.ceremony_id).toBe(ceremony.id);
     expect(song.film_id).toBe(film.id);
     expect(perf.person_id).toBe(person.id);

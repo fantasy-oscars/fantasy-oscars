@@ -44,26 +44,13 @@ CREATE TABLE ceremony (
   year INT NOT NULL
 );
 
--- Display templates
-CREATE TABLE display_template (
-  id BIGSERIAL PRIMARY KEY,
-  code TEXT NOT NULL UNIQUE,
-  scope TEXT NOT NULL CHECK (scope IN ('PILL','EXPANDED')),
-  unit_kind TEXT NOT NULL CHECK (unit_kind IN ('FILM','SONG','PERFORMANCE','ANY')),
-  body TEXT NOT NULL,
-  notes TEXT NULL,
-  is_locked BOOLEAN NOT NULL DEFAULT FALSE
-);
-
 -- Category family
 CREATE TABLE category_family (
   id BIGSERIAL PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   icon_id BIGINT NOT NULL REFERENCES icon(id),
-  default_unit_kind TEXT NOT NULL CHECK (default_unit_kind IN ('FILM','SONG','PERFORMANCE')),
-  default_pill_template_id BIGINT NOT NULL REFERENCES display_template(id),
-  default_expanded_template_id BIGINT NOT NULL REFERENCES display_template(id)
+  default_unit_kind TEXT NOT NULL CHECK (default_unit_kind IN ('FILM','SONG','PERFORMANCE'))
 );
 
 -- Category edition (per ceremony)
@@ -72,8 +59,6 @@ CREATE TABLE category_edition (
   ceremony_id BIGINT NOT NULL REFERENCES ceremony(id),
   family_id BIGINT NOT NULL REFERENCES category_family(id),
   unit_kind TEXT NOT NULL CHECK (unit_kind IN ('FILM','SONG','PERFORMANCE')),
-  pill_template_id BIGINT NOT NULL REFERENCES display_template(id),
-  expanded_template_id BIGINT NOT NULL REFERENCES display_template(id),
   icon_id BIGINT NULL REFERENCES icon(id),
   sort_index INT NOT NULL DEFAULT 0,
   UNIQUE (ceremony_id, family_id)

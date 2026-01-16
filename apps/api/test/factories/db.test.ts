@@ -4,7 +4,6 @@ import {
   insertCategoryEdition,
   insertCategoryFamily,
   insertCeremony,
-  insertDisplayTemplate,
   insertDraft,
   insertDraftPick,
   insertDraftSeat,
@@ -35,19 +34,13 @@ describe("db factories (integration)", () => {
 
   it("creates a ceremony, category, nomination, league, draft, and pick", async () => {
     const icon = await insertIcon(db.pool);
-    const pillTpl = await insertDisplayTemplate(db.pool, { scope: "PILL" });
-    const expTpl = await insertDisplayTemplate(db.pool, { scope: "EXPANDED" });
     const ceremony = await insertCeremony(db.pool, { year: 2025 });
     const family = await insertCategoryFamily(db.pool, {
-      icon_id: icon.id,
-      default_pill_template_id: pillTpl.id,
-      default_expanded_template_id: expTpl.id
+      icon_id: icon.id
     });
     const category = await insertCategoryEdition(db.pool, {
       ceremony_id: ceremony.id,
-      family_id: family.id,
-      pill_template_id: pillTpl.id,
-      expanded_template_id: expTpl.id
+      family_id: family.id
     });
 
     const film = await insertFilm(db.pool, { title: "Test Film" });
