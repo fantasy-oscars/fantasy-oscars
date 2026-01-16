@@ -97,9 +97,21 @@ export async function getDraftById(
   client: DbClient,
   id: number
 ): Promise<DraftRecord | null> {
-  const { rows } = await query<DraftRecord>(client, `SELECT * FROM draft WHERE id = $1`, [
-    id
-  ]);
+  const { rows } = await query<DraftRecord>(
+    client,
+    `SELECT
+       id::int,
+       league_id::int,
+       season_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       version::int,
+       started_at,
+       completed_at
+     FROM draft WHERE id = $1`,
+    [id]
+  );
   return rows[0] ?? null;
 }
 
@@ -109,7 +121,17 @@ export async function getDraftByIdForUpdate(
 ): Promise<DraftRecord | null> {
   const { rows } = await query<DraftRecord>(
     client,
-    `SELECT * FROM draft WHERE id = $1 FOR UPDATE`,
+    `SELECT
+       id::int,
+       league_id::int,
+       season_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       version::int,
+       started_at,
+       completed_at
+     FROM draft WHERE id = $1 FOR UPDATE`,
     [id]
   );
   return rows[0] ?? null;
@@ -144,6 +166,37 @@ export async function getDraftByLeagueId(
      WHERE s.league_id = $1
        AND s.status = 'EXTANT'`,
     [leagueId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function countNominationsByCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count
+     FROM nomination n
+     JOIN category_edition ce ON ce.id = n.category_edition_id
+     WHERE ce.ceremony_id = $1`,
+    [ceremonyId]
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}
+
+export async function getNominationByIdForCeremony(
+  client: DbClient,
+  nominationId: number,
+  ceremonyId: number
+): Promise<{ id: number } | null> {
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT n.id::int
+     FROM nomination n
+     JOIN category_edition ce ON ce.id = n.category_edition_id
+     WHERE n.id = $1 AND ce.ceremony_id = $2`,
+    [nominationId, ceremonyId]
   );
   return rows[0] ?? null;
 }
