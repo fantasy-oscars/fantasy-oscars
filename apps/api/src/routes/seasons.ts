@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import { AppError, validationError } from "../errors.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
@@ -31,6 +32,14 @@ import {
   listSeasonMembers,
   removeSeasonMember
 } from "../data/repositories/seasonMemberRepository.js";
+import {
+  createPlaceholderInvite,
+  getPlaceholderInviteById,
+  listPlaceholderInvites,
+  revokePendingPlaceholderInvite,
+  updatePlaceholderInviteLabel,
+  type SeasonInviteRecord
+} from "../data/repositories/seasonInviteRepository.js";
 
 export function createSeasonsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
@@ -101,6 +110,34 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
     }
   );
 
+  function ensureCommissioner(member: { role: string } | null) {
+    if (!member || (member.role !== "OWNER" && member.role !== "CO_OWNER")) {
+      throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+    }
+  }
+
+  function sanitizeInvite(invite: {
+    id: number;
+    season_id: number;
+    status: string;
+    label: string | null;
+    created_at: Date;
+    updated_at: Date;
+    claimed_at: Date | null;
+    kind: string;
+  }) {
+    return {
+      id: invite.id,
+      season_id: invite.season_id,
+      kind: invite.kind,
+      status: invite.status,
+      label: invite.label,
+      created_at: invite.created_at,
+      updated_at: invite.updated_at,
+      claimed_at: invite.claimed_at
+    };
+  }
+
   router.post(
     "/seasons/:id/cancel",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
@@ -158,6 +195,293 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
         }
 
         return res.status(200).json({ season: result.season });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/:id/invites",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid season id", ["id"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        const invites = await listPlaceholderInvites(client, seasonId);
+        return res.json({ invites: invites.map(sanitizeInvite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/:id/invites",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        const { label } = req.body ?? {};
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid season id", ["id"]);
+        }
+        if (label !== undefined && typeof label !== "string") {
+          throw validationError("Invalid label", ["label"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          season.ceremony_id
+        );
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        let invite: SeasonInviteRecord | null = null;
+        let token = "";
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const candidateToken = crypto.randomBytes(24).toString("base64url");
+          const tokenHash = crypto
+            .createHash("sha256")
+            .update(candidateToken)
+            .digest("hex");
+          try {
+            invite = await createPlaceholderInvite(client, {
+              season_id: seasonId,
+              token_hash: tokenHash,
+              label: label ?? null,
+              created_by_user_id: actorId
+            });
+            token = candidateToken;
+            break;
+          } catch (err) {
+            const pgErr = err as { code?: string };
+            if (pgErr.code === "23505") {
+              continue;
+            }
+            throw err;
+          }
+        }
+
+        if (!invite) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            500,
+            "Failed to generate a unique invite token"
+          );
+        }
+
+        return res.status(201).json({ invite: sanitizeInvite(invite), token });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/:id/invites/:inviteId/revoke",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const inviteId = Number(req.params.inviteId);
+        const actorId = Number(req.auth?.sub);
+        if (Number.isNaN(seasonId) || Number.isNaN(inviteId) || !actorId) {
+          throw validationError("Invalid ids", ["id", "inviteId"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          season.ceremony_id
+        );
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        const revoked = await revokePendingPlaceholderInvite(client, seasonId, inviteId);
+        if (!revoked) {
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
+        }
+
+        return res.status(200).json({ invite: sanitizeInvite(revoked) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/:id/invites/:inviteId/regenerate",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const inviteId = Number(req.params.inviteId);
+        const actorId = Number(req.auth?.sub);
+        if (Number.isNaN(seasonId) || Number.isNaN(inviteId) || !actorId) {
+          throw validationError("Invalid ids", ["id", "inviteId"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          season.ceremony_id
+        );
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        const invite = await getPlaceholderInviteById(client, seasonId, inviteId);
+        if (!invite) {
+          throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+        }
+        if (invite.status !== "PENDING") {
+          throw new AppError(
+            "INVITE_NOT_PENDING",
+            409,
+            "Only pending invites can be regenerated"
+          );
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const revoked = await revokePendingPlaceholderInvite(tx, seasonId, inviteId);
+          if (!revoked) return null;
+
+          let nextInvite: SeasonInviteRecord | null = null;
+          let tokenValue = "";
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const candidateToken = crypto.randomBytes(24).toString("base64url");
+            const tokenHash = crypto
+              .createHash("sha256")
+              .update(candidateToken)
+              .digest("hex");
+            try {
+              const created = await createPlaceholderInvite(tx, {
+                season_id: seasonId,
+                token_hash: tokenHash,
+                label: invite.label,
+                created_by_user_id: actorId
+              });
+              nextInvite = created;
+              tokenValue = candidateToken;
+              break;
+            } catch (err) {
+              const pgErr = err as { code?: string };
+              if (pgErr.code === "23505") continue;
+              throw err;
+            }
+          }
+
+          if (!nextInvite) {
+            throw new AppError(
+              "INTERNAL_ERROR",
+              500,
+              "Failed to generate a unique invite token"
+            );
+          }
+          return { revoked, nextInvite, tokenValue };
+        });
+
+        if (!result) {
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
+        }
+
+        return res
+          .status(200)
+          .json({ invite: sanitizeInvite(result.nextInvite), token: result.tokenValue });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.patch(
+    "/:id/invites/:inviteId",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const inviteId = Number(req.params.inviteId);
+        const actorId = Number(req.auth?.sub);
+        const { label } = req.body ?? {};
+        if (Number.isNaN(seasonId) || Number.isNaN(inviteId) || !actorId) {
+          throw validationError("Invalid ids", ["id", "inviteId"]);
+        }
+        if (label !== undefined && typeof label !== "string") {
+          throw validationError("Invalid label", ["label"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          season.ceremony_id
+        );
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        ensureCommissioner(actorMember);
+
+        const updated = await updatePlaceholderInviteLabel(
+          client,
+          seasonId,
+          inviteId,
+          label ?? null
+        );
+        if (!updated) {
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
+        }
+
+        return res.status(200).json({ invite: sanitizeInvite(updated) });
       } catch (err) {
         next(err);
       }
