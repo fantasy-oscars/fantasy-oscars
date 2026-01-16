@@ -117,6 +117,78 @@ describe("draft submit pick integration", () => {
     expect(rows[0].count).toBe(0);
   });
 
+  it("rejects pick submission when ceremony is draft-locked (winners entered)", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 1
+    });
+    const nomination = await insertNomination(db.pool, {
+      ceremony_id: league.ceremony_id
+    });
+    await db.pool.query(`UPDATE app_config SET active_ceremony_id = $1`, [
+      league.ceremony_id
+    ]);
+    await db.pool.query(`UPDATE ceremony SET draft_locked_at = now() WHERE id = $1`, [
+      league.ceremony_id
+    ]);
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/picks`, {
+      nomination_id: nomination.id,
+      request_id: "locked-1"
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_LOCKED");
+  });
+
+  it("rejects pick submission when season is cancelled", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member.id,
+      seat_number: 1
+    });
+    const nomination = await insertNomination(db.pool, {
+      ceremony_id: league.ceremony_id
+    });
+    await db.pool.query(`UPDATE app_config SET active_ceremony_id = $1`, [
+      league.ceremony_id
+    ]);
+    await db.pool.query(`UPDATE season SET status = 'CANCELLED' WHERE id = $1`, [
+      draft.season_id
+    ]);
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/picks`, {
+      nomination_id: nomination.id,
+      request_id: "cancelled-1"
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("SEASON_CANCELLED");
+  });
+
   it("rejects invalid payloads", async () => {
     const draft = await insertDraft(db.pool, {
       status: "IN_PROGRESS",

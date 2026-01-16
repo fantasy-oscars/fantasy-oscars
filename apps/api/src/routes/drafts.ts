@@ -33,6 +33,7 @@ import {
   getExtantSeasonForLeague,
   getSeasonById
 } from "../data/repositories/seasonRepository.js";
+import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
 import { listSeasonMembers } from "../data/repositories/seasonMemberRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -166,7 +167,13 @@ export function buildStartDraftHandler(pool: Pool) {
         }
 
         const season = await getSeasonById(tx, draft.season_id);
-        if (!season || season.status !== "EXTANT") {
+        if (!season) {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        if (season.status === "CANCELLED") {
+          throw new AppError("SEASON_CANCELLED", 409, "Season is cancelled");
+        }
+        if (season.status !== "EXTANT") {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
@@ -187,6 +194,10 @@ export function buildStartDraftHandler(pool: Pool) {
             409,
             "Draft actions are limited to the active ceremony"
           );
+        }
+        const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
+        if (lockedAt) {
+          throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
 
         const leagueMember = await getLeagueMember(tx, league.id, userId);
@@ -697,7 +708,13 @@ export function buildSubmitPickHandler(pool: Pool) {
         }
 
         const season = await getSeasonById(tx, draft.season_id);
-        if (!season || season.status !== "EXTANT") {
+        if (!season) {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        if (season.status === "CANCELLED") {
+          throw new AppError("SEASON_CANCELLED", 409, "Season is cancelled");
+        }
+        if (season.status !== "EXTANT") {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
@@ -718,6 +735,10 @@ export function buildSubmitPickHandler(pool: Pool) {
             409,
             "Draft actions are limited to the active ceremony"
           );
+        }
+        const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
+        if (lockedAt) {
+          throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
 
         const seats = await listDraftSeats(tx, draftIdNum);
