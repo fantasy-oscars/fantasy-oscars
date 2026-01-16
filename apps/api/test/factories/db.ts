@@ -200,6 +200,61 @@ export async function insertNomination(
   return nomination;
 }
 
+export async function insertCeremonyWinner(
+  pool: Pool,
+  overrides: {
+    ceremony_id?: number;
+    category_edition_id?: number;
+    nomination_id?: number;
+  } = {}
+) {
+  let categoryEditionId = overrides.category_edition_id ?? null;
+  let ceremonyId = overrides.ceremony_id ?? null;
+
+  if (!categoryEditionId) {
+    const category = await insertCategoryEdition(pool, {
+      ceremony_id: ceremonyId ?? undefined
+    });
+    categoryEditionId = category.id;
+    ceremonyId = ceremonyId ?? category.ceremony_id;
+  }
+
+  if (!ceremonyId) {
+    const { rows } = await pool.query<{ ceremony_id: number }>(
+      `SELECT ceremony_id FROM category_edition WHERE id = $1`,
+      [categoryEditionId]
+    );
+    ceremonyId = rows[0]?.ceremony_id ?? null;
+  }
+
+  if (!ceremonyId) {
+    throw new Error("ceremony_id is required to insert ceremony_winner");
+  }
+
+  let nominationId = overrides.nomination_id ?? null;
+  if (!nominationId) {
+    const nomination = await insertNomination(pool, {
+      category_edition_id: categoryEditionId,
+      ceremony_id: ceremonyId
+    });
+    nominationId = nomination.id;
+  }
+
+  await pool.query(
+    `INSERT INTO ceremony_winner (ceremony_id, category_edition_id, nomination_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (category_edition_id)
+     DO UPDATE SET nomination_id = EXCLUDED.nomination_id, updated_at = now()`,
+    [ceremonyId, categoryEditionId, nominationId]
+  );
+
+  return {
+    ceremony_id: ceremonyId,
+    category_edition_id: categoryEditionId,
+    nomination_id: nominationId
+  };
+}
+
 export async function insertUser(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildUser>> = {}

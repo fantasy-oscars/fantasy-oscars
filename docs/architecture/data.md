@@ -16,6 +16,7 @@
 - League creation: creating a league automatically creates the initial EXTANT season for the active ceremony and adds the creator as OWNER/member in the same transaction.
 - Additional seasons: commissioners can add a new EXTANT season for the active ceremony (one per ceremony). Season lists include an `is_active_ceremony` marker; season creation is blocked if no active ceremony or an extant season already exists for that ceremony.
 - Ceremony winners: `ceremony_winner` stores the winning `nomination_id` per `category_edition` (unique). `ceremony.draft_locked_at` records when winners entry begins; it is set once and never unlocked in MVP.
+- Standings/results source of truth: draft standings pull winners from `ceremony_winner` for the draft’s ceremony (shared across drafts); the legacy `draft_result` table is not used for scoring.
 - Season membership & invites: `season_member` tracks users per season (unique per season/user, roles OWNER/CO_OWNER/MEMBER); `season_invite` supports placeholder (token-hash, single-use) and user-targeted invites with lifecycle statuses (PENDING/CLAIMED/REVOKED/DECLINED). Pending user-targeted invites are unique per (season, intended_user). Placeholder tokens store SHA-256 hex digests; no expiry in MVP.
 - User-targeted invites are commissioner-created, surface only in an authenticated inbox for the intended user, and accept/decline is only allowed while drafts for the ceremony have not started; accepting atomically adds league + season membership.
 

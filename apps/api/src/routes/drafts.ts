@@ -14,7 +14,6 @@ import {
   countNominationsByCeremony,
   listDraftSeats,
   listDraftPicks,
-  listDraftResults,
   countDraftPicks,
   getPickByNomination,
   getPickByNumber,
@@ -43,6 +42,7 @@ import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { computePickAssignment } from "../domain/draftOrder.js";
 import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
 import { revokePendingInvitesForSeason } from "../data/repositories/seasonInviteRepository.js";
+import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
@@ -1066,9 +1066,22 @@ export function buildDraftStandingsHandler(pool: Pool) {
 
       const seats = await listDraftSeats(pool, draftId);
       const picks = await listDraftPicks(pool, draftId);
-      const results = await listDraftResults(pool, draftId);
-
       const season = await getSeasonById(pool, draft.season_id);
+      if (!season) {
+        throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+      }
+
+      const winners = await listWinnersByCeremony(pool, season.ceremony_id);
+      const winnerIds = new Set(winners.map((w) => String(w.nomination_id)));
+
+      const uniqueNominationIds = [
+        ...new Set(picks.map((pick) => Number(pick.nomination_id)))
+      ].sort((a, b) => a - b);
+      const results = uniqueNominationIds.map((nominationId) => ({
+        nomination_id: nominationId,
+        won: winnerIds.has(String(nominationId)),
+        points: null as number | null
+      }));
 
       const scores = scoreDraft({
         picks: picks.map((pick) => ({
@@ -1081,7 +1094,7 @@ export function buildDraftStandingsHandler(pool: Pool) {
           won: result.won,
           points: result.points ?? undefined
         })),
-        strategyName: season?.scoring_strategy_name ?? "fixed"
+        strategyName: season.scoring_strategy_name ?? "fixed"
       });
 
       const pointsBySeat = new Map(
