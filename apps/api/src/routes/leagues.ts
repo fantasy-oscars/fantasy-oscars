@@ -7,6 +7,7 @@ import {
   getLeagueById,
   listLeaguesForUser
 } from "../data/repositories/leagueRepository.js";
+import { listSeasonsForLeague } from "../data/repositories/seasonRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import { createExtantSeason } from "../data/repositories/seasonRepository.js";
 import type { DbClient } from "../data/db.js";
@@ -98,6 +99,11 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
       }
       const league = await getLeagueById(client, id);
       if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+      // Hide leagues with no extant seasons.
+      const seasons = await listSeasonsForLeague(client, id, { includeCancelled: false });
+      if (seasons.length === 0) {
+        throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+      }
       return res.json({ league });
     } catch (err) {
       next(err);

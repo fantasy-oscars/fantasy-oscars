@@ -90,8 +90,10 @@ export async function createSeason(
 
 export async function listSeasonsForLeague(
   client: DbClient,
-  leagueId: number
+  leagueId: number,
+  opts?: { includeCancelled?: boolean }
 ): Promise<SeasonRecord[]> {
+  const includeCancelled = opts?.includeCancelled ?? false;
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
@@ -102,6 +104,7 @@ export async function listSeasonsForLeague(
        created_at
      FROM season
      WHERE league_id = $1
+       ${includeCancelled ? "" : "AND status <> 'CANCELLED'"}
      ORDER BY created_at DESC`,
     [leagueId]
   );
@@ -125,6 +128,26 @@ export async function getMostRecentSeason(
      ORDER BY created_at DESC
      LIMIT 1`,
     [leagueId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function cancelSeason(
+  client: DbClient,
+  seasonId: number
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `UPDATE season
+     SET status = 'CANCELLED'
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       ceremony_id::int,
+       status,
+       created_at`,
+    [seasonId]
   );
   return rows[0] ?? null;
 }

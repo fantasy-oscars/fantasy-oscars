@@ -148,9 +148,8 @@ export function buildStartDraftHandler(pool: Pool) {
         }
 
         const season = await getSeasonById(tx, draft.season_id);
-        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
-        if (season.status !== "EXTANT") {
-          throw new AppError("SEASON_INACTIVE", 409, "Season is not active");
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
         const league = await getLeagueById(tx, season.league_id);
@@ -415,9 +414,8 @@ export function buildSubmitPickHandler(pool: Pool) {
         }
 
         const season = await getSeasonById(tx, draft.season_id);
-        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
-        if (season.status !== "EXTANT") {
-          throw new AppError("SEASON_INACTIVE", 409, "Season is not active");
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
         const league = await getLeagueById(tx, season.league_id);
