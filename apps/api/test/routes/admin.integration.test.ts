@@ -5,7 +5,8 @@ import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import {
   insertCategoryEdition,
   insertNomination,
-  insertCeremony
+  insertCeremony,
+  insertUser
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -204,6 +205,72 @@ describe("admin routes", () => {
       `SELECT COUNT(*)::int AS count FROM ceremony`
     );
     expect(Number(rows[0].count)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rejects nominee upload after drafts start", async () => {
+    const ceremony = await insertCeremony(db.pool, { code: "oscars-2031", year: 2031 });
+    await db.pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+      [ceremony.id]
+    );
+    // create league/season/draft with status IN_PROGRESS to simulate started draft
+    const owner = await insertUser(db.pool);
+    const { rows } = await db.pool.query<{ id: number }>(
+      `INSERT INTO league (code, name, ceremony_id, max_members, roster_size, is_public, created_by_user_id)
+       VALUES ('l-2031', 'League 2031', $1, 10, 5, false, $2)
+       RETURNING id`,
+      [ceremony.id, owner.id]
+    );
+    const leagueId = rows[0].id;
+    const { rows: seasonRows } = await db.pool.query<{ id: number }>(
+      `INSERT INTO season (league_id, ceremony_id, status) VALUES ($1, $2, 'EXTANT') RETURNING id`,
+      [leagueId, ceremony.id]
+    );
+    const seasonId = seasonRows[0].id;
+    await db.pool.query(
+      `INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, version)
+       VALUES ($1, $2, 'IN_PROGRESS', 'SNAKE', 1, 1)`,
+      [leagueId, seasonId]
+    );
+
+    const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
+      handle: "admin5",
+      email: "admin5@example.com",
+      display_name: "Admin Five",
+      password: "secret123"
+    });
+    await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
+      reg.user.id
+    ]);
+    const login = await post<{ token: string }>("/auth/login", {
+      handle: "admin5",
+      password: "secret123"
+    });
+
+    const dataset = {
+      icons: [],
+      ceremonies: [
+        { id: ceremony.id, code: "oscars-2031", name: "Oscars 2031", year: 2031 }
+      ],
+      category_families: [],
+      category_editions: [],
+      films: [],
+      songs: [],
+      performances: [],
+      people: [],
+      nominations: [],
+      nomination_contributors: []
+    };
+
+    const res = await post<{ error: { code: string } }>(
+      "/admin/nominees/upload",
+      dataset,
+      { Authorization: `Bearer ${login.json.token}` }
+    );
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFTS_LOCKED");
   });
 
   it("rejects nominee upload when ceremonies mismatch active", async () => {

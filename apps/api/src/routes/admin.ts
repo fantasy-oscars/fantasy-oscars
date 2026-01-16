@@ -8,6 +8,7 @@ import {
   getCeremonyDraftLockedAt
 } from "../data/repositories/ceremonyRepository.js";
 import { upsertWinner } from "../data/repositories/winnerRepository.js";
+import { hasDraftsStartedForCeremony } from "../data/repositories/draftRepository.js";
 import { loadNominees } from "../scripts/load-nominees.js";
 import type { Pool } from "pg";
 
@@ -176,6 +177,18 @@ export function createAdminRouter(client: DbClient) {
             "ACTIVE_CEREMONY_NOT_SET",
             409,
             "Active ceremony is not configured"
+          );
+        }
+
+        const draftsStarted = await hasDraftsStartedForCeremony(
+          client,
+          Number(activeCeremonyId)
+        );
+        if (draftsStarted) {
+          throw new AppError(
+            "DRAFTS_LOCKED",
+            409,
+            "Nominee structural changes are locked after drafts start"
           );
         }
 
