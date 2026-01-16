@@ -20,6 +20,11 @@ export type LeagueMemberRecord = {
   joined_at: Date;
 };
 
+export type LeagueMemberWithUser = LeagueMemberRecord & {
+  handle: string;
+  display_name: string;
+};
+
 export async function createLeague(
   client: DbClient,
   input: {
@@ -203,6 +208,60 @@ export async function getDraftSeatForUser(
      JOIN league_member lm ON lm.id = ds.league_member_id
      WHERE ds.draft_id = $1 AND lm.user_id = $2`,
     [draftId, userId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function listLeagueRoster(
+  client: DbClient,
+  leagueId: number
+): Promise<LeagueMemberWithUser[]> {
+  const { rows } = await query<LeagueMemberWithUser>(
+    client,
+    `SELECT
+       lm.id::int,
+       lm.league_id::int,
+       lm.user_id::int,
+       lm.role,
+       lm.joined_at,
+       u.handle,
+       u.display_name
+     FROM league_member lm
+     JOIN app_user u ON u.id = lm.user_id
+     WHERE lm.league_id = $1
+     ORDER BY lm.joined_at ASC`,
+    [leagueId]
+  );
+  return rows;
+}
+
+export async function countCommissioners(
+  client: DbClient,
+  leagueId: number
+): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count
+     FROM league_member
+     WHERE league_id = $1 AND role IN ('OWNER','CO_OWNER')`,
+    [leagueId]
+  );
+  return rows[0]?.count ? Number(rows[0].count) : 0;
+}
+
+export async function updateLeagueMemberRole(
+  client: DbClient,
+  leagueId: number,
+  userId: number,
+  role: LeagueMemberRecord["role"]
+): Promise<LeagueMemberRecord | null> {
+  const { rows } = await query<LeagueMemberRecord>(
+    client,
+    `UPDATE league_member
+     SET role = $3
+     WHERE league_id = $1 AND user_id = $2
+     RETURNING id::int, league_id::int, user_id::int, role, joined_at`,
+    [leagueId, userId, role]
   );
   return rows[0] ?? null;
 }
