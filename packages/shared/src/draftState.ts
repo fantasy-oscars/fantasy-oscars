@@ -1,4 +1,10 @@
-export const draftStates = ["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+export const draftStates = [
+  "PENDING",
+  "IN_PROGRESS",
+  "PAUSED",
+  "COMPLETED",
+  "CANCELLED"
+] as const;
 export type DraftState = (typeof draftStates)[number];
 
 export type DraftStateTransition = {
@@ -8,8 +14,11 @@ export type DraftStateTransition = {
 
 const allowedTransitions: DraftStateTransition[] = [
   { from: "PENDING", to: "IN_PROGRESS" },
+  { from: "IN_PROGRESS", to: "PAUSED" },
+  { from: "PAUSED", to: "IN_PROGRESS" },
   { from: "IN_PROGRESS", to: "COMPLETED" },
   { from: "IN_PROGRESS", to: "CANCELLED" },
+  { from: "PAUSED", to: "CANCELLED" },
   { from: "PENDING", to: "CANCELLED" }
 ];
 

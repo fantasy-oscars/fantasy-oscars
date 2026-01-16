@@ -123,6 +123,35 @@ describe("drafts integration", () => {
     expect(res.json.error.code).toBe("DRAFT_EXISTS");
   });
 
+  it("pauses and resumes a draft as commissioner", async () => {
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+    const draftRes = await post<{ draft: { id: number } }>("/drafts", {
+      league_id: league.id,
+      draft_order_type: "SNAKE"
+    });
+    const draftId = draftRes.json.draft.id;
+
+    await db.pool.query(
+      `UPDATE draft SET status = 'IN_PROGRESS', current_pick_number = 1 WHERE id = $1`,
+      [draftId]
+    );
+
+    const pauseRes = await post<{ draft: { status: string } }>(
+      `/drafts/${draftId}/pause`,
+      {}
+    );
+    expect(pauseRes.status).toBe(200);
+    expect(pauseRes.json.draft.status).toBe("PAUSED");
+
+    const resumeRes = await post<{ draft: { status: string } }>(
+      `/drafts/${draftId}/resume`,
+      {}
+    );
+    expect(resumeRes.status).toBe(200);
+    expect(resumeRes.json.draft.status).toBe("IN_PROGRESS");
+  });
+
   it("rejects draft creation when user is not a commissioner", async () => {
     await insertUser(db.pool, { id: 1 });
     await insertUser(db.pool, { id: 2 });

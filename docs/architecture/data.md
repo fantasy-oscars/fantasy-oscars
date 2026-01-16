@@ -10,6 +10,7 @@
 - Active ceremony: `app_config.active_ceremony_id` stores the single active ceremony; participatory actions (league/draft flow) are restricted to this ceremony.
 - Seasons: `season` links a league to a ceremony; at most one EXTANT season per (league, ceremony); drafts belong to a season (one draft per season).
 - Draft start freezes sizing: `draft.picks_per_seat = floor(draft-eligible nominations for the ceremony / participant count)` is computed at `POST /drafts/:id/start`, stored on the draft, and used for completion; any remainder nominations stay undrafted for MVP.
+- Draft status can be paused by commissioners; `status=PAUSED` blocks picks, surfaces in snapshots, and is reversible via resume.
 - League membership: invite-only per season for MVP; the legacy `POST /leagues/:id/join` endpoint is disabled and returns `INVITE_ONLY_MEMBERSHIP`.
 - League creation: creating a league automatically creates the initial EXTANT season for the active ceremony and adds the creator as OWNER/member in the same transaction.
 - Additional seasons: commissioners can add a new EXTANT season for the active ceremony (one per ceremony). Season lists include an `is_active_ceremony` marker; season creation is blocked if no active ceremony or an extant season already exists for that ceremony.

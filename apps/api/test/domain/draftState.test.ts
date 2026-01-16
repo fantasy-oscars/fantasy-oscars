@@ -47,7 +47,12 @@ describe("transitionDraftState", () => {
 describe("allowedTransitions", () => {
   it("lists allowed next states", () => {
     expect(allowedTransitions("PENDING").sort()).toEqual(["CANCELLED", "IN_PROGRESS"]);
-    expect(allowedTransitions("IN_PROGRESS").sort()).toEqual(["CANCELLED", "COMPLETED"]);
+    expect(allowedTransitions("IN_PROGRESS").sort()).toEqual([
+      "CANCELLED",
+      "COMPLETED",
+      "PAUSED"
+    ]);
+    expect(allowedTransitions("PAUSED").sort()).toEqual(["CANCELLED", "IN_PROGRESS"]);
     expect(allowedTransitions("COMPLETED")).toEqual([]);
   });
 });

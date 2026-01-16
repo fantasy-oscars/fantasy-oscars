@@ -40,7 +40,7 @@ export function computeSeatForPick(input: SnakeOrderInput): number {
       draft_order_type: input.draft_order_type
     });
   }
-  if (input.status !== "IN_PROGRESS") {
+  if (input.status !== "IN_PROGRESS" && input.status !== "PAUSED") {
     throw new DraftOrderError(
       "Draft must be in progress to compute picks",
       "INVALID_STATE",
