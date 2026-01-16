@@ -37,7 +37,13 @@ function buildUrl(path: string) {
 async function fetchJson<T>(
   path: string,
   init?: RequestInit
-): Promise<{ ok: boolean; data?: T; error?: string; errorCode?: string }> {
+): Promise<{
+  ok: boolean;
+  data?: T;
+  error?: string;
+  errorCode?: string;
+  errorFields?: string[];
+}> {
   try {
     const res = await fetch(buildUrl(path), {
       credentials: "include",
@@ -51,7 +57,14 @@ async function fetchJson<T>(
       const err = json.error ?? {};
       const msg = err.message ?? "Request failed";
       const code = err.code;
-      return { ok: false, error: msg, errorCode: code };
+      const fields =
+        Array.isArray((err as { details?: { fields?: unknown } })?.details?.fields) &&
+        (err as { details: { fields: unknown[] } }).details.fields.every(
+          (f) => typeof f === "string"
+        )
+          ? ((err as { details: { fields: string[] } }).details.fields as string[])
+          : undefined;
+      return { ok: false, error: msg, errorCode: code, errorFields: fields };
     }
     return { ok: true, data: json as T };
   } catch (err) {
@@ -139,13 +152,21 @@ type AuthContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
-  login: (input: { handle: string; password: string }) => Promise<boolean>;
+  login: (input: { handle: string; password: string }) => Promise<{
+    ok: boolean;
+    error?: string;
+    errorFields?: string[];
+  }>;
   register: (input: {
     handle: string;
     email: string;
     display_name: string;
     password: string;
-  }) => Promise<boolean>;
+  }) => Promise<{
+    ok: boolean;
+    error?: string;
+    errorFields?: string[];
+  }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -190,11 +211,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (res.ok && res.data?.user) {
       setUser(res.data.user);
-      return true;
+      return { ok: true as const };
     }
     setError(res.error ?? "Login failed");
     setUser(null);
-    return false;
+    return { ok: false as const, error: res.error, errorFields: res.errorFields };
   }, []);
 
   const register = useCallback(
@@ -213,10 +234,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         // Auto-login fetch
         await login({ handle: input.handle, password: input.password });
-        return true;
+        return { ok: true as const };
       }
       setError(res.error ?? "Registration failed");
-      return false;
+      return { ok: false as const, error: res.error, errorFields: res.errorFields };
     },
     [login]
   );
@@ -356,13 +377,22 @@ function LoginPage() {
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);
-    const ok = await login({
+    const res = await login({
       handle: String(data.get("handle")),
       password: String(data.get("password"))
     });
     setLoading(false);
-    setResult({ ok, message: ok ? "Logged in" : "Login failed" });
-    if (ok) navigate(from, { replace: true });
+    if (!res.ok) {
+      const nextErrors: FieldErrors = { ...errs };
+      res.errorFields?.forEach((field) => {
+        nextErrors[field] = "Invalid";
+      });
+      setErrors(nextErrors);
+      setResult({ ok: false, message: res.error ?? "Login failed" });
+      return;
+    }
+    setResult({ ok: true, message: "Logged in" });
+    navigate(from, { replace: true });
   }
 
   return (
@@ -415,15 +445,31 @@ function RegisterPage() {
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length) return;
     setLoading(true);
-    const ok = await register({
+    const res = await register({
       handle: String(data.get("handle")),
       email: String(data.get("email")),
       display_name: String(data.get("display_name")),
       password: String(data.get("password"))
     });
     setLoading(false);
-    setResult({ ok, message: ok ? "Registered" : "Registration failed" });
-    if (ok) navigate("/leagues", { replace: true });
+    if (!res.ok) {
+      const nextErrors: FieldErrors = { ...fieldErrors };
+      if (res.errorFields?.length) {
+        res.errorFields.forEach((field) => {
+          nextErrors[field] = "Invalid";
+        });
+      } else {
+        nextErrors.handle = nextErrors.handle ?? "Invalid";
+        nextErrors.email = nextErrors.email ?? "Invalid";
+        nextErrors.display_name = nextErrors.display_name ?? "Invalid";
+        nextErrors.password = nextErrors.password ?? "Invalid";
+      }
+      setErrors(nextErrors);
+      setResult({ ok: false, message: res.error ?? "Registration failed" });
+      return;
+    }
+    setResult({ ok: true, message: "Registered" });
+    navigate("/leagues", { replace: true });
   }
 
   return (
@@ -1061,14 +1107,29 @@ function ResultsPage() {
 }
 
 function AccountPage() {
-  const { user } = useAuthContext();
+  const { user, logout } = useAuthContext();
   return (
     <section className="card">
       <header>
         <h2>Account</h2>
         <p>Manage your profile and security.</p>
       </header>
-      <p className="muted">Signed in as {user?.handle ?? user?.sub ?? "unknown"}.</p>
+      <div className="stack">
+        <p className="muted">Signed in as {user?.handle ?? user?.sub ?? "unknown"}.</p>
+        <ul className="pill-list">
+          <li className="pill">Handle: {user?.handle ?? "—"}</li>
+          <li className="pill">Email: {user?.email ?? "—"}</li>
+          <li className="pill">Display name: {user?.display_name ?? "—"}</li>
+        </ul>
+        <div className="inline-actions">
+          <button type="button" onClick={logout}>
+            Logout
+          </button>
+          <Link className="ghost" to="/reset">
+            Password reset
+          </Link>
+        </div>
+      </div>
     </section>
   );
 }
