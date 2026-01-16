@@ -13,6 +13,7 @@ import {
   getDraftById,
   updateDraftStatus
 } from "../../src/data/repositories/draftRepository.js";
+import { createExtantSeason } from "../../src/data/repositories/seasonRepository.js";
 import { runInTransaction } from "../../src/data/db.js";
 
 async function seedBase(pool: Pool) {
@@ -57,8 +58,14 @@ describe("data repositories", () => {
           created_by_user_id: userId
         });
 
+        const season = await createExtantSeason(client, {
+          league_id: league.id,
+          ceremony_id: ceremonyId
+        });
+
         const draft = await createDraft(client, {
           league_id: league.id,
+          season_id: season.id,
           status: "PENDING",
           draft_order_type: "SNAKE"
         });

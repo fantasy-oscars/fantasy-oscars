@@ -20,8 +20,9 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 - **Nomination Contributor**: people associated with a nomination.
 - **App User / Auth Password**: users with credentials (placeholder auth).
 - **League**: scoped to a ceremony; has max members, roster size, visibility, owner.
+- **Season**: ties a league to a ceremony for a specific cycle; one EXTANT season per (league, ceremony), can be cancelled for history.
 - **League Member**: user in league with role (OWNER/CO_OWNER/MEMBER); unique per league.
-- **Draft**: one per league; status (PENDING/IN_PROGRESS/COMPLETED/CANCELLED), order type (SNAKE/LINEAR), current pick.
+- **Draft**: one per season; status (PENDING/IN_PROGRESS/COMPLETED/CANCELLED), order type (SNAKE/LINEAR), current pick.
 - **Draft Seat**: seat number per draft bound to a league member; unique per draft/seat and draft/member; active flag.
 - **Draft Pick**: made by a seat/member in a draft; unique pick number per draft, unique nomination per draft, unique combo of (round, seat) per draft.
 - **Catalog**: icon, person, film, song, performance as supporting objects.
@@ -30,7 +31,8 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 
 - **Nomination subject exclusivity**: exactly one of film_id, song_id, performance_id is set (enforced via check constraint).
 - **Category Edition uniqueness**: one edition per ceremony/family (unique(ceremony_id, family_id)).
-- **Draft uniqueness per league**: one draft per league.
+- **Season uniqueness**: at most one EXTANT season per (league, ceremony); cancelled seasons remain for history.
+- **Draft uniqueness per season**: one draft per season.
 - **Draft seat uniqueness**: unique(draft_id, seat_number) and unique(draft_id, league_member_id).
 - **Draft pick uniqueness**: unique per draft pick_number, nomination, and (round_number, seat_number).
 - **League membership uniqueness**: unique(league_id, user_id).

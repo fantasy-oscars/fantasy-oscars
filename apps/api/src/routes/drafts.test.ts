@@ -12,6 +12,7 @@ import { signToken } from "../auth/token.js";
 import { AppError } from "../errors.js";
 import * as draftRepo from "../data/repositories/draftRepository.js";
 import * as leagueRepo from "../data/repositories/leagueRepository.js";
+import * as seasonRepo from "../data/repositories/seasonRepository.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { DbClient } from "../data/db.js";
 import * as db from "../data/db.js";
@@ -57,6 +58,8 @@ describe("POST /drafts", () => {
   const getDraftByLeagueIdSpy = vi.spyOn(draftRepo, "getDraftByLeagueId");
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
   const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+  const getSeasonSpy = vi.spyOn(seasonRepo, "getExtantSeasonForLeague");
+  const createSeasonSpy = vi.spyOn(seasonRepo, "createExtantSeason");
   const getActiveCeremonySpy = vi.spyOn(appConfigRepo, "getActiveCeremonyId");
   const auth = requireAuth(AUTH_SECRET);
   const handler = buildCreateDraftHandler({} as unknown as DbClient);
@@ -82,9 +85,24 @@ describe("POST /drafts", () => {
       joined_at: new Date("2024-01-01T00:00:00Z")
     });
     getActiveCeremonySpy.mockResolvedValue(99);
+    getSeasonSpy.mockResolvedValue({
+      id: 500,
+      league_id: 1,
+      ceremony_id: 99,
+      status: "EXTANT",
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+    createSeasonSpy.mockResolvedValue({
+      id: 500,
+      league_id: 1,
+      ceremony_id: 99,
+      status: "EXTANT",
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
     createDraftSpy.mockResolvedValue({
       id: 42,
       league_id: 1,
+      season_id: 500,
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
@@ -202,6 +220,7 @@ describe("POST /drafts", () => {
     getDraftByLeagueIdSpy.mockResolvedValueOnce({
       id: 1,
       league_id: 1,
+      season_id: 500,
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
@@ -301,6 +320,7 @@ describe("POST /drafts/:id/results", () => {
     getDraftByIdSpy.mockResolvedValue({
       id: 55,
       league_id: 9,
+      season_id: 500,
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: null,
@@ -391,6 +411,7 @@ describe("GET /drafts/:id/export", () => {
     getDraftByIdSpy.mockResolvedValue({
       id: 99,
       league_id: 5,
+      season_id: 500,
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: 3,
@@ -498,6 +519,7 @@ describe("GET /drafts/:id/standings", () => {
     getDraftByIdSpy.mockResolvedValue({
       id: 77,
       league_id: 5,
+      season_id: 500,
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: null,
@@ -603,6 +625,7 @@ describe("GET /drafts/:id/snapshot", () => {
     getDraftByIdSpy.mockResolvedValue({
       id: 10,
       league_id: 22,
+      season_id: 500,
       status: "IN_PROGRESS",
       draft_order_type: "SNAKE",
       current_pick_number: 2,

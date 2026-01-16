@@ -111,12 +111,21 @@ export type LeagueMember = {
 export type Draft = {
   id: number;
   league_id: number;
+  season_id: number;
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
   version: number;
   started_at: Date | null;
   completed_at: Date | null;
+};
+
+export type Season = {
+  id: number;
+  league_id: number;
+  ceremony_id: number;
+  status: "EXTANT" | "CANCELLED";
+  created_at: Date;
 };
 
 export type DraftSeat = {
@@ -296,12 +305,25 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
   return {
     id: n,
     league_id: overrides.league_id ?? n,
+    season_id: overrides.season_id ?? overrides.league_id ?? n,
     status: overrides.status ?? "PENDING",
     draft_order_type: overrides.draft_order_type ?? "SNAKE",
     current_pick_number: overrides.current_pick_number ?? null,
     version: overrides.version ?? 0,
     started_at: overrides.started_at ?? null,
     completed_at: overrides.completed_at ?? null,
+    ...overrides
+  };
+}
+
+export function buildSeason(overrides: Partial<Season> = {}): Season {
+  const n = nextSeq();
+  return {
+    id: n,
+    league_id: overrides.league_id ?? n,
+    ceremony_id: overrides.ceremony_id ?? n,
+    status: overrides.status ?? "EXTANT",
+    created_at: overrides.created_at ?? baseTime,
     ...overrides
   };
 }

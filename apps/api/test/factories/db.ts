@@ -4,6 +4,7 @@ import {
   buildCategoryEdition,
   buildCategoryFamily,
   buildCeremony,
+  buildSeason,
   buildDraft,
   buildDraftPick,
   buildDraftSeat,
@@ -245,6 +246,25 @@ export async function insertLeague(
   return league;
 }
 
+export async function insertSeason(
+  pool: Pool,
+  overrides: Partial<ReturnType<typeof buildSeason>> = {}
+) {
+  const league = overrides.league_id ? null : await insertLeague(pool);
+  const season = buildSeason({
+    league_id: overrides.league_id ?? league?.id ?? 1,
+    ceremony_id: overrides.ceremony_id ?? league?.ceremony_id ?? 1,
+    status: overrides.status ?? "EXTANT",
+    ...overrides
+  });
+  await pool.query(
+    `INSERT INTO season (id, league_id, ceremony_id, status, created_at)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [season.id, season.league_id, season.ceremony_id, season.status, season.created_at]
+  );
+  return season;
+}
+
 export async function insertLeagueMember(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildLeagueMember>> = {}
@@ -268,17 +288,43 @@ export async function insertDraft(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildDraft>> = {}
 ) {
-  const league = overrides.league_id ? null : await insertLeague(pool);
+  let leagueId = overrides.league_id ?? null;
+  let ceremonyId: number | null = null;
+  if (!leagueId) {
+    const league = await insertLeague(pool);
+    leagueId = league.id;
+    ceremonyId = league.ceremony_id;
+  } else {
+    if (!ceremonyId) {
+      const { rows } = await pool.query<{ ceremony_id: number }>(
+        `SELECT ceremony_id FROM league WHERE id = $1`,
+        [leagueId]
+      );
+      ceremonyId = rows[0]?.ceremony_id ?? 1;
+    }
+  }
+
+  let seasonId = overrides.season_id ?? null;
+  if (!seasonId) {
+    const season = await insertSeason(pool, {
+      league_id: leagueId,
+      ceremony_id: ceremonyId
+    });
+    seasonId = season.id;
+  }
+
   const draft = buildDraft({
-    league_id: overrides.league_id ?? league?.id ?? 1,
+    league_id: leagueId ?? 1,
+    season_id: seasonId ?? 1,
     ...overrides
   });
   await pool.query(
-    `INSERT INTO draft (id, league_id, status, draft_order_type, current_pick_number, version, started_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, version, started_at, completed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [
       draft.id,
       draft.league_id,
+      draft.season_id,
       draft.status,
       draft.draft_order_type,
       draft.current_pick_number,

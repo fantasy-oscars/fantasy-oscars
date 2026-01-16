@@ -26,6 +26,10 @@ import {
 } from "../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
+import {
+  createExtantSeason,
+  getExtantSeasonForLeague
+} from "../data/repositories/seasonRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
@@ -83,6 +87,13 @@ export function buildCreateDraftHandler(client: DbClient) {
         );
       }
 
+      const season =
+        (await getExtantSeasonForLeague(client, leagueIdNum)) ??
+        (await createExtantSeason(client, {
+          league_id: leagueIdNum,
+          ceremony_id: league.ceremony_id
+        }));
+
       const userId = Number((req as AuthedRequest).auth?.sub);
       const leagueMember = await getLeagueMember(client, leagueIdNum, userId);
       const isCommissioner =
@@ -100,6 +111,7 @@ export function buildCreateDraftHandler(client: DbClient) {
 
       const draft = await createDraft(client, {
         league_id: leagueIdNum,
+        season_id: season.id,
         status: "PENDING",
         draft_order_type: order,
         current_pick_number: null,
