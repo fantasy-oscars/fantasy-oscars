@@ -44,3 +44,26 @@ export async function getWinnerByCategoryEdition(
   );
   return rows[0] ?? null;
 }
+
+export async function listWinnersByCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<Array<{ category_edition_id: number; nomination_id: number }>> {
+  const { rows } = await query<{
+    category_edition_id: number;
+    nomination_id: number;
+  }>(
+    client,
+    `SELECT
+       category_edition_id::int,
+       nomination_id::int
+     FROM ceremony_winner
+     WHERE ceremony_id = $1
+     ORDER BY category_edition_id`,
+    [ceremonyId]
+  );
+  return rows.map((r) => ({
+    category_edition_id: r.category_edition_id,
+    nomination_id: r.nomination_id
+  }));
+}
