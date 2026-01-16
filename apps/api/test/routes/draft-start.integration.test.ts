@@ -181,6 +181,50 @@ describe("draft start integration", () => {
     expect(res.json.error.code).toBe("DRAFT_ALREADY_STARTED");
   });
 
+  it("rejects start when ceremony is draft-locked (winners entered)", async () => {
+    const owner = await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    await db.pool.query(`UPDATE ceremony SET draft_locked_at = now() WHERE id = $1`, [
+      league.ceremony_id
+    ]);
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
+    await insertNomination(db.pool, { ceremony_id: league.ceremony_id });
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("DRAFT_LOCKED");
+  });
+
+  it("rejects start when season is cancelled", async () => {
+    const owner = await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id,
+      status: "CANCELLED"
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
+    await insertNomination(db.pool, { ceremony_id: league.ceremony_id });
+
+    const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("SEASON_CANCELLED");
+  });
+
   it("rejects when fewer than two participants", async () => {
     const owner = await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
