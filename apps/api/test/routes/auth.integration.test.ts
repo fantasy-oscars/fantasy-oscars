@@ -89,6 +89,33 @@ describe("auth integration", () => {
     expect(res.json.error.code).toBe("USER_EXISTS");
   });
 
+  it("rejects case-insensitive duplicates for handle and email", async () => {
+    await post("/auth/register", {
+      handle: "Alex",
+      email: "user@example.com",
+      display_name: "Alex",
+      password: "pw123456"
+    });
+
+    const handleDupe = await post<{ error: { code: string } }>("/auth/register", {
+      handle: "alex",
+      email: "user2@example.com",
+      display_name: "Alex 2",
+      password: "pw123456"
+    });
+    expect(handleDupe.status).toBe(409);
+    expect(handleDupe.json.error.code).toBe("USER_EXISTS");
+
+    const emailDupe = await post<{ error: { code: string } }>("/auth/register", {
+      handle: "alex3",
+      email: "User@example.com",
+      display_name: "Alex 3",
+      password: "pw123456"
+    });
+    expect(emailDupe.status).toBe(409);
+    expect(emailDupe.json.error.code).toBe("USER_EXISTS");
+  });
+
   it("logs in with valid credentials", async () => {
     const payload = {
       handle: "loginuser",
@@ -110,6 +137,27 @@ describe("auth integration", () => {
     });
     expect(me.status).toBe(200);
     expect(me.json.user.handle).toBe(payload.handle);
+  });
+
+  it("logs in with handle case-insensitively and returns normalized handle/email", async () => {
+    const payload = {
+      handle: "CaseUser",
+      email: "CaseEmail@example.com",
+      display_name: "Case User",
+      password: "pw123456"
+    };
+    await post("/auth/register", payload);
+
+    const res = await post<{ user: { handle: string; email: string }; token: string }>(
+      "/auth/login",
+      {
+        handle: "CASEUSER",
+        password: payload.password
+      }
+    );
+    expect(res.status).toBe(200);
+    expect(res.json.user.handle).toBe("caseuser");
+    expect(res.json.user.email).toBe("caseemail@example.com");
   });
 
   it("rejects invalid credentials", async () => {
