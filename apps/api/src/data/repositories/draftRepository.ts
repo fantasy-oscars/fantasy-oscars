@@ -7,6 +7,7 @@ export type DraftRecord = {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
+  picks_per_seat: number | null;
   version: number;
   started_at?: Date | null;
   completed_at?: Date | null;
@@ -60,6 +61,7 @@ export async function createDraft(
     status: DraftRecord["status"];
     draft_order_type: DraftRecord["draft_order_type"];
     current_pick_number?: number | null;
+    picks_per_seat?: number | null;
     started_at?: Date | null;
     completed_at?: Date | null;
   }
@@ -67,8 +69,8 @@ export async function createDraft(
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, started_at, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING
         id::int,
         league_id::int,
@@ -76,6 +78,7 @@ export async function createDraft(
         status,
         draft_order_type,
         current_pick_number,
+        picks_per_seat::int,
         version::int,
         started_at,
         completed_at
@@ -86,6 +89,7 @@ export async function createDraft(
       input.status,
       input.draft_order_type,
       input.current_pick_number ?? null,
+      input.picks_per_seat ?? null,
       input.started_at ?? null,
       input.completed_at ?? null
     ]
@@ -106,6 +110,7 @@ export async function getDraftById(
        status,
        draft_order_type,
        current_pick_number,
+       picks_per_seat::int,
        version::int,
        started_at,
        completed_at
@@ -128,6 +133,7 @@ export async function getDraftByIdForUpdate(
        status,
        draft_order_type,
        current_pick_number,
+       picks_per_seat::int,
        version::int,
        started_at,
        completed_at
@@ -183,6 +189,7 @@ export async function getDraftBySeasonId(
        status,
        draft_order_type,
        current_pick_number,
+       picks_per_seat::int,
        version::int,
        started_at,
        completed_at
@@ -246,14 +253,16 @@ export async function updateDraftOnStart(
   client: DbClient,
   id: number,
   current_pick_number: number,
-  started_at: Date
+  started_at: Date,
+  picks_per_seat: number
 ): Promise<DraftRecord | null> {
   const { rows } = await query<DraftRecord>(
     client,
     `UPDATE draft
      SET status = 'IN_PROGRESS',
          current_pick_number = $2,
-         started_at = $3
+         started_at = $3,
+         picks_per_seat = $4
      WHERE id = $1
      RETURNING
        id::int,
@@ -261,10 +270,11 @@ export async function updateDraftOnStart(
        status,
        draft_order_type,
        current_pick_number,
-       version::int,
-       started_at,
-       completed_at`,
-    [id, current_pick_number, started_at]
+        picks_per_seat::int,
+        version::int,
+        started_at,
+        completed_at`,
+    [id, current_pick_number, started_at, picks_per_seat]
   );
   return rows[0] ?? null;
 }
@@ -563,9 +573,10 @@ export async function updateDraftOnComplete(
        status,
        draft_order_type,
        current_pick_number::int,
-       version::int,
-       started_at,
-       completed_at`,
+       picks_per_seat::int,
+        version::int,
+        started_at,
+        completed_at`,
     [draftId, completedAt]
   );
   return rows[0] ?? null;
@@ -591,9 +602,10 @@ export async function completeDraftIfReady(
        status,
        draft_order_type,
        current_pick_number::int,
-       version::int,
-       started_at,
-       completed_at`,
+       picks_per_seat::int,
+        version::int,
+        started_at,
+        completed_at`,
     [draftId, completedAt, requiredPickCount]
   );
   return rows[0] ?? null;

@@ -106,6 +106,7 @@ describe("POST /drafts", () => {
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      picks_per_seat: null,
       version: 0,
       started_at: null,
       completed_at: null
@@ -224,6 +225,7 @@ describe("POST /drafts", () => {
       status: "PENDING",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      picks_per_seat: null,
       version: 0,
       started_at: null,
       completed_at: null
@@ -324,6 +326,7 @@ describe("POST /drafts/:id/results", () => {
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      picks_per_seat: null,
       version: 4,
       started_at: new Date("2024-01-01T00:00:00Z"),
       completed_at: new Date("2024-01-01T01:00:00Z")
@@ -415,6 +418,7 @@ describe("GET /drafts/:id/export", () => {
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: 3,
+      picks_per_seat: 2,
       version: 7,
       started_at: new Date("2024-01-01T00:00:00Z"),
       completed_at: new Date("2024-01-01T01:00:00Z")
@@ -523,6 +527,7 @@ describe("GET /drafts/:id/standings", () => {
       status: "COMPLETED",
       draft_order_type: "SNAKE",
       current_pick_number: null,
+      picks_per_seat: 2,
       version: 9,
       started_at: new Date("2024-01-01T00:00:00Z"),
       completed_at: new Date("2024-01-01T01:00:00Z")
@@ -619,6 +624,8 @@ describe("GET /drafts/:id/snapshot", () => {
   const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
   const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
+  const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
+  const countNominationsByCeremonySpy = vi.spyOn(draftRepo, "countNominationsByCeremony");
   const handler = buildSnapshotDraftHandler({} as unknown as Pool);
 
   beforeEach(() => {
@@ -629,6 +636,7 @@ describe("GET /drafts/:id/snapshot", () => {
       status: "IN_PROGRESS",
       draft_order_type: "SNAKE",
       current_pick_number: 2,
+      picks_per_seat: 4,
       version: 5,
       started_at: new Date("2024-01-01T00:00:00Z"),
       completed_at: null
@@ -676,6 +684,14 @@ describe("GET /drafts/:id/snapshot", () => {
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
+    getSeasonByIdSpy.mockResolvedValue({
+      id: 500,
+      league_id: 22,
+      ceremony_id: 99,
+      status: "EXTANT",
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+    countNominationsByCeremonySpy.mockResolvedValue(10);
   });
 
   afterEach(() => {

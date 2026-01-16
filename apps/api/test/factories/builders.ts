@@ -115,6 +115,7 @@ export type Draft = {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
+  picks_per_seat: number | null;
   version: number;
   started_at: Date | null;
   completed_at: Date | null;
@@ -309,6 +310,7 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
     status: overrides.status ?? "PENDING",
     draft_order_type: overrides.draft_order_type ?? "SNAKE",
     current_pick_number: overrides.current_pick_number ?? null,
+    picks_per_seat: overrides.picks_per_seat ?? null,
     version: overrides.version ?? 0,
     started_at: overrides.started_at ?? null,
     completed_at: overrides.completed_at ?? null,

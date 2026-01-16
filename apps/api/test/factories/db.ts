@@ -159,12 +159,12 @@ export async function insertPerformance(
 
 export async function insertNomination(
   pool: Pool,
-  overrides: Partial<ReturnType<typeof buildNomination>> = {}
+  overrides: Partial<ReturnType<typeof buildNomination>> & {
+    ceremony_id?: number | null;
+  } = {}
 ) {
-  // Allow callers to hint the ceremony; not part of buildNomination's shape so accept loosely.
-  const overrideCeremony =
-    (overrides as { ceremony_id?: number | null }).ceremony_id ?? null;
-  let ceremonyIdOverride = overrideCeremony;
+  const { ceremony_id: ceremonyOverride, ...nominationOverrides } = overrides;
+  let ceremonyIdOverride = ceremonyOverride ?? null;
   if (!ceremonyIdOverride) {
     const { rows } = await pool.query<{ active_ceremony_id: number | null }>(
       `SELECT active_ceremony_id FROM app_config WHERE id = TRUE`
@@ -172,19 +172,19 @@ export async function insertNomination(
     ceremonyIdOverride = rows[0]?.active_ceremony_id ?? null;
   }
 
-  const category = overrides.category_edition_id
+  const category = nominationOverrides.category_edition_id
     ? null
     : await insertCategoryEdition(
         pool,
         ceremonyIdOverride ? { ceremony_id: ceremonyIdOverride } : {}
       );
-  const film = overrides.film_id ? null : await insertFilm(pool);
+  const film = nominationOverrides.film_id ? null : await insertFilm(pool);
   const nomination = buildNomination({
-    category_edition_id: overrides.category_edition_id ?? category?.id ?? 1,
-    film_id: overrides.film_id ?? film?.id ?? 1,
-    song_id: overrides.song_id ?? null,
-    performance_id: overrides.performance_id ?? null,
-    ...overrides
+    category_edition_id: nominationOverrides.category_edition_id ?? category?.id ?? 1,
+    film_id: nominationOverrides.film_id ?? film?.id ?? 1,
+    song_id: nominationOverrides.song_id ?? null,
+    performance_id: nominationOverrides.performance_id ?? null,
+    ...nominationOverrides
   });
   await pool.query(
     `INSERT INTO nomination (id, category_edition_id, film_id, song_id, performance_id)
@@ -333,8 +333,8 @@ export async function insertDraft(
     ...overrides
   });
   await pool.query(
-    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, version, started_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, version, started_at, completed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       draft.id,
       draft.league_id,
@@ -342,6 +342,7 @@ export async function insertDraft(
       draft.status,
       draft.draft_order_type,
       draft.current_pick_number,
+      draft.picks_per_seat,
       draft.version,
       draft.started_at,
       draft.completed_at

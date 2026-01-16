@@ -51,6 +51,18 @@ const pickRateLimiter = new SlidingWindowRateLimiter({
   max: 3
 });
 
+function resolvePicksPerSeat(
+  draft: { picks_per_seat: number | null },
+  league: { roster_size: number | string | null }
+) {
+  const rosterSizeRaw = Number(league?.roster_size);
+  const fallback =
+    Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
+  if (draft.picks_per_seat === null || draft.picks_per_seat === undefined)
+    return fallback;
+  return draft.picks_per_seat > 0 ? draft.picks_per_seat : fallback;
+}
+
 export function buildCreateDraftHandler(client: DbClient) {
   return async function handleCreateDraft(
     req: express.Request,
@@ -219,6 +231,14 @@ export function buildStartDraftHandler(pool: Pool) {
             "No nominations loaded; load nominees before starting draft"
           );
         }
+        const picksPerSeat = Math.floor(nominationCount / seatTotal);
+        if (picksPerSeat <= 0) {
+          throw new AppError(
+            "PREREQ_INSUFFICIENT_NOMINATIONS",
+            400,
+            "Not enough nominations for the number of participants"
+          );
+        }
 
         const now = new Date();
         const transitioned = transitionDraftState(
@@ -236,7 +256,8 @@ export function buildStartDraftHandler(pool: Pool) {
           tx,
           draft.id,
           draft.current_pick_number ?? 1,
-          transitioned.started_at ?? now
+          transitioned.started_at ?? now,
+          picksPerSeat
         );
         if (!updated) {
           throw new AppError("INTERNAL_ERROR", 500, "Failed to start draft");
@@ -250,6 +271,7 @@ export function buildStartDraftHandler(pool: Pool) {
               id: updated.id,
               status: updated.status,
               current_pick_number: updated.current_pick_number,
+              picks_per_seat: updated.picks_per_seat,
               started_at: updated.started_at,
               completed_at: updated.completed_at
             }
@@ -287,10 +309,11 @@ export function buildSnapshotDraftHandler(pool: Pool) {
 
       // If all required picks are made but status not updated, complete draft lazily.
       const league = await getLeagueById(pool, draft.league_id);
-      const rosterSizeRaw = Number(league?.roster_size);
-      const rosterSize =
-        Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
-      const totalRequired = seats.length * rosterSize;
+      const picksPerSeat = resolvePicksPerSeat(draft, league ?? { roster_size: 1 });
+      if (draft.picks_per_seat === null || draft.picks_per_seat === undefined) {
+        draft = { ...draft, picks_per_seat: picksPerSeat };
+      }
+      const totalRequired = seats.length * picksPerSeat;
       if (
         totalRequired > 0 &&
         picks.length >= totalRequired &&
@@ -303,7 +326,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
           }
           const freshSeats = await listDraftSeats(tx, draftId);
           const freshPicks = await listDraftPicks(tx, draftId);
-          const freshTotalRequired = freshSeats.length * rosterSize;
+          const freshTotalRequired = freshSeats.length * picksPerSeat;
           if (
             freshTotalRequired <= 0 ||
             freshPicks.length < freshTotalRequired ||
@@ -352,6 +375,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
                 id: nextDraft.id,
                 status: nextDraft.status,
                 current_pick_number: nextDraft.current_pick_number,
+                picks_per_seat: picksPerSeat,
                 started_at: nextDraft.started_at,
                 completed_at: nextDraft.completed_at
               }
@@ -362,6 +386,9 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         });
 
         draft = result.draft;
+        if (draft.picks_per_seat === null || draft.picks_per_seat === undefined) {
+          draft = { ...draft, picks_per_seat: picksPerSeat };
+        }
         seats = result.seats;
         picks = result.picks;
         if (result.event) {
@@ -370,7 +397,20 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         }
       }
 
-      return res.status(200).json({ draft, seats, picks, version: draft.version });
+      let nomineePoolSize: number | null = null;
+      const season = await getSeasonById(pool, draft.season_id);
+      if (season) {
+        nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
+      }
+
+      return res.status(200).json({
+        draft,
+        seats,
+        picks,
+        version: draft.version,
+        picks_per_seat: picksPerSeat,
+        nominee_pool_size: nomineePoolSize
+      });
     } catch (err) {
       next(err);
     }
@@ -465,10 +505,8 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
         }
 
-        const rosterSizeRaw = Number(league.roster_size);
-        const rosterSize =
-          Number.isFinite(rosterSizeRaw) && rosterSizeRaw > 0 ? rosterSizeRaw : 1;
-        const totalRequiredPicks = seatCount * rosterSize;
+        const picksPerSeat = resolvePicksPerSeat(draft, league);
+        const totalRequiredPicks = seatCount * picksPerSeat;
         const existingPickCount = await countDraftPicks(tx, draftIdNum);
         const draftCurrent = draft.current_pick_number ?? 0;
         const currentPick = Math.max(
@@ -583,7 +621,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         const newPickCount = existingPickCount + 1;
         // Recompute seat count defensively in case earlier read was stale.
         const seatTotal = await countDraftSeats(tx, draftIdNum);
-        const requiredPicks = seatTotal * rosterSize;
+        const requiredPicks = seatTotal * picksPerSeat;
         if (requiredPicks > 0 && newPickCount >= requiredPicks) {
           const updated =
             (await completeDraftIfReady(tx, draftIdNum, now, requiredPicks)) ??
