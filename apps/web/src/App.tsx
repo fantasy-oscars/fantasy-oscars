@@ -13,6 +13,7 @@ import {
   Outlet,
   Route,
   Routes,
+  NavLink,
   Link,
   useLocation,
   useNavigate,
@@ -265,7 +266,6 @@ function PageError(props: { message: string }) {
 
 function ShellLayout() {
   const { user, loading, error, logout, refresh } = useAuthContext();
-  const location = useLocation();
 
   return (
     <div className="app-shell">
@@ -294,46 +294,43 @@ function ShellLayout() {
       </header>
       {error && <PageError message={`Auth error: ${error}`} />}
       <nav className="nav-bar">
-        <Link
-          className={
-            location.pathname.startsWith("/leagues") ? "nav-link active" : "nav-link"
+        <NavLink
+          className={({ isActive }) =>
+            isActive ||
+            location.pathname === "/" ||
+            location.pathname === "" ||
+            location.pathname.startsWith("/leagues")
+              ? "nav-link active"
+              : "nav-link"
           }
           to="/leagues"
         >
           Leagues
-        </Link>
-        <Link
-          className={
-            location.pathname.startsWith("/drafts") ? "nav-link active" : "nav-link"
-          }
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           to="/drafts/1"
         >
           Draft Room
-        </Link>
-        <Link
-          className={
-            location.pathname.startsWith("/results") ? "nav-link active" : "nav-link"
-          }
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           to="/results"
         >
           Results
-        </Link>
-        <Link
-          className={
-            location.pathname.startsWith("/account") ? "nav-link active" : "nav-link"
-          }
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           to="/account"
         >
           Account
-        </Link>
-        <Link
-          className={
-            location.pathname.startsWith("/admin") ? "nav-link active" : "nav-link"
-          }
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           to="/admin"
         >
           Admin
-        </Link>
+        </NavLink>
       </nav>
       <section className="app-body">
         <Outlet />

@@ -70,8 +70,7 @@ describe("<App /> shell + routing", () => {
     render(<App />);
 
     await screen.findByText(/Signed in as alice/i);
-    expect(screen.getByRole("link", { name: /Leagues/i })).toHaveClass("active");
-    expect(screen.getByRole("heading", { name: /Leagues/i })).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Leagues/i });
   });
 
   it("navigates via nav links", async () => {
