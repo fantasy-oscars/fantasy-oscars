@@ -1,0 +1,41 @@
+{
+  "icons": [
+    { "id": 1, "code": "film", "name": "Film", "asset_path": "/icons/film.svg" }
+  ],
+  "ceremonies": [
+    { "id": 1000, "code": "dev-test-2026", "name": "Dev Test Awards 2026", "year": 2026 }
+  ],
+  "category_families": [
+    {
+      "id": 1,
+      "code": "best-picture",
+      "name": "Best Picture",
+      "icon_id": 1,
+      "default_unit_kind": "FILM"
+    }
+  ],
+  "category_editions": [
+    {
+      "id": 1,
+      "ceremony_id": 1000,
+      "family_id": 1,
+      "unit_kind": "FILM",
+      "icon_id": 1,
+      "sort_index": 1
+    }
+  ],
+  "films": [{ "id": 1, "title": "Sample Film", "country": "USA" }],
+  "songs": [],
+  "performances": [],
+  "people": [],
+  "nominations": [
+    {
+      "id": 1,
+      "category_edition_id": 1,
+      "film_id": 1,
+      "song_id": null,
+      "performance_id": null
+    }
+  ],
+  "nomination_contributors": []
+}

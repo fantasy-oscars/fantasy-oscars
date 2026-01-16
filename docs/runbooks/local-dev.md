@@ -20,6 +20,13 @@
 - Lint only: `npm run lint`
 - Typecheck only: `npm run typecheck`
 - Tests only: `npm test`
+- Seed minimal test ceremony dataset (idempotent):
+
+  ```bash
+  npm run nominees:load --workspace @fantasy-oscars/api -- --file db/fixtures/dev-minimal-nominees.json
+  ```
+
+  Expected: loads a single ceremony `dev-test-2026` with one category (Best Picture) and one nomination, ready for draft testing.
 
 ## Required Environment
 
