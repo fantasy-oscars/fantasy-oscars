@@ -1068,6 +1068,8 @@ export function buildDraftStandingsHandler(pool: Pool) {
       const picks = await listDraftPicks(pool, draftId);
       const results = await listDraftResults(pool, draftId);
 
+      const season = await getSeasonById(pool, draft.season_id);
+
       const scores = scoreDraft({
         picks: picks.map((pick) => ({
           pick_number: pick.pick_number,
@@ -1078,7 +1080,8 @@ export function buildDraftStandingsHandler(pool: Pool) {
           nomination_id: String(result.nomination_id),
           won: result.won,
           points: result.points ?? undefined
-        }))
+        })),
+        strategyName: season?.scoring_strategy_name ?? "fixed"
       });
 
       const pointsBySeat = new Map(

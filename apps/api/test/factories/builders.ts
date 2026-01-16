@@ -126,6 +126,7 @@ export type Season = {
   league_id: number;
   ceremony_id: number;
   status: "EXTANT" | "CANCELLED";
+  scoring_strategy_name: "fixed" | "negative";
   created_at: Date;
 };
 
@@ -325,6 +326,7 @@ export function buildSeason(overrides: Partial<Season> = {}): Season {
     league_id: overrides.league_id ?? n,
     ceremony_id: overrides.ceremony_id ?? n,
     status: overrides.status ?? "EXTANT",
+    scoring_strategy_name: overrides.scoring_strategy_name ?? "fixed",
     created_at: overrides.created_at ?? baseTime,
     ...overrides
   };

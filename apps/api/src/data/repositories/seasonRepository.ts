@@ -5,6 +5,7 @@ export type SeasonRecord = {
   league_id: number;
   ceremony_id: number;
   status: "EXTANT" | "CANCELLED";
+  scoring_strategy_name: "fixed" | "negative";
   created_at: Date;
 };
 
@@ -19,6 +20,7 @@ export async function getExtantSeasonForLeague(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at
      FROM season
      WHERE league_id = $1
@@ -44,6 +46,7 @@ export async function createExtantSeason(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at`,
     [input.league_id, input.ceremony_id]
   );
@@ -61,6 +64,7 @@ export async function getSeasonById(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at
      FROM season
      WHERE id = $1`,
@@ -82,6 +86,7 @@ export async function createSeason(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at`,
     [input.league_id, input.ceremony_id, input.status ?? "EXTANT"]
   );
@@ -101,6 +106,7 @@ export async function listSeasonsForLeague(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at
      FROM season
      WHERE league_id = $1
@@ -122,6 +128,7 @@ export async function getMostRecentSeason(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at
      FROM season
      WHERE league_id = $1
@@ -146,8 +153,31 @@ export async function cancelSeason(
        league_id::int,
        ceremony_id::int,
        status,
+       scoring_strategy_name,
        created_at`,
     [seasonId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function updateSeasonScoringStrategy(
+  client: DbClient,
+  seasonId: number,
+  strategy: SeasonRecord["scoring_strategy_name"]
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `UPDATE season
+     SET scoring_strategy_name = $2
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       ceremony_id::int,
+       status,
+       scoring_strategy_name,
+       created_at`,
+    [seasonId, strategy]
   );
   return rows[0] ?? null;
 }
