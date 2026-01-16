@@ -5,6 +5,7 @@
 - Postgres is the system of record.
 - Migrations live in `db/migrations` and are ordered by a zero-padded numeric prefix (strictly increasing, no duplicates).
 - Tests apply migrations automatically via Testcontainers.
+- Auth data: `app_user.handle` and `app_user.email` are stored lowercase; unique indexes on `lower(...)` enforce case-insensitive uniqueness.
 
 ## Principles
 

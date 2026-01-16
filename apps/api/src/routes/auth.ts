@@ -112,6 +112,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
       const trimmedHandle = handle.trim();
       const trimmedEmail = email.trim();
+      const normalizedHandle = trimmedHandle.toLowerCase();
+      const normalizedEmail = trimmedEmail.toLowerCase();
       const trimmedDisplayName = display_name.trim();
       const invalidFields: string[] = [];
       if (trimmedHandle.length < 2 || /\s/.test(trimmedHandle)) {
@@ -135,7 +137,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           `INSERT INTO app_user (handle, email, display_name)
            VALUES ($1, $2, $3)
            RETURNING id, handle, email, display_name, created_at`,
-          [trimmedHandle, trimmedEmail, trimmedDisplayName]
+          [normalizedHandle, normalizedEmail, trimmedDisplayName]
         );
 
         const user = rows[0];
@@ -147,8 +149,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
         return res.status(201).json({ user });
       } catch (err) {
-        const msg = (err as Error).message ?? "";
-        if (msg.includes("app_user_handle_key") || msg.includes("app_user_email_key")) {
+        const pgErr = err as { constraint?: string; message?: string };
+        const constraint = pgErr.constraint ?? pgErr.message ?? "";
+        if (
+          constraint.includes("app_user_handle_key") ||
+          constraint.includes("app_user_email_key") ||
+          constraint.includes("app_user_handle_lower_key") ||
+          constraint.includes("app_user_email_lower_key")
+        ) {
           throw new AppError("USER_EXISTS", 409, "User with handle/email already exists");
         }
         throw err;
@@ -171,13 +179,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         throw validationError("Invalid credentials", ["handle", "password"]);
       }
 
+      const normalizedHandle = handle.trim().toLowerCase();
       const { rows } = await query(
         client,
         `SELECT u.id, u.handle, u.email, u.display_name, p.password_hash, p.password_algo
          FROM app_user u
          JOIN auth_password p ON p.user_id = u.id
-         WHERE u.handle = $1`,
-        [handle.trim()]
+         WHERE lower(u.handle) = $1`,
+        [normalizedHandle]
       );
 
       const user = rows[0];
@@ -248,10 +257,11 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         throw validationError("Invalid field values", ["email"]);
       }
 
+      const normalizedEmail = email.trim().toLowerCase();
       const { rows } = await query(
         client,
         `SELECT id, handle FROM app_user WHERE email = $1`,
-        [email]
+        [normalizedEmail]
       );
       const user = rows[0];
 
