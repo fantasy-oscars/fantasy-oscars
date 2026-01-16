@@ -147,6 +147,31 @@ export async function createLeagueMember(
   return rows[0];
 }
 
+export async function listLeaguesForUser(
+  client: DbClient,
+  userId: number
+): Promise<LeagueRecord[]> {
+  const { rows } = await query<LeagueRecord>(
+    client,
+    `SELECT
+       l.id::int,
+       l.code,
+       l.name,
+       l.ceremony_id::int,
+       l.max_members,
+       l.roster_size,
+       l.is_public,
+       l.created_by_user_id::int,
+       l.created_at
+     FROM league l
+     JOIN league_member lm ON lm.league_id = l.id
+     WHERE lm.user_id = $1
+     ORDER BY l.created_at DESC`,
+    [userId]
+  );
+  return rows;
+}
+
 export async function getDraftSeatForUser(
   client: DbClient,
   draftId: number,

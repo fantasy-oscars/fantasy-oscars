@@ -75,43 +75,48 @@ describe("leagues integration", () => {
     return `${data}.${signature}`;
   }
 
-  it("creates a league and returns it", async () => {
+  it("creates a league, initial season, and owner membership for the active ceremony", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
 
-    const res = await post<{ league: { id: number; code: string } }>(
+    const res = await post<{
+      league: { id: number; code: string; ceremony_id: number };
+      season: { id: number; ceremony_id: number };
+    }>(
       "/leagues",
       {
         code: "league-1",
         name: "League One",
-        ceremony_id: ceremony.id,
         max_members: 10,
-        roster_size: 5,
         is_public: true
       },
       token
     );
     expect(res.status).toBe(201);
     expect(res.json.league.code).toBe("league-1");
+    expect(res.json.league.ceremony_id).toBe(ceremony.id);
+    expect(res.json.season.ceremony_id).toBe(ceremony.id);
+    const { rows } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [res.json.league.id, user.id]
+    );
+    expect(Number(rows[0].count)).toBe(1);
   });
 
   it("requires auth for create", async () => {
-    const ceremony = await createActiveCeremony();
+    await createActiveCeremony();
     const res = await post<{ error: { code: string } }>("/leagues", {
       code: "unauth",
       name: "No Auth",
-      ceremony_id: ceremony.id,
-      max_members: 10,
-      roster_size: 5
+      max_members: 10
     });
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("rejects creating a league for a non-active ceremony", async () => {
-    const active = await createActiveCeremony();
-    const inactive = await insertCeremony(db.pool, {}, false);
+  it("rejects creating a league when no active ceremony configured", async () => {
+    await insertCeremony(db.pool, {}, false);
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
 
@@ -120,28 +125,12 @@ describe("leagues integration", () => {
       {
         code: "wrong-ceremony",
         name: "Wrong Ceremony",
-        ceremony_id: inactive.id,
-        max_members: 10,
-        roster_size: 5
+        max_members: 10
       },
       token
     );
     expect(res.status).toBe(409);
-    expect(res.json.error.code).toBe("CEREMONY_INACTIVE");
-
-    // sanity: creating with active still works
-    const ok = await post<{ league: { id: number } }>(
-      "/leagues",
-      {
-        code: "right-ceremony",
-        name: "Right Ceremony",
-        ceremony_id: active.id,
-        max_members: 10,
-        roster_size: 5
-      },
-      token
-    );
-    expect(ok.status).toBe(201);
+    expect(res.json.error.code).toBe("ACTIVE_CEREMONY_NOT_SET");
   });
 
   it("rejects missing required fields", async () => {
@@ -157,7 +146,7 @@ describe("leagues integration", () => {
   });
 
   it("gets a league by id", async () => {
-    const ceremony = await createActiveCeremony();
+    await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
     const createRes = await post<{ league: { id: number } }>(
@@ -165,9 +154,7 @@ describe("leagues integration", () => {
       {
         code: "league-2",
         name: "League Two",
-        ceremony_id: ceremony.id,
         max_members: 10,
-        roster_size: 5,
         is_public: false
       },
       token
@@ -179,7 +166,7 @@ describe("leagues integration", () => {
   });
 
   it("requires auth for get by id", async () => {
-    const ceremony = await createActiveCeremony();
+    await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
     const createRes = await post<{ league: { id: number } }>(
@@ -187,9 +174,7 @@ describe("leagues integration", () => {
       {
         code: "no-auth-get",
         name: "No Auth Get",
-        ceremony_id: ceremony.id,
         max_members: 8,
-        roster_size: 4,
         is_public: true
       },
       token
@@ -200,6 +185,21 @@ describe("leagues integration", () => {
 
     expect(res.status).toBe(401);
     expect(res.json.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("lists leagues for the current user", async () => {
+    await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+    await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "list-1", name: "List One", max_members: 5 },
+      token
+    );
+
+    const res = await getJson<{ leagues: Array<{ code: string }> }>("/leagues", token);
+    expect(res.status).toBe(200);
+    expect(res.json.leagues.map((l) => l.code)).toContain("list-1");
   });
 
   it("returns invite-only error for legacy join endpoint", async () => {
