@@ -5,6 +5,7 @@ import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js
 import { query } from "../data/db.js";
 import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
+import { listNominationsForCeremony } from "../data/repositories/nominationRepository.js";
 
 export function createCeremonyRouter(client: DbClient) {
   const router = express.Router();
@@ -54,6 +55,19 @@ export function createCeremonyRouter(client: DbClient) {
       }
       const winners = await listWinnersByCeremony(client, activeId);
       return res.json({ winners });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get("/active/nominations", async (_req, res, next) => {
+    try {
+      const activeId = await getActiveCeremonyId(client);
+      if (!activeId) {
+        return res.json({ nominations: [] });
+      }
+      const nominations = await listNominationsForCeremony(client, activeId);
+      return res.json({ nominations });
     } catch (err) {
       next(err);
     }
