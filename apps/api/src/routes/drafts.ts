@@ -9,6 +9,7 @@ import {
   updateDraftOnComplete,
   getDraftByIdForUpdate,
   countDraftSeats,
+  createDraftSeats,
   countNominationsByCeremony,
   listDraftSeats,
   listDraftPicks,
@@ -31,6 +32,7 @@ import {
   getExtantSeasonForLeague,
   getSeasonById
 } from "../data/repositories/seasonRepository.js";
+import { listSeasonMembers } from "../data/repositories/seasonMemberRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
@@ -38,6 +40,7 @@ import { transitionDraftState } from "../domain/draftState.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { computePickAssignment } from "../domain/draftOrder.js";
 import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
+import { revokePendingInvitesForSeason } from "../data/repositories/seasonInviteRepository.js";
 import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
@@ -184,9 +187,28 @@ export function buildStartDraftHandler(pool: Pool) {
           throw new AppError("DRAFT_ALREADY_STARTED", 409, "Draft already started");
         }
 
-        const seats = await countDraftSeats(tx, draftId);
-        if (seats <= 0) {
-          throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
+        // Revoke any pending invites so seat creation reflects actual participants.
+        await revokePendingInvitesForSeason(tx, season.id);
+
+        let seatTotal = await countDraftSeats(tx, draftId);
+        if (seatTotal === 0) {
+          const members = await listSeasonMembers(tx, season.id);
+          const leagueMemberIds = members
+            .map((m) => m.league_member_id)
+            .filter((id): id is number => typeof id === "number" && !Number.isNaN(id));
+          const shuffled = leagueMemberIds.sort(() => Math.random() - 0.5);
+          if (shuffled.length < 2) {
+            throw new AppError(
+              "NOT_ENOUGH_PARTICIPANTS",
+              409,
+              "At least 2 season participants are required to start the draft"
+            );
+          }
+          await createDraftSeats(tx, {
+            draft_id: draft.id,
+            league_member_ids_in_order: shuffled
+          });
+          seatTotal = shuffled.length;
         }
 
         const nominationCount = await countNominationsByCeremony(tx, season.ceremony_id);

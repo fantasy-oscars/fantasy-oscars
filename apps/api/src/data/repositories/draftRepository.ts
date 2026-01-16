@@ -311,6 +311,30 @@ export async function listDraftSeats(
   return rows;
 }
 
+export async function createDraftSeats(
+  client: DbClient,
+  input: { draft_id: number; league_member_ids_in_order: number[] }
+): Promise<DraftSeatRecord[]> {
+  if (input.league_member_ids_in_order.length === 0) return [];
+  const values = input.league_member_ids_in_order
+    .map((id, idx) => `($1, ${idx + 1}, ${id})`)
+    .join(", ");
+  const { rows } = await query<DraftSeatRecord>(
+    client,
+    `INSERT INTO draft_seat (draft_id, seat_number, league_member_id)
+     VALUES ${values}
+     ON CONFLICT DO NOTHING
+     RETURNING
+       id::int,
+       draft_id::int,
+       league_member_id::int,
+       seat_number::int,
+       is_active`,
+    [input.draft_id]
+  );
+  return rows;
+}
+
 export async function listDraftPicks(
   client: DbClient,
   draftId: number

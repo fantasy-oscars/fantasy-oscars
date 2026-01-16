@@ -175,6 +175,20 @@ export async function updatePlaceholderInviteLabel(
   return rows[0] ? mapInvite(rows[0]) : null;
 }
 
+export async function revokePendingInvitesForSeason(
+  client: DbClient,
+  seasonId: number
+): Promise<number> {
+  const { rowCount } = await query(
+    client,
+    `UPDATE season_invite
+     SET status = 'REVOKED'
+     WHERE season_id = $1 AND status = 'PENDING'`,
+    [seasonId]
+  );
+  return rowCount ?? 0;
+}
+
 export async function findPendingUserInvite(
   client: DbClient,
   seasonId: number,

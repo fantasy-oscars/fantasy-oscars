@@ -6,13 +6,22 @@ import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 import {
   insertDraft,
   insertLeague,
-  insertDraftSeat,
   insertNomination,
-  insertUser
+  insertUser,
+  insertLeagueMember,
+  insertSeason
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
+async function setActiveCeremony(id: number) {
+  await db.pool.query(
+    `INSERT INTO app_config (id, active_ceremony_id)
+     VALUES (TRUE, $1)
+     ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+    [id]
+  );
+}
 
 async function requestJson<T>(
   path: string,
@@ -73,12 +82,45 @@ describe("draft start integration", () => {
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
-  it("starts a draft and sets current_pick_number when commissioner", async () => {
-    await insertUser(db.pool, { id: 1 });
-    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
-    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
-    await insertDraftSeat(db.pool, { draft_id: draft.id });
+  it("starts a draft, revokes pending invites, creates randomized seats, and sets current_pick_number", async () => {
+    const owner = await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const memberA = await insertUser(db.pool, { id: 2 });
+    const memberB = await insertUser(db.pool, { id: 3 });
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: owner.id,
+      role: "OWNER"
+    });
+    const lmA = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: memberA.id
+    });
+    const lmB = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: memberB.id
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role) VALUES ($1,$2,$3,'OWNER'),($1,$4,$5,'MEMBER'),($1,$6,$7,'MEMBER')`,
+      [season.id, owner.id, lmOwner.id, memberA.id, lmA.id, memberB.id, lmB.id]
+    );
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
     await insertNomination(db.pool);
+    // create two pending invites that should be revoked
+    await db.pool.query(
+      `INSERT INTO season_invite (season_id, token_hash, kind, status, created_by_user_id)
+       VALUES ($1,'hash1','PLACEHOLDER','PENDING',$2), ($1,'hash2','PLACEHOLDER','PENDING',$2)`,
+      [season.id, owner.id]
+    );
 
     const res = await post<{
       draft: { id: number; status: string; current_pick_number: number };
@@ -86,6 +128,23 @@ describe("draft start integration", () => {
     expect(res.status).toBe(200);
     expect(res.json.draft.status).toBe("IN_PROGRESS");
     expect(res.json.draft.current_pick_number).toBe(1);
+    const { rows: seats } = await db.pool.query<{
+      seat_number: number;
+      league_member_id: number;
+    }>(
+      `SELECT seat_number, league_member_id FROM draft_seat WHERE draft_id = $1 ORDER BY seat_number`,
+      [draft.id]
+    );
+    expect(seats).toHaveLength(3);
+    expect(seats[0].seat_number).toBe(1);
+    expect(new Set(seats.map((s) => Number(s.league_member_id)))).toEqual(
+      new Set([lmOwner.id, lmA.id, lmB.id])
+    );
+    const { rows: invites } = await db.pool.query<{ status: string }>(
+      `SELECT status FROM season_invite WHERE season_id = $1`,
+      [season.id]
+    );
+    expect(invites.every((i) => i.status === "REVOKED")).toBe(true);
     const { rows: events } = await db.pool.query<{
       version: number;
       event_type: string;
@@ -114,20 +173,62 @@ describe("draft start integration", () => {
     expect(res.json.error.code).toBe("DRAFT_ALREADY_STARTED");
   });
 
-  it("rejects when no seats", async () => {
-    await insertUser(db.pool, { id: 1 });
-    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
-    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
+  it("rejects when fewer than two participants", async () => {
+    const owner = await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: owner.id,
+      role: "OWNER"
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role) VALUES ($1,$2,$3,'OWNER')`,
+      [season.id, owner.id, lmOwner.id]
+    );
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
+    await insertNomination(db.pool);
+
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
-    expect(res.status).toBe(400);
-    expect(res.json.error.code).toBe("PREREQ_MISSING_SEATS");
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("NOT_ENOUGH_PARTICIPANTS");
   });
 
   it("rejects when no nominations loaded", async () => {
     await insertUser(db.pool, { id: 1 });
+    await insertUser(db.pool, { id: 2 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });
-    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
-    await insertDraftSeat(db.pool, { draft_id: draft.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    const lmMember = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 2
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role) VALUES ($1,$2,$3,'OWNER'),($1,$4,$5,'MEMBER')`,
+      [season.id, 1, lmOwner.id, 2, lmMember.id]
+    );
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
 
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
     expect(res.status).toBe(400);
@@ -144,8 +245,30 @@ describe("draft start integration", () => {
     await insertUser(db.pool, { id: 1 });
     await insertUser(db.pool, { id: 2 });
     const league = await insertLeague(db.pool, { created_by_user_id: 2 });
-    const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
-    await insertDraftSeat(db.pool, { draft_id: draft.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 2,
+      role: "OWNER"
+    });
+    const lmMember = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1,
+      role: "MEMBER"
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role) VALUES ($1,$2,$3,'OWNER'),($1,$4,$5,'MEMBER')`,
+      [season.id, 2, lmOwner.id, 1, lmMember.id]
+    );
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
     await insertNomination(db.pool);
 
     const res = await post<{ error: { code: string } }>(`/drafts/${draft.id}/start`, {});
