@@ -3,7 +3,7 @@
 ## TL;DR
 
 - Postgres is the system of record.
-- Migrations live in `db/migrations` (ordered by filename).
+- Migrations live in `db/migrations` and are ordered by a zero-padded numeric prefix (strictly increasing, no duplicates).
 - Tests apply migrations automatically via Testcontainers.
 
 ## Principles
@@ -19,7 +19,8 @@
 
 ## Operations
 
-- Add migration: create `db/migrations/NNN_description.sql`.
+- Add migration: create `db/migrations/NNN_description.sql` with the next unused numeric prefix.
+- Validate ordering: `npm run test:migrations` (part of `npm run ci`).
 - Apply in tests: automatic (see `apps/api/test/db.ts`).
 - Local DB (docker-compose): `npm run db:up` / `npm run db:down`.
 

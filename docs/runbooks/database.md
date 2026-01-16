@@ -10,7 +10,8 @@
 
 - Add: create `db/migrations/NNN_description.sql`
 - Applied automatically in integration tests.
-- Keep filenames ordered; avoid breaking existing numbers.
+- Ordering rule: filenames use zero-padded numeric prefixes and must be strictly increasing (no duplicate numbers). Tooling sorts by numeric prefix and fails fast on duplicates.
+- Validate ordering locally/CI: `npm run test:migrations` (also runs inside `npm run ci`).
 
 ## Test DB
 

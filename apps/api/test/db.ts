@@ -8,12 +8,46 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.resolve(__dirname, "../../../db/migrations");
 const postgresImage = "postgres:16";
 
+type MigrationFile = {
+  file: string;
+  number: number;
+};
+
+function parseMigrationFile(file: string): MigrationFile {
+  const match = /^(\d{3})_.*\.sql$/.exec(file);
+  if (!match) {
+    throw new Error(
+      `Invalid migration filename "${file}". Expected NNN_description.sql with zero-padded number.`
+    );
+  }
+  return { file, number: Number.parseInt(match[1]!, 10) };
+}
+
 function getSortedMigrationFiles() {
   if (!fs.existsSync(migrationsDir)) return [];
-  return fs
+  const migrations = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
-    .sort();
+    .map(parseMigrationFile)
+    .sort((a, b) => a.number - b.number || a.file.localeCompare(b.file));
+
+  const seen = new Set<number>();
+  for (const migration of migrations) {
+    if (seen.has(migration.number)) {
+      const duplicates = migrations
+        .filter((m) => m.number === migration.number)
+        .map((m) => m.file)
+        .join(", ");
+      throw new Error(
+        `Duplicate migration number ${migration.number
+          .toString()
+          .padStart(3, "0")}: ${duplicates}`
+      );
+    }
+    seen.add(migration.number);
+  }
+
+  return migrations.map((m) => m.file);
 }
 
 async function applyMigrations(pool: Pool) {
