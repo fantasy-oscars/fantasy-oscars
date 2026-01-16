@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -73,13 +73,81 @@ describe("<App /> shell + routing", () => {
     await screen.findByRole("heading", { name: /Leagues/i });
   });
 
+  it("shows validation errors from register response", async () => {
+    window.history.pushState({}, "", "/register");
+    mockFetchSequence(
+      {
+        ok: true,
+        json: () => Promise.resolve({ user: null })
+      },
+      {
+        ok: false,
+        json: () =>
+          Promise.resolve({
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid field values",
+              details: { fields: ["handle", "email"] }
+            }
+          })
+      }
+    );
+
+    render(<App />);
+
+    const registerHeading = await screen.findByRole("heading", {
+      name: "Create Account"
+    });
+    const registerCard = registerHeading.closest("section")!;
+
+    await userEvent.click(
+      within(registerCard).getByRole("button", { name: /Register/i })
+    );
+
+    await screen.findAllByText(/Required/i);
+
+    await userEvent.type(within(registerCard).getByLabelText(/Handle/i), "a");
+    await userEvent.type(within(registerCard).getByLabelText(/Email/i), "bad-email");
+    await userEvent.type(within(registerCard).getByLabelText(/Display name/i), "A");
+    await userEvent.type(within(registerCard).getByLabelText(/Password/i), "p");
+    await userEvent.click(
+      within(registerCard).getByRole("button", { name: /Register/i })
+    );
+
+    await screen.findByText(/Auth error: Invalid field values/i);
+  });
+
+  it("shows account details and logout", async () => {
+    window.history.pushState({}, "", "/account");
+    mockFetchSequence({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          user: {
+            sub: "1",
+            handle: "alice",
+            email: "a@example.com",
+            display_name: "Alice"
+          }
+        })
+    });
+
+    render(<App />);
+    await screen.findAllByText(/Signed in as alice/i);
+    await userEvent.click(screen.getByRole("link", { name: /Account/i }));
+    await screen.findByText(/Display name: Alice/i);
+    expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Logout/i }).length).toBeGreaterThan(0);
+  });
+
   it("navigates via nav links", async () => {
+    window.history.pushState({}, "", "/leagues");
     mockFetchSequence({
       ok: true,
       json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
     });
     render(<App />);
-    await screen.findByText(/Signed in as alice/i);
+    await screen.findAllByText(/Signed in as alice/i);
 
     const accountLink = screen.getByRole("link", { name: /Account/i });
     await userEvent.click(accountLink);
