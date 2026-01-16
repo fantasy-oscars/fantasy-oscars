@@ -26,6 +26,7 @@ import {
 } from "../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
+import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
 import { transitionDraftState } from "../domain/draftState.js";
@@ -64,6 +65,22 @@ export function buildCreateDraftHandler(client: DbClient) {
       const league = await getLeagueById(client, leagueIdNum);
       if (!league) {
         throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+      }
+
+      const activeCeremonyId = await getActiveCeremonyId(client);
+      if (!activeCeremonyId) {
+        throw new AppError(
+          "ACTIVE_CEREMONY_NOT_SET",
+          409,
+          "Active ceremony is not configured"
+        );
+      }
+      if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+        throw new AppError(
+          "CEREMONY_INACTIVE",
+          409,
+          "Drafts can only be created for the active ceremony"
+        );
       }
 
       const userId = Number((req as AuthedRequest).auth?.sub);
@@ -120,6 +137,22 @@ export function buildStartDraftHandler(pool: Pool) {
         const league = await getLeagueById(tx, draft.league_id);
         if (!league) {
           throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        }
+
+        const activeCeremonyId = await getActiveCeremonyId(tx);
+        if (!activeCeremonyId) {
+          throw new AppError(
+            "ACTIVE_CEREMONY_NOT_SET",
+            409,
+            "Active ceremony is not configured"
+          );
+        }
+        if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+          throw new AppError(
+            "CEREMONY_INACTIVE",
+            409,
+            "Draft actions are limited to the active ceremony"
+          );
         }
 
         const leagueMember = await getLeagueMember(tx, league.id, userId);
@@ -366,6 +399,22 @@ export function buildSubmitPickHandler(pool: Pool) {
 
         const league = await getLeagueById(tx, draft.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+
+        const activeCeremonyId = await getActiveCeremonyId(tx);
+        if (!activeCeremonyId) {
+          throw new AppError(
+            "ACTIVE_CEREMONY_NOT_SET",
+            409,
+            "Active ceremony is not configured"
+          );
+        }
+        if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+          throw new AppError(
+            "CEREMONY_INACTIVE",
+            409,
+            "Draft actions are limited to the active ceremony"
+          );
+        }
 
         const seats = await listDraftSeats(tx, draftIdNum);
         const seatCount = seats.length;

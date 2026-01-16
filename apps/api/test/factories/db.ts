@@ -37,13 +37,23 @@ export async function insertIcon(
 
 export async function insertCeremony(
   pool: Pool,
-  overrides: Partial<ReturnType<typeof buildCeremony>> = {}
+  overrides: Partial<ReturnType<typeof buildCeremony>> = {},
+  setActive = true
 ) {
   const ceremony = buildCeremony(overrides);
   await pool.query(
     `INSERT INTO ceremony (id, code, name, year) VALUES ($1, $2, $3, $4)`,
     [ceremony.id, ceremony.code, ceremony.name, ceremony.year]
   );
+  if (setActive) {
+    await pool.query(
+      `INSERT INTO app_config (id, active_ceremony_id)
+       VALUES (TRUE, $1)
+       ON CONFLICT (id) DO UPDATE
+       SET active_ceremony_id = COALESCE(app_config.active_ceremony_id, EXCLUDED.active_ceremony_id)`,
+      [ceremony.id]
+    );
+  }
   return ceremony;
 }
 

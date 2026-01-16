@@ -8,6 +8,20 @@ import { createApiAgent, type ApiAgent } from "../support/supertest.js";
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let authSecret = "test-secret";
 let api: ApiAgent;
+async function setActiveCeremony(id: number) {
+  await db.pool.query(
+    `INSERT INTO app_config (id, active_ceremony_id)
+     VALUES (TRUE, $1)
+     ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
+    [id]
+  );
+}
+
+async function createActiveCeremony() {
+  const ceremony = await insertCeremony(db.pool);
+  await setActiveCeremony(ceremony.id);
+  return ceremony;
+}
 
 async function post<T>(
   path: string,
@@ -62,7 +76,7 @@ describe("leagues integration", () => {
   }
 
   it("creates a league and returns it", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
 
@@ -83,7 +97,7 @@ describe("leagues integration", () => {
   });
 
   it("requires auth for create", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const res = await post<{ error: { code: string } }>("/leagues", {
       code: "unauth",
       name: "No Auth",
@@ -95,7 +109,43 @@ describe("leagues integration", () => {
     expect(res.json.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("rejects creating a league for a non-active ceremony", async () => {
+    const active = await createActiveCeremony();
+    const inactive = await insertCeremony(db.pool, {}, false);
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), handle: user.handle });
+
+    const res = await post<{ error: { code: string } }>(
+      "/leagues",
+      {
+        code: "wrong-ceremony",
+        name: "Wrong Ceremony",
+        ceremony_id: inactive.id,
+        max_members: 10,
+        roster_size: 5
+      },
+      token
+    );
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("CEREMONY_INACTIVE");
+
+    // sanity: creating with active still works
+    const ok = await post<{ league: { id: number } }>(
+      "/leagues",
+      {
+        code: "right-ceremony",
+        name: "Right Ceremony",
+        ceremony_id: active.id,
+        max_members: 10,
+        roster_size: 5
+      },
+      token
+    );
+    expect(ok.status).toBe(201);
+  });
+
   it("rejects missing required fields", async () => {
+    await createActiveCeremony();
     const token = signToken({ sub: "1", handle: "u1" });
     const res = await post<{ error: { code: string } }>(
       "/leagues",
@@ -107,7 +157,7 @@ describe("leagues integration", () => {
   });
 
   it("gets a league by id", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
     const createRes = await post<{ league: { id: number } }>(
@@ -129,7 +179,7 @@ describe("leagues integration", () => {
   });
 
   it("requires auth for get by id", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), handle: user.handle });
     const createRes = await post<{ league: { id: number } }>(
@@ -153,7 +203,7 @@ describe("leagues integration", () => {
   });
 
   it("allows a user to join a league before draft start", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const leagueCreator = await insertUser(db.pool);
     const member = await insertUser(db.pool);
     const tokenCreator = signToken({
@@ -187,7 +237,7 @@ describe("leagues integration", () => {
   });
 
   it("rejects join after league is full", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const first = await insertUser(db.pool);
     const second = await insertUser(db.pool);
@@ -222,7 +272,7 @@ describe("leagues integration", () => {
   });
 
   it("rejects join when draft already started", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const member = await insertUser(db.pool);
     const tokenOwner = signToken({ sub: String(owner.id), handle: owner.handle });
@@ -258,7 +308,7 @@ describe("leagues integration", () => {
   });
 
   it("is idempotent when a member joins twice", async () => {
-    const ceremony = await insertCeremony(db.pool);
+    const ceremony = await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const member = await insertUser(db.pool);
     const tokenOwner = signToken({ sub: String(owner.id), handle: owner.handle });
