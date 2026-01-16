@@ -4,6 +4,8 @@ import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createDraftsRouter } from "./routes/drafts.js";
 import { createLeaguesRouter } from "./routes/leagues.js";
+import { createAdminRouter } from "./routes/admin.js";
+import { requireAdmin, requireAuth } from "./auth/middleware.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
 import { buildRequestLog, deriveDraftContext, log } from "./logger.js";
@@ -94,6 +96,12 @@ export function createServer(deps?: { db?: Pool }) {
   app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
+  app.use(
+    "/admin",
+    requireAuth(config.authSecret),
+    requireAdmin(),
+    createAdminRouter(pool)
+  );
   app.get("/", (_req, res) => {
     res.json({ ok: true, service: "api", status: "healthy" });
   });

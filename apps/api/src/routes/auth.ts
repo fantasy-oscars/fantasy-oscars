@@ -136,7 +136,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           client,
           `INSERT INTO app_user (handle, email, display_name)
            VALUES ($1, $2, $3)
-           RETURNING id, handle, email, display_name, created_at`,
+           RETURNING id, handle, email, display_name, created_at, is_admin`,
           [normalizedHandle, normalizedEmail, trimmedDisplayName]
         );
 
@@ -182,7 +182,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       const normalizedHandle = handle.trim().toLowerCase();
       const { rows } = await query(
         client,
-        `SELECT u.id, u.handle, u.email, u.display_name, p.password_hash, p.password_algo
+        `SELECT u.id, u.handle, u.email, u.display_name, u.is_admin, p.password_hash, p.password_algo
          FROM app_user u
          JOIN auth_password p ON p.user_id = u.id
          WHERE lower(u.handle) = $1`,
@@ -203,7 +203,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
       // Skeleton: return placeholder token (non-secure) for v0.
       const token = signToken(
-        { sub: String(user.id), handle: user.handle },
+        { sub: String(user.id), handle: user.handle, is_admin: user.is_admin },
         authSecret,
         60 * 60
       );
@@ -219,7 +219,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           id: user.id,
           handle: user.handle,
           email: user.email,
-          display_name: user.display_name
+          display_name: user.display_name,
+          is_admin: user.is_admin
         },
         token
       });

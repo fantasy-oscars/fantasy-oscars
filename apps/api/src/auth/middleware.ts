@@ -39,6 +39,15 @@ export function requireAuth(secret: string) {
   };
 }
 
+export function requireAdmin() {
+  return (req: AuthedRequest, _res: Response, next: NextFunction) => {
+    if (!req.auth?.is_admin) {
+      return next(new AppError("FORBIDDEN", 403, "Admin access required"));
+    }
+    return next();
+  };
+}
+
 export const authUtils = {
   extractToken
 };
