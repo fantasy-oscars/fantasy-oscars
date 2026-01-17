@@ -108,6 +108,11 @@ type SeasonInvite = {
   updated_at: string;
   claimed_at: string | null;
 };
+type InboxInvite = SeasonInvite & {
+  league_id: number | null;
+  league_name: string | null;
+  ceremony_id: number | null;
+};
 type SeasonMeta = {
   id: number;
   ceremony_id: number;
@@ -370,6 +375,12 @@ function ShellLayout() {
           to="/leagues"
         >
           Leagues
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          to="/invites"
+        >
+          Invites
         </NavLink>
         <NavLink
           className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
@@ -1491,6 +1502,128 @@ function InviteClaimPage() {
   );
 }
 
+function InvitesInboxPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invites, setInvites] = useState<InboxInvite[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      const res = await fetchJson<{ invites: InboxInvite[] }>("/seasons/invites/inbox", {
+        method: "GET"
+      });
+      if (!res.ok) {
+        if (!cancelled) {
+          setError(res.error ?? "Could not load invites");
+          setLoading(false);
+        }
+        return;
+      }
+      if (!cancelled) {
+        setInvites(res.data?.invites ?? []);
+        setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function accept(invite: InboxInvite) {
+    const res = await fetchJson<{ invite?: SeasonInvite }>(
+      `/seasons/invites/${invite.id}/accept`,
+      { method: "POST" }
+    );
+    if (!res.ok) {
+      setError(res.error ?? "Unable to accept invite");
+      return;
+    }
+    setInvites((prev) => prev.filter((i) => i.id !== invite.id));
+
+    // Try to navigate to season if extant; otherwise league fallback.
+    if (invite.league_id) {
+      const seasonsRes = await fetchJson<{ seasons: SeasonMeta[] }>(
+        `/leagues/${invite.league_id}/seasons`,
+        { method: "GET" }
+      );
+      if (seasonsRes.ok) {
+        const seasonMeta = (seasonsRes.data?.seasons ?? []).find(
+          (s) => s.id === invite.season_id
+        );
+        if (seasonMeta && seasonMeta.status === "EXTANT") {
+          navigate(`/seasons/${invite.season_id}`, { replace: true });
+          return;
+        }
+      }
+      navigate(`/leagues/${invite.league_id}`, { replace: true });
+      return;
+    }
+    navigate("/leagues", { replace: true });
+  }
+
+  async function decline(invite: InboxInvite) {
+    const res = await fetchJson(`/seasons/invites/${invite.id}/decline`, {
+      method: "POST"
+    });
+    if (!res.ok) {
+      setError(res.error ?? "Unable to decline invite");
+      return;
+    }
+    setInvites((prev) => prev.filter((i) => i.id !== invite.id));
+  }
+
+  if (loading) return <PageLoader label="Loading invites..." />;
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Invites</h2>
+          <p className="muted">Accept or decline season invites sent to you.</p>
+        </div>
+      </header>
+      {error && <div className="status status-error">{error}</div>}
+      {invites.length === 0 ? (
+        <p className="muted">No pending invites.</p>
+      ) : (
+        <div className="list">
+          {invites.map((invite) => (
+            <div key={invite.id} className="list-row">
+              <div>
+                <div className="pill-list">
+                  <span className="pill">#{invite.id}</span>
+                  {invite.league_name && (
+                    <span className="pill">{invite.league_name}</span>
+                  )}
+                  {invite.ceremony_id && (
+                    <span className="pill">Ceremony {invite.ceremony_id}</span>
+                  )}
+                </div>
+                <p className="muted">
+                  Season {invite.season_id} • {invite.kind}
+                </p>
+              </div>
+              <div className="pill-actions">
+                <button type="button" onClick={() => accept(invite)}>
+                  Accept
+                </button>
+                <button type="button" className="ghost" onClick={() => decline(invite)}>
+                  Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 type Snapshot = {
   draft: {
     id: number;
@@ -2115,6 +2248,14 @@ function RoutesConfig() {
           element={
             <RequireAuth>
               <InviteClaimPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/invites"
+          element={
+            <RequireAuth>
+              <InvitesInboxPage />
             </RequireAuth>
           }
         />

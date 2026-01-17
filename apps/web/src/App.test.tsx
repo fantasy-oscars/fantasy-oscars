@@ -343,4 +343,157 @@ describe("<App /> shell + routing", () => {
     await screen.findByRole("heading", { name: /Invite/i });
     expect(await screen.findByText(/token123/i)).toBeInTheDocument();
   });
+
+  it("shows invites inbox and accepts a user invite", async () => {
+    window.history.pushState({}, "", "/invites");
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/seasons/invites/inbox")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              invites: [
+                {
+                  id: 55,
+                  season_id: 2026,
+                  status: "PENDING",
+                  label: null,
+                  kind: "USER_TARGETED",
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  claimed_at: null,
+                  league_id: 10,
+                  league_name: "Alpha",
+                  ceremony_id: 1
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/seasons/invites/55/accept")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invite: { season_id: 2026 } })
+        });
+      }
+      if (url.endsWith("/leagues/10/seasons")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              seasons: [
+                {
+                  id: 2026,
+                  ceremony_id: 1,
+                  status: "EXTANT",
+                  scoring_strategy_name: "fixed",
+                  created_at: new Date().toISOString()
+                }
+              ]
+            })
+        });
+      }
+      if (url.endsWith("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              leagues: [{ id: 10, code: "alpha", name: "Alpha", ceremony_id: 1 }]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [
+                {
+                  id: 1,
+                  league_id: 10,
+                  user_id: 1,
+                  role: "OWNER",
+                  handle: "alice",
+                  display_name: "Alice"
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/seasons/2026/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ members: [] })
+        });
+      }
+      if (url.includes("/seasons/2026/invites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invites: [] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Invites/i });
+    await userEvent.click(screen.getByRole("button", { name: /Accept/i }));
+    await screen.findByRole("heading", { name: /Season 2026/i });
+  });
+
+  it("declines an invite and removes it from inbox", async () => {
+    window.history.pushState({}, "", "/invites");
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/seasons/invites/inbox")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              invites: [
+                {
+                  id: 77,
+                  season_id: 3030,
+                  status: "PENDING",
+                  label: null,
+                  kind: "USER_TARGETED",
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  claimed_at: null,
+                  league_id: null,
+                  league_name: null,
+                  ceremony_id: null
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/seasons/invites/77/decline")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invite: { season_id: 3030 } })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    await screen.findByRole("heading", { name: /Invites/i });
+    await userEvent.click(screen.getByRole("button", { name: /Decline/i }));
+    await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
+  });
 });
