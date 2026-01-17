@@ -20,7 +20,10 @@ if (config.realtimeEnabled) {
     cors: { origin: allowedOrigins, credentials: true },
     serveClient: false
   });
-  const draftNamespace = registerDraftNamespace(io);
+  const draftNamespace = registerDraftNamespace(io, {
+    db: app.locals.db,
+    authSecret: config.authSecret
+  });
   registerDraftEventEmitter(draftNamespace);
 } else {
   clearDraftEventEmitter();

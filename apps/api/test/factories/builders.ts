@@ -23,6 +23,7 @@ export type Ceremony = {
   code: string;
   name: string;
   year: number;
+  starts_at: Date;
 };
 
 export type CategoryFamily = {
@@ -168,6 +169,7 @@ export function buildCeremony(overrides: Partial<Ceremony> = {}): Ceremony {
     code: `cer-${n}`,
     name: `Ceremony ${n}`,
     year: 2000 + n,
+    starts_at: overrides.starts_at ?? addSeconds(baseTime, n * 3600),
     ...overrides
   };
 }

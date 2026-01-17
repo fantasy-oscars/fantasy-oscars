@@ -638,7 +638,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         version: draft.version,
         picks_per_seat: picksPerSeat,
         nominee_pool_size: nomineePoolSize,
-        turn
+        turn,
+        ceremony_starts_at: season?.ceremony_starts_at ?? null
       });
     } catch (err) {
       next(err);

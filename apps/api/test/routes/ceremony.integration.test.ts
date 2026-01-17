@@ -86,6 +86,9 @@ describe("ceremony routes", () => {
     const res = await api.get("/ceremony/active");
     expect(res.status).toBe(200);
     expect(res.body.ceremony.id).toBe(ceremony.id);
+    expect(new Date(res.body.ceremony.starts_at).toISOString()).toBe(
+      ceremony.starts_at.toISOString()
+    );
   });
 
   it("exposes lock state and winners for active ceremony", async () => {

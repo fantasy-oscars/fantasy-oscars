@@ -7,6 +7,9 @@ export type SeasonRecord = {
   status: "EXTANT" | "CANCELLED";
   scoring_strategy_name: "fixed" | "negative";
   created_at: Date;
+  ceremony_starts_at?: Date | null;
+  draft_id?: number | null;
+  draft_status?: string | null;
 };
 
 export async function getExtantSeasonForLeague(
@@ -16,15 +19,20 @@ export async function getExtantSeasonForLeague(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       id::int,
-       league_id::int,
-       ceremony_id::int,
-       status,
-       scoring_strategy_name,
-       created_at
-     FROM season
-     WHERE league_id = $1
-       AND status = 'EXTANT'
+       s.id::int,
+       s.league_id::int,
+       s.ceremony_id::int,
+       s.status,
+       s.scoring_strategy_name,
+       s.created_at,
+       c.starts_at AS ceremony_starts_at,
+       d.id::int AS draft_id,
+       d.status AS draft_status
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
+     LEFT JOIN draft d ON d.season_id = s.id
+     WHERE s.league_id = $1
+       AND s.status = 'EXTANT'
      LIMIT 1`,
     [leagueId]
   );
@@ -60,14 +68,19 @@ export async function getSeasonById(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       id::int,
-       league_id::int,
-       ceremony_id::int,
-       status,
-       scoring_strategy_name,
-       created_at
-     FROM season
-     WHERE id = $1`,
+       s.id::int,
+       s.league_id::int,
+       s.ceremony_id::int,
+       s.status,
+       s.scoring_strategy_name,
+       s.created_at,
+       c.starts_at AS ceremony_starts_at,
+       d.id::int AS draft_id,
+       d.status AS draft_status
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
+     LEFT JOIN draft d ON d.season_id = s.id
+     WHERE s.id = $1`,
     [id]
   );
   return rows[0] ?? null;
@@ -102,16 +115,21 @@ export async function listSeasonsForLeague(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       id::int,
-       league_id::int,
-       ceremony_id::int,
-       status,
-       scoring_strategy_name,
-       created_at
-     FROM season
-     WHERE league_id = $1
-       ${includeCancelled ? "" : "AND status <> 'CANCELLED'"}
-     ORDER BY created_at DESC`,
+       s.id::int,
+       s.league_id::int,
+       s.ceremony_id::int,
+       s.status,
+       s.scoring_strategy_name,
+       s.created_at,
+       c.starts_at AS ceremony_starts_at,
+       d.id::int AS draft_id,
+       d.status AS draft_status
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
+     LEFT JOIN draft d ON d.season_id = s.id
+     WHERE s.league_id = $1
+       ${includeCancelled ? "" : "AND s.status <> 'CANCELLED'"}
+     ORDER BY s.created_at DESC`,
     [leagueId]
   );
   return rows;
@@ -124,15 +142,20 @@ export async function getMostRecentSeason(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       id::int,
-       league_id::int,
-       ceremony_id::int,
-       status,
-       scoring_strategy_name,
-       created_at
-     FROM season
-     WHERE league_id = $1
-     ORDER BY created_at DESC
+       s.id::int,
+       s.league_id::int,
+       s.ceremony_id::int,
+       s.status,
+       s.scoring_strategy_name,
+       s.created_at,
+       c.starts_at AS ceremony_starts_at,
+       d.id::int AS draft_id,
+       d.status AS draft_status
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
+     LEFT JOIN draft d ON d.season_id = s.id
+     WHERE s.league_id = $1
+     ORDER BY s.created_at DESC
      LIMIT 1`,
     [leagueId]
   );
