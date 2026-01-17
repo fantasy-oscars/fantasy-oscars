@@ -656,6 +656,36 @@ describe("<App /> shell + routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("blocks non-admins from admin console", async () => {
+    window.history.pushState({}, "", "/admin");
+    mockFetchSequence({
+      ok: true,
+      json: () =>
+        Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: false } })
+    });
+
+    render(<App />);
+
+    await screen.findByText(/Admins only/i);
+    expect(screen.getByText(/do not have access/i)).toBeInTheDocument();
+  });
+
+  it("renders admin console skeleton for admins", async () => {
+    window.history.pushState({}, "", "/admin");
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Admin console/i });
+    await screen.findByText(/Drafts lock on first winner/i);
+    await screen.findAllByText(/Active ceremony/i);
+    await screen.findAllByText(/Nominees/i);
+    await screen.findAllByText(/Winners/i);
+  });
+
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
     // mock clipboard
     const writeText = vi.fn();

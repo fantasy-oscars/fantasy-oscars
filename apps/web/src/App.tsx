@@ -196,7 +196,13 @@ function FormStatus(props: {
   return null;
 }
 
-type AuthUser = { sub: string; handle?: string; email?: string; display_name?: string };
+type AuthUser = {
+  sub: string;
+  handle?: string;
+  email?: string;
+  display_name?: string;
+  is_admin?: boolean;
+};
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
@@ -310,6 +316,26 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   if (loading) return <PageLoader label="Checking session..." />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  return <>{children}</>;
+}
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuthContext();
+  if (loading) return <PageLoader label="Checking session..." />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_admin) {
+    return (
+      <section className="card">
+        <header>
+          <h2>Admin</h2>
+          <p className="muted">Admins only</p>
+        </header>
+        <div className="status status-error" role="status">
+          You do not have access to the admin console.
+        </div>
+      </section>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -2572,13 +2598,152 @@ function AccountPage() {
 }
 
 function AdminPage() {
+  const { user } = useAuthContext();
+  type AdminState = "loading" | "forbidden" | "error" | "ready";
+  const [state, setState] = useState<AdminState>("loading");
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!user.is_admin) {
+      setState("forbidden");
+      return;
+    }
+    const timer = window.setTimeout(() => setState("ready"), 300);
+    return () => window.clearTimeout(timer);
+  }, [user]);
+
+  const renderState = () => {
+    if (state === "loading") return <PageLoader label="Loading admin console..." />;
+    if (state === "forbidden")
+      return <PageError message="Admins only. Contact an admin to get access." />;
+    if (state === "error")
+      return <PageError message="Could not load admin data. Try again later." />;
+
+    return (
+      <div className="stack-lg">
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Navigation</h3>
+              <p className="muted">Admin sections for ceremony, nominees, and winners.</p>
+            </div>
+            <div className="pill-list">
+              <span className="pill">Admin</span>
+              <span className="pill warning">Destructive actions guarded</span>
+            </div>
+          </header>
+          <div className="pill-actions">
+            <button type="button" className="ghost" onClick={() => setShowModal(true)}>
+              Demo destructive action
+            </button>
+            <div className="status status-warning">
+              First winner entry locks drafts. Use confirmations before saving.
+            </div>
+          </div>
+        </div>
+
+        <div className="grid two-col">
+          <div className="card nested">
+            <header className="header-with-controls">
+              <div>
+                <h3>Active ceremony</h3>
+                <p className="muted">
+                  Placeholder for selecting/setting the active ceremony and start time.
+                </p>
+              </div>
+              <span className="pill">Coming soon</span>
+            </header>
+            <p className="muted">
+              Admins will pick the active ceremony here and see draft-lock timing hints.
+            </p>
+          </div>
+
+          <div className="card nested">
+            <header className="header-with-controls">
+              <div>
+                <h3>Nominees</h3>
+                <p className="muted">
+                  Placeholder for upload/replace nominees with confirmation steps.
+                </p>
+              </div>
+              <span className="pill">Upload coming</span>
+            </header>
+            <p className="muted">
+              A destructive upload flow will live here. Keep the modal pattern consistent.
+            </p>
+          </div>
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Winners</h3>
+              <p className="muted">
+                Placeholder for entering winners. Explicit warning shows draft lock.
+              </p>
+            </div>
+            <span className="pill warning">Drafts lock on first winner</span>
+          </header>
+          <p className="muted">
+            When wiring the real form, show a confirmation modal before saving the first
+            winner.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="card">
-      <header>
-        <h2>Admin</h2>
-        <p>Admin-only controls for ceremonies and winners.</p>
+      <header className="header-with-controls">
+        <div>
+          <h2>Admin console</h2>
+          <p className="muted">
+            Admin-only controls for ceremonies, nominees, and winners. Destructive actions
+            require confirmation.
+          </p>
+        </div>
+        <div className="inline-actions">
+          <button type="button" onClick={() => setState("loading")}>
+            Loading
+          </button>
+          <button type="button" onClick={() => setState("forbidden")}>
+            Forbidden
+          </button>
+          <button type="button" onClick={() => setState("error")}>
+            Error
+          </button>
+          <button type="button" onClick={() => setState("ready")}>
+            Ready
+          </button>
+        </div>
       </header>
-      <p className="muted">Admin console placeholder.</p>
+      {renderState()}
+
+      {showModal && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm action"
+          >
+            <h4>Confirm destructive action</h4>
+            <p className="muted">
+              This action could lock drafts or alter ceremony data. Proceed?
+            </p>
+            <div className="inline-actions">
+              <button type="button" onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="ghost" onClick={() => setShowModal(false)}>
+                Yes, proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -2714,9 +2879,9 @@ function RoutesConfig() {
         <Route
           path="/admin"
           element={
-            <RequireAuth>
+            <RequireAdmin>
               <AdminPage />
-            </RequireAuth>
+            </RequireAdmin>
           }
         />
         <Route path="*" element={<HomePage />} />
