@@ -2609,6 +2609,13 @@ function AdminPage() {
   } | null>(null);
   const [ceremonyInput, setCeremonyInput] = useState("");
   const [status, setStatus] = useState<ApiResult | null>(null);
+  const [nomineeDataset, setNomineeDataset] = useState<unknown | null>(null);
+  const [nomineeSummary, setNomineeSummary] = useState<{
+    categories: number;
+    nominations: number;
+  } | null>(null);
+  const [uploadState, setUploadState] = useState<ApiResult | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -2673,6 +2680,70 @@ function AdminPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  function summarizeDataset(dataset: unknown) {
+    const categories = Array.isArray((dataset as { categories?: unknown[] })?.categories)
+      ? ((dataset as { categories?: unknown[] }).categories?.length ?? 0)
+      : Array.isArray((dataset as { category_editions?: unknown[] })?.category_editions)
+        ? ((dataset as { category_editions?: unknown[] }).category_editions?.length ?? 0)
+        : 0;
+    const nominations = Array.isArray(
+      (dataset as { nominations?: unknown[] })?.nominations
+    )
+      ? ((dataset as { nominations?: unknown[] }).nominations?.length ?? 0)
+      : 0;
+    setNomineeSummary({ categories, nominations });
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setNomineeDataset(null);
+      setNomineeSummary(null);
+      return;
+    }
+    const text =
+      typeof file.text === "function"
+        ? await file.text()
+        : await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () =>
+              reject(reader.error ?? new Error("Unable to read file as text"));
+            reader.readAsText(file);
+          });
+    try {
+      const parsed = JSON.parse(text);
+      setNomineeDataset(parsed);
+      summarizeDataset(parsed);
+      setUploadState({ ok: true, message: `Loaded ${file.name}` });
+    } catch (err) {
+      setNomineeDataset(null);
+      setNomineeSummary(null);
+      const message = err instanceof Error ? err.message : "Invalid JSON file";
+      setUploadState({ ok: false, message });
+    }
+  }
+
+  async function uploadNominees() {
+    if (!nomineeDataset) {
+      setUploadState({ ok: false, message: "Select a JSON dataset first." });
+      return;
+    }
+    setUploading(true);
+    setUploadState(null);
+    const res = await fetchJson("/admin/nominees/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nomineeDataset)
+    });
+    setUploading(false);
+    if (res.ok) {
+      setUploadState({ ok: true, message: "Nominees loaded for active ceremony." });
+    } else {
+      setUploadState({ ok: false, message: res.error ?? "Failed to load nominees" });
+    }
+  }
+
   const renderState = () => {
     if (state === "loading") return <PageLoader label="Loading admin console..." />;
     if (state === "forbidden")
@@ -2709,10 +2780,10 @@ function AdminPage() {
               <div>
                 <h3>Active ceremony</h3>
                 <p className="muted">
-                  Placeholder for selecting/setting the active ceremony and start time.
+                  Select/set the active ceremony and view current state.
                 </p>
               </div>
-              <span className="pill">Coming soon</span>
+              <span className="pill">Live</span>
             </header>
             {activeCeremony ? (
               <div className="stack-sm">
@@ -2753,15 +2824,47 @@ function AdminPage() {
             <header className="header-with-controls">
               <div>
                 <h3>Nominees</h3>
-                <p className="muted">
-                  Placeholder for upload/replace nominees with confirmation steps.
-                </p>
+                <p className="muted">Upload/replace nominees for the active ceremony.</p>
               </div>
-              <span className="pill">Upload coming</span>
+              <span className="pill">JSON only</span>
             </header>
-            <p className="muted">
-              A destructive upload flow will live here. Keep the modal pattern consistent.
-            </p>
+            <div className="stack-sm">
+              <label className="field">
+                <span>Nominees JSON file</span>
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={handleFileChange}
+                />
+              </label>
+              {nomineeSummary && (
+                <div className="pill-list">
+                  <span className="pill">Categories: {nomineeSummary.categories}</span>
+                  <span className="pill">Nominations: {nomineeSummary.nominations}</span>
+                </div>
+              )}
+              <div className="inline-actions">
+                <button type="button" onClick={uploadNominees} disabled={uploading}>
+                  {uploading ? "Uploading..." : "Upload nominees"}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setNomineeDataset(null);
+                    setNomineeSummary(null);
+                    setUploadState(null);
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+              <FormStatus loading={uploading} result={uploadState} />
+              <p className="muted">
+                Validation summary is shown above. Errors like missing categories or
+                invalid shapes will appear here. Upload is blocked after drafts start.
+              </p>
+            </div>
           </div>
         </div>
 
