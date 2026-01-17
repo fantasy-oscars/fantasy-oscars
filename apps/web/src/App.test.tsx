@@ -591,10 +591,29 @@ describe("<App /> shell + routing", () => {
     render(<App />);
 
     await screen.findByRole("heading", { name: /Draft Room/i });
-    expect(
-      screen.getByText(/once winners start getting entered after the ceremony begins/i)
-    ).toBeInTheDocument();
+    await screen.findByText(
+      /once winners start getting entered after the ceremony begins/i
+    );
     vi.useRealTimers();
+  });
+
+  it("renders results UI skeleton with state matrix", async () => {
+    window.history.pushState({}, "", "/results");
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Results/i });
+    await userEvent.click(screen.getByRole("button", { name: /Show sample results/i }));
+    await screen.findAllByText(/Winners/i);
+    expect(screen.getByText(/Season standings/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pick log/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Drafting locks the moment the first winner is entered/i)
+    ).toBeInTheDocument();
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
