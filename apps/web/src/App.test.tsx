@@ -721,6 +721,53 @@ describe("<App /> shell + routing", () => {
     confirmSpy.mockRestore();
   });
 
+  it("uploads nominees JSON and shows summary", async () => {
+    window.history.pushState({}, "", "/admin");
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+            })
+        });
+      }
+      if (url.includes("/admin/nominees/upload") && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Admin console/i });
+    const fileInput = await screen.findByLabelText(/Nominees JSON file/i);
+    const file = new File(
+      [JSON.stringify({ categories: [{}], nominations: [{ id: 1 }, { id: 2 }] })],
+      "nominees.json",
+      { type: "application/json" }
+    );
+    await userEvent.upload(fileInput, file);
+    await screen.findByText(/Categories: 1/);
+    await userEvent.click(screen.getByRole("button", { name: /Upload nominees/i }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/nominees/upload"),
+        expect.objectContaining({ method: "POST" })
+      )
+    );
+    await screen.findByText(/Nominees loaded for active ceremony/i);
+  });
+
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
     // mock clipboard
     const writeText = vi.fn();
