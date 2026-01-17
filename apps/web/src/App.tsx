@@ -113,6 +113,16 @@ type InboxInvite = SeasonInvite & {
   league_name: string | null;
   ceremony_id: number | null;
 };
+type Nomination = {
+  id: number;
+  category_edition_id: number;
+  film_id: number | null;
+  song_id: number | null;
+  performance_id: number | null;
+  film_title: string | null;
+  song_title: string | null;
+  performer_name: string | null;
+};
 type SeasonMeta = {
   id: number;
   ceremony_id: number;
@@ -2232,6 +2242,10 @@ function DraftRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [nominations, setNominations] = useState<Nomination[]>([]);
+  const [pickNominationId, setPickNominationId] = useState("");
+  const [pickState, setPickState] = useState<ApiResult | null>(null);
+  const [pickLoading, setPickLoading] = useState(false);
 
   const loadSnapshot = useCallback(
     async (options?: { preserveView?: boolean }) => {
@@ -2258,7 +2272,16 @@ function DraftRoomPage() {
 
   useEffect(() => {
     void loadSnapshot();
+    void loadNominations();
   }, [loadSnapshot]);
+
+  async function loadNominations() {
+    const res = await fetchJson<{ nominations: Nomination[] }>(
+      "/ceremony/active/nominations",
+      { method: "GET" }
+    );
+    if (res.ok) setNominations(res.data?.nominations ?? []);
+  }
 
   async function startDraft() {
     if (!window.confirm("Start draft? Unclaimed invites will be auto-revoked.")) return;
@@ -2276,6 +2299,29 @@ function DraftRoomPage() {
       setError(res.error ?? "Could not start draft");
       return;
     }
+    await loadSnapshot({ preserveView: true });
+  }
+
+  async function submitPick() {
+    const nominationIdNum = Number(pickNominationId);
+    if (!Number.isFinite(nominationIdNum) || nominationIdNum <= 0) {
+      setPickState({ ok: false, message: "Enter a valid nomination id." });
+      return;
+    }
+    setPickLoading(true);
+    setPickState(null);
+    const res = await fetchJson(`/drafts/${draftId}/picks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nomination_id: nominationIdNum })
+    });
+    setPickLoading(false);
+    if (!res.ok) {
+      setPickState({ ok: false, message: mapPickError(res.errorCode, res.error) });
+      return;
+    }
+    setPickState({ ok: true, message: "Pick submitted" });
+    setPickNominationId("");
     await loadSnapshot({ preserveView: true });
   }
 
@@ -2304,6 +2350,11 @@ function DraftRoomPage() {
         const picks = snapshot.picks
           .slice()
           .sort((a, b) => a.pick_number - b.pick_number);
+        const pickedNominationIds = new Set(picks.map((p) => p.nomination_id));
+        const availableNoms = nominations.filter((n) => !pickedNominationIds.has(n.id));
+        function nomLabel(n: Nomination) {
+          return n.film_title || n.song_title || n.performer_name || `Nomination ${n.id}`;
+        }
         return (
           <div className="draft-grid">
             <div className="card nested">
@@ -2374,6 +2425,43 @@ function DraftRoomPage() {
                     </li>
                   ))}
                 </ol>
+              )}
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Make a pick</h3>
+                  <p className="muted">Select a nomination and submit.</p>
+                </div>
+              </header>
+              <div className="inline-actions">
+                <select
+                  aria-label="Nomination"
+                  value={pickNominationId}
+                  onChange={(e) => setPickNominationId(e.target.value)}
+                >
+                  <option value="">Choose nomination...</option>
+                  {availableNoms.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.id}: {nomLabel(n)}
+                    </option>
+                  ))}
+                  {availableNoms.length === 0 && (
+                    <option disabled value="none">
+                      All nominations picked
+                    </option>
+                  )}
+                </select>
+                <button type="button" onClick={submitPick} disabled={pickLoading}>
+                  {pickLoading ? "Submitting..." : "Submit pick"}
+                </button>
+              </div>
+              <FormStatus loading={pickLoading} result={pickState} />
+              {pickedNominationIds.size > 0 && (
+                <p className="muted">
+                  Picked already: {Array.from(pickedNominationIds).slice(0, 5).join(", ")}
+                  {pickedNominationIds.size > 5 ? "…" : ""}
+                </p>
               )}
             </div>
           </div>

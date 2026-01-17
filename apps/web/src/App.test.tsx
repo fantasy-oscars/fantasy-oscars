@@ -531,7 +531,40 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
+      if (url.includes("/ceremony/active/nominations")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              nominations: [
+                {
+                  id: 1,
+                  category_edition_id: 1,
+                  film_id: 1,
+                  song_id: null,
+                  performance_id: null,
+                  film_title: "Film A",
+                  song_title: null,
+                  performer_name: null
+                },
+                {
+                  id: 2,
+                  category_edition_id: 1,
+                  film_id: 2,
+                  song_id: null,
+                  performance_id: null,
+                  film_title: "Film B",
+                  song_title: null,
+                  performer_name: null
+                }
+              ]
+            })
+        });
+      }
       if (url.includes("/drafts/1/start") && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      if (url.includes("/drafts/1/picks") && init?.method === "POST") {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -547,6 +580,14 @@ describe("<App /> shell + routing", () => {
     expect(confirmSpy).toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/start"),
+      expect.objectContaining({ method: "POST" })
+    );
+    // submit pick
+    const select = screen.getByLabelText(/Nomination/i);
+    await userEvent.selectOptions(select, "1");
+    await userEvent.click(screen.getByRole("button", { name: /Submit pick/i }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/drafts/1/picks"),
       expect.objectContaining({ method: "POST" })
     );
     confirmSpy.mockRestore();
