@@ -16,6 +16,7 @@ Use this as the map. Start with the section that matches your intent.
   - [Local Development](runbooks/local-dev.md)
   - [Database](runbooks/database.md)
   - [Debugging](runbooks/debugging.md)
+  - [Manual Password Reset (no email)](runbooks/password-reset-manual.md)
 - **ADRs**
   - [What is an ADR?](adr/README.md)
   - [Template](adr/template.md)
