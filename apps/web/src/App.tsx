@@ -2217,52 +2217,141 @@ export function DraftRoom(props: {
   );
 }
 
-function DraftRoomSkeleton() {
-  type DraftState =
+function DraftRoomPage() {
+  const { id } = useParams();
+  const draftId = String(id ?? "1");
+  type DraftView =
     | "loading"
     | "not_found"
     | "forbidden"
     | "locked"
     | "cancelled"
-    | "connected";
-  const [state, setState] = useState<DraftState>("loading");
+    | "ready";
+  const [view, setView] = useState<DraftView>("loading");
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+
+  const loadSnapshot = useCallback(
+    async (options?: { preserveView?: boolean }) => {
+      if (!options?.preserveView) setView("loading");
+      setError(null);
+      const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
+        method: "GET"
+      });
+      if (!res.ok) {
+        const code = res.errorCode;
+        if (code === "FORBIDDEN") setView("forbidden");
+        else if (code === "DRAFT_LOCKED") setView("locked");
+        else if (code === "SEASON_CANCELLED") setView("not_found");
+        else setView("not_found");
+        setError(res.error ?? "Unable to load draft");
+        return;
+      }
+      setSnapshot(res.data ?? null);
+      setView("ready");
+      setLastSynced(new Date());
+    },
+    [draftId]
+  );
+
+  useEffect(() => {
+    void loadSnapshot();
+  }, [loadSnapshot]);
+
+  async function startDraft() {
+    if (!window.confirm("Start draft? Unclaimed invites will be auto-revoked.")) return;
+    setWorking(true);
+    const res = await fetchJson(`/drafts/${draftId}/start`, { method: "POST" });
+    setWorking(false);
+    if (!res.ok) {
+      const code = res.errorCode;
+      if (code === "SEASON_CANCELLED") {
+        setView("not_found");
+        setError("Season cancelled; draft unavailable.");
+        return;
+      }
+      if (code === "DRAFT_LOCKED") setView("locked");
+      setError(res.error ?? "Could not start draft");
+      return;
+    }
+    await loadSnapshot({ preserveView: true });
+  }
 
   function renderState() {
-    switch (state) {
+    switch (view) {
       case "loading":
         return <PageLoader label="Loading draft..." />;
       case "not_found":
-        return <PageError message="Draft not found for this league/season." />;
+        return <PageError message="Draft not found or unavailable." />;
       case "forbidden":
         return <PageError message="You do not have access to this draft room." />;
       case "locked":
         return (
           <div className="status status-error">
-            Draft is locked until ceremony winners are entered. Picks are disabled.
+            Draft is locked after winners were entered. Picks are disabled.
           </div>
         );
       case "cancelled":
-        return (
-          <div className="status status-error">
-            This season was cancelled. Draft activity is closed.
-          </div>
-        );
-      case "connected":
+        return <PageError message="Season cancelled. Draft closed." />;
+      case "ready":
+      default: {
+        if (!snapshot) return <PageError message="Missing draft data." />;
+        const seats = snapshot.seats
+          .slice()
+          .sort((a, b) => a.seat_number - b.seat_number);
+        const picks = snapshot.picks
+          .slice()
+          .sort((a, b) => a.pick_number - b.pick_number);
         return (
           <div className="draft-grid">
             <div className="card nested">
               <header className="header-with-controls">
                 <div>
-                  <h3>Seats</h3>
-                  <p className="muted">Draft order and active seat.</p>
+                  <h3>Status</h3>
+                  <p className="muted">
+                    Draft is {snapshot.draft.status.toLowerCase()} • Current pick #
+                    {snapshot.draft.current_pick_number ?? "—"}
+                  </p>
                 </div>
-                <span className="pill">Connected</span>
+                <div className="pill-list">
+                  <span className="pill">Connection: snapshot</span>
+                  <span className="pill">Version: {snapshot.version}</span>
+                </div>
+              </header>
+              <div className="status status-info">Paused banner placeholder.</div>
+              <div className="inline-actions">
+                <button type="button" onClick={() => loadSnapshot()} disabled={working}>
+                  Refresh snapshot
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={startDraft}
+                  disabled={working}
+                >
+                  Start draft
+                </button>
+              </div>
+              {lastSynced && (
+                <small className="muted">
+                  Last synced: {lastSynced.toLocaleTimeString()}
+                </small>
+              )}
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Seats</h3>
+                  <p className="muted">Draft order and seat owners.</p>
+                </div>
               </header>
               <ul className="list">
-                {[1, 2, 3].map((seat) => (
-                  <li key={seat} className="list-row">
-                    <span className="pill">Seat {seat}</span>
-                    <span>Member {seat}</span>
+                {seats.map((seat) => (
+                  <li key={seat.seat_number} className="list-row">
+                    <span className="pill">Seat {seat.seat_number}</span>
+                    <span>Member {seat.league_member_id}</span>
                   </li>
                 ))}
               </ul>
@@ -2271,42 +2360,25 @@ function DraftRoomSkeleton() {
               <header className="header-with-controls">
                 <div>
                   <h3>Picks</h3>
-                  <p className="muted">Selections in order.</p>
-                </div>
-                <span className="pill">Paused</span>
-              </header>
-              <ol className="pick-list">
-                {[1, 2, 3].map((pick) => (
-                  <li key={pick}>Pick {pick}: TBD</li>
-                ))}
-              </ol>
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Action</h3>
-                  <p className="muted">Primary draft action area.</p>
-                </div>
-                <div className="pill-list">
-                  <span className="pill">Connection: Connected</span>
-                  <span className="pill">State: Placeholder</span>
+                  <p className="muted">Selections made so far.</p>
                 </div>
               </header>
-              <p className="muted">
-                This is a placeholder for pick submission, clock, and controls to be wired
-                in follow-up tickets.
-              </p>
-              <div className="inline-actions">
-                <button type="button" className="ghost">
-                  Submit pick (disabled)
-                </button>
-                <button type="button" className="ghost">
-                  Refresh
-                </button>
-              </div>
+              {picks.length === 0 ? (
+                <p className="muted">No picks yet.</p>
+              ) : (
+                <ol className="pick-list">
+                  {picks.map((pick) => (
+                    <li key={pick.pick_number}>
+                      Pick {pick.pick_number}: nomination {pick.nomination_id} (seat{" "}
+                      {pick.seat_number})
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           </div>
         );
+      }
     }
   }
 
@@ -2315,26 +2387,13 @@ function DraftRoomSkeleton() {
       <header className="header-with-controls">
         <div>
           <h2>Draft Room</h2>
-          <p className="muted">Realtime draft UX skeleton with state matrix.</p>
+          <p className="muted">Snapshot view for draft status, seats, and picks.</p>
         </div>
-        <select
-          aria-label="Draft state"
-          value={state}
-          onChange={(e) => setState(e.target.value as DraftState)}
-        >
-          <option value="loading">Loading</option>
-          <option value="not_found">Not found</option>
-          <option value="forbidden">Forbidden</option>
-          <option value="locked">Locked</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="connected">Connected</option>
-        </select>
+        <div className="pill-list">
+          <span className="pill">State: {view}</span>
+        </div>
       </header>
-      <div className="status status-info">
-        <span className="pill">Connection</span> Placeholder badge; will reflect socket
-        state.
-      </div>
-      <div className="status status-error">Paused banner placeholder (draft paused).</div>
+      {error && <div className="status status-error">{error}</div>}
       {renderState()}
     </section>
   );
@@ -2499,7 +2558,7 @@ function RoutesConfig() {
           path="/drafts/:id"
           element={
             <RequireAuth>
-              <DraftRoomSkeleton />
+              <DraftRoomPage />
             </RequireAuth>
           }
         />

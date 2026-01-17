@@ -497,20 +497,59 @@ describe("<App /> shell + routing", () => {
     await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
   });
 
-  it("shows draft room skeleton states", async () => {
+  it("renders draft snapshot and start action", async () => {
     window.history.pushState({}, "", "/drafts/1");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/drafts/1/snapshot")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              draft: {
+                id: 1,
+                league_id: 10,
+                status: "PENDING",
+                draft_order_type: "snake",
+                current_pick_number: null,
+                started_at: null,
+                completed_at: null,
+                version: 1
+              },
+              seats: [
+                { seat_number: 1, league_member_id: 100 },
+                { seat_number: 2, league_member_id: 200 }
+              ],
+              picks: [],
+              version: 1
+            })
+        });
+      }
+      if (url.includes("/drafts/1/start") && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
+
     render(<App />);
     await screen.findByRole("heading", { name: /Draft Room/i });
-    const select = screen.getByLabelText("Draft state");
-    await userEvent.selectOptions(select, "not_found");
-    await screen.findByText(/Draft not found/i);
-    await userEvent.selectOptions(select, "connected");
     await screen.findByText(/Seats/);
-    await screen.findByText(/Picks/);
+    await screen.findByText(/Seat 1/);
+
+    await userEvent.click(screen.getByRole("button", { name: /Start draft/i }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/drafts/1/start"),
+      expect.objectContaining({ method: "POST" })
+    );
+    confirmSpy.mockRestore();
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
