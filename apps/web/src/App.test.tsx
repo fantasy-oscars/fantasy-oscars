@@ -527,7 +527,8 @@ describe("<App /> shell + routing", () => {
               ],
               picks: [],
               config: { roster_size: 3 },
-              version: 2
+              version: 2,
+              ceremony_starts_at: "2026-02-01T12:00:00.000Z"
             })
         });
       }
@@ -545,6 +546,55 @@ describe("<App /> shell + routing", () => {
       expect.stringContaining("/drafts/1/snapshot"),
       expect.objectContaining({ method: "GET" })
     );
+  });
+
+  it("shows integrity warning when within T-24h window", async () => {
+    vi.setSystemTime(new Date("2026-02-01T00:00:00Z"));
+    window.history.pushState({}, "", "/drafts/1");
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/drafts/1/snapshot") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              draft: {
+                id: 1,
+                league_id: 10,
+                status: "IN_PROGRESS",
+                draft_order_type: "snake",
+                current_pick_number: 2,
+                started_at: null,
+                completed_at: null,
+                version: 5
+              },
+              seats: [
+                { id: 1, seat_number: 1, league_member_id: 100 },
+                { id: 2, seat_number: 2, league_member_id: 200 }
+              ],
+              picks: [],
+              config: { roster_size: 3 },
+              version: 5,
+              ceremony_starts_at: "2026-02-01T12:00:00.000Z"
+            })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Draft Room/i });
+    expect(
+      screen.getByText(/once winners start getting entered after the ceremony begins/i)
+    ).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
