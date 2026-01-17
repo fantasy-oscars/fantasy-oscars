@@ -582,6 +582,9 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
           created_at: s.created_at,
+          ceremony_starts_at: s.ceremony_starts_at ?? null,
+          draft_id: s.draft_id ?? null,
+          draft_status: s.draft_status ?? null,
           is_active_ceremony: activeCeremonyId
             ? Number(activeCeremonyId) === Number(s.ceremony_id)
             : false

@@ -43,8 +43,8 @@ export async function insertCeremony(
 ) {
   const ceremony = buildCeremony(overrides);
   await pool.query(
-    `INSERT INTO ceremony (id, code, name, year) VALUES ($1, $2, $3, $4)`,
-    [ceremony.id, ceremony.code, ceremony.name, ceremony.year]
+    `INSERT INTO ceremony (id, code, name, year, starts_at) VALUES ($1, $2, $3, $4, $5)`,
+    [ceremony.id, ceremony.code, ceremony.name, ceremony.year, ceremony.starts_at]
   );
   if (setActive) {
     await pool.query(
