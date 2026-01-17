@@ -1790,7 +1790,11 @@ function mapPickError(code?: string, fallback?: string) {
   }
 }
 
-function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean }) {
+// Legacy harness kept for reference (not routed in skeleton mode).
+export function DraftRoom(props: {
+  initialDraftId?: string | number;
+  disabled?: boolean;
+}) {
   const { initialDraftId, disabled } = props;
   const [draftId, setDraftId] = useState(String(initialDraftId ?? "1"));
   const [loading, setLoading] = useState(false);
@@ -2213,11 +2217,128 @@ function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean
   );
 }
 
-function DraftRoomPage() {
-  const params = useParams();
-  return <DraftRoom initialDraftId={params.id} />;
-}
+function DraftRoomSkeleton() {
+  type DraftState =
+    | "loading"
+    | "not_found"
+    | "forbidden"
+    | "locked"
+    | "cancelled"
+    | "connected";
+  const [state, setState] = useState<DraftState>("loading");
 
+  function renderState() {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Loading draft..." />;
+      case "not_found":
+        return <PageError message="Draft not found for this league/season." />;
+      case "forbidden":
+        return <PageError message="You do not have access to this draft room." />;
+      case "locked":
+        return (
+          <div className="status status-error">
+            Draft is locked until ceremony winners are entered. Picks are disabled.
+          </div>
+        );
+      case "cancelled":
+        return (
+          <div className="status status-error">
+            This season was cancelled. Draft activity is closed.
+          </div>
+        );
+      case "connected":
+        return (
+          <div className="draft-grid">
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Seats</h3>
+                  <p className="muted">Draft order and active seat.</p>
+                </div>
+                <span className="pill">Connected</span>
+              </header>
+              <ul className="list">
+                {[1, 2, 3].map((seat) => (
+                  <li key={seat} className="list-row">
+                    <span className="pill">Seat {seat}</span>
+                    <span>Member {seat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Picks</h3>
+                  <p className="muted">Selections in order.</p>
+                </div>
+                <span className="pill">Paused</span>
+              </header>
+              <ol className="pick-list">
+                {[1, 2, 3].map((pick) => (
+                  <li key={pick}>Pick {pick}: TBD</li>
+                ))}
+              </ol>
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Action</h3>
+                  <p className="muted">Primary draft action area.</p>
+                </div>
+                <div className="pill-list">
+                  <span className="pill">Connection: Connected</span>
+                  <span className="pill">State: Placeholder</span>
+                </div>
+              </header>
+              <p className="muted">
+                This is a placeholder for pick submission, clock, and controls to be wired
+                in follow-up tickets.
+              </p>
+              <div className="inline-actions">
+                <button type="button" className="ghost">
+                  Submit pick (disabled)
+                </button>
+                <button type="button" className="ghost">
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  }
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Draft Room</h2>
+          <p className="muted">Realtime draft UX skeleton with state matrix.</p>
+        </div>
+        <select
+          aria-label="Draft state"
+          value={state}
+          onChange={(e) => setState(e.target.value as DraftState)}
+        >
+          <option value="loading">Loading</option>
+          <option value="not_found">Not found</option>
+          <option value="forbidden">Forbidden</option>
+          <option value="locked">Locked</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="connected">Connected</option>
+        </select>
+      </header>
+      <div className="status status-info">
+        <span className="pill">Connection</span> Placeholder badge; will reflect socket
+        state.
+      </div>
+      <div className="status status-error">Paused banner placeholder (draft paused).</div>
+      {renderState()}
+    </section>
+  );
+}
 function ResultsPage() {
   return (
     <section className="card">
@@ -2378,7 +2499,7 @@ function RoutesConfig() {
           path="/drafts/:id"
           element={
             <RequireAuth>
-              <DraftRoomPage />
+              <DraftRoomSkeleton />
             </RequireAuth>
           }
         />

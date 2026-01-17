@@ -497,6 +497,22 @@ describe("<App /> shell + routing", () => {
     await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
   });
 
+  it("shows draft room skeleton states", async () => {
+    window.history.pushState({}, "", "/drafts/1");
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: /Draft Room/i });
+    const select = screen.getByLabelText("Draft state");
+    await userEvent.selectOptions(select, "not_found");
+    await screen.findByText(/Draft not found/i);
+    await userEvent.selectOptions(select, "connected");
+    await screen.findByText(/Seats/);
+    await screen.findByText(/Picks/);
+  });
+
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
     // mock clipboard
     const writeText = vi.fn();
