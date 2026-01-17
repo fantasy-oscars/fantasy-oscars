@@ -672,18 +672,53 @@ describe("<App /> shell + routing", () => {
 
   it("renders admin console skeleton for admins", async () => {
     window.history.pushState({}, "", "/admin");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+            })
+        });
+      }
+      if (url.includes("/admin/ceremony/active") && init?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ceremony_id: 8 })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
 
     await screen.findByRole("heading", { name: /Admin console/i });
     await screen.findByText(/Drafts lock on first winner/i);
     await screen.findAllByText(/Active ceremony/i);
+    expect(screen.getByText(/ID 7/)).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText(/Set active ceremony/i));
+    await userEvent.type(screen.getByLabelText(/Set active ceremony/i), "8");
+    const update = screen.getByRole("button", { name: /Update active ceremony/i });
+    await userEvent.click(update);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/ceremony/active"),
+        expect.objectContaining({ method: "POST" })
+      )
+    );
     await screen.findAllByText(/Nominees/i);
     await screen.findAllByText(/Winners/i);
+    confirmSpy.mockRestore();
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {

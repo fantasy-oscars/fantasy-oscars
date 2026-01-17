@@ -2602,6 +2602,13 @@ function AdminPage() {
   type AdminState = "loading" | "forbidden" | "error" | "ready";
   const [state, setState] = useState<AdminState>("loading");
   const [showModal, setShowModal] = useState(false);
+  const [activeCeremony, setActiveCeremony] = useState<{
+    id: number;
+    code?: string;
+    name?: string;
+  } | null>(null);
+  const [ceremonyInput, setCeremonyInput] = useState("");
+  const [status, setStatus] = useState<ApiResult | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -2609,9 +2616,62 @@ function AdminPage() {
       setState("forbidden");
       return;
     }
-    const timer = window.setTimeout(() => setState("ready"), 300);
-    return () => window.clearTimeout(timer);
+    void loadCeremony();
   }, [user]);
+
+  async function loadCeremony() {
+    setState("loading");
+    setStatus(null);
+    const res = await fetchJson<{ ceremony: { id: number; code: string; name: string } }>(
+      "/ceremony/active",
+      { method: "GET" }
+    );
+    if (!res.ok) {
+      setState("error");
+      setStatus({ ok: false, message: res.error ?? "Unable to load active ceremony" });
+      return;
+    }
+    setActiveCeremony(res.data?.ceremony ?? null);
+    setCeremonyInput(String(res.data?.ceremony?.id ?? ""));
+    setState("ready");
+  }
+
+  async function setActive() {
+    const idNum = Number(ceremonyInput);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      setStatus({ ok: false, message: "Enter a valid ceremony id" });
+      return;
+    }
+    setStatus(null);
+    const res = await fetchJson<{ ceremony_id: number }>("/admin/ceremony/active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ceremony_id: idNum })
+    });
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Failed to set active ceremony" });
+      return;
+    }
+    await loadCeremony();
+    setStatus({ ok: true, message: "Active ceremony updated" });
+  }
+
+  const handleSetActive = () => {
+    if (
+      !window.confirm(
+        "Set this as the active ceremony? Drafts are limited to the active ceremony."
+      )
+    ) {
+      return;
+    }
+    void setActive();
+  };
+
+  useEffect(() => {
+    // Small noop; kept for state matrix toggle buttons
+    const timer = window.setTimeout(() => {}, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const renderState = () => {
     if (state === "loading") return <PageLoader label="Loading admin console..." />;
@@ -2654,9 +2714,39 @@ function AdminPage() {
               </div>
               <span className="pill">Coming soon</span>
             </header>
-            <p className="muted">
-              Admins will pick the active ceremony here and see draft-lock timing hints.
-            </p>
+            {activeCeremony ? (
+              <div className="stack-sm">
+                <div className="pill-list">
+                  <span className="pill">ID {activeCeremony.id}</span>
+                  {activeCeremony.code && (
+                    <span className="pill">{activeCeremony.code}</span>
+                  )}
+                  {activeCeremony.name && (
+                    <span className="pill">{activeCeremony.name}</span>
+                  )}
+                </div>
+                <label className="field">
+                  <span>Set active ceremony</span>
+                  <input
+                    value={ceremonyInput}
+                    onChange={(e) => setCeremonyInput(e.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  />
+                </label>
+                <div className="inline-actions">
+                  <button type="button" onClick={handleSetActive}>
+                    Update active ceremony
+                  </button>
+                  <button type="button" className="ghost" onClick={loadCeremony}>
+                    Refresh
+                  </button>
+                </div>
+                <FormStatus loading={false} result={status} />
+              </div>
+            ) : (
+              <p className="muted">No active ceremony set.</p>
+            )}
           </div>
 
           <div className="card nested">
