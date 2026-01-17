@@ -499,14 +499,14 @@ describe("<App /> shell + routing", () => {
 
   it("loads realtime draft room snapshot and shows status", async () => {
     window.history.pushState({}, "", "/drafts/1");
-    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
         });
       }
-      if (url.includes("/drafts/1/snapshot") && (!init || init.method === "GET")) {
+      if (url.includes("/drafts/1/snapshot")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -551,14 +551,14 @@ describe("<App /> shell + routing", () => {
   it("shows integrity warning when within T-24h window", async () => {
     vi.setSystemTime(new Date("2026-02-01T00:00:00Z"));
     window.history.pushState({}, "", "/drafts/1");
-    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
         });
       }
-      if (url.includes("/drafts/1/snapshot") && (!init || init.method === "GET")) {
+      if (url.includes("/drafts/1/snapshot")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -599,15 +599,55 @@ describe("<App /> shell + routing", () => {
 
   it("renders results UI skeleton with state matrix", async () => {
     window.history.pushState({}, "", "/results");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/ceremony/active/winners")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              winners: [
+                { category_edition_id: 1, nomination_id: 10 },
+                { category_edition_id: 2, nomination_id: 20 }
+              ]
+            })
+        });
+      }
+      if (url.includes("/drafts/1/snapshot")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              draft: {
+                id: 1,
+                status: "COMPLETED",
+                current_pick_number: null,
+                version: 2
+              },
+              seats: [
+                { seat_number: 1, league_member_id: 100 },
+                { seat_number: 2, league_member_id: 200 }
+              ],
+              picks: [
+                { pick_number: 1, seat_number: 1, nomination_id: 10 },
+                { pick_number: 2, seat_number: 2, nomination_id: 30 }
+              ],
+              version: 2
+            })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
 
     await screen.findByRole("heading", { name: /Results/i });
-    await userEvent.click(screen.getByRole("button", { name: /Show sample results/i }));
     await screen.findAllByText(/Winners/i);
     expect(screen.getByText(/Season standings/i)).toBeInTheDocument();
     expect(screen.getByText(/Pick log/i)).toBeInTheDocument();

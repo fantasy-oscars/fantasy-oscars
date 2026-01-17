@@ -2324,26 +2324,73 @@ function DraftRoomPage() {
 function ResultsPage() {
   type ViewState = "loading" | "unavailable" | "error" | "ready";
   const [state, setState] = useState<ViewState>("loading");
+  const [draftId, setDraftId] = useState("1");
+  const [error, setError] = useState<string | null>(null);
+  const [winners, setWinners] = useState<
+    Array<{ category_edition_id: number; nomination_id: number }>
+  >([]);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
 
-  const sampleWinners = [
-    { category: "Best Picture", winner: "The Golden Path" },
-    { category: "Best Director", winner: "A. Rivera" },
-    { category: "Best Actor", winner: "Lee Donovan" },
-    { category: "Best Actress", winner: "Mara Chen" }
-  ];
+  const winnerNominationIds = useMemo(
+    () => new Set(winners.map((w) => w.nomination_id)),
+    [winners]
+  );
 
-  const sampleStandings = [
-    { seat: 1, owner: "Alice", points: 42 },
-    { seat: 2, owner: "Bruno", points: 37 },
-    { seat: 3, owner: "Casey", points: 29 }
-  ];
+  const standings = useMemo(() => {
+    if (!snapshot) return [];
+    const seatScores: Record<number, { seat: number; points: number }> = {};
+    for (const seat of snapshot.seats) {
+      seatScores[seat.seat_number] = { seat: seat.seat_number, points: 0 };
+    }
+    for (const pick of snapshot.picks) {
+      if (winnerNominationIds.has(pick.nomination_id)) {
+        seatScores[pick.seat_number].points += 1;
+      }
+    }
+    return Object.values(seatScores).sort((a, b) => b.points - a.points);
+  }, [snapshot, winnerNominationIds]);
 
-  const samplePicks = [
-    { seat: 1, pick: "#1 The Golden Path" },
-    { seat: 1, pick: "#4 Mara Chen" },
-    { seat: 2, pick: "#2 Silver Skies" },
-    { seat: 3, pick: "#3 A. Rivera" }
-  ];
+  const picksWithResult = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot.picks
+      .slice()
+      .sort((a, b) => a.pick_number - b.pick_number)
+      .map((p) => ({
+        ...p,
+        isWinner: winnerNominationIds.has(p.nomination_id)
+      }));
+  }, [snapshot, winnerNominationIds]);
+
+  useEffect(() => {
+    async function load() {
+      setState("loading");
+      setError(null);
+      const winnersRes = await fetchJson<{
+        winners: Array<{ category_edition_id: number; nomination_id: number }>;
+      }>("/ceremony/active/winners", { method: "GET" });
+      if (!winnersRes.ok) {
+        setError(winnersRes.error ?? "Failed to load winners");
+        setState("error");
+        return;
+      }
+      const snapshotRes = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
+        method: "GET"
+      });
+      if (!snapshotRes.ok) {
+        setError(snapshotRes.error ?? "Failed to load draft results");
+        setState("error");
+        return;
+      }
+      setWinners(winnersRes.data?.winners ?? []);
+      setSnapshot(snapshotRes.data ?? null);
+      if (!winnersRes.data?.winners?.length) {
+        setState("unavailable");
+        return;
+      }
+      setState("ready");
+    }
+    void load();
+  }, [draftId]);
 
   function renderState() {
     if (state === "loading") {
@@ -2364,7 +2411,14 @@ function ResultsPage() {
     if (state === "error") {
       return (
         <div className="status status-error" role="status">
-          Could not load results right now. Try again shortly.
+          {error ?? "Could not load results right now. Try again shortly."}
+        </div>
+      );
+    }
+    if (!snapshot) {
+      return (
+        <div className="status status-error" role="status">
+          No draft snapshot available.
         </div>
       );
     }
@@ -2381,36 +2435,53 @@ function ResultsPage() {
               </p>
             </div>
           </header>
-          <div className="grid">
-            {sampleWinners.map((item) => (
-              <div key={item.category} className="list-row">
-                <div>
-                  <p className="eyebrow">{item.category}</p>
-                  <strong>{item.winner}</strong>
-                </div>
-                <span className="pill success">Winner</span>
-              </div>
-            ))}
-          </div>
+          {winners.length === 0 ? (
+            <p className="muted">No winners published yet.</p>
+          ) : (
+            <div className="grid">
+              {winners.map((w) => {
+                const draftedBySeat = snapshot.picks.find(
+                  (p) => p.nomination_id === w.nomination_id
+                )?.seat_number;
+                return (
+                  <div
+                    key={`${w.category_edition_id}-${w.nomination_id}`}
+                    className="list-row"
+                  >
+                    <div>
+                      <p className="eyebrow">Category {w.category_edition_id}</p>
+                      <strong>Nomination #{w.nomination_id}</strong>
+                    </div>
+                    <div className="pill-list">
+                      <span className="pill success">Winner</span>
+                      {draftedBySeat ? (
+                        <span className="pill">Drafted by seat {draftedBySeat}</span>
+                      ) : (
+                        <span className="pill muted">Not drafted</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="card nested">
           <header className="header-with-controls">
             <div>
               <h3>Season standings</h3>
-              <p className="muted">Points by draft seat. Read-only.</p>
+              <p className="muted">Points by draft seat (1 point per winner drafted).</p>
             </div>
           </header>
           <div className="table">
             <div className="table-row table-head">
               <span>Seat</span>
-              <span>Owner</span>
               <span>Points</span>
             </div>
-            {sampleStandings.map((row) => (
+            {standings.map((row) => (
               <div key={row.seat} className="table-row">
                 <span>Seat {row.seat}</span>
-                <span>{row.owner}</span>
                 <span>{row.points}</span>
               </div>
             ))}
@@ -2421,14 +2492,19 @@ function ResultsPage() {
           <header className="header-with-controls">
             <div>
               <h3>Pick log</h3>
-              <p className="muted">Seat picks shown for quick auditing.</p>
+              <p className="muted">Seat picks with win/loss markers.</p>
             </div>
           </header>
           <ul className="list">
-            {samplePicks.map((p, idx) => (
-              <li key={`${p.seat}-${idx}`} className="list-row">
-                <span className="pill">Seat {p.seat}</span>
-                <span>{p.pick}</span>
+            {picksWithResult.map((p) => (
+              <li key={p.pick_number} className="list-row">
+                <span className="pill">Seat {p.seat_number}</span>
+                <span>
+                  Pick #{p.pick_number}: nomination {p.nomination_id}
+                </span>
+                <span className={`pill ${p.isWinner ? "success" : "muted"}`}>
+                  {p.isWinner ? "Win" : "Loss"}
+                </span>
               </li>
             ))}
           </ul>
@@ -2448,17 +2524,17 @@ function ResultsPage() {
           </p>
         </div>
         <div className="inline-actions">
-          <button type="button" onClick={() => setState("unavailable")}>
-            Not available
-          </button>
+          <label className="field">
+            <span>Draft ID</span>
+            <input
+              value={draftId}
+              onChange={(e) => setDraftId(e.target.value)}
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
+          </label>
           <button type="button" onClick={() => setState("loading")}>
-            Loading
-          </button>
-          <button type="button" onClick={() => setState("error")}>
-            Error
-          </button>
-          <button type="button" onClick={() => setState("ready")}>
-            Show sample results
+            Refresh
           </button>
         </div>
       </header>
