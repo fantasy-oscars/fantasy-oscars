@@ -496,4 +496,104 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(screen.getByRole("button", { name: /Decline/i }));
     await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
   });
+
+  it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
+    // mock clipboard
+    const writeText = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    global.navigator.clipboard = { writeText };
+    // mock confirm
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    window.history.pushState({}, "", "/leagues/10");
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.endsWith("/leagues/10")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              league: { id: 10, code: "alpha", name: "Alpha", ceremony_id: 1 }
+            })
+        });
+      }
+      if (url.endsWith("/leagues/10/seasons")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              seasons: [
+                {
+                  id: 2026,
+                  league_id: 10,
+                  ceremony_id: 1,
+                  status: "EXTANT",
+                  created_at: new Date().toISOString()
+                }
+              ]
+            })
+        });
+      }
+      if (url.endsWith("/leagues/10/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [
+                {
+                  id: 1,
+                  league_id: 10,
+                  user_id: 1,
+                  role: "OWNER",
+                  handle: "alice",
+                  display_name: "Alice"
+                },
+                {
+                  id: 2,
+                  league_id: 10,
+                  user_id: 2,
+                  role: "MEMBER",
+                  handle: "bob",
+                  display_name: "Bob"
+                }
+              ]
+            })
+        });
+      }
+      if (url.endsWith("/leagues/10/members/2") && init?.method === "DELETE") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      if (url.endsWith("/leagues/10/transfer") && init?.method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Roster/i });
+    await userEvent.click(screen.getByRole("button", { name: /Copy invite/i }));
+    expect(writeText).toHaveBeenCalled();
+
+    const transferSelect = screen.getByLabelText(/Transfer to member/i);
+    await userEvent.selectOptions(transferSelect, "2");
+    await userEvent.click(screen.getByRole("button", { name: /Transfer commissioner/i }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/leagues/10/transfer"),
+      expect.objectContaining({ method: "POST" })
+    );
+
+    // Remove Bob
+    await userEvent.click(screen.getByRole("button", { name: /Remove/i }));
+    await waitFor(() => expect(screen.queryByText(/Bob/)).not.toBeInTheDocument());
+
+    confirmSpy.mockRestore();
+  });
 });
