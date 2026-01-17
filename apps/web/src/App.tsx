@@ -120,6 +120,9 @@ type SeasonMeta = {
   scoring_strategy_name?: string;
   is_active_ceremony?: boolean;
   created_at?: string;
+  ceremony_starts_at?: string | null;
+  draft_id?: number | null;
+  draft_status?: string | null;
 };
 type TokenMap = Record<number, string>;
 
@@ -1023,6 +1026,7 @@ function SeasonPage() {
   const [userInviteQuery, setUserInviteQuery] = useState("");
   const [placeholderLabel, setPlaceholderLabel] = useState("");
   const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   const isCommissioner = useMemo(() => {
     if (!user) return false;
@@ -1097,6 +1101,11 @@ function SeasonPage() {
       cancelled = true;
     };
   }, [seasonId]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   async function addMember() {
     if (!selectedLeagueMember) return;
@@ -1297,6 +1306,17 @@ function SeasonPage() {
     leagueContext?.leagueMembers?.filter(
       (m) => !members.some((sm) => sm.user_id === m.user_id)
     ) ?? [];
+  const ceremonyStartsAt = leagueContext?.season?.ceremony_starts_at ?? null;
+  const draftId = leagueContext?.season?.draft_id ?? null;
+  const draftStatus = leagueContext?.season?.draft_status ?? null;
+  const draftWarningEligible =
+    (leagueContext?.season?.is_active_ceremony ?? false) &&
+    draftStatus &&
+    (draftStatus === "PENDING" ||
+      draftStatus === "IN_PROGRESS" ||
+      draftStatus === "PAUSED");
+  const integrityWarningActive =
+    draftWarningEligible && isIntegrityWarningWindow(ceremonyStartsAt, nowTs);
 
   return (
     <section className="card">
@@ -1314,6 +1334,37 @@ function SeasonPage() {
           <span className="pill">Scoring: {scoringStrategy}</span>
         </div>
       </header>
+
+      <div className="card nested">
+        <header className="header-with-controls">
+          <div>
+            <h3>Draft Room</h3>
+            <p className="muted">Join the live draft for this season.</p>
+          </div>
+          <div className="inline-actions">
+            {draftId ? (
+              <Link to={`/drafts/${draftId}`}>Enter draft room</Link>
+            ) : (
+              <span className="pill">Draft not created yet</span>
+            )}
+          </div>
+        </header>
+        {integrityWarningActive && (
+          <div className="status status-warning" role="status">
+            Heads up: once winners start getting entered after the ceremony begins,
+            drafting stops immediately. If you’re in the room then, it ends just like a
+            cancellation.
+          </div>
+        )}
+        {ceremonyStartsAt && (
+          <p className="muted">
+            Ceremony starts {formatDate(ceremonyStartsAt)} (warning window: 24h prior).
+          </p>
+        )}
+        {!draftId && (
+          <p className="muted">The commissioner will create the draft for this season.</p>
+        )}
+      </div>
 
       <div className="grid two-col">
         <div className="card nested">
@@ -1751,6 +1802,7 @@ type Snapshot = {
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
+  ceremony_starts_at?: string | null;
 };
 
 type DraftEventMessage = {
@@ -1790,6 +1842,17 @@ function mapPickError(code?: string, fallback?: string) {
   }
 }
 
+function isIntegrityWarningWindow(
+  startsAt?: string | null,
+  nowMs: number = Date.now()
+): boolean {
+  if (!startsAt) return false;
+  const startMs = new Date(startsAt).getTime();
+  if (!Number.isFinite(startMs)) return false;
+  const windowStart = startMs - 24 * 60 * 60 * 1000;
+  return nowMs >= windowStart && nowMs < startMs;
+}
+
 // Legacy harness kept for reference (not routed in skeleton mode).
 export function DraftRoom(props: {
   initialDraftId?: string | number;
@@ -1805,6 +1868,7 @@ export function DraftRoom(props: {
   const [pickLoading, setPickLoading] = useState(false);
   const [startState, setStartState] = useState<ApiResult | null>(null);
   const [startLoading, setStartLoading] = useState(false);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "reconnecting" | "disconnected"
   >("disconnected");
@@ -1920,6 +1984,15 @@ export function DraftRoom(props: {
   const canStartDraft =
     !!snapshot && snapshot.draft.status === "PENDING" && !disabled && !startLoading;
 
+  const integrityWarningActive = useMemo(() => {
+    if (!snapshot) return false;
+    const status = snapshot.draft.status;
+    const relevantStatus =
+      status === "PENDING" || status === "IN_PROGRESS" || status === "PAUSED";
+    if (!relevantStatus) return false;
+    return isIntegrityWarningWindow(snapshot.ceremony_starts_at, nowTs);
+  }, [snapshot, nowTs]);
+
   useEffect(() => {
     snapshotRef.current = snapshot;
   }, [snapshot]);
@@ -1927,6 +2000,11 @@ export function DraftRoom(props: {
   useEffect(() => {
     lastVersionRef.current = lastVersion;
   }, [lastVersion]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const draftIdForSocket = snapshot?.draft.id;
@@ -2156,6 +2234,13 @@ export function DraftRoom(props: {
                   </span>
                 )}
               </div>
+              {integrityWarningActive && (
+                <div className="status status-warning" role="status">
+                  Heads up: once winners start getting entered after the ceremony begins,
+                  drafting stops immediately. If you’re in the room when that happens, it
+                  ends just like a commissioner cancellation.
+                </div>
+              )}
               {snapshot.draft.status === "PENDING" && (
                 <div className="inline-actions">
                   <button type="button" onClick={startDraft} disabled={!canStartDraft}>

@@ -8,6 +8,7 @@ import {
   insertDraftPick,
   insertDraftSeat,
   insertLeague,
+  insertCeremony,
   insertNomination
 } from "../factories/db.js";
 
@@ -65,7 +66,10 @@ describe("draft snapshot integration", () => {
   });
 
   it("returns snapshot for pending draft with seats and no picks", async () => {
-    const league = await insertLeague(db.pool);
+    const ceremonyStart = new Date("2026-02-01T01:00:00Z");
+    const league = await insertLeague(db.pool, {
+      ceremony_id: (await insertCeremony(db.pool, { starts_at: ceremonyStart })).id
+    });
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
@@ -75,6 +79,7 @@ describe("draft snapshot integration", () => {
       seats: Array<{ seat_number: number }>;
       picks: unknown[];
       version: number;
+      ceremony_starts_at: string | null;
     }>(`/drafts/${draft.id}/snapshot`);
 
     expect(res.status).toBe(200);
@@ -82,10 +87,14 @@ describe("draft snapshot integration", () => {
     expect(res.json.picks.length).toBe(0);
     expect(res.json.seats.map((s) => s.seat_number)).toEqual([1, 2]);
     expect(res.json.version).toBe(0);
+    expect(res.json.ceremony_starts_at).toBe(ceremonyStart.toISOString());
   });
 
   it("returns snapshot with picks in order and version equals pick count", async () => {
-    const league = await insertLeague(db.pool);
+    const ceremonyStart = new Date("2026-02-02T01:00:00Z");
+    const league = await insertLeague(db.pool, {
+      ceremony_id: (await insertCeremony(db.pool, { starts_at: ceremonyStart })).id
+    });
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
       status: "IN_PROGRESS",
@@ -118,6 +127,7 @@ describe("draft snapshot integration", () => {
       picks: Array<{ pick_number: number; seat_number: number }>;
       version: number;
       turn: { seat_number: number; round_number: number; direction: string };
+      ceremony_starts_at: string | null;
     }>(`/drafts/${draft.id}/snapshot`);
 
     expect(res.status).toBe(200);
@@ -127,6 +137,7 @@ describe("draft snapshot integration", () => {
     expect(res.json.turn.seat_number).toBe(2);
     expect(res.json.turn.round_number).toBe(2);
     expect(res.json.turn.direction).toBe("REVERSE");
+    expect(res.json.ceremony_starts_at).toBe(ceremonyStart.toISOString());
   });
 
   it("returns 404 when draft not found", async () => {
