@@ -156,19 +156,54 @@ describe("<App /> shell + routing", () => {
 
   it("renders league skeleton states", async () => {
     window.history.pushState({}, "", "/leagues");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              leagues: [{ id: 10, code: "alpha", name: "Alpha", ceremony_id: 1 }]
+            })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    await screen.findByRole("heading", { name: /Leagues/i });
+    await screen.findByText(/Loading leagues/i);
+    await screen.findByText(/Alpha/);
+  });
 
-    await userEvent.selectOptions(screen.getByLabelText(/Leagues state/i), "loading");
-    expect(screen.getByText(/Loading leagues/i)).toBeInTheDocument();
+  it("accepts invite and navigates", async () => {
+    window.history.pushState({}, "", "/invites/42");
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/seasons/invites/42/accept")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invite: { season_id: 99 } })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-    await userEvent.selectOptions(screen.getByLabelText(/Leagues state/i), "ready");
-    expect(screen.getByText(/League #1/i)).toBeInTheDocument();
+    render(<App />);
+    await screen.findByRole("heading", { name: /Invite/i });
+    await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
+    await screen.findByText(/Season 99/i);
   });
 
   it("renders season and invite routes", async () => {
