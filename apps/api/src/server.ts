@@ -47,6 +47,7 @@ export function createServer(deps?: { db?: Pool }) {
   const config = loadConfig();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");
   app.use(express.json());
+  app.locals.db = pool;
 
   // Minimal CORS for local dev and web preview
   app.use((req, res, next) => {
