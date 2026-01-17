@@ -153,4 +153,37 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(accountLink);
     await screen.findByRole("heading", { name: /Account/i });
   });
+
+  it("renders league skeleton states", async () => {
+    window.history.pushState({}, "", "/leagues");
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: /Leagues/i });
+
+    await userEvent.selectOptions(screen.getByLabelText(/Leagues state/i), "loading");
+    expect(screen.getByText(/Loading leagues/i)).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText(/Leagues state/i), "ready");
+    expect(screen.getByText(/League #1/i)).toBeInTheDocument();
+  });
+
+  it("renders season and invite routes", async () => {
+    window.history.pushState({}, "", "/seasons/2026");
+    mockFetchSequence({
+      ok: true,
+      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    });
+
+    render(<App />);
+    await screen.findByRole("heading", { name: /Season 2026/i });
+
+    window.history.pushState({}, "", "/invites/token123");
+    render(<App />);
+    await screen.findByRole("heading", { name: /Invite/i });
+    expect(await screen.findByText(/token123/i)).toBeInTheDocument();
+  });
 });

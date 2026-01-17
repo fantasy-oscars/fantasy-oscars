@@ -591,27 +591,366 @@ function ResetConfirmPage() {
 }
 
 function LeaguesPage() {
+  type ViewState = "loading" | "empty" | "error" | "forbidden" | "ready";
+  const [state, setState] = useState<ViewState>("ready");
+
+  const renderState = () => {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Loading leagues..." />;
+      case "empty":
+        return (
+          <div className="empty-state">
+            <p className="muted">You’re not in any leagues yet.</p>
+            <div className="inline-actions">
+              <button type="button">Create league</button>
+              <button type="button" className="ghost">
+                Join with invite
+              </button>
+            </div>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="status status-error">Couldn’t load leagues. Retry later.</div>
+        );
+      case "forbidden":
+        return (
+          <div className="status status-error">
+            You don’t have access to leagues. Ask an admin to invite you.
+          </div>
+        );
+      case "ready":
+      default:
+        return (
+          <div className="grid">
+            {[1, 2, 3].map((id) => (
+              <div key={id} className="card nested">
+                <header>
+                  <h3>League #{id}</h3>
+                  <p className="muted">Commissioner: TBD • Season: 2026</p>
+                </header>
+                <div className="pill-list">
+                  <span className="pill">Members: —</span>
+                  <span className="pill">Draft: not started</span>
+                </div>
+                <div className="inline-actions">
+                  <Link to={`/leagues/${id}`}>Open</Link>
+                  <Link className="ghost" to={`/seasons/${id}`}>
+                    View season
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="card">
-      <header>
-        <h2>Leagues</h2>
-        <p>Browse or manage your leagues.</p>
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Leagues</h2>
+          <p>Browse or manage your leagues.</p>
+        </div>
+        <div className="state-switcher">
+          <label>
+            State
+            <select
+              value={state}
+              onChange={(e) => setState(e.target.value as ViewState)}
+              aria-label="Leagues state"
+            >
+              <option value="loading">Loading</option>
+              <option value="empty">Empty</option>
+              <option value="error">Error</option>
+              <option value="forbidden">Forbidden</option>
+              <option value="ready">Ready</option>
+            </select>
+          </label>
+        </div>
       </header>
-      <p className="muted">Leagues list will appear here in MVP.</p>
-    </div>
+      {renderState()}
+    </section>
   );
 }
 
 function LeagueDetailPage() {
   const { id } = useParams();
+  type ViewState = "loading" | "empty" | "error" | "forbidden" | "ready";
+  const [state, setState] = useState<ViewState>("ready");
+  const [isCommissioner, setIsCommissioner] = useState(true);
+
+  const renderState = () => {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Loading league..." />;
+      case "empty":
+        return (
+          <div className="empty-state">
+            <p className="muted">
+              No seasons yet. Create the first season to get started.
+            </p>
+            <button type="button">Create season</button>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="status status-error">Unable to load league right now.</div>
+        );
+      case "forbidden":
+        return (
+          <div className="status status-error">
+            You’re not a member of this league. Check your invites or ask a commissioner.
+          </div>
+        );
+      case "ready":
+      default:
+        return (
+          <div className="stack">
+            <div className="card nested">
+              <header>
+                <h3>Seasons</h3>
+                <p className="muted">Active and past seasons for this league.</p>
+              </header>
+              <div className="grid">
+                {[2026, 2025].map((year) => (
+                  <div key={year} className="card">
+                    <header>
+                      <h4>{year} Season</h4>
+                      <p className="muted">Status: Draft not started</p>
+                    </header>
+                    <div className="pill-list">
+                      <span className="pill">Members: —</span>
+                      <span className="pill">Picks: —</span>
+                    </div>
+                    <div className="inline-actions">
+                      <Link to={`/seasons/${year}`}>Open season</Link>
+                    </div>
+                  </div>
+                ))}
+                <div className="card disabled">
+                  <header>
+                    <h4>Next season</h4>
+                    <p className="muted">Creating soon. Requires commissioner.</p>
+                  </header>
+                  <button type="button" disabled>
+                    Create season
+                  </button>
+                </div>
+              </div>
+            </div>
+            {isCommissioner && (
+              <div className="card nested">
+                <header>
+                  <h3>Commissioner controls</h3>
+                  <p className="muted">Invite members, manage roles, and start drafts.</p>
+                </header>
+                <div className="inline-actions">
+                  <button type="button">Invite member</button>
+                  <button type="button" className="ghost">
+                    Manage roles
+                  </button>
+                  <button type="button" className="ghost">
+                    Start draft
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="card">
-      <header>
-        <h2>League #{id}</h2>
-        <p>Roster, invites, and draft access.</p>
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>League #{id}</h2>
+          <p>Roster, seasons, and commissioner actions.</p>
+        </div>
+        <div className="inline-actions">
+          <label className="pill-toggle">
+            <input
+              type="checkbox"
+              checked={isCommissioner}
+              onChange={(e) => setIsCommissioner(e.target.checked)}
+            />
+            Commissioner view
+          </label>
+          <select
+            value={state}
+            onChange={(e) => setState(e.target.value as ViewState)}
+            aria-label="League state"
+          >
+            <option value="loading">Loading</option>
+            <option value="empty">Empty</option>
+            <option value="error">Error</option>
+            <option value="forbidden">Forbidden</option>
+            <option value="ready">Ready</option>
+          </select>
+        </div>
       </header>
-      <p className="muted">League detail placeholder.</p>
-    </div>
+      {renderState()}
+    </section>
+  );
+}
+
+function SeasonPage() {
+  const { id } = useParams();
+  type ViewState = "loading" | "empty" | "error" | "forbidden" | "ready";
+  const [state, setState] = useState<ViewState>("ready");
+
+  const renderState = () => {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Loading season..." />;
+      case "empty":
+        return (
+          <div className="empty-state">
+            <p className="muted">
+              No picks yet. Draft will populate standings once started.
+            </p>
+            <button type="button">Go to draft room</button>
+          </div>
+        );
+      case "error":
+        return <div className="status status-error">Couldn’t load season right now.</div>;
+      case "forbidden":
+        return <div className="status status-error">You’re not part of this season.</div>;
+      case "ready":
+      default:
+        return (
+          <div className="grid season-grid">
+            <div className="card nested">
+              <header>
+                <h3>Standings</h3>
+                <p className="muted">Live points once nominees/draft exist.</p>
+              </header>
+              <ul className="list">
+                {[1, 2, 3].map((rank) => (
+                  <li key={rank} className="list-row">
+                    <span className="pill">#{rank}</span>
+                    <span>Team TBD</span>
+                    <span className="muted">0 pts</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card nested">
+              <header>
+                <h3>Schedule & state</h3>
+                <p className="muted">Draft + ceremony milestones.</p>
+              </header>
+              <ul className="list">
+                <li className="list-row">
+                  <span>Draft</span>
+                  <span className="muted">Not started</span>
+                </li>
+                <li className="list-row">
+                  <span>Invites</span>
+                  <span className="muted">Open</span>
+                </li>
+                <li className="list-row">
+                  <span>Ceremony</span>
+                  <span className="muted">Pending winners</span>
+                </li>
+              </ul>
+              <div className="inline-actions">
+                <Link to={`/leagues/${id}`}>Back to league</Link>
+                <button type="button" className="ghost">
+                  Draft room
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Season {id}</h2>
+          <p>Standings, timeline, and invites.</p>
+        </div>
+        <select
+          value={state}
+          onChange={(e) => setState(e.target.value as ViewState)}
+          aria-label="Season state"
+        >
+          <option value="loading">Loading</option>
+          <option value="empty">Empty</option>
+          <option value="error">Error</option>
+          <option value="forbidden">Forbidden</option>
+          <option value="ready">Ready</option>
+        </select>
+      </header>
+      {renderState()}
+    </section>
+  );
+}
+
+function InviteClaimPage() {
+  const { token } = useParams();
+  type ViewState = "loading" | "error" | "forbidden" | "ready";
+  const [state, setState] = useState<ViewState>("ready");
+
+  const renderState = () => {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Checking invite..." />;
+      case "error":
+        return (
+          <div className="status status-error">Invite lookup failed. Try again.</div>
+        );
+      case "forbidden":
+        return (
+          <div className="status status-error">
+            Invite is invalid or expired. Request a fresh link.
+          </div>
+        );
+      case "ready":
+      default:
+        return (
+          <div className="stack">
+            <p className="muted">
+              You’ve been invited to join a league. Claiming will associate your account.
+            </p>
+            <div className="inline-actions">
+              <button type="button">Accept invite</button>
+              <button type="button" className="ghost">
+                Decline
+              </button>
+            </div>
+            <small className="muted">Token: {token}</small>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Invite</h2>
+          <p>Claim a league invite.</p>
+        </div>
+        <select
+          value={state}
+          onChange={(e) => setState(e.target.value as ViewState)}
+          aria-label="Invite state"
+        >
+          <option value="loading">Loading</option>
+          <option value="error">Error</option>
+          <option value="forbidden">Forbidden</option>
+          <option value="ready">Ready</option>
+        </select>
+      </header>
+      {renderState()}
+    </section>
   );
 }
 
@@ -1167,6 +1506,13 @@ function HomePage() {
 }
 
 function RoutesConfig() {
+  /**
+   * IA note for leagues/seasons surfaces (FO-053 scaffold):
+   * - /leagues: entry list with creation/join CTAs and empty/error/loading/forbidden matrix
+   * - /leagues/:id: league shell with seasons list, gating card, commissioner-only section
+   * - /seasons/:id: season view shell (standings + schedule placeholders)
+   * - /invites/:token: invite claim landing page
+   */
   return (
     <Routes>
       <Route element={<ShellLayout />}>
@@ -1216,6 +1562,22 @@ function RoutesConfig() {
           element={
             <RequireAuth>
               <LeagueDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/seasons/:id"
+          element={
+            <RequireAuth>
+              <SeasonPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/invites/:token"
+          element={
+            <RequireAuth>
+              <InviteClaimPage />
             </RequireAuth>
           }
         />
