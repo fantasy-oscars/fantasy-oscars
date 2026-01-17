@@ -74,6 +74,54 @@ async function fetchJson<T>(
 }
 
 type FieldErrors = Partial<Record<string, string>>;
+type LeagueSummary = { id: number; code: string; name: string; ceremony_id: number };
+type LeagueDetail = LeagueSummary & { max_members?: number; roster_size?: number };
+type LeagueMember = {
+  id: number;
+  user_id: number;
+  role: string;
+  handle: string;
+  display_name: string;
+};
+type SeasonSummary = {
+  id: number;
+  league_id: number;
+  ceremony_id: number;
+  status: string;
+  created_at: string;
+};
+type SeasonMember = {
+  id: number;
+  season_id: number;
+  user_id: number;
+  league_member_id: number | null;
+  role: string;
+  joined_at: string;
+};
+type SeasonInvite = {
+  id: number;
+  season_id: number;
+  status: string;
+  label: string | null;
+  kind: string;
+  created_at: string;
+  updated_at: string;
+  claimed_at: string | null;
+};
+type InboxInvite = SeasonInvite & {
+  league_id: number | null;
+  league_name: string | null;
+  ceremony_id: number | null;
+};
+type SeasonMeta = {
+  id: number;
+  ceremony_id: number;
+  status: string;
+  scoring_strategy_name?: string;
+  is_active_ceremony?: boolean;
+  created_at?: string;
+};
+type TokenMap = Record<number, string>;
 
 function useRequiredFields(fields: string[]) {
   return useMemo(
@@ -327,6 +375,12 @@ function ShellLayout() {
           to="/leagues"
         >
           Leagues
+        </NavLink>
+        <NavLink
+          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          to="/invites"
+        >
+          Invites
         </NavLink>
         <NavLink
           className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
@@ -591,27 +645,1097 @@ function ResetConfirmPage() {
 }
 
 function LeaguesPage() {
+  type ViewState = "loading" | "empty" | "error" | "ready";
+  const [state, setState] = useState<ViewState>("loading");
+  const [leagues, setLeagues] = useState<LeagueSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const loadLeagues = useCallback(async () => {
+    setState("loading");
+    setError(null);
+    const res = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
+    if (!res.ok) {
+      setError(res.error ?? "Failed to load leagues");
+      setState("error");
+      return;
+    }
+    setLeagues(res.data?.leagues ?? []);
+    setState((res.data?.leagues?.length ?? 0) === 0 ? "empty" : "ready");
+  }, []);
+
+  useEffect(() => {
+    void loadLeagues();
+  }, [loadLeagues]);
+
+  async function onCreate(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateLoading(true);
+    const data = new FormData(e.currentTarget);
+    const payload = {
+      code: String(data.get("code") ?? "").trim(),
+      name: String(data.get("name") ?? "").trim(),
+      max_members: Number(data.get("max_members") ?? 10)
+    };
+    const res = await fetchJson<{ league: LeagueSummary }>("/leagues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    setCreateLoading(false);
+    if (!res.ok) {
+      setCreateError(res.error ?? "Could not create league");
+      return;
+    }
+    e.currentTarget.reset();
+    await loadLeagues();
+  }
+
   return (
-    <div className="card">
-      <header>
-        <h2>Leagues</h2>
-        <p>Browse or manage your leagues.</p>
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Leagues</h2>
+          <p>Browse or manage your leagues.</p>
+        </div>
+        <button type="button" onClick={loadLeagues} className="ghost">
+          Refresh
+        </button>
       </header>
-      <p className="muted">Leagues list will appear here in MVP.</p>
-    </div>
+
+      {state === "loading" && <PageLoader label="Loading leagues..." />}
+      {state === "error" && <div className="status status-error">{error}</div>}
+      {state === "empty" && (
+        <div className="empty-state">
+          <p className="muted">You’re not in any leagues yet.</p>
+        </div>
+      )}
+      {state === "ready" && (
+        <div className="grid">
+          {leagues.map((league) => (
+            <div key={league.id} className="card nested">
+              <header>
+                <h3>{league.name}</h3>
+                <p className="muted">Code: {league.code}</p>
+              </header>
+              <div className="inline-actions">
+                <Link to={`/leagues/${league.id}`}>Open league</Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card nested" style={{ marginTop: 16 }}>
+        <header>
+          <h3>Create league</h3>
+          <p className="muted">Creates the initial season for the active ceremony.</p>
+        </header>
+        <form className="grid" onSubmit={onCreate}>
+          <FormField label="Code" name="code" />
+          <FormField label="Name" name="name" />
+          <FormField
+            label="Max members"
+            name="max_members"
+            type="number"
+            defaultValue="10"
+          />
+          <div className="inline-actions">
+            <button type="submit" disabled={createLoading}>
+              {createLoading ? "Creating..." : "Create league"}
+            </button>
+            {createError && <small className="error">{createError}</small>}
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
 
 function LeagueDetailPage() {
   const { id } = useParams();
+  const leagueId = Number(id);
+  type ViewState = "loading" | "error" | "ready" | "forbidden";
+  const [state, setState] = useState<ViewState>("loading");
+  const [league, setLeague] = useState<LeagueDetail | null>(null);
+  const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
+  const [roster, setRoster] = useState<LeagueMember[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthContext();
+  const [working, setWorking] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<string>("");
+  const [rosterStatus, setRosterStatus] = useState<ApiResult | null>(null);
+
+  const loadDetail = useCallback(async () => {
+    if (Number.isNaN(leagueId)) {
+      setState("error");
+      setError("Invalid league id");
+      return;
+    }
+    setState("loading");
+    setError(null);
+    const [detail, seasonRes, rosterRes] = await Promise.all([
+      fetchJson<{ league: LeagueDetail }>(`/leagues/${leagueId}`),
+      fetchJson<{ seasons: SeasonSummary[] }>(`/leagues/${leagueId}/seasons`),
+      fetchJson<{ members: LeagueMember[] }>(`/leagues/${leagueId}/members`)
+    ]);
+
+    if (!detail.ok) {
+      setError(detail.error ?? "Unable to load league");
+      setState(detail.errorCode === "FORBIDDEN" ? "forbidden" : "error");
+      return;
+    }
+    setLeague(detail.data?.league ?? null);
+    if (seasonRes.ok) setSeasons(seasonRes.data?.seasons ?? []);
+    if (rosterRes.ok) setRoster(rosterRes.data?.members ?? null);
+    else setRoster(null); // hide if forbidden
+    setState("ready");
+  }, [leagueId]);
+
+  useEffect(() => {
+    void loadDetail();
+  }, [loadDetail]);
+
+  if (state === "loading") {
+    return <PageLoader label="Loading league..." />;
+  }
+  if (state === "forbidden") {
+    return (
+      <section className="card">
+        <header>
+          <h2>League</h2>
+          <p className="muted">Access denied.</p>
+        </header>
+        <PageError message="You’re not a member of this league." />
+      </section>
+    );
+  }
+  if (state === "error") {
+    return (
+      <section className="card">
+        <header>
+          <h2>League</h2>
+          <p className="muted">Unable to load</p>
+        </header>
+        <PageError message={error ?? "Unexpected error"} />
+      </section>
+    );
+  }
+
+  const isCommissioner =
+    !!user &&
+    roster?.some(
+      (m) =>
+        m.user_id === Number(user.sub) && (m.role === "OWNER" || m.role === "CO_OWNER")
+    );
+  const isOwner =
+    !!user && roster?.some((m) => m.user_id === Number(user.sub) && m.role === "OWNER");
+
+  async function copyInvite() {
+    if (!league) return;
+    const link = `${window.location.origin}/leagues/${league.id}`;
+    const text = `League invite code: ${league.code}\nLink: ${link}`;
+    await navigator.clipboard?.writeText(text);
+    setRosterStatus({ ok: true, message: "Invite copied" });
+  }
+
+  async function transferOwnership() {
+    if (!transferTarget || !league) return;
+    const targetId = Number(transferTarget);
+    if (Number.isNaN(targetId)) return;
+    if (!window.confirm("Transfer commissioner role to this member?")) return;
+    setWorking(true);
+    setRosterStatus(null);
+    const res = await fetchJson(`/leagues/${league.id}/transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: targetId })
+    });
+    setWorking(false);
+    if (res.ok) {
+      setRosterStatus({ ok: true, message: "Commissioner role transferred" });
+      await loadDetail();
+      setTransferTarget("");
+    } else {
+      setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
+    }
+  }
+
+  async function removeMember(userId: number, role: string) {
+    if (!league) return;
+    if (role === "OWNER") return;
+    if (!window.confirm("Remove this member from the league?")) return;
+    setWorking(true);
+    setRosterStatus(null);
+    const res = await fetchJson(`/leagues/${league.id}/members/${userId}`, {
+      method: "DELETE"
+    });
+    setWorking(false);
+    if (res.ok) {
+      setRoster((prev) => (prev ? prev.filter((m) => m.user_id !== userId) : prev));
+      setRosterStatus({ ok: true, message: "Member removed" });
+    } else {
+      setRosterStatus({ ok: false, message: res.error ?? "Remove failed" });
+    }
+  }
+
   return (
-    <div className="card">
-      <header>
-        <h2>League #{id}</h2>
-        <p>Roster, invites, and draft access.</p>
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>{league?.name ?? `League #${leagueId}`}</h2>
+          <p>Roster, seasons, and commissioner actions.</p>
+        </div>
+        <button type="button" className="ghost" onClick={loadDetail}>
+          Refresh
+        </button>
       </header>
-      <p className="muted">League detail placeholder.</p>
-    </div>
+
+      <div className="card nested">
+        <header>
+          <h3>Roster</h3>
+          <p className="muted">Members and roles</p>
+        </header>
+        {roster === null ? (
+          <p className="muted">Roster hidden (commissioner-only).</p>
+        ) : roster.length === 0 ? (
+          <p className="muted">No members yet.</p>
+        ) : (
+          <ul className="list">
+            {roster.map((m) => (
+              <li key={m.id} className="list-row">
+                <span>{m.display_name || m.handle}</span>
+                <span className="pill">{m.role}</span>
+                {isCommissioner && m.role !== "OWNER" && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => removeMember(m.user_id, m.role)}
+                    disabled={working}
+                  >
+                    Remove
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {isCommissioner && (
+          <div className="inline-actions" style={{ marginTop: 12 }}>
+            <button type="button" onClick={copyInvite}>
+              Copy invite
+            </button>
+            <FormStatus loading={working} result={rosterStatus} />
+          </div>
+        )}
+      </div>
+
+      {isCommissioner && (
+        <div className="card nested" style={{ marginTop: 16 }}>
+          <header>
+            <h3>Commissioner Controls</h3>
+            <p className="muted">
+              Transfer commissioner role or remove members. Owner only for transfer.
+            </p>
+          </header>
+          <div className="inline-actions">
+            <select
+              aria-label="Transfer to member"
+              value={transferTarget}
+              onChange={(e) => setTransferTarget(e.target.value)}
+              disabled={!isOwner || working}
+            >
+              <option value="">Transfer to...</option>
+              {roster
+                ?.filter((m) => m.user_id !== Number(user?.sub))
+                .map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.display_name || m.handle} ({m.role})
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              onClick={transferOwnership}
+              disabled={!isOwner || working || !transferTarget}
+            >
+              Transfer commissioner
+            </button>
+          </div>
+          <FormStatus loading={working} result={rosterStatus} />
+        </div>
+      )}
+
+      <div className="card nested" style={{ marginTop: 16 }}>
+        <header>
+          <h3>Seasons</h3>
+          <p className="muted">Active and past seasons for this league.</p>
+        </header>
+        {seasons.length === 0 ? (
+          <p className="muted">
+            No seasons yet. Created automatically on league creation.
+          </p>
+        ) : (
+          <div className="grid">
+            {seasons.map((s) => (
+              <div key={s.id} className="card">
+                <header>
+                  <h4>Season {new Date(s.created_at).getFullYear()}</h4>
+                  <p className="muted">Status: {s.status}</p>
+                </header>
+                <div className="pill-list">
+                  <span className="pill">Ceremony {s.ceremony_id}</span>
+                </div>
+                <div className="inline-actions">
+                  <Link to={`/seasons/${s.id}`}>Open season</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SeasonPage() {
+  const { id } = useParams();
+  const seasonId = Number(id);
+  const { user } = useAuthContext();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<SeasonMember[]>([]);
+  const [invites, setInvites] = useState<SeasonInvite[]>([]);
+  const [inviteTokens, setInviteTokens] = useState<TokenMap>({});
+  const [leagueContext, setLeagueContext] = useState<{
+    league: LeagueSummary;
+    season: SeasonMeta;
+    leagueMembers: LeagueMember[];
+  } | null>(null);
+  const [scoringState, setScoringState] = useState<ApiResult | null>(null);
+  const [addMemberResult, setAddMemberResult] = useState<ApiResult | null>(null);
+  const [inviteResult, setInviteResult] = useState<ApiResult | null>(null);
+  const [userInviteResult, setUserInviteResult] = useState<ApiResult | null>(null);
+  const [working, setWorking] = useState(false);
+  const [selectedLeagueMember, setSelectedLeagueMember] = useState<string>("");
+  const [userInviteQuery, setUserInviteQuery] = useState("");
+  const [placeholderLabel, setPlaceholderLabel] = useState("");
+  const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
+
+  const isCommissioner = useMemo(() => {
+    if (!user) return false;
+    return members.some(
+      (m) =>
+        m.user_id === Number(user.sub) && (m.role === "OWNER" || m.role === "CO_OWNER")
+    );
+  }, [members, user]);
+
+  const canEdit = leagueContext?.season?.status === "EXTANT" && isCommissioner;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      const memberRes = await fetchJson<{ members: SeasonMember[] }>(
+        `/seasons/${seasonId}/members`,
+        { method: "GET" }
+      );
+      if (!memberRes.ok) {
+        if (!cancelled) {
+          setError(memberRes.error ?? "Could not load season");
+          setLoading(false);
+        }
+        return;
+      }
+      if (!cancelled) setMembers(memberRes.data?.members ?? []);
+
+      // Discover league + season metadata by walking user leagues.
+      const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues", {
+        method: "GET"
+      });
+      let found: { league: LeagueSummary; season: SeasonMeta } | null = null;
+      let leagueMembers: LeagueMember[] = [];
+      if (leaguesRes.ok && leaguesRes.data?.leagues) {
+        for (const lg of leaguesRes.data.leagues) {
+          const seasonsRes = await fetchJson<{
+            seasons: Array<SeasonMeta & { id: number }>;
+          }>(`/leagues/${lg.id}/seasons`, { method: "GET" });
+          if (seasonsRes.ok) {
+            const match = (seasonsRes.data?.seasons ?? []).find((s) => s.id === seasonId);
+            if (match) {
+              found = { league: lg, season: match };
+              const rosterRes = await fetchJson<{ members: LeagueMember[] }>(
+                `/leagues/${lg.id}/members`,
+                { method: "GET" }
+              );
+              if (rosterRes.ok && rosterRes.data?.members) {
+                leagueMembers = rosterRes.data.members;
+              }
+              break;
+            }
+          }
+        }
+      }
+      if (!cancelled && found) {
+        setLeagueContext({ ...found, leagueMembers });
+      }
+
+      const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
+        `/seasons/${seasonId}/invites`,
+        { method: "GET" }
+      );
+      if (!cancelled && invitesRes.ok) {
+        setInvites(invitesRes.data?.invites ?? []);
+      }
+      if (!cancelled) setLoading(false);
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId]);
+
+  async function addMember() {
+    if (!selectedLeagueMember) return;
+    setWorking(true);
+    setAddMemberResult(null);
+    const res = await fetchJson<{ member: SeasonMember }>(
+      `/seasons/${seasonId}/members`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: Number(selectedLeagueMember) })
+      }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.member) {
+      setMembers((prev) => [...prev, res.data!.member]);
+      setAddMemberResult({ ok: true, message: "Added to season" });
+      setSelectedLeagueMember("");
+    } else {
+      setAddMemberResult({ ok: false, message: res.error ?? "Add failed" });
+    }
+  }
+
+  async function removeMember(userId: number) {
+    setWorking(true);
+    const res = await fetchJson(`/seasons/${seasonId}/members/${userId}`, {
+      method: "DELETE"
+    });
+    setWorking(false);
+    if (res.ok) {
+      setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    } else {
+      setAddMemberResult({ ok: false, message: res.error ?? "Remove failed" });
+    }
+  }
+
+  async function updateScoring(strategy: string) {
+    setScoringState(null);
+    setWorking(true);
+    const res = await fetchJson<{ season: SeasonMeta }>(`/seasons/${seasonId}/scoring`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scoring_strategy_name: strategy })
+    });
+    setWorking(false);
+    if (res.ok && res.data?.season && leagueContext) {
+      setLeagueContext({
+        ...leagueContext,
+        season: {
+          ...leagueContext.season,
+          scoring_strategy_name: res.data.season.scoring_strategy_name
+        }
+      });
+      setScoringState({ ok: true, message: "Scoring updated" });
+    } else {
+      setScoringState({ ok: false, message: res.error ?? "Update failed" });
+    }
+  }
+
+  async function createUserInvite() {
+    const userId = Number(userInviteQuery);
+    if (!Number.isFinite(userId)) {
+      setUserInviteResult({ ok: false, message: "Enter a numeric user id" });
+      return;
+    }
+    setWorking(true);
+    setUserInviteResult(null);
+    const res = await fetchJson(`/seasons/${seasonId}/user-invites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId })
+    });
+    setWorking(false);
+    setUserInviteResult({
+      ok: res.ok,
+      message: res.ok
+        ? "Invite created (user must accept in app)"
+        : (res.error ?? "Invite failed")
+    });
+    if (res.ok) {
+      setUserInviteQuery("");
+    }
+  }
+
+  async function createPlaceholderInvite() {
+    setWorking(true);
+    setInviteResult(null);
+    const res = await fetchJson<{ invite: SeasonInvite; token: string }>(
+      `/seasons/${seasonId}/invites`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          placeholderLabel.trim() ? { label: placeholderLabel.trim() } : {}
+        )
+      }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.invite) {
+      setInvites((prev) => [res.data!.invite, ...prev]);
+      setInviteTokens((prev) => ({ ...prev, [res.data!.invite.id]: res.data!.token }));
+      setPlaceholderLabel("");
+      setInviteResult({ ok: true, message: "Link generated" });
+    } else {
+      setInviteResult({ ok: false, message: res.error ?? "Invite failed" });
+    }
+  }
+
+  async function revokeInvite(inviteId: number) {
+    setWorking(true);
+    const res = await fetchJson<{ invite: SeasonInvite }>(
+      `/seasons/${seasonId}/invites/${inviteId}/revoke`,
+      { method: "POST" }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.invite) {
+      setInvites((prev) => prev.map((i) => (i.id === inviteId ? res.data!.invite : i)));
+    } else {
+      setInviteResult({ ok: false, message: res.error ?? "Revoke failed" });
+    }
+  }
+
+  async function regenerateInvite(inviteId: number) {
+    setWorking(true);
+    const res = await fetchJson<{ invite: SeasonInvite; token: string }>(
+      `/seasons/${seasonId}/invites/${inviteId}/regenerate`,
+      { method: "POST" }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.invite) {
+      setInvites((prev) => prev.map((i) => (i.id === inviteId ? res.data!.invite : i)));
+      setInviteTokens((prev) => ({ ...prev, [res.data!.invite.id]: res.data!.token }));
+      setInviteResult({ ok: true, message: "New link generated" });
+    } else {
+      setInviteResult({ ok: false, message: res.error ?? "Regenerate failed" });
+    }
+  }
+
+  async function saveInviteLabel(inviteId: number) {
+    const nextLabel = labelDrafts[inviteId] ?? "";
+    setWorking(true);
+    const res = await fetchJson<{ invite: SeasonInvite }>(
+      `/seasons/${seasonId}/invites/${inviteId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: nextLabel.trim() || null })
+      }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.invite) {
+      setInvites((prev) => prev.map((i) => (i.id === inviteId ? res.data!.invite : i)));
+      setInviteResult({ ok: true, message: "Label saved" });
+    } else {
+      setInviteResult({ ok: false, message: res.error ?? "Save failed" });
+    }
+  }
+
+  function formatDate(value?: string | null) {
+    if (!value) return "—";
+    try {
+      return new Date(value).toLocaleString();
+    } catch {
+      return value;
+    }
+  }
+
+  function buildInviteLink(inviteId: number) {
+    const token = inviteTokens[inviteId];
+    const pathToken = token ?? String(inviteId);
+    return `${window.location.origin}/invites/${pathToken}`;
+  }
+
+  function copyLink(inviteId: number) {
+    const link = buildInviteLink(inviteId);
+    void navigator.clipboard?.writeText(link);
+    setInviteResult({ ok: true, message: "Link copied" });
+  }
+
+  if (loading) {
+    return <PageLoader label="Loading season..." />;
+  }
+  if (error) {
+    return (
+      <section className="card">
+        <header>
+          <h2>Season {id}</h2>
+          <p className="muted">Could not load season data.</p>
+        </header>
+        <div className="status status-error">{error}</div>
+      </section>
+    );
+  }
+
+  const seasonStatus = leagueContext?.season?.status ?? "UNKNOWN";
+  const scoringStrategy = leagueContext?.season?.scoring_strategy_name ?? "fixed";
+  const availableLeagueMembers =
+    leagueContext?.leagueMembers?.filter(
+      (m) => !members.some((sm) => sm.user_id === m.user_id)
+    ) ?? [];
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Season {id}</h2>
+          <p className="muted">
+            {leagueContext?.league?.name
+              ? `League ${leagueContext.league.name} • Ceremony ${leagueContext.league.ceremony_id}`
+              : "Season participants and invites"}
+          </p>
+        </div>
+        <div className="pill-list">
+          <span className="pill">Status: {seasonStatus}</span>
+          <span className="pill">Scoring: {scoringStrategy}</span>
+        </div>
+      </header>
+
+      <div className="grid two-col">
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Participants</h3>
+              <p className="muted">Season roster (league members only).</p>
+            </div>
+          </header>
+          {members.length === 0 ? (
+            <p className="muted">No participants yet.</p>
+          ) : (
+            <ul className="list">
+              {members.map((m) => {
+                const leagueProfile = leagueContext?.leagueMembers?.find(
+                  (lm) => lm.user_id === m.user_id
+                );
+                return (
+                  <li key={m.user_id} className="list-row">
+                    <span>
+                      {leagueProfile?.display_name ?? `User ${m.user_id}`}{" "}
+                      <span className="muted">({leagueProfile?.handle ?? "—"})</span>
+                    </span>
+                    <span className="pill">{m.role}</span>
+                    {canEdit && m.role !== "OWNER" && (
+                      <button
+                        type="button"
+                        className="ghost"
+                        disabled={working}
+                        onClick={() => removeMember(m.user_id)}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {canEdit && (
+            <>
+              <div className="inline-actions">
+                <select
+                  value={selectedLeagueMember}
+                  onChange={(e) => setSelectedLeagueMember(e.target.value)}
+                  aria-label="Select league member"
+                >
+                  <option value="">Add league member...</option>
+                  {availableLeagueMembers.map((lm) => (
+                    <option key={lm.user_id} value={lm.user_id}>
+                      {lm.display_name} ({lm.handle})
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={addMember} disabled={working}>
+                  Add to season
+                </button>
+              </div>
+              <FormStatus loading={working} result={addMemberResult} />
+            </>
+          )}
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Commissioner Controls</h3>
+              <p className="muted">Scoring + invites. Draft must be pending.</p>
+            </div>
+          </header>
+          <div className="stack">
+            <div>
+              <label className="field">
+                <span>Scoring strategy</span>
+                <select
+                  value={scoringStrategy}
+                  disabled={!canEdit || working}
+                  onChange={(e) => updateScoring(e.target.value)}
+                >
+                  <option value="fixed">Fixed</option>
+                  <option value="negative">Negative</option>
+                </select>
+              </label>
+              <FormStatus loading={working} result={scoringState} />
+            </div>
+
+            <div className="inline-form">
+              <label className="field">
+                <span>User ID to invite</span>
+                <input
+                  name="user_id"
+                  type="number"
+                  value={userInviteQuery}
+                  onChange={(e) => setUserInviteQuery(e.target.value)}
+                  disabled={!canEdit || working}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={createUserInvite}
+                disabled={!canEdit || working}
+              >
+                Invite user (targeted)
+              </button>
+            </div>
+            <FormStatus loading={working} result={userInviteResult} />
+
+            <div className="inline-form">
+              <label className="field">
+                <span>Placeholder label (optional)</span>
+                <input
+                  name="label"
+                  type="text"
+                  value={placeholderLabel}
+                  onChange={(e) => setPlaceholderLabel(e.target.value)}
+                  disabled={!canEdit || working}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={createPlaceholderInvite}
+                disabled={!canEdit || working}
+              >
+                Generate claim link
+              </button>
+            </div>
+            <FormStatus loading={working} result={inviteResult} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card nested">
+        <header className="header-with-controls">
+          <div>
+            <h3>Invites</h3>
+            <p className="muted">
+              Placeholder links + statuses. Regenerate to refresh tokens; copy from the
+              rows.
+            </p>
+          </div>
+        </header>
+        {invites.length === 0 ? (
+          <p className="muted">No invites yet.</p>
+        ) : (
+          <div className="invite-table">
+            {invites.map((invite) => (
+              <div key={invite.id} className="list-row">
+                <div>
+                  <div className="pill-list">
+                    <span className="pill">#{invite.id}</span>
+                    <span className="pill">{invite.kind}</span>
+                    <span className="pill">{invite.status}</span>
+                  </div>
+                  <p className="muted">
+                    Created {formatDate(invite.created_at)} • Claimed{" "}
+                    {formatDate(invite.claimed_at)}
+                  </p>
+                  <input
+                    className="inline-input"
+                    type="text"
+                    aria-label="Invite label"
+                    value={labelDrafts[invite.id] ?? invite.label ?? ""}
+                    disabled={!canEdit || working || invite.status !== "PENDING"}
+                    onChange={(e) =>
+                      setLabelDrafts((prev) => ({ ...prev, [invite.id]: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="pill-actions">
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={!inviteTokens[invite.id]}
+                    onClick={() => copyLink(invite.id)}
+                  >
+                    Copy link
+                  </button>
+                  {canEdit && invite.status === "PENDING" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => saveInviteLabel(invite.id)}
+                        disabled={working}
+                      >
+                        Save label
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => revokeInvite(invite.id)}
+                        disabled={working}
+                      >
+                        Revoke
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => regenerateInvite(invite.id)}
+                        disabled={working}
+                      >
+                        Regenerate
+                      </button>
+                    </>
+                  )}
+                </div>
+                {inviteTokens[invite.id] && (
+                  <small className="muted">Share: {buildInviteLink(invite.id)}</small>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function InviteClaimPage() {
+  const { token } = useParams();
+  const [result, setResult] = useState<ApiResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  function mapInviteError(code?: string, fallback?: string) {
+    switch (code) {
+      case "SEASON_CANCELLED":
+        return "This season was cancelled. Invites can’t be claimed.";
+      case "INVITE_REVOKED":
+        return "This invite was revoked. Ask the commissioner for a new link.";
+      case "INVITE_NOT_FOUND":
+        return "Invite not found or already claimed.";
+      default:
+        return fallback ?? "Invite is invalid or expired";
+    }
+  }
+
+  async function accept() {
+    if (!token) {
+      setResult({ ok: false, message: "Invalid invite link" });
+      return;
+    }
+    setLoading(true);
+    const res = await fetchJson<{ invite?: { season_id?: number } }>(
+      `/seasons/invites/${token}/accept`,
+      { method: "POST" }
+    );
+    setLoading(false);
+    if (!res.ok) {
+      setResult({
+        ok: false,
+        message: mapInviteError(res.errorCode, res.error)
+      });
+      return;
+    }
+    setResult({ ok: true, message: "Invite accepted" });
+    const nextSeasonId = res.data?.invite?.season_id;
+    if (nextSeasonId) navigate(`/seasons/${nextSeasonId}`, { replace: true });
+    else navigate("/leagues", { replace: true });
+  }
+
+  async function decline() {
+    if (!token) {
+      setResult({ ok: false, message: "Invalid invite link" });
+      return;
+    }
+    setLoading(true);
+    const res = await fetchJson(`/seasons/invites/${token}/decline`, {
+      method: "POST"
+    });
+    setLoading(false);
+    setResult({
+      ok: res.ok,
+      message: res.ok ? "Invite declined" : (res.error ?? "Decline failed")
+    });
+  }
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Invite</h2>
+          <p>Claim a league invite.</p>
+        </div>
+      </header>
+      <div className="stack">
+        <p className="muted">
+          You’ve been invited to join a league. Accept to join the season roster.
+        </p>
+        <div className="inline-actions">
+          <button type="button" onClick={accept} disabled={loading}>
+            {loading ? "Working..." : "Accept invite"}
+          </button>
+          <button type="button" className="ghost" onClick={decline} disabled={loading}>
+            Decline
+          </button>
+        </div>
+        <small className="muted">Invite: {token}</small>
+        <FormStatus loading={loading} result={result} />
+      </div>
+    </section>
+  );
+}
+
+function InvitesInboxPage() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invites, setInvites] = useState<InboxInvite[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      const res = await fetchJson<{ invites: InboxInvite[] }>("/seasons/invites/inbox", {
+        method: "GET"
+      });
+      if (!res.ok) {
+        if (!cancelled) {
+          setError(res.error ?? "Could not load invites");
+          setLoading(false);
+        }
+        return;
+      }
+      if (!cancelled) {
+        setInvites(res.data?.invites ?? []);
+        setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function accept(invite: InboxInvite) {
+    const res = await fetchJson<{ invite?: SeasonInvite }>(
+      `/seasons/invites/${invite.id}/accept`,
+      { method: "POST" }
+    );
+    if (!res.ok) {
+      setError(res.error ?? "Unable to accept invite");
+      return;
+    }
+    setInvites((prev) => prev.filter((i) => i.id !== invite.id));
+
+    // Try to navigate to season if extant; otherwise league fallback.
+    if (invite.league_id) {
+      const seasonsRes = await fetchJson<{ seasons: SeasonMeta[] }>(
+        `/leagues/${invite.league_id}/seasons`,
+        { method: "GET" }
+      );
+      if (seasonsRes.ok) {
+        const seasonMeta = (seasonsRes.data?.seasons ?? []).find(
+          (s) => s.id === invite.season_id
+        );
+        if (seasonMeta && seasonMeta.status === "EXTANT") {
+          navigate(`/seasons/${invite.season_id}`, { replace: true });
+          return;
+        }
+      }
+      navigate(`/leagues/${invite.league_id}`, { replace: true });
+      return;
+    }
+    navigate("/leagues", { replace: true });
+  }
+
+  async function decline(invite: InboxInvite) {
+    const res = await fetchJson(`/seasons/invites/${invite.id}/decline`, {
+      method: "POST"
+    });
+    if (!res.ok) {
+      setError(res.error ?? "Unable to decline invite");
+      return;
+    }
+    setInvites((prev) => prev.filter((i) => i.id !== invite.id));
+  }
+
+  if (loading) return <PageLoader label="Loading invites..." />;
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Invites</h2>
+          <p className="muted">Accept or decline season invites sent to you.</p>
+        </div>
+      </header>
+      {error && <div className="status status-error">{error}</div>}
+      {invites.length === 0 ? (
+        <p className="muted">No pending invites.</p>
+      ) : (
+        <div className="list">
+          {invites.map((invite) => (
+            <div key={invite.id} className="list-row">
+              <div>
+                <div className="pill-list">
+                  <span className="pill">#{invite.id}</span>
+                  {invite.league_name && (
+                    <span className="pill">{invite.league_name}</span>
+                  )}
+                  {invite.ceremony_id && (
+                    <span className="pill">Ceremony {invite.ceremony_id}</span>
+                  )}
+                </div>
+                <p className="muted">
+                  Season {invite.season_id} • {invite.kind}
+                </p>
+              </div>
+              <div className="pill-actions">
+                <button type="button" onClick={() => accept(invite)}>
+                  Accept
+                </button>
+                <button type="button" className="ghost" onClick={() => decline(invite)}>
+                  Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -666,7 +1790,11 @@ function mapPickError(code?: string, fallback?: string) {
   }
 }
 
-function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean }) {
+// Legacy harness kept for reference (not routed in skeleton mode).
+export function DraftRoom(props: {
+  initialDraftId?: string | number;
+  disabled?: boolean;
+}) {
   const { initialDraftId, disabled } = props;
   const [draftId, setDraftId] = useState(String(initialDraftId ?? "1"));
   const [loading, setLoading] = useState(false);
@@ -1089,11 +2217,128 @@ function DraftRoom(props: { initialDraftId?: string | number; disabled?: boolean
   );
 }
 
-function DraftRoomPage() {
-  const params = useParams();
-  return <DraftRoom initialDraftId={params.id} />;
-}
+function DraftRoomSkeleton() {
+  type DraftState =
+    | "loading"
+    | "not_found"
+    | "forbidden"
+    | "locked"
+    | "cancelled"
+    | "connected";
+  const [state, setState] = useState<DraftState>("loading");
 
+  function renderState() {
+    switch (state) {
+      case "loading":
+        return <PageLoader label="Loading draft..." />;
+      case "not_found":
+        return <PageError message="Draft not found for this league/season." />;
+      case "forbidden":
+        return <PageError message="You do not have access to this draft room." />;
+      case "locked":
+        return (
+          <div className="status status-error">
+            Draft is locked until ceremony winners are entered. Picks are disabled.
+          </div>
+        );
+      case "cancelled":
+        return (
+          <div className="status status-error">
+            This season was cancelled. Draft activity is closed.
+          </div>
+        );
+      case "connected":
+        return (
+          <div className="draft-grid">
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Seats</h3>
+                  <p className="muted">Draft order and active seat.</p>
+                </div>
+                <span className="pill">Connected</span>
+              </header>
+              <ul className="list">
+                {[1, 2, 3].map((seat) => (
+                  <li key={seat} className="list-row">
+                    <span className="pill">Seat {seat}</span>
+                    <span>Member {seat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Picks</h3>
+                  <p className="muted">Selections in order.</p>
+                </div>
+                <span className="pill">Paused</span>
+              </header>
+              <ol className="pick-list">
+                {[1, 2, 3].map((pick) => (
+                  <li key={pick}>Pick {pick}: TBD</li>
+                ))}
+              </ol>
+            </div>
+            <div className="card nested">
+              <header className="header-with-controls">
+                <div>
+                  <h3>Action</h3>
+                  <p className="muted">Primary draft action area.</p>
+                </div>
+                <div className="pill-list">
+                  <span className="pill">Connection: Connected</span>
+                  <span className="pill">State: Placeholder</span>
+                </div>
+              </header>
+              <p className="muted">
+                This is a placeholder for pick submission, clock, and controls to be wired
+                in follow-up tickets.
+              </p>
+              <div className="inline-actions">
+                <button type="button" className="ghost">
+                  Submit pick (disabled)
+                </button>
+                <button type="button" className="ghost">
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  }
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Draft Room</h2>
+          <p className="muted">Realtime draft UX skeleton with state matrix.</p>
+        </div>
+        <select
+          aria-label="Draft state"
+          value={state}
+          onChange={(e) => setState(e.target.value as DraftState)}
+        >
+          <option value="loading">Loading</option>
+          <option value="not_found">Not found</option>
+          <option value="forbidden">Forbidden</option>
+          <option value="locked">Locked</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="connected">Connected</option>
+        </select>
+      </header>
+      <div className="status status-info">
+        <span className="pill">Connection</span> Placeholder badge; will reflect socket
+        state.
+      </div>
+      <div className="status status-error">Paused banner placeholder (draft paused).</div>
+      {renderState()}
+    </section>
+  );
+}
 function ResultsPage() {
   return (
     <section className="card">
@@ -1167,6 +2412,13 @@ function HomePage() {
 }
 
 function RoutesConfig() {
+  /**
+   * IA note for leagues/seasons surfaces (FO-053 scaffold):
+   * - /leagues: entry list with creation/join CTAs and empty/error/loading/forbidden matrix
+   * - /leagues/:id: league shell with seasons list, gating card, commissioner-only section
+   * - /seasons/:id: season view shell (standings + schedule placeholders)
+   * - /invites/:token: invite claim landing page
+   */
   return (
     <Routes>
       <Route element={<ShellLayout />}>
@@ -1220,10 +2472,34 @@ function RoutesConfig() {
           }
         />
         <Route
+          path="/seasons/:id"
+          element={
+            <RequireAuth>
+              <SeasonPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/invites/:token"
+          element={
+            <RequireAuth>
+              <InviteClaimPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/invites"
+          element={
+            <RequireAuth>
+              <InvitesInboxPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/drafts/:id"
           element={
             <RequireAuth>
-              <DraftRoomPage />
+              <DraftRoomSkeleton />
             </RequireAuth>
           }
         />
