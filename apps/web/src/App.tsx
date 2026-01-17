@@ -763,6 +763,10 @@ function LeagueDetailPage() {
   const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
   const [roster, setRoster] = useState<LeagueMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthContext();
+  const [working, setWorking] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<string>("");
+  const [rosterStatus, setRosterStatus] = useState<ApiResult | null>(null);
 
   const loadDetail = useCallback(async () => {
     if (Number.isNaN(leagueId)) {
@@ -820,6 +824,63 @@ function LeagueDetailPage() {
     );
   }
 
+  const isCommissioner =
+    !!user &&
+    roster?.some(
+      (m) =>
+        m.user_id === Number(user.sub) && (m.role === "OWNER" || m.role === "CO_OWNER")
+    );
+  const isOwner =
+    !!user && roster?.some((m) => m.user_id === Number(user.sub) && m.role === "OWNER");
+
+  async function copyInvite() {
+    if (!league) return;
+    const link = `${window.location.origin}/leagues/${league.id}`;
+    const text = `League invite code: ${league.code}\nLink: ${link}`;
+    await navigator.clipboard?.writeText(text);
+    setRosterStatus({ ok: true, message: "Invite copied" });
+  }
+
+  async function transferOwnership() {
+    if (!transferTarget || !league) return;
+    const targetId = Number(transferTarget);
+    if (Number.isNaN(targetId)) return;
+    if (!window.confirm("Transfer commissioner role to this member?")) return;
+    setWorking(true);
+    setRosterStatus(null);
+    const res = await fetchJson(`/leagues/${league.id}/transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: targetId })
+    });
+    setWorking(false);
+    if (res.ok) {
+      setRosterStatus({ ok: true, message: "Commissioner role transferred" });
+      await loadDetail();
+      setTransferTarget("");
+    } else {
+      setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
+    }
+  }
+
+  async function removeMember(userId: number, role: string) {
+    if (!league) return;
+    if (role === "OWNER") return;
+    if (!window.confirm("Remove this member from the league?")) return;
+    setWorking(true);
+    setRosterStatus(null);
+    const res = await fetchJson(`/leagues/${league.id}/members/${userId}`, {
+      method: "DELETE"
+    });
+    setWorking(false);
+    if (res.ok) {
+      setRoster((prev) => (prev ? prev.filter((m) => m.user_id !== userId) : prev));
+      setRosterStatus({ ok: true, message: "Member removed" });
+    } else {
+      setRosterStatus({ ok: false, message: res.error ?? "Remove failed" });
+    }
+  }
+
   return (
     <section className="card">
       <header className="header-with-controls">
@@ -847,11 +908,65 @@ function LeagueDetailPage() {
               <li key={m.id} className="list-row">
                 <span>{m.display_name || m.handle}</span>
                 <span className="pill">{m.role}</span>
+                {isCommissioner && m.role !== "OWNER" && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => removeMember(m.user_id, m.role)}
+                    disabled={working}
+                  >
+                    Remove
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
+        {isCommissioner && (
+          <div className="inline-actions" style={{ marginTop: 12 }}>
+            <button type="button" onClick={copyInvite}>
+              Copy invite
+            </button>
+            <FormStatus loading={working} result={rosterStatus} />
+          </div>
+        )}
       </div>
+
+      {isCommissioner && (
+        <div className="card nested" style={{ marginTop: 16 }}>
+          <header>
+            <h3>Commissioner Controls</h3>
+            <p className="muted">
+              Transfer commissioner role or remove members. Owner only for transfer.
+            </p>
+          </header>
+          <div className="inline-actions">
+            <select
+              aria-label="Transfer to member"
+              value={transferTarget}
+              onChange={(e) => setTransferTarget(e.target.value)}
+              disabled={!isOwner || working}
+            >
+              <option value="">Transfer to...</option>
+              {roster
+                ?.filter((m) => m.user_id !== Number(user?.sub))
+                .map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.display_name || m.handle} ({m.role})
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              onClick={transferOwnership}
+              disabled={!isOwner || working || !transferTarget}
+            >
+              Transfer commissioner
+            </button>
+          </div>
+          <FormStatus loading={working} result={rosterStatus} />
+        </div>
+      )}
 
       <div className="card nested" style={{ marginTop: 16 }}>
         <header>
