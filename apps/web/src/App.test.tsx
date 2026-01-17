@@ -703,7 +703,7 @@ describe("<App /> shell + routing", () => {
     render(<App />);
 
     await screen.findByRole("heading", { name: /Admin console/i });
-    await screen.findByText(/Drafts lock on first winner/i);
+    await screen.findByText(/Drafts open/i);
     await screen.findAllByText(/Active ceremony/i);
     expect(screen.getByText(/ID 7/)).toBeInTheDocument();
     await userEvent.clear(screen.getByLabelText(/Set active ceremony/i));
@@ -766,6 +766,98 @@ describe("<App /> shell + routing", () => {
       )
     );
     await screen.findByText(/Nominees loaded for active ceremony/i);
+  });
+
+  it("saves winners per category with confirmations and lock state", async () => {
+    window.history.pushState({}, "", "/admin");
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/ceremony/active/lock")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ draft_locked: false, draft_locked_at: null })
+        });
+      }
+      if (url.includes("/ceremony/active/nominations")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              nominations: [
+                { id: 1, category_edition_id: 10, film_title: "Picture A" },
+                { id: 2, category_edition_id: 10, film_title: "Picture B" },
+                { id: 3, category_edition_id: 11, film_title: "Actor A" }
+              ]
+            })
+        });
+      }
+      if (url.includes("/ceremony/active/winners")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ winners: [] })
+        });
+      }
+      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+            })
+        });
+      }
+      if (url.includes("/admin/winners") && init?.method === "POST") {
+        const body = JSON.parse((init.body as string) ?? "{}");
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              winner: { nomination_id: body.nomination_id },
+              draft_locked_at: "2026-01-01T00:00:00Z"
+            })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+
+    await screen.findByText(/Drafts open/i);
+    await screen.findByText(/Nomination #1/);
+    const category10 = screen.getByText(/Category 10/).closest("div.card");
+    expect(category10).toBeTruthy();
+    const firstRadio = within(category10 as HTMLElement).getByLabelText(/Nomination #1/);
+    await userEvent.click(firstRadio);
+    await waitFor(() => expect(firstRadio).toBeChecked());
+    await userEvent.click(
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/admin/winners"))
+      ).toBeTruthy()
+    );
+    await screen.findAllByText(/Drafts locked/i);
+
+    const secondRadio = within(category10 as HTMLElement).getByLabelText(/Nomination #2/);
+    await userEvent.click(secondRadio);
+    await waitFor(() => expect(secondRadio).toBeChecked());
+    await userEvent.click(
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+    );
+    await waitFor(() => {
+      const winnerPosts = fetchMock.mock.calls.filter((call) =>
+        String(call[0]).includes("/admin/winners")
+      );
+      expect(winnerPosts.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {

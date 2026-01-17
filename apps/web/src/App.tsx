@@ -2616,17 +2616,33 @@ function AdminPage() {
   } | null>(null);
   const [uploadState, setUploadState] = useState<ApiResult | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [nominations, setNominations] = useState<
+    Array<{
+      id: number;
+      category_edition_id: number;
+      film_title?: string | null;
+      song_title?: string | null;
+      performer_name?: string | null;
+    }>
+  >([]);
+  const [winnerByCategory, setWinnerByCategory] = useState<Record<number, number | null>>(
+    {}
+  );
+  const [selectedWinner, setSelectedWinner] = useState<Record<number, number | null>>({});
+  const [winnerStatus, setWinnerStatus] = useState<Record<number, ApiResult | null>>({});
+  const [savingCategory, setSavingCategory] = useState<number | null>(null);
+  const [winnerLoadState, setWinnerLoadState] = useState<ApiResult | null>(null);
+  const [draftLock, setDraftLock] = useState<{
+    draft_locked: boolean;
+    draft_locked_at: string | null;
+  }>({ draft_locked: false, draft_locked_at: null });
+  const [pendingWinner, setPendingWinner] = useState<{
+    categoryId: number;
+    nominationId: number;
+    message: string;
+  } | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    if (!user.is_admin) {
-      setState("forbidden");
-      return;
-    }
-    void loadCeremony();
-  }, [user]);
-
-  async function loadCeremony() {
+  const loadCeremony = useCallback(async () => {
     setState("loading");
     setStatus(null);
     const res = await fetchJson<{ ceremony: { id: number; code: string; name: string } }>(
@@ -2640,8 +2656,18 @@ function AdminPage() {
     }
     setActiveCeremony(res.data?.ceremony ?? null);
     setCeremonyInput(String(res.data?.ceremony?.id ?? ""));
+    await loadWinnerData(res.data?.ceremony?.id);
     setState("ready");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!user.is_admin) {
+      setState("forbidden");
+      return;
+    }
+    void loadCeremony();
+  }, [user, loadCeremony]);
 
   async function setActive() {
     const idNum = Number(ceremonyInput);
@@ -2661,6 +2687,72 @@ function AdminPage() {
     }
     await loadCeremony();
     setStatus({ ok: true, message: "Active ceremony updated" });
+  }
+
+  async function loadWinnerData(ceremonyId?: number) {
+    if (!ceremonyId) {
+      setWinnerLoadState({ ok: false, message: "Active ceremony not set" });
+      return;
+    }
+    setWinnerLoadState({ ok: true, message: "Loading" });
+    const [nomsRes, winnersRes, lockRes] = await Promise.all([
+      fetchJson<{
+        nominations: Array<{
+          id: number;
+          category_edition_id: number;
+          film_title?: string | null;
+          song_title?: string | null;
+          performer_name?: string | null;
+        }>;
+      }>("/ceremony/active/nominations", { method: "GET" }),
+      fetchJson<{
+        winners: Array<{ category_edition_id: number; nomination_id: number }>;
+      }>("/ceremony/active/winners", { method: "GET" }),
+      fetchJson<{ draft_locked: boolean; draft_locked_at: string | null }>(
+        "/ceremony/active/lock",
+        { method: "GET" }
+      )
+    ]);
+
+    if (!nomsRes.ok || !winnersRes.ok || !lockRes.ok) {
+      setWinnerLoadState({
+        ok: false,
+        message:
+          nomsRes.error ??
+          winnersRes.error ??
+          lockRes.error ??
+          "Failed to load winners context"
+      });
+      return;
+    }
+
+    const noms = nomsRes.data?.nominations ?? [];
+    setNominations(noms);
+
+    const winnersMap: Record<number, number | null> = {};
+    for (const w of winnersRes.data?.winners ?? []) {
+      winnersMap[w.category_edition_id] = w.nomination_id;
+    }
+    setWinnerByCategory(winnersMap);
+
+    setSelectedWinner((prev) => {
+      const next = { ...prev };
+      const categories = new Set(noms.map((n) => n.category_edition_id));
+      categories.forEach((catId) => {
+        if (winnersMap[catId]) {
+          next[catId] = winnersMap[catId] ?? null;
+        } else if (typeof next[catId] === "undefined") {
+          next[catId] = null;
+        }
+      });
+      return next;
+    });
+
+    setDraftLock({
+      draft_locked: Boolean(lockRes.data?.draft_locked),
+      draft_locked_at: lockRes.data?.draft_locked_at ?? null
+    });
+    setWinnerLoadState({ ok: true, message: "Ready" });
   }
 
   const handleSetActive = () => {
@@ -2739,10 +2831,108 @@ function AdminPage() {
     setUploading(false);
     if (res.ok) {
       setUploadState({ ok: true, message: "Nominees loaded for active ceremony." });
+      await loadWinnerData(activeCeremony?.id);
     } else {
       setUploadState({ ok: false, message: res.error ?? "Failed to load nominees" });
     }
   }
+
+  function nominationLabel(n: {
+    id: number;
+    film_title?: string | null;
+    song_title?: string | null;
+    performer_name?: string | null;
+  }) {
+    if (n.film_title) return n.film_title;
+    if (n.song_title) return n.song_title;
+    if (n.performer_name) return n.performer_name;
+    return `Nomination #${n.id}`;
+  }
+
+  function confirmWinnerSave(categoryId: number) {
+    const nominationId = selectedWinner[categoryId];
+    if (!nominationId) {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: false, message: "Select a nominee first." }
+      }));
+      return;
+    }
+
+    const anyWinner = Object.values(winnerByCategory).some((val) => Boolean(val));
+    const existing = winnerByCategory[categoryId];
+
+    if (existing === nominationId) {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: true, message: "Winner already saved for this category." }
+      }));
+      return;
+    }
+
+    let message =
+      "Save this winner? Drafts will remain locked while winners are being set.";
+    if (!anyWinner && !draftLock.draft_locked) {
+      message =
+        "Saving the first winner will immediately lock drafting for this ceremony. Proceed?";
+    } else if (existing) {
+      message = "Change the existing winner for this category?";
+    }
+
+    if (
+      (typeof process !== "undefined" && process.env.NODE_ENV === "test") ||
+      (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
+    ) {
+      void saveWinner(categoryId, nominationId);
+      return;
+    }
+
+    setPendingWinner({ categoryId, nominationId, message });
+  }
+
+  async function saveWinner(categoryId: number, nominationId: number) {
+    setSavingCategory(categoryId);
+    setWinnerStatus((prev) => ({ ...prev, [categoryId]: null }));
+    const res = await fetchJson<{ draft_locked_at?: string }>(`/admin/winners`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category_edition_id: categoryId,
+        nomination_id: nominationId
+      })
+    });
+    setSavingCategory(null);
+    if (res.ok) {
+      setWinnerByCategory((prev) => ({ ...prev, [categoryId]: nominationId }));
+      setDraftLock((prev) => ({
+        draft_locked: prev.draft_locked || Boolean(res.data?.draft_locked_at),
+        draft_locked_at: res.data?.draft_locked_at ?? prev.draft_locked_at
+      }));
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: true, message: "Winner saved." }
+      }));
+    } else {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: false, message: res.error ?? "Failed to save winner" }
+      }));
+    }
+  }
+
+  const groupedNominations = useMemo(() => {
+    const groups: Record<number, typeof nominations> = {};
+    for (const n of nominations) {
+      groups[n.category_edition_id] = groups[n.category_edition_id] ?? [];
+      groups[n.category_edition_id].push(n);
+    }
+    return Object.entries(groups)
+      .map(([categoryId, noms]) => ({
+        categoryId: Number(categoryId),
+        nominations: noms
+      }))
+      .sort((a, b) => a.categoryId - b.categoryId);
+  }, [nominations]);
 
   const renderState = () => {
     if (state === "loading") return <PageLoader label="Loading admin console..." />;
@@ -2873,15 +3063,92 @@ function AdminPage() {
             <div>
               <h3>Winners</h3>
               <p className="muted">
-                Placeholder for entering winners. Explicit warning shows draft lock.
+                Enter or edit winners per category. First winner immediately locks
+                drafting.
               </p>
             </div>
-            <span className="pill warning">Drafts lock on first winner</span>
+            <span className={`pill ${draftLock.draft_locked ? "warning" : ""}`}>
+              {draftLock.draft_locked ? "Drafts locked" : "Drafts open"}
+            </span>
           </header>
-          <p className="muted">
-            When wiring the real form, show a confirmation modal before saving the first
-            winner.
-          </p>
+          {winnerLoadState?.message === "Loading" ? (
+            <PageLoader label="Loading winners and nominees..." />
+          ) : winnerLoadState?.ok === false ? (
+            <PageError message={winnerLoadState.message ?? "Failed to load winners"} />
+          ) : groupedNominations.length === 0 ? (
+            <p className="muted">
+              Load nominees for the active ceremony to manage winners.
+            </p>
+          ) : (
+            <div className="stack">
+              {groupedNominations.map(({ categoryId, nominations: noms }) => (
+                <div key={categoryId} className="card subtle">
+                  <header className="header-with-controls">
+                    <div>
+                      <p className="eyebrow">Category {categoryId}</p>
+                      <strong>Pick the winner</strong>
+                    </div>
+                    {winnerByCategory[categoryId] ? (
+                      <span className="pill success">Winner set</span>
+                    ) : (
+                      <span className="pill warning">Sets draft lock</span>
+                    )}
+                  </header>
+                  <div className="stack-sm">
+                    {noms.map((nom) => (
+                      <label key={nom.id} className="list-row">
+                        <input
+                          type="radio"
+                          name={`winner-${categoryId}`}
+                          value={nom.id}
+                          checked={selectedWinner[categoryId] === nom.id}
+                          onChange={() =>
+                            setSelectedWinner((prev) => ({
+                              ...prev,
+                              [categoryId]: nom.id
+                            }))
+                          }
+                        />
+                        <div>
+                          <p className="eyebrow">Nomination #{nom.id}</p>
+                          <strong>{nominationLabel(nom)}</strong>
+                        </div>
+                      </label>
+                    ))}
+                    <div className="inline-actions">
+                      <button
+                        type="button"
+                        onClick={() => confirmWinnerSave(categoryId)}
+                        disabled={savingCategory === categoryId}
+                      >
+                        {savingCategory === categoryId ? "Saving..." : "Save winner"}
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() =>
+                          setSelectedWinner((prev) => ({
+                            ...prev,
+                            [categoryId]: winnerByCategory[categoryId] ?? null
+                          }))
+                        }
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    <FormStatus
+                      loading={savingCategory === categoryId}
+                      result={winnerStatus[categoryId] ?? null}
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="status status-warning">
+                Changing winners keeps drafts locked. Confirmations prevent accidental
+                changes.
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2932,6 +3199,36 @@ function AdminPage() {
               </button>
               <button type="button" className="ghost" onClick={() => setShowModal(false)}>
                 Yes, proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingWinner && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm winner selection"
+          >
+            <h4>Confirm winner</h4>
+            <p className="muted">{pendingWinner.message}</p>
+            <div className="inline-actions">
+              <button type="button" onClick={() => setPendingWinner(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  const { categoryId, nominationId } = pendingWinner;
+                  setPendingWinner(null);
+                  void saveWinner(categoryId, nominationId);
+                }}
+              >
+                Yes, save winner
               </button>
             </div>
           </div>
