@@ -8,6 +8,29 @@ Purpose: quick reference for deploying, rolling back, validating health, and bas
 - Frontend: <https://fantasy-oscars.onrender.com>
 - Health: <https://fantasy-oscars-api-prod.onrender.com/health>
 
+## Password Reset Email (prod)
+
+### Required env vars (API)
+
+- `RESET_EMAIL_SMTP_HOST`
+- `RESET_EMAIL_SMTP_PORT` (e.g., 587)
+- `RESET_EMAIL_SMTP_USER`
+- `RESET_EMAIL_SMTP_PASS`
+- `RESET_EMAIL_FROM` (e.g., "Fantasy Oscars <no-reply@yourdomain.com>")
+- `RESET_APP_BASE_URL` (e.g., `https://fantasy-oscars.onrender.com`)
+- Optional: `RESET_EMAIL_SMTP_SECURE=false` for STARTTLS ports (587). Default `true`.
+
+### Smoke test (one-off)
+
+1. Trigger a reset in prod: `curl -X POST https://fantasy-oscars-api-prod.onrender.com/auth/reset-request -H 'Content-Type: application/json' -d '{"email":"<known-prod-email>"}'`
+2. Confirm API response `{"ok":true,"delivery":"email"}`.
+3. Verify the mailbox receives an email with a link like `https://fantasy-oscars.onrender.com/reset/confirm?token=...`.
+4. (Optional) Complete the reset with the link to ensure token consumption works end-to-end.
+
+### Fallback mode
+
+- If email is unavailable, set frontend env `VITE_RESET_MODE=manual` and follow `docs/runbooks/password-reset-manual.md`.
+
 ## Deploy
 
 ### Backend (API, Render Web Service)

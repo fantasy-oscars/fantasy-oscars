@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
 import { signToken } from "../auth/token.js";
+import { loadResetEmailConfig, sendPasswordResetEmail } from "../email/resetEmail.js";
 import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -283,6 +284,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       );
 
       if (isProd) {
+        const emailCfg = loadResetEmailConfig();
+        await sendPasswordResetEmail(emailCfg, { to: normalizedEmail, token: rawToken });
         return res.status(200).json({ ok: true, delivery: "email" });
       }
 
