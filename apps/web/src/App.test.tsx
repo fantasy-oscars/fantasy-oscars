@@ -497,9 +497,8 @@ describe("<App /> shell + routing", () => {
     await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
   });
 
-  it("renders draft snapshot and start action", async () => {
+  it("loads realtime draft room snapshot and shows status", async () => {
     window.history.pushState({}, "", "/drafts/1");
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -507,7 +506,7 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
         });
       }
-      if (url.includes("/drafts/1/snapshot")) {
+      if (url.includes("/drafts/1/snapshot") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -517,80 +516,35 @@ describe("<App /> shell + routing", () => {
                 league_id: 10,
                 status: "PENDING",
                 draft_order_type: "snake",
-                current_pick_number: null,
+                current_pick_number: 1,
                 started_at: null,
                 completed_at: null,
-                version: 1
+                version: 2
               },
               seats: [
-                { seat_number: 1, league_member_id: 100 },
-                { seat_number: 2, league_member_id: 200 }
+                { id: 1, seat_number: 1, league_member_id: 100 },
+                { id: 2, seat_number: 2, league_member_id: 200 }
               ],
               picks: [],
-              version: 1
+              config: { roster_size: 3 },
+              version: 2
             })
         });
-      }
-      if (url.includes("/ceremony/active/nominations")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              nominations: [
-                {
-                  id: 1,
-                  category_edition_id: 1,
-                  film_id: 1,
-                  song_id: null,
-                  performance_id: null,
-                  film_title: "Film A",
-                  song_title: null,
-                  performer_name: null
-                },
-                {
-                  id: 2,
-                  category_edition_id: 1,
-                  film_id: 2,
-                  song_id: null,
-                  performance_id: null,
-                  film_title: "Film B",
-                  song_title: null,
-                  performer_name: null
-                }
-              ]
-            })
-        });
-      }
-      if (url.includes("/drafts/1/start") && init?.method === "POST") {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
-      }
-      if (url.includes("/drafts/1/picks") && init?.method === "POST") {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    await screen.findByRole("heading", { name: /Draft Room/i });
-    await screen.findByText(/Seats/);
-    await screen.findByText(/Seat 1/);
 
-    await userEvent.click(screen.getByRole("button", { name: /Start draft/i }));
-    expect(confirmSpy).toHaveBeenCalled();
+    await screen.findByRole("heading", { name: /Draft Room/i });
+    await screen.findByText(/Draft #1/i);
+    await screen.findByText(/Status: PENDING/i);
+    expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/drafts/1/start"),
-      expect.objectContaining({ method: "POST" })
+      expect.stringContaining("/drafts/1/snapshot"),
+      expect.objectContaining({ method: "GET" })
     );
-    // submit pick
-    const select = screen.getByLabelText(/Nomination/i);
-    await userEvent.selectOptions(select, "1");
-    await userEvent.click(screen.getByRole("button", { name: /Submit pick/i }));
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/drafts/1/picks"),
-      expect.objectContaining({ method: "POST" })
-    );
-    confirmSpy.mockRestore();
   });
 
   it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {

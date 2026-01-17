@@ -113,16 +113,6 @@ type InboxInvite = SeasonInvite & {
   league_name: string | null;
   ceremony_id: number | null;
 };
-type Nomination = {
-  id: number;
-  category_edition_id: number;
-  film_id: number | null;
-  song_id: number | null;
-  performance_id: number | null;
-  film_title: string | null;
-  song_title: string | null;
-  performer_name: string | null;
-};
 type SeasonMeta = {
   id: number;
   ceremony_id: number;
@@ -1826,6 +1816,12 @@ export function DraftRoom(props: {
   const [resyncing, setResyncing] = useState(false);
   const needsReconnectSyncRef = useRef(false);
 
+  useEffect(() => {
+    if (!snapshot && !loading && draftId) {
+      void loadSnapshot(draftId);
+    }
+  }, [draftId, loading, snapshot]);
+
   async function loadSnapshot(id: string, options?: { preserveSnapshot?: boolean }) {
     setLoading(true);
     setError(null);
@@ -1883,6 +1879,8 @@ export function DraftRoom(props: {
   const pickDisabledReason = useMemo(() => {
     if (disabled) return "Sign in to make picks.";
     if (!snapshot) return "Load a draft snapshot first.";
+    if (snapshot.draft.status === "PAUSED") return "Draft is paused.";
+    if (snapshot.draft.status === "CANCELLED") return "Season cancelled.";
     if (snapshot.draft.status !== "IN_PROGRESS") return "Draft is not in progress.";
     if (activeSeatNumber === null) return "Turn information unavailable.";
     if (mySeatNumber === null) return "You are not seated in this draft.";
@@ -1987,6 +1985,12 @@ export function DraftRoom(props: {
       const currentVersion = lastVersionRef.current;
       if (!current || currentVersion === null) return;
       if (event.draft_id !== current.draft.id) return;
+      if (event.event_type === "season.cancelled") {
+        setPickState({ ok: false, message: "Season cancelled. Draft closed." });
+        setSnapshot(null);
+        socket.disconnect();
+        return;
+      }
       if (event.version > currentVersion + 1) {
         setDesynced(true);
         setResyncing(true);
@@ -2229,263 +2233,9 @@ export function DraftRoom(props: {
 
 function DraftRoomPage() {
   const { id } = useParams();
-  const draftId = String(id ?? "1");
-  type DraftView =
-    | "loading"
-    | "not_found"
-    | "forbidden"
-    | "locked"
-    | "cancelled"
-    | "ready";
-  const [view, setView] = useState<DraftView>("loading");
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [working, setWorking] = useState(false);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
-  const [nominations, setNominations] = useState<Nomination[]>([]);
-  const [pickNominationId, setPickNominationId] = useState("");
-  const [pickState, setPickState] = useState<ApiResult | null>(null);
-  const [pickLoading, setPickLoading] = useState(false);
-
-  const loadSnapshot = useCallback(
-    async (options?: { preserveView?: boolean }) => {
-      if (!options?.preserveView) setView("loading");
-      setError(null);
-      const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
-        method: "GET"
-      });
-      if (!res.ok) {
-        const code = res.errorCode;
-        if (code === "FORBIDDEN") setView("forbidden");
-        else if (code === "DRAFT_LOCKED") setView("locked");
-        else if (code === "SEASON_CANCELLED") setView("not_found");
-        else setView("not_found");
-        setError(res.error ?? "Unable to load draft");
-        return;
-      }
-      setSnapshot(res.data ?? null);
-      setView("ready");
-      setLastSynced(new Date());
-    },
-    [draftId]
-  );
-
-  useEffect(() => {
-    void loadSnapshot();
-    void loadNominations();
-  }, [loadSnapshot]);
-
-  async function loadNominations() {
-    const res = await fetchJson<{ nominations: Nomination[] }>(
-      "/ceremony/active/nominations",
-      { method: "GET" }
-    );
-    if (res.ok) setNominations(res.data?.nominations ?? []);
-  }
-
-  async function startDraft() {
-    if (!window.confirm("Start draft? Unclaimed invites will be auto-revoked.")) return;
-    setWorking(true);
-    const res = await fetchJson(`/drafts/${draftId}/start`, { method: "POST" });
-    setWorking(false);
-    if (!res.ok) {
-      const code = res.errorCode;
-      if (code === "SEASON_CANCELLED") {
-        setView("not_found");
-        setError("Season cancelled; draft unavailable.");
-        return;
-      }
-      if (code === "DRAFT_LOCKED") setView("locked");
-      setError(res.error ?? "Could not start draft");
-      return;
-    }
-    await loadSnapshot({ preserveView: true });
-  }
-
-  async function submitPick() {
-    const nominationIdNum = Number(pickNominationId);
-    if (!Number.isFinite(nominationIdNum) || nominationIdNum <= 0) {
-      setPickState({ ok: false, message: "Enter a valid nomination id." });
-      return;
-    }
-    setPickLoading(true);
-    setPickState(null);
-    const res = await fetchJson(`/drafts/${draftId}/picks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nomination_id: nominationIdNum })
-    });
-    setPickLoading(false);
-    if (!res.ok) {
-      setPickState({ ok: false, message: mapPickError(res.errorCode, res.error) });
-      return;
-    }
-    setPickState({ ok: true, message: "Pick submitted" });
-    setPickNominationId("");
-    await loadSnapshot({ preserveView: true });
-  }
-
-  function renderState() {
-    switch (view) {
-      case "loading":
-        return <PageLoader label="Loading draft..." />;
-      case "not_found":
-        return <PageError message="Draft not found or unavailable." />;
-      case "forbidden":
-        return <PageError message="You do not have access to this draft room." />;
-      case "locked":
-        return (
-          <div className="status status-error">
-            Draft is locked after winners were entered. Picks are disabled.
-          </div>
-        );
-      case "cancelled":
-        return <PageError message="Season cancelled. Draft closed." />;
-      case "ready":
-      default: {
-        if (!snapshot) return <PageError message="Missing draft data." />;
-        const seats = snapshot.seats
-          .slice()
-          .sort((a, b) => a.seat_number - b.seat_number);
-        const picks = snapshot.picks
-          .slice()
-          .sort((a, b) => a.pick_number - b.pick_number);
-        const pickedNominationIds = new Set(picks.map((p) => p.nomination_id));
-        const availableNoms = nominations.filter((n) => !pickedNominationIds.has(n.id));
-        function nomLabel(n: Nomination) {
-          return n.film_title || n.song_title || n.performer_name || `Nomination ${n.id}`;
-        }
-        return (
-          <div className="draft-grid">
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Status</h3>
-                  <p className="muted">
-                    Draft is {snapshot.draft.status.toLowerCase()} • Current pick #
-                    {snapshot.draft.current_pick_number ?? "—"}
-                  </p>
-                </div>
-                <div className="pill-list">
-                  <span className="pill">Connection: snapshot</span>
-                  <span className="pill">Version: {snapshot.version}</span>
-                </div>
-              </header>
-              <div className="status status-info">Paused banner placeholder.</div>
-              <div className="inline-actions">
-                <button type="button" onClick={() => loadSnapshot()} disabled={working}>
-                  Refresh snapshot
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={startDraft}
-                  disabled={working}
-                >
-                  Start draft
-                </button>
-              </div>
-              {lastSynced && (
-                <small className="muted">
-                  Last synced: {lastSynced.toLocaleTimeString()}
-                </small>
-              )}
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Seats</h3>
-                  <p className="muted">Draft order and seat owners.</p>
-                </div>
-              </header>
-              <ul className="list">
-                {seats.map((seat) => (
-                  <li key={seat.seat_number} className="list-row">
-                    <span className="pill">Seat {seat.seat_number}</span>
-                    <span>Member {seat.league_member_id}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Picks</h3>
-                  <p className="muted">Selections made so far.</p>
-                </div>
-              </header>
-              {picks.length === 0 ? (
-                <p className="muted">No picks yet.</p>
-              ) : (
-                <ol className="pick-list">
-                  {picks.map((pick) => (
-                    <li key={pick.pick_number}>
-                      Pick {pick.pick_number}: nomination {pick.nomination_id} (seat{" "}
-                      {pick.seat_number})
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Make a pick</h3>
-                  <p className="muted">Select a nomination and submit.</p>
-                </div>
-              </header>
-              <div className="inline-actions">
-                <select
-                  aria-label="Nomination"
-                  value={pickNominationId}
-                  onChange={(e) => setPickNominationId(e.target.value)}
-                >
-                  <option value="">Choose nomination...</option>
-                  {availableNoms.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.id}: {nomLabel(n)}
-                    </option>
-                  ))}
-                  {availableNoms.length === 0 && (
-                    <option disabled value="none">
-                      All nominations picked
-                    </option>
-                  )}
-                </select>
-                <button type="button" onClick={submitPick} disabled={pickLoading}>
-                  {pickLoading ? "Submitting..." : "Submit pick"}
-                </button>
-              </div>
-              <FormStatus loading={pickLoading} result={pickState} />
-              {pickedNominationIds.size > 0 && (
-                <p className="muted">
-                  Picked already: {Array.from(pickedNominationIds).slice(0, 5).join(", ")}
-                  {pickedNominationIds.size > 5 ? "…" : ""}
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      }
-    }
-  }
-
-  return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Draft Room</h2>
-          <p className="muted">Snapshot view for draft status, seats, and picks.</p>
-        </div>
-        <div className="pill-list">
-          <span className="pill">State: {view}</span>
-        </div>
-      </header>
-      {error && <div className="status status-error">{error}</div>}
-      {renderState()}
-    </section>
-  );
+  return <DraftRoom initialDraftId={id} />;
 }
+
 function ResultsPage() {
   return (
     <section className="card">
