@@ -62,10 +62,22 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders protected page when authenticated", async () => {
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ leagues: [] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
 
@@ -142,10 +154,22 @@ describe("<App /> shell + routing", () => {
 
   it("navigates via nav links", async () => {
     window.history.pushState({}, "", "/leagues");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ leagues: [] })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
     render(<App />);
     await screen.findAllByText(/Signed in as alice/i);
 
@@ -196,6 +220,24 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ invite: { season_id: 99 } })
         });
       }
+      if (url.includes("/seasons/99/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ members: [] })
+        });
+      }
+      if (url.endsWith("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ leagues: [] })
+        });
+      }
+      if (url.includes("/seasons/99/invites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invites: [] })
+        });
+      }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -208,10 +250,90 @@ describe("<App /> shell + routing", () => {
 
   it("renders season and invite routes", async () => {
     window.history.pushState({}, "", "/seasons/2026");
-    mockFetchSequence({
-      ok: true,
-      json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+        });
+      }
+      if (url.includes("/seasons/2026/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [
+                {
+                  id: 1,
+                  season_id: 2026,
+                  user_id: 1,
+                  league_member_id: 10,
+                  role: "OWNER",
+                  joined_at: new Date().toISOString()
+                }
+              ]
+            })
+        });
+      }
+      if (url.endsWith("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              leagues: [{ id: 10, code: "alpha", name: "Alpha", ceremony_id: 1 }]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/seasons")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              seasons: [
+                {
+                  id: 2026,
+                  ceremony_id: 1,
+                  status: "EXTANT",
+                  scoring_strategy_name: "fixed",
+                  created_at: new Date().toISOString()
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [
+                {
+                  id: 10,
+                  league_id: 10,
+                  user_id: 1,
+                  role: "OWNER",
+                  handle: "alice",
+                  display_name: "Alice"
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/seasons/2026/invites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invites: [] })
+        });
+      }
+      if (url.includes("/seasons/invites/token123/accept")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invite: { season_id: 2026 } })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
     await screen.findByRole("heading", { name: /Season 2026/i });
