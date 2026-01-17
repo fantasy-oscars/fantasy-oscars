@@ -2322,13 +2322,147 @@ function DraftRoomPage() {
 }
 
 function ResultsPage() {
+  type ViewState = "loading" | "unavailable" | "error" | "ready";
+  const [state, setState] = useState<ViewState>("loading");
+
+  const sampleWinners = [
+    { category: "Best Picture", winner: "The Golden Path" },
+    { category: "Best Director", winner: "A. Rivera" },
+    { category: "Best Actor", winner: "Lee Donovan" },
+    { category: "Best Actress", winner: "Mara Chen" }
+  ];
+
+  const sampleStandings = [
+    { seat: 1, owner: "Alice", points: 42 },
+    { seat: 2, owner: "Bruno", points: 37 },
+    { seat: 3, owner: "Casey", points: 29 }
+  ];
+
+  const samplePicks = [
+    { seat: 1, pick: "#1 The Golden Path" },
+    { seat: 1, pick: "#4 Mara Chen" },
+    { seat: 2, pick: "#2 Silver Skies" },
+    { seat: 3, pick: "#3 A. Rivera" }
+  ];
+
+  function renderState() {
+    if (state === "loading") {
+      return (
+        <div className="status status-loading" role="status">
+          <span className="spinner" aria-hidden="true" /> Loading results…
+        </div>
+      );
+    }
+    if (state === "unavailable") {
+      return (
+        <div className="status status-warning" role="status">
+          Results are not available yet. Winners publish once the ceremony begins; drafts
+          lock as soon as the first winner is entered.
+        </div>
+      );
+    }
+    if (state === "error") {
+      return (
+        <div className="status status-error" role="status">
+          Could not load results right now. Try again shortly.
+        </div>
+      );
+    }
+
+    return (
+      <div className="stack-lg">
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Winners</h3>
+              <p className="muted">
+                Final winners by category. Drafting is locked once the first winner is
+                recorded.
+              </p>
+            </div>
+          </header>
+          <div className="grid">
+            {sampleWinners.map((item) => (
+              <div key={item.category} className="list-row">
+                <div>
+                  <p className="eyebrow">{item.category}</p>
+                  <strong>{item.winner}</strong>
+                </div>
+                <span className="pill success">Winner</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Season standings</h3>
+              <p className="muted">Points by draft seat. Read-only.</p>
+            </div>
+          </header>
+          <div className="table">
+            <div className="table-row table-head">
+              <span>Seat</span>
+              <span>Owner</span>
+              <span>Points</span>
+            </div>
+            {sampleStandings.map((row) => (
+              <div key={row.seat} className="table-row">
+                <span>Seat {row.seat}</span>
+                <span>{row.owner}</span>
+                <span>{row.points}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Pick log</h3>
+              <p className="muted">Seat picks shown for quick auditing.</p>
+            </div>
+          </header>
+          <ul className="list">
+            {samplePicks.map((p, idx) => (
+              <li key={`${p.seat}-${idx}`} className="list-row">
+                <span className="pill">Seat {p.seat}</span>
+                <span>{p.pick}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <section className="card">
-      <header>
-        <h2>Results</h2>
-        <p>Standings and winners for the active ceremony.</p>
+      <header className="header-with-controls">
+        <div>
+          <h2>Results</h2>
+          <p className="muted">
+            Winners + standings (read-only). Drafting locks the moment the first winner is
+            entered.
+          </p>
+        </div>
+        <div className="inline-actions">
+          <button type="button" onClick={() => setState("unavailable")}>
+            Not available
+          </button>
+          <button type="button" onClick={() => setState("loading")}>
+            Loading
+          </button>
+          <button type="button" onClick={() => setState("error")}>
+            Error
+          </button>
+          <button type="button" onClick={() => setState("ready")}>
+            Show sample results
+          </button>
+        </div>
       </header>
-      <p className="muted">Results view placeholder.</p>
+      {renderState()}
     </section>
   );
 }
