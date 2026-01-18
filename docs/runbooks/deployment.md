@@ -77,3 +77,24 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
    - Open a draft room as an authorized user: websocket connects (Network tab shows `socket.io/?EIO=4...` 200/101), and events stream.
    - Attempt to join the same draft from an unauthenticated/incognito window: connection rejected (HTTP 401/403) and no events received.
 4. Database connectivity: `psql "$DATABASE_URL" -c "SELECT 1;"` from Render shell succeeds (confirms secrets wired).
+
+## Web App (Render static) — build, deploy, rollback, verify
+
+- **Build command (Render):**
+
+  ```bash
+  npm install
+  npm run build --workspace @fantasy-oscars/web
+  ```
+
+- **Publish directory:** `apps/web/dist`
+- **Env var checklist (Web):** `VITE_API_BASE=https://fantasy-oscars-api-prod.onrender.com`
+- **Deploy:** push to `main` (auto-deploy). If auto-deploy is off, trigger manual deploy in Render UI for the static site.
+- **Rollback:** Render dashboard → Web service → Deploys → redeploy previous successful build.
+
+### Verification (post-deploy, browser smoke)
+
+1. Load `https://fantasy-oscars.onrender.com`; Network `/auth/me` returns 200 with session or 401 if logged out; no CORS errors.
+2. Auth cookies: login, refresh page, ensure session persists; logout clears session (401 on `/auth/me`).
+3. Realtime: open a draft room (existing draft) and confirm websocket connects (Socket.IO) without console errors.
+4. Minimal flow: register a new user → login → create a league → open season page; confirm league/season render without API errors.
