@@ -5,6 +5,8 @@
 - Monorepo with `web` (React), `api` (Express), and Postgres.
 - API is the single backend entrypoint; frontend calls it over HTTP/JSON.
 - Postgres is the system of record; migrations live in `db/migrations`.
+- Realtime drafting is in production via Socket.IO; admin UI drives ceremony/nominee/winner management.
+- Exactly one active ceremony at a time; entering the first winner locks drafting for that ceremony permanently.
 
 ## Diagram (context)
 
@@ -28,8 +30,8 @@ flowchart LR
 
 ## Scope
 
-- **What’s covered:** current modules and their responsibilities.
-- **What’s not:** production infra (to be defined), real auth, realtime.
+- **Covered:** web (React), api (Express), Postgres, realtime drafting (Socket.IO), admin content entry (active ceremony, nominees upload, winners entry), single-active-ceremony guardrails.
+- **Not covered:** production infra topology (Render today, cloud TBD), SSO/OAuth, multi-tenant ceremonies running concurrently.
 
 ## Principles
 
@@ -41,3 +43,6 @@ flowchart LR
 
 - Runtime flow: [architecture/runtime.md](runtime.md)
 - Data and migrations: [architecture/data.md](data.md)
+- Realtime drafting surface: `apps/api/src/routes/drafts.ts` (Socket.IO gateway) and `apps/web/src/App.tsx` (client)
+- Admin surfaces & lock rule: `apps/api/src/routes/admin.ts`, `apps/api/src/routes/ceremony.ts`
+- Operational runbook (includes rollover + lock behavior): [../runbooks/operational-runbook.md](../runbooks/operational-runbook.md)
