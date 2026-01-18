@@ -32,7 +32,31 @@
 - Testcontainers cannot start: ensure Docker daemon is running and your user can access the socket.
 - Migration errors: verify SQL in `db/migrations`; ensure order is correct.
 
+## Production
+
+- **Host:** Render Managed Postgres (see [deployment runbook](deployment.md) for service URLs and secrets).
+- **DB/user:** Create a dedicated database and least-privilege user; store the resulting `DATABASE_URL` in the Render API service env vars.
+- **Backups:** Use Render’s managed backups (default schedule); no PITR in MVP. Document upgrades/restores in provider console.
+- **Connect:** From a trusted machine or Render shell:
+
+  ```bash
+  psql "$DATABASE_URL"
+  ```
+
+- **Migrations (prod):**
+
+  ```bash
+  DATABASE_URL=$DATABASE_URL npm run db:migrate
+  ```
+
+  The script records applied files in `migration_history` and applies new `db/migrations/*.sql` in order.
+- **Verification after provisioning:**
+  - `psql "$DATABASE_URL" -c "\dt"` shows core tables (`app_user`, `league`, `ceremony`, etc.).
+  - `psql "$DATABASE_URL" -c "SELECT count(*) FROM migration_history;"` confirms migrations ran.
+  - From API shell: `psql "$DATABASE_URL" -c "SELECT 1;"` to confirm connectivity.
+
 ## Links
 
 - Testing standard: [../standards/testing.md](../standards/testing.md)
 - Data architecture: [../architecture/data.md](../architecture/data.md)
+- Deployment topology and secrets: [deployment.md](deployment.md)
