@@ -47,6 +47,8 @@ curl -i -X OPTIONS 'https://fantasy-oscars-api-prod.onrender.com/auth/me' \
 - Backend logs: Render → API service → Logs.
 - Frontend (static) has no runtime logs; failures show in browser console/Network.
 
+For hosting topology, origins, and secrets, see [deployment runbook](deployment.md).
+
 ## Config (must-have env vars)
 
 - API: `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS`, `REALTIME_ENABLED` (optional, default true).
