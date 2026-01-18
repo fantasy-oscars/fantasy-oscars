@@ -154,3 +154,12 @@ Post-steps:
 1) Log in via web UI with the admin creds; open Admin section to confirm access.
 2) Call an admin endpoint (e.g., set active ceremony) to verify authorization.
 3) Rotate `ADMIN_BOOTSTRAP_SECRET` to a new random value or remove it to disable further use.
+
+## Observability (Render)
+
+- **API logs:** Render dashboard → API service → Logs. Use the search box to filter by path snippets (`/drafts`, `/auth`, `/admin`, `/ceremony`). For a time window, set the time filter (e.g., “past 1h”) then search; copy/paste logs for incident notes.
+- **Realtime (Socket.IO) checks:**
+  - Browser Network tab: websocket upgrade to `https://fantasy-oscars-api-prod.onrender.com/socket.io/…` should return 101. Failures show 4xx (auth) or 5xx; check console for CORS errors.
+  - Common API error codes: `401/403` (unauthenticated/unauthorized), `409 CEREMONY_INACTIVE` (wrong ceremony), `409 ACTIVE_CEREMONY_NOT_SET`, `409 DRAFTS_LOCKED` (winners entered).
+- **Web runtime errors:** Static site has no server logs; use browser console + Network tab. If a client error corresponds to API failures, correlate timestamps with API logs above.
+- **Healthy signals:** `GET /health` returns `{ ok: true, service: "api", status: "healthy" }`; Socket.IO connects without retry loops; `/auth/me` returns 200 for authenticated users and 401 for logged-out sessions.
