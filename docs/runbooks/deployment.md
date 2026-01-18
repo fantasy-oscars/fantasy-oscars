@@ -37,8 +37,10 @@ Secret storage: Render dashboard → Service → Environment → Environment Var
 ## Custom Domain / DNS Plan
 
 - **Current state:** Using Render-provided URLs above; no custom domain configured.
-- **DNS ownership:** Not configured; when a custom domain is chosen, create CNAMEs to the Render frontend and API services respectively.
-- **When to update:** Only after selecting domains; update DNS and add matching origins to `CORS_ALLOWED_ORIGINS`, `VITE_API_BASE`, and cookie domain if moved under a common parent.
+- **DNS ownership:** When a custom domain is chosen, create CNAMEs to the Render frontend and API services respectively (e.g., `app.example.com` → web service, `api.example.com` → API service).
+- **Certificates:** Let’s Encrypt via Render (automatic issuance/renewal once DNS is validated).
+- **When to update:** After DNS is active, update `CORS_ALLOWED_ORIGINS` to include the web origin, set `VITE_API_BASE` to the new API origin, and verify cookies still function (Secure, SameSite=None for cross-site).
+- **If using apex + subdomain:** keep API on a subdomain (`api.example.com`) and web on `example.com` or `app.example.com`; no code changes needed, but ensure CORS allowlist and HTTPS both origins.
 
 ## Deployment Steps (high level)
 
@@ -99,3 +101,9 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 2. Auth cookies: login, refresh page, ensure session persists; logout clears session (401 on `/auth/me`).
 3. Realtime: open a draft room (existing draft) and confirm websocket connects (Socket.IO) without console errors.
 4. Minimal flow: register a new user → login → create a league → open season page; confirm league/season render without API errors.
+
+### Custom domain verification (if configured)
+
+1. DNS: `dig +short app.example.com` and `dig +short api.example.com` return Render-provided CNAME/A records.
+2. TLS: `curl -I https://app.example.com` and `curl -I https://api.example.com/health` succeed with valid certs.
+3. CORS/cookies: open the web app on the custom domain, sign in, refresh, and confirm `/auth/me` succeeds without CORS errors; logout clears the session. Confirm Socket.IO connects from the custom domain (Network → websocket upgrade 101).
