@@ -26,6 +26,7 @@ No separate CDN or multi-region topology in MVP; single Render region.
 | `DATABASE_URL` | API | Postgres connection string (Render managed) | Render API service env |
 | `AUTH_SECRET` | API | Sign/verify auth tokens | Render API service env |
 | `CORS_ALLOWED_ORIGINS` | API | Comma-separated origins (set to `https://fantasy-oscars.onrender.com`) | Render API service env |
+| `NODE_ENV` | API | Must be `production` in prod | Render API service env |
 | `REALTIME_ENABLED` | API | Optional kill switch for Socket.IO (`true`/`false`, default `true`) | Render API service env |
 | `PORT` | API | Provided by Render; do not override | Render API service env |
 | `VITE_API_BASE` | Web | Points frontend to prod API (`https://fantasy-oscars-api-prod.onrender.com`) | Render web service env |
@@ -48,3 +49,31 @@ Secret storage: Render dashboard → Service → Environment → Environment Var
    - Socket.IO connects from the web app (draft room loads without console CORS errors).
 
 For rollback and operational procedures, see `docs/runbooks/operational-runbook.md`.
+
+## API Service (Render) — build, deploy, rollback, verify
+
+- **Build command (Render):**
+
+  ```bash
+  npm install
+  npm run build --workspace @fantasy-oscars/api
+  ```
+
+- **Start command (Render):**
+
+  ```bash
+  npm --prefix apps/api run start
+  ```
+
+- **Env var checklist (API):** `NODE_ENV=production`, `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS=https://fantasy-oscars.onrender.com`, optionally `REALTIME_ENABLED=true`. Render supplies `PORT`.
+- **Deploy:** push to `main` (Render auto-deploy). If auto-deploy is disabled, trigger “Manual Deploy” in Render UI for the API service.
+- **Rollback:** Render dashboard → API service → Deploys → redeploy previous successful build.
+
+### Verification (post-deploy)
+
+1. Health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health` should return `{ ok: true, service: "api", status: "healthy" }`.
+2. HTTP session: from browser, visit web app, sign in, confirm `GET /auth/me` succeeds (200) and CORS/cookies work (no console CORS errors).
+3. Socket.IO auth:
+   - Open a draft room as an authorized user: websocket connects (Network tab shows `socket.io/?EIO=4...` 200/101), and events stream.
+   - Attempt to join the same draft from an unauthenticated/incognito window: connection rejected (HTTP 401/403) and no events received.
+4. Database connectivity: `psql "$DATABASE_URL" -c "SELECT 1;"` from Render shell succeeds (confirms secrets wired).
