@@ -29,6 +29,7 @@ No separate CDN or multi-region topology in MVP; single Render region.
 | `NODE_ENV` | API | Must be `production` in prod | Render API service env |
 | `REALTIME_ENABLED` | API | Optional kill switch for Socket.IO (`true`/`false`, default `true`) | Render API service env |
 | `PORT` | API | Provided by Render; do not override | Render API service env |
+| `ADMIN_BOOTSTRAP_SECRET` | API | One-time secret to run admin bootstrap script | Render API service env |
 | `VITE_API_BASE` | Web | Points frontend to prod API (`https://fantasy-oscars-api-prod.onrender.com`) | Render web service env |
 
 Secret storage: Render dashboard → Service → Environment → Environment Variables/Secret Files. Do not check into VCS.

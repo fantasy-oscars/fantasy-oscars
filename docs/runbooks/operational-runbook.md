@@ -114,9 +114,43 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
    - Standings and historical seasons remain visible; no further writes occur without reactivating the old ceremony.
 
 7) **Post-rollover checklist**
-   - Admin UI: upload nominees success message logged; categories render with radio buttons.
-   - Admin UI: Winners page shows empty winners and unlocked state.
-   - Optional API spot-checks:
-     - `GET /ceremony/active/winners` → empty array.
-     - `GET /ceremony/active/lock` → `draft_locked: false`.
-   - Communicate to commissioners that drafts for the new ceremony are now open; remind them drafting will lock immediately when the first winner is saved.
+
+- Admin UI: upload nominees success message logged; categories render with radio buttons.
+- Admin UI: Winners page shows empty winners and unlocked state.
+- Optional API spot-checks:
+  - `GET /ceremony/active/winners` → empty array.
+  - `GET /ceremony/active/lock` → `draft_locked: false`.
+- Communicate to commissioners that drafts for the new ceremony are now open; remind them drafting will lock immediately when the first winner is saved.
+
+## Bootstrap First Production Admin (one-time, safe path)
+
+Goal: create/promote a single admin without direct SQL. Uses a one-time secret stored in Render.
+
+Preconditions:
+
+- Render API service has `ADMIN_BOOTSTRAP_SECRET` set to a strong random value.
+- Render API service has `DATABASE_URL` configured.
+
+Steps (from Render Shell on the API service):
+
+```bash
+export DATABASE_URL="$DATABASE_URL"
+export ADMIN_BOOTSTRAP_SECRET="$ADMIN_BOOTSTRAP_SECRET" # Render injects it
+npm run admin:bootstrap -- \
+  --handle admin \
+  --email admin@example.com \
+  --display-name "Fantasy Admin" \
+  --password 'TempAdminP@ss123' \
+  --secret "$ADMIN_BOOTSTRAP_SECRET"
+```
+
+Behavior:
+
+- Creates the user if missing; otherwise promotes existing user to `is_admin=true`.
+- Resets the password to the provided value; logs result to stdout.
+
+Post-steps:
+
+1) Log in via web UI with the admin creds; open Admin section to confirm access.
+2) Call an admin endpoint (e.g., set active ceremony) to verify authorization.
+3) Rotate `ADMIN_BOOTSTRAP_SECRET` to a new random value or remove it to disable further use.
