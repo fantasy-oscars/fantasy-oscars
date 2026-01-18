@@ -49,6 +49,8 @@ curl -i -X OPTIONS 'https://fantasy-oscars-api-prod.onrender.com/auth/me' \
 
 For hosting topology, origins, and secrets, see [deployment runbook](deployment.md).
 
+Go-live gate: follow [go-live checklist & smoke plan](go-live.md) before opening traffic.
+
 ## Config (must-have env vars)
 
 - API: `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS`, `REALTIME_ENABLED` (optional, default true).
