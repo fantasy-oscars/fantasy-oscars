@@ -16,6 +16,7 @@ import * as draftRepo from "../data/repositories/draftRepository.js";
 import * as leagueRepo from "../data/repositories/leagueRepository.js";
 import * as seasonRepo from "../data/repositories/seasonRepository.js";
 import * as winnerRepo from "../data/repositories/winnerRepository.js";
+import * as nominationRepo from "../data/repositories/nominationRepository.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { DbClient } from "../data/db.js";
 import * as db from "../data/db.js";
@@ -693,6 +694,10 @@ describe("GET /drafts/:id/standings", () => {
   const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
   const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
   const listWinnersByCeremonySpy = vi.spyOn(winnerRepo, "listWinnersByCeremony");
+  const getNominationWithStatusSpy = vi.spyOn(
+    nominationRepo,
+    "getNominationWithStatus" as never
+  );
   const handler = buildDraftStandingsHandler({} as unknown as Pool);
 
   beforeEach(() => {
@@ -764,6 +769,18 @@ describe("GET /drafts/:id/standings", () => {
         nomination_id: 200
       }
     ]);
+    getNominationWithStatusSpy.mockResolvedValue({
+      id: 200,
+      category_edition_id: 123,
+      film_id: null,
+      song_id: null,
+      performance_id: null,
+      status: "ACTIVE",
+      replaced_by_nomination_id: null,
+      film_title: null,
+      song_title: null,
+      performer_name: null
+    });
   });
 
   afterEach(() => {
