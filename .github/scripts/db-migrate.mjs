@@ -47,38 +47,30 @@ async function ensureHistoryTable(pool) {
   `);
 }
 
-async function hasTable(pool, tableName) {
-  const { rows } = await pool.query(
-    `SELECT to_regclass($1) AS oid`,
-    [`public.${tableName}`]
-  );
-  return Boolean(rows[0]?.oid);
-}
-
-async function seedHistory(pool, files) {
-  for (const file of files) {
-    await pool.query(
-      `INSERT INTO migration_history (filename) VALUES ($1) ON CONFLICT DO NOTHING`,
-      [file]
-    );
-  }
-}
-
 async function listApplied(pool) {
   const { rows } = await pool.query(`SELECT filename FROM migration_history`);
   return new Set(rows.map((r) => r.filename));
 }
 
+function isBootstrapSafeAlreadyAppliedError(err) {
+  // When migrating an existing DB that predates `migration_history`, rerunning
+  // old migrations can fail with "already exists". In that case, we treat the
+  // migration as already applied and record it, so we can proceed to later
+  // migrations that *do* need to run (e.g. new columns).
+  const code = err && typeof err === "object" ? err.code : undefined;
+  return (
+    code === "42P07" || // duplicate_table / relation exists
+    code === "42701" || // duplicate_column
+    code === "42710" || // duplicate_object (index/constraint/etc)
+    code === "42P06" || // duplicate_schema
+    code === "23505" // unique_violation (seed data already present)
+  );
+}
+
 async function applyMigrations(pool, files) {
   await ensureHistoryTable(pool);
-  let applied = await listApplied(pool);
-  if (applied.size === 0 && (await hasTable(pool, "icon"))) {
-    // Existing schema without recorded migration history; backfill history to avoid reapplying.
-    await seedHistory(pool, files);
-    applied = await listApplied(pool);
-    // eslint-disable-next-line no-console
-    console.log("Seeded migration_history based on existing schema.");
-  }
+  const applied = await listApplied(pool);
+  const bootstrapMode = applied.size === 0;
   let appliedCount = 0;
 
   for (const file of files) {
@@ -95,6 +87,19 @@ async function applyMigrations(pool, files) {
       appliedCount += 1;
     } catch (err) {
       await client.query("ROLLBACK");
+      if (bootstrapMode && isBootstrapSafeAlreadyAppliedError(err)) {
+        // Mark it applied and continue; this lets us reach later migrations that
+        // may actually be missing on the existing database.
+        await pool.query(
+          `INSERT INTO migration_history (filename) VALUES ($1) ON CONFLICT DO NOTHING`,
+          [file]
+        );
+        // eslint-disable-next-line no-console
+        console.log(
+          `Marked migration as already applied (bootstrap): ${file} (code=${String(err.code)})`
+        );
+        continue;
+      }
       throw err;
     } finally {
       client.release();
