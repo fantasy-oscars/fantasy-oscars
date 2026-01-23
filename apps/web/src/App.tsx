@@ -89,6 +89,11 @@ type SeasonSummary = {
   ceremony_id: number;
   status: string;
   created_at: string;
+  ceremony_starts_at?: string | null;
+  draft_id?: number | null;
+  draft_status?: string | null;
+  scoring_strategy_name?: string;
+  is_active_ceremony?: boolean;
 };
 type SeasonMember = {
   id: number;
@@ -910,6 +915,17 @@ function LeagueDetailPage() {
     }
   }
 
+  function seasonLabel(season: SeasonSummary) {
+    const date = season.ceremony_starts_at ?? season.created_at;
+    try {
+      const year = new Date(date).getFullYear();
+      if (Number.isFinite(year)) return `Season ${year}`;
+    } catch {
+      // ignore formatting fallback below
+    }
+    return `Season ${season.id}`;
+  }
+
   return (
     <section className="card">
       <header className="header-with-controls">
@@ -1011,11 +1027,22 @@ function LeagueDetailPage() {
             {seasons.map((s) => (
               <div key={s.id} className="card">
                 <header>
-                  <h4>Season {new Date(s.created_at).getFullYear()}</h4>
-                  <p className="muted">Status: {s.status}</p>
+                  <h4>{seasonLabel(s)}</h4>
+                  <p className="muted">
+                    {s.is_active_ceremony === false
+                      ? "Archived season"
+                      : "Current season"}
+                  </p>
                 </header>
                 <div className="pill-list">
+                  <span className="pill">
+                    {s.is_active_ceremony === false ? "ARCHIVED" : "ACTIVE"}
+                  </span>
+                  <span className="pill">Status: {s.status}</span>
                   <span className="pill">Ceremony {s.ceremony_id}</span>
+                  {s.draft_status && (
+                    <span className="pill">Draft: {s.draft_status}</span>
+                  )}
                 </div>
                 <div className="inline-actions">
                   <Link to={`/seasons/${s.id}`}>Open season</Link>
@@ -1062,7 +1089,11 @@ function SeasonPage() {
     );
   }, [members, user]);
 
-  const canEdit = leagueContext?.season?.status === "EXTANT" && isCommissioner;
+  const isArchived = leagueContext?.season
+    ? leagueContext.season.is_active_ceremony === false ||
+      leagueContext.season.status !== "EXTANT"
+    : false;
+  const canEdit = !isArchived && isCommissioner;
 
   useEffect(() => {
     let cancelled = false;
@@ -1357,9 +1388,16 @@ function SeasonPage() {
         </div>
         <div className="pill-list">
           <span className="pill">Status: {seasonStatus}</span>
+          <span className="pill">{isArchived ? "ARCHIVED (read-only)" : "ACTIVE"}</span>
           <span className="pill">Scoring: {scoringStrategy}</span>
         </div>
       </header>
+      {isArchived && (
+        <div className="status status-info" role="status">
+          Archived season: roster, invites, and scoring are locked. Draft room and
+          standings remain view-only year-round.
+        </div>
+      )}
 
       <div className="card nested">
         <header className="header-with-controls">
@@ -1375,6 +1413,11 @@ function SeasonPage() {
             )}
           </div>
         </header>
+        {isArchived && (
+          <p className="muted">
+            Past season — draft actions are locked; results remain viewable.
+          </p>
+        )}
         {integrityWarningActive && (
           <div className="status status-warning" role="status">
             Heads up: once winners start getting entered after the ceremony begins,
@@ -1400,6 +1443,11 @@ function SeasonPage() {
               <p className="muted">Season roster (league members only).</p>
             </div>
           </header>
+          {isArchived && (
+            <div className="status status-info" role="status">
+              Roster locked (archived season).
+            </div>
+          )}
           {members.length === 0 ? (
             <p className="muted">No participants yet.</p>
           ) : (
@@ -1461,64 +1509,70 @@ function SeasonPage() {
               <p className="muted">Scoring + invites. Draft must be pending.</p>
             </div>
           </header>
-          <div className="stack">
-            <div>
-              <label className="field">
-                <span>Scoring strategy</span>
-                <select
-                  value={scoringStrategy}
+          {isArchived ? (
+            <p className="muted">
+              Archived season — scoring and invites are read-only. No edits allowed.
+            </p>
+          ) : (
+            <div className="stack">
+              <div>
+                <label className="field">
+                  <span>Scoring strategy</span>
+                  <select
+                    value={scoringStrategy}
+                    disabled={!canEdit || working}
+                    onChange={(e) => updateScoring(e.target.value)}
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="negative">Negative</option>
+                  </select>
+                </label>
+                <FormStatus loading={working} result={scoringState} />
+              </div>
+
+              <div className="inline-form">
+                <label className="field">
+                  <span>User ID to invite</span>
+                  <input
+                    name="user_id"
+                    type="number"
+                    value={userInviteQuery}
+                    onChange={(e) => setUserInviteQuery(e.target.value)}
+                    disabled={!canEdit || working}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={createUserInvite}
                   disabled={!canEdit || working}
-                  onChange={(e) => updateScoring(e.target.value)}
                 >
-                  <option value="fixed">Fixed</option>
-                  <option value="negative">Negative</option>
-                </select>
-              </label>
-              <FormStatus loading={working} result={scoringState} />
-            </div>
+                  Invite user (targeted)
+                </button>
+              </div>
+              <FormStatus loading={working} result={userInviteResult} />
 
-            <div className="inline-form">
-              <label className="field">
-                <span>User ID to invite</span>
-                <input
-                  name="user_id"
-                  type="number"
-                  value={userInviteQuery}
-                  onChange={(e) => setUserInviteQuery(e.target.value)}
+              <div className="inline-form">
+                <label className="field">
+                  <span>Placeholder label (optional)</span>
+                  <input
+                    name="label"
+                    type="text"
+                    value={placeholderLabel}
+                    onChange={(e) => setPlaceholderLabel(e.target.value)}
+                    disabled={!canEdit || working}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={createPlaceholderInvite}
                   disabled={!canEdit || working}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={createUserInvite}
-                disabled={!canEdit || working}
-              >
-                Invite user (targeted)
-              </button>
+                >
+                  Generate claim link
+                </button>
+              </div>
+              <FormStatus loading={working} result={inviteResult} />
             </div>
-            <FormStatus loading={working} result={userInviteResult} />
-
-            <div className="inline-form">
-              <label className="field">
-                <span>Placeholder label (optional)</span>
-                <input
-                  name="label"
-                  type="text"
-                  value={placeholderLabel}
-                  onChange={(e) => setPlaceholderLabel(e.target.value)}
-                  disabled={!canEdit || working}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={createPlaceholderInvite}
-                disabled={!canEdit || working}
-              >
-                Generate claim link
-              </button>
-            </div>
-            <FormStatus loading={working} result={inviteResult} />
-          </div>
+          )}
         </div>
       </div>
 
@@ -1532,6 +1586,11 @@ function SeasonPage() {
             </p>
           </div>
         </header>
+        {isArchived && (
+          <div className="status status-info" role="status">
+            Archived season — invites are locked. Existing links remain for reference.
+          </div>
+        )}
         {invites.length === 0 ? (
           <p className="muted">No invites yet.</p>
         ) : (
