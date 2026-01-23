@@ -645,6 +645,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
           remainder_strategy: s.remainder_strategy,
+          pick_timer_seconds: s.pick_timer_seconds ?? null,
+          auto_pick_strategy: s.auto_pick_strategy ?? null,
           created_at: s.created_at,
           ceremony_starts_at: s.ceremony_starts_at ?? null,
           draft_id: s.draft_id ?? null,

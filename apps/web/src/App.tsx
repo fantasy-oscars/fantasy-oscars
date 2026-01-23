@@ -140,6 +140,8 @@ type SeasonMeta = {
   draft_id?: number | null;
   draft_status?: string | null;
   remainder_strategy?: string;
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?: string | null;
 };
 type TokenMap = Record<number, string>;
 
@@ -1469,6 +1471,14 @@ function SeasonPage() {
             cancellation.
           </div>
         )}
+        {leagueContext?.season?.draft_status && (
+          <p className="muted">
+            Timer:{" "}
+            {leagueContext.season.pick_timer_seconds
+              ? `${leagueContext.season.pick_timer_seconds}s per pick (auto-pick: next available)`
+              : "Off"}
+          </p>
+        )}
         {ceremonyStartsAt && (
           <p className="muted">
             Ceremony starts {formatDate(ceremonyStartsAt)} (warning window: 24h prior).
@@ -1942,6 +1952,10 @@ type Snapshot = {
     version?: number;
     started_at?: string | null;
     completed_at?: string | null;
+    pick_timer_seconds?: number | null;
+    pick_deadline_at?: string | null;
+    pick_timer_remaining_ms?: number | null;
+    auto_pick_strategy?: string | null;
   };
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
@@ -1998,6 +2012,18 @@ function isIntegrityWarningWindow(
   if (!Number.isFinite(startMs)) return false;
   const windowStart = startMs - 24 * 60 * 60 * 1000;
   return nowMs >= windowStart && nowMs < startMs;
+}
+
+function formatTimer(draft: Snapshot["draft"], nowMs: number) {
+  if (!draft.pick_timer_seconds) return "Off";
+  if (draft.status !== "IN_PROGRESS") return "Paused/idle";
+  const deadline = draft.pick_deadline_at
+    ? new Date(draft.pick_deadline_at).getTime()
+    : null;
+  if (!deadline) return `${draft.pick_timer_seconds}s (no deadline set)`;
+  const remaining = Math.max(0, deadline - nowMs);
+  const seconds = Math.round(remaining / 1000);
+  return `${draft.pick_timer_seconds}s • ${seconds}s left`;
 }
 
 // Legacy harness kept for reference (not routed in skeleton mode).
@@ -2358,6 +2384,12 @@ export function DraftRoom(props: {
               <p className="muted">
                 Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
                 {snapshot.version}
+              </p>
+              <p className="muted">
+                Timer: {formatTimer(snapshot.draft, nowTs)}{" "}
+                {snapshot.draft.auto_pick_strategy
+                  ? `• Auto-pick: ${snapshot.draft.auto_pick_strategy}`
+                  : ""}
               </p>
               <p className="muted">
                 Allocation: {allocationLabel(snapshot.remainder_strategy)} · Total picks:{" "}

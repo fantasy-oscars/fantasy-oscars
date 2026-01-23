@@ -10,6 +10,10 @@ export type DraftRecord = {
   picks_per_seat: number | null;
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
   total_picks?: number | null;
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?: "NEXT_AVAILABLE" | null;
+  pick_deadline_at?: Date | null;
+  pick_timer_remaining_ms?: number | null;
   version: number;
   started_at?: Date | null;
   completed_at?: Date | null;
@@ -66,6 +70,10 @@ export async function createDraft(
     picks_per_seat?: number | null;
     remainder_strategy?: DraftRecord["remainder_strategy"];
     total_picks?: number | null;
+    pick_timer_seconds?: number | null;
+    auto_pick_strategy?: DraftRecord["auto_pick_strategy"];
+    pick_deadline_at?: Date | null;
+    pick_timer_remaining_ms?: number | null;
     started_at?: Date | null;
     completed_at?: Date | null;
   }
@@ -73,8 +81,8 @@ export async function createDraft(
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, started_at, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, pick_deadline_at, pick_timer_remaining_ms, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING
         id::int,
         league_id::int,
@@ -85,6 +93,10 @@ export async function createDraft(
         picks_per_seat::int,
         remainder_strategy,
         total_picks::int,
+        pick_timer_seconds::int,
+        auto_pick_strategy,
+        pick_deadline_at,
+        pick_timer_remaining_ms::int,
         version::int,
         started_at,
         completed_at
@@ -98,6 +110,10 @@ export async function createDraft(
       input.picks_per_seat ?? null,
       input.remainder_strategy ?? "UNDRAFTED",
       input.total_picks ?? null,
+      input.pick_timer_seconds ?? null,
+      input.auto_pick_strategy ?? null,
+      input.pick_deadline_at ?? null,
+      input.pick_timer_remaining_ms ?? null,
       input.started_at ?? null,
       input.completed_at ?? null
     ]
@@ -121,6 +137,10 @@ export async function getDraftById(
        picks_per_seat::int,
        remainder_strategy,
        total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
        version::int,
        started_at,
        completed_at
@@ -145,7 +165,11 @@ export async function getDraftByIdForUpdate(
        current_pick_number,
        picks_per_seat::int,
        remainder_strategy,
-        total_picks::int,
+       total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
        version::int,
        started_at,
        completed_at
@@ -188,6 +212,10 @@ export async function getDraftByLeagueId(
        d.picks_per_seat::int,
        d.remainder_strategy,
        d.total_picks::int,
+       d.pick_timer_seconds::int,
+       d.auto_pick_strategy,
+       d.pick_deadline_at,
+       d.pick_timer_remaining_ms::int,
        d.version::int,
        d.started_at,
        d.completed_at
@@ -216,6 +244,10 @@ export async function getDraftBySeasonId(
        picks_per_seat::int,
        remainder_strategy,
        total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
        version::int,
        started_at,
        completed_at
@@ -282,7 +314,11 @@ export async function updateDraftOnStart(
   started_at: Date,
   picks_per_seat: number,
   remainder_strategy: DraftRecord["remainder_strategy"],
-  total_picks: number
+  total_picks: number,
+  pick_timer_seconds: number | null,
+  auto_pick_strategy: DraftRecord["auto_pick_strategy"],
+  pick_deadline_at: Date | null,
+  pick_timer_remaining_ms: number | null
 ): Promise<DraftRecord | null> {
   const { rows } = await query<DraftRecord>(
     client,
@@ -292,7 +328,11 @@ export async function updateDraftOnStart(
          started_at = $3,
          picks_per_seat = $4,
          remainder_strategy = $5,
-         total_picks = $6
+         total_picks = $6,
+         pick_timer_seconds = $7,
+         auto_pick_strategy = $8,
+         pick_deadline_at = $9,
+         pick_timer_remaining_ms = $10
      WHERE id = $1
      RETURNING
        id::int,
@@ -300,13 +340,28 @@ export async function updateDraftOnStart(
        status,
        draft_order_type,
        current_pick_number,
-        picks_per_seat::int,
-        remainder_strategy,
-        total_picks::int,
-        version::int,
-        started_at,
-        completed_at`,
-    [id, current_pick_number, started_at, picks_per_seat, remainder_strategy, total_picks]
+       picks_per_seat::int,
+       remainder_strategy,
+       total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
+       version::int,
+       started_at,
+       completed_at`,
+    [
+      id,
+      current_pick_number,
+      started_at,
+      picks_per_seat,
+      remainder_strategy,
+      total_picks,
+      pick_timer_seconds,
+      auto_pick_strategy,
+      pick_deadline_at,
+      pick_timer_remaining_ms
+    ]
   );
   return rows[0] ?? null;
 }
@@ -430,6 +485,22 @@ export async function listNominationIds(
     client,
     `SELECT id::int FROM nomination WHERE id = ANY($1)`,
     [nominationIds]
+  );
+  return rows.map((row) => row.id);
+}
+
+export async function listNominationIdsByCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<number[]> {
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT n.id::int
+     FROM nomination n
+     JOIN category_edition ce ON ce.id = n.category_edition_id
+     WHERE ce.ceremony_id = $1
+     ORDER BY n.id ASC`,
+    [ceremonyId]
   );
   return rows.map((row) => row.id);
 }
@@ -660,6 +731,40 @@ export async function incrementDraftVersion(
     [draftId]
   );
   return rows[0]?.version ?? 0;
+}
+
+export async function updateDraftTimer(
+  client: DbClient,
+  draftId: number,
+  pick_deadline_at: Date | null,
+  pick_timer_remaining_ms: number | null
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET pick_deadline_at = $2,
+         pick_timer_remaining_ms = $3
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       season_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       picks_per_seat::int,
+       remainder_strategy,
+       total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
+       version::int,
+       started_at,
+       completed_at`,
+    [draftId, pick_deadline_at, pick_timer_remaining_ms]
+  );
+  return rows[0] ?? null;
 }
 
 export async function insertDraftEvent(
