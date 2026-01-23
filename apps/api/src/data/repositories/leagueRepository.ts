@@ -189,6 +189,54 @@ export async function listLeaguesForUser(
   return rows;
 }
 
+export async function listPublicLeagues(
+  client: DbClient,
+  opts?: { search?: string }
+): Promise<
+  Array<
+    LeagueRecord & {
+      season_id: number | null;
+      season_status: string | null;
+      member_count: number;
+    }
+  >
+> {
+  const search = opts?.search ? `%${opts.search.toLowerCase()}%` : null;
+  const { rows } = await query<
+    LeagueRecord & {
+      season_id: number | null;
+      season_status: string | null;
+      member_count: number;
+    }
+  >(
+    client,
+    `SELECT
+       l.id::int,
+       l.code,
+       l.name,
+       l.ceremony_id::int,
+       l.max_members::int,
+       l.roster_size::int,
+       l.is_public,
+       l.created_by_user_id::int,
+       l.created_at,
+       s.id::int AS season_id,
+       s.status AS season_status,
+       COALESCE(sm.count, 0)::int AS member_count
+     FROM league l
+     LEFT JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
+     LEFT JOIN (
+       SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
+     ) sm ON sm.season_id = s.id
+     WHERE l.is_public = TRUE
+       ${search ? "AND (LOWER(l.name) LIKE $1 OR LOWER(l.code) LIKE $1)" : ""}
+     ORDER BY l.created_at DESC
+     LIMIT 100`,
+    search ? [search] : []
+  );
+  return rows;
+}
+
 export async function getDraftSeatForUser(
   client: DbClient,
   draftId: number,

@@ -699,6 +699,11 @@ function LeaguesPage() {
   const [error, setError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [publicLeagues, setPublicLeagues] = useState<PublicLeague[]>([]);
+  const [publicSearch, setPublicSearch] = useState("");
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [publicError, setPublicError] = useState<string | null>(null);
+  const [joinResult, setJoinResult] = useState<ApiResult | null>(null);
 
   const loadLeagues = useCallback(async () => {
     setState("loading");
@@ -716,6 +721,27 @@ function LeaguesPage() {
   useEffect(() => {
     void loadLeagues();
   }, [loadLeagues]);
+
+  const loadPublic = useCallback(async (search?: string) => {
+    setPublicLoading(true);
+    setPublicError(null);
+    const url =
+      search && search.trim().length > 0
+        ? `/leagues/public?q=${encodeURIComponent(search.trim())}`
+        : "/leagues/public";
+    const res = await fetchJson<{ leagues: PublicLeague[] }>(url);
+    setPublicLoading(false);
+    if (!res.ok) {
+      setPublicError(res.error ?? "Failed to load public leagues");
+      setPublicLeagues([]);
+      return;
+    }
+    setPublicLeagues(res.data?.leagues ?? []);
+  }, []);
+
+  useEffect(() => {
+    void loadPublic();
+  }, [loadPublic]);
 
   async function onCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -739,6 +765,20 @@ function LeaguesPage() {
     }
     e.currentTarget.reset();
     await loadLeagues();
+  }
+
+  async function onJoinPublic(leagueId: number) {
+    setJoinResult(null);
+    const res = await fetchJson<{ league: LeagueSummary }>(`/leagues/${leagueId}/join`, {
+      method: "POST"
+    });
+    setJoinResult({
+      ok: res.ok,
+      message: res.ok ? "Joined league" : (res.error ?? "Join failed")
+    });
+    if (res.ok) {
+      await Promise.all([loadLeagues(), loadPublic(publicSearch)]);
+    }
   }
 
   return (
@@ -797,6 +837,63 @@ function LeaguesPage() {
             {createError && <small className="error">{createError}</small>}
           </div>
         </form>
+      </div>
+
+      <div className="card nested" style={{ marginTop: 16 }}>
+        <header className="header-with-controls">
+          <div>
+            <h3>Discover public rooms</h3>
+            <p className="muted">
+              Join any open league for the active ceremony. Member cap enforced.
+            </p>
+          </div>
+          <div className="inline-actions">
+            <input
+              type="search"
+              placeholder="Search name or code"
+              value={publicSearch}
+              onChange={(e) => setPublicSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void loadPublic(publicSearch);
+                }
+              }}
+            />
+            <button type="button" onClick={() => void loadPublic(publicSearch)}>
+              Search
+            </button>
+          </div>
+        </header>
+        <FormStatus
+          loading={publicLoading}
+          result={publicError ? { ok: false, message: publicError } : joinResult}
+        />
+        {!publicLoading && !publicError && publicLeagues.length === 0 && (
+          <p className="muted">No public leagues found.</p>
+        )}
+        <div className="list">
+          {publicLeagues.map((l) => (
+            <div key={l.id} className="list-row">
+              <div>
+                <div className="pill-list">
+                  <span className="pill">Code: {l.code}</span>
+                  <span className="pill muted">
+                    Members {l.member_count}/{l.max_members}
+                  </span>
+                </div>
+                <p className="muted">
+                  Ceremony {l.ceremony_id} • Season {l.season_status ?? "n/a"}
+                </p>
+              </div>
+              <div className="pill-actions">
+                <button type="button" onClick={() => onJoinPublic(l.id)}>
+                  Join
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1972,6 +2069,20 @@ type Snapshot = {
     status: string;
     replaced_by_nomination_id?: number | null;
   }>;
+};
+
+type PublicLeague = {
+  id: number;
+  code: string;
+  name: string;
+  ceremony_id: number;
+  max_members: number;
+  roster_size: number;
+  is_public: boolean;
+  created_at: string;
+  season_id?: number | null;
+  season_status?: string | null;
+  member_count: number;
 };
 
 type DraftEventMessage = {

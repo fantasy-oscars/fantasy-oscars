@@ -214,7 +214,7 @@ describe("leagues integration", () => {
         ceremony_id: ceremony.id,
         max_members: 10,
         roster_size: 5,
-        is_public: true
+        is_public: false
       },
       token
     );
@@ -307,6 +307,73 @@ describe("leagues integration", () => {
       .delete(`/leagues/${leagueId}/members/${owner.id}`)
       .set("Authorization", `Bearer ${ownerToken}`);
     expect(res.status).toBe(403);
+  });
+
+  it("lists public leagues and allows join when under cap", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const joiner = await insertUser(db.pool, { id: owner.id + 1 });
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+
+    const created = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "pub-1", name: "Public One", max_members: 3, is_public: true },
+      ownerToken
+    );
+    expect(created.status).toBe(201);
+
+    const list = await getJson<{ leagues: Array<{ id: number }> }>(
+      "/leagues/public",
+      joinToken
+    );
+    expect(list.status).toBe(200);
+    expect(list.json.leagues.some((l) => l.id === created.json.league.id)).toBe(true);
+
+    const joined = await post<{ league: { id: number } }>(
+      `/leagues/${created.json.league.id}/join`,
+      {},
+      joinToken
+    );
+    expect(joined.status).toBe(200);
+
+    const roster = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = (SELECT id FROM season WHERE league_id = $1)`,
+      [created.json.league.id]
+    );
+    expect(Number(roster.rows[0].count)).toBe(1);
+  });
+
+  it("enforces full cap on public join", async () => {
+    await createActiveCeremony();
+    const owner = await insertUser(db.pool);
+    const joiner = await insertUser(db.pool, { id: owner.id + 1 });
+    const third = await insertUser(db.pool, { id: owner.id + 2 });
+    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+    const thirdToken = signToken({ sub: String(third.id), handle: third.handle });
+
+    const created = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "pub-2", name: "Public Two", max_members: 2, is_public: true },
+      ownerToken
+    );
+    expect(created.status).toBe(201);
+
+    const firstJoin = await post<{ league: { id: number } }>(
+      `/leagues/${created.json.league.id}/join`,
+      {},
+      joinToken
+    );
+    expect(firstJoin.status).toBe(200);
+
+    const secondJoin = await post<{ error: { code: string } }>(
+      `/leagues/${created.json.league.id}/join`,
+      {},
+      thirdToken
+    );
+    expect(secondJoin.status).toBe(409);
+    expect(secondJoin.json.error.code).toBe("LEAGUE_FULL");
   });
 
   it("commissioner can remove a member", async () => {
