@@ -21,7 +21,6 @@ import {
   insertDraftPickRecord,
   getNominationByIdForCeremony,
   listNominationIds,
-  listNominationIdsByCeremony,
   completeDraftIfReady,
   createDraftEvent,
   upsertDraftResults,
@@ -52,6 +51,7 @@ import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import { scoreDraft } from "../domain/scoring.js";
+import { listNominationsForCeremony } from "../data/repositories/nominationRepository.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -83,6 +83,124 @@ function resolveTotalRequiredPicks(
   return seatCount * picksPerSeat;
 }
 
+function normalizeTitle(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const normalized = raw
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  return normalized.replace(/^(the|a|an)\s+/i, "").trim();
+}
+
+function createSeededRandom(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(31, h) + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return () => {
+    h = Math.imul(48271, h) % 0x7fffffff;
+    const result = h / 0x7fffffff;
+    return result < 0 ? result * -1 : result;
+  };
+}
+
+type Strategy =
+  | "NEXT_AVAILABLE"
+  | "RANDOM_SEED"
+  | "ALPHABETICAL"
+  | "CANONICAL"
+  | "SMART"
+  | "CUSTOM_USER";
+
+function resolveStrategy(
+  strategy: DraftRecord["auto_pick_strategy"] | null | undefined
+): Strategy {
+  if (
+    strategy === "RANDOM_SEED" ||
+    strategy === "ALPHABETICAL" ||
+    strategy === "CANONICAL" ||
+    strategy === "SMART" ||
+    strategy === "CUSTOM_USER"
+  ) {
+    return strategy;
+  }
+  return "NEXT_AVAILABLE";
+}
+
+type AutoPickConfig = {
+  canonical_order?: number[];
+  custom_rankings?: Record<string, number[]>;
+  smart_priorities?: number[];
+  alphabetical_field?: "film_title" | "song_title" | "performer_name";
+};
+
+function chooseAlphabetical(
+  available: Awaited<ReturnType<typeof listNominationsForCeremony>>,
+  field: AutoPickConfig["alphabetical_field"]
+) {
+  return [...available]
+    .sort((a, b) => {
+      const fieldAValue = field ? (a as Record<string, unknown>)[field] : null;
+      const fieldBValue = field ? (b as Record<string, unknown>)[field] : null;
+      const fieldA =
+        (typeof fieldAValue === "string" ? fieldAValue : null) ??
+        a.film_title ??
+        a.song_title ??
+        a.performer_name ??
+        "";
+      const fieldB =
+        (typeof fieldBValue === "string" ? fieldBValue : null) ??
+        b.film_title ??
+        b.song_title ??
+        b.performer_name ??
+        "";
+      const nameA = normalizeTitle(fieldA);
+      const nameB = normalizeTitle(fieldB);
+      if (nameA === nameB) return a.id - b.id;
+      return nameA.localeCompare(nameB);
+    })
+    .map((n) => n.id)[0];
+}
+
+function chooseRandomized(
+  availableIds: number[],
+  seed: string | null | undefined
+): { id: number | undefined; seed: string } {
+  const resolvedSeed = seed ?? "draft-random-default";
+  const rand = createSeededRandom(resolvedSeed);
+  const ids = [...availableIds];
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return { id: ids[0], seed: resolvedSeed };
+}
+
+function chooseCanonical(
+  availableIds: number[],
+  config: AutoPickConfig | null | undefined
+) {
+  const order = config?.canonical_order ?? [];
+  if (Array.isArray(order) && order.length > 0) {
+    const next = order.find((id) => availableIds.includes(id));
+    if (next) return next;
+  }
+  return undefined;
+}
+
+function chooseCustomUser(
+  userId: number,
+  availableIds: number[],
+  config: AutoPickConfig | null | undefined
+) {
+  const rankings = config?.custom_rankings ?? {};
+  const userList = rankings[String(userId)] ?? rankings[userId] ?? [];
+  const match = userList.find((id) => availableIds.includes(id));
+  return match ?? undefined;
+}
+
 async function autoPickIfExpired(options: {
   tx: DbClient;
   draft: DraftRecord;
@@ -92,7 +210,6 @@ async function autoPickIfExpired(options: {
   const { tx, draft, season, league } = options;
   if (draft.status !== "IN_PROGRESS") return draft;
   if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
-  if (draft.auto_pick_strategy !== "NEXT_AVAILABLE") return draft;
   const now = new Date();
   if (now <= new Date(draft.pick_deadline_at)) return draft;
 
@@ -119,10 +236,62 @@ async function autoPickIfExpired(options: {
   }
 
   const pickedIds = new Set(picks.map((p) => p.nomination_id));
-  const allNomIds = await listNominationIdsByCeremony(tx, season.ceremony_id);
-  const nextNomination = allNomIds.find((id) => !pickedIds.has(id));
-  if (!nextNomination) {
+  const allNoms = await listNominationsForCeremony(tx, season.ceremony_id);
+  const available = allNoms.filter((n) => !pickedIds.has(n.id));
+  if (available.length === 0) {
     return draft;
+  }
+
+  const strategy = resolveStrategy(draft.auto_pick_strategy);
+  const availableIds = available.map((n) => n.id);
+
+  let chosen: number | undefined;
+  let seedUsed = draft.auto_pick_seed ?? null;
+
+  switch (strategy) {
+    case "ALPHABETICAL":
+      chosen = chooseAlphabetical(
+        available,
+        (draft.auto_pick_config as AutoPickConfig)?.alphabetical_field
+      );
+      break;
+    case "CANONICAL":
+      chosen = chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig);
+      break;
+    case "CUSTOM_USER":
+      chosen = chooseCustomUser(
+        seat.user_id,
+        availableIds,
+        draft.auto_pick_config as AutoPickConfig
+      );
+      break;
+    case "SMART":
+      chosen =
+        chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig) ??
+        (draft.auto_pick_config as AutoPickConfig | undefined)?.smart_priorities?.find(
+          (id) => availableIds.includes(id)
+        );
+      break;
+    case "RANDOM_SEED": {
+      const result = chooseRandomized(availableIds, seedUsed);
+      chosen = result.id;
+      seedUsed = result.seed;
+      if (!draft.auto_pick_seed && seedUsed) {
+        await tx.query(`UPDATE draft SET auto_pick_seed = $2 WHERE id = $1`, [
+          draft.id,
+          seedUsed
+        ]);
+      }
+      break;
+    }
+    case "NEXT_AVAILABLE":
+    default:
+      chosen = availableIds.sort((a, b) => a - b)[0];
+      break;
+  }
+
+  if (!chosen) {
+    chosen = availableIds.sort((a, b) => a - b)[0];
   }
 
   const nowPick = new Date();
@@ -133,7 +302,7 @@ async function autoPickIfExpired(options: {
     seat_number: assignment.seat_number,
     league_member_id: seat.league_member_id,
     user_id: seat.user_id,
-    nomination_id: nextNomination,
+    nomination_id: chosen,
     made_at: nowPick,
     request_id: `auto-${nowPick.getTime()}`
   });
@@ -173,6 +342,7 @@ async function autoPickIfExpired(options: {
     event_type: "draft.pick.autopicked",
     payload: {
       reason: "TIMER_EXPIRED",
+      strategy,
       pick: {
         id: pick.id,
         draft_id: pick.draft_id,
