@@ -1967,6 +1967,11 @@ type Snapshot = {
   total_picks?: number | null;
   remainder_strategy?: string;
   ceremony_starts_at?: string | null;
+  nomination_flags?: Array<{
+    nomination_id: number;
+    status: string;
+    replaced_by_nomination_id?: number | null;
+  }>;
 };
 
 type DraftEventMessage = {
@@ -2401,6 +2406,22 @@ export function DraftRoom(props: {
               {snapshot.draft.allow_drafting_after_lock && (
                 <div className="status status-warning" role="status">
                   Draft lock override active — results may be compromised.
+                </div>
+              )}
+              {snapshot.nomination_flags && snapshot.nomination_flags.length > 0 && (
+                <div className="status status-warning" role="status">
+                  Some nominees changed after drafting began. Picks stay recorded;
+                  commissioners should review. Flags:{" "}
+                  {snapshot.nomination_flags
+                    .map(
+                      (f) =>
+                        `#${f.nomination_id} (${f.status.toLowerCase()}${
+                          f.replaced_by_nomination_id
+                            ? ` → ${f.replaced_by_nomination_id}`
+                            : ""
+                        })`
+                    )
+                    .join(", ")}
                 </div>
               )}
               <div className="status-tray">

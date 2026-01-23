@@ -27,6 +27,10 @@ import {
   updateDraftTimer,
   setDraftLockOverride
 } from "../data/repositories/draftRepository.js";
+import {
+  listNominationsForCeremony,
+  getNominationWithStatus
+} from "../data/repositories/nominationRepository.js";
 import type {
   DraftPickRecord,
   DraftRecord
@@ -52,7 +56,6 @@ import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import { scoreDraft } from "../domain/scoring.js";
-import { listNominationsForCeremony } from "../data/repositories/nominationRepository.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -1608,6 +1611,23 @@ export function buildDraftStandingsHandler(pool: Pool) {
         picksBySeat.get(pick.seat_number)?.push(pick);
       }
 
+      const nominationFlags = picks.length
+        ? await Promise.all(
+            picks.map(async (pick) => {
+              const nom = await getNominationWithStatus(pool, pick.nomination_id);
+              return nom
+                ? {
+                    nomination_id: pick.nomination_id,
+                    status: (nom as { status?: string }).status ?? "ACTIVE",
+                    replaced_by_nomination_id:
+                      (nom as { replaced_by_nomination_id?: number | null })
+                        .replaced_by_nomination_id ?? null
+                  }
+                : null;
+            })
+          )
+        : [];
+
       const standings = seats
         .map((seat) => ({
           seat_number: seat.seat_number,
@@ -1640,7 +1660,8 @@ export function buildDraftStandingsHandler(pool: Pool) {
           nomination_id: result.nomination_id,
           won: result.won,
           points: result.points ?? null
-        }))
+        })),
+        nomination_flags: nominationFlags.filter(Boolean)
       });
     } catch (err) {
       next(err);
