@@ -168,6 +168,58 @@ describe("draft start integration", () => {
     expect(events[0].event_type).toBe("draft.started");
   });
 
+  it("honors FULL_POOL remainder strategy and freezes total_picks on draft", async () => {
+    const owner = await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: owner.id });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await setActiveCeremony(season.ceremony_id);
+    const memberA = await insertUser(db.pool, { id: 2 });
+    const lmOwner = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: owner.id,
+      role: "OWNER"
+    });
+    const lmA = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: memberA.id
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role) VALUES ($1,$2,$3,'OWNER'),($1,$4,$5,'MEMBER')`,
+      [season.id, owner.id, lmOwner.id, memberA.id, lmA.id]
+    );
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
+    for (let i = 0; i < 5; i += 1) {
+      await insertNomination(db.pool);
+    }
+
+    const resAllocation = await post<{ season: { remainder_strategy: string } }>(
+      `/seasons/${season.id}/allocation`,
+      { remainder_strategy: "FULL_POOL" }
+    );
+    expect(resAllocation.status).toBe(200);
+    expect(resAllocation.json.season.remainder_strategy).toBe("FULL_POOL");
+
+    const res = await post<{
+      draft: {
+        status: string;
+        picks_per_seat: number;
+        total_picks: number;
+        remainder_strategy: string;
+      };
+    }>(`/drafts/${draft.id}/start`, {});
+    expect(res.status).toBe(200);
+    expect(res.json.draft.remainder_strategy).toBe("FULL_POOL");
+    expect(res.json.draft.picks_per_seat).toBe(2);
+    expect(res.json.draft.total_picks).toBe(5);
+  });
+
   it("rejects when already started", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });

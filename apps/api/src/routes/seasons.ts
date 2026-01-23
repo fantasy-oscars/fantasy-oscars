@@ -16,7 +16,8 @@ import {
   listSeasonsForLeague,
   cancelSeason,
   getSeasonById,
-  updateSeasonScoringStrategy
+  updateSeasonScoringStrategy,
+  updateSeasonRemainderStrategy
 } from "../data/repositories/seasonRepository.js";
 import { runInTransaction, query } from "../data/db.js";
 import type { DbClient } from "../data/db.js";
@@ -159,118 +160,173 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
     return rows[0] ?? null;
   }
 
-  router.post(
-    "/seasons/:id/cancel",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const seasonId = Number(req.params.id);
-        if (Number.isNaN(seasonId)) {
-          throw validationError("Invalid season id", ["id"]);
-        }
-        const userId = Number(req.auth?.sub);
-        if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
-
-        const result = await runInTransaction(client as Pool, async (tx) => {
-          const season = await getSeasonById(tx, seasonId);
-          if (!season || season.status === "CANCELLED") {
-            throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
-          }
-          const league = await getLeagueById(tx, season.league_id);
-          if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-          const member = await getLeagueMember(tx, league.id, userId);
-          const isCommissioner =
-            league.created_by_user_id === userId ||
-            (member && (member.role === "OWNER" || member.role === "CO_OWNER"));
-          if (!isCommissioner) {
-            throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
-          }
-
-          const draft = await getDraftBySeasonId(tx, season.id);
-          if (draft && draft.status === "COMPLETED") {
-            throw new AppError(
-              "SEASON_CANNOT_CANCEL_COMPLETED",
-              409,
-              "Cannot cancel a season with a completed draft"
-            );
-          }
-
-          const cancelled = await cancelSeason(tx, season.id);
-          if (!cancelled) {
-            throw new AppError("INTERNAL_ERROR", 500, "Failed to cancel season");
-          }
-
-          let event = null;
-          if (draft) {
-            event = await createDraftEvent(tx, {
-              draft_id: draft.id,
-              event_type: "season.cancelled",
-              payload: { season_id: cancelled.id, draft_id: draft.id }
-            });
-          }
-
-          return { season: cancelled, draft, event };
-        });
-
-        if (result.event) {
-          emitDraftEvent(result.event);
-        }
-
-        return res.status(200).json({ season: result.season });
-      } catch (err) {
-        next(err);
+  const handleCancelSeason = async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    try {
+      const seasonId = Number(req.params.id);
+      if (Number.isNaN(seasonId)) {
+        throw validationError("Invalid season id", ["id"]);
       }
-    }
-  );
+      const userId = Number(req.auth?.sub);
+      if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-  router.post(
-    "/seasons/:id/scoring",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const seasonId = Number(req.params.id);
-        const { scoring_strategy_name } = req.body ?? {};
-        const actorId = Number(req.auth?.sub);
-        if (Number.isNaN(seasonId) || !actorId) {
-          throw validationError("Invalid season id", ["id"]);
+      const result = await runInTransaction(client as Pool, async (tx) => {
+        const season = await getSeasonById(tx, seasonId);
+        if (!season || season.status === "CANCELLED") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
-        if (!["fixed", "negative"].includes(scoring_strategy_name)) {
-          throw validationError("Invalid scoring_strategy_name", [
-            "scoring_strategy_name"
-          ]);
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const member = await getLeagueMember(tx, league.id, userId);
+        const isCommissioner =
+          league.created_by_user_id === userId ||
+          (member && (member.role === "OWNER" || member.role === "CO_OWNER"));
+        if (!isCommissioner) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
 
-        const result = await runInTransaction(client as Pool, async (tx) => {
-          const season = await getSeasonById(tx, seasonId);
-          if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
-          const league = await getLeagueById(tx, season.league_id);
-          if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-          const member = await getLeagueMember(tx, league.id, actorId);
-          ensureCommissioner(member);
+        const draft = await getDraftBySeasonId(tx, season.id);
+        if (draft && draft.status === "COMPLETED") {
+          throw new AppError(
+            "SEASON_CANNOT_CANCEL_COMPLETED",
+            409,
+            "Cannot cancel a season with a completed draft"
+          );
+        }
 
-          const draft = await getDraftBySeasonId(tx, season.id);
-          if (draft && draft.status !== "PENDING") {
-            throw new AppError(
-              "SEASON_SCORING_LOCKED",
-              409,
-              "Cannot change scoring after draft has started"
-            );
-          }
+        const cancelled = await cancelSeason(tx, season.id);
+        if (!cancelled) {
+          throw new AppError("INTERNAL_ERROR", 500, "Failed to cancel season");
+        }
 
-          const updated =
-            (await updateSeasonScoringStrategy(
-              tx,
-              season.id,
-              scoring_strategy_name as "fixed" | "negative"
-            )) ?? season;
+        let event = null;
+        if (draft) {
+          event = await createDraftEvent(tx, {
+            draft_id: draft.id,
+            event_type: "season.cancelled",
+            payload: { season_id: cancelled.id, draft_id: draft.id }
+          });
+        }
 
-          return { season: updated };
-        });
+        return { season: cancelled, draft, event };
+      });
 
-        return res.status(200).json({ season: result.season });
-      } catch (err) {
-        next(err);
+      if (result.event) {
+        emitDraftEvent(result.event);
       }
+
+      return res.status(200).json({ season: result.season });
+    } catch (err) {
+      next(err);
     }
-  );
+  };
+  router.post("/seasons/:id/cancel", handleCancelSeason);
+  router.post("/:id/cancel", handleCancelSeason);
+
+  const handleUpdateScoring = async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    try {
+      const seasonId = Number(req.params.id);
+      const { scoring_strategy_name } = req.body ?? {};
+      const actorId = Number(req.auth?.sub);
+      if (Number.isNaN(seasonId) || !actorId) {
+        throw validationError("Invalid season id", ["id"]);
+      }
+      if (!["fixed", "negative"].includes(scoring_strategy_name)) {
+        throw validationError("Invalid scoring_strategy_name", ["scoring_strategy_name"]);
+      }
+
+      const result = await runInTransaction(client as Pool, async (tx) => {
+        const season = await getSeasonById(tx, seasonId);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const member = await getLeagueMember(tx, league.id, actorId);
+        ensureCommissioner(member);
+
+        const draft = await getDraftBySeasonId(tx, season.id);
+        if (draft && draft.status !== "PENDING") {
+          throw new AppError(
+            "SEASON_SCORING_LOCKED",
+            409,
+            "Cannot change scoring after draft has started"
+          );
+        }
+
+        const updated =
+          (await updateSeasonScoringStrategy(
+            tx,
+            season.id,
+            scoring_strategy_name as "fixed" | "negative"
+          )) ?? season;
+
+        return { season: updated };
+      });
+
+      return res.status(200).json({ season: result.season });
+    } catch (err) {
+      next(err);
+    }
+  };
+  router.post("/seasons/:id/scoring", handleUpdateScoring);
+  router.post("/:id/scoring", handleUpdateScoring);
+
+  const handleUpdateAllocation = async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    try {
+      const seasonId = Number(req.params.id);
+      const { remainder_strategy } = req.body ?? {};
+      const actorId = Number(req.auth?.sub);
+      if (Number.isNaN(seasonId) || !actorId) {
+        throw validationError("Invalid season id", ["id"]);
+      }
+      if (!["UNDRAFTED", "FULL_POOL"].includes(remainder_strategy)) {
+        throw validationError("Invalid remainder_strategy", ["remainder_strategy"]);
+      }
+
+      const result = await runInTransaction(client as Pool, async (tx) => {
+        const season = await getSeasonById(tx, seasonId);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const member = await getLeagueMember(tx, league.id, actorId);
+        ensureCommissioner(member);
+
+        const draft = await getDraftBySeasonId(tx, season.id);
+        if (draft && draft.status !== "PENDING") {
+          throw new AppError(
+            "ALLOCATION_LOCKED",
+            409,
+            "Cannot change allocation after draft has started"
+          );
+        }
+
+        const updated =
+          (await updateSeasonRemainderStrategy(
+            tx,
+            season.id,
+            remainder_strategy as "UNDRAFTED" | "FULL_POOL"
+          )) ?? season;
+
+        return { season: updated };
+      });
+
+      return res.status(200).json({ season: result.season });
+    } catch (err) {
+      next(err);
+    }
+  };
+  router.post("/seasons/:id/allocation", handleUpdateAllocation);
+  router.post("/:id/allocation", handleUpdateAllocation);
 
   router.get(
     "/:id/invites",
@@ -588,6 +644,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           ceremony_id: s.ceremony_id,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
+          remainder_strategy: s.remainder_strategy,
           created_at: s.created_at,
           ceremony_starts_at: s.ceremony_starts_at ?? null,
           draft_id: s.draft_id ?? null,

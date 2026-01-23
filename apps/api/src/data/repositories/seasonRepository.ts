@@ -6,6 +6,7 @@ export type SeasonRecord = {
   ceremony_id: number;
   status: "EXTANT" | "CANCELLED";
   scoring_strategy_name: "fixed" | "negative";
+  remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
   created_at: Date;
   ceremony_starts_at?: Date | null;
   draft_id?: number | null;
@@ -24,6 +25,7 @@ export async function getExtantSeasonForLeague(
        s.ceremony_id::int,
        s.status,
        s.scoring_strategy_name,
+       s.remainder_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -55,6 +57,7 @@ export async function createExtantSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       remainder_strategy,
        created_at`,
     [input.league_id, input.ceremony_id]
   );
@@ -73,6 +76,7 @@ export async function getSeasonById(
        s.ceremony_id::int,
        s.status,
        s.scoring_strategy_name,
+       s.remainder_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -100,6 +104,7 @@ export async function createSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       remainder_strategy,
        created_at`,
     [input.league_id, input.ceremony_id, input.status ?? "EXTANT"]
   );
@@ -120,6 +125,7 @@ export async function listSeasonsForLeague(
        s.ceremony_id::int,
        s.status,
        s.scoring_strategy_name,
+       s.remainder_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -147,6 +153,7 @@ export async function getMostRecentSeason(
        s.ceremony_id::int,
        s.status,
        s.scoring_strategy_name,
+       s.remainder_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -177,6 +184,7 @@ export async function cancelSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       remainder_strategy,
        created_at`,
     [seasonId]
   );
@@ -199,6 +207,30 @@ export async function updateSeasonScoringStrategy(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       remainder_strategy,
+       created_at`,
+    [seasonId, strategy]
+  );
+  return rows[0] ?? null;
+}
+
+export async function updateSeasonRemainderStrategy(
+  client: DbClient,
+  seasonId: number,
+  strategy: SeasonRecord["remainder_strategy"]
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `UPDATE season
+     SET remainder_strategy = $2
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       ceremony_id::int,
+       status,
+       scoring_strategy_name,
+       remainder_strategy,
        created_at`,
     [seasonId, strategy]
   );

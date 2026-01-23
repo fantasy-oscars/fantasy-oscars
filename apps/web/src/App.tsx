@@ -73,6 +73,16 @@ async function fetchJson<T>(
   }
 }
 
+function allocationLabel(strategy?: string | null) {
+  switch (strategy) {
+    case "FULL_POOL":
+      return "Use full pool (extras drafted)";
+    case "UNDRAFTED":
+    default:
+      return "Leave extras undrafted";
+  }
+}
+
 type FieldErrors = Partial<Record<string, string>>;
 type LeagueSummary = { id: number; code: string; name: string; ceremony_id: number };
 type LeagueDetail = LeagueSummary & { max_members?: number; roster_size?: number };
@@ -94,6 +104,7 @@ type SeasonSummary = {
   draft_status?: string | null;
   scoring_strategy_name?: string;
   is_active_ceremony?: boolean;
+  remainder_strategy?: string;
 };
 type SeasonMember = {
   id: number;
@@ -128,6 +139,7 @@ type SeasonMeta = {
   ceremony_starts_at?: string | null;
   draft_id?: number | null;
   draft_status?: string | null;
+  remainder_strategy?: string;
 };
 type TokenMap = Record<number, string>;
 
@@ -1040,6 +1052,9 @@ function LeagueDetailPage() {
                   </span>
                   <span className="pill">Status: {s.status}</span>
                   <span className="pill">Ceremony {s.ceremony_id}</span>
+                  {s.remainder_strategy && (
+                    <span className="pill">{allocationLabel(s.remainder_strategy)}</span>
+                  )}
                   {s.draft_status && (
                     <span className="pill">Draft: {s.draft_status}</span>
                   )}
@@ -1071,6 +1086,7 @@ function SeasonPage() {
     leagueMembers: LeagueMember[];
   } | null>(null);
   const [scoringState, setScoringState] = useState<ApiResult | null>(null);
+  const [allocationState, setAllocationState] = useState<ApiResult | null>(null);
   const [addMemberResult, setAddMemberResult] = useState<ApiResult | null>(null);
   const [inviteResult, setInviteResult] = useState<ApiResult | null>(null);
   const [userInviteResult, setUserInviteResult] = useState<ApiResult | null>(null);
@@ -1222,6 +1238,32 @@ function SeasonPage() {
     }
   }
 
+  async function updateAllocation(strategy: string) {
+    setAllocationState(null);
+    setWorking(true);
+    const res = await fetchJson<{ season: SeasonMeta }>(
+      `/seasons/${seasonId}/allocation`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remainder_strategy: strategy })
+      }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.season && leagueContext) {
+      setLeagueContext({
+        ...leagueContext,
+        season: {
+          ...leagueContext.season,
+          remainder_strategy: res.data.season.remainder_strategy
+        }
+      });
+      setAllocationState({ ok: true, message: "Allocation updated" });
+    } else {
+      setAllocationState({ ok: false, message: res.error ?? "Update failed" });
+    }
+  }
+
   async function createUserInvite() {
     const userId = Number(userInviteQuery);
     if (!Number.isFinite(userId)) {
@@ -1359,6 +1401,7 @@ function SeasonPage() {
 
   const seasonStatus = leagueContext?.season?.status ?? "UNKNOWN";
   const scoringStrategy = leagueContext?.season?.scoring_strategy_name ?? "fixed";
+  const allocationStrategy = leagueContext?.season?.remainder_strategy ?? "UNDRAFTED";
   const availableLeagueMembers =
     leagueContext?.leagueMembers?.filter(
       (m) => !members.some((sm) => sm.user_id === m.user_id)
@@ -1390,6 +1433,7 @@ function SeasonPage() {
           <span className="pill">Status: {seasonStatus}</span>
           <span className="pill">{isArchived ? "ARCHIVED (read-only)" : "ACTIVE"}</span>
           <span className="pill">Scoring: {scoringStrategy}</span>
+          <span className="pill">Allocation: {allocationLabel(allocationStrategy)}</span>
         </div>
       </header>
       {isArchived && (
@@ -1528,6 +1572,21 @@ function SeasonPage() {
                   </select>
                 </label>
                 <FormStatus loading={working} result={scoringState} />
+              </div>
+
+              <div>
+                <label className="field">
+                  <span>Allocation for remainder picks</span>
+                  <select
+                    value={allocationStrategy}
+                    disabled={!canEdit || working}
+                    onChange={(e) => updateAllocation(e.target.value)}
+                  >
+                    <option value="UNDRAFTED">Leave extras undrafted</option>
+                    <option value="FULL_POOL">Use full pool (extras drafted)</option>
+                  </select>
+                </label>
+                <FormStatus loading={working} result={allocationState} />
               </div>
 
               <div className="inline-form">
@@ -1887,6 +1946,9 @@ type Snapshot = {
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
+  picks_per_seat?: number | null;
+  total_picks?: number | null;
+  remainder_strategy?: string;
   ceremony_starts_at?: string | null;
 };
 
@@ -2296,6 +2358,10 @@ export function DraftRoom(props: {
               <p className="muted">
                 Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
                 {snapshot.version}
+              </p>
+              <p className="muted">
+                Allocation: {allocationLabel(snapshot.remainder_strategy)} · Total picks:{" "}
+                {snapshot.total_picks ?? "—"}
               </p>
               <div className="status-tray">
                 <span
