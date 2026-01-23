@@ -58,14 +58,15 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 - **Build command (Render):**
 
   ```bash
-  npm install
-  npm run build --workspace @fantasy-oscars/api
+  corepack enable
+  pnpm run render:install:api
+  pnpm run render:build:api
   ```
 
 - **Start command (Render):**
 
   ```bash
-  npm --prefix apps/api run start
+  pnpm run render:start:api
   ```
 
 - **Env var checklist (API):** `NODE_ENV=production`, `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS=https://fantasy-oscars.onrender.com`, optionally `REALTIME_ENABLED=true`. Render supplies `PORT`.
@@ -86,8 +87,9 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 - **Build command (Render):**
 
   ```bash
-  npm install
-  npm run build --workspace @fantasy-oscars/web
+  corepack enable
+  pnpm run render:install:web
+  pnpm run render:build:web
   ```
 
 - **Publish directory:** `apps/web/dist`

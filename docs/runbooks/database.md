@@ -12,7 +12,7 @@
 - Add: create `db/migrations/NNN_description.sql`
 - Applied automatically in integration tests.
 - Ordering rule: filenames use zero-padded numeric prefixes and must be strictly increasing (no duplicate numbers). Tooling sorts by numeric prefix and fails fast on duplicates.
-- Validate ordering locally/CI: `npm run test:migrations` (also runs inside `npm run ci`).
+- Validate ordering locally/CI: `pnpm run test:migrations` (also runs inside `pnpm run ci`).
 
 ## Test DB
 
@@ -22,7 +22,7 @@
 
 ## Local DB
 
-- Start/stop Postgres: `npm run db:up` / `npm run db:down`.
+- Start/stop Postgres: `pnpm run db:up` / `pnpm run db:down`.
 - Only the DB is containerized (by design). Run `apps/api` / `apps/web` on the host for faster iteration and better debugging.
 - Connect with: `DATABASE_URL=postgres://fantasy:fantasy@localhost:5433/fantasy_oscars`
 - Apply migrations by running the app/tests that auto-apply migrations (or the dedicated migration command once it exists).
@@ -46,7 +46,7 @@
 - **Migrations (prod):**
 
   ```bash
-  DATABASE_URL=$DATABASE_URL npm run db:migrate
+  DATABASE_URL=$DATABASE_URL pnpm run db:migrate
   ```
 
   The script records applied files in `migration_history` and applies new `db/migrations/*.sql` in order.

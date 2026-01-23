@@ -6,8 +6,9 @@ import { query } from "../data/db.js";
 import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import { listNominationsForCeremony } from "../data/repositories/nominationRepository.js";
+import type { Router } from "express";
 
-export function createCeremonyRouter(client: DbClient) {
+export function createCeremonyRouter(client: DbClient): Router {
   const router = express.Router();
 
   router.get("/active", async (_req, res, next) => {

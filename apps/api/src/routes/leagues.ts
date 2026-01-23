@@ -1,4 +1,5 @@
 import express from "express";
+import type { Router } from "express";
 import { validationError, AppError } from "../errors.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import {
@@ -32,7 +33,7 @@ const joinRateLimiter = new SlidingWindowRateLimiter({
   max: 8
 });
 
-export function createLeaguesRouter(client: DbClient, authSecret: string) {
+export function createLeaguesRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
 
   // League membership is invite-only for MVP; open joins are disabled.

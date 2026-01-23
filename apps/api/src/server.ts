@@ -1,4 +1,5 @@
 import express from "express";
+import type { Express } from "express";
 import type { Pool } from "pg";
 import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
@@ -42,7 +43,7 @@ function sanitizeBody(value: unknown): unknown {
   return value;
 }
 
-export function createServer(deps?: { db?: Pool }) {
+export function createServer(deps?: { db?: Pool }): Express {
   const app = express();
   const config = loadConfig();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");

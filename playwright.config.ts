@@ -23,10 +23,10 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: `npm run preview --workspace @fantasy-oscars/web -- --host 127.0.0.1 --port ${webPort} --strictPort`,
+    // Avoid pnpm argument quirks by calling Vite directly.
+    command: `pnpm -C apps/web exec vite preview --host 127.0.0.1 --port ${webPort} --strictPort`,
     url: webBaseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
   }
 });
-

@@ -12,7 +12,7 @@ Migration steps (not executed yet)
 2) Keep API-only factories (e.g., ones that hit DB directly) in `apps/api/test/factories/` and adapt imports.
 3) Update import paths in tests to use the shared package alias (e.g., `@fantasy-oscars/shared/test/factories`).
 4) Add a small README in the shared factories folder documenting boundaries: pure domain/data-shape factories only; DB or HTTP helpers stay app-local.
-5) Run `npm run test --workspaces --if-present` to ensure cross-workspace tests pass after path changes.
+5) Run `pnpm -r --if-present test` to ensure cross-workspace tests pass after path changes.
 
 Notes
 

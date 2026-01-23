@@ -11,20 +11,21 @@ Starter monorepo for the Fantasy Oscars app.
 
 ## Prereqs
 
-- Node 20+
+- Node 20+ (enable Corepack: `corepack enable`)
+- pnpm 9 (handled by Corepack)
 - Docker (for DB-backed tests)
 
 ## Quick start
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ## Tests
 
-- Run the full suite (matches CI): `npm run ci`
-- Run non-Docker checks only: `npm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`)
+- Run the full suite (matches CI): `pnpm run ci`
+- Run non-Docker checks only: `pnpm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`)
 - Requires Docker for database-backed tests (Testcontainers launches an isolated Postgres)
 
 ## Documentation
@@ -38,5 +39,5 @@ npm run dev
 ## Database (optional)
 
 ```bash
-npm run db:up
+pnpm run db:up
 ```

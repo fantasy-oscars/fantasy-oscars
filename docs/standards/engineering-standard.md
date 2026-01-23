@@ -2,14 +2,14 @@
 
 ## TL;DR
 
-- “Done” means `npm run ci` passes (lint, typecheck, tests, build) and docs are updated.
+- “Done” means `pnpm run ci` passes (lint, typecheck, tests, build) and docs are updated.
 - Prefer conventional solutions; deviations require an ADR.
 - Small, readable changes with clear intent; tests for behavior, not just coverage.
 - Commit messages follow Conventional Commits: `type(scope): summary` (scope optional).
 
 ## Definition of Done
 
-- All checks green: `npm run ci` (matches GitHub Actions: `npm run ci:tests` + `npm run ci:docs`).
+- All checks green: `pnpm run ci` (matches GitHub Actions: `pnpm run ci:tests` + `pnpm run ci:docs`).
 - Docs updated (root README and relevant docs under `docs/`).
 - No unexplained TODOs; follow-up items captured (issue or TODO with owner).
 - Errors handled deliberately; no leaking stack traces to clients.

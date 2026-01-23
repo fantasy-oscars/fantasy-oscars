@@ -1,4 +1,5 @@
 import express from "express";
+import type { Router } from "express";
 import crypto from "crypto";
 import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
@@ -84,7 +85,7 @@ function hashResetToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export function createAuthRouter(client: DbClient, opts: { authSecret: string }) {
+export function createAuthRouter(client: DbClient, opts: { authSecret: string }): Router {
   const router = express.Router();
   const { authSecret } = opts;
   const isProd = process.env.NODE_ENV === "production";

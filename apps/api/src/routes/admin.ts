@@ -16,8 +16,9 @@ import { hasDraftsStartedForCeremony } from "../data/repositories/draftRepositor
 import { loadNominees } from "../scripts/load-nominees.js";
 import type { Pool } from "pg";
 import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
+import type { Router } from "express";
 
-export function createAdminRouter(client: DbClient) {
+export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
 
   router.post(

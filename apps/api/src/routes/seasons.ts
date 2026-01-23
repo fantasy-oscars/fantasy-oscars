@@ -1,4 +1,5 @@
 import express from "express";
+import type { Router } from "express";
 import crypto from "crypto";
 import { AppError, validationError } from "../errors.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
@@ -51,7 +52,7 @@ import {
 } from "../data/repositories/seasonInviteRepository.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 
-export function createSeasonsRouter(client: DbClient, authSecret: string) {
+export function createSeasonsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
 
   router.use(requireAuth(authSecret));

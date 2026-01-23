@@ -62,7 +62,7 @@ Go-live gate: follow [go-live checklist & smoke plan](go-live.md) before opening
 - 401 on `/auth/me` while logged in: likely missing/expired auth cookie or wrong API base in frontend.
 - CORS errors in browser: ensure `CORS_ALLOWED_ORIGINS` includes the frontend origin; redeploy API.
 - DB connection errors: confirm `DATABASE_URL` password matches the current Postgres user password.
-- Build failures (frontend): re-run `npm install && npm run build --workspace @fantasy-oscars/web` locally to reproduce.
+- Build failures (frontend): re-run `pnpm install && pnpm run build --filter @fantasy-oscars/web` locally to reproduce.
 
 ## Annual Ceremony Rollover (example: archive 2026 → create/activate 2027)
 
@@ -138,7 +138,7 @@ Steps (from Render Shell on the API service):
 ```bash
 export DATABASE_URL="$DATABASE_URL"
 export ADMIN_BOOTSTRAP_SECRET="$ADMIN_BOOTSTRAP_SECRET" # Render injects it
-npm run admin:bootstrap -- \
+pnpm run admin:bootstrap -- \
   --handle admin \
   --email admin@example.com \
   --display-name "Fantasy Admin" \

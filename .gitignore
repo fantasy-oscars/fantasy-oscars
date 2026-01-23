@@ -8,6 +8,7 @@ build/
 .vite/
 playwright-report/
 test-results/
+*.tsbuildinfo
 
 # env/local
 .env
@@ -19,6 +20,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-store/
 
 # OS/editor
 .DS_Store

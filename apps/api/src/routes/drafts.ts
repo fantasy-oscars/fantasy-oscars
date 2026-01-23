@@ -1,4 +1,5 @@
 import express from "express";
+import type { Router } from "express";
 import { AppError, validationError } from "../errors.js";
 import {
   createDraft,
@@ -1669,7 +1670,7 @@ export function buildDraftStandingsHandler(pool: Pool) {
   };
 }
 
-export function createDraftsRouter(client: DbClient, authSecret: string) {
+export function createDraftsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
 
   router.use(requireAuth(authSecret));

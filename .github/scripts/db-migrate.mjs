@@ -47,6 +47,23 @@ async function ensureHistoryTable(pool) {
   `);
 }
 
+async function hasTable(pool, tableName) {
+  const { rows } = await pool.query(
+    `SELECT to_regclass($1) AS oid`,
+    [`public.${tableName}`]
+  );
+  return Boolean(rows[0]?.oid);
+}
+
+async function seedHistory(pool, files) {
+  for (const file of files) {
+    await pool.query(
+      `INSERT INTO migration_history (filename) VALUES ($1) ON CONFLICT DO NOTHING`,
+      [file]
+    );
+  }
+}
+
 async function listApplied(pool) {
   const { rows } = await pool.query(`SELECT filename FROM migration_history`);
   return new Set(rows.map((r) => r.filename));
@@ -54,7 +71,14 @@ async function listApplied(pool) {
 
 async function applyMigrations(pool, files) {
   await ensureHistoryTable(pool);
-  const applied = await listApplied(pool);
+  let applied = await listApplied(pool);
+  if (applied.size === 0 && (await hasTable(pool, "icon"))) {
+    // Existing schema without recorded migration history; backfill history to avoid reapplying.
+    await seedHistory(pool, files);
+    applied = await listApplied(pool);
+    // eslint-disable-next-line no-console
+    console.log("Seeded migration_history based on existing schema.");
+  }
   let appliedCount = 0;
 
   for (const file of files) {
