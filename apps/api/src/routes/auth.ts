@@ -4,9 +4,20 @@ import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
 import { signToken } from "../auth/token.js";
 import { requireAuth, AuthedRequest } from "../auth/middleware.js";
+import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 
 const PASSWORD_MIN_LENGTH = 8;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
+
+const authLimiter = createRateLimitGuard({
+  windowMs: 60_000,
+  max: 8
+});
+
+const resetLimiter = createRateLimitGuard({
+  windowMs: 60_000,
+  max: 5
+});
 
 function scryptAsync(
   password: string,
@@ -86,7 +97,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
     path: "/" as const
   };
 
-  router.post("/register", async (req, res, next) => {
+  router.post("/register", authLimiter.middleware, async (req, res, next) => {
     try {
       const { handle, email, display_name, password } = req.body ?? {};
       if (!handle || !email || !display_name || !password) {
@@ -166,7 +177,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
     }
   });
 
-  router.post("/login", async (req, res, next) => {
+  router.post("/login", authLimiter.middleware, async (req, res, next) => {
     try {
       const { handle, password } = req.body ?? {};
       if (!handle || !password) {
@@ -245,7 +256,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       .end();
   });
 
-  router.post("/reset-request", async (req, res, next) => {
+  router.post("/reset-request", resetLimiter.middleware, async (req, res, next) => {
     try {
       const { email } = req.body ?? {};
       if (!email) {
@@ -293,7 +304,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
     }
   });
 
-  router.post("/reset-confirm", async (req, res, next) => {
+  router.post("/reset-confirm", resetLimiter.middleware, async (req, res, next) => {
     try {
       const { token, password } = req.body ?? {};
       if (!token || !password) {

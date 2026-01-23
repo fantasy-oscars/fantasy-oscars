@@ -45,11 +45,18 @@ import {
   updateUserInviteStatus,
   type SeasonInviteRecord
 } from "../data/repositories/seasonInviteRepository.js";
+import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 
 export function createSeasonsRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
 
   router.use(requireAuth(authSecret));
+
+  const inviteClaimLimiter = createRateLimitGuard({
+    windowMs: 60_000,
+    max: 10,
+    key: (req) => req.ip ?? "unknown"
+  });
 
   router.post(
     "/leagues/:id/seasons",
@@ -918,6 +925,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
 
   router.post(
     "/invites/:inviteId/accept",
+    inviteClaimLimiter.middleware,
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const inviteId = Number(req.params.inviteId);
@@ -1020,6 +1028,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
 
   router.post(
     "/invites/:inviteId/decline",
+    inviteClaimLimiter.middleware,
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const inviteId = Number(req.params.inviteId);

@@ -8,6 +8,7 @@ import {
   insertCeremony,
   insertUser
 } from "../factories/db.js";
+import { resetAllRateLimiters } from "../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -44,6 +45,7 @@ describe("admin routes", () => {
 
   beforeEach(async () => {
     await truncateAllTables(db.pool);
+    resetAllRateLimiters();
   });
 
   it("rejects non-admin users", async () => {
@@ -150,6 +152,12 @@ describe("admin routes", () => {
       [ceremony.id]
     );
     expect(rows[0].draft_locked_at).toBeTruthy();
+
+    const auditRows = await db.pool.query<{ action: string }>(
+      `SELECT action FROM admin_audit_log WHERE actor_user_id = $1`,
+      [reg.user.id]
+    );
+    expect(auditRows.rows.some((r) => r.action === "winner_upsert")).toBe(true);
   });
 
   it("uploads nominees dataset idempotently for active ceremony", async () => {

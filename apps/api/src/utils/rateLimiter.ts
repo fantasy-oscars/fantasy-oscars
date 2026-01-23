@@ -33,3 +33,14 @@ export class SlidingWindowRateLimiter {
     }
   }
 }
+
+// Keep a registry for test resets
+const registry: SlidingWindowRateLimiter[] = [];
+
+export function registerLimiter(limiter: SlidingWindowRateLimiter) {
+  registry.push(limiter);
+}
+
+export function resetAllRateLimiters() {
+  registry.forEach((limiter) => limiter.reset());
+}
