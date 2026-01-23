@@ -120,7 +120,16 @@ export type Draft = {
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
   total_picks?: number | null;
   pick_timer_seconds?: number | null;
-  auto_pick_strategy?: "NEXT_AVAILABLE" | null;
+  auto_pick_strategy?:
+    | "NEXT_AVAILABLE"
+    | "RANDOM_SEED"
+    | "ALPHABETICAL"
+    | "CANONICAL"
+    | "SMART"
+    | "CUSTOM_USER"
+    | null;
+  auto_pick_seed?: string | null;
+  auto_pick_config?: Record<string, unknown> | null;
   pick_deadline_at?: Date | null;
   pick_timer_remaining_ms?: number | null;
   version: number;
@@ -324,6 +333,8 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
     total_picks: overrides.total_picks ?? null,
     pick_timer_seconds: overrides.pick_timer_seconds ?? null,
     auto_pick_strategy: overrides.auto_pick_strategy ?? null,
+    auto_pick_seed: overrides.auto_pick_seed ?? null,
+    auto_pick_config: overrides.auto_pick_config ?? null,
     pick_deadline_at: overrides.pick_deadline_at ?? null,
     pick_timer_remaining_ms: overrides.pick_timer_remaining_ms ?? null,
     version: overrides.version ?? 0,

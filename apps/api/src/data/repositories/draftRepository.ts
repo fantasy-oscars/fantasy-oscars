@@ -11,7 +11,16 @@ export type DraftRecord = {
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
   total_picks?: number | null;
   pick_timer_seconds?: number | null;
-  auto_pick_strategy?: "NEXT_AVAILABLE" | null;
+  auto_pick_strategy?:
+    | "NEXT_AVAILABLE"
+    | "RANDOM_SEED"
+    | "ALPHABETICAL"
+    | "CANONICAL"
+    | "SMART"
+    | "CUSTOM_USER"
+    | null;
+  auto_pick_seed?: string | null;
+  auto_pick_config?: Record<string, unknown> | null;
   pick_deadline_at?: Date | null;
   pick_timer_remaining_ms?: number | null;
   version: number;
@@ -72,6 +81,8 @@ export async function createDraft(
     total_picks?: number | null;
     pick_timer_seconds?: number | null;
     auto_pick_strategy?: DraftRecord["auto_pick_strategy"];
+    auto_pick_seed?: string | null;
+    auto_pick_config?: Record<string, unknown> | null;
     pick_deadline_at?: Date | null;
     pick_timer_remaining_ms?: number | null;
     started_at?: Date | null;
@@ -81,8 +92,8 @@ export async function createDraft(
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, pick_deadline_at, pick_timer_remaining_ms, started_at, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, auto_pick_seed, auto_pick_config, pick_deadline_at, pick_timer_remaining_ms, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING
         id::int,
         league_id::int,
@@ -95,6 +106,8 @@ export async function createDraft(
         total_picks::int,
         pick_timer_seconds::int,
         auto_pick_strategy,
+        auto_pick_seed,
+        auto_pick_config,
         pick_deadline_at,
         pick_timer_remaining_ms::int,
         version::int,
@@ -112,6 +125,8 @@ export async function createDraft(
       input.total_picks ?? null,
       input.pick_timer_seconds ?? null,
       input.auto_pick_strategy ?? null,
+      input.auto_pick_seed ?? null,
+      input.auto_pick_config ?? null,
       input.pick_deadline_at ?? null,
       input.pick_timer_remaining_ms ?? null,
       input.started_at ?? null,
@@ -139,6 +154,8 @@ export async function getDraftById(
        total_picks::int,
        pick_timer_seconds::int,
        auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
        version::int,
@@ -168,6 +185,8 @@ export async function getDraftByIdForUpdate(
        total_picks::int,
        pick_timer_seconds::int,
        auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
        version::int,
@@ -246,6 +265,8 @@ export async function getDraftBySeasonId(
        total_picks::int,
        pick_timer_seconds::int,
        auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
        version::int,
@@ -345,6 +366,8 @@ export async function updateDraftOnStart(
        total_picks::int,
        pick_timer_seconds::int,
        auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
        version::int,
@@ -757,6 +780,8 @@ export async function updateDraftTimer(
        total_picks::int,
        pick_timer_seconds::int,
        auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
        version::int,
