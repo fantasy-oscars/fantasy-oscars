@@ -68,6 +68,13 @@ async function main() {
              password_set_at = now()`,
       [user.id, pwHash]
     );
+    await client.query(
+      `INSERT INTO admin_audit_log (actor_user_id, action, target_type, target_id, meta)
+       VALUES ($1, 'bootstrap_admin', 'app_user', $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [user.id, user.id, { handle: normalizedHandle, email: normalizedEmail }]
+    ).catch(() => {});
+
     await client.query("COMMIT");
     // eslint-disable-next-line no-console
     console.log(

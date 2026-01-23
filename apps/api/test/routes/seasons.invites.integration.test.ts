@@ -11,6 +11,7 @@ import {
   insertUser
 } from "../factories/db.js";
 import { createApiAgent, type ApiAgent } from "../support/supertest.js";
+import { resetAllRateLimiters } from "../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let authSecret = "test-secret";
@@ -108,6 +109,7 @@ describe("seasons placeholder invites", () => {
 
   beforeEach(async () => {
     await truncateAllTables(db.pool);
+    resetAllRateLimiters();
   });
 
   it("commissioner can create a placeholder invite and receive the token once", async () => {
@@ -277,6 +279,28 @@ describe("seasons placeholder invites", () => {
       ownerToken
     );
     expect(ownerRes.status).toBe(201);
+  });
+
+  it("rate limits invite accept attempts", async () => {
+    const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const inviteRes = await postJson<{
+      invite: { id: number };
+      token: string;
+    }>(`/seasons/${season.id}/invites`, {}, ownerToken);
+
+    const invited = await insertUser(db.pool, { handle: "invitee" });
+    const invitedToken = signToken({ sub: String(invited.id), handle: invited.handle });
+
+    let finalStatus = 0;
+    for (let i = 0; i < 12; i++) {
+      const res = await postJson<{ error?: { code: string } }>(
+        `/seasons/invites/${inviteRes.json.invite.id}/accept`,
+        {},
+        invitedToken
+      );
+      finalStatus = res.status;
+    }
+    expect(finalStatus).toBe(429);
   });
 
   it("locks invite changes once drafts have started for the ceremony", async () => {
