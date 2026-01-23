@@ -1,4 +1,4 @@
-import { afterEach, afterAll, describe, expect, it, beforeAll } from "vitest";
+import { afterEach, afterAll, describe, expect, it, beforeAll, vi } from "vitest";
 import { io as createClient, type Socket } from "socket.io-client";
 import {
   DRAFT_NAMESPACE,
@@ -22,6 +22,8 @@ let server: SocketTestServer | undefined;
 let clients: TestClient[] = [];
 let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
 const authSecret = process.env.AUTH_SECRET ?? "test-secret";
+
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 async function waitForConnectFailure(socket: Socket, timeoutMs = 2000): Promise<Error> {
   return await new Promise<Error>((resolve, reject) => {

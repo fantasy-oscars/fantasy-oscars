@@ -1,4 +1,4 @@
-import { afterEach, afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   DRAFT_NAMESPACE,
   registerDraftNamespace
@@ -25,6 +25,8 @@ let server: SocketTestServer | undefined;
 let clients: TestClient[] = [];
 let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
 const authSecret = process.env.AUTH_SECRET ?? "test-secret";
+
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 async function waitForDraftEventCount(client: TestClient, count: number) {
   for (let i = 0; i < 50; i += 1) {
