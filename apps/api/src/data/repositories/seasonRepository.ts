@@ -7,6 +7,8 @@ export type SeasonRecord = {
   status: "EXTANT" | "CANCELLED";
   scoring_strategy_name: "fixed" | "negative";
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?: string | null;
   created_at: Date;
   ceremony_starts_at?: Date | null;
   draft_id?: number | null;
@@ -26,6 +28,8 @@ export async function getExtantSeasonForLeague(
        s.status,
        s.scoring_strategy_name,
        s.remainder_strategy,
+       d.pick_timer_seconds::int,
+       d.auto_pick_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -77,6 +81,8 @@ export async function getSeasonById(
        s.status,
        s.scoring_strategy_name,
        s.remainder_strategy,
+       d.pick_timer_seconds::int,
+       d.auto_pick_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -126,6 +132,8 @@ export async function listSeasonsForLeague(
        s.status,
        s.scoring_strategy_name,
        s.remainder_strategy,
+       d.pick_timer_seconds::int,
+       d.auto_pick_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,
@@ -154,6 +162,8 @@ export async function getMostRecentSeason(
        s.status,
        s.scoring_strategy_name,
        s.remainder_strategy,
+       d.pick_timer_seconds::int,
+       d.auto_pick_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
        d.id::int AS draft_id,

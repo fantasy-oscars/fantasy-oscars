@@ -117,6 +117,12 @@ export type Draft = {
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
   picks_per_seat: number | null;
+  remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
+  total_picks?: number | null;
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?: "NEXT_AVAILABLE" | null;
+  pick_deadline_at?: Date | null;
+  pick_timer_remaining_ms?: number | null;
   version: number;
   started_at: Date | null;
   completed_at: Date | null;
@@ -314,6 +320,12 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
     draft_order_type: overrides.draft_order_type ?? "SNAKE",
     current_pick_number: overrides.current_pick_number ?? null,
     picks_per_seat: overrides.picks_per_seat ?? null,
+    remainder_strategy: overrides.remainder_strategy ?? "UNDRAFTED",
+    total_picks: overrides.total_picks ?? null,
+    pick_timer_seconds: overrides.pick_timer_seconds ?? null,
+    auto_pick_strategy: overrides.auto_pick_strategy ?? null,
+    pick_deadline_at: overrides.pick_deadline_at ?? null,
+    pick_timer_remaining_ms: overrides.pick_timer_remaining_ms ?? null,
     version: overrides.version ?? 0,
     started_at: overrides.started_at ?? null,
     completed_at: overrides.completed_at ?? null,

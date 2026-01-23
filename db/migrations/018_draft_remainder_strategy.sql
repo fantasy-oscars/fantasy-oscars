@@ -7,6 +7,10 @@ ALTER TABLE season
 ALTER TABLE draft
   ADD COLUMN remainder_strategy TEXT NOT NULL DEFAULT 'UNDRAFTED'
   CHECK (remainder_strategy IN ('UNDRAFTED', 'FULL_POOL')),
-  ADD COLUMN total_picks INT NULL;
+  ADD COLUMN total_picks INT NULL,
+  ADD COLUMN pick_timer_seconds INT NULL,
+  ADD COLUMN auto_pick_strategy TEXT NULL,
+  ADD COLUMN pick_deadline_at TIMESTAMPTZ NULL,
+  ADD COLUMN pick_timer_remaining_ms INT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_draft_remainder_strategy ON draft (remainder_strategy);

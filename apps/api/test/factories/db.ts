@@ -395,8 +395,8 @@ export async function insertDraft(
     ...overrides
   });
   await pool.query(
-    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, version, started_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, pick_deadline_at, pick_timer_remaining_ms, version, started_at, completed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
     [
       draft.id,
       draft.league_id,
@@ -405,6 +405,12 @@ export async function insertDraft(
       draft.draft_order_type,
       draft.current_pick_number,
       draft.picks_per_seat,
+      draft.remainder_strategy ?? "UNDRAFTED",
+      draft.total_picks ?? null,
+      draft.pick_timer_seconds ?? null,
+      draft.auto_pick_strategy ?? null,
+      draft.pick_deadline_at ?? null,
+      draft.pick_timer_remaining_ms ?? null,
       draft.version,
       draft.started_at,
       draft.completed_at
