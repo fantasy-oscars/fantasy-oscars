@@ -26,6 +26,8 @@
     "test:format": "npm run format:check",
     "test:lint": "npm run lint",
     "test:typecheck": "npm run typecheck",
+    "db:migrate": "node .github/scripts/db-migrate.mjs",
+    "admin:bootstrap": "node .github/scripts/bootstrap-admin.mjs",
     "test:unit": "npm run test:scripts && npm run --workspaces --if-present test:unit",
     "test:migrations": "node --test .github/scripts/migration-order.test.mjs",
     "test:integration": "npm run --workspaces --if-present test:integration",

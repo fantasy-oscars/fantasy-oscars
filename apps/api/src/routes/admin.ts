@@ -8,9 +8,14 @@ import {
   getCeremonyDraftLockedAt
 } from "../data/repositories/ceremonyRepository.js";
 import { upsertWinner } from "../data/repositories/winnerRepository.js";
+import {
+  updateNominationStatus,
+  insertNominationChangeAudit
+} from "../data/repositories/nominationRepository.js";
 import { hasDraftsStartedForCeremony } from "../data/repositories/draftRepository.js";
 import { loadNominees } from "../scripts/load-nominees.js";
 import type { Pool } from "pg";
+import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
 
 export function createAdminRouter(client: DbClient) {
   const router = express.Router();
@@ -40,6 +45,15 @@ export function createAdminRouter(client: DbClient) {
           throw new AppError("NOT_FOUND", 404, "Ceremony not found");
         }
 
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "ceremony_name_update",
+            target_type: "ceremony",
+            target_id: ceremony.id,
+            meta: { name }
+          });
+        }
         return res.status(200).json({ ceremony });
       } catch (err) {
         next(err);
@@ -68,7 +82,120 @@ export function createAdminRouter(client: DbClient) {
         }
 
         await setActiveCeremonyId(client, ceremonyId);
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "set_active_ceremony",
+            target_type: "ceremony",
+            target_id: ceremony.id
+          });
+        }
         return res.status(200).json({ ceremony });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/nominations/:id/change",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const nominationId = Number(req.params.id);
+        if (!Number.isFinite(nominationId) || nominationId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
+        }
+        const {
+          action,
+          origin,
+          impact,
+          reason,
+          replacement_nomination_id
+        }: {
+          action?: "REVOKE" | "REPLACE" | "RESTORE";
+          origin?: "INTERNAL" | "EXTERNAL";
+          impact?: "CONSEQUENTIAL" | "BENIGN";
+          reason?: string;
+          replacement_nomination_id?: number | null;
+        } = req.body ?? {};
+
+        if (!action || !["REVOKE", "REPLACE", "RESTORE"].includes(action)) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid action");
+        }
+        if (!origin || !["INTERNAL", "EXTERNAL"].includes(origin)) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid origin");
+        }
+        if (!impact || !["CONSEQUENTIAL", "BENIGN"].includes(impact)) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid impact");
+        }
+        if (!reason || typeof reason !== "string" || reason.trim().length < 5) {
+          throw new AppError("VALIDATION_FAILED", 400, "Reason required (min 5 chars)");
+        }
+
+        await runInTransaction(client as Pool, async (tx) => {
+          const { rows: nomRows } = await query<{ id: number }>(
+            tx,
+            `SELECT id FROM nomination WHERE id = $1`,
+            [nominationId]
+          );
+          if (nomRows.length === 0) {
+            throw new AppError("NOT_FOUND", 404, "Nomination not found");
+          }
+
+          if (action === "REPLACE") {
+            if (!replacement_nomination_id || Number.isNaN(replacement_nomination_id)) {
+              throw new AppError(
+                "VALIDATION_FAILED",
+                400,
+                "replacement_nomination_id required"
+              );
+            }
+            const { rows: replRows } = await query<{ id: number }>(
+              tx,
+              `SELECT id FROM nomination WHERE id = $1`,
+              [replacement_nomination_id]
+            );
+            if (replRows.length === 0) {
+              throw new AppError("NOT_FOUND", 404, "Replacement nomination not found");
+            }
+          }
+
+          const status: "ACTIVE" | "REVOKED" | "REPLACED" =
+            action === "RESTORE"
+              ? "ACTIVE"
+              : action === "REVOKE"
+                ? "REVOKED"
+                : "REPLACED";
+          await updateNominationStatus(tx, {
+            nomination_id: nominationId,
+            status,
+            replaced_by_nomination_id:
+              action === "REPLACE" ? (replacement_nomination_id ?? null) : null
+          });
+
+          await insertNominationChangeAudit(tx, {
+            nomination_id: nominationId,
+            replacement_nomination_id:
+              action === "REPLACE" ? (replacement_nomination_id ?? null) : null,
+            origin,
+            impact,
+            action,
+            reason,
+            created_by_user_id: Number(req.auth?.sub)
+          });
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "nomination_change",
+            target_type: "nomination",
+            target_id: nominationId,
+            meta: { action, origin, impact, reason, replacement_nomination_id }
+          });
+        }
+
+        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }
@@ -147,6 +274,16 @@ export function createAdminRouter(client: DbClient) {
           return { winner, draft_locked_at: lockedAt };
         });
 
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "winner_upsert",
+            target_type: "category_edition",
+            target_id: Number(categoryEditionId),
+            meta: { ceremony_id: result.winner.ceremony_id, nomination_id: nominationId }
+          });
+        }
+
         return res
           .status(200)
           .json({ winner: result.winner, draft_locked_at: result.draft_locked_at });
@@ -220,6 +357,15 @@ export function createAdminRouter(client: DbClient) {
         }
 
         await loadNominees(client as unknown as Pool, dataset as never);
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "nominees_upload",
+            target_type: "ceremony",
+            target_id: Number(activeCeremonyId)
+          });
+        }
 
         return res.status(200).json({ ok: true });
       } catch (err) {

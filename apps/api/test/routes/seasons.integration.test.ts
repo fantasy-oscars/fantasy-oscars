@@ -243,4 +243,90 @@ describe("seasons integration", () => {
     expect(updateRes.status).toBe(409);
     expect(updateRes.json.error.code).toBe("SEASON_SCORING_LOCKED");
   });
+
+  it("creates a public season for the active ceremony and allows open join", async () => {
+    const previousMax = process.env.PUBLIC_SEASON_MAX_MEMBERS;
+    const previousRoster = process.env.PUBLIC_SEASON_ROSTER_SIZE;
+    process.env.PUBLIC_SEASON_MAX_MEMBERS = "2";
+    process.env.PUBLIC_SEASON_ROSTER_SIZE = "2";
+    try {
+      const ceremony = await createActiveCeremony();
+      const creator = await insertUser(db.pool, { handle: "creator" });
+      const joiner = await insertUser(db.pool, { handle: "joiner" });
+      const another = await insertUser(db.pool, { handle: "another" });
+      const creatorToken = signToken({ sub: String(creator.id), handle: creator.handle });
+      const joinerToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+      const anotherToken = signToken({ sub: String(another.id), handle: another.handle });
+
+      const listRes = await getJson<{
+        seasons: Array<{ season_id: number; ceremony_id: number; max_members: number }>;
+      }>("/seasons/public", creatorToken);
+      expect(listRes.status).toBe(200);
+      expect(listRes.json.seasons[0].ceremony_id).toBe(ceremony.id);
+      const seasonId = listRes.json.seasons[0].season_id;
+
+      const joinRes = await post<{ season: { id: number } }>(
+        `/seasons/public/${seasonId}/join`,
+        {},
+        joinerToken
+      );
+      expect(joinRes.status).toBe(200);
+
+      const secondJoin = await post<{ season: { id: number } }>(
+        `/seasons/public/${seasonId}/join`,
+        {},
+        anotherToken
+      );
+      expect(secondJoin.status).toBe(200);
+
+      const fullJoin = await post<{ error: { code: string } }>(
+        `/seasons/public/${seasonId}/join`,
+        {},
+        creatorToken
+      );
+      expect(fullJoin.status).toBe(409);
+      expect(fullJoin.json.error.code).toBe("PUBLIC_SEASON_FULL");
+
+      const { rows } = await db.pool.query<{ count: string }>(
+        `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = $1`,
+        [seasonId]
+      );
+      expect(Number(rows[0].count)).toBe(2);
+    } finally {
+      process.env.PUBLIC_SEASON_MAX_MEMBERS = previousMax;
+      process.env.PUBLIC_SEASON_ROSTER_SIZE = previousRoster;
+    }
+  });
+
+  it("keeps public seasons out of league listings", async () => {
+    await createActiveCeremony();
+    const creator = await insertUser(db.pool, { handle: "owner2" });
+    const joiner = await insertUser(db.pool, { handle: "member2" });
+    const creatorToken = signToken({ sub: String(creator.id), handle: creator.handle });
+    const joinerToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+
+    const listRes = await getJson<{
+      seasons: Array<{ season_id: number; league_id: number }>;
+    }>("/seasons/public", creatorToken);
+    expect(listRes.status).toBe(200);
+    expect(listRes.json.seasons.length).toBeGreaterThan(0);
+    const seasonId = listRes.json.seasons[0].season_id;
+    const publicLeagueId = listRes.json.seasons[0].league_id;
+
+    await post<{ season: { id: number } }>(
+      `/seasons/public/${seasonId}/join`,
+      {},
+      joinerToken
+    );
+
+    const leaguesRes = await api
+      .get("/leagues")
+      .set("Authorization", `Bearer ${joinerToken}`);
+    expect(leaguesRes.status).toBe(200);
+    expect(
+      (leaguesRes.body.leagues as Array<{ id: number }>).some(
+        (league) => league.id === publicLeagueId
+      )
+    ).toBe(false);
+  });
 });

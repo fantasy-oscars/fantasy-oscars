@@ -6,6 +6,7 @@ import {
   createLeagueMember,
   getLeagueById,
   listLeaguesForUser,
+  listPublicLeagues,
   listLeagueRoster,
   getLeagueMember,
   deleteLeagueMember,
@@ -20,6 +21,16 @@ import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js
 import type { DbClient } from "../data/db.js";
 import { runInTransaction } from "../data/db.js";
 import type { Pool } from "pg";
+import {
+  listSeasonMembers,
+  addSeasonMember
+} from "../data/repositories/seasonMemberRepository.js";
+import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
+
+const joinRateLimiter = new SlidingWindowRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 8
+});
 
 export function createLeaguesRouter(client: DbClient, authSecret: string) {
   const router = express.Router();
@@ -67,11 +78,12 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
           ceremony_id: league.ceremony_id
         });
 
-        await createLeagueMember(tx, {
+        const ownerMembership = await createLeagueMember(tx, {
           league_id: league.id,
           user_id: Number(creator.sub),
           role: "OWNER"
         });
+        void ownerMembership;
 
         return { league, season };
       });
@@ -82,16 +94,112 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
     }
   });
 
+  router.get(
+    "/public",
+    requireAuth(authSecret),
+    async (req: AuthedRequest, res, next) => {
+      try {
+        const search = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
+        const leagues = await listPublicLeagues(client, { search });
+        return res.json({ leagues });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/public/:id",
+    requireAuth(authSecret),
+    async (req: AuthedRequest, res, next) => {
+      try {
+        const id = Number(req.params.id);
+        if (Number.isNaN(id)) {
+          throw validationError("Invalid league id", ["id"]);
+        }
+        const league = await getLeagueById(client, id);
+        if (!league || !league.is_public) {
+          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        }
+        const seasons = await listSeasonsForLeague(client, id, {
+          includeCancelled: false
+        });
+        if (seasons.length === 0) {
+          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        }
+        const activeSeason = seasons[0];
+        const members = await listSeasonMembers(client, activeSeason.id);
+        return res.json({
+          league,
+          season: activeSeason,
+          member_count: members.length
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   router.post(
     "/:id/join",
     requireAuth(authSecret),
-    async (_req: AuthedRequest, res, next) => {
+    async (req: AuthedRequest, res, next) => {
       try {
-        throw new AppError(
-          "INVITE_ONLY_MEMBERSHIP",
-          410,
-          "League membership is invite-only for MVP seasons"
-        );
+        if (!joinRateLimiter.allow(req.ip ?? "unknown")) {
+          throw new AppError("RATE_LIMITED", 429, "Too many join attempts");
+        }
+        const leagueId = Number(req.params.id);
+        const userId = Number(req.auth?.sub);
+        if (Number.isNaN(leagueId) || Number.isNaN(userId)) {
+          throw validationError("Invalid league id", ["id"]);
+        }
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const league = await getLeagueById(tx, leagueId);
+          if (!league) return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          if (league.is_public_season) {
+            return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          }
+          if (!league.is_public) {
+            return new AppError(
+              "INVITE_ONLY_MEMBERSHIP",
+              410,
+              "League membership is invite-only"
+            );
+          }
+          const seasons = await listSeasonsForLeague(tx, leagueId, {
+            includeCancelled: false
+          });
+          const season = seasons[0];
+          if (!season) {
+            return new AppError("SEASON_NOT_FOUND", 404, "No active season for league");
+          }
+          const { rows: lmRows } = await tx.query<{ count: string }>(
+            `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1`,
+            [leagueId]
+          );
+          const totalMembers = Number(lmRows[0]?.count ?? 0);
+          if (totalMembers >= league.max_members) {
+            return new AppError("LEAGUE_FULL", 409, "League is full");
+          }
+
+          let leagueMember = await getLeagueMember(tx, leagueId, userId);
+          if (!leagueMember) {
+            leagueMember = await createLeagueMember(tx, {
+              league_id: leagueId,
+              user_id: userId,
+              role: "MEMBER"
+            });
+          }
+          await addSeasonMember(tx, {
+            season_id: season.id,
+            user_id: userId,
+            league_member_id: leagueMember.id,
+            role: "MEMBER"
+          });
+          return { league, season };
+        });
+        if (result instanceof AppError) throw result;
+        return res.status(200).json({ league: result.league, season: result.season });
       } catch (err) {
         next(err);
       }

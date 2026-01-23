@@ -8,6 +8,7 @@ export type LeagueRecord = {
   max_members: number;
   roster_size: number;
   is_public: boolean;
+  is_public_season: boolean;
   created_by_user_id: number;
   created_at: Date;
 };
@@ -34,14 +35,16 @@ export async function createLeague(
     max_members: number;
     roster_size: number;
     is_public: boolean;
+    is_public_season?: boolean;
     created_by_user_id: number;
   }
 ): Promise<LeagueRecord> {
+  const isPublicSeason = input.is_public_season ?? false;
   const { rows } = await query<LeagueRecord>(
     client,
     `
-      INSERT INTO league (code, name, ceremony_id, max_members, roster_size, is_public, created_by_user_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO league (code, name, ceremony_id, max_members, roster_size, is_public, is_public_season, created_by_user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING
         id::int,
         code,
@@ -50,6 +53,7 @@ export async function createLeague(
         max_members,
         roster_size,
         is_public,
+        is_public_season,
         created_by_user_id::int,
         created_at
     `,
@@ -60,6 +64,7 @@ export async function createLeague(
       input.max_members,
       input.roster_size,
       input.is_public,
+      isPublicSeason,
       input.created_by_user_id
     ]
   );
@@ -80,6 +85,7 @@ export async function getLeagueById(
        max_members,
        roster_size,
        is_public,
+       is_public_season,
        created_by_user_id::int,
        created_at
      FROM league WHERE id = $1`,
@@ -177,14 +183,162 @@ export async function listLeaguesForUser(
        l.max_members,
        l.roster_size,
        l.is_public,
+       l.is_public_season,
        l.created_by_user_id::int,
        l.created_at
      FROM league l
      JOIN league_member lm ON lm.league_id = l.id
      JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
-     WHERE lm.user_id = $1
+     WHERE lm.user_id = $1 AND l.is_public_season = FALSE
      ORDER BY l.id, l.created_at DESC`,
     [userId]
+  );
+  return rows;
+}
+
+export async function listPublicLeagues(
+  client: DbClient,
+  opts?: { search?: string }
+): Promise<
+  Array<
+    LeagueRecord & {
+      season_id: number | null;
+      season_status: string | null;
+      member_count: number;
+    }
+  >
+> {
+  const search = opts?.search ? `%${opts.search.toLowerCase()}%` : null;
+  const { rows } = await query<
+    LeagueRecord & {
+      season_id: number | null;
+      season_status: string | null;
+      member_count: number;
+    }
+  >(
+    client,
+    `SELECT
+       l.id::int,
+       l.code,
+       l.name,
+       l.ceremony_id::int,
+       l.max_members::int,
+       l.roster_size::int,
+       l.is_public,
+       l.is_public_season,
+       l.created_by_user_id::int,
+       l.created_at,
+       s.id::int AS season_id,
+       s.status AS season_status,
+       COALESCE(sm.count, 0)::int AS member_count
+     FROM league l
+     LEFT JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
+     LEFT JOIN (
+       SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
+     ) sm ON sm.season_id = s.id
+     WHERE l.is_public = TRUE AND l.is_public_season = FALSE
+       ${search ? "AND (LOWER(l.name) LIKE $1 OR LOWER(l.code) LIKE $1)" : ""}
+    ORDER BY l.created_at DESC
+    LIMIT 100`,
+    search ? [search] : []
+  );
+  return rows;
+}
+
+export type PublicSeasonRecord = {
+  league_id: number;
+  season_id: number;
+  code: string;
+  name: string;
+  ceremony_id: number;
+  max_members: number;
+  roster_size: number;
+  member_count: number;
+};
+
+export async function getPublicSeasonForCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<PublicSeasonRecord | null> {
+  const { rows } = await query<PublicSeasonRecord>(
+    client,
+    `SELECT
+       l.id::int AS league_id,
+       s.id::int AS season_id,
+       l.code,
+       l.name,
+       l.ceremony_id::int,
+       l.max_members::int,
+       l.roster_size::int,
+       COALESCE(sm.count, 0)::int AS member_count
+     FROM league l
+     JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
+     LEFT JOIN (
+       SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
+     ) sm ON sm.season_id = s.id
+     WHERE l.is_public_season = TRUE AND l.ceremony_id = $1
+     LIMIT 1`,
+    [ceremonyId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function createPublicSeasonContainer(
+  client: DbClient,
+  input: {
+    ceremony_id: number;
+    name: string;
+    code: string;
+    max_members: number;
+    roster_size: number;
+    created_by_user_id: number;
+  }
+): Promise<LeagueRecord> {
+  return createLeague(client, {
+    ...input,
+    is_public: true,
+    is_public_season: true
+  });
+}
+
+export async function listPublicSeasons(
+  client: DbClient,
+  opts?: { ceremonyId?: number; search?: string }
+): Promise<PublicSeasonRecord[]> {
+  const search = opts?.search ? `%${opts.search.toLowerCase()}%` : null;
+  const params: Array<string | number> = [];
+  const filters: string[] = ["l.is_public_season = TRUE", "s.status = 'EXTANT'"];
+  if (opts?.ceremonyId) {
+    filters.push(`l.ceremony_id = $${filters.length + 1}`);
+    params.push(opts.ceremonyId);
+  }
+  if (search) {
+    filters.push(
+      `(LOWER(l.name) LIKE $${filters.length + 1} OR LOWER(l.code) LIKE $${filters.length + 1})`
+    );
+    params.push(search);
+  }
+
+  const { rows } = await query<PublicSeasonRecord>(
+    client,
+    `SELECT
+       l.id::int AS league_id,
+       s.id::int AS season_id,
+       l.code,
+       l.name,
+       l.ceremony_id::int,
+       l.max_members::int,
+       l.roster_size::int,
+       COALESCE(sm.count, 0)::int AS member_count
+     FROM league l
+     JOIN season s ON s.league_id = l.id
+     LEFT JOIN (
+       SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
+     ) sm ON sm.season_id = s.id
+     WHERE ${filters.join(" AND ")}
+     ORDER BY l.created_at DESC
+     LIMIT 100`,
+    params
   );
   return rows;
 }

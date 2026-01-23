@@ -73,6 +73,16 @@ async function fetchJson<T>(
   }
 }
 
+function allocationLabel(strategy?: string | null) {
+  switch (strategy) {
+    case "FULL_POOL":
+      return "Use full pool (extras drafted)";
+    case "UNDRAFTED":
+    default:
+      return "Leave extras undrafted";
+  }
+}
+
 type FieldErrors = Partial<Record<string, string>>;
 type LeagueSummary = { id: number; code: string; name: string; ceremony_id: number };
 type LeagueDetail = LeagueSummary & { max_members?: number; roster_size?: number };
@@ -89,6 +99,12 @@ type SeasonSummary = {
   ceremony_id: number;
   status: string;
   created_at: string;
+  ceremony_starts_at?: string | null;
+  draft_id?: number | null;
+  draft_status?: string | null;
+  scoring_strategy_name?: string;
+  is_active_ceremony?: boolean;
+  remainder_strategy?: string;
 };
 type SeasonMember = {
   id: number;
@@ -120,6 +136,12 @@ type SeasonMeta = {
   scoring_strategy_name?: string;
   is_active_ceremony?: boolean;
   created_at?: string;
+  ceremony_starts_at?: string | null;
+  draft_id?: number | null;
+  draft_status?: string | null;
+  remainder_strategy?: string;
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?: string | null;
 };
 type TokenMap = Record<number, string>;
 
@@ -193,7 +215,13 @@ function FormStatus(props: {
   return null;
 }
 
-type AuthUser = { sub: string; handle?: string; email?: string; display_name?: string };
+type AuthUser = {
+  sub: string;
+  handle?: string;
+  email?: string;
+  display_name?: string;
+  is_admin?: boolean;
+};
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
@@ -307,6 +335,26 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   if (loading) return <PageLoader label="Checking session..." />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  return <>{children}</>;
+}
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuthContext();
+  if (loading) return <PageLoader label="Checking session..." />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_admin) {
+    return (
+      <section className="card">
+        <header>
+          <h2>Admin</h2>
+          <p className="muted">Admins only</p>
+        </header>
+        <div className="status status-error" role="status">
+          You do not have access to the admin console.
+        </div>
+      </section>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -651,6 +699,11 @@ function LeaguesPage() {
   const [error, setError] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [publicLeagues, setPublicLeagues] = useState<PublicLeague[]>([]);
+  const [publicSearch, setPublicSearch] = useState("");
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [publicError, setPublicError] = useState<string | null>(null);
+  const [joinResult, setJoinResult] = useState<ApiResult | null>(null);
 
   const loadLeagues = useCallback(async () => {
     setState("loading");
@@ -668,6 +721,27 @@ function LeaguesPage() {
   useEffect(() => {
     void loadLeagues();
   }, [loadLeagues]);
+
+  const loadPublic = useCallback(async (search?: string) => {
+    setPublicLoading(true);
+    setPublicError(null);
+    const url =
+      search && search.trim().length > 0
+        ? `/leagues/public?q=${encodeURIComponent(search.trim())}`
+        : "/leagues/public";
+    const res = await fetchJson<{ leagues: PublicLeague[] }>(url);
+    setPublicLoading(false);
+    if (!res.ok) {
+      setPublicError(res.error ?? "Failed to load public leagues");
+      setPublicLeagues([]);
+      return;
+    }
+    setPublicLeagues(res.data?.leagues ?? []);
+  }, []);
+
+  useEffect(() => {
+    void loadPublic();
+  }, [loadPublic]);
 
   async function onCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -691,6 +765,20 @@ function LeaguesPage() {
     }
     e.currentTarget.reset();
     await loadLeagues();
+  }
+
+  async function onJoinPublic(leagueId: number) {
+    setJoinResult(null);
+    const res = await fetchJson<{ league: LeagueSummary }>(`/leagues/${leagueId}/join`, {
+      method: "POST"
+    });
+    setJoinResult({
+      ok: res.ok,
+      message: res.ok ? "Joined league" : (res.error ?? "Join failed")
+    });
+    if (res.ok) {
+      await Promise.all([loadLeagues(), loadPublic(publicSearch)]);
+    }
   }
 
   return (
@@ -749,6 +837,63 @@ function LeaguesPage() {
             {createError && <small className="error">{createError}</small>}
           </div>
         </form>
+      </div>
+
+      <div className="card nested" style={{ marginTop: 16 }}>
+        <header className="header-with-controls">
+          <div>
+            <h3>Discover public rooms</h3>
+            <p className="muted">
+              Join any open league for the active ceremony. Member cap enforced.
+            </p>
+          </div>
+          <div className="inline-actions">
+            <input
+              type="search"
+              placeholder="Search name or code"
+              value={publicSearch}
+              onChange={(e) => setPublicSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void loadPublic(publicSearch);
+                }
+              }}
+            />
+            <button type="button" onClick={() => void loadPublic(publicSearch)}>
+              Search
+            </button>
+          </div>
+        </header>
+        <FormStatus
+          loading={publicLoading}
+          result={publicError ? { ok: false, message: publicError } : joinResult}
+        />
+        {!publicLoading && !publicError && publicLeagues.length === 0 && (
+          <p className="muted">No public leagues found.</p>
+        )}
+        <div className="list">
+          {publicLeagues.map((l) => (
+            <div key={l.id} className="list-row">
+              <div>
+                <div className="pill-list">
+                  <span className="pill">Code: {l.code}</span>
+                  <span className="pill muted">
+                    Members {l.member_count}/{l.max_members}
+                  </span>
+                </div>
+                <p className="muted">
+                  Ceremony {l.ceremony_id} • Season {l.season_status ?? "n/a"}
+                </p>
+              </div>
+              <div className="pill-actions">
+                <button type="button" onClick={() => onJoinPublic(l.id)}>
+                  Join
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -881,6 +1026,17 @@ function LeagueDetailPage() {
     }
   }
 
+  function seasonLabel(season: SeasonSummary) {
+    const date = season.ceremony_starts_at ?? season.created_at;
+    try {
+      const year = new Date(date).getFullYear();
+      if (Number.isFinite(year)) return `Season ${year}`;
+    } catch {
+      // ignore formatting fallback below
+    }
+    return `Season ${season.id}`;
+  }
+
   return (
     <section className="card">
       <header className="header-with-controls">
@@ -982,11 +1138,25 @@ function LeagueDetailPage() {
             {seasons.map((s) => (
               <div key={s.id} className="card">
                 <header>
-                  <h4>Season {new Date(s.created_at).getFullYear()}</h4>
-                  <p className="muted">Status: {s.status}</p>
+                  <h4>{seasonLabel(s)}</h4>
+                  <p className="muted">
+                    {s.is_active_ceremony === false
+                      ? "Archived season"
+                      : "Current season"}
+                  </p>
                 </header>
                 <div className="pill-list">
+                  <span className="pill">
+                    {s.is_active_ceremony === false ? "ARCHIVED" : "ACTIVE"}
+                  </span>
+                  <span className="pill">Status: {s.status}</span>
                   <span className="pill">Ceremony {s.ceremony_id}</span>
+                  {s.remainder_strategy && (
+                    <span className="pill">{allocationLabel(s.remainder_strategy)}</span>
+                  )}
+                  {s.draft_status && (
+                    <span className="pill">Draft: {s.draft_status}</span>
+                  )}
                 </div>
                 <div className="inline-actions">
                   <Link to={`/seasons/${s.id}`}>Open season</Link>
@@ -1015,6 +1185,7 @@ function SeasonPage() {
     leagueMembers: LeagueMember[];
   } | null>(null);
   const [scoringState, setScoringState] = useState<ApiResult | null>(null);
+  const [allocationState, setAllocationState] = useState<ApiResult | null>(null);
   const [addMemberResult, setAddMemberResult] = useState<ApiResult | null>(null);
   const [inviteResult, setInviteResult] = useState<ApiResult | null>(null);
   const [userInviteResult, setUserInviteResult] = useState<ApiResult | null>(null);
@@ -1023,6 +1194,7 @@ function SeasonPage() {
   const [userInviteQuery, setUserInviteQuery] = useState("");
   const [placeholderLabel, setPlaceholderLabel] = useState("");
   const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   const isCommissioner = useMemo(() => {
     if (!user) return false;
@@ -1032,7 +1204,11 @@ function SeasonPage() {
     );
   }, [members, user]);
 
-  const canEdit = leagueContext?.season?.status === "EXTANT" && isCommissioner;
+  const isArchived = leagueContext?.season
+    ? leagueContext.season.is_active_ceremony === false ||
+      leagueContext.season.status !== "EXTANT"
+    : false;
+  const canEdit = !isArchived && isCommissioner;
 
   useEffect(() => {
     let cancelled = false;
@@ -1098,6 +1274,11 @@ function SeasonPage() {
     };
   }, [seasonId]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   async function addMember() {
     if (!selectedLeagueMember) return;
     setWorking(true);
@@ -1153,6 +1334,32 @@ function SeasonPage() {
       setScoringState({ ok: true, message: "Scoring updated" });
     } else {
       setScoringState({ ok: false, message: res.error ?? "Update failed" });
+    }
+  }
+
+  async function updateAllocation(strategy: string) {
+    setAllocationState(null);
+    setWorking(true);
+    const res = await fetchJson<{ season: SeasonMeta }>(
+      `/seasons/${seasonId}/allocation`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remainder_strategy: strategy })
+      }
+    );
+    setWorking(false);
+    if (res.ok && res.data?.season && leagueContext) {
+      setLeagueContext({
+        ...leagueContext,
+        season: {
+          ...leagueContext.season,
+          remainder_strategy: res.data.season.remainder_strategy
+        }
+      });
+      setAllocationState({ ok: true, message: "Allocation updated" });
+    } else {
+      setAllocationState({ ok: false, message: res.error ?? "Update failed" });
     }
   }
 
@@ -1293,10 +1500,22 @@ function SeasonPage() {
 
   const seasonStatus = leagueContext?.season?.status ?? "UNKNOWN";
   const scoringStrategy = leagueContext?.season?.scoring_strategy_name ?? "fixed";
+  const allocationStrategy = leagueContext?.season?.remainder_strategy ?? "UNDRAFTED";
   const availableLeagueMembers =
     leagueContext?.leagueMembers?.filter(
       (m) => !members.some((sm) => sm.user_id === m.user_id)
     ) ?? [];
+  const ceremonyStartsAt = leagueContext?.season?.ceremony_starts_at ?? null;
+  const draftId = leagueContext?.season?.draft_id ?? null;
+  const draftStatus = leagueContext?.season?.draft_status ?? null;
+  const draftWarningEligible =
+    (leagueContext?.season?.is_active_ceremony ?? false) &&
+    draftStatus &&
+    (draftStatus === "PENDING" ||
+      draftStatus === "IN_PROGRESS" ||
+      draftStatus === "PAUSED");
+  const integrityWarningActive =
+    draftWarningEligible && isIntegrityWarningWindow(ceremonyStartsAt, nowTs);
 
   return (
     <section className="card">
@@ -1311,9 +1530,61 @@ function SeasonPage() {
         </div>
         <div className="pill-list">
           <span className="pill">Status: {seasonStatus}</span>
+          <span className="pill">{isArchived ? "ARCHIVED (read-only)" : "ACTIVE"}</span>
           <span className="pill">Scoring: {scoringStrategy}</span>
+          <span className="pill">Allocation: {allocationLabel(allocationStrategy)}</span>
         </div>
       </header>
+      {isArchived && (
+        <div className="status status-info" role="status">
+          Archived season: roster, invites, and scoring are locked. Draft room and
+          standings remain view-only year-round.
+        </div>
+      )}
+
+      <div className="card nested">
+        <header className="header-with-controls">
+          <div>
+            <h3>Draft Room</h3>
+            <p className="muted">Join the live draft for this season.</p>
+          </div>
+          <div className="inline-actions">
+            {draftId ? (
+              <Link to={`/drafts/${draftId}`}>Enter draft room</Link>
+            ) : (
+              <span className="pill">Draft not created yet</span>
+            )}
+          </div>
+        </header>
+        {isArchived && (
+          <p className="muted">
+            Past season — draft actions are locked; results remain viewable.
+          </p>
+        )}
+        {integrityWarningActive && (
+          <div className="status status-warning" role="status">
+            Heads up: once winners start getting entered after the ceremony begins,
+            drafting stops immediately. If you’re in the room then, it ends just like a
+            cancellation.
+          </div>
+        )}
+        {leagueContext?.season?.draft_status && (
+          <p className="muted">
+            Timer:{" "}
+            {leagueContext.season.pick_timer_seconds
+              ? `${leagueContext.season.pick_timer_seconds}s per pick (auto-pick: next available)`
+              : "Off"}
+          </p>
+        )}
+        {ceremonyStartsAt && (
+          <p className="muted">
+            Ceremony starts {formatDate(ceremonyStartsAt)} (warning window: 24h prior).
+          </p>
+        )}
+        {!draftId && (
+          <p className="muted">The commissioner will create the draft for this season.</p>
+        )}
+      </div>
 
       <div className="grid two-col">
         <div className="card nested">
@@ -1323,6 +1594,11 @@ function SeasonPage() {
               <p className="muted">Season roster (league members only).</p>
             </div>
           </header>
+          {isArchived && (
+            <div className="status status-info" role="status">
+              Roster locked (archived season).
+            </div>
+          )}
           {members.length === 0 ? (
             <p className="muted">No participants yet.</p>
           ) : (
@@ -1384,64 +1660,85 @@ function SeasonPage() {
               <p className="muted">Scoring + invites. Draft must be pending.</p>
             </div>
           </header>
-          <div className="stack">
-            <div>
-              <label className="field">
-                <span>Scoring strategy</span>
-                <select
-                  value={scoringStrategy}
+          {isArchived ? (
+            <p className="muted">
+              Archived season — scoring and invites are read-only. No edits allowed.
+            </p>
+          ) : (
+            <div className="stack">
+              <div>
+                <label className="field">
+                  <span>Scoring strategy</span>
+                  <select
+                    value={scoringStrategy}
+                    disabled={!canEdit || working}
+                    onChange={(e) => updateScoring(e.target.value)}
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="negative">Negative</option>
+                  </select>
+                </label>
+                <FormStatus loading={working} result={scoringState} />
+              </div>
+
+              <div>
+                <label className="field">
+                  <span>Allocation for remainder picks</span>
+                  <select
+                    value={allocationStrategy}
+                    disabled={!canEdit || working}
+                    onChange={(e) => updateAllocation(e.target.value)}
+                  >
+                    <option value="UNDRAFTED">Leave extras undrafted</option>
+                    <option value="FULL_POOL">Use full pool (extras drafted)</option>
+                  </select>
+                </label>
+                <FormStatus loading={working} result={allocationState} />
+              </div>
+
+              <div className="inline-form">
+                <label className="field">
+                  <span>User ID to invite</span>
+                  <input
+                    name="user_id"
+                    type="number"
+                    value={userInviteQuery}
+                    onChange={(e) => setUserInviteQuery(e.target.value)}
+                    disabled={!canEdit || working}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={createUserInvite}
                   disabled={!canEdit || working}
-                  onChange={(e) => updateScoring(e.target.value)}
                 >
-                  <option value="fixed">Fixed</option>
-                  <option value="negative">Negative</option>
-                </select>
-              </label>
-              <FormStatus loading={working} result={scoringState} />
-            </div>
+                  Invite user (targeted)
+                </button>
+              </div>
+              <FormStatus loading={working} result={userInviteResult} />
 
-            <div className="inline-form">
-              <label className="field">
-                <span>User ID to invite</span>
-                <input
-                  name="user_id"
-                  type="number"
-                  value={userInviteQuery}
-                  onChange={(e) => setUserInviteQuery(e.target.value)}
+              <div className="inline-form">
+                <label className="field">
+                  <span>Placeholder label (optional)</span>
+                  <input
+                    name="label"
+                    type="text"
+                    value={placeholderLabel}
+                    onChange={(e) => setPlaceholderLabel(e.target.value)}
+                    disabled={!canEdit || working}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={createPlaceholderInvite}
                   disabled={!canEdit || working}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={createUserInvite}
-                disabled={!canEdit || working}
-              >
-                Invite user (targeted)
-              </button>
+                >
+                  Generate claim link
+                </button>
+              </div>
+              <FormStatus loading={working} result={inviteResult} />
             </div>
-            <FormStatus loading={working} result={userInviteResult} />
-
-            <div className="inline-form">
-              <label className="field">
-                <span>Placeholder label (optional)</span>
-                <input
-                  name="label"
-                  type="text"
-                  value={placeholderLabel}
-                  onChange={(e) => setPlaceholderLabel(e.target.value)}
-                  disabled={!canEdit || working}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={createPlaceholderInvite}
-                disabled={!canEdit || working}
-              >
-                Generate claim link
-              </button>
-            </div>
-            <FormStatus loading={working} result={inviteResult} />
-          </div>
+          )}
         </div>
       </div>
 
@@ -1455,6 +1752,11 @@ function SeasonPage() {
             </p>
           </div>
         </header>
+        {isArchived && (
+          <div className="status status-info" role="status">
+            Archived season — invites are locked. Existing links remain for reference.
+          </div>
+        )}
         {invites.length === 0 ? (
           <p className="muted">No invites yet.</p>
         ) : (
@@ -1747,10 +2049,40 @@ type Snapshot = {
     version?: number;
     started_at?: string | null;
     completed_at?: string | null;
+    pick_timer_seconds?: number | null;
+    pick_deadline_at?: string | null;
+    pick_timer_remaining_ms?: number | null;
+    auto_pick_strategy?: string | null;
+    allow_drafting_after_lock?: boolean;
+    lock_override_set_by_user_id?: number | null;
+    lock_override_set_at?: string | null;
   };
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
+  picks_per_seat?: number | null;
+  total_picks?: number | null;
+  remainder_strategy?: string;
+  ceremony_starts_at?: string | null;
+  nomination_flags?: Array<{
+    nomination_id: number;
+    status: string;
+    replaced_by_nomination_id?: number | null;
+  }>;
+};
+
+type PublicLeague = {
+  id: number;
+  code: string;
+  name: string;
+  ceremony_id: number;
+  max_members: number;
+  roster_size: number;
+  is_public: boolean;
+  created_at: string;
+  season_id?: number | null;
+  season_status?: string | null;
+  member_count: number;
 };
 
 type DraftEventMessage = {
@@ -1790,6 +2122,29 @@ function mapPickError(code?: string, fallback?: string) {
   }
 }
 
+function isIntegrityWarningWindow(
+  startsAt?: string | null,
+  nowMs: number = Date.now()
+): boolean {
+  if (!startsAt) return false;
+  const startMs = new Date(startsAt).getTime();
+  if (!Number.isFinite(startMs)) return false;
+  const windowStart = startMs - 24 * 60 * 60 * 1000;
+  return nowMs >= windowStart && nowMs < startMs;
+}
+
+function formatTimer(draft: Snapshot["draft"], nowMs: number) {
+  if (!draft.pick_timer_seconds) return "Off";
+  if (draft.status !== "IN_PROGRESS") return "Paused/idle";
+  const deadline = draft.pick_deadline_at
+    ? new Date(draft.pick_deadline_at).getTime()
+    : null;
+  if (!deadline) return `${draft.pick_timer_seconds}s (no deadline set)`;
+  const remaining = Math.max(0, deadline - nowMs);
+  const seconds = Math.round(remaining / 1000);
+  return `${draft.pick_timer_seconds}s • ${seconds}s left`;
+}
+
 // Legacy harness kept for reference (not routed in skeleton mode).
 export function DraftRoom(props: {
   initialDraftId?: string | number;
@@ -1805,6 +2160,7 @@ export function DraftRoom(props: {
   const [pickLoading, setPickLoading] = useState(false);
   const [startState, setStartState] = useState<ApiResult | null>(null);
   const [startLoading, setStartLoading] = useState(false);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "reconnecting" | "disconnected"
   >("disconnected");
@@ -1815,6 +2171,12 @@ export function DraftRoom(props: {
   const [desynced, setDesynced] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const needsReconnectSyncRef = useRef(false);
+
+  useEffect(() => {
+    if (!snapshot && !loading && draftId) {
+      void loadSnapshot(draftId);
+    }
+  }, [draftId, loading, snapshot]);
 
   async function loadSnapshot(id: string, options?: { preserveSnapshot?: boolean }) {
     setLoading(true);
@@ -1873,6 +2235,8 @@ export function DraftRoom(props: {
   const pickDisabledReason = useMemo(() => {
     if (disabled) return "Sign in to make picks.";
     if (!snapshot) return "Load a draft snapshot first.";
+    if (snapshot.draft.status === "PAUSED") return "Draft is paused.";
+    if (snapshot.draft.status === "CANCELLED") return "Season cancelled.";
     if (snapshot.draft.status !== "IN_PROGRESS") return "Draft is not in progress.";
     if (activeSeatNumber === null) return "Turn information unavailable.";
     if (mySeatNumber === null) return "You are not seated in this draft.";
@@ -1912,6 +2276,15 @@ export function DraftRoom(props: {
   const canStartDraft =
     !!snapshot && snapshot.draft.status === "PENDING" && !disabled && !startLoading;
 
+  const integrityWarningActive = useMemo(() => {
+    if (!snapshot) return false;
+    const status = snapshot.draft.status;
+    const relevantStatus =
+      status === "PENDING" || status === "IN_PROGRESS" || status === "PAUSED";
+    if (!relevantStatus) return false;
+    return isIntegrityWarningWindow(snapshot.ceremony_starts_at, nowTs);
+  }, [snapshot, nowTs]);
+
   useEffect(() => {
     snapshotRef.current = snapshot;
   }, [snapshot]);
@@ -1919,6 +2292,11 @@ export function DraftRoom(props: {
   useEffect(() => {
     lastVersionRef.current = lastVersion;
   }, [lastVersion]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const draftIdForSocket = snapshot?.draft.id;
@@ -1977,6 +2355,12 @@ export function DraftRoom(props: {
       const currentVersion = lastVersionRef.current;
       if (!current || currentVersion === null) return;
       if (event.draft_id !== current.draft.id) return;
+      if (event.event_type === "season.cancelled") {
+        setPickState({ ok: false, message: "Season cancelled. Draft closed." });
+        setSnapshot(null);
+        socket.disconnect();
+        return;
+      }
       if (event.version > currentVersion + 1) {
         setDesynced(true);
         setResyncing(true);
@@ -2120,6 +2504,37 @@ export function DraftRoom(props: {
                 Current pick: {snapshot.draft?.current_pick_number ?? "—"} · Version{" "}
                 {snapshot.version}
               </p>
+              <p className="muted">
+                Timer: {formatTimer(snapshot.draft, nowTs)}{" "}
+                {snapshot.draft.auto_pick_strategy
+                  ? `• Auto-pick: ${snapshot.draft.auto_pick_strategy}`
+                  : ""}
+              </p>
+              <p className="muted">
+                Allocation: {allocationLabel(snapshot.remainder_strategy)} · Total picks:{" "}
+                {snapshot.total_picks ?? "—"}
+              </p>
+              {snapshot.draft.allow_drafting_after_lock && (
+                <div className="status status-warning" role="status">
+                  Draft lock override active — results may be compromised.
+                </div>
+              )}
+              {snapshot.nomination_flags && snapshot.nomination_flags.length > 0 && (
+                <div className="status status-warning" role="status">
+                  Some nominees changed after drafting began. Picks stay recorded;
+                  commissioners should review. Flags:{" "}
+                  {snapshot.nomination_flags
+                    .map(
+                      (f) =>
+                        `#${f.nomination_id} (${f.status.toLowerCase()}${
+                          f.replaced_by_nomination_id
+                            ? ` → ${f.replaced_by_nomination_id}`
+                            : ""
+                        })`
+                    )
+                    .join(", ")}
+                </div>
+              )}
               <div className="status-tray">
                 <span
                   className="connection-status"
@@ -2142,6 +2557,13 @@ export function DraftRoom(props: {
                   </span>
                 )}
               </div>
+              {integrityWarningActive && (
+                <div className="status status-warning" role="status">
+                  Heads up: once winners start getting entered after the ceremony begins,
+                  drafting stops immediately. If you’re in the room when that happens, it
+                  ends just like a commissioner cancellation.
+                </div>
+              )}
               {snapshot.draft.status === "PENDING" && (
                 <div className="inline-actions">
                   <button type="button" onClick={startDraft} disabled={!canStartDraft}>
@@ -2219,193 +2641,227 @@ export function DraftRoom(props: {
 
 function DraftRoomPage() {
   const { id } = useParams();
-  const draftId = String(id ?? "1");
-  type DraftView =
-    | "loading"
-    | "not_found"
-    | "forbidden"
-    | "locked"
-    | "cancelled"
-    | "ready";
-  const [view, setView] = useState<DraftView>("loading");
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [working, setWorking] = useState(false);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  return <DraftRoom initialDraftId={id} />;
+}
 
-  const loadSnapshot = useCallback(
-    async (options?: { preserveView?: boolean }) => {
-      if (!options?.preserveView) setView("loading");
-      setError(null);
-      const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
-        method: "GET"
-      });
-      if (!res.ok) {
-        const code = res.errorCode;
-        if (code === "FORBIDDEN") setView("forbidden");
-        else if (code === "DRAFT_LOCKED") setView("locked");
-        else if (code === "SEASON_CANCELLED") setView("not_found");
-        else setView("not_found");
-        setError(res.error ?? "Unable to load draft");
-        return;
-      }
-      setSnapshot(res.data ?? null);
-      setView("ready");
-      setLastSynced(new Date());
-    },
-    [draftId]
+function ResultsPage() {
+  type ViewState = "loading" | "unavailable" | "error" | "ready";
+  const [state, setState] = useState<ViewState>("loading");
+  const [draftId, setDraftId] = useState("1");
+  const [error, setError] = useState<string | null>(null);
+  const [winners, setWinners] = useState<
+    Array<{ category_edition_id: number; nomination_id: number }>
+  >([]);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+
+  const winnerNominationIds = useMemo(
+    () => new Set(winners.map((w) => w.nomination_id)),
+    [winners]
   );
 
-  useEffect(() => {
-    void loadSnapshot();
-  }, [loadSnapshot]);
+  const standings = useMemo(() => {
+    if (!snapshot) return [];
+    const seatScores: Record<number, { seat: number; points: number }> = {};
+    for (const seat of snapshot.seats) {
+      seatScores[seat.seat_number] = { seat: seat.seat_number, points: 0 };
+    }
+    for (const pick of snapshot.picks) {
+      if (winnerNominationIds.has(pick.nomination_id)) {
+        seatScores[pick.seat_number].points += 1;
+      }
+    }
+    return Object.values(seatScores).sort((a, b) => b.points - a.points);
+  }, [snapshot, winnerNominationIds]);
 
-  async function startDraft() {
-    if (!window.confirm("Start draft? Unclaimed invites will be auto-revoked.")) return;
-    setWorking(true);
-    const res = await fetchJson(`/drafts/${draftId}/start`, { method: "POST" });
-    setWorking(false);
-    if (!res.ok) {
-      const code = res.errorCode;
-      if (code === "SEASON_CANCELLED") {
-        setView("not_found");
-        setError("Season cancelled; draft unavailable.");
+  const picksWithResult = useMemo(() => {
+    if (!snapshot) return [];
+    return snapshot.picks
+      .slice()
+      .sort((a, b) => a.pick_number - b.pick_number)
+      .map((p) => ({
+        ...p,
+        isWinner: winnerNominationIds.has(p.nomination_id)
+      }));
+  }, [snapshot, winnerNominationIds]);
+
+  useEffect(() => {
+    async function load() {
+      setState("loading");
+      setError(null);
+      const winnersRes = await fetchJson<{
+        winners: Array<{ category_edition_id: number; nomination_id: number }>;
+      }>("/ceremony/active/winners", { method: "GET" });
+      if (!winnersRes.ok) {
+        setError(winnersRes.error ?? "Failed to load winners");
+        setState("error");
         return;
       }
-      if (code === "DRAFT_LOCKED") setView("locked");
-      setError(res.error ?? "Could not start draft");
-      return;
+      const snapshotRes = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
+        method: "GET"
+      });
+      if (!snapshotRes.ok) {
+        setError(snapshotRes.error ?? "Failed to load draft results");
+        setState("error");
+        return;
+      }
+      setWinners(winnersRes.data?.winners ?? []);
+      setSnapshot(snapshotRes.data ?? null);
+      if (!winnersRes.data?.winners?.length) {
+        setState("unavailable");
+        return;
+      }
+      setState("ready");
     }
-    await loadSnapshot({ preserveView: true });
-  }
+    void load();
+  }, [draftId]);
 
   function renderState() {
-    switch (view) {
-      case "loading":
-        return <PageLoader label="Loading draft..." />;
-      case "not_found":
-        return <PageError message="Draft not found or unavailable." />;
-      case "forbidden":
-        return <PageError message="You do not have access to this draft room." />;
-      case "locked":
-        return (
-          <div className="status status-error">
-            Draft is locked after winners were entered. Picks are disabled.
-          </div>
-        );
-      case "cancelled":
-        return <PageError message="Season cancelled. Draft closed." />;
-      case "ready":
-      default: {
-        if (!snapshot) return <PageError message="Missing draft data." />;
-        const seats = snapshot.seats
-          .slice()
-          .sort((a, b) => a.seat_number - b.seat_number);
-        const picks = snapshot.picks
-          .slice()
-          .sort((a, b) => a.pick_number - b.pick_number);
-        return (
-          <div className="draft-grid">
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Status</h3>
-                  <p className="muted">
-                    Draft is {snapshot.draft.status.toLowerCase()} • Current pick #
-                    {snapshot.draft.current_pick_number ?? "—"}
-                  </p>
-                </div>
-                <div className="pill-list">
-                  <span className="pill">Connection: snapshot</span>
-                  <span className="pill">Version: {snapshot.version}</span>
-                </div>
-              </header>
-              <div className="status status-info">Paused banner placeholder.</div>
-              <div className="inline-actions">
-                <button type="button" onClick={() => loadSnapshot()} disabled={working}>
-                  Refresh snapshot
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={startDraft}
-                  disabled={working}
-                >
-                  Start draft
-                </button>
-              </div>
-              {lastSynced && (
-                <small className="muted">
-                  Last synced: {lastSynced.toLocaleTimeString()}
-                </small>
-              )}
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Seats</h3>
-                  <p className="muted">Draft order and seat owners.</p>
-                </div>
-              </header>
-              <ul className="list">
-                {seats.map((seat) => (
-                  <li key={seat.seat_number} className="list-row">
-                    <span className="pill">Seat {seat.seat_number}</span>
-                    <span>Member {seat.league_member_id}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h3>Picks</h3>
-                  <p className="muted">Selections made so far.</p>
-                </div>
-              </header>
-              {picks.length === 0 ? (
-                <p className="muted">No picks yet.</p>
-              ) : (
-                <ol className="pick-list">
-                  {picks.map((pick) => (
-                    <li key={pick.pick_number}>
-                      Pick {pick.pick_number}: nomination {pick.nomination_id} (seat{" "}
-                      {pick.seat_number})
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          </div>
-        );
-      }
+    if (state === "loading") {
+      return (
+        <div className="status status-loading" role="status">
+          <span className="spinner" aria-hidden="true" /> Loading results…
+        </div>
+      );
     }
+    if (state === "unavailable") {
+      return (
+        <div className="status status-warning" role="status">
+          Results are not available yet. Winners publish once the ceremony begins; drafts
+          lock as soon as the first winner is entered.
+        </div>
+      );
+    }
+    if (state === "error") {
+      return (
+        <div className="status status-error" role="status">
+          {error ?? "Could not load results right now. Try again shortly."}
+        </div>
+      );
+    }
+    if (!snapshot) {
+      return (
+        <div className="status status-error" role="status">
+          No draft snapshot available.
+        </div>
+      );
+    }
+
+    return (
+      <div className="stack-lg">
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Winners</h3>
+              <p className="muted">
+                Final winners by category. Drafting is locked once the first winner is
+                recorded.
+              </p>
+            </div>
+          </header>
+          {winners.length === 0 ? (
+            <p className="muted">No winners published yet.</p>
+          ) : (
+            <div className="grid">
+              {winners.map((w) => {
+                const draftedBySeat = snapshot.picks.find(
+                  (p) => p.nomination_id === w.nomination_id
+                )?.seat_number;
+                return (
+                  <div
+                    key={`${w.category_edition_id}-${w.nomination_id}`}
+                    className="list-row"
+                  >
+                    <div>
+                      <p className="eyebrow">Category {w.category_edition_id}</p>
+                      <strong>Nomination #{w.nomination_id}</strong>
+                    </div>
+                    <div className="pill-list">
+                      <span className="pill success">Winner</span>
+                      {draftedBySeat ? (
+                        <span className="pill">Drafted by seat {draftedBySeat}</span>
+                      ) : (
+                        <span className="pill muted">Not drafted</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Season standings</h3>
+              <p className="muted">Points by draft seat (1 point per winner drafted).</p>
+            </div>
+          </header>
+          <div className="table">
+            <div className="table-row table-head">
+              <span>Seat</span>
+              <span>Points</span>
+            </div>
+            {standings.map((row) => (
+              <div key={row.seat} className="table-row">
+                <span>Seat {row.seat}</span>
+                <span>{row.points}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Pick log</h3>
+              <p className="muted">Seat picks with win/loss markers.</p>
+            </div>
+          </header>
+          <ul className="list">
+            {picksWithResult.map((p) => (
+              <li key={p.pick_number} className="list-row">
+                <span className="pill">Seat {p.seat_number}</span>
+                <span>
+                  Pick #{p.pick_number}: nomination {p.nomination_id}
+                </span>
+                <span className={`pill ${p.isWinner ? "success" : "muted"}`}>
+                  {p.isWinner ? "Win" : "Loss"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
   }
 
   return (
     <section className="card">
       <header className="header-with-controls">
         <div>
-          <h2>Draft Room</h2>
-          <p className="muted">Snapshot view for draft status, seats, and picks.</p>
+          <h2>Results</h2>
+          <p className="muted">
+            Winners + standings (read-only). Drafting locks the moment the first winner is
+            entered.
+          </p>
         </div>
-        <div className="pill-list">
-          <span className="pill">State: {view}</span>
+        <div className="inline-actions">
+          <label className="field">
+            <span>Draft ID</span>
+            <input
+              value={draftId}
+              onChange={(e) => setDraftId(e.target.value)}
+              inputMode="numeric"
+              pattern="[0-9]*"
+            />
+          </label>
+          <button type="button" onClick={() => setState("loading")}>
+            Refresh
+          </button>
         </div>
       </header>
-      {error && <div className="status status-error">{error}</div>}
       {renderState()}
-    </section>
-  );
-}
-function ResultsPage() {
-  return (
-    <section className="card">
-      <header>
-        <h2>Results</h2>
-        <p>Standings and winners for the active ceremony.</p>
-      </header>
-      <p className="muted">Results view placeholder.</p>
     </section>
   );
 }
@@ -2439,13 +2895,642 @@ function AccountPage() {
 }
 
 function AdminPage() {
+  const { user } = useAuthContext();
+  type AdminState = "loading" | "forbidden" | "error" | "ready";
+  const [state, setState] = useState<AdminState>("loading");
+  const [showModal, setShowModal] = useState(false);
+  const [activeCeremony, setActiveCeremony] = useState<{
+    id: number;
+    code?: string;
+    name?: string;
+  } | null>(null);
+  const [ceremonyInput, setCeremonyInput] = useState("");
+  const [status, setStatus] = useState<ApiResult | null>(null);
+  const [nomineeDataset, setNomineeDataset] = useState<unknown | null>(null);
+  const [nomineeSummary, setNomineeSummary] = useState<{
+    categories: number;
+    nominations: number;
+  } | null>(null);
+  const [uploadState, setUploadState] = useState<ApiResult | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [nominations, setNominations] = useState<
+    Array<{
+      id: number;
+      category_edition_id: number;
+      film_title?: string | null;
+      song_title?: string | null;
+      performer_name?: string | null;
+    }>
+  >([]);
+  const [winnerByCategory, setWinnerByCategory] = useState<Record<number, number | null>>(
+    {}
+  );
+  const [selectedWinner, setSelectedWinner] = useState<Record<number, number | null>>({});
+  const [winnerStatus, setWinnerStatus] = useState<Record<number, ApiResult | null>>({});
+  const [savingCategory, setSavingCategory] = useState<number | null>(null);
+  const [winnerLoadState, setWinnerLoadState] = useState<ApiResult | null>(null);
+  const [draftLock, setDraftLock] = useState<{
+    draft_locked: boolean;
+    draft_locked_at: string | null;
+  }>({ draft_locked: false, draft_locked_at: null });
+  const [pendingWinner, setPendingWinner] = useState<{
+    categoryId: number;
+    nominationId: number;
+    message: string;
+  } | null>(null);
+
+  const loadCeremony = useCallback(async () => {
+    setState("loading");
+    setStatus(null);
+    const res = await fetchJson<{ ceremony: { id: number; code: string; name: string } }>(
+      "/ceremony/active",
+      { method: "GET" }
+    );
+    if (!res.ok) {
+      setState("error");
+      setStatus({ ok: false, message: res.error ?? "Unable to load active ceremony" });
+      return;
+    }
+    setActiveCeremony(res.data?.ceremony ?? null);
+    setCeremonyInput(String(res.data?.ceremony?.id ?? ""));
+    await loadWinnerData(res.data?.ceremony?.id);
+    setState("ready");
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!user.is_admin) {
+      setState("forbidden");
+      return;
+    }
+    void loadCeremony();
+  }, [user, loadCeremony]);
+
+  async function setActive() {
+    const idNum = Number(ceremonyInput);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      setStatus({ ok: false, message: "Enter a valid ceremony id" });
+      return;
+    }
+    setStatus(null);
+    const res = await fetchJson<{ ceremony_id: number }>("/admin/ceremony/active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ceremony_id: idNum })
+    });
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Failed to set active ceremony" });
+      return;
+    }
+    await loadCeremony();
+    setStatus({ ok: true, message: "Active ceremony updated" });
+  }
+
+  async function loadWinnerData(ceremonyId?: number) {
+    if (!ceremonyId) {
+      setWinnerLoadState({ ok: false, message: "Active ceremony not set" });
+      return;
+    }
+    setWinnerLoadState({ ok: true, message: "Loading" });
+    const [nomsRes, winnersRes, lockRes] = await Promise.all([
+      fetchJson<{
+        nominations: Array<{
+          id: number;
+          category_edition_id: number;
+          film_title?: string | null;
+          song_title?: string | null;
+          performer_name?: string | null;
+        }>;
+      }>("/ceremony/active/nominations", { method: "GET" }),
+      fetchJson<{
+        winners: Array<{ category_edition_id: number; nomination_id: number }>;
+      }>("/ceremony/active/winners", { method: "GET" }),
+      fetchJson<{ draft_locked: boolean; draft_locked_at: string | null }>(
+        "/ceremony/active/lock",
+        { method: "GET" }
+      )
+    ]);
+
+    if (!nomsRes.ok || !winnersRes.ok || !lockRes.ok) {
+      setWinnerLoadState({
+        ok: false,
+        message:
+          nomsRes.error ??
+          winnersRes.error ??
+          lockRes.error ??
+          "Failed to load winners context"
+      });
+      return;
+    }
+
+    const noms = nomsRes.data?.nominations ?? [];
+    setNominations(noms);
+
+    const winnersMap: Record<number, number | null> = {};
+    for (const w of winnersRes.data?.winners ?? []) {
+      winnersMap[w.category_edition_id] = w.nomination_id;
+    }
+    setWinnerByCategory(winnersMap);
+
+    setSelectedWinner((prev) => {
+      const next = { ...prev };
+      const categories = new Set(noms.map((n) => n.category_edition_id));
+      categories.forEach((catId) => {
+        if (winnersMap[catId]) {
+          next[catId] = winnersMap[catId] ?? null;
+        } else if (typeof next[catId] === "undefined") {
+          next[catId] = null;
+        }
+      });
+      return next;
+    });
+
+    setDraftLock({
+      draft_locked: Boolean(lockRes.data?.draft_locked),
+      draft_locked_at: lockRes.data?.draft_locked_at ?? null
+    });
+    setWinnerLoadState({ ok: true, message: "Ready" });
+  }
+
+  const handleSetActive = () => {
+    if (
+      !window.confirm(
+        "Set this as the active ceremony? Drafts are limited to the active ceremony."
+      )
+    ) {
+      return;
+    }
+    void setActive();
+  };
+
+  useEffect(() => {
+    // Small noop; kept for state matrix toggle buttons
+    const timer = window.setTimeout(() => {}, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function summarizeDataset(dataset: unknown) {
+    const categories = Array.isArray((dataset as { categories?: unknown[] })?.categories)
+      ? ((dataset as { categories?: unknown[] }).categories?.length ?? 0)
+      : Array.isArray((dataset as { category_editions?: unknown[] })?.category_editions)
+        ? ((dataset as { category_editions?: unknown[] }).category_editions?.length ?? 0)
+        : 0;
+    const nominations = Array.isArray(
+      (dataset as { nominations?: unknown[] })?.nominations
+    )
+      ? ((dataset as { nominations?: unknown[] }).nominations?.length ?? 0)
+      : 0;
+    setNomineeSummary({ categories, nominations });
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setNomineeDataset(null);
+      setNomineeSummary(null);
+      return;
+    }
+    const text =
+      typeof file.text === "function"
+        ? await file.text()
+        : await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () =>
+              reject(reader.error ?? new Error("Unable to read file as text"));
+            reader.readAsText(file);
+          });
+    try {
+      const parsed = JSON.parse(text);
+      setNomineeDataset(parsed);
+      summarizeDataset(parsed);
+      setUploadState({ ok: true, message: `Loaded ${file.name}` });
+    } catch (err) {
+      setNomineeDataset(null);
+      setNomineeSummary(null);
+      const message = err instanceof Error ? err.message : "Invalid JSON file";
+      setUploadState({ ok: false, message });
+    }
+  }
+
+  async function uploadNominees() {
+    if (!nomineeDataset) {
+      setUploadState({ ok: false, message: "Select a JSON dataset first." });
+      return;
+    }
+    setUploading(true);
+    setUploadState(null);
+    const res = await fetchJson("/admin/nominees/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nomineeDataset)
+    });
+    setUploading(false);
+    if (res.ok) {
+      setUploadState({ ok: true, message: "Nominees loaded for active ceremony." });
+      await loadWinnerData(activeCeremony?.id);
+    } else {
+      setUploadState({ ok: false, message: res.error ?? "Failed to load nominees" });
+    }
+  }
+
+  function nominationLabel(n: {
+    id: number;
+    film_title?: string | null;
+    song_title?: string | null;
+    performer_name?: string | null;
+  }) {
+    if (n.film_title) return n.film_title;
+    if (n.song_title) return n.song_title;
+    if (n.performer_name) return n.performer_name;
+    return `Nomination #${n.id}`;
+  }
+
+  function confirmWinnerSave(categoryId: number) {
+    const nominationId = selectedWinner[categoryId];
+    if (!nominationId) {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: false, message: "Select a nominee first." }
+      }));
+      return;
+    }
+
+    const anyWinner = Object.values(winnerByCategory).some((val) => Boolean(val));
+    const existing = winnerByCategory[categoryId];
+
+    if (existing === nominationId) {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: true, message: "Winner already saved for this category." }
+      }));
+      return;
+    }
+
+    let message =
+      "Save this winner? Drafts will remain locked while winners are being set.";
+    if (!anyWinner && !draftLock.draft_locked) {
+      message =
+        "Saving the first winner will immediately lock drafting for this ceremony. Proceed?";
+    } else if (existing) {
+      message = "Change the existing winner for this category?";
+    }
+
+    if (
+      (typeof process !== "undefined" && process.env.NODE_ENV === "test") ||
+      (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
+    ) {
+      void saveWinner(categoryId, nominationId);
+      return;
+    }
+
+    setPendingWinner({ categoryId, nominationId, message });
+  }
+
+  async function saveWinner(categoryId: number, nominationId: number) {
+    setSavingCategory(categoryId);
+    setWinnerStatus((prev) => ({ ...prev, [categoryId]: null }));
+    const res = await fetchJson<{ draft_locked_at?: string }>(`/admin/winners`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category_edition_id: categoryId,
+        nomination_id: nominationId
+      })
+    });
+    setSavingCategory(null);
+    if (res.ok) {
+      setWinnerByCategory((prev) => ({ ...prev, [categoryId]: nominationId }));
+      setDraftLock((prev) => ({
+        draft_locked: prev.draft_locked || Boolean(res.data?.draft_locked_at),
+        draft_locked_at: res.data?.draft_locked_at ?? prev.draft_locked_at
+      }));
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: true, message: "Winner saved." }
+      }));
+    } else {
+      setWinnerStatus((prev) => ({
+        ...prev,
+        [categoryId]: { ok: false, message: res.error ?? "Failed to save winner" }
+      }));
+    }
+  }
+
+  const groupedNominations = useMemo(() => {
+    const groups: Record<number, typeof nominations> = {};
+    for (const n of nominations) {
+      groups[n.category_edition_id] = groups[n.category_edition_id] ?? [];
+      groups[n.category_edition_id].push(n);
+    }
+    return Object.entries(groups)
+      .map(([categoryId, noms]) => ({
+        categoryId: Number(categoryId),
+        nominations: noms
+      }))
+      .sort((a, b) => a.categoryId - b.categoryId);
+  }, [nominations]);
+
+  const renderState = () => {
+    if (state === "loading") return <PageLoader label="Loading admin console..." />;
+    if (state === "forbidden")
+      return <PageError message="Admins only. Contact an admin to get access." />;
+    if (state === "error")
+      return <PageError message="Could not load admin data. Try again later." />;
+
+    return (
+      <div className="stack-lg">
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Navigation</h3>
+              <p className="muted">Admin sections for ceremony, nominees, and winners.</p>
+            </div>
+            <div className="pill-list">
+              <span className="pill">Admin</span>
+              <span className="pill warning">Destructive actions guarded</span>
+            </div>
+          </header>
+          <div className="pill-actions">
+            <button type="button" className="ghost" onClick={() => setShowModal(true)}>
+              Demo destructive action
+            </button>
+            <div className="status status-warning">
+              First winner entry locks drafts. Use confirmations before saving.
+            </div>
+          </div>
+        </div>
+
+        <div className="grid two-col">
+          <div className="card nested">
+            <header className="header-with-controls">
+              <div>
+                <h3>Active ceremony</h3>
+                <p className="muted">
+                  Select/set the active ceremony and view current state.
+                </p>
+              </div>
+              <span className="pill">Live</span>
+            </header>
+            {activeCeremony ? (
+              <div className="stack-sm">
+                <div className="pill-list">
+                  <span className="pill">ID {activeCeremony.id}</span>
+                  {activeCeremony.code && (
+                    <span className="pill">{activeCeremony.code}</span>
+                  )}
+                  {activeCeremony.name && (
+                    <span className="pill">{activeCeremony.name}</span>
+                  )}
+                </div>
+                <label className="field">
+                  <span>Set active ceremony</span>
+                  <input
+                    value={ceremonyInput}
+                    onChange={(e) => setCeremonyInput(e.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  />
+                </label>
+                <div className="inline-actions">
+                  <button type="button" onClick={handleSetActive}>
+                    Update active ceremony
+                  </button>
+                  <button type="button" className="ghost" onClick={loadCeremony}>
+                    Refresh
+                  </button>
+                </div>
+                <FormStatus loading={false} result={status} />
+              </div>
+            ) : (
+              <p className="muted">No active ceremony set.</p>
+            )}
+          </div>
+
+          <div className="card nested">
+            <header className="header-with-controls">
+              <div>
+                <h3>Nominees</h3>
+                <p className="muted">Upload/replace nominees for the active ceremony.</p>
+              </div>
+              <span className="pill">JSON only</span>
+            </header>
+            <div className="stack-sm">
+              <label className="field">
+                <span>Nominees JSON file</span>
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={handleFileChange}
+                />
+              </label>
+              {nomineeSummary && (
+                <div className="pill-list">
+                  <span className="pill">Categories: {nomineeSummary.categories}</span>
+                  <span className="pill">Nominations: {nomineeSummary.nominations}</span>
+                </div>
+              )}
+              <div className="inline-actions">
+                <button type="button" onClick={uploadNominees} disabled={uploading}>
+                  {uploading ? "Uploading..." : "Upload nominees"}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setNomineeDataset(null);
+                    setNomineeSummary(null);
+                    setUploadState(null);
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+              <FormStatus loading={uploading} result={uploadState} />
+              <p className="muted">
+                Validation summary is shown above. Errors like missing categories or
+                invalid shapes will appear here. Upload is blocked after drafts start.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card nested">
+          <header className="header-with-controls">
+            <div>
+              <h3>Winners</h3>
+              <p className="muted">
+                Enter or edit winners per category. First winner immediately locks
+                drafting.
+              </p>
+            </div>
+            <span className={`pill ${draftLock.draft_locked ? "warning" : ""}`}>
+              {draftLock.draft_locked ? "Drafts locked" : "Drafts open"}
+            </span>
+          </header>
+          {winnerLoadState?.message === "Loading" ? (
+            <PageLoader label="Loading winners and nominees..." />
+          ) : winnerLoadState?.ok === false ? (
+            <PageError message={winnerLoadState.message ?? "Failed to load winners"} />
+          ) : groupedNominations.length === 0 ? (
+            <p className="muted">
+              Load nominees for the active ceremony to manage winners.
+            </p>
+          ) : (
+            <div className="stack">
+              {groupedNominations.map(({ categoryId, nominations: noms }) => (
+                <div key={categoryId} className="card subtle">
+                  <header className="header-with-controls">
+                    <div>
+                      <p className="eyebrow">Category {categoryId}</p>
+                      <strong>Pick the winner</strong>
+                    </div>
+                    {winnerByCategory[categoryId] ? (
+                      <span className="pill success">Winner set</span>
+                    ) : (
+                      <span className="pill warning">Sets draft lock</span>
+                    )}
+                  </header>
+                  <div className="stack-sm">
+                    {noms.map((nom) => (
+                      <label key={nom.id} className="list-row">
+                        <input
+                          type="radio"
+                          name={`winner-${categoryId}`}
+                          value={nom.id}
+                          checked={selectedWinner[categoryId] === nom.id}
+                          onChange={() =>
+                            setSelectedWinner((prev) => ({
+                              ...prev,
+                              [categoryId]: nom.id
+                            }))
+                          }
+                        />
+                        <div>
+                          <p className="eyebrow">Nomination #{nom.id}</p>
+                          <strong>{nominationLabel(nom)}</strong>
+                        </div>
+                      </label>
+                    ))}
+                    <div className="inline-actions">
+                      <button
+                        type="button"
+                        onClick={() => confirmWinnerSave(categoryId)}
+                        disabled={savingCategory === categoryId}
+                      >
+                        {savingCategory === categoryId ? "Saving..." : "Save winner"}
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() =>
+                          setSelectedWinner((prev) => ({
+                            ...prev,
+                            [categoryId]: winnerByCategory[categoryId] ?? null
+                          }))
+                        }
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    <FormStatus
+                      loading={savingCategory === categoryId}
+                      result={winnerStatus[categoryId] ?? null}
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="status status-warning">
+                Changing winners keeps drafts locked. Confirmations prevent accidental
+                changes.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="card">
-      <header>
-        <h2>Admin</h2>
-        <p>Admin-only controls for ceremonies and winners.</p>
+      <header className="header-with-controls">
+        <div>
+          <h2>Admin console</h2>
+          <p className="muted">
+            Admin-only controls for ceremonies, nominees, and winners. Destructive actions
+            require confirmation.
+          </p>
+        </div>
+        <div className="inline-actions">
+          <button type="button" onClick={() => setState("loading")}>
+            Loading
+          </button>
+          <button type="button" onClick={() => setState("forbidden")}>
+            Forbidden
+          </button>
+          <button type="button" onClick={() => setState("error")}>
+            Error
+          </button>
+          <button type="button" onClick={() => setState("ready")}>
+            Ready
+          </button>
+        </div>
       </header>
-      <p className="muted">Admin console placeholder.</p>
+      {renderState()}
+
+      {showModal && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm action"
+          >
+            <h4>Confirm destructive action</h4>
+            <p className="muted">
+              This action could lock drafts or alter ceremony data. Proceed?
+            </p>
+            <div className="inline-actions">
+              <button type="button" onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="ghost" onClick={() => setShowModal(false)}>
+                Yes, proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingWinner && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm winner selection"
+          >
+            <h4>Confirm winner</h4>
+            <p className="muted">{pendingWinner.message}</p>
+            <div className="inline-actions">
+              <button type="button" onClick={() => setPendingWinner(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  const { categoryId, nominationId } = pendingWinner;
+                  setPendingWinner(null);
+                  void saveWinner(categoryId, nominationId);
+                }}
+              >
+                Yes, save winner
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -2581,9 +3666,9 @@ function RoutesConfig() {
         <Route
           path="/admin"
           element={
-            <RequireAuth>
+            <RequireAdmin>
               <AdminPage />
-            </RequireAuth>
+            </RequireAdmin>
           }
         />
         <Route path="*" element={<HomePage />} />

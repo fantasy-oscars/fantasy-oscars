@@ -23,6 +23,7 @@ export type Ceremony = {
   code: string;
   name: string;
   year: number;
+  starts_at: Date;
 };
 
 export type CategoryFamily = {
@@ -116,6 +117,24 @@ export type Draft = {
   draft_order_type: "SNAKE" | "LINEAR";
   current_pick_number: number | null;
   picks_per_seat: number | null;
+  remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
+  total_picks?: number | null;
+  pick_timer_seconds?: number | null;
+  auto_pick_strategy?:
+    | "NEXT_AVAILABLE"
+    | "RANDOM_SEED"
+    | "ALPHABETICAL"
+    | "CANONICAL"
+    | "SMART"
+    | "CUSTOM_USER"
+    | null;
+  auto_pick_seed?: string | null;
+  auto_pick_config?: Record<string, unknown> | null;
+  pick_deadline_at?: Date | null;
+  pick_timer_remaining_ms?: number | null;
+  allow_drafting_after_lock?: boolean;
+  lock_override_set_by_user_id?: number | null;
+  lock_override_set_at?: Date | null;
   version: number;
   started_at: Date | null;
   completed_at: Date | null;
@@ -168,6 +187,7 @@ export function buildCeremony(overrides: Partial<Ceremony> = {}): Ceremony {
     code: `cer-${n}`,
     name: `Ceremony ${n}`,
     year: 2000 + n,
+    starts_at: overrides.starts_at ?? addSeconds(baseTime, n * 3600),
     ...overrides
   };
 }
@@ -312,6 +332,17 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
     draft_order_type: overrides.draft_order_type ?? "SNAKE",
     current_pick_number: overrides.current_pick_number ?? null,
     picks_per_seat: overrides.picks_per_seat ?? null,
+    remainder_strategy: overrides.remainder_strategy ?? "UNDRAFTED",
+    total_picks: overrides.total_picks ?? null,
+    pick_timer_seconds: overrides.pick_timer_seconds ?? null,
+    auto_pick_strategy: overrides.auto_pick_strategy ?? null,
+    auto_pick_seed: overrides.auto_pick_seed ?? null,
+    auto_pick_config: overrides.auto_pick_config ?? null,
+    pick_deadline_at: overrides.pick_deadline_at ?? null,
+    pick_timer_remaining_ms: overrides.pick_timer_remaining_ms ?? null,
+    allow_drafting_after_lock: overrides.allow_drafting_after_lock ?? false,
+    lock_override_set_by_user_id: overrides.lock_override_set_by_user_id ?? null,
+    lock_override_set_at: overrides.lock_override_set_at ?? null,
     version: overrides.version ?? 0,
     started_at: overrides.started_at ?? null,
     completed_at: overrides.completed_at ?? null,

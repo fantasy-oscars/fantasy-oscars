@@ -43,8 +43,8 @@ export async function insertCeremony(
 ) {
   const ceremony = buildCeremony(overrides);
   await pool.query(
-    `INSERT INTO ceremony (id, code, name, year) VALUES ($1, $2, $3, $4)`,
-    [ceremony.id, ceremony.code, ceremony.name, ceremony.year]
+    `INSERT INTO ceremony (id, code, name, year, starts_at) VALUES ($1, $2, $3, $4, $5)`,
+    [ceremony.id, ceremony.code, ceremony.name, ceremony.year, ceremony.starts_at]
   );
   if (setActive) {
     await pool.query(
@@ -395,8 +395,8 @@ export async function insertDraft(
     ...overrides
   });
   await pool.query(
-    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, version, started_at, completed_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    `INSERT INTO draft (id, league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, auto_pick_seed, auto_pick_config, pick_deadline_at, pick_timer_remaining_ms, allow_drafting_after_lock, lock_override_set_by_user_id, lock_override_set_at, version, started_at, completed_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
     [
       draft.id,
       draft.league_id,
@@ -405,6 +405,17 @@ export async function insertDraft(
       draft.draft_order_type,
       draft.current_pick_number,
       draft.picks_per_seat,
+      draft.remainder_strategy ?? "UNDRAFTED",
+      draft.total_picks ?? null,
+      draft.pick_timer_seconds ?? null,
+      draft.auto_pick_strategy ?? null,
+      draft.auto_pick_seed ?? null,
+      draft.auto_pick_config ?? null,
+      draft.pick_deadline_at ?? null,
+      draft.pick_timer_remaining_ms ?? null,
+      draft.allow_drafting_after_lock ?? false,
+      draft.lock_override_set_by_user_id ?? null,
+      draft.lock_override_set_at ?? null,
       draft.version,
       draft.started_at,
       draft.completed_at

@@ -23,9 +23,18 @@ import {
   listNominationIds,
   completeDraftIfReady,
   createDraftEvent,
-  upsertDraftResults
+  upsertDraftResults,
+  updateDraftTimer,
+  setDraftLockOverride
 } from "../data/repositories/draftRepository.js";
-import type { DraftPickRecord } from "../data/repositories/draftRepository.js";
+import {
+  listNominationsForCeremony,
+  getNominationWithStatus
+} from "../data/repositories/nominationRepository.js";
+import type {
+  DraftPickRecord,
+  DraftRecord
+} from "../data/repositories/draftRepository.js";
 import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
 import {
   createExtantSeason,
@@ -53,6 +62,8 @@ const pickRateLimiter = new SlidingWindowRateLimiter({
   max: 3
 });
 
+type RemainderStrategy = "UNDRAFTED" | "FULL_POOL";
+
 function resolvePicksPerSeat(
   draft: { picks_per_seat: number | null },
   league: { roster_size: number | string | null }
@@ -65,6 +76,313 @@ function resolvePicksPerSeat(
   return draft.picks_per_seat > 0 ? draft.picks_per_seat : fallback;
 }
 
+function resolveTotalRequiredPicks(
+  draft: { total_picks?: number | null },
+  seatCount: number,
+  picksPerSeat: number
+) {
+  if (draft.total_picks !== null && draft.total_picks !== undefined) {
+    return draft.total_picks;
+  }
+  return seatCount * picksPerSeat;
+}
+
+function normalizeTitle(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const normalized = raw
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  return normalized.replace(/^(the|a|an)\s+/i, "").trim();
+}
+
+function createSeededRandom(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(31, h) + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return () => {
+    h = Math.imul(48271, h) % 0x7fffffff;
+    const result = h / 0x7fffffff;
+    return result < 0 ? result * -1 : result;
+  };
+}
+
+type Strategy =
+  | "NEXT_AVAILABLE"
+  | "RANDOM_SEED"
+  | "ALPHABETICAL"
+  | "CANONICAL"
+  | "SMART"
+  | "CUSTOM_USER";
+
+function resolveStrategy(
+  strategy: DraftRecord["auto_pick_strategy"] | null | undefined
+): Strategy {
+  if (
+    strategy === "RANDOM_SEED" ||
+    strategy === "ALPHABETICAL" ||
+    strategy === "CANONICAL" ||
+    strategy === "SMART" ||
+    strategy === "CUSTOM_USER"
+  ) {
+    return strategy;
+  }
+  return "NEXT_AVAILABLE";
+}
+
+type AutoPickConfig = {
+  canonical_order?: number[];
+  custom_rankings?: Record<string, number[]>;
+  smart_priorities?: number[];
+  alphabetical_field?: "film_title" | "song_title" | "performer_name";
+};
+
+function chooseAlphabetical(
+  available: Awaited<ReturnType<typeof listNominationsForCeremony>>,
+  field: AutoPickConfig["alphabetical_field"]
+) {
+  return [...available]
+    .sort((a, b) => {
+      const fieldAValue = field ? (a as Record<string, unknown>)[field] : null;
+      const fieldBValue = field ? (b as Record<string, unknown>)[field] : null;
+      const fieldA =
+        (typeof fieldAValue === "string" ? fieldAValue : null) ??
+        a.film_title ??
+        a.song_title ??
+        a.performer_name ??
+        "";
+      const fieldB =
+        (typeof fieldBValue === "string" ? fieldBValue : null) ??
+        b.film_title ??
+        b.song_title ??
+        b.performer_name ??
+        "";
+      const nameA = normalizeTitle(fieldA);
+      const nameB = normalizeTitle(fieldB);
+      if (nameA === nameB) return a.id - b.id;
+      return nameA.localeCompare(nameB);
+    })
+    .map((n) => n.id)[0];
+}
+
+function chooseRandomized(
+  availableIds: number[],
+  seed: string | null | undefined
+): { id: number | undefined; seed: string } {
+  const resolvedSeed = seed ?? "draft-random-default";
+  const rand = createSeededRandom(resolvedSeed);
+  const ids = [...availableIds];
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return { id: ids[0], seed: resolvedSeed };
+}
+
+function chooseCanonical(
+  availableIds: number[],
+  config: AutoPickConfig | null | undefined
+) {
+  const order = config?.canonical_order ?? [];
+  if (Array.isArray(order) && order.length > 0) {
+    const next = order.find((id) => availableIds.includes(id));
+    if (next) return next;
+  }
+  return undefined;
+}
+
+function chooseCustomUser(
+  userId: number,
+  availableIds: number[],
+  config: AutoPickConfig | null | undefined
+) {
+  const rankings = config?.custom_rankings ?? {};
+  const userList = rankings[String(userId)] ?? rankings[userId] ?? [];
+  const match = userList.find((id) => availableIds.includes(id));
+  return match ?? undefined;
+}
+
+async function autoPickIfExpired(options: {
+  tx: DbClient;
+  draft: DraftRecord;
+  season: { id: number; ceremony_id: number };
+  league: { roster_size: number | string | null };
+}) {
+  const { tx, draft, season, league } = options;
+  if (draft.status !== "IN_PROGRESS") return draft;
+  if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
+  const now = new Date();
+  if (now <= new Date(draft.pick_deadline_at)) return draft;
+
+  const seats = await listDraftSeats(tx, draft.id);
+  const seatCount = seats.length;
+  if (seatCount === 0) return draft;
+
+  const picks = await listDraftPicks(tx, draft.id);
+  const picksPerSeat = resolvePicksPerSeat(draft, league);
+  const currentPickNumber =
+    draft.current_pick_number ??
+    Math.max(picks.length + 1, draft.current_pick_number ?? 1);
+
+  const assignment = computePickAssignment({
+    draft_order_type: "SNAKE",
+    seat_count: seatCount,
+    pick_number: currentPickNumber,
+    status: draft.status
+  });
+  const seat = seats.find((s) => s.seat_number === assignment.seat_number);
+  if (!seat || !seat.user_id) {
+    // Cannot auto-pick without a user; leave as-is.
+    return draft;
+  }
+
+  const pickedIds = new Set(picks.map((p) => p.nomination_id));
+  const allNoms = await listNominationsForCeremony(tx, season.ceremony_id);
+  const available = allNoms.filter((n) => !pickedIds.has(n.id));
+  if (available.length === 0) {
+    return draft;
+  }
+
+  const strategy = resolveStrategy(draft.auto_pick_strategy);
+  const availableIds = available.map((n) => n.id);
+
+  let chosen: number | undefined;
+  let seedUsed = draft.auto_pick_seed ?? null;
+
+  switch (strategy) {
+    case "ALPHABETICAL":
+      chosen = chooseAlphabetical(
+        available,
+        (draft.auto_pick_config as AutoPickConfig)?.alphabetical_field
+      );
+      break;
+    case "CANONICAL":
+      chosen = chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig);
+      break;
+    case "CUSTOM_USER":
+      chosen = chooseCustomUser(
+        seat.user_id,
+        availableIds,
+        draft.auto_pick_config as AutoPickConfig
+      );
+      break;
+    case "SMART":
+      chosen =
+        chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig) ??
+        (draft.auto_pick_config as AutoPickConfig | undefined)?.smart_priorities?.find(
+          (id) => availableIds.includes(id)
+        );
+      break;
+    case "RANDOM_SEED": {
+      const result = chooseRandomized(availableIds, seedUsed);
+      chosen = result.id;
+      seedUsed = result.seed;
+      if (!draft.auto_pick_seed && seedUsed) {
+        await tx.query(`UPDATE draft SET auto_pick_seed = $2 WHERE id = $1`, [
+          draft.id,
+          seedUsed
+        ]);
+      }
+      break;
+    }
+    case "NEXT_AVAILABLE":
+    default:
+      chosen = availableIds.sort((a, b) => a - b)[0];
+      break;
+  }
+
+  if (!chosen) {
+    chosen = availableIds.sort((a, b) => a - b)[0];
+  }
+
+  const nowPick = new Date();
+  const pick: DraftPickRecord = await insertDraftPickRecord(tx, {
+    draft_id: draft.id,
+    pick_number: currentPickNumber,
+    round_number: Math.ceil(currentPickNumber / seatCount),
+    seat_number: assignment.seat_number,
+    league_member_id: seat.league_member_id,
+    user_id: seat.user_id,
+    nomination_id: chosen,
+    made_at: nowPick,
+    request_id: `auto-${nowPick.getTime()}`
+  });
+
+  const newPickCount = picks.length + 1;
+  const requiredPicks = resolveTotalRequiredPicks(draft, seatCount, picksPerSeat);
+  let nextDraft = { ...draft };
+  if (requiredPicks > 0 && newPickCount >= requiredPicks) {
+    const completed =
+      (await completeDraftIfReady(tx, draft.id, nowPick, requiredPicks)) ??
+      (await updateDraftOnComplete(tx, draft.id, nowPick));
+    nextDraft = {
+      ...nextDraft,
+      status: completed?.status ?? "COMPLETED",
+      completed_at: completed?.completed_at ?? nowPick,
+      current_pick_number: null,
+      total_picks: completed?.total_picks ?? draft.total_picks,
+      pick_deadline_at: null,
+      pick_timer_remaining_ms: null
+    };
+    await updateDraftTimer(tx, draft.id, null, null);
+  } else {
+    const nextPickNumber = currentPickNumber + 1;
+    nextDraft = {
+      ...nextDraft,
+      current_pick_number: nextPickNumber,
+      total_picks: draft.total_picks ?? requiredPicks
+    };
+    await updateDraftCurrentPick(tx, draft.id, nextPickNumber);
+    const deadline = computeDeadline(nowPick, draft.pick_timer_seconds ?? null);
+    await updateDraftTimer(tx, draft.id, deadline, null);
+    nextDraft.pick_deadline_at = deadline;
+  }
+
+  const event = await createDraftEvent(tx, {
+    draft_id: draft.id,
+    event_type: "draft.pick.autopicked",
+    payload: {
+      reason: "TIMER_EXPIRED",
+      strategy,
+      pick: {
+        id: pick.id,
+        draft_id: pick.draft_id,
+        pick_number: pick.pick_number,
+        round_number: pick.round_number,
+        seat_number: pick.seat_number,
+        league_member_id: pick.league_member_id,
+        user_id: pick.user_id,
+        nomination_id: pick.nomination_id,
+        made_at: pick.made_at,
+        request_id: pick.request_id ?? null
+      },
+      draft: {
+        status: nextDraft.status,
+        current_pick_number: nextDraft.current_pick_number,
+        completed_at: nextDraft.completed_at ?? null,
+        pick_deadline_at: nextDraft.pick_deadline_at ?? null
+      }
+    }
+  });
+  emitDraftEvent(event);
+
+  return nextDraft;
+}
+
+function computeDeadline(
+  now: Date,
+  pickTimerSeconds: number | null | undefined,
+  overrideMs?: number | null
+): Date | null {
+  if (pickTimerSeconds === null || pickTimerSeconds === undefined) return null;
+  const ms = overrideMs ?? pickTimerSeconds * 1000;
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  return new Date(now.getTime() + ms);
+}
+
 export function buildCreateDraftHandler(client: DbClient) {
   return async function handleCreateDraft(
     req: express.Request,
@@ -72,7 +390,8 @@ export function buildCreateDraftHandler(client: DbClient) {
     next: express.NextFunction
   ) {
     try {
-      const { league_id, draft_order_type } = req.body ?? {};
+      const { league_id, draft_order_type, pick_timer_seconds, auto_pick_strategy } =
+        req.body ?? {};
 
       const leagueIdNum = Number(league_id);
       if (!league_id || Number.isNaN(leagueIdNum)) {
@@ -85,6 +404,17 @@ export function buildCreateDraftHandler(client: DbClient) {
           "draft_order_type"
         ]);
       }
+      if (
+        pick_timer_seconds !== undefined &&
+        pick_timer_seconds !== null &&
+        (!Number.isFinite(Number(pick_timer_seconds)) || Number(pick_timer_seconds) < 0)
+      ) {
+        throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
+      }
+      const autoPick =
+        auto_pick_strategy && auto_pick_strategy !== "NEXT_AVAILABLE"
+          ? null
+          : (auto_pick_strategy ?? null);
 
       const league = await getLeagueById(client, leagueIdNum);
       if (!league) {
@@ -136,7 +466,12 @@ export function buildCreateDraftHandler(client: DbClient) {
         draft_order_type: "SNAKE",
         current_pick_number: null,
         started_at: null,
-        completed_at: null
+        completed_at: null,
+        pick_timer_seconds:
+          pick_timer_seconds === undefined || pick_timer_seconds === null
+            ? null
+            : Number(pick_timer_seconds),
+        auto_pick_strategy: autoPick === "NEXT_AVAILABLE" ? "NEXT_AVAILABLE" : null
       });
 
       return res.status(201).json({ draft });
@@ -196,9 +531,10 @@ export function buildStartDraftHandler(pool: Pool) {
           );
         }
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
-        if (lockedAt) {
+        if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
+        const isOverrideActive = Boolean(lockedAt) && draft.allow_drafting_after_lock;
 
         const leagueMember = await getLeagueMember(tx, league.id, userId);
         const isCommissioner =
@@ -245,6 +581,8 @@ export function buildStartDraftHandler(pool: Pool) {
             "No nominations loaded; load nominees before starting draft"
           );
         }
+        const remainderStrategy: RemainderStrategy =
+          (season.remainder_strategy as RemainderStrategy) ?? "UNDRAFTED";
         const picksPerSeat = Math.floor(nominationCount / seatTotal);
         if (picksPerSeat <= 0) {
           throw new AppError(
@@ -253,8 +591,13 @@ export function buildStartDraftHandler(pool: Pool) {
             "Not enough nominations for the number of participants"
           );
         }
-
         const now = new Date();
+        const remainder = nominationCount - picksPerSeat * seatTotal;
+        const totalPicks =
+          remainderStrategy === "FULL_POOL" && remainder > 0
+            ? nominationCount
+            : seatTotal * picksPerSeat;
+        const deadline = computeDeadline(now, draft.pick_timer_seconds ?? null);
         const transitioned = transitionDraftState(
           {
             id: draft.id,
@@ -271,7 +614,13 @@ export function buildStartDraftHandler(pool: Pool) {
           draft.id,
           draft.current_pick_number ?? 1,
           transitioned.started_at ?? now,
-          picksPerSeat
+          picksPerSeat,
+          remainderStrategy,
+          totalPicks,
+          draft.pick_timer_seconds ?? null,
+          draft.auto_pick_strategy ?? null,
+          deadline,
+          null
         );
         if (!updated) {
           throw new AppError("INTERNAL_ERROR", 500, "Failed to start draft");
@@ -287,7 +636,12 @@ export function buildStartDraftHandler(pool: Pool) {
               current_pick_number: updated.current_pick_number,
               picks_per_seat: updated.picks_per_seat,
               started_at: updated.started_at,
-              completed_at: updated.completed_at
+              completed_at: updated.completed_at,
+              allow_drafting_after_lock: updated.allow_drafting_after_lock,
+              lock_override_set_by_user_id: updated.lock_override_set_by_user_id ?? null,
+              lock_override_set_at: updated.lock_override_set_at ?? null,
+              draft_locked_at: lockedAt ?? null,
+              override_active: isOverrideActive
             }
           }
         });
@@ -312,6 +666,66 @@ function requireCommissionerOrOwner(
     league.created_by_user_id === userId ||
     (leagueMember && (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"))
   );
+}
+
+export function buildOverrideDraftLockHandler(pool: Pool) {
+  return async function handleOverrideDraftLock(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const allow = (req.body ?? {}).allow;
+      if (typeof allow !== "boolean") {
+        throw validationError("Invalid override flag", ["allow"]);
+      }
+      const userId = Number((req as AuthedRequest).auth?.sub);
+
+      const result = await runInTransaction(pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        if (season.status === "CANCELLED") {
+          throw new AppError("SEASON_CANCELLED", 409, "Season is cancelled");
+        }
+
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const leagueMember = await getLeagueMember(tx, league.id, userId);
+        if (!requireCommissionerOrOwner(userId, league, leagueMember)) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+
+        const updated = await setDraftLockOverride(tx, draftId, allow, userId);
+        if (!updated) {
+          throw new AppError("INTERNAL_ERROR", 500, "Failed to set override");
+        }
+        const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
+        const event = await createDraftEvent(tx, {
+          draft_id: draftId,
+          event_type: "draft.lock.override.set",
+          payload: {
+            allow,
+            user_id: userId,
+            ceremony_id: season.ceremony_id,
+            locked_at: lockedAt ?? null,
+            set_at: updated.lock_override_set_at ?? new Date()
+          }
+        });
+
+        return { draft: { ...updated, version: event.version }, event };
+      });
+
+      emitDraftEvent(result.event);
+      return res.status(200).json({ draft: result.draft });
+    } catch (err) {
+      next(err);
+    }
+  };
 }
 
 export function buildPauseDraftHandler(pool: Pool) {
@@ -376,24 +790,43 @@ export function buildPauseDraftHandler(pool: Pool) {
           throw err;
         }
 
+        let updatedTimer = null;
+        if (draft.pick_timer_seconds) {
+          const deadline = draft.pick_deadline_at
+            ? new Date(draft.pick_deadline_at)
+            : null;
+          const remainingMs =
+            deadline && deadline.getTime() > Date.now()
+              ? deadline.getTime() - Date.now()
+              : 0;
+          updatedTimer = await updateDraftTimer(tx, draft.id, null, remainingMs);
+        }
+
         const updated = await updateDraftStatus(tx, draft.id, transitioned.status);
         if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to pause draft");
+        const updatedDraft = {
+          ...updated,
+          pick_deadline_at: updatedTimer?.pick_deadline_at ?? draft.pick_deadline_at,
+          pick_timer_remaining_ms:
+            updatedTimer?.pick_timer_remaining_ms ?? draft.pick_timer_remaining_ms
+        };
 
         const event = await createDraftEvent(tx, {
           draft_id: draft.id,
           event_type: "draft.paused",
           payload: {
             draft: {
-              id: updated.id,
-              status: updated.status,
-              current_pick_number: updated.current_pick_number,
-              started_at: updated.started_at,
-              completed_at: updated.completed_at
+              id: updatedDraft.id,
+              status: updatedDraft.status,
+              current_pick_number: updatedDraft.current_pick_number,
+              started_at: updatedDraft.started_at,
+              completed_at: updatedDraft.completed_at,
+              pick_deadline_at: updatedDraft.pick_deadline_at
             }
           }
         });
 
-        return { draft: { ...updated, version: event.version }, event };
+        return { draft: { ...updatedDraft, version: event.version }, event };
       });
 
       emitDraftEvent(result.event);
@@ -463,24 +896,40 @@ export function buildResumeDraftHandler(pool: Pool) {
           throw err;
         }
 
+        let timerUpdated = null;
+        if (draft.pick_timer_seconds) {
+          const ms =
+            draft.pick_timer_remaining_ms ??
+            (draft.pick_timer_seconds ? draft.pick_timer_seconds * 1000 : null);
+          const deadline =
+            ms && ms > 0 ? new Date(Date.now() + ms) : (draft.pick_deadline_at ?? null);
+          timerUpdated = await updateDraftTimer(tx, draft.id, deadline, null);
+        }
+
         const updated = await updateDraftStatus(tx, draft.id, transitioned.status);
         if (!updated) throw new AppError("INTERNAL_ERROR", 500, "Failed to resume draft");
+        const updatedDraft = {
+          ...updated,
+          pick_deadline_at: timerUpdated?.pick_deadline_at ?? draft.pick_deadline_at,
+          pick_timer_remaining_ms: timerUpdated?.pick_timer_remaining_ms ?? null
+        };
 
         const event = await createDraftEvent(tx, {
           draft_id: draft.id,
           event_type: "draft.resumed",
           payload: {
             draft: {
-              id: updated.id,
-              status: updated.status,
-              current_pick_number: updated.current_pick_number,
-              started_at: updated.started_at,
-              completed_at: updated.completed_at
+              id: updatedDraft.id,
+              status: updatedDraft.status,
+              current_pick_number: updatedDraft.current_pick_number,
+              started_at: updatedDraft.started_at,
+              completed_at: updatedDraft.completed_at,
+              pick_deadline_at: updatedDraft.pick_deadline_at
             }
           }
         });
 
-        return { draft: { ...updated, version: event.version }, event };
+        return { draft: { ...updatedDraft, version: event.version }, event };
       });
 
       emitDraftEvent(result.event);
@@ -503,6 +952,15 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         throw validationError("Invalid draft id", ["id"]);
       }
 
+      await runInTransaction(pool, async (tx) => {
+        const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
+        if (!lockedDraft) return;
+        const season = await getSeasonById(tx, lockedDraft.season_id);
+        const league = season ? await getLeagueById(tx, season.league_id) : null;
+        if (!season || !league) return;
+        await autoPickIfExpired({ tx, draft: lockedDraft, season, league });
+      });
+
       let draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
 
@@ -515,7 +973,10 @@ export function buildSnapshotDraftHandler(pool: Pool) {
       if (draft.picks_per_seat === null || draft.picks_per_seat === undefined) {
         draft = { ...draft, picks_per_seat: picksPerSeat };
       }
-      const totalRequired = seats.length * picksPerSeat;
+      const totalRequired = resolveTotalRequiredPicks(draft, seats.length, picksPerSeat);
+      if (draft.total_picks === null || draft.total_picks === undefined) {
+        draft = { ...draft, total_picks: totalRequired };
+      }
       if (
         totalRequired > 0 &&
         picks.length >= totalRequired &&
@@ -528,7 +989,11 @@ export function buildSnapshotDraftHandler(pool: Pool) {
           }
           const freshSeats = await listDraftSeats(tx, draftId);
           const freshPicks = await listDraftPicks(tx, draftId);
-          const freshTotalRequired = freshSeats.length * picksPerSeat;
+          const freshTotalRequired = resolveTotalRequiredPicks(
+            lockedDraft,
+            freshSeats.length,
+            picksPerSeat
+          );
           if (
             freshTotalRequired <= 0 ||
             freshPicks.length < freshTotalRequired ||
@@ -637,8 +1102,19 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         picks,
         version: draft.version,
         picks_per_seat: picksPerSeat,
+        total_picks:
+          draft.total_picks ??
+          resolveTotalRequiredPicks(draft, seats.length, picksPerSeat),
+        remainder_strategy:
+          (draft as { remainder_strategy?: RemainderStrategy }).remainder_strategy ??
+          "UNDRAFTED",
+        auto_pick_strategy: draft.auto_pick_strategy ?? null,
+        pick_timer_seconds: draft.pick_timer_seconds ?? null,
+        pick_deadline_at: draft.pick_deadline_at ?? null,
+        pick_timer_remaining_ms: draft.pick_timer_remaining_ms ?? null,
         nominee_pool_size: nomineePoolSize,
-        turn
+        turn,
+        ceremony_starts_at: season?.ceremony_starts_at ?? null
       });
     } catch (err) {
       next(err);
@@ -737,7 +1213,7 @@ export function buildSubmitPickHandler(pool: Pool) {
           );
         }
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
-        if (lockedAt) {
+        if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
 
@@ -747,8 +1223,28 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("PREREQ_MISSING_SEATS", 400, "No draft seats configured");
         }
 
+        // Auto-pick if timer expired before validating turn.
+        const draftAfterTimer = await autoPickIfExpired({
+          tx,
+          draft,
+          season,
+          league
+        });
+        draft.status = draftAfterTimer.status;
+        draft.current_pick_number = draftAfterTimer.current_pick_number;
+        draft.completed_at = draftAfterTimer.completed_at;
+        draft.pick_deadline_at = draftAfterTimer.pick_deadline_at;
+
+        if (draft.status !== "IN_PROGRESS") {
+          throw new AppError("DRAFT_NOT_IN_PROGRESS", 409, "Draft is not in progress");
+        }
+
         const picksPerSeat = resolvePicksPerSeat(draft, league);
-        const totalRequiredPicks = seatCount * picksPerSeat;
+        const totalRequiredPicks = resolveTotalRequiredPicks(
+          draft,
+          seatCount,
+          picksPerSeat
+        );
         const existingPickCount = await countDraftPicks(tx, draftIdNum);
         const draftCurrent = draft.current_pick_number ?? 0;
         const currentPick = Math.max(
@@ -863,7 +1359,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         const newPickCount = existingPickCount + 1;
         // Recompute seat count defensively in case earlier read was stale.
         const seatTotal = await countDraftSeats(tx, draftIdNum);
-        const requiredPicks = seatTotal * picksPerSeat;
+        const requiredPicks = resolveTotalRequiredPicks(draft, seatTotal, picksPerSeat);
         if (requiredPicks > 0 && newPickCount >= requiredPicks) {
           const updated =
             (await completeDraftIfReady(tx, draftIdNum, now, requiredPicks)) ??
@@ -885,10 +1381,14 @@ export function buildSubmitPickHandler(pool: Pool) {
           draft.status = "COMPLETED";
           draft.completed_at = updated.completed_at ?? completedDraft.completed_at ?? now;
           draft.current_pick_number = null;
+          await updateDraftTimer(tx, draftIdNum, null, null);
         } else {
           const nextPickNumber = newPickCount + 1;
           await updateDraftCurrentPick(tx, draftIdNum, nextPickNumber);
           draft.current_pick_number = nextPickNumber;
+          const deadline = computeDeadline(now, draft.pick_timer_seconds ?? null);
+          await updateDraftTimer(tx, draftIdNum, deadline, null);
+          draft.pick_deadline_at = deadline;
         }
 
         const event = await createDraftEvent(tx, {
@@ -966,7 +1466,10 @@ export function buildExportDraftHandler(pool: Pool) {
           current_pick_number: draft.current_pick_number,
           started_at: draft.started_at ?? null,
           completed_at: draft.completed_at ?? null,
-          version: draft.version
+          version: draft.version,
+          allow_drafting_after_lock: draft.allow_drafting_after_lock,
+          lock_override_set_by_user_id: draft.lock_override_set_by_user_id ?? null,
+          lock_override_set_at: draft.lock_override_set_at ?? null
         },
         seats: seats.map((seat) => ({
           seat_number: seat.seat_number,
@@ -1108,6 +1611,23 @@ export function buildDraftStandingsHandler(pool: Pool) {
         picksBySeat.get(pick.seat_number)?.push(pick);
       }
 
+      const nominationFlags = picks.length
+        ? await Promise.all(
+            picks.map(async (pick) => {
+              const nom = await getNominationWithStatus(pool, pick.nomination_id);
+              return nom
+                ? {
+                    nomination_id: pick.nomination_id,
+                    status: (nom as { status?: string }).status ?? "ACTIVE",
+                    replaced_by_nomination_id:
+                      (nom as { replaced_by_nomination_id?: number | null })
+                        .replaced_by_nomination_id ?? null
+                  }
+                : null;
+            })
+          )
+        : [];
+
       const standings = seats
         .map((seat) => ({
           seat_number: seat.seat_number,
@@ -1140,7 +1660,8 @@ export function buildDraftStandingsHandler(pool: Pool) {
           nomination_id: result.nomination_id,
           won: result.won,
           points: result.points ?? null
-        }))
+        })),
+        nomination_flags: nominationFlags.filter(Boolean)
       });
     } catch (err) {
       next(err);
@@ -1154,6 +1675,7 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.use(requireAuth(authSecret));
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client as Pool));
+  router.post("/:id/override-lock", buildOverrideDraftLockHandler(client as Pool));
   router.post("/:id/pause", buildPauseDraftHandler(client as Pool));
   router.post("/:id/resume", buildResumeDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
