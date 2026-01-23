@@ -343,8 +343,11 @@ export function createSeasonsRouter(client: DbClient, authSecret: string) {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const actorMember = await getSeasonMember(client, seasonId, actorId);
-        ensureCommissioner(actorMember);
+        const actorSeasonMember = await getSeasonMember(client, seasonId, actorId);
+        const actorLeagueMember = actorSeasonMember
+          ? null
+          : await getLeagueMember(client, season.league_id, actorId);
+        ensureCommissioner(actorSeasonMember ?? actorLeagueMember);
 
         const invites = await listPlaceholderInvites(client, seasonId);
         return res.json({ invites: invites.map(sanitizeInvite) });
