@@ -15,11 +15,12 @@ ADRs capture decisions that could be questioned later. They keep the project int
 
 ## How to add
 
-1) Copy `template.md` to `docs/adr/NNNN-title.md` (increment NNNN).
-2) Fill it in.
-3) Link from this README if useful.
+1. Copy `template.md` to `docs/adr/NNNN-title.md` (increment NNNN).
+2. Fill it in.
+3. Link from this README if useful.
 
 ## Links
 
 - Template: [template.md](template.md)
 - 0001 – Canonical Domain Model (Fantasy Oscars): [0001-domain-model.md](0001-domain-model.md)
+- 0002 – Public seasons as auto-managed league containers: [0002-public-seasons.md](0002-public-seasons.md)

@@ -156,6 +156,9 @@ export function createLeaguesRouter(client: DbClient, authSecret: string) {
         const result = await runInTransaction(client as Pool, async (tx) => {
           const league = await getLeagueById(tx, leagueId);
           if (!league) return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          if (league.is_public_season) {
+            return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          }
           if (!league.is_public) {
             return new AppError(
               "INVITE_ONLY_MEMBERSHIP",

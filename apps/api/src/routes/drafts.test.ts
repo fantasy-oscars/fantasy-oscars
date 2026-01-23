@@ -78,6 +78,7 @@ describe("POST /drafts", () => {
       max_members: 10,
       roster_size: 5,
       is_public: true,
+      is_public_season: false,
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
@@ -244,6 +245,7 @@ describe("POST /drafts", () => {
       max_members: 10,
       roster_size: 5,
       is_public: true,
+      is_public_season: false,
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
@@ -322,6 +324,7 @@ describe("POST /drafts/:id/pause and /resume", () => {
       max_members: 10,
       roster_size: 5,
       is_public: true,
+      is_public_season: false,
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
@@ -870,6 +873,7 @@ describe("GET /drafts/:id/snapshot", () => {
       max_members: 10,
       roster_size: 10,
       is_public: true,
+      is_public_season: false,
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
