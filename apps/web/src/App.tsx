@@ -1956,6 +1956,9 @@ type Snapshot = {
     pick_deadline_at?: string | null;
     pick_timer_remaining_ms?: number | null;
     auto_pick_strategy?: string | null;
+    allow_drafting_after_lock?: boolean;
+    lock_override_set_by_user_id?: number | null;
+    lock_override_set_at?: string | null;
   };
   seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
@@ -2395,6 +2398,11 @@ export function DraftRoom(props: {
                 Allocation: {allocationLabel(snapshot.remainder_strategy)} · Total picks:{" "}
                 {snapshot.total_picks ?? "—"}
               </p>
+              {snapshot.draft.allow_drafting_after_lock && (
+                <div className="status status-warning" role="status">
+                  Draft lock override active — results may be compromised.
+                </div>
+              )}
               <div className="status-tray">
                 <span
                   className="connection-status"

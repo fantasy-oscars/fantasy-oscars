@@ -24,7 +24,8 @@ import {
   completeDraftIfReady,
   createDraftEvent,
   upsertDraftResults,
-  updateDraftTimer
+  updateDraftTimer,
+  setDraftLockOverride
 } from "../data/repositories/draftRepository.js";
 import type {
   DraftPickRecord,
@@ -527,9 +528,10 @@ export function buildStartDraftHandler(pool: Pool) {
           );
         }
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
-        if (lockedAt) {
+        if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
+        const isOverrideActive = Boolean(lockedAt) && draft.allow_drafting_after_lock;
 
         const leagueMember = await getLeagueMember(tx, league.id, userId);
         const isCommissioner =
@@ -631,7 +633,12 @@ export function buildStartDraftHandler(pool: Pool) {
               current_pick_number: updated.current_pick_number,
               picks_per_seat: updated.picks_per_seat,
               started_at: updated.started_at,
-              completed_at: updated.completed_at
+              completed_at: updated.completed_at,
+              allow_drafting_after_lock: updated.allow_drafting_after_lock,
+              lock_override_set_by_user_id: updated.lock_override_set_by_user_id ?? null,
+              lock_override_set_at: updated.lock_override_set_at ?? null,
+              draft_locked_at: lockedAt ?? null,
+              override_active: isOverrideActive
             }
           }
         });
@@ -656,6 +663,66 @@ function requireCommissionerOrOwner(
     league.created_by_user_id === userId ||
     (leagueMember && (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"))
   );
+}
+
+export function buildOverrideDraftLockHandler(pool: Pool) {
+  return async function handleOverrideDraftLock(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const allow = (req.body ?? {}).allow;
+      if (typeof allow !== "boolean") {
+        throw validationError("Invalid override flag", ["allow"]);
+      }
+      const userId = Number((req as AuthedRequest).auth?.sub);
+
+      const result = await runInTransaction(pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        if (season.status === "CANCELLED") {
+          throw new AppError("SEASON_CANCELLED", 409, "Season is cancelled");
+        }
+
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const leagueMember = await getLeagueMember(tx, league.id, userId);
+        if (!requireCommissionerOrOwner(userId, league, leagueMember)) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+
+        const updated = await setDraftLockOverride(tx, draftId, allow, userId);
+        if (!updated) {
+          throw new AppError("INTERNAL_ERROR", 500, "Failed to set override");
+        }
+        const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
+        const event = await createDraftEvent(tx, {
+          draft_id: draftId,
+          event_type: "draft.lock.override.set",
+          payload: {
+            allow,
+            user_id: userId,
+            ceremony_id: season.ceremony_id,
+            locked_at: lockedAt ?? null,
+            set_at: updated.lock_override_set_at ?? new Date()
+          }
+        });
+
+        return { draft: { ...updated, version: event.version }, event };
+      });
+
+      emitDraftEvent(result.event);
+      return res.status(200).json({ draft: result.draft });
+    } catch (err) {
+      next(err);
+    }
+  };
 }
 
 export function buildPauseDraftHandler(pool: Pool) {
@@ -1143,7 +1210,7 @@ export function buildSubmitPickHandler(pool: Pool) {
           );
         }
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
-        if (lockedAt) {
+        if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
         }
 
@@ -1396,7 +1463,10 @@ export function buildExportDraftHandler(pool: Pool) {
           current_pick_number: draft.current_pick_number,
           started_at: draft.started_at ?? null,
           completed_at: draft.completed_at ?? null,
-          version: draft.version
+          version: draft.version,
+          allow_drafting_after_lock: draft.allow_drafting_after_lock,
+          lock_override_set_by_user_id: draft.lock_override_set_by_user_id ?? null,
+          lock_override_set_at: draft.lock_override_set_at ?? null
         },
         seats: seats.map((seat) => ({
           seat_number: seat.seat_number,
@@ -1584,6 +1654,7 @@ export function createDraftsRouter(client: DbClient, authSecret: string) {
   router.use(requireAuth(authSecret));
   router.post("/", buildCreateDraftHandler(client));
   router.post("/:id/start", buildStartDraftHandler(client as Pool));
+  router.post("/:id/override-lock", buildOverrideDraftLockHandler(client as Pool));
   router.post("/:id/pause", buildPauseDraftHandler(client as Pool));
   router.post("/:id/resume", buildResumeDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));

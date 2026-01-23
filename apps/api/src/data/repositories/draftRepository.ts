@@ -23,6 +23,9 @@ export type DraftRecord = {
   auto_pick_config?: Record<string, unknown> | null;
   pick_deadline_at?: Date | null;
   pick_timer_remaining_ms?: number | null;
+  allow_drafting_after_lock?: boolean;
+  lock_override_set_by_user_id?: number | null;
+  lock_override_set_at?: Date | null;
   version: number;
   started_at?: Date | null;
   completed_at?: Date | null;
@@ -85,6 +88,9 @@ export async function createDraft(
     auto_pick_config?: Record<string, unknown> | null;
     pick_deadline_at?: Date | null;
     pick_timer_remaining_ms?: number | null;
+    allow_drafting_after_lock?: boolean;
+    lock_override_set_by_user_id?: number | null;
+    lock_override_set_at?: Date | null;
     started_at?: Date | null;
     completed_at?: Date | null;
   }
@@ -92,8 +98,8 @@ export async function createDraft(
   const { rows } = await query<DraftRecord>(
     client,
     `
-      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, auto_pick_seed, auto_pick_config, pick_deadline_at, pick_timer_remaining_ms, started_at, completed_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      INSERT INTO draft (league_id, season_id, status, draft_order_type, current_pick_number, picks_per_seat, remainder_strategy, total_picks, pick_timer_seconds, auto_pick_strategy, auto_pick_seed, auto_pick_config, pick_deadline_at, pick_timer_remaining_ms, allow_drafting_after_lock, lock_override_set_by_user_id, lock_override_set_at, started_at, completed_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING
         id::int,
         league_id::int,
@@ -110,6 +116,9 @@ export async function createDraft(
         auto_pick_config,
         pick_deadline_at,
         pick_timer_remaining_ms::int,
+        allow_drafting_after_lock,
+        lock_override_set_by_user_id::int,
+        lock_override_set_at,
         version::int,
         started_at,
         completed_at
@@ -129,6 +138,9 @@ export async function createDraft(
       input.auto_pick_config ?? null,
       input.pick_deadline_at ?? null,
       input.pick_timer_remaining_ms ?? null,
+      input.allow_drafting_after_lock ?? false,
+      input.lock_override_set_by_user_id ?? null,
+      input.lock_override_set_at ?? null,
       input.started_at ?? null,
       input.completed_at ?? null
     ]
@@ -158,6 +170,9 @@ export async function getDraftById(
        auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at
@@ -189,6 +204,9 @@ export async function getDraftByIdForUpdate(
        auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at
@@ -233,8 +251,13 @@ export async function getDraftByLeagueId(
        d.total_picks::int,
        d.pick_timer_seconds::int,
        d.auto_pick_strategy,
+       d.auto_pick_seed,
+       d.auto_pick_config,
        d.pick_deadline_at,
        d.pick_timer_remaining_ms::int,
+       d.allow_drafting_after_lock,
+       d.lock_override_set_by_user_id::int,
+       d.lock_override_set_at,
        d.version::int,
        d.started_at,
        d.completed_at
@@ -269,6 +292,9 @@ export async function getDraftBySeasonId(
        auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at
@@ -370,6 +396,9 @@ export async function updateDraftOnStart(
        auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at`,
@@ -702,6 +731,15 @@ export async function updateDraftOnComplete(
        picks_per_seat::int,
        remainder_strategy,
        total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at`,
@@ -733,6 +771,15 @@ export async function completeDraftIfReady(
        picks_per_seat::int,
        remainder_strategy,
        total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at`,
@@ -784,10 +831,53 @@ export async function updateDraftTimer(
        auto_pick_config,
        pick_deadline_at,
        pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
        version::int,
        started_at,
        completed_at`,
     [draftId, pick_deadline_at, pick_timer_remaining_ms]
+  );
+  return rows[0] ?? null;
+}
+
+export async function setDraftLockOverride(
+  client: DbClient,
+  draftId: number,
+  allow: boolean,
+  userId: number
+): Promise<DraftRecord | null> {
+  const { rows } = await query<DraftRecord>(
+    client,
+    `UPDATE draft
+     SET allow_drafting_after_lock = $2,
+         lock_override_set_by_user_id = CASE WHEN $2 THEN $3::int ELSE NULL END,
+         lock_override_set_at = CASE WHEN $2 THEN now() ELSE NULL END
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       season_id::int,
+       status,
+       draft_order_type,
+       current_pick_number,
+       picks_per_seat::int,
+       remainder_strategy,
+       total_picks::int,
+       pick_timer_seconds::int,
+       auto_pick_strategy,
+       auto_pick_seed,
+       auto_pick_config,
+       pick_deadline_at,
+       pick_timer_remaining_ms::int,
+       allow_drafting_after_lock,
+       lock_override_set_by_user_id::int,
+       lock_override_set_at,
+       version::int,
+       started_at,
+       completed_at`,
+    [draftId, allow, userId]
   );
   return rows[0] ?? null;
 }

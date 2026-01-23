@@ -132,6 +132,9 @@ export type Draft = {
   auto_pick_config?: Record<string, unknown> | null;
   pick_deadline_at?: Date | null;
   pick_timer_remaining_ms?: number | null;
+  allow_drafting_after_lock?: boolean;
+  lock_override_set_by_user_id?: number | null;
+  lock_override_set_at?: Date | null;
   version: number;
   started_at: Date | null;
   completed_at: Date | null;
@@ -337,6 +340,9 @@ export function buildDraft(overrides: Partial<Draft> = {}): Draft {
     auto_pick_config: overrides.auto_pick_config ?? null,
     pick_deadline_at: overrides.pick_deadline_at ?? null,
     pick_timer_remaining_ms: overrides.pick_timer_remaining_ms ?? null,
+    allow_drafting_after_lock: overrides.allow_drafting_after_lock ?? false,
+    lock_override_set_by_user_id: overrides.lock_override_set_by_user_id ?? null,
+    lock_override_set_at: overrides.lock_override_set_at ?? null,
     version: overrides.version ?? 0,
     started_at: overrides.started_at ?? null,
     completed_at: overrides.completed_at ?? null,
