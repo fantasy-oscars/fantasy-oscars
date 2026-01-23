@@ -18,7 +18,7 @@ export function createCeremonyRouter(client: DbClient) {
       }
       const { rows } = await query(
         client,
-        `SELECT id::int, code, name, year FROM ceremony WHERE id = $1`,
+        `SELECT id::int, code, name, year, starts_at FROM ceremony WHERE id = $1`,
         [activeId]
       );
       const ceremony = rows[0];

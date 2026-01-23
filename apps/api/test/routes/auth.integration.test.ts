@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 import { createApiAgent, type ApiAgent } from "../support/supertest.js";
+import { resetAllRateLimiters } from "../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -51,6 +52,7 @@ describe("auth integration", () => {
 
   beforeEach(async () => {
     await truncateAllTables(db.pool);
+    resetAllRateLimiters();
   });
 
   it("registers a user and stores hashed password", async () => {
@@ -197,6 +199,26 @@ describe("auth integration", () => {
     const me = await getJson<{ user: { handle: string } }>("/auth/me");
     expect(me.status).toBe(200);
     expect(me.json.user.handle).toBe(payload.handle);
+  });
+
+  it("rate limits login attempts", async () => {
+    const payload = {
+      handle: "ratelimit",
+      email: "ratelimit@example.com",
+      display_name: "Rate Limit",
+      password: "pw123456"
+    };
+    await post("/auth/register", payload);
+
+    let lastStatus = 0;
+    for (let i = 0; i < 10; i++) {
+      const res = await post<{ error?: { code: string } }>("/auth/login", {
+        handle: payload.handle,
+        password: "wrong-pass"
+      });
+      lastStatus = res.status;
+    }
+    expect(lastStatus).toBe(429);
   });
 
   it("clears auth cookie on logout and rejects missing token", async () => {

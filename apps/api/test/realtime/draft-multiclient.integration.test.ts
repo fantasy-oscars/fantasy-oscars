@@ -93,7 +93,10 @@ describe("draft realtime integration", () => {
       },
       serveClient: false
     });
-    const draftNamespace = registerDraftNamespace(io);
+    const draftNamespace = registerDraftNamespace(io, {
+      db: db.pool,
+      authSecret: process.env.AUTH_SECRET ?? "test-secret"
+    });
     registerDraftEventEmitter(draftNamespace);
 
     await new Promise<void>((resolve) => {
@@ -145,6 +148,11 @@ describe("draft realtime integration", () => {
       league_id: league.id,
       user_id: user2.id
     });
+    await pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1, $2, $3, 'MEMBER'), ($1, $4, $5, 'MEMBER')`,
+      [draft.season_id, user1.id, member1.id, user2.id, member2.id]
+    );
     await insertDraftSeat(pool, {
       draft_id: draft.id,
       seat_number: 1,
@@ -159,13 +167,22 @@ describe("draft realtime integration", () => {
     const nomination2 = await insertNomination(pool);
     const nomination3 = await insertNomination(pool);
 
+    const token1 = tokenFor(user1.id);
+    const token2 = tokenFor(user2.id);
+
     const clientA = await createTestClient(socketServer!, {
       namespace: DRAFT_NAMESPACE,
-      socketOptions: { query: { draftId: draft.id } }
+      socketOptions: {
+        query: { draftId: draft.id },
+        extraHeaders: { Authorization: `Bearer ${token1}` }
+      }
     });
     const clientB = await createTestClient(socketServer!, {
       namespace: DRAFT_NAMESPACE,
-      socketOptions: { query: { draftId: draft.id } }
+      socketOptions: {
+        query: { draftId: draft.id },
+        extraHeaders: { Authorization: `Bearer ${token2}` }
+      }
     });
     clients = [clientA, clientB];
 
@@ -253,13 +270,27 @@ describe("draft realtime integration", () => {
     const nomination2 = await insertNomination(pool);
     const nomination3 = await insertNomination(pool);
 
+    await pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1, $2, $3, 'MEMBER'), ($1, $4, $5, 'MEMBER')`,
+      [draft.season_id, user1.id, member1.id, user2.id, member2.id]
+    );
+    const token1 = tokenFor(user1.id);
+    const token2 = tokenFor(user2.id);
+
     const clientA = await createTestClient(socketServer!, {
       namespace: DRAFT_NAMESPACE,
-      socketOptions: { query: { draftId: draft.id } }
+      socketOptions: {
+        query: { draftId: draft.id },
+        extraHeaders: { Authorization: `Bearer ${token1}` }
+      }
     });
     const clientB = await createTestClient(socketServer!, {
       namespace: DRAFT_NAMESPACE,
-      socketOptions: { query: { draftId: draft.id } }
+      socketOptions: {
+        query: { draftId: draft.id },
+        extraHeaders: { Authorization: `Bearer ${token2}` }
+      }
     });
     clients = [clientA, clientB];
 

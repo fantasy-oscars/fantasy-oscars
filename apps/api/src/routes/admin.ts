@@ -11,6 +11,7 @@ import { upsertWinner } from "../data/repositories/winnerRepository.js";
 import { hasDraftsStartedForCeremony } from "../data/repositories/draftRepository.js";
 import { loadNominees } from "../scripts/load-nominees.js";
 import type { Pool } from "pg";
+import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
 
 export function createAdminRouter(client: DbClient) {
   const router = express.Router();
@@ -40,6 +41,15 @@ export function createAdminRouter(client: DbClient) {
           throw new AppError("NOT_FOUND", 404, "Ceremony not found");
         }
 
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "ceremony_name_update",
+            target_type: "ceremony",
+            target_id: ceremony.id,
+            meta: { name }
+          });
+        }
         return res.status(200).json({ ceremony });
       } catch (err) {
         next(err);
@@ -68,6 +78,14 @@ export function createAdminRouter(client: DbClient) {
         }
 
         await setActiveCeremonyId(client, ceremonyId);
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "set_active_ceremony",
+            target_type: "ceremony",
+            target_id: ceremony.id
+          });
+        }
         return res.status(200).json({ ceremony });
       } catch (err) {
         next(err);
@@ -147,6 +165,16 @@ export function createAdminRouter(client: DbClient) {
           return { winner, draft_locked_at: lockedAt };
         });
 
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "winner_upsert",
+            target_type: "category_edition",
+            target_id: Number(categoryEditionId),
+            meta: { ceremony_id: result.winner.ceremony_id, nomination_id: nominationId }
+          });
+        }
+
         return res
           .status(200)
           .json({ winner: result.winner, draft_locked_at: result.draft_locked_at });
@@ -220,6 +248,15 @@ export function createAdminRouter(client: DbClient) {
         }
 
         await loadNominees(client as unknown as Pool, dataset as never);
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "nominees_upload",
+            target_type: "ceremony",
+            target_id: Number(activeCeremonyId)
+          });
+        }
 
         return res.status(200).json({ ok: true });
       } catch (err) {
