@@ -13,7 +13,7 @@ Use this as the final gate before opening Mar 1 traffic. Target duration: <15 mi
 
 ## Smoke Test (happy path, <15 min)
 
-1) **Register + login**: create a new user in prod UI; expect successful login and `/auth/me` shows the handle.
+1) **Register + login**: create a new user in prod UI; expect successful login and `/auth/me` shows the username.
 2) **Create league + season**: create a league (auto season); expect league card visible.
 3) **Invite claim**: generate an invite for another browser (or incognito) and claim it; expect membership reflected.
 4) **Start draft**: as commissioner, start draft; expect draft room loads and Socket.IO connects (no CORS/auth errors).

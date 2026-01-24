@@ -261,9 +261,9 @@ export async function insertUser(
 ) {
   const user = buildUser(overrides);
   await pool.query(
-    `INSERT INTO app_user (id, handle, email, display_name, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [user.id, user.handle, user.email, user.display_name, user.created_at]
+    `INSERT INTO app_user (id, username, email, created_at)
+     VALUES ($1, $2, $3, $4)`,
+    [user.id, user.username, user.email, user.created_at]
   );
   return user;
 }

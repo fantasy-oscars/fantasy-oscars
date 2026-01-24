@@ -22,6 +22,21 @@ pnpm install
 pnpm dev
 ```
 
+## Local development (recommended)
+
+Create local env files (not committed):
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
+
+Start Postgres, apply migrations, and run API + web:
+
+```bash
+pnpm run dev:local
+```
+
 ## Tests
 
 - Run the full suite (matches CI): `pnpm run ci`
@@ -40,4 +55,10 @@ pnpm dev
 
 ```bash
 pnpm run db:up
+```
+
+Apply migrations against the configured `DATABASE_URL`:
+
+```bash
+pnpm run db:migrate
 ```

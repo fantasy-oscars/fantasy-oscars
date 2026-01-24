@@ -90,8 +90,7 @@ type LeagueMember = {
   id: number;
   user_id: number;
   role: string;
-  handle: string;
-  display_name: string;
+  username: string;
 };
 type SeasonSummary = {
   id: number;
@@ -217,9 +216,8 @@ function FormStatus(props: {
 
 type AuthUser = {
   sub: string;
-  handle?: string;
+  username?: string;
   email?: string;
-  display_name?: string;
   is_admin?: boolean;
 };
 type AuthContextValue = {
@@ -228,17 +226,12 @@ type AuthContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
-  login: (input: { handle: string; password: string }) => Promise<{
+  login: (input: { username: string; password: string }) => Promise<{
     ok: boolean;
     error?: string;
     errorFields?: string[];
   }>;
-  register: (input: {
-    handle: string;
-    email: string;
-    display_name: string;
-    password: string;
-  }) => Promise<{
+  register: (input: { username: string; email: string; password: string }) => Promise<{
     ok: boolean;
     error?: string;
     errorFields?: string[];
@@ -278,7 +271,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = useCallback(async (input: { handle: string; password: string }) => {
+  const login = useCallback(async (input: { username: string; password: string }) => {
     setError(null);
     const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
       method: "POST",
@@ -295,12 +288,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (input: {
-      handle: string;
-      email: string;
-      display_name: string;
-      password: string;
-    }) => {
+    async (input: { username: string; email: string; password: string }) => {
       setError(null);
       const res = await fetchJson("/auth/register", {
         method: "POST",
@@ -309,7 +297,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.ok) {
         // Auto-login fetch
-        await login({ handle: input.handle, password: input.password });
+        await login({ username: input.username, password: input.password });
         return { ok: true as const };
       }
       setError(res.error ?? "Registration failed");
@@ -395,7 +383,7 @@ function ShellLayout() {
           {loading
             ? "Checking session..."
             : user
-              ? `Signed in as ${user.handle ?? user.sub}`
+              ? `Signed in as ${user.username ?? user.sub}`
               : "Not signed in"}
           <div className="pill-actions">
             <button type="button" className="ghost" onClick={refresh} disabled={loading}>
@@ -467,7 +455,7 @@ function LoginPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const validator = useRequiredFields(["handle", "password"]);
+  const validator = useRequiredFields(["username", "password"]);
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/leagues";
@@ -480,7 +468,7 @@ function LoginPage() {
     if (Object.keys(errs).length) return;
     setLoading(true);
     const res = await login({
-      handle: String(data.get("handle")),
+      username: String(data.get("username")),
       password: String(data.get("password"))
     });
     setLoading(false);
@@ -502,10 +490,10 @@ function LoginPage() {
       <section className="card">
         <header>
           <h2>Login</h2>
-          <p>Sign in with your handle and password.</p>
+          <p>Sign in with your username and password.</p>
         </header>
         <form onSubmit={onSubmit}>
-          <FormField label="Handle" name="handle" error={errors.handle} />
+          <FormField label="Username" name="username" error={errors.username} />
           <FormField
             label="Password"
             name="password"
@@ -534,7 +522,7 @@ function LoginPage() {
 
 function RegisterPage() {
   const { register } = useAuthContext();
-  const validator = useRequiredFields(["handle", "email", "display_name", "password"]);
+  const validator = useRequiredFields(["username", "email", "password"]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -548,9 +536,8 @@ function RegisterPage() {
     if (Object.keys(fieldErrors).length) return;
     setLoading(true);
     const res = await register({
-      handle: String(data.get("handle")),
+      username: String(data.get("username")),
       email: String(data.get("email")),
-      display_name: String(data.get("display_name")),
       password: String(data.get("password"))
     });
     setLoading(false);
@@ -561,9 +548,8 @@ function RegisterPage() {
           nextErrors[field] = "Invalid";
         });
       } else {
-        nextErrors.handle = nextErrors.handle ?? "Invalid";
+        nextErrors.username = nextErrors.username ?? "Invalid";
         nextErrors.email = nextErrors.email ?? "Invalid";
-        nextErrors.display_name = nextErrors.display_name ?? "Invalid";
         nextErrors.password = nextErrors.password ?? "Invalid";
       }
       setErrors(nextErrors);
@@ -581,9 +567,8 @@ function RegisterPage() {
         <p>Register a new user.</p>
       </header>
       <form onSubmit={onSubmit}>
-        <FormField label="Handle" name="handle" error={errors.handle} />
+        <FormField label="Username" name="username" error={errors.username} />
         <FormField label="Email" name="email" type="email" error={errors.email} />
-        <FormField label="Display name" name="display_name" error={errors.display_name} />
         <FormField
           label="Password"
           name="password"
@@ -1062,7 +1047,7 @@ function LeagueDetailPage() {
           <ul className="list">
             {roster.map((m) => (
               <li key={m.id} className="list-row">
-                <span>{m.display_name || m.handle}</span>
+                <span>{m.username}</span>
                 <span className="pill">{m.role}</span>
                 {isCommissioner && m.role !== "OWNER" && (
                   <button
@@ -1108,7 +1093,7 @@ function LeagueDetailPage() {
                 ?.filter((m) => m.user_id !== Number(user?.sub))
                 .map((m) => (
                   <option key={m.user_id} value={m.user_id}>
-                    {m.display_name || m.handle} ({m.role})
+                    {m.username} ({m.role})
                   </option>
                 ))}
             </select>
@@ -1609,10 +1594,7 @@ function SeasonPage() {
                 );
                 return (
                   <li key={m.user_id} className="list-row">
-                    <span>
-                      {leagueProfile?.display_name ?? `User ${m.user_id}`}{" "}
-                      <span className="muted">({leagueProfile?.handle ?? "—"})</span>
-                    </span>
+                    <span>{leagueProfile?.username ?? `User ${m.user_id}`}</span>
                     <span className="pill">{m.role}</span>
                     {canEdit && m.role !== "OWNER" && (
                       <button
@@ -1640,7 +1622,7 @@ function SeasonPage() {
                   <option value="">Add league member...</option>
                   {availableLeagueMembers.map((lm) => (
                     <option key={lm.user_id} value={lm.user_id}>
-                      {lm.display_name} ({lm.handle})
+                      {lm.username}
                     </option>
                   ))}
                 </select>
@@ -2875,11 +2857,10 @@ function AccountPage() {
         <p>Manage your profile and security.</p>
       </header>
       <div className="stack">
-        <p className="muted">Signed in as {user?.handle ?? user?.sub ?? "unknown"}.</p>
+        <p className="muted">Signed in as {user?.username ?? user?.sub ?? "unknown"}.</p>
         <ul className="pill-list">
-          <li className="pill">Handle: {user?.handle ?? "—"}</li>
+          <li className="pill">Username: {user?.username ?? "—"}</li>
           <li className="pill">Email: {user?.email ?? "—"}</li>
-          <li className="pill">Display name: {user?.display_name ?? "—"}</li>
         </ul>
         <div className="inline-actions">
           <button type="button" onClick={logout}>

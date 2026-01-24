@@ -73,7 +73,7 @@ describe("draft timers + auto-pick", () => {
     const owner = await insertUser(db.pool, { id: 1 });
     const member = await insertUser(db.pool, { id: 2 });
     const token = signToken(
-      { sub: String(owner.id), handle: owner.handle },
+      { sub: String(owner.id), username: owner.username },
       "test-secret"
     );
     const league = await insertLeague(db.pool, {
@@ -139,7 +139,7 @@ describe("draft timers + auto-pick", () => {
     const owner = await insertUser(db.pool, { id: 1 });
     const member = await insertUser(db.pool, { id: 2 });
     const token = signToken(
-      { sub: String(owner.id), handle: owner.handle },
+      { sub: String(owner.id), username: owner.username },
       "test-secret"
     );
     const league = await insertLeague(db.pool, {

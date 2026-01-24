@@ -3,7 +3,7 @@ import { AppError } from "../errors.js";
 
 export type TokenClaims = {
   sub: string;
-  handle: string;
+  username: string;
   is_admin?: boolean;
   exp?: number; // unix seconds
 };
@@ -46,6 +46,11 @@ export function verifyToken(token: string, secret: string): TokenClaims {
   const payload = JSON.parse(
     parseBase64url(encodedPayload).toString("utf8")
   ) as TokenClaims;
+  // Back-compat for older tokens that used `handle` instead of `username`.
+  const anyPayload = payload as unknown as { handle?: unknown; username?: unknown };
+  if (typeof anyPayload.username !== "string" && typeof anyPayload.handle === "string") {
+    (payload as unknown as { username: string }).username = anyPayload.handle;
+  }
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
     throw new AppError("TOKEN_EXPIRED", 401, "Token expired");
   }

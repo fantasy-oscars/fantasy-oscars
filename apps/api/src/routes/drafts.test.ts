@@ -28,7 +28,7 @@ import * as draftState from "../domain/draftState.js";
 const AUTH_SECRET = "test-secret";
 
 function authHeader() {
-  return `Bearer ${signToken({ sub: "1", handle: "tester" }, AUTH_SECRET, 3600)}`;
+  return `Bearer ${signToken({ sub: "1", username: "tester" }, AUTH_SECRET, 3600)}`;
 }
 
 function mockReq(opts: {

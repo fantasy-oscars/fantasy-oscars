@@ -22,8 +22,7 @@ export type LeagueMemberRecord = {
 };
 
 export type LeagueMemberWithUser = LeagueMemberRecord & {
-  handle: string;
-  display_name: string;
+  username: string;
 };
 
 export async function createLeague(
@@ -378,8 +377,7 @@ export async function listLeagueRoster(
        lm.user_id::int,
        lm.role,
        lm.joined_at,
-       u.handle,
-       u.display_name
+       u.username
      FROM league_member lm
      JOIN app_user u ON u.id = lm.user_id
      WHERE lm.league_id = $1

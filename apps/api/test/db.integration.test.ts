@@ -16,10 +16,10 @@ describe("database integration", () => {
 
   it("applies migrations and allows basic CRUD", async () => {
     const insert = await db.pool.query(
-      "INSERT INTO app_user (handle, email, display_name) VALUES ($1, $2, $3) RETURNING id, handle",
-      ["user1", "user1@example.com", "User One"]
+      "INSERT INTO app_user (username, email) VALUES ($1, $2) RETURNING id, username",
+      ["user1", "user1@example.com"]
     );
-    expect(insert.rows[0].handle).toBe("user1");
+    expect(insert.rows[0].username).toBe("user1");
 
     const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM app_user");
     expect(rows[0].count).toBe(1);

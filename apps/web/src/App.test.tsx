@@ -66,7 +66,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -99,7 +99,7 @@ describe("<App /> shell + routing", () => {
             error: {
               code: "VALIDATION_ERROR",
               message: "Invalid field values",
-              details: { fields: ["handle", "email"] }
+              details: { fields: ["username", "email"] }
             }
           })
       }
@@ -118,9 +118,8 @@ describe("<App /> shell + routing", () => {
 
     await screen.findAllByText(/Required/i);
 
-    await userEvent.type(within(registerCard).getByLabelText(/Handle/i), "a");
+    await userEvent.type(within(registerCard).getByLabelText(/Username/i), "a");
     await userEvent.type(within(registerCard).getByLabelText(/Email/i), "bad-email");
-    await userEvent.type(within(registerCard).getByLabelText(/Display name/i), "A");
     await userEvent.type(within(registerCard).getByLabelText(/Password/i), "p");
     await userEvent.click(
       within(registerCard).getByRole("button", { name: /Register/i })
@@ -137,9 +136,8 @@ describe("<App /> shell + routing", () => {
         Promise.resolve({
           user: {
             sub: "1",
-            handle: "alice",
-            email: "a@example.com",
-            display_name: "Alice"
+            username: "alice",
+            email: "a@example.com"
           }
         })
     });
@@ -147,7 +145,7 @@ describe("<App /> shell + routing", () => {
     render(<App />);
     await screen.findAllByText(/Signed in as alice/i);
     await userEvent.click(screen.getByRole("link", { name: /Account/i }));
-    await screen.findByText(/Display name: Alice/i);
+    await screen.findByText(/Username: alice/i);
     expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Logout/i }).length).toBeGreaterThan(0);
   });
@@ -158,7 +156,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -184,7 +182,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -211,7 +209,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/42/accept")) {
@@ -254,7 +252,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/2026/members")) {
@@ -312,8 +310,7 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 }
               ]
             })
@@ -350,7 +347,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/inbox")) {
@@ -419,8 +416,7 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 }
               ]
             })
@@ -455,7 +451,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/inbox")) {
@@ -503,7 +499,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/drafts/1/snapshot")) {
@@ -555,7 +551,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/drafts/1/snapshot")) {
@@ -603,7 +599,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/ceremony/active/winners")) {
@@ -661,7 +657,7 @@ describe("<App /> shell + routing", () => {
     mockFetchSequence({
       ok: true,
       json: () =>
-        Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: false } })
+        Promise.resolve({ user: { sub: "1", username: "alice", is_admin: false } })
     });
 
     render(<App />);
@@ -678,7 +674,7 @@ describe("<App /> shell + routing", () => {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
       if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
@@ -728,7 +724,7 @@ describe("<App /> shell + routing", () => {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
       if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
@@ -775,7 +771,7 @@ describe("<App /> shell + routing", () => {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
       if (url.includes("/ceremony/active/lock")) {
@@ -874,7 +870,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.endsWith("/leagues/10")) {
@@ -914,16 +910,14 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 },
                 {
                   id: 2,
                   league_id: 10,
                   user_id: 2,
                   role: "MEMBER",
-                  handle: "bob",
-                  display_name: "Bob"
+                  username: "bob"
                 }
               ]
             })

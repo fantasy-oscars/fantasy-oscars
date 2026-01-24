@@ -76,9 +76,8 @@ export type Nomination = {
 
 export type AppUser = {
   id: number;
-  handle: string;
+  username: string;
   email: string;
-  display_name: string;
   created_at: Date;
 };
 
@@ -277,9 +276,8 @@ export function buildUser(overrides: Partial<AppUser> = {}): AppUser {
   const n = nextSeq();
   return {
     id: n,
-    handle: `user${n}`,
+    username: `user${n}`,
     email: `user${n}@example.com`,
-    display_name: `User ${n}`,
     created_at: baseTime,
     ...overrides
   };
