@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -10,17 +8,27 @@ import {
 import {
   BrowserRouter,
   Navigate,
-  Outlet,
   Route,
   Routes,
-  NavLink,
   Link,
-  useLocation,
   useNavigate,
   useParams
 } from "react-router-dom";
 import { io, type Socket } from "socket.io-client";
-import { NomineePill } from "./components/NomineePill";
+import { AuthProvider, useAuthContext } from "./auth/context";
+import { RedirectIfAuthed, RequireAdmin, RequireAuth } from "./auth/guards";
+import { ShellLayout } from "./layout/ShellLayout";
+import { PageError, PageLoader } from "./ui/page-state";
+import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { ResetConfirmPage } from "./pages/ResetConfirmPage";
+import { ResetRequestPage } from "./pages/ResetRequestPage";
+import { AboutPage } from "./pages/AboutPage";
+import { ContactPage } from "./pages/ContactPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
+import { TermsPage } from "./pages/TermsPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 type ApiResult = { ok: boolean; message: string };
 type ApiError = { code?: string; message?: string };
@@ -83,7 +91,6 @@ function allocationLabel(strategy?: string | null) {
   }
 }
 
-type FieldErrors = Partial<Record<string, string>>;
 type LeagueSummary = { id: number; code: string; name: string; ceremony_id: number };
 type LeagueDetail = LeagueSummary & { max_members?: number; roster_size?: number };
 type LeagueMember = {
@@ -144,21 +151,6 @@ type SeasonMeta = {
 };
 type TokenMap = Record<number, string>;
 
-function useRequiredFields(fields: string[]) {
-  return useMemo(
-    () =>
-      function validate(formData: FormData) {
-        const errors: FieldErrors = {};
-        for (const field of fields) {
-          const value = String(formData.get(field) ?? "").trim();
-          if (!value) errors[field] = "Required";
-        }
-        return errors;
-      },
-    [fields]
-  );
-}
-
 function FormField(props: {
   label: string;
   name: string;
@@ -212,469 +204,6 @@ function FormStatus(props: {
     );
   }
   return null;
-}
-
-type AuthUser = {
-  sub: string;
-  username?: string;
-  email?: string;
-  is_admin?: boolean;
-};
-type AuthContextValue = {
-  user: AuthUser | null;
-  loading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-  logout: () => Promise<void>;
-  login: (input: { username: string; password: string }) => Promise<{
-    ok: boolean;
-    error?: string;
-    errorFields?: string[];
-  }>;
-  register: (input: { username: string; email: string; password: string }) => Promise<{
-    ok: boolean;
-    error?: string;
-    errorFields?: string[];
-  }>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-function useAuthContext() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("AuthContext missing");
-  return ctx;
-}
-
-function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const res = await fetchJson<{ user: AuthUser }>("/auth/me", { method: "GET" });
-    if (res.ok) {
-      setUser(res.data?.user ?? null);
-    } else {
-      setUser(null);
-      setError(res.error ?? "Unable to verify session");
-    }
-    setLoading(false);
-  }, []);
-
-  const logout = useCallback(async () => {
-    setLoading(true);
-    await fetchJson("/auth/logout", { method: "POST" });
-    setUser(null);
-    setLoading(false);
-  }, []);
-
-  const login = useCallback(async (input: { username: string; password: string }) => {
-    setError(null);
-    const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input)
-    });
-    if (res.ok && res.data?.user) {
-      setUser(res.data.user);
-      return { ok: true as const };
-    }
-    setError(res.error ?? "Login failed");
-    setUser(null);
-    return { ok: false as const, error: res.error, errorFields: res.errorFields };
-  }, []);
-
-  const register = useCallback(
-    async (input: { username: string; email: string; password: string }) => {
-      setError(null);
-      const res = await fetchJson("/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input)
-      });
-      if (res.ok) {
-        // Auto-login fetch
-        await login({ username: input.username, password: input.password });
-        return { ok: true as const };
-      }
-      setError(res.error ?? "Registration failed");
-      return { ok: false as const, error: res.error, errorFields: res.errorFields };
-    },
-    [login]
-  );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const value = useMemo(
-    () => ({ user, loading, error, refresh, logout, login, register }),
-    [user, loading, error, refresh, logout, login, register]
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuthContext();
-  const location = useLocation();
-  if (loading) return <PageLoader label="Checking session..." />;
-  if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  return <>{children}</>;
-}
-
-function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuthContext();
-  if (loading) return <PageLoader label="Checking session..." />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!user.is_admin) {
-    return (
-      <section className="card">
-        <header>
-          <h2>Admin</h2>
-          <p className="muted">Admins only</p>
-        </header>
-        <div className="status status-error" role="status">
-          You do not have access to the admin console.
-        </div>
-      </section>
-    );
-  }
-  return <>{children}</>;
-}
-
-function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuthContext();
-  if (loading) return <PageLoader label="Checking session..." />;
-  if (user) return <Navigate to="/leagues" replace />;
-  return <>{children}</>;
-}
-
-function PageLoader(props: { label?: string }) {
-  return (
-    <div className="page-state" role="status" aria-live="polite">
-      <span className="spinner" aria-hidden="true" /> {props.label ?? "Loading..."}
-    </div>
-  );
-}
-
-function PageError(props: { message: string }) {
-  return (
-    <div className="page-state status status-error" role="alert">
-      {props.message}
-    </div>
-  );
-}
-
-function ShellLayout() {
-  const { user, loading, error, logout, refresh } = useAuthContext();
-
-  return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Fantasy Oscars</p>
-          <h1 className="app-title">MVP Console</h1>
-        </div>
-        <div className="status-pill">
-          {loading
-            ? "Checking session..."
-            : user
-              ? `Signed in as ${user.username ?? user.sub}`
-              : "Not signed in"}
-          <div className="pill-actions">
-            <button type="button" className="ghost" onClick={refresh} disabled={loading}>
-              Refresh
-            </button>
-            {user && (
-              <button type="button" className="ghost" onClick={logout} disabled={loading}>
-                Logout
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-      {error && <PageError message={`Auth error: ${error}`} />}
-      <nav className="nav-bar">
-        <NavLink
-          className={({ isActive }) =>
-            isActive ||
-            location.pathname === "/" ||
-            location.pathname === "" ||
-            location.pathname.startsWith("/leagues")
-              ? "nav-link active"
-              : "nav-link"
-          }
-          to="/leagues"
-        >
-          Leagues
-        </NavLink>
-        <NavLink
-          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          to="/invites"
-        >
-          Invites
-        </NavLink>
-        <NavLink
-          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          to="/drafts/1"
-        >
-          Draft Room
-        </NavLink>
-        <NavLink
-          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          to="/results"
-        >
-          Results
-        </NavLink>
-        <NavLink
-          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          to="/account"
-        >
-          Account
-        </NavLink>
-        <NavLink
-          className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          to="/admin"
-        >
-          Admin
-        </NavLink>
-      </nav>
-      <section className="app-body">
-        <Outlet />
-      </section>
-    </div>
-  );
-}
-
-function LoginPage() {
-  const { login, error } = useAuthContext();
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const validator = useRequiredFields(["username", "password"]);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/leagues";
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const errs = validator(data);
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
-    setLoading(true);
-    const res = await login({
-      username: String(data.get("username")),
-      password: String(data.get("password"))
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const nextErrors: FieldErrors = { ...errs };
-      res.errorFields?.forEach((field) => {
-        nextErrors[field] = "Invalid";
-      });
-      setErrors(nextErrors);
-      setResult({ ok: false, message: res.error ?? "Login failed" });
-      return;
-    }
-    setResult({ ok: true, message: "Logged in" });
-    navigate(from, { replace: true });
-  }
-
-  return (
-    <div className="card-grid">
-      <section className="card">
-        <header>
-          <h2>Login</h2>
-          <p>Sign in with your username and password.</p>
-        </header>
-        <form onSubmit={onSubmit}>
-          <FormField label="Username" name="username" error={errors.username} />
-          <FormField
-            label="Password"
-            name="password"
-            type="password"
-            error={errors.password}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Login"}
-          </button>
-        </form>
-        <FormStatus loading={loading} result={result} />
-        {error && <small className="muted">Last error: {error}</small>}
-      </section>
-      <section className="card">
-        <header>
-          <h3>New here?</h3>
-          <p>Create an account to join or run drafts.</p>
-        </header>
-        <Link to="/register" className="button ghost">
-          Go to registration
-        </Link>
-      </section>
-    </div>
-  );
-}
-
-function RegisterPage() {
-  const { register } = useAuthContext();
-  const validator = useRequiredFields(["username", "email", "password"]);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const fieldErrors = validator(data);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length) return;
-    setLoading(true);
-    const res = await register({
-      username: String(data.get("username")),
-      email: String(data.get("email")),
-      password: String(data.get("password"))
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const nextErrors: FieldErrors = { ...fieldErrors };
-      if (res.errorFields?.length) {
-        res.errorFields.forEach((field) => {
-          nextErrors[field] = "Invalid";
-        });
-      } else {
-        nextErrors.username = nextErrors.username ?? "Invalid";
-        nextErrors.email = nextErrors.email ?? "Invalid";
-        nextErrors.password = nextErrors.password ?? "Invalid";
-      }
-      setErrors(nextErrors);
-      setResult({ ok: false, message: res.error ?? "Registration failed" });
-      return;
-    }
-    setResult({ ok: true, message: "Registered" });
-    navigate("/leagues", { replace: true });
-  }
-
-  return (
-    <section className="card">
-      <header>
-        <h2>Create Account</h2>
-        <p>Register a new user.</p>
-      </header>
-      <form onSubmit={onSubmit}>
-        <FormField label="Username" name="username" error={errors.username} />
-        <FormField label="Email" name="email" type="email" error={errors.email} />
-        <FormField
-          label="Password"
-          name="password"
-          type="password"
-          error={errors.password}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Register"}
-        </button>
-      </form>
-      <FormStatus loading={loading} result={result} />
-    </section>
-  );
-}
-
-function ResetRequestPage() {
-  const validator = useRequiredFields(["email"]);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const fieldErrors = validator(data);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length) return;
-    setLoading(true);
-    const res = await fetchJson("/auth/reset-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: String(data.get("email")) })
-    });
-    setLoading(false);
-    setResult({
-      ok: res.ok,
-      message: res.ok ? "Reset link sent" : (res.error ?? "Request failed")
-    });
-  }
-
-  return (
-    <section className="card">
-      <header>
-        <h2>Reset Password</h2>
-        <p>Request a password reset link.</p>
-      </header>
-      <form onSubmit={onSubmit}>
-        <FormField label="Email" name="email" type="email" error={errors.email} />
-        <button type="submit" disabled={loading}>
-          {loading ? "Sending..." : "Send reset link"}
-        </button>
-      </form>
-      <FormStatus loading={loading} result={result} />
-    </section>
-  );
-}
-
-function ResetConfirmPage() {
-  const validator = useRequiredFields(["token", "password"]);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const fieldErrors = validator(data);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length) return;
-    setLoading(true);
-    const res = await fetchJson("/auth/reset-confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: String(data.get("token")),
-        password: String(data.get("password"))
-      })
-    });
-    setLoading(false);
-    setResult({
-      ok: res.ok,
-      message: res.ok ? "Password updated" : (res.error ?? "Update failed")
-    });
-  }
-
-  return (
-    <section className="card">
-      <header>
-        <h2>Set New Password</h2>
-        <p>Paste the reset token and choose a new password.</p>
-      </header>
-      <form onSubmit={onSubmit}>
-        <FormField label="Reset token" name="token" error={errors.token} />
-        <FormField
-          label="New password"
-          name="password"
-          type="password"
-          error={errors.password}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Update password"}
-        </button>
-      </form>
-      <FormStatus loading={loading} result={result} />
-    </section>
-  );
 }
 
 function LeaguesPage() {
@@ -3516,22 +3045,106 @@ function AdminPage() {
   );
 }
 
-function HomePage() {
+function CeremoniesPage() {
   return (
     <section className="card">
       <header>
-        <h2>Welcome to Fantasy Oscars</h2>
-        <p>Navigate using the shell to manage leagues, drafts, and results.</p>
+        <h2>Ceremonies</h2>
+        <p className="muted">
+          Active ceremony winners and draft standings. (MVP: uses a selected draft to
+          compute standings.)
+        </p>
       </header>
-      <div className="pill-demo">
-        <NomineePill
-          name="An Incredibly Long Nominee Name That Should Truncate Gracefully On One Line"
-          category="Best Picture"
-        />
-        <NomineePill name="First pick" category="Best Actor" state="active" />
-        <NomineePill name="Already picked" category="Best Actress" state="picked" />
-        <NomineePill name="Locked out" category="Editing" state="disabled" />
-      </div>
+      <ResultsPage />
+    </section>
+  );
+}
+
+function SeasonsIndexPage() {
+  type ViewState = "loading" | "error" | "ready";
+  const [state, setState] = useState<ViewState>("loading");
+  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<
+    Array<{ league: LeagueSummary; seasons: SeasonSummary[] }>
+  >([]);
+
+  const load = useCallback(async () => {
+    setState("loading");
+    setError(null);
+    const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
+    if (!leaguesRes.ok) {
+      setError(leaguesRes.error ?? "Failed to load leagues");
+      setState("error");
+      return;
+    }
+
+    const leagues = leaguesRes.data?.leagues ?? [];
+    const seasons = await Promise.all(
+      leagues.map(async (league) => {
+        const res = await fetchJson<{ seasons: SeasonSummary[] }>(
+          `/leagues/${league.id}/seasons`
+        );
+        return {
+          league,
+          seasons: res.ok ? (res.data?.seasons ?? []) : []
+        };
+      })
+    );
+
+    setRows(seasons);
+    setState("ready");
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <section className="card">
+      <header className="header-with-controls">
+        <div>
+          <h2>Seasons</h2>
+          <p className="muted">Seasons are created per league per ceremony.</p>
+        </div>
+        <button type="button" className="ghost" onClick={() => void load()}>
+          Refresh
+        </button>
+      </header>
+
+      {state === "loading" && <PageLoader label="Loading seasons..." />}
+      {state === "error" && <div className="status status-error">{error}</div>}
+      {state === "ready" && rows.length === 0 && <p className="muted">No seasons yet.</p>}
+      {state === "ready" && rows.length > 0 && (
+        <div className="stack-lg">
+          {rows.map(({ league, seasons }) => (
+            <div key={league.id} className="card nested">
+              <header>
+                <h3>{league.name}</h3>
+                <p className="muted">League code: {league.code}</p>
+              </header>
+              {seasons.length === 0 ? (
+                <p className="muted">No seasons found for this league.</p>
+              ) : (
+                <div className="list">
+                  {seasons.map((s) => (
+                    <div key={s.id} className="list-row">
+                      <div>
+                        <strong>Season #{s.id}</strong>
+                        <p className="muted">
+                          Ceremony {s.ceremony_id} • {s.status}
+                        </p>
+                      </div>
+                      <div className="pill-actions">
+                        <Link to={`/seasons/${s.id}`}>Open</Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -3547,7 +3160,7 @@ function RoutesConfig() {
   return (
     <Routes>
       <Route element={<ShellLayout />}>
-        <Route path="/" element={<Navigate to="/leagues" replace />} />
+        <Route path="/" element={<HomePage />} />
         <Route
           path="/login"
           element={
@@ -3580,11 +3193,24 @@ function RoutesConfig() {
             </RedirectIfAuthed>
           }
         />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/results" element={<Navigate to="/ceremonies" replace />} />
         <Route
           path="/leagues"
           element={
             <RequireAuth>
               <LeaguesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/seasons"
+          element={
+            <RequireAuth>
+              <SeasonsIndexPage />
             </RequireAuth>
           }
         />
@@ -3629,10 +3255,10 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/results"
+          path="/ceremonies"
           element={
             <RequireAuth>
-              <ResultsPage />
+              <CeremoniesPage />
             </RequireAuth>
           }
         />
@@ -3652,7 +3278,7 @@ function RoutesConfig() {
             </RequireAdmin>
           }
         />
-        <Route path="*" element={<HomePage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

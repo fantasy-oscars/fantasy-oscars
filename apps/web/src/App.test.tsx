@@ -43,12 +43,21 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    expect(screen.getByText(/Fantasy Oscars/i)).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/Checking session/i);
-    await waitFor(() => expect(screen.getByText(/Not signed in/i)).toBeInTheDocument());
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Fantasy Oscars" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+
+    await waitFor(() => {
+      const nav = screen.getByRole("navigation", { name: "Primary" });
+      expect(within(nav).getAllByRole("link", { name: /Login/i }).length).toBeGreaterThan(
+        0
+      );
+    });
   });
 
   it("redirects unauthenticated users to login for protected routes", async () => {
+    window.history.pushState({}, "", "/leagues");
     mockFetchSequence({
       ok: true,
       json: () => Promise.resolve({ user: null })
@@ -62,6 +71,7 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders protected page when authenticated", async () => {
+    window.history.pushState({}, "", "/leagues");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -81,7 +91,7 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByText(/Signed in as alice/i);
+    await screen.findByRole("button", { name: /alice/i });
     await screen.findByRole("heading", { name: /Leagues/i });
   });
 
@@ -143,11 +153,11 @@ describe("<App /> shell + routing", () => {
     });
 
     render(<App />);
-    await screen.findAllByText(/Signed in as alice/i);
-    await userEvent.click(screen.getByRole("link", { name: /Account/i }));
+    await screen.findByRole("button", { name: /alice/i });
     await screen.findByText(/Username: alice/i);
     expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Logout/i }).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: /alice/i }));
+    expect(screen.getByRole("button", { name: /Logout/i })).toBeInTheDocument();
   });
 
   it("navigates via nav links", async () => {
@@ -169,11 +179,12 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
-    await screen.findAllByText(/Signed in as alice/i);
+    await screen.findByRole("button", { name: /alice/i });
 
-    const accountLink = screen.getByRole("link", { name: /Account/i });
-    await userEvent.click(accountLink);
-    await screen.findByRole("heading", { name: /Account/i });
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    const aboutLink = within(nav).getByRole("link", { name: /About/i });
+    await userEvent.click(aboutLink);
+    await screen.findByRole("heading", { name: /About/i });
   });
 
   it("renders league skeleton states", async () => {
