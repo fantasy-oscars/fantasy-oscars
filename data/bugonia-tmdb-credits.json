@@ -1,0 +1,1483 @@
+{
+  "film": {
+    "id": 26,
+    "title": "Bugonia",
+    "tmdb_id": 701387
+  },
+  "tmdb_credits": {
+    "cast": [
+      {
+        "name": "Emma Stone",
+        "order": 0,
+        "tmdb_id": 54693,
+        "character": "Michelle",
+        "credit_id": "65d4e0d4bbe1dd017d5fccbf"
+      },
+      {
+        "name": "Jesse Plemons",
+        "order": 1,
+        "tmdb_id": 88124,
+        "character": "Teddy",
+        "credit_id": "65f4fed3a4af8f017e0226d4"
+      },
+      {
+        "name": "Aidan Delbis",
+        "order": 2,
+        "tmdb_id": 5212114,
+        "character": "Don",
+        "credit_id": "685d63b0a90f87a8804d1131"
+      },
+      {
+        "name": "Stavros Halkias",
+        "order": 3,
+        "tmdb_id": 1400595,
+        "character": "Casey",
+        "credit_id": "673555f16bd4889bfbc76cbc"
+      },
+      {
+        "name": "Alicia Silverstone",
+        "order": 4,
+        "tmdb_id": 5588,
+        "character": "Sandy",
+        "credit_id": "6709c75d576497fbd05a3c26"
+      },
+      {
+        "name": "J. Carmen Galindez Barrera",
+        "order": 5,
+        "tmdb_id": 5105206,
+        "character": "Ricky / Security Guard",
+        "credit_id": "68a94f8ac6bd0f4ef36cdd1f"
+      },
+      {
+        "name": "Marc T. Lewis",
+        "order": 6,
+        "tmdb_id": 5105205,
+        "character": "Tony",
+        "credit_id": "68a94fa2aee9e67e078d17bd"
+      },
+      {
+        "name": "Vanessa Eng",
+        "order": 7,
+        "tmdb_id": 4986018,
+        "character": "Corey",
+        "credit_id": "68a94fb6d0227aa5e29da642"
+      },
+      {
+        "name": "Cedric Dumornay",
+        "order": 8,
+        "tmdb_id": 2978859,
+        "character": "Chris",
+        "credit_id": "68a94fd3cdbf8cca7366fce6"
+      },
+      {
+        "name": "Momma Cherri",
+        "order": 9,
+        "tmdb_id": 5446529,
+        "character": "Tina",
+        "credit_id": "68a94ffdac8b6507a58d1803"
+      },
+      {
+        "name": "Fredricka Whitfield",
+        "order": 10,
+        "tmdb_id": 5643272,
+        "character": "Fredricka Whitfield",
+        "credit_id": "68a950214a076878a866fccd"
+      },
+      {
+        "name": "Rafael Lopez Bravo",
+        "order": 11,
+        "tmdb_id": 5643274,
+        "character": "Carlos",
+        "credit_id": "68a9504cac8b6507a58d1811"
+      },
+      {
+        "name": "Yaisa",
+        "order": 12,
+        "tmdb_id": 5497686,
+        "character": "EMT",
+        "credit_id": "68a950550e594afe4d9da6d7"
+      },
+      {
+        "name": "Teneise Mitchell Ellis",
+        "order": 13,
+        "tmdb_id": 4332316,
+        "character": "Detective",
+        "credit_id": "68a950676633cf72d5781670"
+      },
+      {
+        "name": "Roger Carvalho",
+        "order": 14,
+        "tmdb_id": 1365648,
+        "character": "Young Detective",
+        "credit_id": "68a9507e41a01cf59e8d1941"
+      },
+      {
+        "name": "Atsushi Nishijima",
+        "order": 15,
+        "tmdb_id": 1193622,
+        "character": "Chief Andromedan",
+        "credit_id": "68c21717934c154ceb8d0144"
+      },
+      {
+        "name": "Janlyn Bales",
+        "order": 16,
+        "tmdb_id": 4832206,
+        "character": "Andromedan",
+        "credit_id": "68c217393bf2b908bf8d033b"
+      },
+      {
+        "name": "Andy Blackburn",
+        "order": 17,
+        "tmdb_id": 5682662,
+        "character": "Andromedan",
+        "credit_id": "68c2175410647f072c1bda4e"
+      },
+      {
+        "name": "Stella Bizirtsaki",
+        "order": 18,
+        "tmdb_id": 5682665,
+        "character": "Andromedan",
+        "credit_id": "68c21771e5b0c6eb7d948fb3"
+      },
+      {
+        "name": "Diana Duah",
+        "order": 19,
+        "tmdb_id": 4185137,
+        "character": "Andromedan",
+        "credit_id": "68c2178fd18046b5cf948734"
+      },
+      {
+        "name": "Adam Esufali",
+        "order": 20,
+        "tmdb_id": 5682667,
+        "character": "Andromedan",
+        "credit_id": "68c2179e3bf2b908bf8d0348"
+      },
+      {
+        "name": "Jerskin Fendrix",
+        "order": 21,
+        "tmdb_id": 4091704,
+        "character": "Andromedan",
+        "credit_id": "68a950db3c99df3eaa4483b9"
+      },
+      {
+        "name": "Aiecia Harper",
+        "order": 22,
+        "tmdb_id": 2810554,
+        "character": "Andromedan",
+        "credit_id": "68c217e4e5b0c6eb7d948fbe"
+      },
+      {
+        "name": "Sally Kennington",
+        "order": 23,
+        "tmdb_id": 5682671,
+        "character": "Andromedan",
+        "credit_id": "68c217fc46a23182a29c1745"
+      },
+      {
+        "name": "Paul Mansell",
+        "order": 24,
+        "tmdb_id": 5682672,
+        "character": "Andromedan",
+        "credit_id": "68c2180ce823ec1c8c9c17ae"
+      },
+      {
+        "name": "Harith Mohammed",
+        "order": 25,
+        "tmdb_id": 2800780,
+        "character": "Andromedan",
+        "credit_id": "68c21824f896fc684b4e701d"
+      },
+      {
+        "name": "Zawadi Phillimore",
+        "order": 26,
+        "tmdb_id": 5682673,
+        "character": "Andromedan",
+        "credit_id": "68c218302e3ad6fd304e6f2e"
+      },
+      {
+        "name": "Parvinder Shergill",
+        "order": 27,
+        "tmdb_id": 3111812,
+        "character": "Doctor (uncredited)",
+        "credit_id": "68cdc6c68ef71f2f14d40ebf"
+      }
+    ],
+    "crew": [
+      {
+        "job": "Director",
+        "name": "Yorgos Lanthimos",
+        "tmdb_id": 122423,
+        "credit_id": "65d33f237614210163ff6702",
+        "department": "Directing"
+      },
+      {
+        "job": "Original Film Writer",
+        "name": "Jang Joon-hwan",
+        "tmdb_id": 68905,
+        "credit_id": "65d34cd9f495ee01493f7eeb",
+        "department": "Writing"
+      },
+      {
+        "job": "Producer",
+        "name": "Andrew Lowe",
+        "tmdb_id": 43144,
+        "credit_id": "65d3983aa313b8014a6fab51",
+        "department": "Production"
+      },
+      {
+        "job": "Screenplay",
+        "name": "Will Tracy",
+        "tmdb_id": 2373362,
+        "credit_id": "65d39851dc86470162c6f13c",
+        "department": "Writing"
+      },
+      {
+        "job": "Producer",
+        "name": "Ed Guiney",
+        "tmdb_id": 43147,
+        "credit_id": "65d398434d67910186d48541",
+        "department": "Production"
+      },
+      {
+        "job": "Title Designer",
+        "name": "Vasilis Marmatakis",
+        "tmdb_id": 3636411,
+        "credit_id": "65f49fbd2222f60186e576a3",
+        "department": "Art"
+      },
+      {
+        "job": "Producer",
+        "name": "Yorgos Lanthimos",
+        "tmdb_id": 122423,
+        "credit_id": "65f49f600443c90164bc5413",
+        "department": "Production"
+      },
+      {
+        "job": "Graphic Designer",
+        "name": "Vasilis Marmatakis",
+        "tmdb_id": 3636411,
+        "credit_id": "65f49faddcb6a3017c323f42",
+        "department": "Art"
+      },
+      {
+        "job": "Director of Photography",
+        "name": "Robbie Ryan",
+        "tmdb_id": 71086,
+        "credit_id": "65f8cf6f391b9c017bc7bbaa",
+        "department": "Camera"
+      },
+      {
+        "job": "Editor",
+        "name": "Yorgos Mavropsaridis",
+        "tmdb_id": 72525,
+        "credit_id": "65f1be66fa40460185113b1a",
+        "department": "Editing"
+      },
+      {
+        "job": "Producer",
+        "name": "Emma Stone",
+        "tmdb_id": 54693,
+        "credit_id": "6648de2788821f7e162f89de",
+        "department": "Production"
+      },
+      {
+        "job": "Sound Designer",
+        "name": "Johnnie Burn",
+        "tmdb_id": 1341735,
+        "credit_id": "6667943be0e0820ccbd01ac7",
+        "department": "Sound"
+      },
+      {
+        "job": "Casting",
+        "name": "Jennifer Venditti",
+        "tmdb_id": 549480,
+        "credit_id": "667db91e1f1d516d425207ee",
+        "department": "Production"
+      },
+      {
+        "job": "Original Music Composer",
+        "name": "Jerskin Fendrix",
+        "tmdb_id": 4091704,
+        "credit_id": "66905eb0d2332e27a1069ef7",
+        "department": "Sound"
+      },
+      {
+        "job": "Hair Supervisor",
+        "name": "Liz Phillips",
+        "tmdb_id": 1829441,
+        "credit_id": "6698379ddec3c1452b804a82",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Makeup Trainee",
+        "name": "Erin Wheatland",
+        "tmdb_id": 3195598,
+        "credit_id": "6698384438d42ab8fad2268e",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Makeup & Hair",
+        "name": "Torsten Witte",
+        "tmdb_id": 1456028,
+        "credit_id": "66983760dec3c1452b804a7e",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Concept Artist",
+        "name": "Antonio Niculae",
+        "tmdb_id": 2634870,
+        "credit_id": "66b539cb7df273196527f6a9",
+        "department": "Art"
+      },
+      {
+        "job": "Additional Still Photographer",
+        "name": "Ali Bell",
+        "tmdb_id": 4599679,
+        "credit_id": "66b9583286cd6c9ecba7ee88",
+        "department": "Camera"
+      },
+      {
+        "job": "Best Boy Electric",
+        "name": "Milo Smyth",
+        "tmdb_id": 3596387,
+        "credit_id": "66b4062cc2d2ef51a2452b25",
+        "department": "Lighting"
+      },
+      {
+        "job": "Storyboard Artist",
+        "name": "Rachel Garlick",
+        "tmdb_id": 1845581,
+        "credit_id": "66b406a1caac675f20ea53f4",
+        "department": "Art"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Alexander Bracq",
+        "tmdb_id": 234621,
+        "credit_id": "66b4051289eea188616228d0",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunt Coordinator",
+        "name": "Nikki Berwick",
+        "tmdb_id": 1709357,
+        "credit_id": "66b404f7a07bb32f69dca31a",
+        "department": "Crew"
+      },
+      {
+        "job": "Lighting Technician",
+        "name": "Nathan Porter",
+        "tmdb_id": 2062886,
+        "credit_id": "66b405e05582ab68186f71ec",
+        "department": "Lighting"
+      },
+      {
+        "job": "Key Grip",
+        "name": "Duncan Steven",
+        "tmdb_id": 3125921,
+        "credit_id": "66b40590a2838813fb6f78d0",
+        "department": "Camera"
+      },
+      {
+        "job": "Still Photographer",
+        "name": "Atsushi Nishijima",
+        "tmdb_id": 1193622,
+        "credit_id": "66b4065364b1b25caf2b1836",
+        "department": "Camera"
+      },
+      {
+        "job": "Graphic Designer",
+        "name": "Betty Woodhouse",
+        "tmdb_id": 4327490,
+        "credit_id": "66b406bc2c04fdd0d51a749d",
+        "department": "Art"
+      },
+      {
+        "job": "Graphic Designer",
+        "name": "Sophie Powell",
+        "tmdb_id": 2370501,
+        "credit_id": "66b40754e66d04a99de94ef1",
+        "department": "Art"
+      },
+      {
+        "job": "Rigging Gaffer",
+        "name": "Tony Goulding",
+        "tmdb_id": 3100129,
+        "credit_id": "66b405b3b62be2e3f0542b4c",
+        "department": "Lighting"
+      },
+      {
+        "job": "Electrician",
+        "name": "Adam Smart",
+        "tmdb_id": 3621147,
+        "credit_id": "66b4060d7df273196527d78a",
+        "department": "Lighting"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Daniel James-King",
+        "tmdb_id": 4760915,
+        "credit_id": "66bbe1dcc2021db3ef2d41fc",
+        "department": "Crew"
+      },
+      {
+        "job": "Costume Design",
+        "name": "Jennifer Johnson",
+        "tmdb_id": 188097,
+        "credit_id": "66c3dda815e323f488a2940a",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Electrician",
+        "name": "William Sheffield",
+        "tmdb_id": 1962605,
+        "credit_id": "66d500c44e19e170f33006d7",
+        "department": "Lighting"
+      },
+      {
+        "job": "Stunt Coordinator",
+        "name": "Thom Khoury Williams",
+        "tmdb_id": 1452956,
+        "credit_id": "66d225d45508b713980fdd41",
+        "department": "Crew"
+      },
+      {
+        "job": "Producer",
+        "name": "Lars Knudsen",
+        "tmdb_id": 131399,
+        "credit_id": "5eb432a8c3514c002055efa8",
+        "department": "Production"
+      },
+      {
+        "job": "Producer",
+        "name": "Ari Aster",
+        "tmdb_id": 1145520,
+        "credit_id": "5eb4328acc277c002167445e",
+        "department": "Production"
+      },
+      {
+        "job": "Musician",
+        "name": "Clifton Harrison",
+        "tmdb_id": 3580739,
+        "credit_id": "66d8f6699c75318b1c0eefb8",
+        "department": "Sound"
+      },
+      {
+        "job": "Music Supervisor",
+        "name": "Anne Booty",
+        "tmdb_id": 4618041,
+        "credit_id": "66d8f69e44328a76b83c12b2",
+        "department": "Sound"
+      },
+      {
+        "job": "Music Supervisor",
+        "name": "Joe Rice",
+        "tmdb_id": 4618042,
+        "credit_id": "66d8f6b1b7ab94d6fcbd89b3",
+        "department": "Sound"
+      },
+      {
+        "job": "Musician",
+        "name": "Roger Linley",
+        "tmdb_id": 1993199,
+        "credit_id": "66d8f722bacc84dae40eed96",
+        "department": "Sound"
+      },
+      {
+        "job": "Post Production Supervisor",
+        "name": "Deborah Harding",
+        "tmdb_id": 1569473,
+        "credit_id": "66daff43b43133ab2b5de10b",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Nick Benseman",
+        "tmdb_id": 1456598,
+        "credit_id": "66e2275500000000009505cb",
+        "department": "Crew"
+      },
+      {
+        "job": "Assistant Set Decoration",
+        "name": "Monica Casey",
+        "tmdb_id": 4212816,
+        "credit_id": "66e77405d7bcca524db0d7f3",
+        "department": "Art"
+      },
+      {
+        "job": "Props",
+        "name": "Reece Palmer",
+        "tmdb_id": 4944636,
+        "credit_id": "66e7741f9dfbbdf0e6cfc763",
+        "department": "Art"
+      },
+      {
+        "job": "Dolly Grip",
+        "name": "Nick Baird",
+        "tmdb_id": 2108134,
+        "credit_id": "66e774b4e8211ecd22b0c8f9",
+        "department": "Camera"
+      },
+      {
+        "job": "Unit Production Manager",
+        "name": "Scott Eaton",
+        "tmdb_id": 2089896,
+        "credit_id": "66e89bee711fec6bdb7a71cc",
+        "department": "Production"
+      },
+      {
+        "job": "Stunts",
+        "name": "Sam Tidwell",
+        "tmdb_id": 4950357,
+        "credit_id": "66eb4be45c0519a234d3abda",
+        "department": "Crew"
+      },
+      {
+        "job": "Second Assistant Director",
+        "name": "Edoardo Petti",
+        "tmdb_id": 1127848,
+        "credit_id": "66eb4c5ab2917eb1800c06b6",
+        "department": "Directing"
+      },
+      {
+        "job": "Third Assistant Director",
+        "name": "Milou van der Kolff",
+        "tmdb_id": 1793976,
+        "credit_id": "66eb4c805168a896e11fb031",
+        "department": "Directing"
+      },
+      {
+        "job": "Production Manager",
+        "name": "Chrissy Rosman",
+        "tmdb_id": 3100292,
+        "credit_id": "66eb4c9c5c0519a234d3ac17",
+        "department": "Production"
+      },
+      {
+        "job": "Assistant Costume Designer",
+        "name": "Eva Roelfs",
+        "tmdb_id": 3585761,
+        "credit_id": "66ec9762065b70b542327517",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Grip",
+        "name": "Cole Brace",
+        "tmdb_id": 4955639,
+        "credit_id": "66ef3573c237258e4c2606e9",
+        "department": "Camera"
+      },
+      {
+        "job": "Key Hair Stylist",
+        "name": "Diamond McCall",
+        "tmdb_id": 3656244,
+        "credit_id": "66ef35cf5ee61fbb738d52c3",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Adam Woodford",
+        "tmdb_id": 4974772,
+        "credit_id": "66fc6554f17b887599d656a7",
+        "department": "Crew"
+      },
+      {
+        "job": "First Assistant Director",
+        "name": "Hayley Williams",
+        "tmdb_id": 2974813,
+        "credit_id": "67004419e84eeb35a0f82826",
+        "department": "Directing"
+      },
+      {
+        "job": "Stunts",
+        "name": "Janelle Beaudry",
+        "tmdb_id": 1656647,
+        "credit_id": "67004455925fdf925b7ce2ea",
+        "department": "Crew"
+      },
+      {
+        "job": "Best Boy Grip",
+        "name": "Alex Colthart",
+        "tmdb_id": 4984997,
+        "credit_id": "67033c1ee48014914685c00e",
+        "department": "Camera"
+      },
+      {
+        "job": "Co-Producer",
+        "name": "Kasia Malipan",
+        "tmdb_id": 1651851,
+        "credit_id": "67033e00fa3e69e0ef7d5c83",
+        "department": "Production"
+      },
+      {
+        "job": "Hair Department Head",
+        "name": "Adruitha Lee",
+        "tmdb_id": 1414984,
+        "credit_id": "67119a3198f6a758cd547b07",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Stunts",
+        "name": "Abdul Basith",
+        "tmdb_id": 5014196,
+        "credit_id": "6716c6821e90c7703f492f0e",
+        "department": "Crew"
+      },
+      {
+        "job": "Grip",
+        "name": "Logan Russell",
+        "tmdb_id": 3961149,
+        "credit_id": "671991585be9e8759da6d526",
+        "department": "Camera"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Emma Holt",
+        "tmdb_id": 5024600,
+        "credit_id": "671d8c364be15469e70df984",
+        "department": "Crew"
+      },
+      {
+        "job": "Makeup Effects Designer",
+        "name": "Matthew Smith",
+        "tmdb_id": 2093478,
+        "credit_id": "67217b3a47fe097c193f825a",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Assistant Set Decoration",
+        "name": "Elena Riccabona",
+        "tmdb_id": 1797447,
+        "credit_id": "6722aa06eeb0c5ef3b9bc5c1",
+        "department": "Art"
+      },
+      {
+        "job": "Gaffer",
+        "name": "Jonny Franklin",
+        "tmdb_id": 1171004,
+        "credit_id": "672bf1be4b30e929cd6eefda",
+        "department": "Lighting"
+      },
+      {
+        "job": "Stunts",
+        "name": "Jwaundace Candece",
+        "tmdb_id": 1370799,
+        "credit_id": "672d42394b30e929cd6f19e4",
+        "department": "Crew"
+      },
+      {
+        "job": "First Assistant \"A\" Camera",
+        "name": "Olga Abramson",
+        "tmdb_id": 1771151,
+        "credit_id": "673fb83acce66cf899e92150",
+        "department": "Camera"
+      },
+      {
+        "job": "First Assistant \"B\" Camera",
+        "name": "Cristina Cretu",
+        "tmdb_id": 2807825,
+        "credit_id": "673fb8804a3dc178173d23f1",
+        "department": "Camera"
+      },
+      {
+        "job": "Production Sound Mixer",
+        "name": "Nadine Richardson",
+        "tmdb_id": 2151523,
+        "credit_id": "6749fbd44a48417b84178af6",
+        "department": "Sound"
+      },
+      {
+        "job": "Loader",
+        "name": "Joshua Jones",
+        "tmdb_id": 1951627,
+        "credit_id": "6749fca76a3f5d05a7dc8d9a",
+        "department": "Crew"
+      },
+      {
+        "job": "Second Assistant Camera",
+        "name": "Filippo Maso",
+        "tmdb_id": 2086083,
+        "credit_id": "6749fcd9ad8af316520046bb",
+        "department": "Camera"
+      },
+      {
+        "job": "Loader",
+        "name": "Calem Trevor",
+        "tmdb_id": 2477792,
+        "credit_id": "6749fd16ad8af316520046d0",
+        "department": "Crew"
+      },
+      {
+        "job": "Production Supervisor",
+        "name": "Daniella R. Baggaley",
+        "tmdb_id": 5102289,
+        "credit_id": "675310e437f1856202089912",
+        "department": "Production"
+      },
+      {
+        "job": "Musician",
+        "name": "Pasha Mansurov",
+        "tmdb_id": 5102291,
+        "credit_id": "6753113ddf3ae97e1c2f2aec",
+        "department": "Sound"
+      },
+      {
+        "job": "Orchestrator",
+        "name": "Hugh Brunt",
+        "tmdb_id": 2953558,
+        "credit_id": "6753116837f1856202089941",
+        "department": "Sound"
+      },
+      {
+        "job": "Stunt Double",
+        "name": "Hannah Grant",
+        "tmdb_id": 5125223,
+        "credit_id": "67618e32d183d1e25ccbf0de",
+        "department": "Crew"
+      },
+      {
+        "job": "Set Costumer",
+        "name": "Kevin Boyett",
+        "tmdb_id": 2014456,
+        "credit_id": "67646dd150188329c61f6757",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Costumer",
+        "name": "Iliana Sanchez",
+        "tmdb_id": 1412331,
+        "credit_id": "6764723d29c88297a11f66d2",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Visual Effects Supervisor",
+        "name": "Nick Irving Allen",
+        "tmdb_id": 5190301,
+        "credit_id": "678d71fd42f27c754c6524fc",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "Art Direction",
+        "name": "Lili Lea Abraham",
+        "tmdb_id": 2545314,
+        "credit_id": "67abd8449ed73a4324b0871c",
+        "department": "Art"
+      },
+      {
+        "job": "Art Direction",
+        "name": "Christopher Wyatt",
+        "tmdb_id": 1319623,
+        "credit_id": "67c3052dc2e633755b6de03b",
+        "department": "Art"
+      },
+      {
+        "job": "Production Design",
+        "name": "James Price",
+        "tmdb_id": 1372903,
+        "credit_id": "681fd880e5b34d36067e7545",
+        "department": "Art"
+      },
+      {
+        "job": "Set Decoration",
+        "name": "Prue Howard",
+        "tmdb_id": 5109964,
+        "credit_id": "6856a73c5247ca6cb04bcbf1",
+        "department": "Art"
+      },
+      {
+        "job": "Producer",
+        "name": "Jerry Kyoungboum Ko",
+        "tmdb_id": 2256283,
+        "credit_id": "6856e37b74286f5ffaded628",
+        "department": "Production"
+      },
+      {
+        "job": "Producer",
+        "name": "Miky Lee",
+        "tmdb_id": 41288,
+        "credit_id": "6856e397dcd607af2f7e7890",
+        "department": "Production"
+      },
+      {
+        "job": "Assistant Set Decoration",
+        "name": "Francesca Mauri",
+        "tmdb_id": 1424946,
+        "credit_id": "68573a0e2ba3d7258dcb4b42",
+        "department": "Art"
+      },
+      {
+        "job": "Assistant Art Director",
+        "name": "Mursalim Topham",
+        "tmdb_id": 5109958,
+        "credit_id": "68573a693ba921b47aa462f7",
+        "department": "Art"
+      },
+      {
+        "job": "On Set Dresser",
+        "name": "Hussein Agamiri",
+        "tmdb_id": 2137389,
+        "credit_id": "68573ab003e381eb03fc7681",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Sound Effects Editor",
+        "name": "Brendan Feeney",
+        "tmdb_id": 2812308,
+        "credit_id": "68a894d346a855992e725309",
+        "department": "Sound"
+      },
+      {
+        "job": "Sound Designer",
+        "name": "Brendan Feeney",
+        "tmdb_id": 2812308,
+        "credit_id": "68a894fd21e7a2e0412614e6",
+        "department": "Sound"
+      },
+      {
+        "job": "Music Editor",
+        "name": "Graeme Stewart",
+        "tmdb_id": 1547323,
+        "credit_id": "68a896ea4d6fa2a0f7725323",
+        "department": "Sound"
+      },
+      {
+        "job": "Scoring Mixer",
+        "name": "Graeme Stewart",
+        "tmdb_id": 1547323,
+        "credit_id": "68a899014d63b9c03e725357",
+        "department": "Sound"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Yoon Sang-hyun",
+        "tmdb_id": 4676459,
+        "credit_id": "68a94e07e1319e8ffb8d17e9",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Khan Kwon",
+        "tmdb_id": 3888570,
+        "credit_id": "68a94e22a3c947ac5b8d17ea",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Mark Byrne",
+        "tmdb_id": 1800048,
+        "credit_id": "68a94e359f35787c88a998bc",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Christian Vesper",
+        "tmdb_id": 2708054,
+        "credit_id": "68a94e4fb0fe6e4f019da648",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Seb Shorr",
+        "tmdb_id": 5237116,
+        "credit_id": "68a94e8b6da88df8dba99877",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Jang Joon-hwan",
+        "tmdb_id": 68905,
+        "credit_id": "68a94e9fa786e387f71e46d9",
+        "department": "Production"
+      },
+      {
+        "job": "Executive Producer",
+        "name": "Rhee Han-dae",
+        "tmdb_id": 2205160,
+        "credit_id": "68a94ebb06ce5c2027a99810",
+        "department": "Production"
+      },
+      {
+        "job": "Visual Effects Supervisor",
+        "name": "Adam Azmy",
+        "tmdb_id": 1658697,
+        "credit_id": "68a94f19cdbf8cca7366fcdd",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "Co-Executive Producer",
+        "name": "Shawn Goehl",
+        "tmdb_id": 5643269,
+        "credit_id": "68a94f376da88df8dba99887",
+        "department": "Production"
+      },
+      {
+        "job": "Co-Executive Producer",
+        "name": "Ellie Nayoung Park",
+        "tmdb_id": 5643270,
+        "credit_id": "68a94f59e4116d49266cdd93",
+        "department": "Production"
+      },
+      {
+        "job": "Stunts",
+        "name": "Michael Keeley",
+        "tmdb_id": 1843316,
+        "credit_id": "68a950af5c23d2d7b29da70b",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Nikita Mitchell",
+        "tmdb_id": 3352762,
+        "credit_id": "68a9510db0fe6e4f019da64e",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Oli Parsons",
+        "tmdb_id": 5643276,
+        "credit_id": "68a9513a0a3ad769cb8d18df",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Aja Frary",
+        "tmdb_id": 1544394,
+        "credit_id": "68a95158d730bd042d9da7b3",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Elaina Rae Haehnle",
+        "tmdb_id": 4379402,
+        "credit_id": "68a951701cab70f54f9da6f1",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Heather Hayes",
+        "tmdb_id": 2591336,
+        "credit_id": "68a9518e25106622de781713",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Keith Adams",
+        "tmdb_id": 1389621,
+        "credit_id": "68a951c85df27321711e45d3",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Kevin Waterman",
+        "tmdb_id": 1309903,
+        "credit_id": "68a951edc195c49deb4484b8",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Laurence Chavez",
+        "tmdb_id": 1635196,
+        "credit_id": "68a951fdda0435381d6cde6b",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Leesa Pate",
+        "tmdb_id": 2423292,
+        "credit_id": "68a95219d730bd042d9da7b7",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Lex D. Geddings",
+        "tmdb_id": 1393447,
+        "credit_id": "68a95239d0227aa5e29da653",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Nick DeKay",
+        "tmdb_id": 1502265,
+        "credit_id": "68a9524b54acb6efb55479ac",
+        "department": "Crew"
+      },
+      {
+        "job": "Supervising Art Director",
+        "name": "Adam A. Makin",
+        "tmdb_id": 1324818,
+        "credit_id": "68a952663413e9988f1e468e",
+        "department": "Art"
+      },
+      {
+        "job": "Stunts",
+        "name": "Regis Harrington",
+        "tmdb_id": 1414888,
+        "credit_id": "68a9528039657a722254790c",
+        "department": "Crew"
+      },
+      {
+        "job": "Stunts",
+        "name": "Steven Ritzi",
+        "tmdb_id": 1333222,
+        "credit_id": "68a9529a3fa381aca144831e",
+        "department": "Crew"
+      },
+      {
+        "job": "Standby Art Director",
+        "name": "Abigael Snape",
+        "tmdb_id": 2222848,
+        "credit_id": "68a952c86df466f10c66fca6",
+        "department": "Art"
+      },
+      {
+        "job": "Art Direction",
+        "name": "Darren Tubby",
+        "tmdb_id": 2019528,
+        "credit_id": "68a952e91d4ad005e944843c",
+        "department": "Art"
+      },
+      {
+        "job": "Camera Operator",
+        "name": "Darren Vincent",
+        "tmdb_id": 2301709,
+        "credit_id": "68a9531e6633cf72d5781679",
+        "department": "Camera"
+      },
+      {
+        "job": "Camera Operator",
+        "name": "James France",
+        "tmdb_id": 3736597,
+        "credit_id": "68a9532da786e387f71e46f3",
+        "department": "Camera"
+      },
+      {
+        "job": "Camera Operator",
+        "name": "Steve Quan",
+        "tmdb_id": 2342286,
+        "credit_id": "68a9533ee1319e8ffb8d17fd",
+        "department": "Camera"
+      },
+      {
+        "job": "Special Effects Technician",
+        "name": "James Willis",
+        "tmdb_id": 1797505,
+        "credit_id": "68a95363e1319e8ffb8d1802",
+        "department": "Crew"
+      },
+      {
+        "job": "Special Effects Technician",
+        "name": "Tyrell Kemlo",
+        "tmdb_id": 59294,
+        "credit_id": "68a95376aea5faed086cdef0",
+        "department": "Crew"
+      },
+      {
+        "job": "Special Effects Technician",
+        "name": "Paul Chandler",
+        "tmdb_id": 4844920,
+        "credit_id": "68a9538ef263780c68547949",
+        "department": "Crew"
+      },
+      {
+        "job": "Special Effects Technician",
+        "name": "James Short",
+        "tmdb_id": 5643278,
+        "credit_id": "68a953bb3c99df3eaa4483ca",
+        "department": "Crew"
+      },
+      {
+        "job": "Makeup Supervisor",
+        "name": "Liz Phillips",
+        "tmdb_id": 1829441,
+        "credit_id": "68a953efe1319e8ffb8d1805",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Designer",
+        "name": "Kate Walshe",
+        "tmdb_id": 3723258,
+        "credit_id": "68a95411d2ea43a9739da6cf",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Key Hair Stylist",
+        "name": "Albert Elizondo",
+        "tmdb_id": 1634380,
+        "credit_id": "68a95429da0435381d6cde9a",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Key Makeup Artist",
+        "name": "Albert Elizondo",
+        "tmdb_id": 1634380,
+        "credit_id": "68a954376fa7bc3adba998c7",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Morgan Kimber",
+        "tmdb_id": 5643282,
+        "credit_id": "68a95468e1319e8ffb8d180f",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Thea Mulvey",
+        "tmdb_id": 5643283,
+        "credit_id": "68a95486c1d786a8645479fb",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Darren Robinson",
+        "tmdb_id": 1411086,
+        "credit_id": "68a954bd378a5b9d319da82c",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Jon Moore",
+        "tmdb_id": 1430475,
+        "credit_id": "68a954e5f263780c68547958",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Max Payn",
+        "tmdb_id": 5643291,
+        "credit_id": "68a954fc430d24f07966fc41",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Jocelyn Bennett-Snewin",
+        "tmdb_id": 2012264,
+        "credit_id": "68a955151d4ad005e9448448",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Prosthetic Makeup Artist",
+        "name": "Rebecca Butterworth",
+        "tmdb_id": 2316091,
+        "credit_id": "68a95528e4116d49266cdd9c",
+        "department": "Costume & Make-Up"
+      },
+      {
+        "job": "Casting Associate",
+        "name": "Alan Scott Neal",
+        "tmdb_id": 1476167,
+        "credit_id": "68a95577e15eaed8e48d18d6",
+        "department": "Production"
+      },
+      {
+        "job": "Second Unit Director",
+        "name": "Daniel Wolfe",
+        "tmdb_id": 1320554,
+        "credit_id": "68a955e7f7de7344255479d9",
+        "department": "Directing"
+      },
+      {
+        "job": "Second Unit Director of Photography",
+        "name": "Harry Wheeler",
+        "tmdb_id": 3131775,
+        "credit_id": "68a9560aeab92453cb6cdea9",
+        "department": "Camera"
+      },
+      {
+        "job": "Gaffer",
+        "name": "John Malaney",
+        "tmdb_id": 1890319,
+        "credit_id": "68a95620aee9e67e078d17cd",
+        "department": "Lighting"
+      },
+      {
+        "job": "Art Direction",
+        "name": "Paul D. Kelly",
+        "tmdb_id": 1206767,
+        "credit_id": "68a9564be4116d49266cdda7",
+        "department": "Art"
+      },
+      {
+        "job": "First Assistant Director",
+        "name": "Alexander Armero",
+        "tmdb_id": 2085237,
+        "credit_id": "68a9565fdcf7860cb966fc10",
+        "department": "Directing"
+      },
+      {
+        "job": "Set Decoration",
+        "name": "Sarah Carter",
+        "tmdb_id": 1439027,
+        "credit_id": "68a9566fce6d589e929da755",
+        "department": "Art"
+      },
+      {
+        "job": "Set Decoration Buyer",
+        "name": "Lauren Tanner",
+        "tmdb_id": 5643294,
+        "credit_id": "68a9569aeec42045218d181c",
+        "department": "Art"
+      },
+      {
+        "job": "Steadicam Operator",
+        "name": "Ramon Engle",
+        "tmdb_id": 1521447,
+        "credit_id": "68a956acbe4dba06111e46ef",
+        "department": "Camera"
+      },
+      {
+        "job": "Set Dresser",
+        "name": "Nicholas Storm",
+        "tmdb_id": 1635335,
+        "credit_id": "68a956bb85172818541e474c",
+        "department": "Art"
+      },
+      {
+        "job": "Lighting Technician",
+        "name": "Kenneth Pratt",
+        "tmdb_id": 5257002,
+        "credit_id": "68a9570da04ee918798d1873",
+        "department": "Lighting"
+      },
+      {
+        "job": "Chief Lighting Technician",
+        "name": "David McLean",
+        "tmdb_id": 80836,
+        "credit_id": "68a95725d2ea43a9739da6eb",
+        "department": "Lighting"
+      },
+      {
+        "job": "Lighting Technician",
+        "name": "Malachi Roberts",
+        "tmdb_id": 2007625,
+        "credit_id": "68a957423fcea4610d9da7f4",
+        "department": "Lighting"
+      },
+      {
+        "job": "Sound Mixer",
+        "name": "Serena Reichenbaugh",
+        "tmdb_id": 1593907,
+        "credit_id": "68a9575e0217ddf7dc5479e4",
+        "department": "Sound"
+      },
+      {
+        "job": "Lighting Technician",
+        "name": "Stathis Tsiapas",
+        "tmdb_id": 1790197,
+        "credit_id": "68a9579eec06ec52ad6cdd43",
+        "department": "Lighting"
+      },
+      {
+        "job": "Art Direction",
+        "name": "Callie Andreadis",
+        "tmdb_id": 990035,
+        "credit_id": "68a957afa3c947ac5b8d180c",
+        "department": "Art"
+      },
+      {
+        "job": "Stunt Coordinator",
+        "name": "Triantafyllos Omiridis",
+        "tmdb_id": 5205753,
+        "credit_id": "68a957e0ec06ec52ad6cdd48",
+        "department": "Crew"
+      },
+      {
+        "job": "Supervising Sound Editor",
+        "name": "Johnnie Burn",
+        "tmdb_id": 1341735,
+        "credit_id": "68a95806b8e502f6e96cde6c",
+        "department": "Sound"
+      },
+      {
+        "job": "Sound Re-Recording Mixer",
+        "name": "Johnnie Burn",
+        "tmdb_id": 1341735,
+        "credit_id": "68a9580fe4116d49266cddcc",
+        "department": "Sound"
+      },
+      {
+        "job": "Sound Effects Editor",
+        "name": "Max Behrens",
+        "tmdb_id": 1986598,
+        "credit_id": "68a9583c5a398f7c6c4483f5",
+        "department": "Sound"
+      },
+      {
+        "job": "Sound Effects Designer",
+        "name": "Max Behrens",
+        "tmdb_id": 1986598,
+        "credit_id": "68a95847a3c947ac5b8d180f",
+        "department": "Sound"
+      },
+      {
+        "job": "Sound Effects Designer",
+        "name": "Brendan Feeney",
+        "tmdb_id": 2812308,
+        "credit_id": "68a95865a6e6b21bbc448539",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Editor",
+        "name": "Srdjan Kurpjel",
+        "tmdb_id": 454855,
+        "credit_id": "68a958771b66fbae3a7816ba",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Mixer",
+        "name": "Srdjan Kurpjel",
+        "tmdb_id": 454855,
+        "credit_id": "68a95883d730bd042d9da7bc",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Artist",
+        "name": "Niklas Matthaei",
+        "tmdb_id": 2224057,
+        "credit_id": "68a9589225106622de78173c",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Artist",
+        "name": "Gadou Naudin",
+        "tmdb_id": 1351724,
+        "credit_id": "68a958a368d62872b38d182b",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Artist",
+        "name": "Aleksandra Stojanović",
+        "tmdb_id": 1183168,
+        "credit_id": "68a958b0a04ee918798d1891",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Mixer",
+        "name": "Louis Naudin",
+        "tmdb_id": 1779696,
+        "credit_id": "68a958e725106622de781743",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Editor",
+        "name": "Christabel Anderson",
+        "tmdb_id": 5643299,
+        "credit_id": "68a9590a5a398f7c6c448400",
+        "department": "Sound"
+      },
+      {
+        "job": "Music Editor",
+        "name": "Simon Carroll",
+        "tmdb_id": 1569652,
+        "credit_id": "68a959205a398f7c6c448403",
+        "department": "Sound"
+      },
+      {
+        "job": "Music Editor",
+        "name": "Johnnie Burn",
+        "tmdb_id": 1341735,
+        "credit_id": "68a959294c2d2067d88d184f",
+        "department": "Sound"
+      },
+      {
+        "job": "Foley Editor",
+        "name": "Laurent Chassaigne",
+        "tmdb_id": 1869426,
+        "credit_id": "68a9595885172818541e4754",
+        "department": "Sound"
+      },
+      {
+        "job": "Visual Effects Producer",
+        "name": "Dominic Roberts",
+        "tmdb_id": 5643300,
+        "credit_id": "68a95994be4dba06111e46ff",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "VFX Artist",
+        "name": "Andréa Loy",
+        "tmdb_id": 5093306,
+        "credit_id": "68a959c1dcf7860cb966fc14",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "VFX Artist",
+        "name": "Clément Thomasson",
+        "tmdb_id": 5643302,
+        "credit_id": "68a959e567423aae5c6cde44",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "VFX Artist",
+        "name": "Risto Puukko",
+        "tmdb_id": 2720584,
+        "credit_id": "68a959f6aea5faed086cdf25",
+        "department": "Visual Effects"
+      },
+      {
+        "job": "Conductor",
+        "name": "Jerskin Fendrix",
+        "tmdb_id": 4091704,
+        "credit_id": "68a95a32cbf738a6a91e487d",
+        "department": "Sound"
+      },
+      {
+        "job": "Co-Producer",
+        "name": "Will Greenfield",
+        "tmdb_id": 1619915,
+        "credit_id": "68c46b293819caf44c3ec862",
+        "department": "Production"
+      },
+      {
+        "job": "Visual Effects Editor",
+        "name": "Zoe Schneidereit",
+        "tmdb_id": 5761300,
+        "credit_id": "68f6560c8729a636696916d7",
+        "department": "Crew"
+      },
+      {
+        "job": "Colorist",
+        "name": "Greg Fisher",
+        "tmdb_id": 2261970,
+        "credit_id": "68f6565f412b0b4b4d321496",
+        "department": "Editing"
+      },
+      {
+        "job": "First Assistant Editor",
+        "name": "Che Panoussopoulos",
+        "tmdb_id": 2414500,
+        "credit_id": "68f65682268466e0b62d6b1e",
+        "department": "Editing"
+      },
+      {
+        "job": "Dialogue Editor",
+        "name": "Neil Leachman",
+        "tmdb_id": 2831526,
+        "credit_id": "68f656b41ad84b50ee32140f",
+        "department": "Sound"
+      },
+      {
+        "job": "Thanks",
+        "name": "Efthymis Filippou",
+        "tmdb_id": 136427,
+        "credit_id": "6932257f20853bb832a18730",
+        "department": "Crew"
+      },
+      {
+        "job": "Thanks",
+        "name": "Ariane Labed",
+        "tmdb_id": 235125,
+        "credit_id": "693225997d594ef47336e212",
+        "department": "Crew"
+      },
+      {
+        "job": "Thanks",
+        "name": "Yorgos Stefanakos",
+        "tmdb_id": 4230763,
+        "credit_id": "693225a7712d7b030fa1873c",
+        "department": "Crew"
+      }
+    ]
+  }
+}

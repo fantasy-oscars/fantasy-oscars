@@ -55,13 +55,12 @@ describe("admin routes", () => {
     const ceremonyId = ceremony.rows[0].id as number;
 
     await post("/auth/register", {
-      handle: "user1",
+      username: "user1",
       email: "user1@example.com",
-      display_name: "User One",
       password: "secret123"
     });
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "user1",
+      username: "user1",
       password: "secret123"
     });
 
@@ -81,9 +80,8 @@ describe("admin routes", () => {
     const ceremonyId = ceremony.rows[0].id as number;
 
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin1",
+      username: "admin1",
       email: "admin1@example.com",
-      display_name: "Admin One",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
@@ -91,7 +89,7 @@ describe("admin routes", () => {
     ]);
 
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin1",
+      username: "admin1",
       password: "secret123"
     });
 
@@ -118,16 +116,15 @@ describe("admin routes", () => {
     });
 
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin2",
+      username: "admin2",
       email: "admin2@example.com",
-      display_name: "Admin Two",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin2",
+      username: "admin2",
       password: "secret123"
     });
 
@@ -170,16 +167,15 @@ describe("admin routes", () => {
     );
 
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin3",
+      username: "admin3",
       email: "admin3@example.com",
-      display_name: "Admin Three",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin3",
+      username: "admin3",
       password: "secret123"
     });
 
@@ -244,16 +240,15 @@ describe("admin routes", () => {
     );
 
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin5",
+      username: "admin5",
       email: "admin5@example.com",
-      display_name: "Admin Five",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin5",
+      username: "admin5",
       password: "secret123"
     });
 
@@ -291,16 +286,15 @@ describe("admin routes", () => {
     );
 
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin4",
+      username: "admin4",
       email: "admin4@example.com",
-      display_name: "Admin Four",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin4",
+      username: "admin4",
       password: "secret123"
     });
 

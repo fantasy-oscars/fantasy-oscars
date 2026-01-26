@@ -29,7 +29,7 @@ async function seedBase(pool: Pool) {
     [icon.rows[0].id]
   );
   await pool.query(
-    `INSERT INTO app_user (handle, email, display_name) VALUES ('user1','u1@example.com','User One')`
+    `INSERT INTO app_user (username, email) VALUES ('user1','u1@example.com')`
   );
   return { ceremonyId: ceremony.rows[0].id, userId: 1 };
 }

@@ -17,7 +17,7 @@ async function requestJson<T>(
     opts.auth === false
       ? null
       : signToken(
-          { sub: "1", handle: "tester" },
+          { sub: "1", username: "tester" },
           process.env.AUTH_SECRET ?? "test-secret"
         );
   const req = api

@@ -57,21 +57,20 @@ describe("auth integration", () => {
 
   it("registers a user and stores hashed password", async () => {
     const payload = {
-      handle: "user1",
+      username: "user1",
       email: "user1@example.com",
-      display_name: "User One",
       password: "secret123"
     };
 
-    const res = await post<{ user: { handle: string } }>("/auth/register", payload);
+    const res = await post<{ user: { username: string } }>("/auth/register", payload);
     expect(res.status).toBe(201);
-    expect(res.json.user.handle).toBe("user1");
+    expect(res.json.user.username).toBe("user1");
 
     const { rows } = await db.pool.query(
       `SELECT password_hash, password_algo
        FROM auth_password ap
        JOIN app_user u ON u.id = ap.user_id
-       WHERE u.handle = $1`,
+       WHERE u.username = $1`,
       ["user1"]
     );
     expect(rows[0].password_algo).toBe("scrypt");
@@ -80,9 +79,8 @@ describe("auth integration", () => {
 
   it("rejects duplicate registrations", async () => {
     const payload = {
-      handle: "dupe",
+      username: "dupe",
       email: "dupe@example.com",
-      display_name: "Dupe",
       password: "pw123456"
     };
     await post("/auth/register", payload);
@@ -91,27 +89,24 @@ describe("auth integration", () => {
     expect(res.json.error.code).toBe("USER_EXISTS");
   });
 
-  it("rejects case-insensitive duplicates for handle and email", async () => {
+  it("rejects case-insensitive duplicates for username and email", async () => {
     await post("/auth/register", {
-      handle: "Alex",
+      username: "Alex",
       email: "user@example.com",
-      display_name: "Alex",
       password: "pw123456"
     });
 
     const handleDupe = await post<{ error: { code: string } }>("/auth/register", {
-      handle: "alex",
+      username: "alex",
       email: "user2@example.com",
-      display_name: "Alex 2",
       password: "pw123456"
     });
     expect(handleDupe.status).toBe(409);
     expect(handleDupe.json.error.code).toBe("USER_EXISTS");
 
     const emailDupe = await post<{ error: { code: string } }>("/auth/register", {
-      handle: "alex3",
+      username: "alex3",
       email: "User@example.com",
-      display_name: "Alex 3",
       password: "pw123456"
     });
     expect(emailDupe.status).toBe(409);
@@ -120,58 +115,55 @@ describe("auth integration", () => {
 
   it("logs in with valid credentials", async () => {
     const payload = {
-      handle: "loginuser",
+      username: "loginuser",
       email: "login@example.com",
-      display_name: "Login User",
       password: "pw123456"
     };
     await post("/auth/register", payload);
-    const res = await post<{ user: { handle: string }; token: string }>("/auth/login", {
-      handle: payload.handle,
+    const res = await post<{ user: { username: string }; token: string }>("/auth/login", {
+      username: payload.username,
       password: payload.password
     });
     expect(res.status).toBe(200);
-    expect(res.json.user.handle).toBe(payload.handle);
+    expect(res.json.user.username).toBe(payload.username);
     expect(res.json.token).toBeDefined();
 
-    const me = await getJson<{ user: { sub: string; handle: string } }>("/auth/me", {
+    const me = await getJson<{ user: { sub: string; username: string } }>("/auth/me", {
       Authorization: `Bearer ${res.json.token}`
     });
     expect(me.status).toBe(200);
-    expect(me.json.user.handle).toBe(payload.handle);
+    expect(me.json.user.username).toBe(payload.username);
   });
 
-  it("logs in with handle case-insensitively and returns normalized handle/email", async () => {
+  it("logs in with username case-insensitively and returns normalized username/email", async () => {
     const payload = {
-      handle: "CaseUser",
+      username: "CaseUser",
       email: "CaseEmail@example.com",
-      display_name: "Case User",
       password: "pw123456"
     };
     await post("/auth/register", payload);
 
-    const res = await post<{ user: { handle: string; email: string }; token: string }>(
+    const res = await post<{ user: { username: string; email: string }; token: string }>(
       "/auth/login",
       {
-        handle: "CASEUSER",
+        username: "CASEUSER",
         password: payload.password
       }
     );
     expect(res.status).toBe(200);
-    expect(res.json.user.handle).toBe("caseuser");
+    expect(res.json.user.username).toBe("caseuser");
     expect(res.json.user.email).toBe("caseemail@example.com");
   });
 
   it("rejects invalid credentials", async () => {
     const payload = {
-      handle: "badpw",
+      username: "badpw",
       email: "badpw@example.com",
-      display_name: "Bad Pw",
       password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ error: { code: string } }>("/auth/login", {
-      handle: payload.handle,
+      username: payload.username,
       password: "wrongpass"
     });
     expect(res.status).toBe(401);
@@ -180,14 +172,13 @@ describe("auth integration", () => {
 
   it("sets auth cookie on login and accepts cookie for /auth/me", async () => {
     const payload = {
-      handle: "cookieuser",
+      username: "cookieuser",
       email: "cookie@example.com",
-      display_name: "Cookie User",
       password: "pw123456"
     };
     await post("/auth/register", payload);
-    const res = await post<{ user: { handle: string }; token: string }>("/auth/login", {
-      handle: payload.handle,
+    const res = await post<{ user: { username: string }; token: string }>("/auth/login", {
+      username: payload.username,
       password: payload.password
     });
     const setCookie = Array.isArray(res.headers["set-cookie"])
@@ -196,16 +187,15 @@ describe("auth integration", () => {
     expect(setCookie).toMatch(/auth_token=/);
 
     // Agent should include cookie automatically.
-    const me = await getJson<{ user: { handle: string } }>("/auth/me");
+    const me = await getJson<{ user: { username: string } }>("/auth/me");
     expect(me.status).toBe(200);
-    expect(me.json.user.handle).toBe(payload.handle);
+    expect(me.json.user.username).toBe(payload.username);
   });
 
   it("rate limits login attempts", async () => {
     const payload = {
-      handle: "ratelimit",
+      username: "ratelimit",
       email: "ratelimit@example.com",
-      display_name: "Rate Limit",
       password: "pw123456"
     };
     await post("/auth/register", payload);
@@ -213,7 +203,7 @@ describe("auth integration", () => {
     let lastStatus = 0;
     for (let i = 0; i < 10; i++) {
       const res = await post<{ error?: { code: string } }>("/auth/login", {
-        handle: payload.handle,
+        username: payload.username,
         password: "wrong-pass"
       });
       lastStatus = res.status;
@@ -223,14 +213,13 @@ describe("auth integration", () => {
 
   it("clears auth cookie on logout and rejects missing token", async () => {
     const payload = {
-      handle: "logoutuser",
+      username: "logoutuser",
       email: "logout@example.com",
-      display_name: "Logout User",
       password: "pw123456"
     };
     await post("/auth/register", payload);
     const res = await post<{ token: string }>("/auth/login", {
-      handle: payload.handle,
+      username: payload.username,
       password: payload.password
     });
     const setCookie = Array.isArray(res.headers["set-cookie"])
@@ -253,9 +242,8 @@ describe("auth integration", () => {
   describe("password reset", () => {
     it("returns inline token in non-prod and creates reset record", async () => {
       const payload = {
-        handle: "reset1",
+        username: "reset1",
         email: "reset1@example.com",
-        display_name: "Reset One",
         password: "oldpw123"
       };
       await post("/auth/register", payload);
@@ -276,9 +264,8 @@ describe("auth integration", () => {
 
     it("resets password with token and allows login", async () => {
       const payload = {
-        handle: "reset2",
+        username: "reset2",
         email: "reset2@example.com",
-        display_name: "Reset Two",
         password: "oldpw123"
       };
       await post("/auth/register", payload);
@@ -295,7 +282,7 @@ describe("auth integration", () => {
       expect(confirm.status).toBe(200);
 
       const login = await post<{ token: string }>("/auth/login", {
-        handle: payload.handle,
+        username: payload.username,
         password: "newpw123"
       });
       expect(login.status).toBe(200);
@@ -304,9 +291,8 @@ describe("auth integration", () => {
 
     it("rejects expired tokens", async () => {
       const { json } = await post<{ user: { id: number } }>("/auth/register", {
-        handle: "expired",
+        username: "expired",
         email: "expired@example.com",
-        display_name: "Expired",
         password: "pw123456"
       });
       const rawToken = "expired-token";
@@ -327,9 +313,8 @@ describe("auth integration", () => {
 
     it("rejects reused tokens", async () => {
       const { json } = await post<{ user: { id: number } }>("/auth/register", {
-        handle: "used",
+        username: "used",
         email: "used@example.com",
-        display_name: "Used",
         password: "pw123456"
       });
       const rawToken = "used-token";

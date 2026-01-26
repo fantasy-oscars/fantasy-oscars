@@ -37,7 +37,7 @@ async function adminToken(): Promise<string> {
   const user = await insertUser(db.pool);
   await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [user.id]);
   const header = { alg: "HS256", typ: "JWT" };
-  const payload = { sub: String(user.id), handle: user.handle, is_admin: true };
+  const payload = { sub: String(user.id), username: user.username, is_admin: true };
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const data = `${encodedHeader}.${encodedPayload}`;
@@ -113,16 +113,15 @@ describe("ceremony routes", () => {
 
     // Upsert winner via admin endpoint
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin-w",
+      username: "admin-w",
       email: "admin-w@example.com",
-      display_name: "Admin W",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin-w",
+      username: "admin-w",
       password: "secret123"
     });
 

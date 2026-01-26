@@ -19,7 +19,7 @@ let api: ApiAgent;
 const AUTH_SECRET = "test-secret";
 
 async function getJson<T>(path: string): Promise<{ status: number; json: T }> {
-  const token = signToken({ sub: "1", handle: "tester" }, AUTH_SECRET);
+  const token = signToken({ sub: "1", username: "tester" }, AUTH_SECRET);
   const res = await api.get(path).set("authorization", `Bearer ${token}`);
   return { status: res.status, json: res.body as T };
 }

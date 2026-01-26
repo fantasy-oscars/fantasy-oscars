@@ -79,7 +79,7 @@ describe("draft event emission", () => {
       [season.id, leagueMember.user_id, leagueMember.id]
     );
     const token = signToken(
-      { sub: String(leagueMember.user_id), handle: "member" },
+      { sub: String(leagueMember.user_id), username: "member" },
       authSecret
     );
 

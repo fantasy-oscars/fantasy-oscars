@@ -1,3 +1,7 @@
+// Local dev ergonomics: load `.env` when present. In production, Render injects env vars
+// and no `.env` file is expected, so this is a no-op.
+import "dotenv/config";
+
 import { createServer } from "./server.js";
 import { loadConfig } from "./config/env.js";
 import { createServer as createHttpServer } from "http";

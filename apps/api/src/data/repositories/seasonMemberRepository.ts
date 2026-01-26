@@ -7,6 +7,7 @@ export type SeasonMemberRecord = {
   league_member_id: number | null;
   role: "OWNER" | "CO_OWNER" | "MEMBER";
   joined_at: Date;
+  username?: string;
 };
 
 export async function listSeasonMembers(
@@ -16,15 +17,17 @@ export async function listSeasonMembers(
   const { rows } = await query<SeasonMemberRecord>(
     client,
     `SELECT
-       id::int,
-       season_id::int,
-       user_id::int,
-       league_member_id::int,
-       role,
-       joined_at
-     FROM season_member
+       sm.id::int,
+       sm.season_id::int,
+       sm.user_id::int,
+       sm.league_member_id::int,
+       sm.role,
+       sm.joined_at,
+       u.username
+     FROM season_member sm
+     JOIN app_user u ON u.id = sm.user_id
      WHERE season_id = $1
-     ORDER BY joined_at ASC`,
+     ORDER BY sm.joined_at ASC`,
     [seasonId]
   );
   return rows;

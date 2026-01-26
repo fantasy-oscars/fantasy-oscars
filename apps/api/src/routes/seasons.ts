@@ -8,7 +8,6 @@ import {
   getLeagueById,
   getLeagueMember,
   createLeagueMember,
-  deleteLeagueMember,
   getPublicSeasonForCeremony,
   createPublicSeasonContainer,
   type PublicSeasonRecord
@@ -111,6 +110,13 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
               user_id: userId,
               role: "OWNER"
             });
+            if (league.ceremony_id == null) {
+              throw new AppError(
+                "INTERNAL_ERROR",
+                500,
+                "Public season container league is missing ceremony id"
+              );
+            }
             return {
               league_id: league.id,
               season_id: season.id,
@@ -159,7 +165,10 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           if (!league || !league.is_public_season) {
             return new AppError("SEASON_NOT_FOUND", 404, "Season not found");
           }
-          if (league.ceremony_id !== activeCeremonyId) {
+          if (
+            league.ceremony_id == null ||
+            Number(league.ceremony_id) !== Number(activeCeremonyId)
+          ) {
             return new AppError(
               "WRONG_CEREMONY",
               409,
@@ -213,13 +222,40 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        const activeCeremonyId = await getActiveCeremonyId(client);
-        if (!activeCeremonyId) {
+        const ceremonyIdRaw = req.body?.ceremony_id;
+        const ceremonyId =
+          ceremonyIdRaw === undefined || ceremonyIdRaw === null
+            ? null
+            : Number(ceremonyIdRaw);
+
+        // Back-compat: if no ceremony_id provided, fall back to the legacy single-active ceremony.
+        const fallbackActiveCeremonyId = ceremonyId
+          ? null
+          : await getActiveCeremonyId(client);
+        const chosenCeremonyId = ceremonyId ?? fallbackActiveCeremonyId;
+        if (!chosenCeremonyId || Number.isNaN(Number(chosenCeremonyId))) {
           throw new AppError(
-            "ACTIVE_CEREMONY_NOT_SET",
+            "CEREMONY_REQUIRED",
             409,
-            "Active ceremony is not configured"
+            "Ceremony is required to create a season"
           );
+        }
+
+        const ceremonyIdNum = Number(chosenCeremonyId);
+        const { rows: ceremonyRows } = await query<{ status: string }>(
+          client,
+          `SELECT status FROM ceremony WHERE id = $1`,
+          [ceremonyIdNum]
+        );
+        const ceremonyStatus = ceremonyRows[0]?.status;
+        if (!ceremonyStatus) {
+          throw new AppError("CEREMONY_NOT_FOUND", 404, "Ceremony not found");
+        }
+        if (ceremonyStatus === "LOCKED") {
+          throw new AppError("CEREMONY_LOCKED", 409, "Ceremony is locked");
+        }
+        if (ceremonyStatus !== "PUBLISHED") {
+          throw new AppError("CEREMONY_NOT_PUBLISHED", 409, "Ceremony is not published");
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -235,7 +271,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           }
 
           const existing = await getExtantSeasonForLeague(tx, leagueId);
-          if (existing && existing.ceremony_id === Number(activeCeremonyId)) {
+          if (existing && existing.ceremony_id === ceremonyIdNum) {
             throw new AppError(
               "SEASON_EXISTS",
               409,
@@ -246,7 +282,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           const prior = await getMostRecentSeason(tx, leagueId);
           const season = await createSeason(tx, {
             league_id: leagueId,
-            ceremony_id: Number(activeCeremonyId),
+            ceremony_id: ceremonyIdNum,
             status: "EXTANT"
           });
 
@@ -270,6 +306,37 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
     if (!member || (member.role !== "OWNER" && member.role !== "CO_OWNER")) {
       throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
     }
+  }
+
+  async function ensureSeasonMember(
+    db: DbClient,
+    seasonId: number,
+    leagueId: number,
+    userId: number
+  ) {
+    const existing = await getSeasonMember(db, seasonId, userId);
+    if (existing) return existing;
+
+    const leagueMember = await getLeagueMember(db, leagueId, userId);
+    if (!leagueMember) {
+      // Keep 404 to avoid leaking season existence to non-members.
+      throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+    }
+
+    const inserted = await addSeasonMember(db, {
+      season_id: seasonId,
+      user_id: userId,
+      league_member_id: leagueMember.id,
+      role: leagueMember.role
+    });
+    if (inserted) return inserted;
+
+    // Race / conflict: refetch.
+    const refetched = await getSeasonMember(db, seasonId, userId);
+    if (!refetched) {
+      throw new AppError("INTERNAL_ERROR", 500, "Failed to join season");
+    }
+    return refetched;
   }
 
   function sanitizeInvite(invite: {
@@ -299,6 +366,19 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
       client,
       `SELECT id::int FROM app_user WHERE id = $1`,
       [userId]
+    );
+    return rows[0] ?? null;
+  }
+
+  async function getUserByUsername(client: DbClient, username: string) {
+    const u = String(username ?? "")
+      .trim()
+      .toLowerCase();
+    if (!u) return null;
+    const { rows } = await query<{ id: number; username: string }>(
+      client,
+      `SELECT id::int, username FROM app_user WHERE lower(username) = $1`,
+      [u]
     );
     return rows[0] ?? null;
   }
@@ -778,7 +858,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const member = await getLeagueMember(client, leagueId, userId);
         if (!member) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
-        const activeCeremonyId = await getActiveCeremonyId(client);
         const includeCancelled =
           req.query.include_cancelled === "true" &&
           (req.auth as { is_admin?: boolean })?.is_admin === true;
@@ -797,8 +876,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           ceremony_starts_at: s.ceremony_starts_at ?? null,
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
-          is_active_ceremony: activeCeremonyId
-            ? Number(activeCeremonyId) === Number(s.ceremony_id)
+          is_active_ceremony: s.ceremony_status
+            ? ["PUBLISHED", "LOCKED"].includes(String(s.ceremony_status).toUpperCase())
             : false
         }));
         return res.json({ seasons: response });
@@ -824,8 +903,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const member = await getSeasonMember(client, seasonId, userId);
-        if (!member) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        // Early-MVP ergonomics: if the season_member row wasn't seeded, auto-join league members.
+        await ensureSeasonMember(client, seasonId, season.league_id, userId);
 
         const members = await listSeasonMembers(client, seasonId);
         return res.json({ members });
@@ -840,11 +919,12 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const seasonId = Number(req.params.id);
-        const { user_id } = req.body ?? {};
-        const userId = Number(user_id);
+        const { user_id, username } = req.body ?? {};
+        const userId = user_id === undefined || user_id === null ? NaN : Number(user_id);
+        const usernameStr = typeof username === "string" ? username : null;
         const actorId = Number(req.auth?.sub);
-        if (Number.isNaN(seasonId) || Number.isNaN(userId)) {
-          throw validationError("Invalid payload", ["id", "user_id"]);
+        if (Number.isNaN(seasonId)) {
+          throw validationError("Invalid payload", ["id"]);
         }
         if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
@@ -877,18 +957,34 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("MEMBERSHIP_FULL", 409, "Season participant cap reached");
         }
 
-        const leagueMember = await getLeagueMember(client, season.league_id, userId);
+        let resolvedUserId: number | null = Number.isFinite(userId) ? userId : null;
+        if (!resolvedUserId && usernameStr) {
+          const user = await getUserByUsername(client, usernameStr);
+          if (!user) throw new AppError("USER_NOT_FOUND", 404, "User not found");
+          resolvedUserId = Number(user.id);
+        }
+        if (!resolvedUserId) {
+          throw validationError("Missing required fields", ["user_id", "username"]);
+        }
+
+        // Season membership implies league membership (not the other way around).
+        // If the target user isn't yet a league member, create that membership automatically.
+        let leagueMember = await getLeagueMember(
+          client,
+          season.league_id,
+          resolvedUserId
+        );
         if (!leagueMember) {
-          throw new AppError(
-            "LEAGUE_MEMBER_REQUIRED",
-            400,
-            "User must be a league member before joining season"
-          );
+          leagueMember = await createLeagueMember(client, {
+            league_id: season.league_id,
+            user_id: resolvedUserId,
+            role: "MEMBER"
+          });
         }
 
         const added = await addSeasonMember(client, {
           season_id: seasonId,
-          user_id: userId,
+          user_id: resolvedUserId,
           league_member_id: leagueMember.id,
           role: "MEMBER"
         });
@@ -953,20 +1049,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
 
         await removeSeasonMember(client, seasonId, targetUserId);
 
-        // If user has no completed seasons in league and no other membership, remove league membership.
-        const { rows: otherSeasonRows } = await query<{ count: string }>(
-          client,
-          `SELECT COUNT(*)::int AS count
-           FROM season_member sm
-           JOIN season s ON s.id = sm.season_id
-           WHERE sm.user_id = $1 AND s.league_id = $2`,
-          [targetUserId, season.league_id]
-        );
-        const otherCount = Number(otherSeasonRows[0]?.count ?? 0);
-        if (otherCount === 0) {
-          await deleteLeagueMember(client, season.league_id, targetUserId);
-        }
-
         return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
@@ -1009,19 +1091,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
 
         await removeSeasonMember(client, seasonId, userId);
 
-        const { rows: otherSeasonRows } = await query<{ count: string }>(
-          client,
-          `SELECT COUNT(*)::int AS count
-           FROM season_member sm
-           JOIN season s ON s.id = sm.season_id
-           WHERE sm.user_id = $1 AND s.league_id = $2`,
-          [userId, season.league_id]
-        );
-        const otherCount = Number(otherSeasonRows[0]?.count ?? 0);
-        if (otherCount === 0) {
-          await deleteLeagueMember(client, season.league_id, userId);
-        }
-
         return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
@@ -1035,10 +1104,24 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
       try {
         const seasonId = Number(req.params.id);
         const actorId = Number(req.auth?.sub);
-        const { user_id } = req.body ?? {};
-        const targetUserId = Number(user_id);
-        if (Number.isNaN(seasonId) || Number.isNaN(targetUserId) || !actorId) {
-          throw validationError("Invalid payload", ["id", "user_id"]);
+        const { user_id, username } = req.body ?? {};
+        const targetUserId =
+          user_id === undefined || user_id === null ? NaN : Number(user_id);
+        const usernameStr = typeof username === "string" ? username : null;
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid payload", ["id"]);
+        }
+
+        let resolvedUserId: number | null = Number.isFinite(targetUserId)
+          ? targetUserId
+          : null;
+        if (!resolvedUserId && usernameStr) {
+          const u = await getUserByUsername(client, usernameStr);
+          if (!u) throw new AppError("USER_NOT_FOUND", 404, "User not found");
+          resolvedUserId = Number(u.id);
+        }
+        if (!resolvedUserId) {
+          throw validationError("Missing required fields", ["user_id", "username"]);
         }
 
         const season = await getSeasonById(client, seasonId);
@@ -1057,14 +1140,14 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const actorMember = await getSeasonMember(client, seasonId, actorId);
         ensureCommissioner(actorMember);
 
-        const targetUser = await getUserById(client, targetUserId);
+        const targetUser = await getUserById(client, resolvedUserId);
         if (!targetUser) {
           throw new AppError("USER_NOT_FOUND", 404, "User not found");
         }
 
         const { invite, created } = await createUserTargetedInvite(client, {
           season_id: seasonId,
-          intended_user_id: targetUserId,
+          intended_user_id: resolvedUserId,
           created_by_user_id: actorId
         });
 

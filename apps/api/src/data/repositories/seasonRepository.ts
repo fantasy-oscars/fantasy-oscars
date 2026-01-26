@@ -11,6 +11,7 @@ export type SeasonRecord = {
   auto_pick_strategy?: string | null;
   created_at: Date;
   ceremony_starts_at?: Date | null;
+  ceremony_status?: string | null;
   draft_id?: number | null;
   draft_status?: string | null;
 };
@@ -18,6 +19,38 @@ export type SeasonRecord = {
 export async function getExtantSeasonForLeague(
   client: DbClient,
   leagueId: number
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `SELECT
+	       s.id::int,
+	       s.league_id::int,
+	       s.ceremony_id::int,
+	       s.status,
+	       s.scoring_strategy_name,
+	       s.remainder_strategy,
+	       d.pick_timer_seconds::int,
+	       d.auto_pick_strategy,
+	       s.created_at,
+	       c.starts_at AS ceremony_starts_at,
+	       c.status AS ceremony_status,
+	       d.id::int AS draft_id,
+	       d.status AS draft_status
+	     FROM season s
+	     JOIN ceremony c ON c.id = s.ceremony_id
+     LEFT JOIN draft d ON d.season_id = s.id
+     WHERE s.league_id = $1
+       AND s.status = 'EXTANT'
+     LIMIT 1`,
+    [leagueId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function getExtantSeasonForLeagueCeremony(
+  client: DbClient,
+  leagueId: number,
+  ceremonyId: number
 ): Promise<SeasonRecord | null> {
   const { rows } = await query<SeasonRecord>(
     client,
@@ -32,15 +65,17 @@ export async function getExtantSeasonForLeague(
        d.auto_pick_strategy,
        s.created_at,
        c.starts_at AS ceremony_starts_at,
+       c.status AS ceremony_status,
        d.id::int AS draft_id,
        d.status AS draft_status
      FROM season s
      JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
+       AND s.ceremony_id = $2
        AND s.status = 'EXTANT'
      LIMIT 1`,
-    [leagueId]
+    [leagueId, ceremonyId]
   );
   return rows[0] ?? null;
 }
@@ -75,20 +110,21 @@ export async function getSeasonById(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       s.id::int,
-       s.league_id::int,
-       s.ceremony_id::int,
-       s.status,
-       s.scoring_strategy_name,
-       s.remainder_strategy,
-       d.pick_timer_seconds::int,
-       d.auto_pick_strategy,
-       s.created_at,
-       c.starts_at AS ceremony_starts_at,
-       d.id::int AS draft_id,
-       d.status AS draft_status
-     FROM season s
-     JOIN ceremony c ON c.id = s.ceremony_id
+	       s.id::int,
+	       s.league_id::int,
+	       s.ceremony_id::int,
+	       s.status,
+	       s.scoring_strategy_name,
+	       s.remainder_strategy,
+	       d.pick_timer_seconds::int,
+	       d.auto_pick_strategy,
+	       s.created_at,
+	       c.starts_at AS ceremony_starts_at,
+	       c.status AS ceremony_status,
+	       d.id::int AS draft_id,
+	       d.status AS draft_status
+	     FROM season s
+	     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.id = $1`,
     [id]
@@ -126,20 +162,21 @@ export async function listSeasonsForLeague(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       s.id::int,
-       s.league_id::int,
-       s.ceremony_id::int,
-       s.status,
-       s.scoring_strategy_name,
-       s.remainder_strategy,
-       d.pick_timer_seconds::int,
-       d.auto_pick_strategy,
-       s.created_at,
-       c.starts_at AS ceremony_starts_at,
-       d.id::int AS draft_id,
-       d.status AS draft_status
-     FROM season s
-     JOIN ceremony c ON c.id = s.ceremony_id
+	       s.id::int,
+	       s.league_id::int,
+	       s.ceremony_id::int,
+	       s.status,
+	       s.scoring_strategy_name,
+	       s.remainder_strategy,
+	       d.pick_timer_seconds::int,
+	       d.auto_pick_strategy,
+	       s.created_at,
+	       c.starts_at AS ceremony_starts_at,
+	       c.status AS ceremony_status,
+	       d.id::int AS draft_id,
+	       d.status AS draft_status
+	     FROM season s
+	     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
        ${includeCancelled ? "" : "AND s.status <> 'CANCELLED'"}
@@ -156,20 +193,21 @@ export async function getMostRecentSeason(
   const { rows } = await query<SeasonRecord>(
     client,
     `SELECT
-       s.id::int,
-       s.league_id::int,
-       s.ceremony_id::int,
-       s.status,
-       s.scoring_strategy_name,
-       s.remainder_strategy,
-       d.pick_timer_seconds::int,
-       d.auto_pick_strategy,
-       s.created_at,
-       c.starts_at AS ceremony_starts_at,
-       d.id::int AS draft_id,
-       d.status AS draft_status
-     FROM season s
-     JOIN ceremony c ON c.id = s.ceremony_id
+	       s.id::int,
+	       s.league_id::int,
+	       s.ceremony_id::int,
+	       s.status,
+	       s.scoring_strategy_name,
+	       s.remainder_strategy,
+	       d.pick_timer_seconds::int,
+	       d.auto_pick_strategy,
+	       s.created_at,
+	       c.starts_at AS ceremony_starts_at,
+	       c.status AS ceremony_status,
+	       d.id::int AS draft_id,
+	       d.status AS draft_status
+	     FROM season s
+	     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
      ORDER BY s.created_at DESC

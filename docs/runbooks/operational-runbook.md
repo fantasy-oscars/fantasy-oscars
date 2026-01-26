@@ -139,9 +139,8 @@ Steps (from Render Shell on the API service):
 export DATABASE_URL="$DATABASE_URL"
 export ADMIN_BOOTSTRAP_SECRET="$ADMIN_BOOTSTRAP_SECRET" # Render injects it
 pnpm run admin:bootstrap -- \
-  --handle admin \
+  --username admin \
   --email admin@example.com \
-  --display-name "Fantasy Admin" \
   --password 'TempAdminP@ss123' \
   --secret "$ADMIN_BOOTSTRAP_SECRET"
 ```

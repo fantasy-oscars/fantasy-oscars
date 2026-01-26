@@ -78,7 +78,7 @@ describe("leagues integration", () => {
   it("creates a league, initial season, and owner membership for the active ceremony", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const res = await post<{
       league: { id: number; code: string; ceremony_id: number };
@@ -118,7 +118,7 @@ describe("leagues integration", () => {
   it("rejects creating a league when no active ceremony configured", async () => {
     await insertCeremony(db.pool, {}, false);
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const res = await post<{ error: { code: string } }>(
       "/leagues",
@@ -135,7 +135,7 @@ describe("leagues integration", () => {
 
   it("rejects missing required fields", async () => {
     await createActiveCeremony();
-    const token = signToken({ sub: "1", handle: "u1" });
+    const token = signToken({ sub: "1", username: "u1" });
     const res = await post<{ error: { code: string } }>(
       "/leagues",
       { name: "No code" },
@@ -148,7 +148,7 @@ describe("leagues integration", () => {
   it("gets a league by id", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -168,7 +168,7 @@ describe("leagues integration", () => {
   it("requires auth for get by id", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -190,7 +190,7 @@ describe("leagues integration", () => {
   it("lists leagues for the current user", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     await post<{ league: { id: number } }>(
       "/leagues",
       { code: "list-1", name: "List One", max_members: 5 },
@@ -205,7 +205,7 @@ describe("leagues integration", () => {
   it("returns invite-only error for legacy join endpoint", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -229,14 +229,11 @@ describe("leagues integration", () => {
     expect(res.json.error.code).toBe("INVITE_ONLY_MEMBERSHIP");
   });
 
-  it("returns roster for commissioners with roles and handles", async () => {
+  it("returns roster for commissioners with roles and usernames", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const member = await insertUser(db.pool, {
-      handle: "member1",
-      display_name: "Member One"
-    });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const member = await insertUser(db.pool, { username: "member1" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "r-1", name: "Roster", max_members: 5 },
@@ -252,21 +249,20 @@ describe("leagues integration", () => {
       members: Array<{
         user_id: number;
         role: string;
-        handle: string;
-        display_name: string;
+        username: string;
       }>;
     }>(`/leagues/${leagueId}/members`, ownerToken);
 
     expect(res.status).toBe(200);
-    const handles = res.json.members.map((m) => m.handle).sort();
-    expect(handles).toEqual([member.handle, owner.handle].sort());
+    const usernames = res.json.members.map((m) => m.username).sort();
+    expect(usernames).toEqual([member.username, owner.username].sort());
   });
 
   it("owner can transfer ownership to a member", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const target = await insertUser(db.pool, { handle: "new-owner" });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const target = await insertUser(db.pool, { username: "new-owner" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "transfer-1", name: "Transfer", max_members: 5 },
@@ -295,7 +291,7 @@ describe("leagues integration", () => {
   it("prevents removing the last commissioner", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "remove-1", name: "Remove", max_members: 5 },
@@ -313,8 +309,8 @@ describe("leagues integration", () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const joiner = await insertUser(db.pool, { id: owner.id + 1 });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
-    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
+    const joinToken = signToken({ sub: String(joiner.id), username: joiner.username });
 
     const created = await post<{ league: { id: number } }>(
       "/leagues",
@@ -349,9 +345,9 @@ describe("leagues integration", () => {
     const owner = await insertUser(db.pool);
     const joiner = await insertUser(db.pool, { id: owner.id + 1 });
     const third = await insertUser(db.pool, { id: owner.id + 2 });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
-    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
-    const thirdToken = signToken({ sub: String(third.id), handle: third.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
+    const joinToken = signToken({ sub: String(joiner.id), username: joiner.username });
+    const thirdToken = signToken({ sub: String(third.id), username: third.username });
 
     const created = await post<{ league: { id: number } }>(
       "/leagues",
@@ -379,8 +375,8 @@ describe("leagues integration", () => {
   it("commissioner can remove a member", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const member = await insertUser(db.pool, { handle: "dropme" });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const member = await insertUser(db.pool, { username: "dropme" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "remove-2", name: "Remove2", max_members: 5 },

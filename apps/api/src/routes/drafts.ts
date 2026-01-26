@@ -4,7 +4,7 @@ import { AppError, validationError } from "../errors.js";
 import {
   createDraft,
   getDraftById,
-  getDraftByLeagueId,
+  getDraftBySeasonId,
   updateDraftOnStart,
   updateDraftCurrentPick,
   updateDraftOnComplete,
@@ -36,21 +36,25 @@ import type {
   DraftPickRecord,
   DraftRecord
 } from "../data/repositories/draftRepository.js";
-import { getLeagueById, getLeagueMember } from "../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember,
+  getDraftSeatForUser,
+  setLeagueCeremonyIdIfMissing
+} from "../data/repositories/leagueRepository.js";
 import {
   createExtantSeason,
-  getExtantSeasonForLeague,
+  getExtantSeasonForLeagueCeremony,
   getSeasonById
 } from "../data/repositories/seasonRepository.js";
 import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
 import { listSeasonMembers } from "../data/repositories/seasonMemberRepository.js";
 import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
-import { runInTransaction } from "../data/db.js";
+import { query, runInTransaction } from "../data/db.js";
 import { mapDraftStateError, transitionDraftState } from "../domain/draftState.js";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
 import { computePickAssignment } from "../domain/draftOrder.js";
-import { getDraftSeatForUser } from "../data/repositories/leagueRepository.js";
 import { revokePendingInvitesForSeason } from "../data/repositories/seasonInviteRepository.js";
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import type { Pool } from "pg";
@@ -393,6 +397,7 @@ export function buildCreateDraftHandler(client: DbClient) {
     try {
       const { league_id, draft_order_type, pick_timer_seconds, auto_pick_strategy } =
         req.body ?? {};
+      const seasonIdRaw = (req.body ?? {}).season_id;
 
       const leagueIdNum = Number(league_id);
       if (!league_id || Number.isNaN(leagueIdNum)) {
@@ -422,6 +427,76 @@ export function buildCreateDraftHandler(client: DbClient) {
         throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
       }
 
+      // Newer flow: create a draft for a specific season (supports leagues with multiple seasons).
+      // Back-compat: if season_id is omitted, we fall back to the legacy "active ceremony" flow.
+      if (seasonIdRaw !== undefined && seasonIdRaw !== null) {
+        const seasonIdNum = Number(seasonIdRaw);
+        if (!Number.isFinite(seasonIdNum) || seasonIdNum <= 0) {
+          throw validationError("Invalid season_id", ["season_id"]);
+        }
+        const season = await getSeasonById(client, seasonIdNum);
+        if (!season || season.league_id !== leagueIdNum) {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        if (season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_ACTIVE", 409, "Season is not active");
+        }
+
+        const { rows: ceremonyRows } = await query<{
+          status: string;
+          draft_locked_at: Date | null;
+        }>(client, `SELECT status, draft_locked_at FROM ceremony WHERE id = $1`, [
+          season.ceremony_id
+        ]);
+        const ceremony = ceremonyRows[0];
+        if (!ceremony) {
+          throw new AppError("CEREMONY_NOT_FOUND", 404, "Ceremony not found");
+        }
+        const isLocked =
+          ceremony.draft_locked_at != null ||
+          String(ceremony.status).toUpperCase() === "LOCKED" ||
+          String(ceremony.status).toUpperCase() === "ARCHIVED";
+        if (isLocked) {
+          throw new AppError("CEREMONY_LOCKED", 409, "Ceremony is locked");
+        }
+        if (String(ceremony.status).toUpperCase() !== "PUBLISHED") {
+          throw new AppError("CEREMONY_NOT_PUBLISHED", 409, "Ceremony is not published");
+        }
+
+        const userId = Number((req as AuthedRequest).auth?.sub);
+        const leagueMember = await getLeagueMember(client, leagueIdNum, userId);
+        const isCommissioner =
+          league.created_by_user_id === userId ||
+          (leagueMember &&
+            (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
+        if (!isCommissioner) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+
+        const existing = await getDraftBySeasonId(client, season.id);
+        if (existing) {
+          throw new AppError("DRAFT_EXISTS", 409, "Draft already exists for this season");
+        }
+
+        const draft = await createDraft(client, {
+          league_id: leagueIdNum,
+          season_id: season.id,
+          status: "PENDING",
+          draft_order_type: "SNAKE",
+          current_pick_number: null,
+          started_at: null,
+          completed_at: null,
+          remainder_strategy: season.remainder_strategy ?? "UNDRAFTED",
+          pick_timer_seconds:
+            pick_timer_seconds === undefined || pick_timer_seconds === null
+              ? null
+              : Number(pick_timer_seconds),
+          auto_pick_strategy: autoPick === "NEXT_AVAILABLE" ? "NEXT_AVAILABLE" : null
+        });
+
+        return res.status(201).json({ draft });
+      }
+
       const activeCeremonyId = await getActiveCeremonyId(client);
       if (!activeCeremonyId) {
         throw new AppError(
@@ -430,7 +505,19 @@ export function buildCreateDraftHandler(client: DbClient) {
           "Active ceremony is not configured"
         );
       }
-      if (Number(league.ceremony_id) !== Number(activeCeremonyId)) {
+      const activeCeremonyIdNum = Number(activeCeremonyId);
+      if (Number.isNaN(activeCeremonyIdNum)) {
+        throw new AppError("INTERNAL_ERROR", 500, "Invalid active ceremony id");
+      }
+
+      const ceremonyIdToUse =
+        league.ceremony_id == null
+          ? ((
+              await setLeagueCeremonyIdIfMissing(client, leagueIdNum, activeCeremonyIdNum)
+            )?.ceremony_id ?? activeCeremonyIdNum)
+          : league.ceremony_id;
+
+      if (ceremonyIdToUse !== activeCeremonyIdNum) {
         throw new AppError(
           "CEREMONY_INACTIVE",
           409,
@@ -439,10 +526,10 @@ export function buildCreateDraftHandler(client: DbClient) {
       }
 
       const season =
-        (await getExtantSeasonForLeague(client, leagueIdNum)) ??
+        (await getExtantSeasonForLeagueCeremony(client, leagueIdNum, ceremonyIdToUse)) ??
         (await createExtantSeason(client, {
           league_id: leagueIdNum,
-          ceremony_id: league.ceremony_id
+          ceremony_id: ceremonyIdToUse
         }));
 
       const userId = Number((req as AuthedRequest).auth?.sub);
@@ -455,9 +542,9 @@ export function buildCreateDraftHandler(client: DbClient) {
         throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
       }
 
-      const existing = await getDraftByLeagueId(client, leagueIdNum);
+      const existing = await getDraftBySeasonId(client, season.id);
       if (existing) {
-        throw new AppError("DRAFT_EXISTS", 409, "Draft already exists for this league");
+        throw new AppError("DRAFT_EXISTS", 409, "Draft already exists for this season");
       }
 
       const draft = await createDraft(client, {
@@ -468,6 +555,7 @@ export function buildCreateDraftHandler(client: DbClient) {
         current_pick_number: null,
         started_at: null,
         completed_at: null,
+        remainder_strategy: season.remainder_strategy ?? "UNDRAFTED",
         pick_timer_seconds:
           pick_timer_seconds === undefined || pick_timer_seconds === null
             ? null
@@ -943,7 +1031,7 @@ export function buildResumeDraftHandler(pool: Pool) {
 
 export function buildSnapshotDraftHandler(pool: Pool) {
   return async function handleSnapshotDraft(
-    req: express.Request,
+    req: AuthedRequest,
     res: express.Response,
     next: express.NextFunction
   ) {
@@ -1067,9 +1155,69 @@ export function buildSnapshotDraftHandler(pool: Pool) {
 
       let nomineePoolSize: number | null = null;
       const season = await getSeasonById(pool, draft.season_id);
+      if (season && season.status === "CANCELLED") {
+        throw new AppError("SEASON_CANCELLED", 409, "Season cancelled");
+      }
       if (season) {
         nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
       }
+
+      const categories = season
+        ? (
+            await query<{
+              id: number;
+              unit_kind: string;
+              sort_index: number;
+              family_name: string;
+              icon_code: string | null;
+            }>(
+              pool,
+              `SELECT
+                 ce.id::int,
+                 ce.unit_kind,
+                 ce.sort_index::int,
+                 cf.name AS family_name,
+                 i.code AS icon_code
+               FROM category_edition ce
+               JOIN category_family cf ON cf.id = ce.family_id
+               LEFT JOIN icon i ON i.id = COALESCE(ce.icon_id, cf.icon_id)
+               WHERE ce.ceremony_id = $1
+               ORDER BY ce.sort_index ASC, ce.id ASC`,
+              [season.ceremony_id]
+            )
+          ).rows
+        : [];
+
+      const unitKindByCategoryId = new Map<number, string>();
+      for (const c of categories) {
+        unitKindByCategoryId.set(Number(c.id), String(c.unit_kind));
+      }
+
+      const nominations = season
+        ? (await listNominationsForCeremony(pool, season.ceremony_id)).map((n) => {
+            // Draft room display label should follow the category's unit kind, not
+            // incidental contributor data (e.g. producers attached to Best Picture).
+            const kind = unitKindByCategoryId.get(Number(n.category_edition_id)) ?? "";
+            const label =
+              kind === "SONG"
+                ? (n.song_title ?? n.film_title ?? `Nomination #${n.id}`)
+                : kind === "PERFORMANCE"
+                  ? (n.performer_name ??
+                    n.song_title ??
+                    n.film_title ??
+                    `Nomination #${n.id}`)
+                  : (n.film_title ??
+                    n.song_title ??
+                    n.performer_name ??
+                    `Nomination #${n.id}`);
+            return {
+              id: n.id,
+              category_edition_id: n.category_edition_id,
+              label,
+              status: n.status ?? "ACTIVE"
+            };
+          })
+        : [];
 
       let turn: {
         current_pick_number: number;
@@ -1097,9 +1245,20 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         };
       }
 
+      const viewerUserId = Number(req.auth?.sub);
+      const mySeatNumber =
+        viewerUserId && seats.length
+          ? (seats.find((s) => Number(s.user_id) === viewerUserId)?.seat_number ?? null)
+          : null;
+
       return res.status(200).json({
         draft,
-        seats,
+        seats: seats.map((s) => ({
+          seat_number: s.seat_number,
+          league_member_id: s.league_member_id,
+          user_id: s.user_id ?? null,
+          username: (s as { username?: string }).username ?? null
+        })),
         picks,
         version: draft.version,
         picks_per_seat: picksPerSeat,
@@ -1115,7 +1274,10 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         pick_timer_remaining_ms: draft.pick_timer_remaining_ms ?? null,
         nominee_pool_size: nomineePoolSize,
         turn,
-        ceremony_starts_at: season?.ceremony_starts_at ?? null
+        ceremony_starts_at: season?.ceremony_starts_at ?? null,
+        my_seat_number: mySeatNumber,
+        categories,
+        nominations
       });
     } catch (err) {
       next(err);

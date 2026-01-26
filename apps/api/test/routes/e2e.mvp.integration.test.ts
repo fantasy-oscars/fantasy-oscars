@@ -51,16 +51,15 @@ describe("MVP end-to-end flow", () => {
   it("covers auth → league → draft → winner lock → standings", async () => {
     // Admin setup
     const adminReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "admin-e2e",
+      username: "admin-e2e",
       email: "admin-e2e@example.com",
-      display_name: "Admin E2E",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       adminReg.json.user.id
     ]);
     const adminLogin = await postJson<{ token: string }>("/auth/login", {
-      handle: "admin-e2e",
+      username: "admin-e2e",
       password: "secret123"
     });
 
@@ -131,27 +130,25 @@ describe("MVP end-to-end flow", () => {
 
     // Commissioner + member
     const commishReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "commish",
+      username: "commish",
       email: "commish@example.com",
-      display_name: "Commish",
       password: "secret123"
     });
     const commishLogin = await postJson<{ token: string; user: { id: number } }>(
       "/auth/login",
       {
-        handle: "commish",
+        username: "commish",
         password: "secret123"
       }
     );
 
     const memberReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "member",
+      username: "member",
       email: "member@example.com",
-      display_name: "Member",
       password: "secret123"
     });
     const memberLogin = await postJson<{ token: string }>("/auth/login", {
-      handle: "member",
+      username: "member",
       password: "secret123"
     });
 

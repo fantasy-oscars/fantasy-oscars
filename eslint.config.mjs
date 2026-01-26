@@ -6,8 +6,9 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 export default [
+  js.configs.recommended,
   {
-    files: ["**/*.{js,jsx,ts,tsx}"],
+    files: ["**/*.{js,jsx,mjs,cjs,ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -20,7 +21,6 @@ export default [
       "no-console": "warn"
     }
   },
-  js.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {

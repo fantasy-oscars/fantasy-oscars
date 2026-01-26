@@ -34,7 +34,7 @@ async function post<T>(
     opts.auth === false
       ? null
       : signToken(
-          { sub: String(opts.authUserId ?? 1), handle: "tester" },
+          { sub: String(opts.authUserId ?? 1), username: "tester" },
           process.env.AUTH_SECRET ?? "test-secret"
         );
   const req = api.post(path).set("content-type", "application/json").send(body);
