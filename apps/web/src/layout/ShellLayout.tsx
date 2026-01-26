@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
+import { BannerStack } from "./BannerStack";
 import { PageError } from "../ui/page-state";
+import { SiteFooter } from "./SiteFooter";
 
 export function ShellLayout() {
-  const { user, loading, error, logout, refresh } = useAuthContext();
+  const { user, loading, error, logout } = useAuthContext();
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -89,68 +91,54 @@ export function ShellLayout() {
             >
               Ceremonies
             </NavLink>
-            {user?.is_admin && (
-              <div className="nav-admin">
-                <span className="nav-section">Admin</span>
-                <NavLink
-                  className={({ isActive }) =>
-                    isActive ? "nav-link active" : "nav-link"
-                  }
-                  to="/admin"
-                >
-                  Console
-                </NavLink>
-              </div>
-            )}
           </div>
 
           <div className="nav-actions">
             {loading ? (
               <span className="nav-muted">Loading…</span>
             ) : user ? (
-              <div className="menu" ref={menuRef}>
-                <button
-                  type="button"
-                  className="nav-user menu-button"
-                  aria-haspopup="menu"
-                  aria-expanded={userMenuOpen}
-                  onClick={() => setUserMenuOpen((v) => !v)}
-                >
-                  {user.username ?? user.sub}
-                  <span className="caret" aria-hidden="true">
-                    ▾
-                  </span>
-                </button>
-                {userMenuOpen && (
-                  <div className="menu-panel" role="menu">
-                    <button
-                      type="button"
-                      className="menu-item"
-                      role="menuitem"
-                      onClick={() => void refresh()}
-                    >
-                      Refresh session
-                    </button>
-                    <button
-                      type="button"
-                      className="menu-item"
-                      role="menuitem"
-                      onClick={() => navigate("/account")}
-                    >
-                      Account
-                    </button>
-                    <div className="menu-sep" role="separator" />
-                    <button
-                      type="button"
-                      className="menu-item danger"
-                      role="menuitem"
-                      onClick={() => void logout()}
-                    >
-                      Logout
-                    </button>
-                  </div>
+              <>
+                {user.is_admin && (
+                  <NavLink to="/admin" className="button ghost">
+                    Admin
+                  </NavLink>
                 )}
-              </div>
+                <div className="menu" ref={menuRef}>
+                  <button
+                    type="button"
+                    className="nav-user menu-button"
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                  >
+                    {user.username ?? user.sub}
+                    <span className="caret" aria-hidden="true">
+                      ▾
+                    </span>
+                  </button>
+                  {userMenuOpen && (
+                    <div className="menu-panel" role="menu">
+                      <button
+                        type="button"
+                        className="menu-item"
+                        role="menuitem"
+                        onClick={() => navigate("/account")}
+                      >
+                        Account
+                      </button>
+                      <div className="menu-sep" role="separator" />
+                      <button
+                        type="button"
+                        className="menu-item danger"
+                        role="menuitem"
+                        onClick={() => void logout()}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <Link
                 to="/login"
@@ -165,27 +153,18 @@ export function ShellLayout() {
           </div>
         </nav>
 
+        {!location.pathname.startsWith("/drafts/") && (
+          <div className="banner-region">
+            <BannerStack />
+          </div>
+        )}
+
         <main className="site-content">
           <Outlet />
         </main>
 
-        <footer className="site-footer">
-          <nav className="footer-links" aria-label="Footer">
-            <Link to="/about">About</Link>
-            <Link to="/contact">Contact</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-          </nav>
-          <div className="footer-meta">
-            <span>Fantasy Oscars</span>
-            <span className="dot" aria-hidden="true">
-              •
-            </span>
-            <span>© {new Date().getFullYear()}</span>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
     </div>
   );
 }
-

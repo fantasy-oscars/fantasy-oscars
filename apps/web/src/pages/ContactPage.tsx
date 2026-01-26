@@ -4,9 +4,8 @@ export function ContactPage() {
   return (
     <StaticPage title="Contact">
       <p>
-        Email: <a href="mailto:hello@fantasy-oscars.com">hello@fantasy-oscars.com</a>
+        Email: <a href="mailto:contact@fantasy-oscars.com">contact@fantasy-oscars.com</a>
       </p>
     </StaticPage>
   );
 }
-

@@ -13,4 +13,3 @@ export function PageError(props: { message: string }) {
     </div>
   );
 }
-

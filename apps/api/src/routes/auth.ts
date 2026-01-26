@@ -89,9 +89,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
   const router = express.Router();
   const { authSecret } = opts;
   const isProd = process.env.NODE_ENV === "production";
+  // Dogfooding preference: keep sessions long-lived to avoid "random" logouts.
+  // NOTE: This is a single JWT in an HttpOnly cookie (no refresh/rotation yet),
+  // so shortening this (or adding refresh tokens) is recommended before go-live.
+  const AUTH_COOKIE_TTL_DAYS = 90;
+  const authCookieMaxAgeMs = AUTH_COOKIE_TTL_DAYS * 24 * 60 * 60 * 1000;
   const cookieConfig = {
     name: "auth_token",
-    maxAgeMs: 60 * 60 * 1000, // 1 hour
+    maxAgeMs: authCookieMaxAgeMs,
     sameSite: "lax" as const,
     httpOnly: true,
     secure: isProd,
@@ -221,7 +226,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       const token = signToken(
         { sub: String(user.id), username: user.username, is_admin: user.is_admin },
         authSecret,
-        60 * 60
+        Math.floor(cookieConfig.maxAgeMs / 1000)
       );
       res.cookie(cookieConfig.name, token, {
         httpOnly: cookieConfig.httpOnly,

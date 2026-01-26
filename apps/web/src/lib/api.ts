@@ -48,4 +48,3 @@ export async function fetchJson<T>(
     return { ok: false, error: message };
   }
 }
-

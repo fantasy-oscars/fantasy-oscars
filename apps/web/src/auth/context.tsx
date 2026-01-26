@@ -21,20 +21,28 @@ export type AuthContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
-  login: (input: { username: string; password: string }) => Promise<{
-    ok: true;
-  } | {
-    ok: false;
-    error?: string;
-    errorFields?: string[];
-  }>;
-  register: (input: { username: string; email: string; password: string }) => Promise<{
-    ok: true;
-  } | {
-    ok: false;
-    error?: string;
-    errorFields?: string[];
-  }>;
+  login: (input: { username: string; password: string }) => Promise<
+    | {
+        ok: true;
+      }
+    | {
+        ok: false;
+        error?: string;
+        errorCode?: string;
+        errorFields?: string[];
+      }
+  >;
+  register: (input: { username: string; email: string; password: string }) => Promise<
+    | {
+        ok: true;
+      }
+    | {
+        ok: false;
+        error?: string;
+        errorCode?: string;
+        errorFields?: string[];
+      }
+  >;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -92,7 +100,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setError(res.error ?? "Login failed");
     setUser(null);
-    return { ok: false as const, error: res.error, errorFields: res.errorFields };
+    return {
+      ok: false as const,
+      error: res.error,
+      errorCode: res.errorCode,
+      errorFields: res.errorFields
+    };
   }, []);
 
   const register = useCallback(
@@ -109,7 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: true as const };
       }
       setError(res.error ?? "Registration failed");
-      return { ok: false as const, error: res.error, errorFields: res.errorFields };
+      return {
+        ok: false as const,
+        error: res.error,
+        errorCode: res.errorCode,
+        errorFields: res.errorFields
+      };
     },
     [login]
   );
@@ -125,4 +143,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

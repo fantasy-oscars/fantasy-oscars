@@ -38,6 +38,7 @@ export type DraftSeatRecord = {
   seat_number: number;
   is_active: boolean;
   user_id?: number;
+  username?: string;
 };
 
 export type DraftPickRecord = {
@@ -227,6 +228,27 @@ export async function updateDraftStatus(
     [id, status]
   );
   return rows[0] ?? null;
+}
+
+export async function cancelDraftsForCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<Array<{ id: number; season_id: number; status: string }>> {
+  const { rows } = await query<{ id: number; season_id: number; status: string }>(
+    client,
+    `UPDATE draft d
+     SET status = 'CANCELLED',
+         completed_at = COALESCE(completed_at, now()),
+         pick_deadline_at = NULL,
+         pick_timer_remaining_ms = NULL
+     FROM season s
+     WHERE s.id = d.season_id
+       AND s.ceremony_id = $1
+       AND d.status IN ('PENDING','IN_PROGRESS','PAUSED')
+     RETURNING d.id::int, d.season_id::int AS season_id, d.status`,
+    [ceremonyId]
+  );
+  return rows;
 }
 
 export async function deleteDraft(client: DbClient, id: number): Promise<void> {
@@ -450,9 +472,11 @@ export async function listDraftSeats(
        ds.league_member_id::int,
        ds.seat_number::int,
        ds.is_active,
-       lm.user_id::int AS user_id
+       lm.user_id::int AS user_id,
+       u.username
      FROM draft_seat ds
      JOIN league_member lm ON lm.id = ds.league_member_id
+     JOIN app_user u ON u.id = lm.user_id
      WHERE ds.draft_id = $1
      ORDER BY ds.seat_number ASC`,
     [draftId]

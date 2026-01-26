@@ -8,6 +8,8 @@ import { createLeaguesRouter } from "./routes/leagues.js";
 import { createSeasonsRouter } from "./routes/seasons.js";
 import { createAdminRouter } from "./routes/admin.js";
 import { createCeremonyRouter } from "./routes/ceremony.js";
+import { createCeremoniesRouter } from "./routes/ceremonies.js";
+import { createContentRouter } from "./routes/content.js";
 import { requireAdmin, requireAuth } from "./auth/middleware.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
@@ -102,6 +104,8 @@ export function createServer(deps?: { db?: Pool }): Express {
   app.use("/seasons", createSeasonsRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
   app.use("/ceremony", createCeremonyRouter(pool));
+  app.use("/ceremonies", createCeremoniesRouter(pool));
+  app.use("/content", createContentRouter(pool));
   app.use(
     "/admin",
     requireAuth(config.authSecret),

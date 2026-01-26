@@ -31,6 +31,11 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
+### TMDB (optional)
+
+If you want to hydrate films/people from TMDB (poster + cast/crew), set `TMDB_READ_ACCESS_TOKEN`
+in `apps/api/.env`.
+
 Start Postgres, apply migrations, and run API + web:
 
 ```bash

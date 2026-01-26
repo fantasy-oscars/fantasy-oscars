@@ -82,4 +82,3 @@ export function useSeasonPreview(opts: { enabled: boolean }) {
 
   return { state, refresh };
 }
-

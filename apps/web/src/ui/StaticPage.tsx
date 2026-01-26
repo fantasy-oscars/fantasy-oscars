@@ -8,4 +8,3 @@ export function StaticPage(props: { title: string; children: React.ReactNode }) 
     </section>
   );
 }
-

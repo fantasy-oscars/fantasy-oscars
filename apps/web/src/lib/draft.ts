@@ -39,4 +39,3 @@ export function formatTimer(draft: Snapshot["draft"], nowMs: number) {
   const seconds = Math.round(remaining / 1000);
   return `${draft.pick_timer_seconds}s • ${seconds}s left`;
 }
-

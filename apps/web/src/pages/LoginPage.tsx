@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
 import { useRequiredFields, FormField, FormStatus } from "../ui/forms";
 import type { ApiResult, FieldErrors } from "../lib/types";
+import { authFieldErrorMessage } from "../features/auth/validation";
 
 export function LoginPage() {
-  const { login, error } = useAuthContext();
+  const { login } = useAuthContext();
   const [errors, setErrors] = useState<FieldErrors>({});
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,10 +30,16 @@ export function LoginPage() {
     if (!res.ok) {
       const nextErrors: FieldErrors = { ...errs };
       res.errorFields?.forEach((field) => {
-        nextErrors[field] = "Invalid";
+        nextErrors[field] = authFieldErrorMessage(field);
       });
       setErrors(nextErrors);
-      setResult({ ok: false, message: res.error ?? "Login failed" });
+      setResult({
+        ok: false,
+        message:
+          res.errorCode === "VALIDATION_ERROR" && res.errorFields?.length
+            ? "Please check the highlighted fields and try again."
+            : (res.error ?? "Login failed")
+      });
       return;
     }
     setResult({ ok: true, message: "Logged in" });
@@ -59,7 +66,6 @@ export function LoginPage() {
           </button>
         </form>
         <FormStatus loading={loading} result={result} />
-        {error && <small className="muted">Last error: {error}</small>}
       </section>
       <section className="card">
         <header>
@@ -73,4 +79,3 @@ export function LoginPage() {
     </div>
   );
 }
-

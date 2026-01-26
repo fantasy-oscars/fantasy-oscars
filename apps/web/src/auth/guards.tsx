@@ -45,4 +45,3 @@ export function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
   if (user) return <Navigate to={from} replace />;
   return <>{children}</>;
 }
-

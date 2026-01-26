@@ -7,4 +7,3 @@ export function allocationLabel(strategy?: string | null) {
       return "Leave extras undrafted";
   }
 }
-

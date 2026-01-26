@@ -13,4 +13,3 @@ export function NotFoundPage() {
     </section>
   );
 }
-

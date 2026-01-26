@@ -521,20 +521,20 @@ describe("<App /> shell + routing", () => {
               draft: {
                 id: 1,
                 league_id: 10,
+                season_id: 1,
                 status: "PENDING",
-                draft_order_type: "snake",
                 current_pick_number: 1,
                 started_at: null,
                 completed_at: null,
                 version: 2
               },
-              seats: [
-                { id: 1, seat_number: 1, league_member_id: 100 },
-                { id: 2, seat_number: 2, league_member_id: 200 }
-              ],
+              seats: [],
               picks: [],
-              config: { roster_size: 3 },
               version: 2,
+              total_picks: 0,
+              my_seat_number: null,
+              categories: [],
+              nominations: [],
               ceremony_starts_at: "2026-02-01T12:00:00.000Z"
             })
         });
@@ -545,10 +545,9 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Draft Room/i });
-    await screen.findByText(/Draft #1/i);
+    await screen.findByRole("link", { name: /Back to Season/i });
     await screen.findByText(/Status: PENDING/i);
-    expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start draft/i })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/snapshot"),
       expect.objectContaining({ method: "GET" })
@@ -557,7 +556,7 @@ describe("<App /> shell + routing", () => {
 
   it("shows integrity warning when within T-24h window", async () => {
     vi.setSystemTime(new Date("2026-02-01T00:00:00Z"));
-    window.history.pushState({}, "", "/drafts/1");
+    window.history.pushState({}, "", "/seasons/1");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -565,30 +564,56 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
-      if (url.includes("/drafts/1/snapshot")) {
+      if (url.includes("/seasons/1/members")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              draft: {
-                id: 1,
-                league_id: 10,
-                status: "IN_PROGRESS",
-                draft_order_type: "snake",
-                current_pick_number: 2,
-                started_at: null,
-                completed_at: null,
-                version: 5
-              },
-              seats: [
-                { id: 1, seat_number: 1, league_member_id: 100 },
-                { id: 2, seat_number: 2, league_member_id: 200 }
-              ],
-              picks: [],
-              config: { roster_size: 3 },
-              version: 5,
-              ceremony_starts_at: "2026-02-01T12:00:00.000Z"
+              members: [{ id: 1, season_id: 1, user_id: 1, league_member_id: 100, role: "OWNER", joined_at: "2026-01-01T00:00:00.000Z", username: "alice" }]
             })
+        });
+      }
+      if (url.endsWith("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ leagues: [{ id: 10, code: "lg", name: "Test League", ceremony_id: 22 }] })
+        });
+      }
+      if (url.includes("/leagues/10/seasons")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              seasons: [
+                {
+                  id: 1,
+                  ceremony_id: 22,
+                  status: "EXTANT",
+                  is_active_ceremony: true,
+                  created_at: "2026-01-01T00:00:00.000Z",
+                  ceremony_starts_at: "2026-02-01T12:00:00.000Z",
+                  draft_id: 1,
+                  draft_status: "IN_PROGRESS",
+                  scoring_strategy_name: "fixed",
+                  remainder_strategy: "UNDRAFTED"
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [{ id: 100, user_id: 1, role: "OWNER", username: "alice" }]
+            })
+        });
+      }
+      if (url.includes("/seasons/1/invites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invites: [] })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -597,7 +622,6 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Draft Room/i });
     await screen.findByText(
       /once winners start getting entered after the ceremony begins/i
     );
@@ -678,7 +702,7 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders admin console skeleton for admins", async () => {
-    window.history.pushState({}, "", "/admin");
+    window.history.pushState({}, "", "/admin/ceremonies/1/overview");
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
@@ -686,6 +710,23 @@ describe("<App /> shell + routing", () => {
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  year: 2026,
+                  starts_at: null
+                }
+              ]
+            })
         });
       }
       if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
@@ -700,7 +741,10 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/admin/ceremony/active") && init?.method === "POST") {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ ceremony_id: 8 })
+          json: () =>
+            Promise.resolve({
+              ceremony: { id: 8, code: "oscars-2027", name: "Oscars 2027" }
+            })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -709,13 +753,12 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Admin console/i });
-    await screen.findByText(/Drafts open/i);
-    await screen.findAllByText(/Active ceremony/i);
+    await screen.findByRole("heading", { name: /Ceremonies/i });
+    await screen.findByRole("heading", { name: /Active ceremony/i });
     expect(screen.getByText(/ID 7/)).toBeInTheDocument();
-    await userEvent.clear(screen.getByLabelText(/Set active ceremony/i));
-    await userEvent.type(screen.getByLabelText(/Set active ceremony/i), "8");
-    const update = screen.getByRole("button", { name: /Update active ceremony/i });
+    await userEvent.clear(screen.getByLabelText(/Ceremony ID/i));
+    await userEvent.type(screen.getByLabelText(/Ceremony ID/i), "8");
+    const update = screen.getByRole("button", { name: /Update/i });
     await userEvent.click(update);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -723,19 +766,34 @@ describe("<App /> shell + routing", () => {
         expect.objectContaining({ method: "POST" })
       )
     );
-    await screen.findAllByText(/Nominees/i);
-    await screen.findAllByText(/Winners/i);
     confirmSpy.mockRestore();
   });
 
   it("uploads nominees JSON and shows summary", async () => {
-    window.history.pushState({}, "", "/admin");
+    window.history.pushState({}, "", "/admin/ceremonies/1/nominees");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  year: 2026,
+                  starts_at: null
+                }
+              ]
+            })
         });
       }
       if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
@@ -756,7 +814,7 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Admin console/i });
+    await screen.findByRole("heading", { name: /Nominees/i });
     const fileInput = await screen.findByLabelText(/Nominees JSON file/i);
     const file = new File(
       [JSON.stringify({ categories: [{}], nominations: [{ id: 1 }, { id: 2 }] })],
@@ -776,13 +834,30 @@ describe("<App /> shell + routing", () => {
   });
 
   it("saves winners per category with confirmations and lock state", async () => {
-    window.history.pushState({}, "", "/admin");
+    window.history.pushState({}, "", "/admin/ceremonies/1/winners");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
+        });
+      }
+      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  year: 2026,
+                  starts_at: null
+                }
+              ]
+            })
         });
       }
       if (url.includes("/ceremony/active/lock")) {
@@ -846,6 +921,7 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(
       within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
     );
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winner/i }));
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/admin/winners"))
@@ -859,6 +935,7 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(
       within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
     );
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winner/i }));
     await waitFor(() => {
       const winnerPosts = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes("/admin/winners")

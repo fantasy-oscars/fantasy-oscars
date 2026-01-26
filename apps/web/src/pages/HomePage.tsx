@@ -1,22 +1,18 @@
 import { Link } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
 import { useSeasonPreview } from "../features/home/useSeasonPreview";
+import { useDynamicContent } from "../features/content/useDynamicContent";
+import { useStaticContent } from "../features/content/useStaticContent";
+import { Markdown } from "../ui/Markdown";
 
 export function HomePage() {
   const { user, loading } = useAuthContext();
-  const { state: seasonPreviewState, refresh: refreshSeasonPreview } = useSeasonPreview({
+  const { state: seasonPreviewState } = useSeasonPreview({
     enabled: Boolean(user)
   });
 
-  const adminPost = {
-    title: "Dogfooding Notes: What We're Testing This Week",
-    updatedAt: "Jan 2026",
-    body: [
-      "This is the current announcement space. In MVP, it is intentionally simple: a single \"what's new / what to test\" post.",
-      "Focus areas right now: registration/login flows, league + season creation, and draft room stability under refresh/reconnect.",
-      "If something feels confusing, write down what you expected to happen and what actually happened, then include the URL and timestamp."
-    ]
-  };
+  const { view: landingBlurb } = useStaticContent("landing_blurb");
+  const { view: homeMain } = useDynamicContent("home_main");
 
   return (
     <section className="hero landing">
@@ -25,11 +21,19 @@ export function HomePage() {
           <section className="card landing-section">
             <header>
               <p className="eyebrow">Draft night, but for awards</p>
-              <h2 className="hero-title">Fantasy Oscars</h2>
-              <p className="lede">
-                Create a league, draft nominees, and watch standings update as winners
-                are announced.
-              </p>
+              <h2 className="hero-title">
+                {landingBlurb.state === "ready" && landingBlurb.content.title
+                  ? landingBlurb.content.title
+                  : "Fantasy Oscars"}
+              </h2>
+              {landingBlurb.state === "ready" && landingBlurb.content.body_markdown ? (
+                <Markdown markdown={landingBlurb.content.body_markdown} />
+              ) : (
+                <p className="lede">
+                  Create a league, draft nominees, and watch standings update as winners
+                  are announced.
+                </p>
+              )}
             </header>
             <div className="inline-actions">
               <Link to="/about" className="button ghost">
@@ -41,8 +45,24 @@ export function HomePage() {
           <article className="card landing-section">
             <header className="header-with-controls">
               <div>
-                <h3>{adminPost.title}</h3>
-                <p className="muted">Updated {adminPost.updatedAt}</p>
+                <h3>
+                  {homeMain.state === "ready" && homeMain.content?.title
+                    ? homeMain.content.title
+                    : "Updates"}
+                </h3>
+                {homeMain.state === "ready" && homeMain.content?.published_at ? (
+                  <p className="muted">
+                    Published{" "}
+                    {new Date(homeMain.content.published_at).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      }
+                    )}
+                  </p>
+                ) : null}
               </div>
               {user?.is_admin && (
                 <Link to="/admin" className="button ghost">
@@ -50,11 +70,15 @@ export function HomePage() {
                 </Link>
               )}
             </header>
-            <div className="prose">
-              {adminPost.body.map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </div>
+            {homeMain.state === "loading" ? (
+              <p className="muted">Loading...</p>
+            ) : homeMain.state === "error" ? (
+              <p className="muted">No updates yet.</p>
+            ) : homeMain.content ? (
+              <Markdown markdown={homeMain.content.body_markdown} />
+            ) : (
+              <p className="muted">It&apos;s quiet... too quiet.</p>
+            )}
           </article>
         </div>
 
@@ -68,7 +92,7 @@ export function HomePage() {
               </p>
             </header>
             <div className="stack-sm">
-              <Link to="/leagues" className="button">
+              <Link to="/leagues/new" className="button">
                 New league
               </Link>
               {!loading && !user && (
@@ -88,14 +112,6 @@ export function HomePage() {
             <section className="landing-season-stack" aria-label="Active seasons">
               <header className="landing-season-header">
                 <h3>Active seasons</h3>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => void refreshSeasonPreview()}
-                  disabled={seasonPreviewState.state === "loading"}
-                >
-                  Refresh
-                </button>
               </header>
 
               {seasonPreviewState.state === "loading" && (

@@ -2,8 +2,22 @@ export type ApiResult = { ok: boolean; message: string };
 
 export type FieldErrors = Partial<Record<string, string>>;
 
-export type LeagueSummary = { id: number; code: string; name: string; ceremony_id: number };
+export type LeagueSummary = {
+  id: number;
+  code: string;
+  name: string;
+  ceremony_id: number | null;
+};
 export type LeagueDetail = LeagueSummary & { max_members?: number; roster_size?: number };
+
+export type CeremonySummary = {
+  id: number;
+  code: string;
+  name: string;
+  year?: number | null;
+  starts_at?: string | null;
+  status: string;
+};
 
 export type LeagueMember = {
   id: number;
@@ -33,6 +47,7 @@ export type SeasonMember = {
   league_member_id: number | null;
   role: string;
   joined_at: string;
+  username?: string;
 };
 
 export type SeasonInvite = {
@@ -81,18 +96,46 @@ export type Snapshot = {
     version?: number | null;
     pick_timer_seconds?: number | null;
     pick_deadline_at?: string | null;
+    pick_timer_remaining_ms?: number | null;
+    auto_pick_strategy?: string | null;
     integrity_status?: string | null;
     allow_drafting_after_lock?: boolean;
     lock_override_set_by_user_id?: number | null;
     lock_override_set_at?: string | null;
   };
-  seats: Array<{ seat_number: number; league_member_id: number; user_id?: number }>;
+  seats: Array<{
+    seat_number: number;
+    league_member_id: number;
+    user_id?: number | null;
+    username?: string | null;
+  }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
   picks_per_seat?: number | null;
   total_picks?: number | null;
   remainder_strategy?: string;
+  nominee_pool_size?: number | null;
+  turn?: {
+    current_pick_number: number;
+    seat_number: number;
+    round_number: number;
+    direction: "FORWARD" | "REVERSE";
+  } | null;
   ceremony_starts_at?: string | null;
+  my_seat_number?: number | null;
+  categories?: Array<{
+    id: number;
+    unit_kind: string;
+    sort_index: number;
+    family_name: string;
+    icon_code: string | null;
+  }>;
+  nominations?: Array<{
+    id: number;
+    category_edition_id: number;
+    label: string;
+    status: string;
+  }>;
   nomination_flags?: Array<{
     nomination_id: number;
     status: string;
@@ -133,4 +176,3 @@ export type DraftEventMessage = {
   };
   created_at: string;
 };
-
