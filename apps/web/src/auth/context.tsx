@@ -1,0 +1,145 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import { fetchJson } from "../lib/api";
+
+export type AuthUser = {
+  sub: string;
+  username?: string;
+  email?: string;
+  is_admin?: boolean;
+};
+
+export type AuthContextValue = {
+  user: AuthUser | null;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  logout: () => Promise<void>;
+  login: (input: { username: string; password: string }) => Promise<
+    | {
+        ok: true;
+      }
+    | {
+        ok: false;
+        error?: string;
+        errorCode?: string;
+        errorFields?: string[];
+      }
+  >;
+  register: (input: { username: string; email: string; password: string }) => Promise<
+    | {
+        ok: true;
+      }
+    | {
+        ok: false;
+        error?: string;
+        errorCode?: string;
+        errorFields?: string[];
+      }
+  >;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function useAuthContext() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("AuthContext missing");
+  return ctx;
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const res = await fetchJson<{ user: AuthUser }>("/auth/me", { method: "GET" });
+    if (res.ok) {
+      setUser(res.data?.user ?? null);
+    } else {
+      setUser(null);
+      // Missing/expired/invalid token is a normal "signed out" state.
+      if (
+        res.errorCode === "UNAUTHORIZED" ||
+        res.errorCode === "INVALID_TOKEN" ||
+        res.errorCode === "TOKEN_EXPIRED"
+      ) {
+        setError(null);
+      } else {
+        setError(res.error ?? "Unable to verify session");
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const logout = useCallback(async () => {
+    setLoading(true);
+    await fetchJson("/auth/logout", { method: "POST" });
+    setUser(null);
+    setLoading(false);
+  }, []);
+
+  const login = useCallback(async (input: { username: string; password: string }) => {
+    setError(null);
+    const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    if (res.ok && res.data?.user) {
+      setUser(res.data.user);
+      return { ok: true as const };
+    }
+    setError(res.error ?? "Login failed");
+    setUser(null);
+    return {
+      ok: false as const,
+      error: res.error,
+      errorCode: res.errorCode,
+      errorFields: res.errorFields
+    };
+  }, []);
+
+  const register = useCallback(
+    async (input: { username: string; email: string; password: string }) => {
+      setError(null);
+      const res = await fetchJson("/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input)
+      });
+      if (res.ok) {
+        // Auto-login fetch
+        await login({ username: input.username, password: input.password });
+        return { ok: true as const };
+      }
+      setError(res.error ?? "Registration failed");
+      return {
+        ok: false as const,
+        error: res.error,
+        errorCode: res.errorCode,
+        errorFields: res.errorFields
+      };
+    },
+    [login]
+  );
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const value = useMemo(
+    () => ({ user, loading, error, refresh, logout, login, register }),
+    [user, loading, error, refresh, logout, login, register]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

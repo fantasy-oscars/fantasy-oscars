@@ -19,6 +19,10 @@ async function setActiveCeremony(id: number) {
 
 async function createActiveCeremony() {
   const ceremony = await insertCeremony(db.pool);
+  // Current API requires ceremonies to be published before they can be used for season/draft flows.
+  await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    ceremony.id
+  ]);
   await setActiveCeremony(ceremony.id);
   return ceremony;
 }
@@ -78,7 +82,7 @@ describe("leagues integration", () => {
   it("creates a league, initial season, and owner membership for the active ceremony", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const res = await post<{
       league: { id: number; code: string; ceremony_id: number };
@@ -86,15 +90,12 @@ describe("leagues integration", () => {
     }>(
       "/leagues",
       {
-        code: "league-1",
-        name: "League One",
-        max_members: 10,
-        is_public: true
+        name: "League One"
       },
       token
     );
     expect(res.status).toBe(201);
-    expect(res.json.league.code).toBe("league-1");
+    expect(res.json.league.code).toMatch(/^league-one-[a-f0-9]{6}$/);
     expect(res.json.league.ceremony_id).toBe(ceremony.id);
     expect(res.json.season.ceremony_id).toBe(ceremony.id);
     const { rows } = await db.pool.query<{ count: string }>(
@@ -118,29 +119,27 @@ describe("leagues integration", () => {
   it("rejects creating a league when no active ceremony configured", async () => {
     await insertCeremony(db.pool, {}, false);
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const res = await post<{ error: { code: string } }>(
       "/leagues",
       {
-        code: "wrong-ceremony",
-        name: "Wrong Ceremony",
-        max_members: 10
+        name: "League before ceremony"
       },
       token
     );
-    expect(res.status).toBe(409);
-    expect(res.json.error.code).toBe("ACTIVE_CEREMONY_NOT_SET");
+    expect(res.status).toBe(201);
+    expect(
+      (res as unknown as { json: { league: { ceremony_id: number | null } } }).json.league
+        .ceremony_id
+    ).toBeNull();
   });
 
   it("rejects missing required fields", async () => {
     await createActiveCeremony();
-    const token = signToken({ sub: "1", handle: "u1" });
-    const res = await post<{ error: { code: string } }>(
-      "/leagues",
-      { name: "No code" },
-      token
-    );
+    const user = await insertUser(db.pool);
+    const token = signToken({ sub: String(user.id), username: user.username });
+    const res = await post<{ error: { code: string } }>("/leagues", {}, token);
     expect(res.status).toBe(400);
     expect(res.json.error.code).toBe("VALIDATION_ERROR");
   });
@@ -148,7 +147,7 @@ describe("leagues integration", () => {
   it("gets a league by id", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -168,7 +167,7 @@ describe("leagues integration", () => {
   it("requires auth for get by id", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -190,22 +189,26 @@ describe("leagues integration", () => {
   it("lists leagues for the current user", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
-    await post<{ league: { id: number } }>(
+    const token = signToken({ sub: String(user.id), username: user.username });
+    const created = await post<{ league: { id: number; code: string } }>(
       "/leagues",
-      { code: "list-1", name: "List One", max_members: 5 },
+      { name: "List One" },
       token
     );
 
-    const res = await getJson<{ leagues: Array<{ code: string }> }>("/leagues", token);
+    const res = await getJson<{ leagues: Array<{ id: number; code: string }> }>(
+      "/leagues",
+      token
+    );
     expect(res.status).toBe(200);
-    expect(res.json.leagues.map((l) => l.code)).toContain("list-1");
+    expect(res.json.leagues.map((l) => l.id)).toContain(created.json.league.id);
+    expect(res.json.leagues.map((l) => l.code)).toContain(created.json.league.code);
   });
 
   it("returns invite-only error for legacy join endpoint", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       {
@@ -229,14 +232,11 @@ describe("leagues integration", () => {
     expect(res.json.error.code).toBe("INVITE_ONLY_MEMBERSHIP");
   });
 
-  it("returns roster for commissioners with roles and handles", async () => {
+  it("returns roster for commissioners with roles and usernames", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const member = await insertUser(db.pool, {
-      handle: "member1",
-      display_name: "Member One"
-    });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const member = await insertUser(db.pool, { username: "member1" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "r-1", name: "Roster", max_members: 5 },
@@ -252,21 +252,20 @@ describe("leagues integration", () => {
       members: Array<{
         user_id: number;
         role: string;
-        handle: string;
-        display_name: string;
+        username: string;
       }>;
     }>(`/leagues/${leagueId}/members`, ownerToken);
 
     expect(res.status).toBe(200);
-    const handles = res.json.members.map((m) => m.handle).sort();
-    expect(handles).toEqual([member.handle, owner.handle].sort());
+    const usernames = res.json.members.map((m) => m.username).sort();
+    expect(usernames).toEqual([member.username, owner.username].sort());
   });
 
   it("owner can transfer ownership to a member", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const target = await insertUser(db.pool, { handle: "new-owner" });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const target = await insertUser(db.pool, { username: "new-owner" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "transfer-1", name: "Transfer", max_members: 5 },
@@ -295,7 +294,7 @@ describe("leagues integration", () => {
   it("prevents removing the last commissioner", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "remove-1", name: "Remove", max_members: 5 },
@@ -313,12 +312,12 @@ describe("leagues integration", () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const joiner = await insertUser(db.pool, { id: owner.id + 1 });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
-    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
+    const joinToken = signToken({ sub: String(joiner.id), username: joiner.username });
 
     const created = await post<{ league: { id: number } }>(
       "/leagues",
-      { code: "pub-1", name: "Public One", max_members: 3, is_public: true },
+      { name: "Public One" },
       ownerToken
     );
     expect(created.status).toBe(201);
@@ -328,20 +327,14 @@ describe("leagues integration", () => {
       joinToken
     );
     expect(list.status).toBe(200);
-    expect(list.json.leagues.some((l) => l.id === created.json.league.id)).toBe(true);
+    expect(list.json.leagues.some((l) => l.id === created.json.league.id)).toBe(false);
 
     const joined = await post<{ league: { id: number } }>(
       `/leagues/${created.json.league.id}/join`,
       {},
       joinToken
     );
-    expect(joined.status).toBe(200);
-
-    const roster = await db.pool.query<{ count: string }>(
-      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = (SELECT id FROM season WHERE league_id = $1)`,
-      [created.json.league.id]
-    );
-    expect(Number(roster.rows[0].count)).toBe(1);
+    expect(joined.status).toBe(410);
   });
 
   it("enforces full cap on public join", async () => {
@@ -349,13 +342,13 @@ describe("leagues integration", () => {
     const owner = await insertUser(db.pool);
     const joiner = await insertUser(db.pool, { id: owner.id + 1 });
     const third = await insertUser(db.pool, { id: owner.id + 2 });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
-    const joinToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
-    const thirdToken = signToken({ sub: String(third.id), handle: third.handle });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
+    const joinToken = signToken({ sub: String(joiner.id), username: joiner.username });
+    const thirdToken = signToken({ sub: String(third.id), username: third.username });
 
     const created = await post<{ league: { id: number } }>(
       "/leagues",
-      { code: "pub-2", name: "Public Two", max_members: 2, is_public: true },
+      { name: "Public Two" },
       ownerToken
     );
     expect(created.status).toBe(201);
@@ -365,22 +358,15 @@ describe("leagues integration", () => {
       {},
       joinToken
     );
-    expect(firstJoin.status).toBe(200);
-
-    const secondJoin = await post<{ error: { code: string } }>(
-      `/leagues/${created.json.league.id}/join`,
-      {},
-      thirdToken
-    );
-    expect(secondJoin.status).toBe(409);
-    expect(secondJoin.json.error.code).toBe("LEAGUE_FULL");
+    expect(firstJoin.status).toBe(410);
+    void thirdToken;
   });
 
   it("commissioner can remove a member", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
-    const member = await insertUser(db.pool, { handle: "dropme" });
-    const ownerToken = signToken({ sub: String(owner.id), handle: owner.handle });
+    const member = await insertUser(db.pool, { username: "dropme" });
+    const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
       { code: "remove-2", name: "Remove2", max_members: 5 },

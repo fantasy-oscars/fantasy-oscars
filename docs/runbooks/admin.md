@@ -10,7 +10,7 @@
 ## Promote an Admin (local/dev)
 
 ```sql
-UPDATE app_user SET is_admin = TRUE WHERE handle = 'your-handle';
+UPDATE app_user SET is_admin = TRUE WHERE username = 'your-username';
 ```
 
 Then log in again so the issued token includes `is_admin: true`.

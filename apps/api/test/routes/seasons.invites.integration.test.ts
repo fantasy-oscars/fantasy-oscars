@@ -88,7 +88,7 @@ async function bootstrapSeasonWithOwner() {
     owner,
     league,
     season,
-    token: signToken({ sub: String(owner.id), handle: owner.handle })
+    token: signToken({ sub: String(owner.id), username: owner.username })
   };
 }
 
@@ -251,7 +251,7 @@ describe("seasons placeholder invites", () => {
 
   it("requires commissioner role for invite management", async () => {
     const { league, season, token: ownerToken } = await bootstrapSeasonWithOwner();
-    const member = await insertUser(db.pool, { handle: "member1" });
+    const member = await insertUser(db.pool, { username: "member1" });
     const leagueMember = await insertLeagueMember(db.pool, {
       league_id: league.id,
       user_id: member.id,
@@ -262,7 +262,7 @@ describe("seasons placeholder invites", () => {
        VALUES ($1, $2, $3, 'MEMBER')`,
       [season.id, member.id, leagueMember.id]
     );
-    const memberToken = signToken({ sub: String(member.id), handle: member.handle });
+    const memberToken = signToken({ sub: String(member.id), username: member.username });
 
     const res = await postJson<{ error: { code: string } }>(
       `/seasons/${season.id}/invites`,
@@ -288,8 +288,11 @@ describe("seasons placeholder invites", () => {
       token: string;
     }>(`/seasons/${season.id}/invites`, {}, ownerToken);
 
-    const invited = await insertUser(db.pool, { handle: "invitee" });
-    const invitedToken = signToken({ sub: String(invited.id), handle: invited.handle });
+    const invited = await insertUser(db.pool, { username: "invitee" });
+    const invitedToken = signToken({
+      sub: String(invited.id),
+      username: invited.username
+    });
 
     let finalStatus = 0;
     for (let i = 0; i < 12; i++) {
@@ -342,7 +345,7 @@ describe("seasons user-targeted invites", () => {
 
   it("creates a user-targeted invite and returns existing pending invite idempotently", async () => {
     const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
-    const invitee = await insertUser(db.pool, { handle: "invitee" });
+    const invitee = await insertUser(db.pool, { username: "invitee" });
 
     const first = await postJson<{ invite: { id: number; status: string } }>(
       `/seasons/${season.id}/user-invites`,
@@ -362,7 +365,7 @@ describe("seasons user-targeted invites", () => {
 
   it("lists pending invites in the invitee inbox", async () => {
     const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
-    const invitee = await insertUser(db.pool, { handle: "inbox" });
+    const invitee = await insertUser(db.pool, { username: "inbox" });
     await postJson(
       `/seasons/${season.id}/user-invites`,
       { user_id: invitee.id },
@@ -373,7 +376,7 @@ describe("seasons user-targeted invites", () => {
       invites: Array<{ season_id: number; league_id: number | null }>;
     }>(
       `/seasons/invites/inbox`,
-      signToken({ sub: String(invitee.id), handle: invitee.handle })
+      signToken({ sub: String(invitee.id), username: invitee.username })
     );
 
     expect(inbox.status).toBe(200);
@@ -383,13 +386,16 @@ describe("seasons user-targeted invites", () => {
 
   it("accepts a user-targeted invite and creates memberships", async () => {
     const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
-    const invitee = await insertUser(db.pool, { handle: "accept" });
+    const invitee = await insertUser(db.pool, { username: "accept" });
     await postJson(
       `/seasons/${season.id}/user-invites`,
       { user_id: invitee.id },
       ownerToken
     );
-    const inviteeToken = signToken({ sub: String(invitee.id), handle: invitee.handle });
+    const inviteeToken = signToken({
+      sub: String(invitee.id),
+      username: invitee.username
+    });
 
     const inbox = await getJson<{ invites: Array<{ id: number }> }>(
       `/seasons/invites/inbox`,
@@ -425,13 +431,16 @@ describe("seasons user-targeted invites", () => {
 
   it("declines an invite and removes it from inbox", async () => {
     const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
-    const invitee = await insertUser(db.pool, { handle: "decline" });
+    const invitee = await insertUser(db.pool, { username: "decline" });
     await postJson(
       `/seasons/${season.id}/user-invites`,
       { user_id: invitee.id },
       ownerToken
     );
-    const inviteeToken = signToken({ sub: String(invitee.id), handle: invitee.handle });
+    const inviteeToken = signToken({
+      sub: String(invitee.id),
+      username: invitee.username
+    });
     const inbox = await getJson<{ invites: Array<{ id: number }> }>(
       `/seasons/invites/inbox`,
       inviteeToken
@@ -460,7 +469,7 @@ describe("seasons user-targeted invites", () => {
       season_id: season.id,
       status: "IN_PROGRESS"
     });
-    const invitee = await insertUser(db.pool, { handle: "locked" });
+    const invitee = await insertUser(db.pool, { username: "locked" });
 
     const res = await postJson<{ error: { code: string } }>(
       `/seasons/${season.id}/user-invites`,

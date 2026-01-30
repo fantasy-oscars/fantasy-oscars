@@ -107,7 +107,7 @@ describe("draft namespace routing", () => {
     );
 
     const token1 = signToken(
-      { sub: String(league1.user_id), handle: "user1" },
+      { sub: String(league1.user_id), username: "user1" },
       authSecret
     );
 
@@ -144,7 +144,7 @@ describe("draft namespace routing", () => {
       [season2.id, league2.user_id, league2.id]
     );
     const token2 = signToken(
-      { sub: String(league2.user_id), handle: "user2" },
+      { sub: String(league2.user_id), username: "user2" },
       authSecret
     );
 
@@ -229,7 +229,10 @@ describe("draft namespace routing", () => {
        VALUES ($1, $2, $3, 'MEMBER')`,
       [season.id, league.user_id, league.id]
     );
-    const token = signToken({ sub: String(league.user_id), handle: "owner" }, authSecret);
+    const token = signToken(
+      { sub: String(league.user_id), username: "owner" },
+      authSecret
+    );
 
     const client = await createTestClient(server, {
       namespace: DRAFT_NAMESPACE,
@@ -303,7 +306,7 @@ describe("draft namespace routing", () => {
       throw err;
     }
 
-    const outsiderToken = signToken({ sub: "999", handle: "outsider" }, authSecret);
+    const outsiderToken = signToken({ sub: "999", username: "outsider" }, authSecret);
     const socket = createClient(`${server.url}${DRAFT_NAMESPACE}`, {
       transports: ["websocket"],
       forceNew: true,

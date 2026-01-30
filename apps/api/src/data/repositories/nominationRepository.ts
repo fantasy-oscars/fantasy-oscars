@@ -9,6 +9,12 @@ export type NominationWithDisplay = {
   film_title: string | null;
   song_title: string | null;
   performer_name: string | null;
+  contributors?: Array<{
+    person_id: number;
+    full_name: string;
+    role_label: string | null;
+    sort_order: number;
+  }>;
   status?: "ACTIVE" | "REVOKED" | "REPLACED";
   replaced_by_nomination_id?: number | null;
 };
@@ -27,17 +33,50 @@ export async function listNominationsForCeremony(
        n.performance_id::int,
        n.status,
        n.replaced_by_nomination_id::int,
-       f.title AS film_title,
+       COALESCE(f.title, sf.title) AS film_title,
        s.title AS song_title,
-       p.full_name AS performer_name
+       primary_person.full_name AS performer_name,
+       COALESCE(
+         json_agg(
+           json_build_object(
+             'person_id', p2.id::int,
+             'full_name', p2.full_name,
+             'role_label', nc.role_label,
+             'sort_order', nc.sort_order::int
+           )
+           ORDER BY nc.sort_order ASC, nc.id ASC
+         ) FILTER (WHERE nc.id IS NOT NULL),
+         '[]'::json
+       ) AS contributors
      FROM nomination n
      JOIN category_edition ce ON ce.id = n.category_edition_id
      LEFT JOIN film f ON f.id = n.film_id
      LEFT JOIN song s ON s.id = n.song_id
-     LEFT JOIN performance perf ON perf.id = n.performance_id
-     LEFT JOIN person p ON p.id = perf.person_id
+     LEFT JOIN film sf ON sf.id = s.film_id
+     LEFT JOIN LATERAL (
+       SELECT p.full_name
+       FROM nomination_contributor nc
+       JOIN person p ON p.id = nc.person_id
+       WHERE nc.nomination_id = n.id
+       ORDER BY nc.sort_order ASC, nc.id ASC
+       LIMIT 1
+     ) primary_person ON TRUE
+     LEFT JOIN nomination_contributor nc ON nc.nomination_id = n.id
+     LEFT JOIN person p2 ON p2.id = nc.person_id
      WHERE ce.ceremony_id = $1
-     ORDER BY ce.id, n.id`,
+     GROUP BY
+       n.id,
+       n.category_edition_id,
+       n.film_id,
+       n.song_id,
+       n.performance_id,
+       n.status,
+       n.replaced_by_nomination_id,
+       f.title,
+       sf.title,
+       s.title,
+       primary_person.full_name
+     ORDER BY n.category_edition_id, n.id`,
     [ceremonyId]
   );
   return rows;

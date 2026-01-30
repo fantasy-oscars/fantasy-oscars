@@ -51,7 +51,7 @@ describe("db factories (integration)", () => {
       film_id: film.id
     });
 
-    const user = await insertUser(db.pool, { handle: "owner" });
+    const user = await insertUser(db.pool, { username: "owner" });
     const league = await insertLeague(db.pool, {
       ceremony_id: ceremony.id,
       created_by_user_id: user.id,

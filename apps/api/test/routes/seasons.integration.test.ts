@@ -20,6 +20,10 @@ async function setActiveCeremony(id: number) {
 
 async function createActiveCeremony() {
   const ceremony = await insertCeremony(db.pool);
+  // Current API requires ceremonies to be published before they can be used for season/draft flows.
+  await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    ceremony.id
+  ]);
   await setActiveCeremony(ceremony.id);
   return ceremony;
 }
@@ -79,13 +83,16 @@ describe("seasons integration", () => {
   it("creates an additional season for the active ceremony and lists seasons", async () => {
     const ceremony1 = await createActiveCeremony();
     const ceremony2 = await insertCeremony(db.pool, { year: ceremony1.year + 1 }, false);
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony2.id
+    ]);
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     // Create league (creates initial season for ceremony1)
     const leagueRes = await post<{ league: { id: number } }>(
       "/leagues",
-      { code: "sea-1", name: "Seasons League", max_members: 5 },
+      { name: "Seasons League" },
       token
     );
     expect(leagueRes.status).toBe(201);
@@ -116,7 +123,7 @@ describe("seasons integration", () => {
   it("cancels a season and hides it from listings", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
       "/leagues",
@@ -144,7 +151,7 @@ describe("seasons integration", () => {
   it("allows commissioner to set scoring strategy while draft pending", async () => {
     await createActiveCeremony();
     const user = await insertUser(db.pool);
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
       "/leagues",
@@ -181,7 +188,7 @@ describe("seasons integration", () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const user2 = await insertUser(db.pool, { id: user.id + 1 });
-    const token = signToken({ sub: String(user.id), handle: user.handle });
+    const token = signToken({ sub: String(user.id), username: user.username });
 
     const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
       "/leagues",
@@ -251,12 +258,21 @@ describe("seasons integration", () => {
     process.env.PUBLIC_SEASON_ROSTER_SIZE = "2";
     try {
       const ceremony = await createActiveCeremony();
-      const creator = await insertUser(db.pool, { handle: "creator" });
-      const joiner = await insertUser(db.pool, { handle: "joiner" });
-      const another = await insertUser(db.pool, { handle: "another" });
-      const creatorToken = signToken({ sub: String(creator.id), handle: creator.handle });
-      const joinerToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
-      const anotherToken = signToken({ sub: String(another.id), handle: another.handle });
+      const creator = await insertUser(db.pool, { username: "creator" });
+      const joiner = await insertUser(db.pool, { username: "joiner" });
+      const another = await insertUser(db.pool, { username: "another" });
+      const creatorToken = signToken({
+        sub: String(creator.id),
+        username: creator.username
+      });
+      const joinerToken = signToken({
+        sub: String(joiner.id),
+        username: joiner.username
+      });
+      const anotherToken = signToken({
+        sub: String(another.id),
+        username: another.username
+      });
 
       const listRes = await getJson<{
         seasons: Array<{ season_id: number; ceremony_id: number; max_members: number }>;
@@ -300,10 +316,13 @@ describe("seasons integration", () => {
 
   it("keeps public seasons out of league listings", async () => {
     await createActiveCeremony();
-    const creator = await insertUser(db.pool, { handle: "owner2" });
-    const joiner = await insertUser(db.pool, { handle: "member2" });
-    const creatorToken = signToken({ sub: String(creator.id), handle: creator.handle });
-    const joinerToken = signToken({ sub: String(joiner.id), handle: joiner.handle });
+    const creator = await insertUser(db.pool, { username: "owner2" });
+    const joiner = await insertUser(db.pool, { username: "member2" });
+    const creatorToken = signToken({
+      sub: String(creator.id),
+      username: creator.username
+    });
+    const joinerToken = signToken({ sub: String(joiner.id), username: joiner.username });
 
     const listRes = await getJson<{
       seasons: Array<{ season_id: number; league_id: number }>;

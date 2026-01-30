@@ -4,7 +4,7 @@ export type LeagueRecord = {
   id: number;
   code: string;
   name: string;
-  ceremony_id: number;
+  ceremony_id: number | null;
   max_members: number;
   roster_size: number;
   is_public: boolean;
@@ -22,8 +22,7 @@ export type LeagueMemberRecord = {
 };
 
 export type LeagueMemberWithUser = LeagueMemberRecord & {
-  handle: string;
-  display_name: string;
+  username: string;
 };
 
 export async function createLeague(
@@ -31,7 +30,7 @@ export async function createLeague(
   input: {
     code: string;
     name: string;
-    ceremony_id: number;
+    ceremony_id: number | null;
     max_members: number;
     roster_size: number;
     is_public: boolean;
@@ -103,6 +102,32 @@ export async function updateLeagueName(
     client,
     `UPDATE league SET name = $2 WHERE id = $1 RETURNING *`,
     [id, name]
+  );
+  return rows[0] ?? null;
+}
+
+export async function setLeagueCeremonyIdIfMissing(
+  client: DbClient,
+  leagueId: number,
+  ceremonyId: number
+): Promise<LeagueRecord | null> {
+  const { rows } = await query<LeagueRecord>(
+    client,
+    `UPDATE league
+     SET ceremony_id = $2
+     WHERE id = $1 AND ceremony_id IS NULL
+     RETURNING
+       id::int,
+       code,
+       name,
+       ceremony_id::int,
+       max_members,
+       roster_size,
+       is_public,
+       is_public_season,
+       created_by_user_id::int,
+       created_at`,
+    [leagueId, ceremonyId]
   );
   return rows[0] ?? null;
 }
@@ -188,7 +213,6 @@ export async function listLeaguesForUser(
        l.created_at
      FROM league l
      JOIN league_member lm ON lm.league_id = l.id
-     JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
      WHERE lm.user_id = $1 AND l.is_public_season = FALSE
      ORDER BY l.id, l.created_at DESC`,
     [userId]
@@ -378,8 +402,7 @@ export async function listLeagueRoster(
        lm.user_id::int,
        lm.role,
        lm.joined_at,
-       u.handle,
-       u.display_name
+       u.username
      FROM league_member lm
      JOIN app_user u ON u.id = lm.user_id
      WHERE lm.league_id = $1

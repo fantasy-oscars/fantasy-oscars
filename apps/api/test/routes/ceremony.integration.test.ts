@@ -37,7 +37,7 @@ async function adminToken(): Promise<string> {
   const user = await insertUser(db.pool);
   await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [user.id]);
   const header = { alg: "HS256", typ: "JWT" };
-  const payload = { sub: String(user.id), handle: user.handle, is_admin: true };
+  const payload = { sub: String(user.id), username: user.username, is_admin: true };
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const data = `${encodedHeader}.${encodedPayload}`;
@@ -93,6 +93,9 @@ describe("ceremony routes", () => {
 
   it("exposes lock state and winners for active ceremony", async () => {
     const ceremony = await insertCeremony(db.pool);
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony.id
+    ]);
     const category = await insertCategoryEdition(db.pool, { ceremony_id: ceremony.id });
     const nomination = await insertNomination(db.pool, {
       category_edition_id: category.id
@@ -113,20 +116,21 @@ describe("ceremony routes", () => {
 
     // Upsert winner via admin endpoint
     const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-      handle: "admin-w",
+      username: "admin-w",
       email: "admin-w@example.com",
-      display_name: "Admin W",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
     const login = await post<{ token: string }>("/auth/login", {
-      handle: "admin-w",
+      username: "admin-w",
       password: "secret123"
     });
 
-    const upsert = await post<{ winner: { nomination_id: number } }>(
+    const upsert = await post<{
+      winners: Array<{ category_edition_id: number; nomination_id: number }>;
+    }>(
       "/admin/winners",
       { category_edition_id: category.id, nomination_id: nomination.id },
       { Authorization: `Bearer ${login.json.token}` }

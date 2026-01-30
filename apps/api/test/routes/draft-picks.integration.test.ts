@@ -54,9 +54,9 @@ describe("draft picks integration", () => {
     await truncateAllTables(db.pool);
   });
 
-  function tokenFor(userId: number, handle = `u${userId}`) {
+  function tokenFor(userId: number, username = `u${userId}`) {
     return signToken(
-      { sub: String(userId), handle },
+      { sub: String(userId), username },
       process.env.AUTH_SECRET ?? "test-secret"
     );
   }

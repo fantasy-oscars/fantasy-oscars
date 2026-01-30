@@ -51,16 +51,15 @@ describe("MVP end-to-end flow", () => {
   it("covers auth → league → draft → winner lock → standings", async () => {
     // Admin setup
     const adminReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "admin-e2e",
+      username: "admin-e2e",
       email: "admin-e2e@example.com",
-      display_name: "Admin E2E",
       password: "secret123"
     });
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       adminReg.json.user.id
     ]);
     const adminLogin = await postJson<{ token: string }>("/auth/login", {
-      handle: "admin-e2e",
+      username: "admin-e2e",
       password: "secret123"
     });
 
@@ -70,6 +69,9 @@ describe("MVP end-to-end flow", () => {
       { code: "oscars-e2e", year: 2035 },
       false
     );
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony.id
+    ]);
     const setActive = await postJson(
       "/admin/ceremony/active",
       { ceremony_id: ceremony.id },
@@ -131,27 +133,25 @@ describe("MVP end-to-end flow", () => {
 
     // Commissioner + member
     const commishReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "commish",
+      username: "commish",
       email: "commish@example.com",
-      display_name: "Commish",
       password: "secret123"
     });
     const commishLogin = await postJson<{ token: string; user: { id: number } }>(
       "/auth/login",
       {
-        handle: "commish",
+        username: "commish",
         password: "secret123"
       }
     );
 
     const memberReg = await postJson<{ user: { id: number } }>("/auth/register", {
-      handle: "member",
+      username: "member",
       email: "member@example.com",
-      display_name: "Member",
       password: "secret123"
     });
     const memberLogin = await postJson<{ token: string }>("/auth/login", {
-      handle: "member",
+      username: "member",
       password: "secret123"
     });
 
@@ -159,11 +159,7 @@ describe("MVP end-to-end flow", () => {
     const leagueRes = await postJson<{
       league: { id: number; ceremony_id: number };
       season: { id: number };
-    }>(
-      "/leagues",
-      { code: "e2e-league", name: "E2E League", max_members: 10, is_public: true },
-      commishLogin.json.token
-    );
+    }>("/leagues", { name: "E2E League" }, commishLogin.json.token);
     expect(leagueRes.status).toBe(201);
     const leagueId = leagueRes.json.league.id;
     const seasonId = leagueRes.json.season.id;
@@ -262,7 +258,9 @@ describe("MVP end-to-end flow", () => {
     expect([200, 201]).toContain(pickRes.status);
 
     // Enter winner (locks draft)
-    const winnerRes = await postJson<{ winner: { nomination_id: number } }>(
+    const winnerRes = await postJson<{
+      winners: Array<{ category_edition_id: number; nomination_id: number }>;
+    }>(
       "/admin/winners",
       { category_edition_id: 1, nomination_id: 1 },
       adminLogin.json.token
@@ -276,7 +274,8 @@ describe("MVP end-to-end flow", () => {
       otherToken
     );
     expect(blockedPick.status).toBe(409);
-    expect(blockedPick.json.error.code).toBe("DRAFT_LOCKED");
+    // First winner entry locks the ceremony and cancels any in-progress drafts.
+    expect(blockedPick.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
 
     // Standings reflect winner
     const standingsRes = await getJson<{

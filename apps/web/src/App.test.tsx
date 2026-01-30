@@ -43,12 +43,21 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    expect(screen.getByText(/Fantasy Oscars/i)).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/Checking session/i);
-    await waitFor(() => expect(screen.getByText(/Not signed in/i)).toBeInTheDocument());
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Fantasy Oscars" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+
+    await waitFor(() => {
+      const nav = screen.getByRole("navigation", { name: "Primary" });
+      expect(within(nav).getAllByRole("link", { name: /Login/i }).length).toBeGreaterThan(
+        0
+      );
+    });
   });
 
   it("redirects unauthenticated users to login for protected routes", async () => {
+    window.history.pushState({}, "", "/leagues");
     mockFetchSequence({
       ok: true,
       json: () => Promise.resolve({ user: null })
@@ -62,11 +71,12 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders protected page when authenticated", async () => {
+    window.history.pushState({}, "", "/leagues");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -81,7 +91,7 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByText(/Signed in as alice/i);
+    await screen.findByRole("button", { name: /alice/i });
     await screen.findByRole("heading", { name: /Leagues/i });
   });
 
@@ -99,7 +109,7 @@ describe("<App /> shell + routing", () => {
             error: {
               code: "VALIDATION_ERROR",
               message: "Invalid field values",
-              details: { fields: ["handle", "email"] }
+              details: { fields: ["username", "email"] }
             }
           })
       }
@@ -118,9 +128,8 @@ describe("<App /> shell + routing", () => {
 
     await screen.findAllByText(/Required/i);
 
-    await userEvent.type(within(registerCard).getByLabelText(/Handle/i), "a");
+    await userEvent.type(within(registerCard).getByLabelText(/Username/i), "a");
     await userEvent.type(within(registerCard).getByLabelText(/Email/i), "bad-email");
-    await userEvent.type(within(registerCard).getByLabelText(/Display name/i), "A");
     await userEvent.type(within(registerCard).getByLabelText(/Password/i), "p");
     await userEvent.click(
       within(registerCard).getByRole("button", { name: /Register/i })
@@ -137,19 +146,18 @@ describe("<App /> shell + routing", () => {
         Promise.resolve({
           user: {
             sub: "1",
-            handle: "alice",
-            email: "a@example.com",
-            display_name: "Alice"
+            username: "alice",
+            email: "a@example.com"
           }
         })
     });
 
     render(<App />);
-    await screen.findAllByText(/Signed in as alice/i);
-    await userEvent.click(screen.getByRole("link", { name: /Account/i }));
-    await screen.findByText(/Display name: Alice/i);
+    await screen.findByRole("button", { name: /alice/i });
+    await screen.findByText(/Username: alice/i);
     expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Logout/i }).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: /alice/i }));
+    expect(screen.getByRole("button", { name: /Logout/i })).toBeInTheDocument();
   });
 
   it("navigates via nav links", async () => {
@@ -158,7 +166,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -171,11 +179,12 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<App />);
-    await screen.findAllByText(/Signed in as alice/i);
+    await screen.findByRole("button", { name: /alice/i });
 
-    const accountLink = screen.getByRole("link", { name: /Account/i });
-    await userEvent.click(accountLink);
-    await screen.findByRole("heading", { name: /Account/i });
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    const aboutLink = within(nav).getByRole("link", { name: /About/i });
+    await userEvent.click(aboutLink);
+    await screen.findByRole("heading", { name: /About/i });
   });
 
   it("renders league skeleton states", async () => {
@@ -184,7 +193,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/leagues")) {
@@ -211,7 +220,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/42/accept")) {
@@ -254,7 +263,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/2026/members")) {
@@ -312,8 +321,7 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 }
               ]
             })
@@ -350,7 +358,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/inbox")) {
@@ -419,8 +427,7 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 }
               ]
             })
@@ -455,7 +462,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/seasons/invites/inbox")) {
@@ -503,7 +510,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/drafts/1/snapshot")) {
@@ -514,20 +521,20 @@ describe("<App /> shell + routing", () => {
               draft: {
                 id: 1,
                 league_id: 10,
+                season_id: 1,
                 status: "PENDING",
-                draft_order_type: "snake",
                 current_pick_number: 1,
                 started_at: null,
                 completed_at: null,
                 version: 2
               },
-              seats: [
-                { id: 1, seat_number: 1, league_member_id: 100 },
-                { id: 2, seat_number: 2, league_member_id: 200 }
-              ],
+              seats: [],
               picks: [],
-              config: { roster_size: 3 },
               version: 2,
+              total_picks: 0,
+              my_seat_number: null,
+              categories: [],
+              nominations: [],
               ceremony_starts_at: "2026-02-01T12:00:00.000Z"
             })
         });
@@ -538,10 +545,9 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Draft Room/i });
-    await screen.findByText(/Draft #1/i);
+    await screen.findByRole("link", { name: /Back to Season/i });
     await screen.findByText(/Status: PENDING/i);
-    expect(screen.getByText(/Disconnected/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start draft/i })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/snapshot"),
       expect.objectContaining({ method: "GET" })
@@ -550,38 +556,77 @@ describe("<App /> shell + routing", () => {
 
   it("shows integrity warning when within T-24h window", async () => {
     vi.setSystemTime(new Date("2026-02-01T00:00:00Z"));
-    window.history.pushState({}, "", "/drafts/1");
+    window.history.pushState({}, "", "/seasons/1");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
-      if (url.includes("/drafts/1/snapshot")) {
+      if (url.includes("/seasons/1/members")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              draft: {
-                id: 1,
-                league_id: 10,
-                status: "IN_PROGRESS",
-                draft_order_type: "snake",
-                current_pick_number: 2,
-                started_at: null,
-                completed_at: null,
-                version: 5
-              },
-              seats: [
-                { id: 1, seat_number: 1, league_member_id: 100 },
-                { id: 2, seat_number: 2, league_member_id: 200 }
-              ],
-              picks: [],
-              config: { roster_size: 3 },
-              version: 5,
-              ceremony_starts_at: "2026-02-01T12:00:00.000Z"
+              members: [
+                {
+                  id: 1,
+                  season_id: 1,
+                  user_id: 1,
+                  league_member_id: 100,
+                  role: "OWNER",
+                  joined_at: "2026-01-01T00:00:00.000Z",
+                  username: "alice"
+                }
+              ]
             })
+        });
+      }
+      if (url.endsWith("/leagues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              leagues: [{ id: 10, code: "lg", name: "Test League", ceremony_id: 22 }]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/seasons")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              seasons: [
+                {
+                  id: 1,
+                  ceremony_id: 22,
+                  status: "EXTANT",
+                  is_active_ceremony: true,
+                  created_at: "2026-01-01T00:00:00.000Z",
+                  ceremony_starts_at: "2026-02-01T12:00:00.000Z",
+                  draft_id: 1,
+                  draft_status: "IN_PROGRESS",
+                  scoring_strategy_name: "fixed",
+                  remainder_strategy: "UNDRAFTED"
+                }
+              ]
+            })
+        });
+      }
+      if (url.includes("/leagues/10/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              members: [{ id: 100, user_id: 1, role: "OWNER", username: "alice" }]
+            })
+        });
+      }
+      if (url.includes("/seasons/1/invites")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ invites: [] })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -590,7 +635,6 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Draft Room/i });
     await screen.findByText(
       /once winners start getting entered after the ceremony begins/i
     );
@@ -603,7 +647,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.includes("/ceremony/active/winners")) {
@@ -661,7 +705,7 @@ describe("<App /> shell + routing", () => {
     mockFetchSequence({
       ok: true,
       json: () =>
-        Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: false } })
+        Promise.resolve({ user: { sub: "1", username: "alice", is_admin: false } })
     });
 
     render(<App />);
@@ -671,29 +715,55 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders admin console skeleton for admins", async () => {
-    window.history.pushState({}, "", "/admin");
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    window.history.pushState({}, "", "/admin/ceremonies/1/overview");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  starts_at: null,
+                  status: "DRAFT"
+                }
+              ]
             })
         });
       }
-      if (url.includes("/admin/ceremony/active") && init?.method === "POST") {
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ ceremony_id: 8 })
+          json: () =>
+            Promise.resolve({
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "DRAFT",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: null,
+                archived_at: null
+              },
+              stats: {
+                categories_total: 0,
+                categories_with_nominees: 0,
+                nominees_total: 0,
+                winners_total: 0
+              }
+            })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -702,46 +772,58 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Admin console/i });
-    await screen.findByText(/Drafts open/i);
-    await screen.findAllByText(/Active ceremony/i);
-    expect(screen.getByText(/ID 7/)).toBeInTheDocument();
-    await userEvent.clear(screen.getByLabelText(/Set active ceremony/i));
-    await userEvent.type(screen.getByLabelText(/Set active ceremony/i), "8");
-    const update = screen.getByRole("button", { name: /Update active ceremony/i });
-    await userEvent.click(update);
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/admin/ceremony/active"),
-        expect.objectContaining({ method: "POST" })
-      )
-    );
-    await screen.findAllByText(/Nominees/i);
-    await screen.findAllByText(/Winners/i);
-    confirmSpy.mockRestore();
+    await screen.findByRole("heading", { name: /Ceremonies/i });
+    await screen.findByRole("heading", { name: /Overview/i });
+    expect(screen.getByText(/Configure the ceremony lifecycle/i)).toBeInTheDocument();
   });
 
-  it("uploads nominees JSON and shows summary", async () => {
-    window.history.pushState({}, "", "/admin");
+  it("uploads candidate films JSON and shows summary", async () => {
+    window.history.pushState({}, "", "/admin/ceremonies/1/nominees");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  starts_at: null,
+                  status: "DRAFT"
+                }
+              ]
             })
         });
       }
-      if (url.includes("/admin/nominees/upload") && init?.method === "POST") {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      if (
+        url.endsWith("/admin/ceremonies/1/categories") &&
+        (!init || init.method === "GET")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              categories: []
+            })
+        });
+      }
+      if (url.endsWith("/admin/films") && (!init || init.method === "GET")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ films: [] }) });
+      }
+      if (url.endsWith("/admin/films/import") && init?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ upserted: 2, hydrated: 2, tmdb_errors: [] })
+        });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
@@ -749,42 +831,71 @@ describe("<App /> shell + routing", () => {
 
     render(<App />);
 
-    await screen.findByRole("heading", { name: /Admin console/i });
-    const fileInput = await screen.findByLabelText(/Nominees JSON file/i);
+    await screen.findByRole("heading", { name: /Nominees/i });
+    const fileInput = await screen.findByLabelText(/Candidate films JSON file/i);
     const file = new File(
-      [JSON.stringify({ categories: [{}], nominations: [{ id: 1 }, { id: 2 }] })],
-      "nominees.json",
+      [
+        JSON.stringify([
+          { tmdb_id: 1, title: "Film A" },
+          { tmdb_id: 2, title: "Film B" }
+        ])
+      ],
+      "candidate-films.json",
       { type: "application/json" }
     );
     await userEvent.upload(fileInput, file);
-    await screen.findByText(/Categories: 1/);
-    await userEvent.click(screen.getByRole("button", { name: /Upload nominees/i }));
+    await screen.findByText(/Films: 2/);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Import candidate films/i })
+    );
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/admin/nominees/upload"),
+        expect.stringContaining("/admin/films/import"),
         expect.objectContaining({ method: "POST" })
       )
     );
-    await screen.findByText(/Nominees loaded for active ceremony/i);
+    await screen.findByText(/Imported candidates/i);
   });
 
   it("saves winners per category with confirmations and lock state", async () => {
-    window.history.pushState({}, "", "/admin");
+    window.history.pushState({}, "", "/admin/ceremonies/1/winners");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ user: { sub: "1", handle: "alice", is_admin: true } })
+            Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/ceremony/active/lock")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ draft_locked: false, draft_locked_at: null })
+          json: () =>
+            Promise.resolve({
+              ceremonies: [
+                {
+                  id: 1,
+                  code: "oscars-2026",
+                  name: "Oscars 2026",
+                  starts_at: null,
+                  status: "DRAFT"
+                }
+              ]
+            })
         });
       }
-      if (url.includes("/ceremony/active/nominations")) {
+      if (url.endsWith("/admin/ceremonies/1/lock")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              draft_locked: false,
+              draft_locked_at: null,
+              status: "DRAFT"
+            })
+        });
+      }
+      if (url.endsWith("/admin/ceremonies/1/nominations")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -797,28 +908,19 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
-      if (url.includes("/ceremony/active/winners")) {
+      if (url.endsWith("/admin/ceremonies/1/winners")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ winners: [] })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
-            })
-        });
-      }
-      if (url.includes("/admin/winners") && init?.method === "POST") {
+      if (url.endsWith("/admin/winners") && init?.method === "POST") {
         const body = JSON.parse((init.body as string) ?? "{}");
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              winner: { nomination_id: body.nomination_id },
+              winner: { nomination_ids: body.nomination_ids },
               draft_locked_at: "2026-01-01T00:00:00Z"
             })
         });
@@ -837,8 +939,9 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(firstRadio);
     await waitFor(() => expect(firstRadio).toBeChecked());
     await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/admin/winners"))
@@ -850,8 +953,9 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(secondRadio);
     await waitFor(() => expect(secondRadio).toBeChecked());
     await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
     await waitFor(() => {
       const winnerPosts = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes("/admin/winners")
@@ -874,7 +978,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", handle: "alice" } })
+          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
       if (url.endsWith("/leagues/10")) {
@@ -914,16 +1018,14 @@ describe("<App /> shell + routing", () => {
                   league_id: 10,
                   user_id: 1,
                   role: "OWNER",
-                  handle: "alice",
-                  display_name: "Alice"
+                  username: "alice"
                 },
                 {
                   id: 2,
                   league_id: 10,
                   user_id: 2,
                   role: "MEMBER",
-                  handle: "bob",
-                  display_name: "Bob"
+                  username: "bob"
                 }
               ]
             })

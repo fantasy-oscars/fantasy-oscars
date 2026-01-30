@@ -240,11 +240,16 @@ export async function insertCeremonyWinner(
     nominationId = nomination.id;
   }
 
+  // Ceremony winners are now multi-row (ties), but our test helpers typically want
+  // "set the winner for this category" semantics. So we replace any existing
+  // winners for the category with this nomination.
+  await pool.query(`DELETE FROM ceremony_winner WHERE category_edition_id = $1`, [
+    categoryEditionId
+  ]);
+
   await pool.query(
     `INSERT INTO ceremony_winner (ceremony_id, category_edition_id, nomination_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (category_edition_id)
-     DO UPDATE SET nomination_id = EXCLUDED.nomination_id, updated_at = now()`,
+     VALUES ($1, $2, $3)`,
     [ceremonyId, categoryEditionId, nominationId]
   );
 
@@ -261,9 +266,9 @@ export async function insertUser(
 ) {
   const user = buildUser(overrides);
   await pool.query(
-    `INSERT INTO app_user (id, handle, email, display_name, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [user.id, user.handle, user.email, user.display_name, user.created_at]
+    `INSERT INTO app_user (id, username, email, created_at)
+     VALUES ($1, $2, $3, $4)`,
+    [user.id, user.username, user.email, user.created_at]
   );
   return user;
 }

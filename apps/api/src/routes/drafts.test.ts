@@ -28,7 +28,7 @@ import * as draftState from "../domain/draftState.js";
 const AUTH_SECRET = "test-secret";
 
 function authHeader() {
-  return `Bearer ${signToken({ sub: "1", handle: "tester" }, AUTH_SECRET, 3600)}`;
+  return `Bearer ${signToken({ sub: "1", username: "tester" }, AUTH_SECRET, 3600)}`;
 }
 
 function mockReq(opts: {
@@ -60,14 +60,16 @@ function mockRes() {
 
 describe("POST /drafts", () => {
   const createDraftSpy = vi.spyOn(draftRepo, "createDraft");
-  const getDraftByLeagueIdSpy = vi.spyOn(draftRepo, "getDraftByLeagueId");
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
   const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
-  const getSeasonSpy = vi.spyOn(seasonRepo, "getExtantSeasonForLeague");
-  const createSeasonSpy = vi.spyOn(seasonRepo, "createExtantSeason");
-  const getActiveCeremonySpy = vi.spyOn(appConfigRepo, "getActiveCeremonyId");
+  const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
+  const getDraftBySeasonIdSpy = vi.spyOn(draftRepo, "getDraftBySeasonId");
   const auth = requireAuth(AUTH_SECRET);
-  const handler = buildCreateDraftHandler({} as unknown as DbClient);
+  const client = {
+    // Used by query() helper for ceremony status checks.
+    query: vi.fn()
+  } as unknown as DbClient;
+  const handler = buildCreateDraftHandler(client);
 
   beforeEach(async () => {
     getLeagueByIdSpy.mockResolvedValue({
@@ -82,7 +84,6 @@ describe("POST /drafts", () => {
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
-    getDraftByLeagueIdSpy.mockResolvedValue(null);
     getLeagueMemberSpy.mockResolvedValue({
       id: 10,
       league_id: 1,
@@ -90,8 +91,7 @@ describe("POST /drafts", () => {
       role: "OWNER",
       joined_at: new Date("2024-01-01T00:00:00Z")
     });
-    getActiveCeremonySpy.mockResolvedValue(99);
-    getSeasonSpy.mockResolvedValue({
+    getSeasonByIdSpy.mockResolvedValue({
       id: 500,
       league_id: 1,
       ceremony_id: 99,
@@ -100,15 +100,18 @@ describe("POST /drafts", () => {
       remainder_strategy: "UNDRAFTED",
       created_at: new Date("2024-01-01T00:00:00Z")
     });
-    createSeasonSpy.mockResolvedValue({
-      id: 500,
-      league_id: 1,
-      ceremony_id: 99,
-      status: "EXTANT",
-      scoring_strategy_name: "fixed",
-      remainder_strategy: "UNDRAFTED",
-      created_at: new Date("2024-01-01T00:00:00Z")
-    });
+    getDraftBySeasonIdSpy.mockResolvedValue(null);
+    (client as unknown as { query: ReturnType<typeof vi.fn> }).query.mockImplementation(
+      async (text: string) => {
+        // Ceremony status check for the season-based draft creation flow.
+        if (text.includes("FROM ceremony")) {
+          return {
+            rows: [{ status: "PUBLISHED", draft_locked_at: null }]
+          };
+        }
+        return { rows: [] };
+      }
+    );
     createDraftSpy.mockResolvedValue({
       id: 42,
       league_id: 1,
@@ -143,7 +146,7 @@ describe("POST /drafts", () => {
 
   it("creates a draft when payload is valid", async () => {
     const req = mockReq({
-      body: { league_id: 1, draft_order_type: "snake" },
+      body: { league_id: 1, season_id: 500, draft_order_type: "snake" },
       headers: { authorization: authHeader() }
     });
     const { res, state } = mockRes();
@@ -175,7 +178,7 @@ describe("POST /drafts", () => {
 
   it("rejects non-snake draft_order_type", async () => {
     const req = mockReq({
-      body: { league_id: 1, draft_order_type: "linear" },
+      body: { league_id: 1, season_id: 500, draft_order_type: "linear" },
       headers: { authorization: authHeader() }
     });
     const { res, state } = mockRes();
@@ -249,7 +252,7 @@ describe("POST /drafts", () => {
       created_by_user_id: 1,
       created_at: new Date("2024-01-01T00:00:00Z")
     });
-    getDraftByLeagueIdSpy.mockResolvedValueOnce({
+    getDraftBySeasonIdSpy.mockResolvedValueOnce({
       id: 1,
       league_id: 1,
       season_id: 500,
@@ -263,7 +266,7 @@ describe("POST /drafts", () => {
     });
 
     const req = mockReq({
-      body: { league_id: 1 },
+      body: { league_id: 1, season_id: 500 },
       headers: { authorization: authHeader() }
     });
     const { res, state } = mockRes();
@@ -818,7 +821,14 @@ describe("GET /drafts/:id/snapshot", () => {
   const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
   const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
   const countNominationsByCeremonySpy = vi.spyOn(draftRepo, "countNominationsByCeremony");
-  const handler = buildSnapshotDraftHandler({} as unknown as Pool);
+  const poolClient = {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    release: vi.fn()
+  } as unknown as PoolClient;
+  const handler = buildSnapshotDraftHandler({
+    connect: vi.fn().mockResolvedValue(poolClient),
+    query: vi.fn().mockResolvedValue({ rows: [] })
+  } as unknown as Pool);
 
   beforeEach(() => {
     getDraftByIdSpy.mockResolvedValue({

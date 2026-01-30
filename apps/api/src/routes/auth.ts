@@ -89,9 +89,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
   const router = express.Router();
   const { authSecret } = opts;
   const isProd = process.env.NODE_ENV === "production";
+  // Dogfooding preference: keep sessions long-lived to avoid "random" logouts.
+  // NOTE: This is a single JWT in an HttpOnly cookie (no refresh/rotation yet),
+  // so shortening this (or adding refresh tokens) is recommended before go-live.
+  const AUTH_COOKIE_TTL_DAYS = 90;
+  const authCookieMaxAgeMs = AUTH_COOKIE_TTL_DAYS * 24 * 60 * 60 * 1000;
   const cookieConfig = {
     name: "auth_token",
-    maxAgeMs: 60 * 60 * 1000, // 1 hour
+    maxAgeMs: authCookieMaxAgeMs,
     sameSite: "lax" as const,
     httpOnly: true,
     secure: isProd,
@@ -100,41 +105,33 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
   router.post("/register", authLimiter.middleware, async (req, res, next) => {
     try {
-      const { handle, email, display_name, password } = req.body ?? {};
-      if (!handle || !email || !display_name || !password) {
+      const { username, handle, email, password } = req.body ?? {};
+      const rawUsername = username ?? handle;
+      if (!rawUsername || !email || !password) {
         throw validationError("Missing required fields", [
-          "handle",
+          "username",
           "email",
-          "display_name",
           "password"
         ]);
       }
       if (
-        typeof handle !== "string" ||
+        typeof rawUsername !== "string" ||
         typeof email !== "string" ||
-        typeof display_name !== "string" ||
         typeof password !== "string"
       ) {
-        throw validationError("Invalid field types", [
-          "handle",
-          "email",
-          "display_name",
-          "password"
-        ]);
+        throw validationError("Invalid field types", ["username", "email", "password"]);
       }
-      const trimmedHandle = handle.trim();
+      const trimmedUsername = rawUsername.trim();
       const trimmedEmail = email.trim();
-      const normalizedHandle = trimmedHandle.toLowerCase();
+      const normalizedUsername = trimmedUsername.toLowerCase();
       const normalizedEmail = trimmedEmail.toLowerCase();
-      const trimmedDisplayName = display_name.trim();
       const invalidFields: string[] = [];
-      if (trimmedHandle.length < 2 || /\s/.test(trimmedHandle)) {
-        invalidFields.push("handle");
+      if (trimmedUsername.length < 2 || /\s/.test(trimmedUsername)) {
+        invalidFields.push("username");
       }
       if (trimmedEmail.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
         invalidFields.push("email");
       }
-      if (trimmedDisplayName.length < 1) invalidFields.push("display_name");
       if (password.length < PASSWORD_MIN_LENGTH) invalidFields.push("password");
       if (invalidFields.length) {
         throw validationError("Invalid field values", invalidFields);
@@ -146,10 +143,10 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       try {
         const { rows } = await query(
           client,
-          `INSERT INTO app_user (handle, email, display_name)
-           VALUES ($1, $2, $3)
-           RETURNING id, handle, email, display_name, created_at, is_admin`,
-          [normalizedHandle, normalizedEmail, trimmedDisplayName]
+          `INSERT INTO app_user (username, email)
+           VALUES ($1, $2)
+           RETURNING id, username, email, created_at, is_admin`,
+          [normalizedUsername, normalizedEmail]
         );
 
         const user = rows[0];
@@ -161,15 +158,26 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
         return res.status(201).json({ user });
       } catch (err) {
-        const pgErr = err as { constraint?: string; message?: string };
+        const pgErr = err as {
+          code?: string;
+          table?: string;
+          constraint?: string;
+          message?: string;
+        };
         const constraint = pgErr.constraint ?? pgErr.message ?? "";
         if (
+          (pgErr.code === "23505" && pgErr.table === "app_user") ||
           constraint.includes("app_user_handle_key") ||
+          constraint.includes("app_user_username_key") ||
           constraint.includes("app_user_email_key") ||
-          constraint.includes("app_user_handle_lower_key") ||
+          constraint.includes("app_user_username_lower_key") ||
           constraint.includes("app_user_email_lower_key")
         ) {
-          throw new AppError("USER_EXISTS", 409, "User with handle/email already exists");
+          throw new AppError(
+            "USER_EXISTS",
+            409,
+            "User with username/email already exists"
+          );
         }
         throw err;
       }
@@ -180,25 +188,26 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
   router.post("/login", authLimiter.middleware, async (req, res, next) => {
     try {
-      const { handle, password } = req.body ?? {};
-      if (!handle || !password) {
-        throw validationError("Missing required fields", ["handle", "password"]);
+      const { username, handle, password } = req.body ?? {};
+      const rawUsername = username ?? handle;
+      if (!rawUsername || !password) {
+        throw validationError("Missing required fields", ["username", "password"]);
       }
-      if (typeof handle !== "string" || typeof password !== "string") {
-        throw validationError("Invalid field types", ["handle", "password"]);
+      if (typeof rawUsername !== "string" || typeof password !== "string") {
+        throw validationError("Invalid field types", ["username", "password"]);
       }
-      if (handle.trim().length < 2 || password.length < PASSWORD_MIN_LENGTH) {
-        throw validationError("Invalid credentials", ["handle", "password"]);
+      if (rawUsername.trim().length < 2 || password.length < PASSWORD_MIN_LENGTH) {
+        throw validationError("Invalid credentials", ["username", "password"]);
       }
 
-      const normalizedHandle = handle.trim().toLowerCase();
+      const normalizedUsername = rawUsername.trim().toLowerCase();
       const { rows } = await query(
         client,
-        `SELECT u.id, u.handle, u.email, u.display_name, u.is_admin, p.password_hash, p.password_algo
+        `SELECT u.id, u.username, u.email, u.is_admin, p.password_hash, p.password_algo
          FROM app_user u
          JOIN auth_password p ON p.user_id = u.id
-         WHERE lower(u.handle) = $1`,
-        [normalizedHandle]
+         WHERE lower(u.username) = $1`,
+        [normalizedUsername]
       );
 
       const user = rows[0];
@@ -215,9 +224,9 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
       // Skeleton: return placeholder token (non-secure) for v0.
       const token = signToken(
-        { sub: String(user.id), handle: user.handle, is_admin: user.is_admin },
+        { sub: String(user.id), username: user.username, is_admin: user.is_admin },
         authSecret,
-        60 * 60
+        Math.floor(cookieConfig.maxAgeMs / 1000)
       );
       res.cookie(cookieConfig.name, token, {
         httpOnly: cookieConfig.httpOnly,
@@ -229,9 +238,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       return res.json({
         user: {
           id: user.id,
-          handle: user.handle,
+          username: user.username,
           email: user.email,
-          display_name: user.display_name,
           is_admin: user.is_admin
         },
         token
@@ -273,7 +281,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       const normalizedEmail = email.trim().toLowerCase();
       const { rows } = await query(
         client,
-        `SELECT id, handle FROM app_user WHERE email = $1`,
+        `SELECT id, username FROM app_user WHERE email = $1`,
         [normalizedEmail]
       );
       const user = rows[0];
