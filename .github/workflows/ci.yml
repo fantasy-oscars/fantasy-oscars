@@ -17,9 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
       - name: Enable Corepack
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.3 --activate
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Install Playwright (Chromium)
@@ -33,9 +34,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
       - name: Enable Corepack
-        run: corepack enable
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.3 --activate
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Docs Check
