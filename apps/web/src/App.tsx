@@ -11,7 +11,10 @@ import { ResetRequestPage } from "./pages/ResetRequestPage";
 import { AboutPage } from "./pages/AboutPage";
 import { CodeOfConductPage } from "./pages/CodeOfConductPage";
 import { ContactPage } from "./pages/ContactPage";
+import { DisclaimerPage } from "./pages/DisclaimerPage";
+import { FeedbackPage } from "./pages/FeedbackPage";
 import { FaqPage } from "./pages/FaqPage";
+import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { LeaguesPage } from "./pages/LeaguesPage";
@@ -86,8 +89,11 @@ function RoutesConfig() {
         />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/code-of-conduct" element={<CodeOfConductPage />} />
+        <Route path="/disclaimer" element={<DisclaimerPage />} />
         <Route path="/faq" element={<FaqPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/results" element={<Navigate to="/ceremonies" replace />} />
