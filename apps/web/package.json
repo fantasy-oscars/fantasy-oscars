@@ -15,6 +15,7 @@
     "format:check": "prettier -c . --ignore-path ../../.prettierignore"
   },
   "dependencies": {
+    "@fantasy-oscars/shared": "workspace:*",
     "@testing-library/user-event": "^14.6.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
