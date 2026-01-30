@@ -1,29 +1,7 @@
-import { StaticPage } from "../ui/StaticPage";
-import { useStaticContent } from "../features/content/useStaticContent";
-import { PageError, PageLoader } from "../ui/page-state";
-import { Markdown } from "../ui/Markdown";
+import { useStaticContentOrchestration } from "../orchestration/content";
+import { StaticContentScreen } from "../screens/content/StaticContentScreen";
 
 export function CodeOfConductPage() {
-  const { view } = useStaticContent("code_of_conduct");
-
-  if (view.state === "loading") {
-    return (
-      <StaticPage title="Code of Conduct">
-        <PageLoader label="Loading..." />
-      </StaticPage>
-    );
-  }
-  if (view.state === "error") {
-    return (
-      <StaticPage title="Code of Conduct">
-        <PageError message={view.message} />
-      </StaticPage>
-    );
-  }
-
-  return (
-    <StaticPage title={view.content.title || "Code of Conduct"}>
-      <Markdown markdown={view.content.body_markdown} />
-    </StaticPage>
-  );
+  const { view } = useStaticContentOrchestration("code_of_conduct");
+  return <StaticContentScreen fallbackTitle="Code of Conduct" view={view} />;
 }

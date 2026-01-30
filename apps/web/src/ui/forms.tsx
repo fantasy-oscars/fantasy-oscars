@@ -1,20 +1,4 @@
-import { useMemo } from "react";
-import type { ApiResult, FieldErrors } from "../lib/types";
-
-export function useRequiredFields(fields: string[]) {
-  return useMemo(
-    () =>
-      function validate(formData: FormData) {
-        const errors: FieldErrors = {};
-        for (const field of fields) {
-          const value = String(formData.get(field) ?? "").trim();
-          if (!value) errors[field] = "Required";
-        }
-        return errors;
-      },
-    [fields]
-  );
-}
+import type { ApiResult } from "../lib/types";
 
 export function FormField(props: {
   label: string;

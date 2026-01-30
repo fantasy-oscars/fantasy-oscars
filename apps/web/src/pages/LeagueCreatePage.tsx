@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { FormField } from "../ui/forms";
-import { useCreateLeague } from "../features/leagues/useCreateLeague";
+import { useLeagueCreateOrchestration } from "../orchestration/leagues";
+import { LeagueCreateScreen } from "../screens/leagues/LeagueCreateScreen";
 
 export function LeagueCreatePage() {
-  const { creating, error, create } = useCreateLeague();
+  const { creating, error, create } = useLeagueCreateOrchestration();
   const navigate = useNavigate();
 
   async function onCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -18,24 +18,5 @@ export function LeagueCreatePage() {
     }
   }
 
-  return (
-    <section className="card">
-      <header>
-        <h2>Create league</h2>
-        <p className="muted">
-          Creating a league creates the initial season for the active ceremony.
-        </p>
-      </header>
-
-      <form className="grid" onSubmit={onCreate}>
-        <FormField label="Name" name="name" />
-        <div className="inline-actions">
-          <button type="submit" className="button" disabled={creating}>
-            {creating ? "Creating..." : "Create league"}
-          </button>
-          {error && <small className="error">{error}</small>}
-        </div>
-      </form>
-    </section>
-  );
+  return <LeagueCreateScreen creating={creating} error={error} onCreate={onCreate} />;
 }

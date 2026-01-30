@@ -1,13 +1,20 @@
 import express from "express";
 import type { Router } from "express";
 import crypto from "crypto";
+import {
+  PASSWORD_MIN_LENGTH,
+  normalizeEmail,
+  normalizeUsername,
+  validatePassword,
+  validateRegisterInput,
+  validateUsername
+} from "@fantasy-oscars/shared";
 import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
 import { signToken } from "../auth/token.js";
 import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 
-const PASSWORD_MIN_LENGTH = 8;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
 
 const authLimiter = createRateLimitGuard({
@@ -123,16 +130,17 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
       const trimmedUsername = rawUsername.trim();
       const trimmedEmail = email.trim();
-      const normalizedUsername = trimmedUsername.toLowerCase();
-      const normalizedEmail = trimmedEmail.toLowerCase();
-      const invalidFields: string[] = [];
-      if (trimmedUsername.length < 2 || /\s/.test(trimmedUsername)) {
-        invalidFields.push("username");
-      }
-      if (trimmedEmail.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-        invalidFields.push("email");
-      }
-      if (password.length < PASSWORD_MIN_LENGTH) invalidFields.push("password");
+      const normalizedUsername = normalizeUsername(trimmedUsername);
+      const normalizedEmail = normalizeEmail(trimmedEmail);
+      const invalidFields = Array.from(
+        new Set(
+          validateRegisterInput({
+            username: trimmedUsername,
+            email: trimmedEmail,
+            password
+          }).map((i) => i.field)
+        )
+      );
       if (invalidFields.length) {
         throw validationError("Invalid field values", invalidFields);
       }
@@ -196,11 +204,17 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       if (typeof rawUsername !== "string" || typeof password !== "string") {
         throw validationError("Invalid field types", ["username", "password"]);
       }
-      if (rawUsername.trim().length < 2 || password.length < PASSWORD_MIN_LENGTH) {
+      const usernameIssues = validateUsername(rawUsername).filter(
+        (i) => i.code !== "REQUIRED"
+      );
+      const passwordIssues = validatePassword(password).filter(
+        (i) => i.code !== "REQUIRED"
+      );
+      if (usernameIssues.length || passwordIssues.length) {
         throw validationError("Invalid credentials", ["username", "password"]);
       }
 
-      const normalizedUsername = rawUsername.trim().toLowerCase();
+      const normalizedUsername = normalizeUsername(rawUsername);
       const { rows } = await query(
         client,
         `SELECT u.id, u.username, u.email, u.is_admin, p.password_hash, p.password_algo
