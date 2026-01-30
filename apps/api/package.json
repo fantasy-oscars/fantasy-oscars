@@ -21,7 +21,7 @@
     "@fantasy-oscars/shared": "file:../../packages/shared",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
-    "pg": "^8.13.1"
+    "pg": "^8.17.2"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.11.0",
