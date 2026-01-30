@@ -69,6 +69,9 @@ describe("MVP end-to-end flow", () => {
       { code: "oscars-e2e", year: 2035 },
       false
     );
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony.id
+    ]);
     const setActive = await postJson(
       "/admin/ceremony/active",
       { ceremony_id: ceremony.id },
@@ -156,11 +159,7 @@ describe("MVP end-to-end flow", () => {
     const leagueRes = await postJson<{
       league: { id: number; ceremony_id: number };
       season: { id: number };
-    }>(
-      "/leagues",
-      { code: "e2e-league", name: "E2E League", max_members: 10, is_public: true },
-      commishLogin.json.token
-    );
+    }>("/leagues", { name: "E2E League" }, commishLogin.json.token);
     expect(leagueRes.status).toBe(201);
     const leagueId = leagueRes.json.league.id;
     const seasonId = leagueRes.json.season.id;
@@ -259,7 +258,9 @@ describe("MVP end-to-end flow", () => {
     expect([200, 201]).toContain(pickRes.status);
 
     // Enter winner (locks draft)
-    const winnerRes = await postJson<{ winner: { nomination_id: number } }>(
+    const winnerRes = await postJson<{
+      winners: Array<{ category_edition_id: number; nomination_id: number }>;
+    }>(
       "/admin/winners",
       { category_edition_id: 1, nomination_id: 1 },
       adminLogin.json.token
@@ -273,7 +274,8 @@ describe("MVP end-to-end flow", () => {
       otherToken
     );
     expect(blockedPick.status).toBe(409);
-    expect(blockedPick.json.error.code).toBe("DRAFT_LOCKED");
+    // First winner entry locks the ceremony and cancels any in-progress drafts.
+    expect(blockedPick.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
 
     // Standings reflect winner
     const standingsRes = await getJson<{

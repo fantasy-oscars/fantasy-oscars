@@ -93,6 +93,9 @@ describe("ceremony routes", () => {
 
   it("exposes lock state and winners for active ceremony", async () => {
     const ceremony = await insertCeremony(db.pool);
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony.id
+    ]);
     const category = await insertCategoryEdition(db.pool, { ceremony_id: ceremony.id });
     const nomination = await insertNomination(db.pool, {
       category_edition_id: category.id
@@ -125,7 +128,9 @@ describe("ceremony routes", () => {
       password: "secret123"
     });
 
-    const upsert = await post<{ winner: { nomination_id: number } }>(
+    const upsert = await post<{
+      winners: Array<{ category_edition_id: number; nomination_id: number }>;
+    }>(
       "/admin/winners",
       { category_edition_id: category.id, nomination_id: nomination.id },
       { Authorization: `Bearer ${login.json.token}` }

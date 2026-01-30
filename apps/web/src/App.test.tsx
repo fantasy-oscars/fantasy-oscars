@@ -569,14 +569,27 @@ describe("<App /> shell + routing", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              members: [{ id: 1, season_id: 1, user_id: 1, league_member_id: 100, role: "OWNER", joined_at: "2026-01-01T00:00:00.000Z", username: "alice" }]
+              members: [
+                {
+                  id: 1,
+                  season_id: 1,
+                  user_id: 1,
+                  league_member_id: 100,
+                  role: "OWNER",
+                  joined_at: "2026-01-01T00:00:00.000Z",
+                  username: "alice"
+                }
+              ]
             })
         });
       }
       if (url.endsWith("/leagues")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ leagues: [{ id: 10, code: "lg", name: "Test League", ceremony_id: 22 }] })
+          json: () =>
+            Promise.resolve({
+              leagues: [{ id: 10, code: "lg", name: "Test League", ceremony_id: 22 }]
+            })
         });
       }
       if (url.includes("/leagues/10/seasons")) {
@@ -703,16 +716,15 @@ describe("<App /> shell + routing", () => {
 
   it("renders admin console skeleton for admins", async () => {
     window.history.pushState({}, "", "/admin/ceremonies/1/overview");
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -722,28 +734,35 @@ describe("<App /> shell + routing", () => {
                   id: 1,
                   code: "oscars-2026",
                   name: "Oscars 2026",
-                  year: 2026,
-                  starts_at: null
+                  starts_at: null,
+                  status: "DRAFT"
                 }
               ]
             })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
-            })
-        });
-      }
-      if (url.includes("/admin/ceremony/active") && init?.method === "POST") {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              ceremony: { id: 8, code: "oscars-2027", name: "Oscars 2027" }
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "DRAFT",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: null,
+                archived_at: null
+              },
+              stats: {
+                categories_total: 0,
+                categories_with_nominees: 0,
+                nominees_total: 0,
+                winners_total: 0
+              }
             })
         });
       }
@@ -754,32 +773,21 @@ describe("<App /> shell + routing", () => {
     render(<App />);
 
     await screen.findByRole("heading", { name: /Ceremonies/i });
-    await screen.findByRole("heading", { name: /Active ceremony/i });
-    expect(screen.getByText(/ID 7/)).toBeInTheDocument();
-    await userEvent.clear(screen.getByLabelText(/Ceremony ID/i));
-    await userEvent.type(screen.getByLabelText(/Ceremony ID/i), "8");
-    const update = screen.getByRole("button", { name: /Update/i });
-    await userEvent.click(update);
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/admin/ceremony/active"),
-        expect.objectContaining({ method: "POST" })
-      )
-    );
-    confirmSpy.mockRestore();
+    await screen.findByRole("heading", { name: /Overview/i });
+    expect(screen.getByText(/Configure the ceremony lifecycle/i)).toBeInTheDocument();
   });
 
-  it("uploads nominees JSON and shows summary", async () => {
+  it("uploads candidate films JSON and shows summary", async () => {
     window.history.pushState({}, "", "/admin/ceremonies/1/nominees");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -789,24 +797,33 @@ describe("<App /> shell + routing", () => {
                   id: 1,
                   code: "oscars-2026",
                   name: "Oscars 2026",
-                  year: 2026,
-                  starts_at: null
+                  starts_at: null,
+                  status: "DRAFT"
                 }
               ]
             })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
+      if (
+        url.endsWith("/admin/ceremonies/1/categories") &&
+        (!init || init.method === "GET")
+      ) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
+              categories: []
             })
         });
       }
-      if (url.includes("/admin/nominees/upload") && init?.method === "POST") {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+      if (url.endsWith("/admin/films") && (!init || init.method === "GET")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ films: [] }) });
+      }
+      if (url.endsWith("/admin/films/import") && init?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ upserted: 2, hydrated: 2, tmdb_errors: [] })
+        });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
@@ -815,35 +832,42 @@ describe("<App /> shell + routing", () => {
     render(<App />);
 
     await screen.findByRole("heading", { name: /Nominees/i });
-    const fileInput = await screen.findByLabelText(/Nominees JSON file/i);
+    const fileInput = await screen.findByLabelText(/Candidate films JSON file/i);
     const file = new File(
-      [JSON.stringify({ categories: [{}], nominations: [{ id: 1 }, { id: 2 }] })],
-      "nominees.json",
+      [
+        JSON.stringify([
+          { tmdb_id: 1, title: "Film A" },
+          { tmdb_id: 2, title: "Film B" }
+        ])
+      ],
+      "candidate-films.json",
       { type: "application/json" }
     );
     await userEvent.upload(fileInput, file);
-    await screen.findByText(/Categories: 1/);
-    await userEvent.click(screen.getByRole("button", { name: /Upload nominees/i }));
+    await screen.findByText(/Films: 2/);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Import candidate films/i })
+    );
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/admin/nominees/upload"),
+        expect.stringContaining("/admin/films/import"),
         expect.objectContaining({ method: "POST" })
       )
     );
-    await screen.findByText(/Nominees loaded for active ceremony/i);
+    await screen.findByText(/Imported candidates/i);
   });
 
   it("saves winners per category with confirmations and lock state", async () => {
     window.history.pushState({}, "", "/admin/ceremonies/1/winners");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/auth/me")) {
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({ user: { sub: "1", username: "alice", is_admin: true } })
         });
       }
-      if (url.includes("/admin/ceremonies") && (!init || init.method === "GET")) {
+      if (url.endsWith("/admin/ceremonies") && (!init || init.method === "GET")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -853,20 +877,25 @@ describe("<App /> shell + routing", () => {
                   id: 1,
                   code: "oscars-2026",
                   name: "Oscars 2026",
-                  year: 2026,
-                  starts_at: null
+                  starts_at: null,
+                  status: "DRAFT"
                 }
               ]
             })
         });
       }
-      if (url.includes("/ceremony/active/lock")) {
+      if (url.endsWith("/admin/ceremonies/1/lock")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ draft_locked: false, draft_locked_at: null })
+          json: () =>
+            Promise.resolve({
+              draft_locked: false,
+              draft_locked_at: null,
+              status: "DRAFT"
+            })
         });
       }
-      if (url.includes("/ceremony/active/nominations")) {
+      if (url.endsWith("/admin/ceremonies/1/nominations")) {
         return Promise.resolve({
           ok: true,
           json: () =>
@@ -879,28 +908,19 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
-      if (url.includes("/ceremony/active/winners")) {
+      if (url.endsWith("/admin/ceremonies/1/winners")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ winners: [] })
         });
       }
-      if (url.includes("/ceremony/active") && (!init || init.method === "GET")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              ceremony: { id: 7, code: "oscars-2026", name: "Oscars 2026" }
-            })
-        });
-      }
-      if (url.includes("/admin/winners") && init?.method === "POST") {
+      if (url.endsWith("/admin/winners") && init?.method === "POST") {
         const body = JSON.parse((init.body as string) ?? "{}");
         return Promise.resolve({
           ok: true,
           json: () =>
             Promise.resolve({
-              winner: { nomination_id: body.nomination_id },
+              winner: { nomination_ids: body.nomination_ids },
               draft_locked_at: "2026-01-01T00:00:00Z"
             })
         });
@@ -919,9 +939,9 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(firstRadio);
     await waitFor(() => expect(firstRadio).toBeChecked());
     await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
-    await userEvent.click(screen.getByRole("button", { name: /Yes, save winner/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/admin/winners"))
@@ -933,9 +953,9 @@ describe("<App /> shell + routing", () => {
     await userEvent.click(secondRadio);
     await waitFor(() => expect(secondRadio).toBeChecked());
     await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winner/i })
+      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
-    await userEvent.click(screen.getByRole("button", { name: /Yes, save winner/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
     await waitFor(() => {
       const winnerPosts = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes("/admin/winners")

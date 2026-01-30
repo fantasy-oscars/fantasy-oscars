@@ -20,6 +20,10 @@ async function setActiveCeremony(id: number) {
 
 async function createActiveCeremony() {
   const ceremony = await insertCeremony(db.pool);
+  // Current API requires ceremonies to be published before they can be used for season/draft flows.
+  await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    ceremony.id
+  ]);
   await setActiveCeremony(ceremony.id);
   return ceremony;
 }
@@ -79,13 +83,16 @@ describe("seasons integration", () => {
   it("creates an additional season for the active ceremony and lists seasons", async () => {
     const ceremony1 = await createActiveCeremony();
     const ceremony2 = await insertCeremony(db.pool, { year: ceremony1.year + 1 }, false);
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremony2.id
+    ]);
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), username: user.username });
 
     // Create league (creates initial season for ceremony1)
     const leagueRes = await post<{ league: { id: number } }>(
       "/leagues",
-      { code: "sea-1", name: "Seasons League", max_members: 5 },
+      { name: "Seasons League" },
       token
     );
     expect(leagueRes.status).toBe(201);
