@@ -101,6 +101,16 @@ function isMissingColumnError(err: unknown, column: string): boolean {
   );
 }
 
+function isNotNullViolation(err: unknown, column: string): boolean {
+  const pgErr = err as { code?: string; message?: string; column?: string };
+  if (pgErr?.code !== "23502") return false; // not_null_violation
+  if (pgErr?.column === column) return true;
+  const msg = String(pgErr?.message ?? "");
+  return (
+    msg.includes(`"${column}"`) || msg.includes(`'${column}'`) || msg.includes(column)
+  );
+}
+
 async function insertUserWithFallback(
   client: DbClient,
   input: {
@@ -129,6 +139,45 @@ async function insertUserWithFallback(
     );
     return { user };
   } catch (err) {
+    // Legacy schema sometimes required `display_name` (NOT NULL). If so, mirror the
+    // username as display_name to keep dogfooding ergonomic until DB reset.
+    if (isNotNullViolation(err, "display_name")) {
+      try {
+        const { rows } = await query(
+          client,
+          `INSERT INTO app_user (username, email, display_name)
+           VALUES ($1, $2, $3)
+           RETURNING id, username, email, created_at, is_admin`,
+          [input.username_display, input.email, input.username_display]
+        );
+        const user = rows[0];
+        await query(
+          client,
+          `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+          [user.id, input.password_hash, input.password_algo]
+        );
+        return { user };
+      } catch (displayErr) {
+        if (isMissingColumnError(displayErr, "is_admin")) {
+          const { rows } = await query(
+            client,
+            `INSERT INTO app_user (username, email, display_name)
+             VALUES ($1, $2, $3)
+             RETURNING id, username, email, created_at`,
+            [input.username_display, input.email, input.username_display]
+          );
+          const user = rows[0];
+          await query(
+            client,
+            `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+            [user.id, input.password_hash, input.password_algo]
+          );
+          return { user: { ...user, is_admin: false } };
+        }
+        throw displayErr;
+      }
+    }
+
     // If a pre-squash DB is missing columns, retry using the older schema.
     if (isMissingColumnError(err, "is_admin")) {
       const { rows } = await query(
@@ -165,6 +214,43 @@ async function insertUserWithFallback(
         );
         return { user };
       } catch (legacyErr) {
+        if (isNotNullViolation(legacyErr, "display_name")) {
+          try {
+            const { rows } = await query(
+              client,
+              `INSERT INTO app_user (handle, email, display_name)
+               VALUES ($1, $2, $3)
+               RETURNING id, handle AS username, email, created_at, is_admin`,
+              [input.username_display, input.email, input.username_display]
+            );
+            const user = rows[0];
+            await query(
+              client,
+              `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+              [user.id, input.password_hash, input.password_algo]
+            );
+            return { user };
+          } catch (legacyDisplayErr) {
+            if (isMissingColumnError(legacyDisplayErr, "is_admin")) {
+              const { rows } = await query(
+                client,
+                `INSERT INTO app_user (handle, email, display_name)
+                 VALUES ($1, $2, $3)
+                 RETURNING id, handle AS username, email, created_at`,
+                [input.username_display, input.email, input.username_display]
+              );
+              const user = rows[0];
+              await query(
+                client,
+                `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+                [user.id, input.password_hash, input.password_algo]
+              );
+              return { user: { ...user, is_admin: false } };
+            }
+            throw legacyDisplayErr;
+          }
+        }
+
         if (isMissingColumnError(legacyErr, "is_admin")) {
           const { rows } = await query(
             client,
@@ -254,6 +340,21 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         });
         return res.status(201).json({ user });
       } catch (err) {
+        // If prod is on a legacy schema during a deploy, return a clear, directed
+        // message instead of a generic "Unexpected error".
+        if (
+          isMissingColumnError(err, "username") ||
+          isMissingColumnError(err, "handle") ||
+          isMissingColumnError(err, "is_admin") ||
+          isNotNullViolation(err, "display_name")
+        ) {
+          throw new AppError(
+            "SERVICE_UNAVAILABLE",
+            503,
+            "Registration is temporarily unavailable while we update the server. Please try again in a few minutes."
+          );
+        }
+
         const pgErr = err as {
           code?: string;
           table?: string;
@@ -368,7 +469,20 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           }
         }
       }
-      if (!rows) throw lastErr;
+      if (!rows) {
+        if (
+          isMissingColumnError(lastErr, "username") ||
+          isMissingColumnError(lastErr, "handle") ||
+          isMissingColumnError(lastErr, "is_admin")
+        ) {
+          throw new AppError(
+            "SERVICE_UNAVAILABLE",
+            503,
+            "Login is temporarily unavailable while we update the server. Please try again in a few minutes."
+          );
+        }
+        throw lastErr;
+      }
 
       const user = rows[0] as {
         id: string | number;
