@@ -1,6 +1,7 @@
 import express from "express";
 import type { Express } from "express";
 import type { Pool } from "pg";
+import crypto from "crypto";
 import { healthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createDraftsRouter } from "./routes/drafts.js";
@@ -52,6 +53,14 @@ export function createServer(deps?: { db?: Pool }): Express {
   app.use(express.json());
   app.locals.db = pool;
 
+  // Attach a request id early for log correlation and user-facing debugging.
+  app.use((_req, res, next) => {
+    const requestId = crypto.randomUUID();
+    res.locals.request_id = requestId;
+    res.setHeader("X-Request-Id", requestId);
+    next();
+  });
+
   // Minimal CORS for local dev and web preview
   app.use((req, res, next) => {
     const origin = req.headers.origin;
@@ -91,6 +100,7 @@ export function createServer(deps?: { db?: Pool }): Express {
           path: req.originalUrl ?? req.url,
           status: res.statusCode,
           duration_ms: Date.now() - start,
+          request_id: res.locals.request_id as string | undefined,
           body: sanitizedBody
         })
       );
@@ -116,7 +126,10 @@ export function createServer(deps?: { db?: Pool }): Express {
     res.json({ ok: true, service: "api", status: "healthy" });
   });
   app.use((_req, res) => {
-    res.status(404).json(errorBody(new AppError("NOT_FOUND", 404, "Not found")));
+    const requestId = res.locals.request_id as string | undefined;
+    res
+      .status(404)
+      .json(errorBody(new AppError("NOT_FOUND", 404, "Not found"), { requestId }));
   });
 
   app.use(
@@ -132,6 +145,7 @@ export function createServer(deps?: { db?: Pool }): Express {
       const message = appErr?.message ?? (err as Error)?.message ?? "Unexpected error";
       const sanitizedBody = sanitizeBody(_req.body);
       const context = deriveDraftContext(sanitizedBody);
+      const requestId = res.locals.request_id as string | undefined;
       // 4xx are client errors (expected sometimes); 5xx are server errors.
       const level = status >= 500 ? "error" : "info";
       log({
@@ -141,6 +155,7 @@ export function createServer(deps?: { db?: Pool }): Express {
         path: _req.originalUrl ?? _req.url,
         status,
         code: appErr?.code ?? "INTERNAL_ERROR",
+        request_id: requestId,
         error: message,
         error_name: err instanceof Error ? err.name : undefined,
         error_stack:
@@ -159,7 +174,7 @@ export function createServer(deps?: { db?: Pool }): Express {
           console.error(err);
         }
       }
-      res.status(status).json(errorBody(appErr ?? (err as Error)));
+      res.status(status).json(errorBody(appErr ?? (err as Error), { requestId }));
     }
   );
   return app;

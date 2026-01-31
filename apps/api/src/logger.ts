@@ -121,6 +121,7 @@ export function buildRequestLog(input: {
   path: string;
   status: number;
   duration_ms: number;
+  request_id?: string;
   body?: unknown;
 }): LogEntry {
   const context = deriveDraftContext(input.body);
@@ -131,6 +132,7 @@ export function buildRequestLog(input: {
     path: input.path,
     status: input.status,
     duration_ms: input.duration_ms,
+    request_id: input.request_id,
     ...context
   };
 }

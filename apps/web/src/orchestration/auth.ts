@@ -9,11 +9,14 @@ import {
   validateUsernameMessage
 } from "../decisions/auth";
 
-type LoginFn = (input: {
-  username: string;
-  password: string;
-}) => Promise<
-  { ok: true } | { ok: false; error?: string; errorCode?: string; errorFields?: string[] }
+type LoginFn = (input: { username: string; password: string }) => Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      error?: string;
+      errorCode?: string;
+      errorFields?: string[];
+    }
 >;
 
 type RegisterFn = (input: {
@@ -21,7 +24,13 @@ type RegisterFn = (input: {
   email: string;
   password: string;
 }) => Promise<
-  { ok: true } | { ok: false; error?: string; errorCode?: string; errorFields?: string[] }
+  | { ok: true }
+  | {
+      ok: false;
+      error?: string;
+      errorCode?: string;
+      errorFields?: string[];
+    }
 >;
 
 export function useLoginOrchestration(deps: { login: LoginFn }) {
