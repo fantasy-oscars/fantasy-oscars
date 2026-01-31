@@ -61,11 +61,12 @@ export async function fetchJson<T>(
       ...init
     });
     // In unit tests, fetch may be mocked with a minimal Response-like object.
-    const headersGet =
+    const requestIdHeader =
       typeof (res as { headers?: { get?: unknown } }).headers?.get === "function"
-        ? (res as { headers: { get: (name: string) => string | null } }).headers.get
+        ? ((res as { headers: { get: (name: string) => string | null } }).headers.get(
+            "x-request-id"
+          ) ?? undefined)
         : undefined;
-    const requestIdHeader = headersGet?.("x-request-id") ?? undefined;
     let jsonParsed = false;
     const json = (await (typeof (res as { json?: unknown }).json === "function"
       ? (res as { json: () => Promise<unknown> })
@@ -112,11 +113,29 @@ export async function fetchJson<T>(
     }
     return { ok: true, data: json as T, requestId };
   } catch (err) {
+    // Never leak low-level runtime errors to users. Convert to actionable messages.
     const raw = err instanceof Error ? err.message : "Request failed";
-    const message =
-      typeof raw === "string" && raw.toLowerCase().includes("failed to fetch")
-        ? "Network error: API unreachable (it may be starting up). Please try again."
-        : raw;
-    return { ok: false, error: message };
+    const normalized = typeof raw === "string" ? raw.toLowerCase() : "";
+
+    if (normalized.includes("failed to fetch")) {
+      return {
+        ok: false,
+        error: "We couldn't reach the server. Please try again in a moment."
+      };
+    }
+
+    if (
+      normalized.includes("headers.get") ||
+      normalized.includes("instances of headers") ||
+      normalized.includes("illegal invocation")
+    ) {
+      return {
+        ok: false,
+        error:
+          "Something went wrong while starting your session. Please refresh and try again."
+      };
+    }
+
+    return { ok: false, error: "Something went wrong. Please try again." };
   }
 }
