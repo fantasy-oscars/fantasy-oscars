@@ -703,11 +703,9 @@ describe("<App /> shell + routing", () => {
 
     await screen.findByRole("heading", { name: /Results/i });
     await screen.findAllByText(/Winners/i);
-    expect(screen.getByText(/Season standings/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pick log/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Drafting locks the moment the first winner is entered/i)
-    ).toBeInTheDocument();
+    await screen.findByText(/Season standings/i);
+    await screen.findByText(/Pick log/i);
+    await screen.findByText(/Drafting locks the moment the first winner is entered/i);
   });
 
   it("blocks non-admins from admin console", async () => {

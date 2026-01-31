@@ -101,6 +101,94 @@ function isMissingColumnError(err: unknown, column: string): boolean {
   );
 }
 
+async function insertUserWithFallback(
+  client: DbClient,
+  input: {
+    // Store the username with the user's preferred casing (trimmed), while
+    // deduping/searching case-insensitively via lower(username) indexes/queries.
+    username_display: string;
+    email: string;
+    password_hash: string;
+    password_algo: string;
+  }
+) {
+  // Try to insert into the "new" schema first (username/email/is_admin).
+  try {
+    const { rows } = await query(
+      client,
+      `INSERT INTO app_user (username, email)
+       VALUES ($1, $2)
+       RETURNING id, username, email, created_at, is_admin`,
+      [input.username_display, input.email]
+    );
+    const user = rows[0];
+    await query(
+      client,
+      `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+      [user.id, input.password_hash, input.password_algo]
+    );
+    return { user };
+  } catch (err) {
+    // If a pre-squash DB is missing columns, retry using the older schema.
+    if (isMissingColumnError(err, "is_admin")) {
+      const { rows } = await query(
+        client,
+        `INSERT INTO app_user (username, email)
+         VALUES ($1, $2)
+         RETURNING id, username, email, created_at`,
+        [input.username_display, input.email]
+      );
+      const user = rows[0];
+      await query(
+        client,
+        `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+        [user.id, input.password_hash, input.password_algo]
+      );
+      return { user: { ...user, is_admin: false } };
+    }
+
+    if (isMissingColumnError(err, "username")) {
+      // Legacy schema used `handle` instead of `username`.
+      try {
+        const { rows } = await query(
+          client,
+          `INSERT INTO app_user (handle, email)
+           VALUES ($1, $2)
+           RETURNING id, handle AS username, email, created_at, is_admin`,
+          [input.username_display, input.email]
+        );
+        const user = rows[0];
+        await query(
+          client,
+          `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+          [user.id, input.password_hash, input.password_algo]
+        );
+        return { user };
+      } catch (legacyErr) {
+        if (isMissingColumnError(legacyErr, "is_admin")) {
+          const { rows } = await query(
+            client,
+            `INSERT INTO app_user (handle, email)
+             VALUES ($1, $2)
+             RETURNING id, handle AS username, email, created_at`,
+            [input.username_display, input.email]
+          );
+          const user = rows[0];
+          await query(
+            client,
+            `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+            [user.id, input.password_hash, input.password_algo]
+          );
+          return { user: { ...user, is_admin: false } };
+        }
+        throw legacyErr;
+      }
+    }
+
+    throw err;
+  }
+}
+
 export function createAuthRouter(client: DbClient, opts: { authSecret: string }): Router {
   const router = express.Router();
   const { authSecret } = opts;
@@ -139,8 +227,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
       const trimmedUsername = rawUsername.trim();
       const trimmedEmail = email.trim();
-      const normalizedUsername = normalizeUsername(trimmedUsername);
       const normalizedEmail = normalizeEmail(trimmedEmail);
+      const usernameDisplay = trimmedUsername;
       const invalidFields = Array.from(
         new Set(
           validateRegisterInput({
@@ -158,42 +246,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       const password_algo = "scrypt";
 
       try {
-        const { rows } = await query(
-          client,
-          `INSERT INTO app_user (username, email)
-           VALUES ($1, $2)
-           RETURNING id, username, email, created_at, is_admin`,
-          [normalizedUsername, normalizedEmail]
-        );
-
-        const user = rows[0];
-        await query(
-          client,
-          `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
-          [user.id, password_hash, password_algo]
-        );
-
+        const { user } = await insertUserWithFallback(client, {
+          username_display: usernameDisplay,
+          email: normalizedEmail,
+          password_hash,
+          password_algo
+        });
         return res.status(201).json({ user });
       } catch (err) {
-        // Temporary self-heal: if an existing DB is missing `app_user.is_admin`,
-        // still allow registration (defaults to non-admin).
-        if (isMissingColumnError(err, "is_admin")) {
-          const { rows } = await query(
-            client,
-            `INSERT INTO app_user (username, email)
-             VALUES ($1, $2)
-             RETURNING id, username, email, created_at`,
-            [normalizedUsername, normalizedEmail]
-          );
-          const user = rows[0];
-          await query(
-            client,
-            `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
-            [user.id, password_hash, password_algo]
-          );
-          return res.status(201).json({ user: { ...user, is_admin: false } });
-        }
-
         const pgErr = err as {
           code?: string;
           table?: string;
@@ -243,35 +303,72 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
 
       const normalizedUsername = normalizeUsername(rawUsername);
-      let rows: unknown[] = [];
+      const tryQueries: Array<() => Promise<unknown[]>> = [
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT u.id, u.username, u.email, u.is_admin, p.password_hash, p.password_algo
+               FROM app_user u
+               JOIN auth_password p ON p.user_id = u.id
+               WHERE lower(u.username) = $1`,
+              [normalizedUsername]
+            )
+          ).rows as unknown[],
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT u.id, u.username, u.email, false AS is_admin, p.password_hash, p.password_algo
+               FROM app_user u
+               JOIN auth_password p ON p.user_id = u.id
+               WHERE lower(u.username) = $1`,
+              [normalizedUsername]
+            )
+          ).rows as unknown[],
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT u.id, u.handle AS username, u.email, u.is_admin, p.password_hash, p.password_algo
+               FROM app_user u
+               JOIN auth_password p ON p.user_id = u.id
+               WHERE lower(u.handle) = $1`,
+              [normalizedUsername]
+            )
+          ).rows as unknown[],
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT u.id, u.handle AS username, u.email, false AS is_admin, p.password_hash, p.password_algo
+               FROM app_user u
+               JOIN auth_password p ON p.user_id = u.id
+               WHERE lower(u.handle) = $1`,
+              [normalizedUsername]
+            )
+          ).rows as unknown[]
+      ];
 
-      try {
-        const res = await query(
-          client,
-          `SELECT u.id, u.username, u.email, u.is_admin, p.password_hash, p.password_algo
-           FROM app_user u
-           JOIN auth_password p ON p.user_id = u.id
-           WHERE lower(u.username) = $1`,
-          [normalizedUsername]
-        );
-        rows = res.rows as unknown[];
-      } catch (err) {
-        // Temporary self-heal: allow login even if `app_user.is_admin` is missing,
-        // treating the user as non-admin until the DB is fixed.
-        if (isMissingColumnError(err, "is_admin")) {
-          const res = await query(
-            client,
-            `SELECT u.id, u.username, u.email, false AS is_admin, p.password_hash, p.password_algo
-             FROM app_user u
-             JOIN auth_password p ON p.user_id = u.id
-             WHERE lower(u.username) = $1`,
-            [normalizedUsername]
-          );
-          rows = res.rows as unknown[];
-        } else {
-          throw err;
+      let rows: unknown[] | undefined;
+      let lastErr: unknown = undefined;
+      for (const run of tryQueries) {
+        try {
+          rows = await run();
+          break;
+        } catch (err) {
+          lastErr = err;
+          // Only continue retrying on missing-column errors.
+          if (
+            !isMissingColumnError(err, "is_admin") &&
+            !isMissingColumnError(err, "username") &&
+            !isMissingColumnError(err, "handle")
+          ) {
+            break;
+          }
         }
       }
+      if (!rows) throw lastErr;
 
       const user = rows[0] as {
         id: string | number;

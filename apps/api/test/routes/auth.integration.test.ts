@@ -135,7 +135,7 @@ describe("auth integration", () => {
     expect(me.json.user.username).toBe(payload.username);
   });
 
-  it("logs in with username case-insensitively and returns normalized username/email", async () => {
+  it("logs in with username case-insensitively and returns stored username casing", async () => {
     const payload = {
       username: "CaseUser",
       email: "CaseEmail@example.com",
@@ -151,7 +151,7 @@ describe("auth integration", () => {
       }
     );
     expect(res.status).toBe(200);
-    expect(res.json.user.username).toBe("caseuser");
+    expect(res.json.user.username).toBe("CaseUser");
     expect(res.json.user.email).toBe("caseemail@example.com");
   });
 
