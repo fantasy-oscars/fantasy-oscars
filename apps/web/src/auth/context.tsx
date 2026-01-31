@@ -18,7 +18,7 @@ export type AuthUser = {
 export type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  error: string | null;
+  sessionError: string | null;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
   login: (input: { username: string; password: string }) => Promise<
@@ -30,6 +30,7 @@ export type AuthContextValue = {
         error?: string;
         errorCode?: string;
         errorFields?: string[];
+        requestId?: string;
       }
   >;
   register: (input: { username: string; email: string; password: string }) => Promise<
@@ -41,6 +42,7 @@ export type AuthContextValue = {
         error?: string;
         errorCode?: string;
         errorFields?: string[];
+        requestId?: string;
       }
   >;
 };
@@ -56,11 +58,11 @@ export function useAuthContext() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setSessionError(null);
     const res = await fetchJson<{ user: AuthUser }>("/auth/me", { method: "GET" });
     if (res.ok) {
       setUser(res.data?.user ?? null);
@@ -72,9 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         res.errorCode === "INVALID_TOKEN" ||
         res.errorCode === "TOKEN_EXPIRED"
       ) {
-        setError(null);
+        setSessionError(null);
       } else {
-        setError(res.error ?? "Unable to verify session");
+        setSessionError(res.error ?? "Unable to verify session");
       }
     }
     setLoading(false);
@@ -88,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (input: { username: string; password: string }) => {
-    setError(null);
     const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,19 +99,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(res.data.user);
       return { ok: true as const };
     }
-    setError(res.error ?? "Login failed");
     setUser(null);
     return {
       ok: false as const,
       error: res.error,
       errorCode: res.errorCode,
-      errorFields: res.errorFields
+      errorFields: res.errorFields,
+      requestId: res.requestId
     };
   }, []);
 
   const register = useCallback(
     async (input: { username: string; email: string; password: string }) => {
-      setError(null);
       const res = await fetchJson("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,12 +121,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await login({ username: input.username, password: input.password });
         return { ok: true as const };
       }
-      setError(res.error ?? "Registration failed");
       return {
         ok: false as const,
         error: res.error,
         errorCode: res.errorCode,
-        errorFields: res.errorFields
+        errorFields: res.errorFields,
+        requestId: res.requestId
       };
     },
     [login]
@@ -137,8 +137,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ user, loading, error, refresh, logout, login, register }),
-    [user, loading, error, refresh, logout, login, register]
+    () => ({ user, loading, sessionError, refresh, logout, login, register }),
+    [user, loading, sessionError, refresh, logout, login, register]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

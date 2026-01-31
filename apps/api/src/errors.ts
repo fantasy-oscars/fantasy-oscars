@@ -20,15 +20,22 @@ export function internalError() {
   return new AppError("INTERNAL_ERROR", 500, "Unexpected error");
 }
 
-export function errorBody(err: AppError | Error) {
+export function errorBody(err: AppError | Error, opts?: { requestId?: string }) {
   if (err instanceof AppError) {
     return {
       error: {
         code: err.code,
         message: err.message,
+        ...(opts?.requestId ? { request_id: opts.requestId } : {}),
         ...(err.details ? { details: err.details } : {})
       }
     };
   }
-  return { error: { code: "INTERNAL_ERROR", message: "Unexpected error" } };
+  return {
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Unexpected error",
+      ...(opts?.requestId ? { request_id: opts.requestId } : {})
+    }
+  };
 }

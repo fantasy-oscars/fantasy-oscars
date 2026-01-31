@@ -38,10 +38,9 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
 }
 
 export function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuthContext();
+  const { user } = useAuthContext();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/";
-  if (loading) return <PageLoader label="Checking session..." />;
   if (user) return <Navigate to={from} replace />;
   return <>{children}</>;
 }

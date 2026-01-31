@@ -6,7 +6,7 @@ import { PageError } from "../ui/page-state";
 import { SiteFooter } from "./SiteFooter";
 
 export function ShellLayout() {
-  const { user, loading, error, logout } = useAuthContext();
+  const { user, loading, sessionError, logout } = useAuthContext();
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -49,7 +49,7 @@ export function ShellLayout() {
           </Link>
         </header>
 
-        {error && <PageError message={`Auth error: ${error}`} />}
+        {sessionError && <PageError message={`Session error: ${sessionError}`} />}
 
         <nav className="site-nav" aria-label="Primary">
           <div className="nav-links">
@@ -94,9 +94,7 @@ export function ShellLayout() {
           </div>
 
           <div className="nav-actions">
-            {loading ? (
-              <span className="nav-muted">Loading…</span>
-            ) : user ? (
+            {user ? (
               <>
                 {user.is_admin && (
                   <NavLink to="/admin" className="button ghost">
@@ -140,15 +138,18 @@ export function ShellLayout() {
                 </div>
               </>
             ) : (
-              <Link
-                to="/login"
-                state={{
-                  from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
-                }}
-                className="button ghost"
-              >
-                Login
-              </Link>
+              <>
+                {loading && <span className="nav-muted">Checking…</span>}
+                <Link
+                  to="/login"
+                  state={{
+                    from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
+                  }}
+                  className="button ghost"
+                >
+                  Login
+                </Link>
+              </>
             )}
           </div>
         </nav>

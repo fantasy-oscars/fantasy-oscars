@@ -97,23 +97,29 @@ describe("<App /> shell + routing", () => {
 
   it("shows validation errors from register response", async () => {
     window.history.pushState({}, "", "/register");
-    mockFetchSequence(
-      {
-        ok: true,
-        json: () => Promise.resolve({ user: null })
-      },
-      {
-        ok: false,
-        json: () =>
-          Promise.resolve({
-            error: {
-              code: "VALIDATION_ERROR",
-              message: "Invalid field values",
-              details: { fields: ["username", "email"] }
-            }
-          })
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ user: null })
+        });
       }
-    );
+      if (url.includes("/auth/register")) {
+        return Promise.resolve({
+          ok: false,
+          json: () =>
+            Promise.resolve({
+              error: {
+                code: "VALIDATION_ERROR",
+                message: "Invalid field values",
+                details: { fields: ["username", "email"] }
+              }
+            })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
 
@@ -128,14 +134,18 @@ describe("<App /> shell + routing", () => {
 
     await screen.findAllByText(/Required/i);
 
-    await userEvent.type(within(registerCard).getByLabelText(/Username/i), "a");
-    await userEvent.type(within(registerCard).getByLabelText(/Email/i), "bad-email");
-    await userEvent.type(within(registerCard).getByLabelText(/Password/i), "p");
+    // Use values that pass client-side validation so the request reaches the API.
+    await userEvent.type(within(registerCard).getByLabelText(/Username/i), "alice");
+    await userEvent.type(
+      within(registerCard).getByLabelText(/Email/i),
+      "alice@example.com"
+    );
+    await userEvent.type(within(registerCard).getByLabelText(/Password/i), "password1");
     await userEvent.click(
       within(registerCard).getByRole("button", { name: /Register/i })
     );
 
-    await screen.findByText(/Auth error: Invalid field values/i);
+    await screen.findByText(/Please fix the highlighted fields and try again\./i);
   });
 
   it("shows account details and logout", async () => {
