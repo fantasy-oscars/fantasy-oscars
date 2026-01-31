@@ -40,7 +40,7 @@ async function main() {
   if (!bootstrapSecret) throw new Error("ADMIN_BOOTSTRAP_SECRET env is not set");
   if (secret !== bootstrapSecret) throw new Error("Invalid bootstrap secret");
 
-  const normalizedUsername = username.trim().toLowerCase();
+  const usernameDisplay = username.trim();
   const normalizedEmail = email.trim().toLowerCase();
   const pwHash = hashPassword(password);
 
@@ -51,11 +51,11 @@ async function main() {
     const userRes = await client.query(
       `INSERT INTO app_user (username, email, is_admin)
        VALUES ($1, $2, TRUE)
-       ON CONFLICT (username) DO UPDATE
+       ON CONFLICT (lower(username)) DO UPDATE
          SET email = EXCLUDED.email,
              is_admin = TRUE
        RETURNING id, username, email, is_admin`,
-      [normalizedUsername, normalizedEmail]
+      [usernameDisplay, normalizedEmail]
     );
     const user = userRes.rows[0];
     await client.query(
@@ -72,7 +72,7 @@ async function main() {
         `INSERT INTO admin_audit_log (actor_user_id, action, target_type, target_id, meta)
        VALUES ($1, 'bootstrap_admin', 'app_user', $2, $3)
        ON CONFLICT DO NOTHING`,
-        [user.id, user.id, { username: normalizedUsername, email: normalizedEmail }]
+        [user.id, user.id, { username: usernameDisplay, email: normalizedEmail }]
       )
       .catch(() => {});
 

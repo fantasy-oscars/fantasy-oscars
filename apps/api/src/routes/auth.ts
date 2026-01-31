@@ -103,7 +103,14 @@ function isMissingColumnError(err: unknown, column: string): boolean {
 
 async function insertUserWithFallback(
   client: DbClient,
-  input: { username: string; email: string; password_hash: string; password_algo: string }
+  input: {
+    // Store the username with the user's preferred casing (trimmed), while
+    // deduping/searching case-insensitively via lower(username) indexes/queries.
+    username_display: string;
+    email: string;
+    password_hash: string;
+    password_algo: string;
+  }
 ) {
   // Try to insert into the "new" schema first (username/email/is_admin).
   try {
@@ -112,7 +119,7 @@ async function insertUserWithFallback(
       `INSERT INTO app_user (username, email)
        VALUES ($1, $2)
        RETURNING id, username, email, created_at, is_admin`,
-      [input.username, input.email]
+      [input.username_display, input.email]
     );
     const user = rows[0];
     await query(
@@ -129,7 +136,7 @@ async function insertUserWithFallback(
         `INSERT INTO app_user (username, email)
          VALUES ($1, $2)
          RETURNING id, username, email, created_at`,
-        [input.username, input.email]
+        [input.username_display, input.email]
       );
       const user = rows[0];
       await query(
@@ -148,7 +155,7 @@ async function insertUserWithFallback(
           `INSERT INTO app_user (handle, email)
            VALUES ($1, $2)
            RETURNING id, handle AS username, email, created_at, is_admin`,
-          [input.username, input.email]
+          [input.username_display, input.email]
         );
         const user = rows[0];
         await query(
@@ -164,7 +171,7 @@ async function insertUserWithFallback(
             `INSERT INTO app_user (handle, email)
              VALUES ($1, $2)
              RETURNING id, handle AS username, email, created_at`,
-            [input.username, input.email]
+            [input.username_display, input.email]
           );
           const user = rows[0];
           await query(
@@ -220,8 +227,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
       const trimmedUsername = rawUsername.trim();
       const trimmedEmail = email.trim();
-      const normalizedUsername = normalizeUsername(trimmedUsername);
       const normalizedEmail = normalizeEmail(trimmedEmail);
+      const usernameDisplay = trimmedUsername;
       const invalidFields = Array.from(
         new Set(
           validateRegisterInput({
@@ -240,7 +247,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
       try {
         const { user } = await insertUserWithFallback(client, {
-          username: normalizedUsername,
+          username_display: usernameDisplay,
           email: normalizedEmail,
           password_hash,
           password_algo
