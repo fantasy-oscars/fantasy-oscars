@@ -61,11 +61,12 @@ export async function fetchJson<T>(
       ...init
     });
     // In unit tests, fetch may be mocked with a minimal Response-like object.
-    const headersGet =
+    const requestIdHeader =
       typeof (res as { headers?: { get?: unknown } }).headers?.get === "function"
-        ? (res as { headers: { get: (name: string) => string | null } }).headers.get
+        ? ((res as { headers: { get: (name: string) => string | null } }).headers.get(
+            "x-request-id"
+          ) ?? undefined)
         : undefined;
-    const requestIdHeader = headersGet?.("x-request-id") ?? undefined;
     let jsonParsed = false;
     const json = (await (typeof (res as { json?: unknown }).json === "function"
       ? (res as { json: () => Promise<unknown> })
