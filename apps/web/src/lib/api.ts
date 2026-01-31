@@ -113,11 +113,29 @@ export async function fetchJson<T>(
     }
     return { ok: true, data: json as T, requestId };
   } catch (err) {
+    // Never leak low-level runtime errors to users. Convert to actionable messages.
     const raw = err instanceof Error ? err.message : "Request failed";
-    const message =
-      typeof raw === "string" && raw.toLowerCase().includes("failed to fetch")
-        ? "Network error: API unreachable (it may be starting up). Please try again."
-        : raw;
-    return { ok: false, error: message };
+    const normalized = typeof raw === "string" ? raw.toLowerCase() : "";
+
+    if (normalized.includes("failed to fetch")) {
+      return {
+        ok: false,
+        error: "We couldn't reach the server. Please try again in a moment."
+      };
+    }
+
+    if (
+      normalized.includes("headers.get") ||
+      normalized.includes("instances of headers") ||
+      normalized.includes("illegal invocation")
+    ) {
+      return {
+        ok: false,
+        error:
+          "Something went wrong while starting your session. Please refresh and try again."
+      };
+    }
+
+    return { ok: false, error: "Something went wrong. Please try again." };
   }
 }
