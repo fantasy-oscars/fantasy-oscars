@@ -64,7 +64,9 @@ export function useLoginOrchestration(deps: { login: LoginFn }) {
           message:
             res.errorCode === "VALIDATION_ERROR" && res.errorFields?.length
               ? "Please check the highlighted fields and try again."
-              : (res.error ?? "Login failed")
+              : res.errorCode === "INTERNAL_ERROR"
+                ? "Login is temporarily unavailable due to a server issue. Please try again in a few minutes."
+                : (res.error ?? "Login failed")
         });
         return { ok: false as const };
       }
