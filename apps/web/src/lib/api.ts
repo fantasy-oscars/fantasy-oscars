@@ -60,11 +60,21 @@ export async function fetchJson<T>(
       credentials: "include",
       ...init
     });
-    const requestIdHeader = res.headers.get("x-request-id") ?? undefined;
-    const contentType = res.headers.get("content-type") ?? "";
-
-    const json = (await (contentType.includes("application/json")
-      ? res.json().catch(() => ({}))
+    // In unit tests, fetch may be mocked with a minimal Response-like object.
+    const headersGet =
+      typeof (res as { headers?: { get?: unknown } }).headers?.get === "function"
+        ? (res as { headers: { get: (name: string) => string | null } }).headers.get
+        : undefined;
+    const requestIdHeader = headersGet?.("x-request-id") ?? undefined;
+    let jsonParsed = false;
+    const json = (await (typeof (res as { json?: unknown }).json === "function"
+      ? (res as { json: () => Promise<unknown> })
+          .json()
+          .then((v) => {
+            jsonParsed = true;
+            return v;
+          })
+          .catch(() => ({}))
       : Promise.resolve({}))) as { error?: ApiError & { request_id?: string } } & Record<
       string,
       unknown
@@ -76,9 +86,10 @@ export async function fetchJson<T>(
         ? (json.error as { request_id: string }).request_id
         : undefined);
 
+    // Best-effort: if JSON parsing didn't work, try to read text for debugging.
     const textBody =
-      !contentType.includes("application/json") && !res.ok
-        ? await res.text().catch(() => "")
+      !jsonParsed && !res.ok && typeof (res as { text?: unknown }).text === "function"
+        ? await (res as { text: () => Promise<string> }).text().catch(() => "")
         : "";
     if (!res.ok) {
       const err = json.error ?? {};
