@@ -126,6 +126,8 @@ export function useRegisterOrchestration(deps: { register: RegisterFn }) {
           message:
             res.errorCode === "VALIDATION_ERROR" && res.errorFields?.length
               ? "Please fix the highlighted fields and try again."
+              : res.errorCode === "SERVICE_UNAVAILABLE" || res.errorCode === "INTERNAL_ERROR"
+                ? "We can't create accounts right now due to a server update. Please try again in a few minutes."
               : (res.error ?? "Registration failed")
         });
         return { ok: false as const };
