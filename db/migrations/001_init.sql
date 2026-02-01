@@ -737,16 +737,6 @@ ALTER SEQUENCE public.league_member_id_seq OWNED BY public.league_member.id;
 
 
 --
--- Name: migration_history; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.migration_history (
-    filename text NOT NULL,
-    applied_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
 -- Name: nomination; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1537,14 +1527,6 @@ ALTER TABLE ONLY public.league_member
 
 ALTER TABLE ONLY public.league
     ADD CONSTRAINT league_pkey PRIMARY KEY (id);
-
-
---
--- Name: migration_history migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.migration_history
-    ADD CONSTRAINT migration_history_pkey PRIMARY KEY (filename);
 
 
 --
