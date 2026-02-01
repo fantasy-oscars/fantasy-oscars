@@ -6,8 +6,19 @@ const API_BASE = (
   (import.meta as unknown as { env: Env }).env.VITE_API_BASE ?? ""
 ).trim();
 
-function buildUrl(path: string) {
-  return `${API_BASE}${path}`;
+import { getContentRevision } from "./revision";
+
+function buildUrl(path: string, init?: RequestInit) {
+  const method = String(init?.method ?? "GET").toUpperCase();
+  const isGet = method === "GET";
+  const isPublicContent = path.startsWith("/content/");
+
+  if (!isGet || !isPublicContent) return `${API_BASE}${path}`;
+
+  const rev = getContentRevision();
+  const sep = path.includes("?") ? "&" : "?";
+  // Query param is intentionally generic; used only for cache-busting.
+  return `${API_BASE}${path}${sep}rev=${encodeURIComponent(String(rev))}`;
 }
 
 function friendlyApiErrorMessage(input: {
@@ -56,7 +67,7 @@ export async function fetchJson<T>(
   requestId?: string;
 }> {
   try {
-    const res = await fetch(buildUrl(path), {
+    const res = await fetch(buildUrl(path, init), {
       credentials: "include",
       ...init
     });
