@@ -284,12 +284,17 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
   // so shortening this (or adding refresh tokens) is recommended before go-live.
   const AUTH_COOKIE_TTL_DAYS = 90;
   const authCookieMaxAgeMs = AUTH_COOKIE_TTL_DAYS * 24 * 60 * 60 * 1000;
+  // In production, the web app and API are on different sites (e.g.
+  // https://www.fantasy-oscars.com -> https://fantasy-oscars-api-prod.onrender.com),
+  // so the auth cookie must be SameSite=None; Secure=true to be sent on fetch/XHR.
+  const cookieSameSite = isProd ? ("none" as const) : ("lax" as const);
+  const cookieSecure = isProd ? true : false;
   const cookieConfig = {
     name: "auth_token",
     maxAgeMs: authCookieMaxAgeMs,
-    sameSite: "lax" as const,
+    sameSite: cookieSameSite,
     httpOnly: true,
-    secure: isProd,
+    secure: cookieSecure,
     path: "/" as const
   };
 
