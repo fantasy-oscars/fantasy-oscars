@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
+import { bumpContentRevision } from "../lib/revision";
 import type { ApiResult } from "../lib/types";
 import {
   DYNAMIC_META,
@@ -83,6 +84,7 @@ export function useAdminStaticContentEditorOrchestration(args: {
       return;
     }
     setStatus({ ok: true, message: "Saved" });
+    bumpContentRevision();
   }, [body, key, title]);
 
   return {
@@ -176,6 +178,7 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
       }
       await load();
       setStatus({ ok: true, message: "Published" });
+      bumpContentRevision();
     },
     [key, load]
   );
@@ -196,6 +199,7 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
       }
       await load();
       setStatus({ ok: true, message: "Unpublished" });
+      bumpContentRevision();
     },
     [key, load]
   );
@@ -299,6 +303,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
     }
     setStatus({ ok: true, message: "Saved" });
     await load();
+    bumpContentRevision();
   }, [body, dismissible, endsAtLocal, entry, key, load, startsAtLocal, title, variant]);
 
   const publish = useCallback(async () => {
@@ -317,6 +322,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
     }
     setStatus({ ok: true, message: "Published" });
     await load();
+    bumpContentRevision();
   }, [entry, key, load]);
 
   const unpublish = useCallback(async () => {
@@ -335,6 +341,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
     }
     setStatus({ ok: true, message: "Unpublished" });
     await load();
+    bumpContentRevision();
   }, [entry, key, load]);
 
   const deleteEntry = useCallback(async () => {
@@ -356,6 +363,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Failed to delete" });
       return { ok: false as const, error: res.error ?? "Failed to delete" };
     }
+    bumpContentRevision();
     return { ok: true as const };
   }, [entry, key]);
 
