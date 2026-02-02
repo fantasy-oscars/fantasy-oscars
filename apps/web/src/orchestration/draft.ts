@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { fetchJson } from "../lib/api";
+import { getAuthToken } from "../lib/authToken";
 import type { ApiResult, DraftEventMessage, Snapshot } from "../lib/types";
 import {
   buildDraftedSet,
@@ -297,7 +298,13 @@ export function useDraftRoomOrchestration(args: {
     const socket = io(`${socketBase}/drafts`, {
       transports: ["websocket"],
       autoConnect: false,
-      auth: { draftId: Number(draftIdForSocket) }
+      auth: {
+        draftId: Number(draftIdForSocket),
+        Authorization: (() => {
+          const token = getAuthToken();
+          return token ? `Bearer ${token}` : undefined;
+        })()
+      }
     });
     socketRef.current = socket;
 

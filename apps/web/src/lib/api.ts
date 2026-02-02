@@ -7,6 +7,7 @@ const API_BASE = (
 ).trim();
 
 import { getContentRevision } from "./revision";
+import { getAuthToken } from "./authToken";
 
 function buildUrl(path: string, init?: RequestInit) {
   const method = String(init?.method ?? "GET").toUpperCase();
@@ -55,6 +56,30 @@ function friendlyApiErrorMessage(input: {
   return status ? `Request failed (HTTP ${status}).` : "Request failed.";
 }
 
+function normalizeHeaders(init?: HeadersInit): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!init) return out;
+
+  // Headers object (or polyfill)
+  if (typeof (init as { forEach?: unknown }).forEach === "function") {
+    (init as { forEach: (fn: (value: string, key: string) => void) => void }).forEach(
+      (value, key) => {
+        out[key] = value;
+      }
+    );
+    return out;
+  }
+
+  // Array form
+  if (Array.isArray(init)) {
+    for (const [k, v] of init) out[k] = v;
+    return out;
+  }
+
+  // Record form
+  return { ...(init as Record<string, string>) };
+}
+
 export async function fetchJson<T>(
   path: string,
   init?: RequestInit
@@ -67,9 +92,21 @@ export async function fetchJson<T>(
   requestId?: string;
 }> {
   try {
+    const token = getAuthToken();
+    // If the browser blocks third-party cookies (common on iOS Safari),
+    // fall back to Authorization: Bearer <token>.
+    const nextHeaders = normalizeHeaders(init?.headers);
+    if (
+      token &&
+      !Object.keys(nextHeaders).some((k) => k.toLowerCase() === "authorization")
+    ) {
+      nextHeaders.Authorization = `Bearer ${token}`;
+    }
+
     const res = await fetch(buildUrl(path, init), {
       credentials: "include",
-      ...init
+      ...init,
+      headers: nextHeaders
     });
     // In unit tests, fetch may be mocked with a minimal Response-like object.
     const requestIdHeader =
