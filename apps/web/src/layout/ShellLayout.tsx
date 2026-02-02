@@ -1,4 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Anchor,
+  Box,
+  Button,
+  Group,
+  Menu,
+  Text,
+  Title,
+  useMantineColorScheme
+} from "@mantine/core";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
 import { BannerStack } from "./BannerStack";
@@ -10,162 +20,163 @@ export function ShellLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const themeToggleIcon = colorScheme === "dark" ? "\ue518" : "\ue51c";
 
   useEffect(() => {
     setUserMenuOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    function onPointerDown(e: MouseEvent) {
-      if (!userMenuOpen) return;
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setUserMenuOpen(false);
-      }
-    }
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (!userMenuOpen) return;
-      if (e.key === "Escape") setUserMenuOpen(false);
-    }
-
-    window.addEventListener("mousedown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousedown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [userMenuOpen]);
-
   return (
-    <div className="page">
-      <div className="page-inner">
-        <header className="site-header">
-          <Link to="/" className="brand">
-            <p className="eyebrow">Fantasy Oscars</p>
-            <h1 className="site-title">Fantasy Oscars</h1>
-          </Link>
-        </header>
+    <Box className="page">
+      <Box className="page-inner">
+        <Box component="header" className="site-header">
+          <Group
+            className="site-header-row"
+            justify="space-between"
+            align="center"
+            wrap="nowrap"
+          >
+            <Anchor component={Link} to="/" className="brand" underline="never">
+              <Title className="site-title" order={1}>
+                Fantasy Oscars
+              </Title>
+            </Anchor>
+
+            <Group
+              className="site-header-actions"
+              justify="flex-end"
+              align="center"
+              wrap="nowrap"
+            >
+              <Button
+                type="button"
+                variant="subtle"
+                className="theme-toggle"
+                onClick={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
+                aria-label={`Switch to ${colorScheme === "dark" ? "light" : "dark"} mode`}
+              >
+                <Text component="span" className="gicon" aria-hidden="true">
+                  {themeToggleIcon}
+                </Text>
+              </Button>
+
+              {user ? (
+                <Menu
+                  opened={userMenuOpen}
+                  onChange={setUserMenuOpen}
+                  withinPortal={false}
+                >
+                  <Menu.Target>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      rightSection={
+                        <Text component="span" aria-hidden="true">
+                          ▾
+                        </Text>
+                      }
+                    >
+                      {user.username ?? user.sub}
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={() => navigate("/account")}>Account</Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item color="red" onClick={() => void logout()}>
+                      Logout
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              ) : (
+                <>
+                  {loading && (
+                    <Text className="nav-muted" c="dimmed">
+                      Checking…
+                    </Text>
+                  )}
+                  <Button
+                    component={Link}
+                    to="/login"
+                    state={{
+                      from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
+                    }}
+                    variant="subtle"
+                  >
+                    Login
+                  </Button>
+                </>
+              )}
+            </Group>
+          </Group>
+        </Box>
 
         {sessionError && <PageError message={`Session error: ${sessionError}`} />}
 
-        <nav className="site-nav" aria-label="Primary">
-          <div className="nav-links">
-            <NavLink
-              className={({ isActive }) =>
-                isActive || location.pathname === "/" || location.pathname === ""
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-              to="/"
-            >
-              Home
-            </NavLink>
-            <NavLink
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-              to="/about"
-            >
-              About
-            </NavLink>
-            <NavLink
-              className={({ isActive }) =>
-                isActive || location.pathname.startsWith("/leagues")
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-              to="/leagues"
-            >
-              Leagues
-            </NavLink>
-            <NavLink
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-              to="/seasons"
-            >
-              Seasons
-            </NavLink>
-            <NavLink
-              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-              to="/ceremonies"
-            >
-              Ceremonies
-            </NavLink>
-          </div>
-
-          <div className="nav-actions">
-            {user ? (
-              <>
-                {user.is_admin && (
-                  <NavLink to="/admin" className="button ghost">
-                    Admin
-                  </NavLink>
-                )}
-                <div className="menu" ref={menuRef}>
-                  <button
-                    type="button"
-                    className="nav-user menu-button"
-                    aria-haspopup="menu"
-                    aria-expanded={userMenuOpen}
-                    onClick={() => setUserMenuOpen((v) => !v)}
-                  >
-                    {user.username ?? user.sub}
-                    <span className="caret" aria-hidden="true">
-                      ▾
-                    </span>
-                  </button>
-                  {userMenuOpen && (
-                    <div className="menu-panel" role="menu">
-                      <button
-                        type="button"
-                        className="menu-item"
-                        role="menuitem"
-                        onClick={() => navigate("/account")}
-                      >
-                        Account
-                      </button>
-                      <div className="menu-sep" role="separator" />
-                      <button
-                        type="button"
-                        className="menu-item danger"
-                        role="menuitem"
-                        onClick={() => void logout()}
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                {loading && <span className="nav-muted">Checking…</span>}
-                <Link
-                  to="/login"
-                  state={{
-                    from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
-                  }}
-                  className="button ghost"
+        <Box component="nav" className="site-nav" aria-label="Primary">
+          <Group justify="space-between" wrap="wrap" w="100%">
+            <Group className="nav-links" gap="md" wrap="wrap">
+              <Anchor component={NavLink} to="/" className="nav-link" underline="never">
+                Home
+              </Anchor>
+              <Anchor
+                component={NavLink}
+                to="/about"
+                className="nav-link"
+                underline="never"
+              >
+                About
+              </Anchor>
+              <Anchor
+                component={NavLink}
+                to="/leagues"
+                className="nav-link"
+                underline="never"
+              >
+                Leagues
+              </Anchor>
+              <Anchor
+                component={NavLink}
+                to="/seasons"
+                className="nav-link"
+                underline="never"
+              >
+                Seasons
+              </Anchor>
+              <Anchor
+                component={NavLink}
+                to="/ceremonies"
+                className="nav-link"
+                underline="never"
+              >
+                Ceremonies
+              </Anchor>
+              {user?.is_admin && (
+                <Anchor
+                  component={NavLink}
+                  to="/admin"
+                  className="nav-link nav-link-admin"
+                  underline="never"
                 >
-                  Login
-                </Link>
-              </>
-            )}
-          </div>
-        </nav>
+                  Admin
+                </Anchor>
+              )}
+            </Group>
+          </Group>
+        </Box>
 
         {!location.pathname.startsWith("/drafts/") && (
-          <div className="banner-region">
+          <Box className="banner-region">
             <BannerStack />
-          </div>
+          </Box>
         )}
 
-        <main className="site-content">
+        <Box component="main" className="site-content">
           <Outlet />
-        </main>
+        </Box>
 
         <SiteFooter />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }

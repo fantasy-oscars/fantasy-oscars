@@ -1,23 +1,24 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { Box, Card, Group, Text, Title } from "@mantine/core";
 
 export function AdminUsersLayout() {
   const sublinkClass = ({ isActive }: { isActive: boolean }) =>
     `admin-sublink${isActive ? " is-active" : ""}`;
 
   return (
-    <section className="card">
-      <header>
-        <h2>Users</h2>
-        <p className="muted">Search for accounts and manage roles.</p>
-      </header>
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>Users</Title>
+        <Text className="muted">Search for accounts and manage roles.</Text>
+      </Box>
 
-      <nav className="admin-subnav" aria-label="User admin">
+      <Group component="nav" className="admin-subnav" aria-label="User admin" wrap="wrap">
         <NavLink end to="/admin/users" className={sublinkClass}>
           Search
         </NavLink>
-      </nav>
+      </Group>
 
       <Outlet />
-    </section>
+    </Card>
   );
 }

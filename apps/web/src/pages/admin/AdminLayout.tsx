@@ -1,43 +1,56 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Box, Card, Stack, Text, Title } from "@mantine/core";
 
 export function AdminLayout() {
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `admin-link${isActive ? " is-active" : ""}`;
+  const { pathname } = useLocation();
+  const linkClass = (active: boolean) => `admin-link${active ? " is-active" : ""}`;
 
   return (
-    <section className="admin-shell">
-      <aside className="admin-nav" aria-label="Admin">
-        <div className="admin-nav-header">
-          <h2>Admin</h2>
-          <p className="muted">Tools and configuration</p>
-        </div>
+    <Box component="section" className="admin-shell">
+      <Card className="admin-nav" component="aside" aria-label="Admin">
+        <Box className="admin-nav-header">
+          <Title order={2}>Admin</Title>
+          <Text className="muted">Tools and configuration</Text>
+        </Box>
 
-        <nav className="admin-nav-links" aria-label="Admin sections">
-          <NavLink end to="/admin" className={linkClass}>
+        <Stack component="nav" className="admin-nav-links" aria-label="Admin sections">
+          <NavLink end to="/admin" className={linkClass(pathname === "/admin")}>
             Home
           </NavLink>
 
-          <NavLink to="/admin/ceremonies" className={linkClass}>
+          <NavLink
+            to="/admin/ceremonies"
+            className={linkClass(pathname.startsWith("/admin/ceremonies"))}
+          >
             Ceremonies
           </NavLink>
 
-          <NavLink to="/admin/users" className={linkClass}>
+          <NavLink
+            to="/admin/users"
+            className={linkClass(pathname.startsWith("/admin/users"))}
+          >
             Users
           </NavLink>
 
-          <NavLink to="/admin/content" className={linkClass}>
+          <NavLink
+            to="/admin/content"
+            className={linkClass(pathname.startsWith("/admin/content"))}
+          >
             Content &amp; Messaging
           </NavLink>
 
-          <NavLink to="/admin/system" className={linkClass}>
+          <NavLink
+            to="/admin/system"
+            className={linkClass(pathname.startsWith("/admin/system"))}
+          >
             System
           </NavLink>
-        </nav>
-      </aside>
+        </Stack>
+      </Card>
 
-      <div className="admin-content">
+      <Box className="admin-content">
         <Outlet />
-      </div>
-    </section>
+      </Box>
+    </Box>
   );
 }

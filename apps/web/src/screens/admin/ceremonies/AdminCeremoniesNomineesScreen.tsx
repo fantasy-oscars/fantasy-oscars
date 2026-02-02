@@ -1,4 +1,17 @@
 import { formatFilmTitleWithYear } from "../../../lib/films";
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Card,
+  FileInput,
+  Group,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Title
+} from "@mantine/core";
 import type { AdminCeremonyNomineesOrchestration } from "../../../orchestration/adminCeremoniesNominees";
 import { FormStatus } from "../../../ui/forms";
 
@@ -40,7 +53,6 @@ export function AdminCeremoniesNomineesScreen(props: {
   } = o;
 
   const {
-    onCandidateFileChange,
     resetCandidates,
     resetManual,
     resolveFilmSelection,
@@ -50,202 +62,203 @@ export function AdminCeremoniesNomineesScreen(props: {
   } = o.actions;
 
   return (
-    <div className="stack-lg" style={{ marginTop: 16 }}>
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h3>Nominees</h3>
-            <p className="muted">
+    <Stack className="stack-lg" mt="md" gap="lg">
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Nominees</Title>
+            <Text className="muted">
               Candidates, nomination entry, and current nominee list for this ceremony.
-            </p>
-          </div>
-          <div className="inline-actions">
-            <button
+            </Text>
+          </Box>
+          <Group className="inline-actions" wrap="wrap">
+            <Button
               type="button"
-              className={tab === "candidates" ? "" : "ghost"}
+              variant={tab === "candidates" ? "default" : "subtle"}
               onClick={() => setTab("candidates")}
             >
               Candidates
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={tab === "add" ? "" : "ghost"}
+              variant={tab === "add" ? "default" : "subtle"}
               onClick={() => setTab("add")}
             >
               Add nominees
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={tab === "list" ? "" : "ghost"}
+              variant={tab === "list" ? "default" : "subtle"}
               onClick={() => setTab("list")}
             >
               Nominee list
-            </button>
-          </div>
-        </header>
-      </div>
+            </Button>
+          </Group>
+        </Group>
+      </Card>
 
       {tab === "candidates" && (
-        <div className="card nested">
-          <header className="header-with-controls">
-            <div>
-              <h3>Candidate films (TMDB import)</h3>
-              <p className="muted">
+        <Card className="card nested" component="section">
+          <Group
+            className="header-with-controls"
+            justify="space-between"
+            align="start"
+            wrap="wrap"
+          >
+            <Box>
+              <Title order={3}>Candidate films (TMDB import)</Title>
+              <Text className="muted">
                 Seed an internal list of films/candidates (draft only). This does not
                 require a nominees dataset.
-              </p>
-            </div>
-            <span className="pill">JSON only</span>
-          </header>
+              </Text>
+            </Box>
+            <Box component="span" className="pill">
+              JSON only
+            </Box>
+          </Group>
 
-          <div className="stack-sm">
-            <label className="field">
-              <span>Candidate films JSON file</span>
-              <input
-                type="file"
-                accept="application/json"
-                onChange={onCandidateFileChange}
-                disabled={candidateUploading}
-              />
-            </label>
+          <Stack className="stack-sm" gap="sm">
+            <FileInput
+              label="Candidate films JSON file"
+              accept="application/json"
+              onChange={(file) => o.actions.onCandidateFile(file)}
+              disabled={candidateUploading}
+              placeholder="Choose file…"
+            />
 
-            <div className="status status-info" role="status">
+            <Box className="status status-info" role="status">
               {candidateSummaryView}
-            </div>
+            </Box>
 
-            <div className="inline-actions">
-              <button
+            <Group className="inline-actions" wrap="wrap">
+              <Button
                 type="button"
-                className="button"
                 onClick={() => void uploadCandidateFilms()}
                 disabled={candidateUploading}
               >
                 {candidateUploading ? "Importing..." : "Import candidate films"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="ghost"
+                variant="subtle"
                 onClick={resetCandidates}
                 disabled={candidateUploading}
               >
                 Reset
-              </button>
-            </div>
+              </Button>
+            </Group>
 
             <FormStatus loading={candidateUploading} result={candidateUploadState} />
-          </div>
-        </div>
+          </Stack>
+        </Card>
       )}
 
       {tab === "add" && (
-        <div className="card nested">
-          <header className="header-with-controls">
-            <div>
-              <h3>Add nominees</h3>
-              <p className="muted">
+        <Card className="card nested" component="section">
+          <Group
+            className="header-with-controls"
+            justify="space-between"
+            align="start"
+            wrap="wrap"
+          >
+            <Box>
+              <Title order={3}>Add nominees</Title>
+              <Text className="muted">
                 Create nominations one by one. Select category, film, then (optionally)
                 contributors pulled from TMDB credits.
-              </p>
-            </div>
-            <span className="pill">Manual</span>
-          </header>
+              </Text>
+            </Box>
+            <Box component="span" className="pill">
+              Manual
+            </Box>
+          </Group>
 
-          <div className="stack-sm">
-            <div className="grid two-col">
-              <label className="field">
-                <span>Category</span>
-                <select
-                  value={selectedCategoryId ? String(selectedCategoryId) : ""}
-                  onChange={(e) =>
-                    setSelectedCategoryId(e.target.value ? Number(e.target.value) : null)
-                  }
-                >
-                  <option value="">Select...</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.family_name ?? `Category ${c.id}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <Stack className="stack-sm" gap="sm">
+            <Box className="grid two-col">
+              <Select
+                label="Category"
+                placeholder="Select..."
+                value={selectedCategoryId ? String(selectedCategoryId) : null}
+                onChange={(v) => setSelectedCategoryId(v ? Number(v) : null)}
+                data={categories.map((c) => ({
+                  value: String(c.id),
+                  label: c.family_name ?? `Category ${c.id}`
+                }))}
+              />
 
-              <label className="field">
-                <span>Film (type to search)</span>
-                <input
-                  list="candidate-films"
-                  value={filmInput}
-                  onChange={(e) => void resolveFilmSelection(e.target.value)}
-                  placeholder="Type film title or id..."
-                />
-                <datalist id="candidate-films">
-                  {films.map((f) => (
-                    <option
-                      key={f.id}
-                      value={formatFilmTitleWithYear(f.title, f.release_year)}
-                    >
-                      #{f.id} {f.title}
-                      {f.tmdb_id ? ` [tmdb:${f.tmdb_id}]` : ""}
-                    </option>
-                  ))}
-                </datalist>
-              </label>
-            </div>
+              <Autocomplete
+                label="Film (type to search)"
+                value={filmInput}
+                onChange={(v) => void resolveFilmSelection(v)}
+                placeholder="Type film title or id..."
+                data={films.map((f) => formatFilmTitleWithYear(f.title, f.release_year))}
+              />
+            </Box>
 
             {selectedCategory?.unit_kind === "SONG" && (
-              <label className="field">
-                <span>Song title</span>
-                <input value={songTitle} onChange={(e) => setSongTitle(e.target.value)} />
-              </label>
+              <TextInput
+                label="Song title"
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.currentTarget.value)}
+              />
             )}
 
-            <div className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h4>Contributors</h4>
-                  <p className="muted">
+            <Card className="card nested" component="section">
+              <Group
+                className="header-with-controls"
+                justify="space-between"
+                align="start"
+                wrap="wrap"
+              >
+                <Box>
+                  <Title order={4}>Contributors</Title>
+                  <Text className="muted">
                     Select from this film&apos;s stored TMDB credits. (People details are
                     not hydrated until needed.)
-                  </p>
-                </div>
+                  </Text>
+                </Box>
                 {selectedCategory?.unit_kind === "PERFORMANCE" ? (
-                  <span className="pill">Pick 1+</span>
+                  <Box component="span" className="pill">
+                    Pick 1+
+                  </Box>
                 ) : (
-                  <span className="pill">Optional</span>
+                  <Box component="span" className="pill">
+                    Optional
+                  </Box>
                 )}
-              </header>
+              </Group>
 
-              <div className="stack-sm">
+              <Stack className="stack-sm" gap="sm">
                 <FormStatus loading={creditsLoading} result={creditsState} />
 
                 {creditOptions.length > 0 ? (
-                  <div className="stack-sm">
-                    <label className="field">
-                      <span>Search credits</span>
-                      <input
-                        value={creditQuery}
-                        onChange={(e) => setCreditQuery(e.target.value)}
-                        placeholder="Type a name, character, job..."
-                      />
-                    </label>
+                  <Stack className="stack-sm" gap="sm">
+                    <TextInput
+                      label="Search credits"
+                      value={creditQuery}
+                      onChange={(e) => setCreditQuery(e.currentTarget.value)}
+                      placeholder="Type a name, character, job..."
+                    />
 
-                    <label className="field">
-                      <span>Find a person</span>
-                      <select
-                        value={pendingContributorId}
-                        size={Math.min(10, Math.max(4, filteredCreditOptions.length + 1))}
-                        onChange={(e) => setPendingContributorId(e.target.value)}
-                      >
-                        <option value="">Select…</option>
-                        {filteredCreditOptions.map((o) => (
-                          <option key={o.tmdb_id} value={String(o.tmdb_id)}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <Select
+                      label="Find a person"
+                      placeholder="Select…"
+                      searchable
+                      value={pendingContributorId || null}
+                      onChange={(v) => setPendingContributorId(v ?? "")}
+                      data={filteredCreditOptions.map((o) => ({
+                        value: String(o.tmdb_id),
+                        label: o.label
+                      }))}
+                    />
 
-                    <div className="inline-actions">
-                      <button
+                    <Group className="inline-actions" wrap="wrap">
+                      <Button
                         type="button"
                         onClick={() => {
                           const id = Number(pendingContributorId);
@@ -258,10 +271,10 @@ export function AdminCeremoniesNomineesScreen(props: {
                         disabled={!pendingContributorId}
                       >
                         Add person
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="ghost"
+                        variant="subtle"
                         onClick={() => {
                           setSelectedContributorIds([]);
                           setPendingContributorId("");
@@ -269,25 +282,30 @@ export function AdminCeremoniesNomineesScreen(props: {
                         disabled={selectedContributorIds.length === 0}
                       >
                         Clear
-                      </button>
-                    </div>
+                      </Button>
+                    </Group>
 
-                    <div className="stack-sm">
-                      <p className="muted">Selected people</p>
+                    <Stack className="stack-sm" gap="xs">
+                      <Text className="muted">Selected people</Text>
                       {selectedCredits.length === 0 ? (
-                        <p className="muted">None yet.</p>
+                        <Text className="muted">None yet.</Text>
                       ) : (
-                        <div className="stack-sm">
+                        <Stack className="stack-sm" gap="xs">
                           {selectedCredits.map((c) => (
-                            <div key={c.tmdb_id} className="list-row">
-                              <div>
-                                <strong>{c.name}</strong>
-                                <span className="muted"> — {c.jobs.join(", ")}</span>
-                              </div>
-                              <div className="inline-actions">
-                                <button
+                            <Box key={c.tmdb_id} className="list-row">
+                              <Box>
+                                <Text fw={700} span>
+                                  {c.name}
+                                </Text>
+                                <Text className="muted" span>
+                                  {" "}
+                                  — {c.jobs.join(", ")}
+                                </Text>
+                              </Box>
+                              <Group className="inline-actions" wrap="wrap">
+                                <Button
                                   type="button"
-                                  className="ghost"
+                                  variant="subtle"
                                   onClick={() =>
                                     setSelectedContributorIds((prev) =>
                                       prev.filter((id) => id !== c.tmdb_id)
@@ -295,66 +313,73 @@ export function AdminCeremoniesNomineesScreen(props: {
                                   }
                                 >
                                   Remove
-                                </button>
-                              </div>
-                            </div>
+                                </Button>
+                              </Group>
+                            </Box>
                           ))}
-                        </div>
+                        </Stack>
                       )}
-                    </div>
-                  </div>
+                    </Stack>
+                  </Stack>
                 ) : (
-                  <p className="muted">
+                  <Text className="muted">
                     No credits loaded. Select a film with TMDB credits (or import
                     candidates with TMDB hydration enabled).
-                  </p>
+                  </Text>
                 )}
-              </div>
-            </div>
+              </Stack>
+            </Card>
 
-            <div className="inline-actions">
-              <button
+            <Group className="inline-actions" wrap="wrap">
+              <Button
                 type="button"
                 onClick={() => void createNomination()}
                 disabled={manualLoading}
               >
                 {manualLoading ? "Saving..." : "Add nominee"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="ghost"
+                variant="subtle"
                 onClick={resetManual}
                 disabled={manualLoading}
               >
                 Reset
-              </button>
-            </div>
+              </Button>
+            </Group>
 
             <FormStatus loading={manualLoading} result={manualState} />
-          </div>
-        </div>
+          </Stack>
+        </Card>
       )}
 
       {tab === "list" && (
-        <div className="card nested">
-          <header className="header-with-controls">
-            <div>
-              <h3>Nominee list</h3>
-              <p className="muted">Current nominations for this ceremony.</p>
-            </div>
-            <span className="pill">{nominations.length} nominations</span>
-          </header>
+        <Card className="card nested" component="section">
+          <Group
+            className="header-with-controls"
+            justify="space-between"
+            align="start"
+            wrap="wrap"
+          >
+            <Box>
+              <Title order={3}>Nominee list</Title>
+              <Text className="muted">Current nominations for this ceremony.</Text>
+            </Box>
+            <Box component="span" className="pill">
+              {nominations.length} nominations
+            </Box>
+          </Group>
 
-          <div className="stack-sm">
+          <Stack className="stack-sm" gap="sm">
             {nominations.length === 0 ? (
-              <div className="empty-state">
-                <strong>No nominations yet.</strong>
-                <div className="muted" style={{ marginTop: 6 }}>
+              <Card className="empty-state">
+                <Text fw={700}>No nominations yet.</Text>
+                <Text className="muted" mt="xs">
                   Add nominees in the Add nominees tab.
-                </div>
-              </div>
+                </Text>
+              </Card>
             ) : (
-              <div className="list">
+              <Stack className="list">
                 {nominations.map((n) => {
                   const category =
                     categoryLabelById[n.category_edition_id] ??
@@ -368,42 +393,44 @@ export function AdminCeremoniesNomineesScreen(props: {
                     : (n.performer_name ?? null);
 
                   return (
-                    <div key={n.id} className="list-row">
-                      <div style={{ minWidth: 240 }}>
-                        <p className="eyebrow">{category}</p>
-                        <strong>{subject}</strong>
+                    <Box key={n.id} className="list-row">
+                      <Box>
+                        <Text className="eyebrow" size="xs">
+                          {category}
+                        </Text>
+                        <Text fw={700}>{subject}</Text>
                         {n.song_title && n.film_title ? (
-                          <p className="muted">from {n.film_title}</p>
+                          <Text className="muted">from {n.film_title}</Text>
                         ) : null}
-                      </div>
-                      <div style={{ flex: 1 }}>
+                      </Box>
+                      <Box>
                         {people ? (
-                          <p className="muted">{people}</p>
+                          <Text className="muted">{people}</Text>
                         ) : (
-                          <p className="muted">—</p>
+                          <Text className="muted">—</Text>
                         )}
-                      </div>
-                      <div>
-                        <div className="inline-actions">
-                          <span className="pill">#{n.id}</span>
-                          <button
-                            type="button"
-                            className="ghost"
-                            onClick={() => void deleteNomination(n.id)}
-                            disabled={nominationsLoading}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      </Box>
+                      <Group className="inline-actions" wrap="wrap">
+                        <Box component="span" className="pill">
+                          #{n.id}
+                        </Box>
+                        <Button
+                          type="button"
+                          variant="subtle"
+                          onClick={() => void deleteNomination(n.id)}
+                          disabled={nominationsLoading}
+                        >
+                          Delete
+                        </Button>
+                      </Group>
+                    </Box>
                   );
                 })}
-              </div>
+              </Stack>
             )}
-          </div>
-        </div>
+          </Stack>
+        </Card>
       )}
-    </div>
+    </Stack>
   );
 }

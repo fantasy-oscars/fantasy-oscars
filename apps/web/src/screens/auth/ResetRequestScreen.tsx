@@ -1,4 +1,5 @@
 import type { ApiResult, FieldErrors } from "../../lib/types";
+import { Box, Button, Card, Text, Title } from "@mantine/core";
 import { FormField, FormStatus } from "../../ui/forms";
 
 export function ResetRequestScreen(props: {
@@ -9,18 +10,18 @@ export function ResetRequestScreen(props: {
 }) {
   const { errors, result, loading, onSubmit } = props;
   return (
-    <section className="card">
-      <header>
-        <h2>Reset Password</h2>
-        <p>Request a reset token.</p>
-      </header>
-      <form onSubmit={onSubmit}>
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>Reset Password</Title>
+        <Text className="muted">Request a reset token.</Text>
+      </Box>
+      <Box component="form" onSubmit={onSubmit}>
         <FormField label="Username" name="username" error={errors.username} />
-        <button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading}>
           {loading ? "Requesting..." : "Request reset"}
-        </button>
-      </form>
+        </Button>
+      </Box>
       <FormStatus loading={loading} result={result} />
-    </section>
+    </Card>
   );
 }

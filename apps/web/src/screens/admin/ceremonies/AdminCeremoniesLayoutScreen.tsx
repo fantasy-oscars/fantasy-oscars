@@ -1,4 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
+import { Box, Button, Card, Group, Select, Text, Title } from "@mantine/core";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
 
 export function AdminCeremoniesLayoutScreen(props: {
@@ -13,37 +14,43 @@ export function AdminCeremoniesLayoutScreen(props: {
     `admin-sublink${isActive ? " is-active" : ""}`;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Ceremonies</h2>
-          <p className="muted">
+    <Card className="card" component="section">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={2}>Ceremonies</Title>
+          <Text className="muted">
             Selected: {selected.name || "(Unnamed)"}{" "}
             {selected.code ? `(${selected.code})` : ""}
-          </p>
-        </div>
+          </Text>
+        </Box>
 
-        <div className="inline-actions">
-          <Link to="/admin/ceremonies" className="button ghost">
+        <Group className="inline-actions" wrap="wrap">
+          <Button component={Link} to="/admin/ceremonies" variant="subtle">
             All ceremonies
-          </Link>
-          <label className="field">
-            <span>Ceremony</span>
-            <select
-              value={String(selected.id)}
-              onChange={(e) => onSelectCeremony(e.target.value)}
-            >
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name || "(Unnamed)"} {o.code ? `(${o.code})` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </header>
+          </Button>
+          <Select
+            label="Ceremony"
+            value={String(selected.id)}
+            onChange={(v) => onSelectCeremony(v ?? String(selected.id))}
+            data={options.map((o) => ({
+              value: String(o.id),
+              label: `${o.name || "(Unnamed)"}${o.code ? ` (${o.code})` : ""}`
+            }))}
+          />
+        </Group>
+      </Group>
 
-      <nav className="admin-subnav" aria-label="Ceremony admin">
+      <Group
+        component="nav"
+        className="admin-subnav"
+        aria-label="Ceremony admin"
+        wrap="wrap"
+      >
         <NavLink
           to={`/admin/ceremonies/${selected.id}/overview`}
           className={sublinkClass}
@@ -71,9 +78,9 @@ export function AdminCeremoniesLayoutScreen(props: {
         <NavLink to={`/admin/ceremonies/${selected.id}/lock`} className={sublinkClass}>
           Lock / Archive
         </NavLink>
-      </nav>
+      </Group>
 
       {children}
-    </section>
+    </Card>
   );
 }

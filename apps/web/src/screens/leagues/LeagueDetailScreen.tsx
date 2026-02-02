@@ -1,4 +1,14 @@
 import { Link } from "react-router-dom";
+import {
+  Box,
+  Button,
+  Card,
+  Group,
+  NativeSelect,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
 import type { AuthUser } from "../../auth/context";
 import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";
@@ -50,165 +60,187 @@ export function LeagueDetailScreen(props: {
   }
   if (view.state === "forbidden") {
     return (
-      <section className="card">
-        <header>
-          <h2>League</h2>
-          <p className="muted">Access denied.</p>
-        </header>
+      <Card className="card" component="section">
+        <Box component="header">
+          <Title order={2}>League</Title>
+          <Text className="muted">Access denied.</Text>
+        </Box>
         <PageError message={view.message} />
-      </section>
+      </Card>
     );
   }
   if (view.state === "error") {
     return (
-      <section className="card">
-        <header>
-          <h2>League</h2>
-          <p className="muted">Unable to load</p>
-        </header>
+      <Card className="card" component="section">
+        <Box component="header">
+          <Title order={2}>League</Title>
+          <Text className="muted">Unable to load</Text>
+        </Box>
         <PageError message={view.message} />
-      </section>
+      </Card>
     );
   }
 
   const league = view.league;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>{league.name ?? `League #${leagueId}`}</h2>
-          <p>Roster, seasons, and commissioner actions.</p>
-        </div>
-      </header>
+    <Card className="card" component="section">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={2}>{league.name ?? `League #${leagueId}`}</Title>
+          <Text className="muted">Roster, seasons, and commissioner actions.</Text>
+        </Box>
+      </Group>
 
-      <div className="card nested">
-        <header>
-          <h3>Roster</h3>
-          <p className="muted">Members and roles</p>
-        </header>
+      <Card className="card nested" component="section" mt="md">
+        <Box component="header">
+          <Title order={3}>Roster</Title>
+          <Text className="muted">Members and roles</Text>
+        </Box>
         {view.roster === null ? (
-          <p className="muted">Roster hidden (commissioner-only).</p>
+          <Text className="muted">Roster hidden (commissioner-only).</Text>
         ) : view.roster.length === 0 ? (
-          <p className="muted">No members yet.</p>
+          <Text className="muted">No members yet.</Text>
         ) : (
-          <ul className="list">
+          <Stack component="ul" className="list">
             {view.roster.map((m) => (
-              <li key={m.id} className="list-row">
-                <span>{m.username}</span>
-                <span className="pill">{m.role}</span>
+              <Box key={m.id} component="li" className="list-row">
+                <Text span>{m.username}</Text>
+                <Box component="span" className="pill">
+                  {m.role}
+                </Box>
                 {view.isCommissioner && m.role !== "OWNER" && (
-                  <button
+                  <Button
                     type="button"
-                    className="ghost"
+                    variant="subtle"
                     onClick={() => void onRemoveMember(m.user_id, m.role)}
                     disabled={working}
                   >
                     Remove
-                  </button>
+                  </Button>
                 )}
-              </li>
+              </Box>
             ))}
-          </ul>
+          </Stack>
         )}
         {view.isCommissioner && (
-          <div className="inline-actions" style={{ marginTop: 12 }}>
-            <button type="button" onClick={() => void onCopyInvite()}>
+          <Group className="inline-actions" mt="sm" wrap="wrap">
+            <Button type="button" onClick={() => void onCopyInvite()}>
               Copy invite
-            </button>
+            </Button>
             <FormStatus loading={working} result={rosterStatus} />
-          </div>
+          </Group>
         )}
-      </div>
+      </Card>
 
       {view.isCommissioner && (
-        <div className="card nested" style={{ marginTop: 16 }}>
-          <header>
-            <h3>Commissioner Controls</h3>
-            <p className="muted">
+        <Card className="card nested" component="section" mt="md">
+          <Box component="header">
+            <Title order={3}>Commissioner Controls</Title>
+            <Text className="muted">
               Transfer commissioner role or remove members. Owner only for transfer.
-            </p>
-          </header>
-          <div className="inline-actions">
-            <select
+            </Text>
+          </Box>
+          <Group className="inline-actions" wrap="wrap">
+            <NativeSelect
               aria-label="Transfer to member"
               value={transferTarget}
-              onChange={(e) => setTransferTarget(e.target.value)}
+              onChange={(e) => setTransferTarget(e.currentTarget.value)}
               disabled={!view.isOwner || working}
-            >
-              <option value="">Transfer to...</option>
-              {view.roster
-                ?.filter((m) => m.user_id !== Number(user?.sub))
-                .map((m) => (
-                  <option key={m.user_id} value={m.user_id}>
-                    {m.username} ({m.role})
-                  </option>
-                ))}
-            </select>
-            <button
+              data={[
+                { value: "", label: "Transfer to...", disabled: true },
+                ...(view.roster
+                  ?.filter((m) => m.user_id !== Number(user?.sub))
+                  .map((m) => ({
+                    value: String(m.user_id),
+                    label: `${m.username} (${m.role})`
+                  })) ?? [])
+              ]}
+            />
+            <Button
               type="button"
               onClick={() => void onTransferOwnership()}
               disabled={!view.isOwner || working || !transferTarget}
             >
               Transfer commissioner
-            </button>
-          </div>
+            </Button>
+          </Group>
           <FormStatus loading={working} result={rosterStatus} />
-        </div>
+        </Card>
       )}
 
-      <div className="card nested" style={{ marginTop: 16 }}>
-        <header className="header-with-controls">
-          <div>
-            <h3>Seasons</h3>
-            <p className="muted">Active and past seasons for this league.</p>
-          </div>
+      <Card className="card nested" component="section" mt="md">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Seasons</Title>
+            <Text className="muted">Active and past seasons for this league.</Text>
+          </Box>
           {view.isCommissioner && (
-            <div className="inline-actions">
-              <Link to={`/leagues/${leagueId}/seasons/new`} className="button">
+            <Group className="inline-actions" wrap="wrap">
+              <Button component={Link} to={`/leagues/${leagueId}/seasons/new`}>
                 Create season
-              </Link>
-            </div>
+              </Button>
+            </Group>
           )}
-        </header>
+        </Group>
         {view.seasons.length === 0 ? (
-          <p className="muted">
+          <Text className="muted">
             No seasons yet. Once an active ceremony is configured, you can create the
             first season.
-          </p>
+          </Text>
         ) : (
-          <div className="grid">
+          <Box className="grid">
             {view.seasons.map((s) => (
-              <div key={s.id} className="card">
-                <header>
-                  <h4>{seasonLabel(s)}</h4>
-                  <p className="muted">
+              <Card key={s.id} className="card">
+                <Box component="header">
+                  <Title order={4}>{seasonLabel(s)}</Title>
+                  <Text className="muted">
                     {s.is_active_ceremony === false
                       ? "Archived season"
                       : "Current season"}
-                  </p>
-                </header>
-                <div className="pill-list">
-                  <span className="pill">
+                  </Text>
+                </Box>
+                <Group className="pill-list" wrap="wrap">
+                  <Box component="span" className="pill">
                     {s.is_active_ceremony === false ? "ARCHIVED" : "ACTIVE"}
-                  </span>
-                  <span className="pill">Status: {s.status}</span>
-                  <span className="pill">Ceremony {s.ceremony_id}</span>
+                  </Box>
+                  <Box component="span" className="pill">
+                    Status: {s.status}
+                  </Box>
+                  <Box component="span" className="pill">
+                    Ceremony {s.ceremony_id}
+                  </Box>
                   {s.remainder_strategy && (
-                    <span className="pill">{allocationLabel(s.remainder_strategy)}</span>
+                    <Box component="span" className="pill">
+                      {allocationLabel(s.remainder_strategy)}
+                    </Box>
                   )}
                   {s.draft_status && (
-                    <span className="pill">Draft: {s.draft_status}</span>
+                    <Box component="span" className="pill">
+                      Draft: {s.draft_status}
+                    </Box>
                   )}
-                </div>
-                <div className="inline-actions">
-                  <Link to={`/seasons/${s.id}`}>Open season</Link>
-                </div>
-              </div>
+                </Group>
+                <Group className="inline-actions" mt="sm" wrap="wrap">
+                  <Button component={Link} to={`/seasons/${s.id}`} variant="subtle">
+                    Open season
+                  </Button>
+                </Group>
+              </Card>
             ))}
-          </div>
+          </Box>
         )}
-      </div>
-    </section>
+      </Card>
+    </Card>
   );
 }

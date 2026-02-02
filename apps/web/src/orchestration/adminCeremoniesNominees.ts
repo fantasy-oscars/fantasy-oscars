@@ -371,9 +371,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [ceremonyId]
   );
 
-  const onCandidateFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+  const onCandidateFile = useCallback(
+    async (file: File | null) => {
       if (!file) {
         setCandidateDataset(null);
         setCandidateSummary(null);
@@ -392,6 +391,13 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       }
     },
     [readJsonFile, summarizeCandidates]
+  );
+
+  const onCandidateFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      await onCandidateFile(e.target.files?.[0] ?? null);
+    },
+    [onCandidateFile]
   );
 
   const resetCandidates = useCallback(() => {
@@ -636,6 +642,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     actions: {
       loadManualContext,
       resolveFilmSelection,
+      onCandidateFile,
       onCandidateFileChange,
       resetCandidates,
       resetManual,

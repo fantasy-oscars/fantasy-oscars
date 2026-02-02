@@ -1,15 +1,18 @@
+import { Alert, Group, Loader, Text } from "@mantine/core";
+
 export function PageLoader(props: { label?: string }) {
   return (
-    <div className="page-state" role="status" aria-live="polite">
-      <span className="spinner" aria-hidden="true" /> {props.label ?? "Loading..."}
-    </div>
+    <Group className="page-state" role="status" aria-live="polite" gap="xs">
+      <Loader size="sm" aria-hidden="true" />
+      <Text span>{props.label ?? "Loading..."}</Text>
+    </Group>
   );
 }
 
 export function PageError(props: { message: string }) {
   return (
-    <div className="page-state status status-error" role="alert">
+    <Alert className="page-state status status-error" color="red" role="alert">
       {props.message}
-    </div>
+    </Alert>
   );
 }

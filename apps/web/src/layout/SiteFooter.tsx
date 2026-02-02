@@ -1,56 +1,99 @@
 import { Link } from "react-router-dom";
-import tmdbLogoUrl from "../assets/tmdb.svg";
+import {
+  Anchor,
+  Box,
+  Group,
+  Image,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+  useMantineColorScheme
+} from "@mantine/core";
+import tmdbLogoBlackUrl from "../assets/tmdb-black.svg";
+import tmdbLogoWhiteUrl from "../assets/tmdb-white.svg";
 
 export function SiteFooter() {
+  const { colorScheme } = useMantineColorScheme();
+  const tmdbLogoUrl = colorScheme === "dark" ? tmdbLogoWhiteUrl : tmdbLogoBlackUrl;
+
   return (
-    <footer className="site-footer">
-      <nav className="footer-grid" aria-label="Footer">
-        <section className="footer-col" aria-label="Product">
-          <h3 className="footer-col-title">Product</h3>
-          <div className="footer-col-links">
-            <Link to="/about">About</Link>
-            <Link to="/how-it-works">How It Works</Link>
-            <Link to="/faq">FAQ</Link>
-          </div>
-        </section>
+    <Box component="footer" className="site-footer">
+      <Box component="nav" className="footer-grid" aria-label="Footer">
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
+          <Stack gap={8} className="footer-col" aria-label="Product">
+            <Title order={3} className="footer-col-title">
+              Product
+            </Title>
+            <Stack gap={6} className="footer-col-links">
+              <Anchor component={Link} to="/about">
+                About
+              </Anchor>
+              <Anchor component={Link} to="/how-it-works">
+                How It Works
+              </Anchor>
+              <Anchor component={Link} to="/faq">
+                FAQ
+              </Anchor>
+            </Stack>
+          </Stack>
 
-        <section className="footer-col" aria-label="Community">
-          <h3 className="footer-col-title">Community</h3>
-          <div className="footer-col-links">
-            <Link to="/contact">Contact</Link>
-            <Link to="/feedback">Feedback</Link>
-            <Link to="/code-of-conduct">Code of Conduct</Link>
-          </div>
-        </section>
+          <Stack gap={8} className="footer-col" aria-label="Community">
+            <Title order={3} className="footer-col-title">
+              Community
+            </Title>
+            <Stack gap={6} className="footer-col-links">
+              <Anchor component={Link} to="/contact">
+                Contact
+              </Anchor>
+              <Anchor component={Link} to="/feedback">
+                Feedback
+              </Anchor>
+              <Anchor component={Link} to="/code-of-conduct">
+                Code of Conduct
+              </Anchor>
+            </Stack>
+          </Stack>
 
-        <section className="footer-col" aria-label="Legal">
-          <h3 className="footer-col-title">Legal</h3>
-          <div className="footer-col-links">
-            <Link to="/terms">Terms</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/disclaimer">Disclaimer</Link>
-          </div>
-        </section>
+          <Stack gap={8} className="footer-col" aria-label="Legal">
+            <Title order={3} className="footer-col-title">
+              Legal
+            </Title>
+            <Stack gap={6} className="footer-col-links">
+              <Anchor component={Link} to="/terms">
+                Terms
+              </Anchor>
+              <Anchor component={Link} to="/privacy">
+                Privacy
+              </Anchor>
+              <Anchor component={Link} to="/disclaimer">
+                Disclaimer
+              </Anchor>
+            </Stack>
+          </Stack>
 
-        <section className="footer-col" aria-label="With">
-          <h3 className="footer-col-title">With</h3>
-          <div className="footer-col-links">
-            <a
-              className="footer-logo-link"
-              href="https://www.themoviedb.org/"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="The Movie Database (TMDB)"
-            >
-              <img className="footer-logo" src={tmdbLogoUrl} alt="TMDB" />
-            </a>
-          </div>
-        </section>
-      </nav>
+          <Stack gap={8} className="footer-col" aria-label="With">
+            <Title order={3} className="footer-col-title">
+              With
+            </Title>
+            <Group className="footer-col-links" gap="sm">
+              <Anchor
+                className="footer-logo-link"
+                href="https://www.themoviedb.org/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="The Movie Database (TMDB)"
+              >
+                <Image className="footer-logo" src={tmdbLogoUrl} alt="TMDB" />
+              </Anchor>
+            </Group>
+          </Stack>
+        </SimpleGrid>
+      </Box>
 
-      <div className="footer-fineprint">
+      <Text className="footer-fineprint" ta="center" size="sm">
         © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
-      </div>
-    </footer>
+      </Text>
+    </Box>
   );
 }

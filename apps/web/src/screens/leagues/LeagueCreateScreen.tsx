@@ -1,4 +1,5 @@
 import { FormField } from "../../ui/forms";
+import { Box, Button, Card, Group, Text, Title } from "@mantine/core";
 
 export function LeagueCreateScreen(props: {
   creating: boolean;
@@ -8,23 +9,27 @@ export function LeagueCreateScreen(props: {
   const { creating, error, onCreate } = props;
 
   return (
-    <section className="card">
-      <header>
-        <h2>Create league</h2>
-        <p className="muted">
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>Create league</Title>
+        <Text className="muted">
           Creating a league creates the initial season for the active ceremony.
-        </p>
-      </header>
+        </Text>
+      </Box>
 
-      <form className="grid" onSubmit={onCreate}>
+      <Box component="form" className="grid" onSubmit={onCreate}>
         <FormField label="Name" name="name" />
-        <div className="inline-actions">
-          <button type="submit" className="button" disabled={creating}>
+        <Group className="inline-actions" wrap="wrap">
+          <Button type="submit" disabled={creating}>
             {creating ? "Creating..." : "Create league"}
-          </button>
-          {error && <small className="error">{error}</small>}
-        </div>
-      </form>
-    </section>
+          </Button>
+          {error && (
+            <Text className="error" size="sm">
+              {error}
+            </Text>
+          )}
+        </Group>
+      </Box>
+    </Card>
   );
 }

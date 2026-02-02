@@ -6,9 +6,12 @@ import {
   buildDraftedSet,
   buildIconByCategoryId,
   buildNominationsByCategoryId,
+  buildNominationIconById,
   buildNominationLabelById,
   buildPicksByNumber,
   buildPicksBySeat,
+  computeRoundPickLabel,
+  computeSeatNumberForPickNumber,
   computeDraftBoardCols,
   computeDraftClockText,
   computePickDisabledReason,
@@ -83,7 +86,10 @@ export type DraftRoomOrchestration = {
   ledger: {
     rows: Array<{
       pickNumber: number;
+      roundPick: string;
       seatNumber: number | null;
+      seatLabel: string;
+      icon: string | null;
       label: string;
       active: boolean;
     }>;
@@ -105,8 +111,13 @@ export type DraftRoomOrchestration = {
   };
   myRoster: {
     seatNumber: number | null;
-    picks: Array<{ pickNumber: number; label: string }>;
-    selected: { id: number; label: string } | null;
+    picks: Array<{
+      pickNumber: number;
+      roundPick: string;
+      icon: string | null;
+      label: string;
+    }>;
+    selected: { id: number; icon: string | null; label: string } | null;
     clearSelection: () => void;
     canPick: boolean;
     pickDisabledReason: string | null;
@@ -117,7 +128,10 @@ export type DraftRoomOrchestration = {
   rosterBoard: {
     seats: Array<{ seatNumber: number; username: string | null }>;
     maxRows: number;
-    rowsBySeat: Map<number, Array<{ pickNumber: number; label: string }>>;
+    rowsBySeat: Map<
+      number,
+      Array<{ pickNumber: number; icon: string | null; label: string }>
+    >;
     emptyText: string | null;
   };
   refresh: () => void;
@@ -135,7 +149,8 @@ export function useDraftRoomOrchestration(args: {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
 
   const [view, setView] = useState<DraftRoomView>("draft");
-  const [poolMode, setPoolMode] = useState<PoolMode>("UNDRAFTED_ONLY");
+  // Default: show all nominees but mute drafted ones (better situational awareness).
+  const [poolMode, setPoolMode] = useState<PoolMode>("ALL_MUTED");
   const [ledgerCollapsed, setLedgerCollapsed] = useState(false);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
   const [autodraftCollapsed, setAutodraftCollapsed] = useState(false);
@@ -198,6 +213,7 @@ export function useDraftRoomOrchestration(args: {
     () => buildNominationLabelById(snapshot),
     [snapshot]
   );
+  const nominationIconById = useMemo(() => buildNominationIconById(snapshot), [snapshot]);
   const iconByCategoryId = useMemo(() => buildIconByCategoryId(snapshot), [snapshot]);
   const nominationsByCategoryId = useMemo(
     () => buildNominationsByCategoryId(snapshot),
@@ -388,9 +404,16 @@ export function useDraftRoomOrchestration(args: {
     const total = snapshot.total_picks ?? 0;
     const activePick =
       turn?.current_pick_number ?? snapshot.draft.current_pick_number ?? null;
+    const seatCount = snapshot.seats.length;
+    const seatLabelByNumber = new Map(
+      snapshot.seats.map((s) => [s.seat_number, s.username ?? `Seat ${s.seat_number}`])
+    );
     const rows: Array<{
       pickNumber: number;
+      roundPick: string;
       seatNumber: number | null;
+      seatLabel: string;
+      icon: string | null;
       label: string;
       active: boolean;
     }> = [];
@@ -398,18 +421,33 @@ export function useDraftRoomOrchestration(args: {
     for (let idx = 0; idx < total; idx++) {
       const pickNumber = idx + 1;
       const pick = picksByNumber.get(pickNumber) ?? null;
+      const seatNumber =
+        pick?.seat_number ??
+        computeSeatNumberForPickNumber({ pickNumber, seatCount }) ??
+        null;
+      const seatLabel = seatNumber ? (seatLabelByNumber.get(seatNumber) ?? "—") : "—";
       const label = pick
         ? (nominationLabelById.get(pick.nomination_id) ?? `#${pick.nomination_id}`)
         : "—";
+      const icon = pick ? (nominationIconById.get(pick.nomination_id) ?? null) : null;
       rows.push({
         pickNumber,
-        seatNumber: pick ? pick.seat_number : null,
+        roundPick: computeRoundPickLabel({ pickNumber, seatCount }),
+        seatNumber,
+        seatLabel,
+        icon,
         label,
         active: activePick === pickNumber
       });
     }
     return rows;
-  }, [nominationLabelById, picksByNumber, snapshot, turn?.current_pick_number]);
+  }, [
+    nominationIconById,
+    nominationLabelById,
+    picksByNumber,
+    snapshot,
+    turn?.current_pick_number
+  ]);
 
   const poolCategories = useMemo(() => {
     if (!snapshot) return [];
@@ -449,38 +487,46 @@ export function useDraftRoomOrchestration(args: {
 
   const myPicks = useMemo(() => {
     if (!snapshot || !mySeatNumber) return [];
+    const seatCount = snapshot.seats.length;
     return snapshot.picks
       .filter((p) => p.seat_number === mySeatNumber)
       .sort((a, b) => a.pick_number - b.pick_number)
       .map((p) => ({
         pickNumber: p.pick_number,
+        roundPick: computeRoundPickLabel({ pickNumber: p.pick_number, seatCount }),
+        icon: nominationIconById.get(p.nomination_id) ?? null,
         label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`
       }));
-  }, [mySeatNumber, nominationLabelById, snapshot]);
+  }, [mySeatNumber, nominationIconById, nominationLabelById, snapshot]);
 
   const selected = useMemo(() => {
     if (!selectedNominationId) return null;
     return {
       id: selectedNominationId,
+      icon: nominationIconById.get(selectedNominationId) ?? null,
       label: nominationLabelById.get(selectedNominationId) ?? `#${selectedNominationId}`
     };
-  }, [nominationLabelById, selectedNominationId]);
+  }, [nominationIconById, nominationLabelById, selectedNominationId]);
 
   const rosterPicksBySeat = useMemo(() => {
     if (!snapshot) return new Map();
     const picksBySeat = buildPicksBySeat(snapshot);
-    const out = new Map<number, Array<{ pickNumber: number; label: string }>>();
+    const out = new Map<
+      number,
+      Array<{ pickNumber: number; icon: string | null; label: string }>
+    >();
     for (const seat of snapshot.seats) {
       out.set(
         seat.seat_number,
         (picksBySeat.get(seat.seat_number) ?? []).map((p) => ({
           pickNumber: p.pick_number,
+          icon: nominationIconById.get(p.nomination_id) ?? null,
           label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`
         }))
       );
     }
     return out;
-  }, [nominationLabelById, snapshot]);
+  }, [nominationIconById, nominationLabelById, snapshot]);
 
   const maxRows = useMemo(() => {
     if (!snapshot) return 0;

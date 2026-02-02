@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Group, Select, Stack, Text, Title } from "@mantine/core";
 import type { LeagueSeasonCreateView } from "../../orchestration/seasons";
 import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";
@@ -22,110 +23,109 @@ export function LeagueSeasonCreateScreen(props: {
 
   if (view.state === "forbidden") {
     return (
-      <section className="card">
-        <header>
-          <h2>Create season</h2>
-          <p className="muted">Access denied.</p>
-        </header>
+      <Card className="card" component="section">
+        <Box component="header">
+          <Title order={2}>Create season</Title>
+          <Text className="muted">Access denied.</Text>
+        </Box>
         <PageError message={view.message} />
-      </section>
+      </Card>
     );
   }
 
   if (view.state === "error") {
     return (
-      <section className="card">
-        <header>
-          <h2>Create season</h2>
-          <p className="muted">Unable to load</p>
-        </header>
+      <Card className="card" component="section">
+        <Box component="header">
+          <Title order={2}>Create season</Title>
+          <Text className="muted">Unable to load</Text>
+        </Box>
         <PageError message={view.message} />
-      </section>
+      </Card>
     );
   }
 
   const leagueName = view.league?.name ?? `League #${leagueId}`;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Create season</h2>
-          <p className="muted">Create a new season for {leagueName}.</p>
-        </div>
-        <div className="inline-actions">
-          <Link to={`/leagues/${leagueId}`} className="button ghost">
+    <Card className="card" component="section">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={2}>Create season</Title>
+          <Text className="muted">Create a new season for {leagueName}.</Text>
+        </Box>
+        <Group className="inline-actions" wrap="wrap">
+          <Button component={Link} to={`/leagues/${leagueId}`} variant="subtle">
             Back to league
-          </Link>
-        </div>
-      </header>
+          </Button>
+        </Group>
+      </Group>
 
-      <div className="stack-sm">
-        <label className="field">
-          <span>Ceremony</span>
-          <select
-            value={view.ceremonyId ?? ""}
-            onChange={(e) =>
-              actions.setCeremonyId(e.target.value ? Number(e.target.value) : null)
-            }
-            disabled={view.working}
-          >
-            <option value="">Select ceremony…</option>
-            {view.ceremonies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.code})
-              </option>
-            ))}
-          </select>
-          {view.ceremonies.length === 0 && (
-            <p className="muted">No published ceremonies available yet.</p>
-          )}
-        </label>
+      <Stack className="stack-sm" gap="sm" mt="md">
+        <Select
+          label="Ceremony"
+          placeholder="Select ceremony…"
+          value={view.ceremonyId ? String(view.ceremonyId) : null}
+          onChange={(v) => actions.setCeremonyId(v ? Number(v) : null)}
+          disabled={view.working}
+          data={view.ceremonies.map((c) => ({
+            value: String(c.id),
+            label: `${c.name} (${c.code})`
+          }))}
+        />
+        {view.ceremonies.length === 0 && (
+          <Text className="muted" size="sm">
+            No published ceremonies available yet.
+          </Text>
+        )}
 
-        <label className="field">
-          <span>Scoring strategy</span>
-          <select
-            value={view.scoringStrategy}
-            onChange={(e) =>
-              actions.setScoringStrategy(e.target.value as "fixed" | "negative")
-            }
-            disabled={view.working}
-          >
-            <option value="fixed">Fixed</option>
-            <option value="negative">Negative</option>
-          </select>
-        </label>
+        <Select
+          label="Scoring strategy"
+          value={view.scoringStrategy}
+          onChange={(v) =>
+            actions.setScoringStrategy((v ?? "fixed") as "fixed" | "negative")
+          }
+          disabled={view.working}
+          data={[
+            { value: "fixed", label: "Fixed" },
+            { value: "negative", label: "Negative" }
+          ]}
+        />
 
-        <label className="field">
-          <span>Leftover picks</span>
-          <select
-            value={view.remainderStrategy}
-            onChange={(e) =>
-              actions.setRemainderStrategy(e.target.value as "UNDRAFTED" | "FULL_POOL")
-            }
-            disabled={view.working}
-          >
-            <option value="UNDRAFTED">Leave extras undrafted</option>
-            <option value="FULL_POOL">Use full pool (extras drafted)</option>
-          </select>
-        </label>
+        <Select
+          label="Leftover picks"
+          value={view.remainderStrategy}
+          onChange={(v) =>
+            actions.setRemainderStrategy((v ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL")
+          }
+          disabled={view.working}
+          data={[
+            { value: "UNDRAFTED", label: "Leave extras undrafted" },
+            { value: "FULL_POOL", label: "Use full pool (extras drafted)" }
+          ]}
+        />
 
-        <div className="inline-actions">
-          <button type="button" onClick={actions.submit} disabled={!view.canSubmit}>
+        <Group className="inline-actions" wrap="wrap">
+          <Button type="button" onClick={actions.submit} disabled={!view.canSubmit}>
             {view.working ? "Creating..." : "Create season"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="ghost"
+            variant="subtle"
             onClick={actions.reset}
             disabled={view.working}
           >
             Reset
-          </button>
-        </div>
+          </Button>
+        </Group>
 
         <FormStatus loading={view.working} result={view.status} />
-      </div>
-    </section>
+      </Stack>
+    </Card>
   );
 }

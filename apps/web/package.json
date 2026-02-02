@@ -16,6 +16,11 @@
   },
   "dependencies": {
     "@fantasy-oscars/shared": "workspace:*",
+    "@fontsource/cinzel": "^5.2.8",
+    "@fontsource/inter": "^5",
+    "@mantine/core": "8.3.14",
+    "@mantine/form": "8.3.14",
+    "@mantine/hooks": "8.3.14",
     "@testing-library/user-event": "^14.6.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

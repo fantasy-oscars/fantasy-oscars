@@ -1,10 +1,23 @@
+import type { Dispatch, SetStateAction } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  Checkbox,
+  Grid,
+  Group,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Title
+} from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type {
   AdminCeremonyCategoriesOrchestration,
   FamilyRow
 } from "../../../orchestration/adminCeremoniesCategories";
-import type { Dispatch, SetStateAction } from "react";
 
 export function AdminCeremoniesCategoriesScreen(props: {
   ceremonyId: number;
@@ -18,235 +31,268 @@ export function AdminCeremoniesCategoriesScreen(props: {
   if (o.error) return <PageError message={o.error} />;
 
   return (
-    <div className="stack-lg" style={{ marginTop: 16 }}>
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h3>Categories</h3>
-            <p className="muted">Define the category set for this ceremony.</p>
-          </div>
-          <div className="pill-list">
-            <span className="pill">Ceremony status: {o.ceremonyStatus}</span>
-            {!o.canEdit ? <span className="pill warning">Read-only</span> : null}
-          </div>
-        </header>
+    <Stack className="stack-lg" mt="md" gap="lg">
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Categories</Title>
+            <Text className="muted">Define the category set for this ceremony.</Text>
+          </Box>
+          <Group className="pill-list" wrap="wrap">
+            <Box component="span" className="pill">
+              Ceremony status: {o.ceremonyStatus}
+            </Box>
+            {!o.canEdit ? (
+              <Box component="span" className="pill muted">
+                Read-only
+              </Box>
+            ) : null}
+          </Group>
+        </Group>
         {!o.canEdit ? (
-          <div className="status status-warning" role="status">
+          <Box className="status status-warning" role="status">
             Categories can only be edited while the ceremony is in DRAFT.
-          </div>
+          </Box>
         ) : null}
         <FormStatus loading={o.working} result={o.status} />
-      </div>
+      </Card>
 
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h4>Mode</h4>
-            <p className="muted">Clone/import a set, or add/remove categories.</p>
-          </div>
-          <div className="inline-actions">
-            <button
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={4}>Mode</Title>
+            <Text className="muted">Clone/import a set, or add/remove categories.</Text>
+          </Box>
+          <Group className="inline-actions" wrap="wrap">
+            <Button
               type="button"
-              className={o.tab === "import" ? "button" : "button ghost"}
+              variant={o.tab === "import" ? "default" : "subtle"}
               onClick={() => o.setTab("import")}
             >
               Import / clone
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={o.tab === "edit" ? "button" : "button ghost"}
+              variant={o.tab === "edit" ? "default" : "subtle"}
               onClick={() => o.setTab("edit")}
             >
               Add / remove
-            </button>
-          </div>
-        </header>
-      </div>
+            </Button>
+          </Group>
+        </Group>
+      </Card>
 
       {o.tab === "import" ? (
-        <div className="card nested">
-          <header>
-            <h4>Import / clone</h4>
-            <p className="muted">
+        <Card className="card nested" component="section">
+          <Box component="header">
+            <Title order={4}>Import / clone</Title>
+            <Text className="muted">
               Copy the category set from a previous ceremony (no linkage).
-            </p>
-          </header>
-          <div className="inline-actions">
-            <select
-              value={o.cloneFromId}
-              onChange={(e) => o.setCloneFromId(e.target.value)}
+            </Text>
+          </Box>
+          <Group className="inline-actions" wrap="wrap" align="flex-end">
+            <Select
+              aria-label="Clone from ceremony"
+              placeholder="Select ceremony..."
+              value={o.cloneFromId || null}
+              onChange={(v) => o.setCloneFromId(v ?? "")}
               disabled={!o.canEdit}
-            >
-              <option value="">Select ceremony...</option>
-              {o.ceremonyOptions
+              data={o.ceremonyOptions
                 .filter((c) => c.id !== ceremonyId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name || "(Unnamed)"} {c.code ? `(${c.code})` : ""} #{c.id}
-                  </option>
-                ))}
-            </select>
-            <button
+                .map((c) => ({
+                  value: String(c.id),
+                  label: `${c.name || "(Unnamed)"}${c.code ? ` (${c.code})` : ""} #${c.id}`
+                }))}
+            />
+            <Button
               type="button"
-              className="button"
               onClick={onConfirmClone}
               disabled={!o.canEdit || o.working}
             >
               Clone set
-            </button>
-          </div>
-          <p className="muted">
+            </Button>
+          </Group>
+          <Text className="muted" mt="sm">
             This replaces the entire set for the current ceremony. After cloning, you can
             edit the set independently.
-          </p>
-        </div>
+          </Text>
+        </Card>
       ) : (
-        <div className="grid" style={{ gridTemplateColumns: "1fr 2fr", gap: 16 }}>
-          <div className="stack-lg">
-            <div className="card nested">
-              <header>
-                <h4>Templates</h4>
-                <p className="muted">Search templates and add them to this ceremony.</p>
-              </header>
-              <div className="inline-actions">
-                <input
+        <Grid gutter="md">
+          <Grid.Col span={{ base: 12, md: 4 }}>
+            <Card className="card nested" component="section">
+              <Box component="header">
+                <Title order={4}>Templates</Title>
+                <Text className="muted">
+                  Search templates and add them to this ceremony.
+                </Text>
+              </Box>
+
+              <Group className="inline-actions" wrap="wrap" align="flex-end">
+                <TextInput
                   type="search"
                   placeholder="Search templates..."
                   value={o.familyQuery}
-                  onChange={(e) => o.setFamilyQuery(e.target.value)}
+                  onChange={(e) => o.setFamilyQuery(e.currentTarget.value)}
                   disabled={!o.canEdit}
                 />
-                <button
+                <Button
                   type="button"
                   onClick={() => void o.actions.searchFamilies()}
                   disabled={!o.canEdit}
                 >
                   {o.familyQuery.trim() ? "Search" : "Show all"}
-                </button>
-              </div>
-              <div className="inline-actions" style={{ marginTop: 8 }}>
-                <select
-                  value={o.selectedFamilyId}
-                  onChange={(e) => o.setSelectedFamilyId(e.target.value)}
+                </Button>
+              </Group>
+
+              <Group className="inline-actions" wrap="wrap" mt="sm">
+                <Select
+                  placeholder="Select template..."
+                  value={o.selectedFamilyId || null}
+                  onChange={(v) => o.setSelectedFamilyId(v ?? "")}
                   disabled={!o.canEdit || o.familyResults.length === 0}
-                >
-                  <option value="">Select template...</option>
-                  {o.familyResults.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.code} — {f.name}
-                    </option>
-                  ))}
-                </select>
-                <button
+                  data={o.familyResults.map((f) => ({
+                    value: String(f.id),
+                    label: `${f.code} — ${f.name}`
+                  }))}
+                />
+                <Button
                   type="button"
-                  className="button"
                   onClick={() => void o.actions.addCategory()}
                   disabled={!o.canEdit || o.working}
                 >
                   Add
-                </button>
-              </div>
-              <button
+                </Button>
+              </Group>
+
+              <Button
                 type="button"
-                className="button ghost"
+                variant="subtle"
                 onClick={o.openNewTemplate}
                 disabled={o.working}
+                mt="sm"
               >
                 New template…
-              </button>
-            </div>
-          </div>
+              </Button>
+            </Card>
+          </Grid.Col>
 
-          <div className="card nested">
-            <header className="header-with-controls">
-              <div>
-                <h4>Current ceremony categories</h4>
-                <p className="muted">
-                  Short list. Remove and replace via templates if needed.
-                </p>
-              </div>
-              <span className="pill">{o.categories.length} categories</span>
-            </header>
+          <Grid.Col span={{ base: 12, md: 8 }}>
+            <Card className="card nested" component="section">
+              <Group
+                className="header-with-controls"
+                justify="space-between"
+                align="start"
+                wrap="wrap"
+              >
+                <Box>
+                  <Title order={4}>Current ceremony categories</Title>
+                  <Text className="muted">
+                    Short list. Remove and replace via templates if needed.
+                  </Text>
+                </Box>
+                <Box component="span" className="pill">
+                  {o.categories.length} categories
+                </Box>
+              </Group>
 
-            {o.categories.length === 0 ? (
-              <div className="empty-state">
-                <strong>No categories yet.</strong>
-                <div className="muted" style={{ marginTop: 6 }}>
-                  Clone from a prior ceremony or add templates on the left.
-                </div>
-              </div>
-            ) : (
-              <div className="list">
-                {o.categories.map((c) => (
-                  <div key={c.id} className="list-row">
-                    <div>
-                      <div className="inline-actions" style={{ gap: 10 }}>
-                        <strong>{c.family_name}</strong>
-                        <button
+              {o.categories.length === 0 ? (
+                <Card className="empty-state">
+                  <Text fw={700}>No categories yet.</Text>
+                  <Text className="muted" mt="xs">
+                    Clone from a prior ceremony or add templates on the left.
+                  </Text>
+                </Card>
+              ) : (
+                <Stack className="list" gap="sm">
+                  {o.categories.map((c) => (
+                    <Box key={c.id} className="list-row">
+                      <Box>
+                        <Group className="inline-actions" wrap="wrap">
+                          <Text fw={700}>{c.family_name}</Text>
+                          <Button
+                            type="button"
+                            variant="subtle"
+                            aria-label="Category details"
+                            title="Details"
+                            onClick={() =>
+                              o.setExpandedCategoryId((prev) =>
+                                prev === c.id ? null : c.id
+                              )
+                            }
+                          >
+                            i
+                          </Button>
+                        </Group>
+                        {o.expandedCategoryId === c.id ? (
+                          <Box className="status status-info" mt="sm">
+                            <Group className="pill-list" wrap="wrap">
+                              <Box component="span" className="pill">
+                                Template: {c.family_code}
+                              </Box>
+                              <Box component="span" className="pill">
+                                Type: {c.unit_kind}
+                              </Box>
+                              <Box component="span" className="pill">
+                                Icon: {c.icon_code || c.family_icon_code}
+                              </Box>
+                              <Box component="span" className="pill muted">
+                                Sort: {c.sort_index}
+                              </Box>
+                            </Group>
+                            <Group className="inline-actions" mt="sm" wrap="wrap">
+                              <Button
+                                type="button"
+                                variant="subtle"
+                                onClick={() =>
+                                  o.setEditingTemplate({
+                                    id: c.family_id,
+                                    code: c.family_code,
+                                    name: c.family_name,
+                                    default_unit_kind: c.family_default_unit_kind,
+                                    icon_id: c.family_icon_id,
+                                    icon_code: c.family_icon_code
+                                  })
+                                }
+                                disabled={o.working}
+                              >
+                                Edit template
+                              </Button>
+                            </Group>
+                            <Text className="muted" mt="xs">
+                              Warning: editing a template changes it everywhere it is
+                              used.
+                            </Text>
+                          </Box>
+                        ) : null}
+                      </Box>
+                      <Group className="pill-actions" wrap="wrap">
+                        <Button
                           type="button"
-                          className="ghost"
-                          aria-label="Category details"
-                          title="Details"
-                          onClick={() =>
-                            o.setExpandedCategoryId((prev) =>
-                              prev === c.id ? null : c.id
-                            )
-                          }
+                          className="danger"
+                          onClick={() => onConfirmRemoveCategory(c.id)}
+                          disabled={!o.canEdit || o.working}
                         >
-                          i
-                        </button>
-                      </div>
-                      {o.expandedCategoryId === c.id ? (
-                        <div className="status status-info" style={{ marginTop: 8 }}>
-                          <div className="pill-list">
-                            <span className="pill">Template: {c.family_code}</span>
-                            <span className="pill">Type: {c.unit_kind}</span>
-                            <span className="pill">
-                              Icon: {c.icon_code || c.family_icon_code}
-                            </span>
-                            <span className="pill muted">Sort: {c.sort_index}</span>
-                          </div>
-                          <div className="inline-actions" style={{ marginTop: 10 }}>
-                            <button
-                              type="button"
-                              className="button ghost"
-                              onClick={() =>
-                                o.setEditingTemplate({
-                                  id: c.family_id,
-                                  code: c.family_code,
-                                  name: c.family_name,
-                                  default_unit_kind: c.family_default_unit_kind,
-                                  icon_id: c.family_icon_id,
-                                  icon_code: c.family_icon_code
-                                })
-                              }
-                              disabled={o.working}
-                            >
-                              Edit template
-                            </button>
-                          </div>
-                          <p className="muted" style={{ marginTop: 8 }}>
-                            Warning: editing a template changes it everywhere it is used.
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="pill-actions">
-                      <button
-                        type="button"
-                        className="button danger"
-                        onClick={() => onConfirmRemoveCategory(c.id)}
-                        disabled={!o.canEdit || o.working}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                          Remove
+                        </Button>
+                      </Group>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </Card>
+          </Grid.Col>
+        </Grid>
       )}
 
       {o.newTemplateOpen ? (
@@ -273,13 +319,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
           onSubmit={(next) => void o.actions.saveTemplateEdits(next)}
         />
       ) : null}
-
-      <datalist id="icon-codes">
-        {o.iconCodes.map((code) => (
-          <option key={code} value={code} />
-        ))}
-      </datalist>
-    </div>
+    </Stack>
   );
 }
 
@@ -307,82 +347,71 @@ function NewTemplateModal(props: {
 }) {
   const { working, canAddToCeremony, value, onChange, onCancel, onSubmit } = props;
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-label="New template">
-        <h4>New template</h4>
-        <p className="muted">
+    <Box className="modal-backdrop" role="presentation">
+      <Card className="modal" role="dialog" aria-modal="true" aria-label="New template">
+        <Title order={4}>New template</Title>
+        <Text className="muted">
           Create a category template, then add it to ceremonies as needed.
-        </p>
+        </Text>
 
-        <div className="stack-sm">
-          <label className="field">
-            <span>Code</span>
-            <input
-              value={value.code}
-              onChange={(e) => onChange((p) => ({ ...p, code: e.target.value }))}
-              placeholder="oscar-best-picture"
-              disabled={working}
-            />
-          </label>
-          <label className="field">
-            <span>Name</span>
-            <input
-              value={value.name}
-              onChange={(e) => onChange((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Best Picture"
-              disabled={working}
-            />
-          </label>
-          <label className="field">
-            <span>Default nominee type</span>
-            <select
-              value={value.default_unit_kind}
-              onChange={(e) =>
-                onChange((p) => ({
-                  ...p,
-                  default_unit_kind: e.target.value as FamilyRow["default_unit_kind"]
-                }))
-              }
-              disabled={working}
-            >
-              <option value="FILM">Film</option>
-              <option value="SONG">Song</option>
-              <option value="PERFORMANCE">Performance</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Icon (text)</span>
-            <input
-              list="icon-codes"
-              value={value.icon_id}
-              onChange={(e) => onChange((p) => ({ ...p, icon_id: e.target.value }))}
-              placeholder="e4eb or e4eb-i"
-              disabled={working}
-            />
-          </label>
-          <label className="field" style={{ alignItems: "center" }}>
-            <span>Add to this ceremony</span>
-            <input
-              type="checkbox"
-              checked={value.add_to_ceremony}
-              onChange={(e) =>
-                onChange((p) => ({ ...p, add_to_ceremony: e.target.checked }))
-              }
-              disabled={working || !canAddToCeremony}
-            />
-          </label>
-        </div>
+        <Stack className="stack-sm" gap="sm" mt="sm">
+          <TextInput
+            label="Code"
+            value={value.code}
+            onChange={(e) => onChange((p) => ({ ...p, code: e.currentTarget.value }))}
+            placeholder="oscar-best-picture"
+            disabled={working}
+          />
+          <TextInput
+            label="Name"
+            value={value.name}
+            onChange={(e) => onChange((p) => ({ ...p, name: e.currentTarget.value }))}
+            placeholder="Best Picture"
+            disabled={working}
+          />
+          <Select
+            label="Default nominee type"
+            value={value.default_unit_kind}
+            onChange={(v) =>
+              onChange((p) => ({
+                ...p,
+                default_unit_kind: (v ?? "FILM") as FamilyRow["default_unit_kind"]
+              }))
+            }
+            disabled={working}
+            data={[
+              { value: "FILM", label: "Film" },
+              { value: "SONG", label: "Song" },
+              { value: "PERFORMANCE", label: "Performance" }
+            ]}
+          />
+          <TextInput
+            label="Icon (text)"
+            value={value.icon_id}
+            onChange={(e) => onChange((p) => ({ ...p, icon_id: e.currentTarget.value }))}
+            placeholder="e4eb or e4eb-i"
+            disabled={working}
+          />
+          <Checkbox
+            label="Add to this ceremony"
+            checked={value.add_to_ceremony}
+            onChange={(e) =>
+              onChange((p) => ({ ...p, add_to_ceremony: e.currentTarget.checked }))
+            }
+            disabled={working || !canAddToCeremony}
+          />
+        </Stack>
 
-        <div className="inline-actions" style={{ marginTop: 12 }}>
-          <button type="button" onClick={onCancel} disabled={working}>
+        <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Button type="button" onClick={onCancel} disabled={working}>
             Cancel
-          </button>
-          <button type="button" className="button" onClick={onSubmit} disabled={working}>
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={working}>
             Create template
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Card>
+    </Box>
   );
 }
 
@@ -417,76 +446,68 @@ function EditTemplateModal(props: {
   const { working, value, onChange, onCancel, onSubmit } = props;
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Edit template">
-        <h4>Edit template</h4>
-        <p className="muted">This changes the template everywhere it is used.</p>
+    <Box className="modal-backdrop" role="presentation">
+      <Card className="modal" role="dialog" aria-modal="true" aria-label="Edit template">
+        <Title order={4}>Edit template</Title>
+        <Text className="muted">This changes the template everywhere it is used.</Text>
 
-        <div className="stack-sm">
-          <label className="field">
-            <span>Code</span>
-            <input
-              value={value.code}
-              onChange={(e) => onChange((p) => (p ? { ...p, code: e.target.value } : p))}
-              disabled={working}
-            />
-          </label>
-          <label className="field">
-            <span>Name</span>
-            <input
-              value={value.name}
-              onChange={(e) => onChange((p) => (p ? { ...p, name: e.target.value } : p))}
-              disabled={working}
-            />
-          </label>
-          <label className="field">
-            <span>Default nominee type</span>
-            <select
-              value={value.default_unit_kind}
-              onChange={(e) =>
-                onChange((p) =>
-                  p
-                    ? {
-                        ...p,
-                        default_unit_kind: e.target
-                          .value as FamilyRow["default_unit_kind"]
-                      }
-                    : p
-                )
-              }
-              disabled={working}
-            >
-              <option value="FILM">Film</option>
-              <option value="SONG">Song</option>
-              <option value="PERFORMANCE">Performance</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Icon (text)</span>
-            <input
-              list="icon-codes"
-              value={value.icon}
-              onChange={(e) => onChange((p) => (p ? { ...p, icon: e.target.value } : p))}
-              placeholder="e4eb or e4eb-i"
-              disabled={working}
-            />
-          </label>
-        </div>
-
-        <div className="inline-actions" style={{ marginTop: 12 }}>
-          <button type="button" onClick={onCancel} disabled={working}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="button"
-            onClick={() => onSubmit(value)}
+        <Stack className="stack-sm" gap="sm" mt="sm">
+          <TextInput
+            label="Code"
+            value={value.code}
+            onChange={(e) =>
+              onChange((p) => (p ? { ...p, code: e.currentTarget.value } : p))
+            }
             disabled={working}
-          >
+          />
+          <TextInput
+            label="Name"
+            value={value.name}
+            onChange={(e) =>
+              onChange((p) => (p ? { ...p, name: e.currentTarget.value } : p))
+            }
+            disabled={working}
+          />
+          <Select
+            label="Default nominee type"
+            value={value.default_unit_kind}
+            onChange={(v) =>
+              onChange((p) =>
+                p
+                  ? {
+                      ...p,
+                      default_unit_kind: (v ?? "FILM") as FamilyRow["default_unit_kind"]
+                    }
+                  : p
+              )
+            }
+            disabled={working}
+            data={[
+              { value: "FILM", label: "Film" },
+              { value: "SONG", label: "Song" },
+              { value: "PERFORMANCE", label: "Performance" }
+            ]}
+          />
+          <TextInput
+            label="Icon (text)"
+            value={value.icon}
+            onChange={(e) =>
+              onChange((p) => (p ? { ...p, icon: e.currentTarget.value } : p))
+            }
+            placeholder="e4eb or e4eb-i"
+            disabled={working}
+          />
+        </Stack>
+
+        <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Button type="button" onClick={onCancel} disabled={working}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => onSubmit(value)} disabled={working}>
             Save template
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Card>
+    </Box>
   );
 }

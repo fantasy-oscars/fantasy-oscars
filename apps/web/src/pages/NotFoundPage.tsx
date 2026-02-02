@@ -1,15 +1,18 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Text, Title } from "@mantine/core";
 
 export function NotFoundPage() {
   return (
-    <section className="card">
-      <header>
-        <h2>Not found</h2>
-        <p className="muted">That page does not exist.</p>
-      </header>
-      <Link to="/" className="button ghost">
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>Not found</Title>
+        <Text className="muted" c="dimmed">
+          That page does not exist.
+        </Text>
+      </Box>
+      <Button component={Link} to="/" variant="subtle">
         Go to home
-      </Link>
-    </section>
+      </Button>
+    </Card>
   );
 }
