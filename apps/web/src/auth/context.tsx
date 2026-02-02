@@ -7,6 +7,7 @@ import {
   useState
 } from "react";
 import { fetchJson } from "../lib/api";
+import { clearAuthToken, setAuthToken } from "../lib/authToken";
 
 export type AuthUser = {
   sub: string;
@@ -85,21 +86,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     setLoading(true);
     await fetchJson("/auth/logout", { method: "POST" });
+    clearAuthToken();
     setUser(null);
     setLoading(false);
   }, []);
 
   const login = useCallback(async (input: { username: string; password: string }) => {
-    const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
+    const res = await fetchJson<{ user: AuthUser; token?: string }>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input)
     });
     if (res.ok && res.data?.user) {
+      setAuthToken(res.data.token);
       setUser(res.data.user);
       return { ok: true as const };
     }
     setUser(null);
+    clearAuthToken();
     return {
       ok: false as const,
       error: res.error,
@@ -111,13 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(
     async (input: { username: string; email: string; password: string }) => {
-      const res = await fetchJson("/auth/register", {
+      const res = await fetchJson<{ user: AuthUser }>("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
       });
       if (res.ok) {
-        // Auto-login fetch
+        // Auto-login fetch (ensures `user` state is populated).
         await login({ username: input.username, password: input.password });
         return { ok: true as const };
       }
