@@ -46,4 +46,3 @@ Draft Board-specific tokens (font sizes + pill geometry) are bound in `apps/web/
 - timer font: 24px
 - pill row height: 16px
 - pill paddingX: 5px
-
