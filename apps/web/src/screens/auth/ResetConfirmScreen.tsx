@@ -1,4 +1,5 @@
 import type { ApiResult, FieldErrors } from "../../lib/types";
+import { Box, Button, Card, Text, Title } from "@mantine/core";
 import { FormField, FormStatus } from "../../ui/forms";
 
 export function ResetConfirmScreen(props: {
@@ -9,12 +10,12 @@ export function ResetConfirmScreen(props: {
 }) {
   const { errors, result, loading, onSubmit } = props;
   return (
-    <section className="card">
-      <header>
-        <h2>Set New Password</h2>
-        <p>Paste the reset token and choose a new password.</p>
-      </header>
-      <form onSubmit={onSubmit}>
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>Set New Password</Title>
+        <Text className="muted">Paste the reset token and choose a new password.</Text>
+      </Box>
+      <Box component="form" onSubmit={onSubmit}>
         <FormField label="Reset token" name="token" error={errors.token} />
         <FormField
           label="New password"
@@ -22,11 +23,11 @@ export function ResetConfirmScreen(props: {
           type="password"
           error={errors.password}
         />
-        <button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading}>
           {loading ? "Updating..." : "Update password"}
-        </button>
-      </form>
+        </Button>
+      </Box>
       <FormStatus loading={loading} result={result} />
-    </section>
+    </Card>
   );
 }

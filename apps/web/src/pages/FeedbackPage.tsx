@@ -1,16 +1,19 @@
 import { StaticPage } from "../ui/StaticPage";
+import { Anchor, Text } from "@mantine/core";
 
 export function FeedbackPage() {
   return (
     <StaticPage title="Feedback">
-      <p>
+      <Text>
         We&apos;re dogfooding actively. If something feels off, tell us what you expected
         to happen and what actually happened.
-      </p>
-      <p>
+      </Text>
+      <Text>
         Email:{" "}
-        <a href="mailto:feedback@fantasy-oscars.com">feedback@fantasy-oscars.com</a>
-      </p>
+        <Anchor href="mailto:feedback@fantasy-oscars.com">
+          feedback@fantasy-oscars.com
+        </Anchor>
+      </Text>
     </StaticPage>
   );
 }

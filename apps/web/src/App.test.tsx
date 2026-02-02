@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MantineProvider } from "@mantine/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -25,6 +26,14 @@ function mockFetchSequence(
   return fetchMock;
 }
 
+function renderApp() {
+  return render(
+    <MantineProvider>
+      <App />
+    </MantineProvider>
+  );
+}
+
 describe("<App /> shell + routing", () => {
   afterEach(() => {
     cleanup();
@@ -41,7 +50,7 @@ describe("<App /> shell + routing", () => {
       ) as unknown as { ok: boolean; json: () => Promise<unknown> }
     );
 
-    render(<App />);
+    renderApp();
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Fantasy Oscars" })
@@ -49,10 +58,7 @@ describe("<App /> shell + routing", () => {
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
 
     await waitFor(() => {
-      const nav = screen.getByRole("navigation", { name: "Primary" });
-      expect(within(nav).getAllByRole("link", { name: /Login/i }).length).toBeGreaterThan(
-        0
-      );
+      expect(screen.getAllByRole("link", { name: /Login/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -63,7 +69,7 @@ describe("<App /> shell + routing", () => {
       json: () => Promise.resolve({ user: null })
     });
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: /Login/i })).toBeInTheDocument();
@@ -89,7 +95,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("button", { name: /alice/i });
     await screen.findByRole("heading", { name: /Leagues/i });
@@ -121,7 +127,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     const registerHeading = await screen.findByRole("heading", {
       name: "Create Account"
@@ -162,7 +168,7 @@ describe("<App /> shell + routing", () => {
         })
     });
 
-    render(<App />);
+    renderApp();
     await screen.findByRole("button", { name: /alice/i });
     await screen.findByText(/Username: alice/i);
     expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
@@ -188,7 +194,7 @@ describe("<App /> shell + routing", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<App />);
+    renderApp();
     await screen.findByRole("button", { name: /alice/i });
 
     const nav = screen.getByRole("navigation", { name: "Primary" });
@@ -219,7 +225,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
     await screen.findByText(/Loading leagues/i);
     await screen.findByText(/Alpha/);
   });
@@ -261,7 +267,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
     await screen.findByRole("heading", { name: /Invite/i });
     await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
     await screen.findByText(/Season 99/i);
@@ -353,11 +359,11 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
     await screen.findByRole("heading", { name: /Season 2026/i });
 
     window.history.pushState({}, "", "/invites/token123");
-    render(<App />);
+    renderApp();
     await screen.findByRole("heading", { name: /Invite/i });
     expect(await screen.findByText(/token123/i)).toBeInTheDocument();
   });
@@ -459,7 +465,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("heading", { name: /Invites/i });
     await userEvent.click(screen.getByRole("button", { name: /Accept/i }));
@@ -508,13 +514,13 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
     await screen.findByRole("heading", { name: /Invites/i });
     await userEvent.click(screen.getByRole("button", { name: /Decline/i }));
     await waitFor(() => expect(screen.queryByText(/3030/)).not.toBeInTheDocument());
   });
 
-  it("loads realtime draft room snapshot and shows status", async () => {
+  it("loads realtime draft room snapshot and shows draft room controls", async () => {
     window.history.pushState({}, "", "/drafts/1");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
@@ -553,10 +559,10 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("link", { name: /Back to Season/i });
-    await screen.findByText(/Status: PENDING/i);
+    await screen.findByRole("button", { name: /Hide drafted/i });
     expect(screen.getByRole("button", { name: /Start draft/i })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/snapshot"),
@@ -643,7 +649,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByText(
       /once winners start getting entered after the ceremony begins/i
@@ -699,7 +705,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("heading", { name: /Results/i });
     await screen.findAllByText(/Winners/i);
@@ -716,7 +722,7 @@ describe("<App /> shell + routing", () => {
         Promise.resolve({ user: { sub: "1", username: "alice", is_admin: false } })
     });
 
-    render(<App />);
+    renderApp();
 
     await screen.findByText(/Admins only/i);
     expect(screen.getByText(/do not have access/i)).toBeInTheDocument();
@@ -778,7 +784,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("heading", { name: /Ceremonies/i });
     await screen.findByRole("heading", { name: /Overview/i });
@@ -837,10 +843,14 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("heading", { name: /Nominees/i });
-    const fileInput = await screen.findByLabelText(/Candidate films JSON file/i);
+    const fileInput = await waitFor(() => {
+      const el = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+      if (!el) throw new Error("Missing file input");
+      return el;
+    });
     const file = new File(
       [
         JSON.stringify([
@@ -937,15 +947,17 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByText(/Drafts open/i);
     await screen.findByText(/Nomination #1/);
-    const category10 = screen.getByText(/Category 10/).closest("div.card");
+    const category10 = screen.getByText(/Category 10/).closest(".card");
     expect(category10).toBeTruthy();
-    const firstRadio = within(category10 as HTMLElement).getByLabelText(/Nomination #1/);
-    await userEvent.click(firstRadio);
-    await waitFor(() => expect(firstRadio).toBeChecked());
+    const firstCheckbox = within(category10 as HTMLElement).getByRole("checkbox", {
+      name: /Nomination #1/i
+    });
+    await userEvent.click(firstCheckbox);
+    await waitFor(() => expect(firstCheckbox).toBeChecked());
     await userEvent.click(
       within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
@@ -957,9 +969,11 @@ describe("<App /> shell + routing", () => {
     );
     await screen.findAllByText(/Drafts locked/i);
 
-    const secondRadio = within(category10 as HTMLElement).getByLabelText(/Nomination #2/);
-    await userEvent.click(secondRadio);
-    await waitFor(() => expect(secondRadio).toBeChecked());
+    const secondCheckbox = within(category10 as HTMLElement).getByRole("checkbox", {
+      name: /Nomination #2/i
+    });
+    await userEvent.click(secondCheckbox);
+    await waitFor(() => expect(secondCheckbox).toBeChecked());
     await userEvent.click(
       within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
     );
@@ -982,6 +996,7 @@ describe("<App /> shell + routing", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
 
     window.history.pushState({}, "", "/leagues/10");
+    let removedBob = false;
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -1028,18 +1043,23 @@ describe("<App /> shell + routing", () => {
                   role: "OWNER",
                   username: "alice"
                 },
-                {
-                  id: 2,
-                  league_id: 10,
-                  user_id: 2,
-                  role: "MEMBER",
-                  username: "bob"
-                }
+                ...(removedBob
+                  ? []
+                  : [
+                      {
+                        id: 2,
+                        league_id: 10,
+                        user_id: 2,
+                        role: "MEMBER",
+                        username: "bob"
+                      }
+                    ])
               ]
             })
         });
       }
       if (url.endsWith("/leagues/10/members/2") && init?.method === "DELETE") {
+        removedBob = true;
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
       }
       if (url.endsWith("/leagues/10/transfer") && init?.method === "POST") {
@@ -1049,23 +1069,43 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<App />);
+    renderApp();
 
     await screen.findByRole("heading", { name: /Roster/i });
     await userEvent.click(screen.getByRole("button", { name: /Copy invite/i }));
     expect(writeText).toHaveBeenCalled();
 
-    const transferSelect = screen.getByLabelText(/Transfer to member/i);
+    const commissionerCard = screen
+      .getByRole("heading", { name: /Commissioner Controls/i })
+      .closest(".card");
+    expect(commissionerCard).toBeTruthy();
+
+    const transferSelect = within(commissionerCard as HTMLElement).getByRole("combobox", {
+      name: /Transfer to member/i
+    });
     await userEvent.selectOptions(transferSelect, "2");
-    await userEvent.click(screen.getByRole("button", { name: /Transfer commissioner/i }));
+    await userEvent.click(
+      within(commissionerCard as HTMLElement).getByRole("button", {
+        name: /Transfer commissioner/i
+      })
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/leagues/10/transfer"),
       expect.objectContaining({ method: "POST" })
     );
 
     // Remove Bob
-    await userEvent.click(screen.getByRole("button", { name: /Remove/i }));
-    await waitFor(() => expect(screen.queryByText(/Bob/)).not.toBeInTheDocument());
+    const rosterCard = screen.getByRole("heading", { name: /Roster/i }).closest(".card");
+    expect(rosterCard).toBeTruthy();
+
+    await userEvent.click(
+      within(rosterCard as HTMLElement).getByRole("button", { name: /Remove/i })
+    );
+    await waitFor(() =>
+      expect(
+        within(rosterCard as HTMLElement).queryByText(/^bob$/i)
+      ).not.toBeInTheDocument()
+    );
 
     confirmSpy.mockRestore();
   });

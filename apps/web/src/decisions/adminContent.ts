@@ -1,10 +1,12 @@
 export type StaticKey =
   | "about"
   | "faq"
+  | "how_it_works"
   | "landing_blurb"
   | "code_of_conduct"
   | "legal_terms"
-  | "legal_privacy";
+  | "legal_privacy"
+  | "legal_disclaimer";
 
 export const STATIC_META: Record<StaticKey, { label: string; hint: string }> = {
   landing_blurb: {
@@ -19,6 +21,10 @@ export const STATIC_META: Record<StaticKey, { label: string; hint: string }> = {
     label: "FAQ",
     hint: "Live immediately. Shown at /faq."
   },
+  how_it_works: {
+    label: "How It Works",
+    hint: "Live immediately. Shown at /how-it-works."
+  },
   code_of_conduct: {
     label: "Code of Conduct",
     hint: "Live immediately. Shown at /code-of-conduct."
@@ -30,6 +36,10 @@ export const STATIC_META: Record<StaticKey, { label: string; hint: string }> = {
   legal_privacy: {
     label: "Privacy",
     hint: "Live immediately. Shown at /privacy."
+  },
+  legal_disclaimer: {
+    label: "Disclaimer",
+    hint: "Live immediately. Shown at /disclaimer."
   }
 };
 

@@ -11,6 +11,29 @@ export type DraftTurn = {
   direction: "FORWARD" | "REVERSE";
 };
 
+export function computeSeatNumberForPickNumber(args: {
+  pickNumber: number;
+  seatCount: number;
+}): number | null {
+  const { pickNumber, seatCount } = args;
+  if (!Number.isFinite(pickNumber) || pickNumber <= 0) return null;
+  if (!Number.isFinite(seatCount) || seatCount <= 0) return null;
+
+  const round = Math.ceil(pickNumber / seatCount);
+  const idx = (pickNumber - 1) % seatCount;
+  return round % 2 === 1 ? idx + 1 : seatCount - idx;
+}
+
+export function computeRoundPickLabel(args: { pickNumber: number; seatCount: number }) {
+  const { pickNumber, seatCount } = args;
+  if (!Number.isFinite(pickNumber) || pickNumber <= 0) return "—";
+  if (!Number.isFinite(seatCount) || seatCount <= 0) return "—";
+  const round = Math.ceil(pickNumber / seatCount);
+  const pickInRound = ((pickNumber - 1) % seatCount) + 1;
+  // Structural contract: abbreviated as R-P.
+  return `${round}-${pickInRound}`;
+}
+
 export function computeTurn(snapshot: Snapshot): DraftTurn | null {
   if (snapshot.turn) return snapshot.turn as DraftTurn;
   const pickNumber = snapshot.draft.current_pick_number ?? null;
@@ -49,6 +72,17 @@ export function buildIconByCategoryId(snapshot: Snapshot | null) {
   const cats = snapshot?.categories ?? [];
   for (const c of cats) {
     if (c.icon_code) map.set(c.id, c.icon_code);
+  }
+  return map;
+}
+
+export function buildNominationIconById(snapshot: Snapshot | null) {
+  const iconByCategoryId = buildIconByCategoryId(snapshot);
+  const map = new Map<number, string>();
+  const nominations = snapshot?.nominations ?? [];
+  for (const n of nominations) {
+    const icon = iconByCategoryId.get(n.category_edition_id);
+    if (icon) map.set(n.id, icon);
   }
   return map;
 }
@@ -136,11 +170,12 @@ export function computeDraftBoardCols(args: {
   showRoster: boolean;
   showAutodraft: boolean;
 }) {
-  if (!args.hasSnapshot) return "1fr";
+  if (!args.hasSnapshot) return "minmax(0, 1fr)";
   const cols: string[] = [];
-  if (args.showLedger) cols.push("320px");
-  cols.push("1fr");
-  if (args.showRoster) cols.push("320px");
-  if (args.showAutodraft) cols.push("280px");
+  if (args.showLedger) cols.push("minmax(0, 1fr)");
+  // Draft pool gets the most space.
+  cols.push("minmax(0, 3fr)");
+  if (args.showRoster) cols.push("minmax(0, 1fr)");
+  if (args.showAutodraft) cols.push("minmax(0, 1fr)");
   return cols.join(" ");
 }

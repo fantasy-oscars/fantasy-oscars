@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { Box, Card, Text, Title } from "@mantine/core";
 import { useAuthContext } from "./context";
 import { PageLoader } from "../ui/page-state";
 
@@ -23,15 +24,15 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
   }
   if (!user.is_admin) {
     return (
-      <section className="card">
-        <header>
-          <h2>Admin</h2>
-          <p className="muted">Admins only</p>
-        </header>
-        <div className="status status-error" role="status">
+      <Card className="card" component="section">
+        <Box component="header">
+          <Title order={2}>Admin</Title>
+          <Text className="muted">Admins only</Text>
+        </Box>
+        <Box className="status status-error" role="status">
           You do not have access to the admin console.
-        </div>
-      </section>
+        </Box>
+      </Card>
     );
   }
   return <>{children}</>;

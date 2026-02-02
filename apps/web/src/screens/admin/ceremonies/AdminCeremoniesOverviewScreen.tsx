@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Dispatch, SetStateAction } from "react";
+import { Box, Button, Card, Group, Stack, Text, TextInput, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -57,112 +58,120 @@ export function AdminCeremoniesOverviewScreen(props: {
   if (!ceremony) return <PageError message="Ceremony not found" />;
 
   return (
-    <div className="stack-lg" style={{ marginTop: 16 }}>
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h3>Overview</h3>
-            <p className="muted">Configure the ceremony lifecycle and key dates.</p>
-          </div>
-          <div className="pill-list">
-            <span className={`pill ${ceremony.status === "DRAFT" ? "muted" : ""}`}>
+    <Stack className="stack-lg" mt="md" gap="lg">
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Overview</Title>
+            <Text className="muted">Configure the ceremony lifecycle and key dates.</Text>
+          </Box>
+          <Group className="pill-list" wrap="wrap">
+            <Box
+              component="span"
+              className={`pill ${ceremony.status === "DRAFT" ? "muted" : ""}`}
+            >
               {ceremony.status}
-            </span>
+            </Box>
             {ceremony.draft_locked_at ? (
-              <span className="pill warning">Drafts locked</span>
+              <Box component="span" className="pill">
+                Drafts locked
+              </Box>
             ) : null}
-          </div>
-        </header>
+          </Group>
+        </Group>
 
-        <div className="pill-list" style={{ marginTop: 8 }}>
-          <span className="pill">Nominees: {stats?.nominees_total ?? 0}</span>
-          <span className="pill">Winners: {stats?.winners_total ?? 0}</span>
-          <span className={`pill ${completeness.ok ? "success" : "warning"}`}>
+        <Group className="pill-list" wrap="wrap" mt="xs">
+          <Box component="span" className="pill">
+            Nominees: {stats?.nominees_total ?? 0}
+          </Box>
+          <Box component="span" className="pill">
+            Winners: {stats?.winners_total ?? 0}
+          </Box>
+          <Box component="span" className="pill">
             {completeness.label}
-          </span>
-        </div>
+          </Box>
+        </Group>
 
         {ceremony.published_at ? (
-          <p className="muted">
+          <Text className="muted">
             Published at {new Date(ceremony.published_at).toLocaleString()}
-          </p>
+          </Text>
         ) : null}
         {ceremony.archived_at ? (
-          <p className="muted">
+          <Text className="muted">
             Archived at {new Date(ceremony.archived_at).toLocaleString()}
-          </p>
+          </Text>
         ) : null}
-      </div>
+      </Card>
 
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h3>Init</h3>
-            <p className="muted">Identity and mechanically relevant dates.</p>
-          </div>
-        </header>
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Init</Title>
+            <Text className="muted">Identity and mechanically relevant dates.</Text>
+          </Box>
+        </Group>
 
         {readOnly ? (
-          <div className="status status-warning" role="status">
+          <Box className="status status-warning" role="status">
             Archived ceremonies are read-only.
-          </div>
+          </Box>
         ) : null}
 
-        <div className="grid">
-          <label className="field">
-            <span>Code</span>
-            <input
-              value={form.code}
-              onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-              disabled={readOnly}
-              placeholder="Required"
-            />
-          </label>
-          <label className="field">
-            <span>Name</span>
-            <input
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              disabled={readOnly}
-              placeholder="Required"
-            />
-          </label>
-          <label className="field">
-            <span>Ceremony at</span>
-            <input
-              type="datetime-local"
-              value={form.startsAtLocal}
-              onChange={(e) => setForm((p) => ({ ...p, startsAtLocal: e.target.value }))}
-              disabled={readOnly}
-            />
-          </label>
-          <label className="field">
-            <span>Draft warning (hours before)</span>
-            <input
-              type="number"
-              min="0"
-              max={24 * 14}
-              value={form.warningHours}
-              onChange={(e) => setForm((p) => ({ ...p, warningHours: e.target.value }))}
-              disabled={readOnly}
-            />
-          </label>
-        </div>
+        <Box className="grid">
+          <TextInput
+            label="Code"
+            value={form.code}
+            onChange={(e) => setForm((p) => ({ ...p, code: e.currentTarget.value }))}
+            disabled={readOnly}
+            placeholder="Required"
+          />
+          <TextInput
+            label="Name"
+            value={form.name}
+            onChange={(e) => setForm((p) => ({ ...p, name: e.currentTarget.value }))}
+            disabled={readOnly}
+            placeholder="Required"
+          />
+          <TextInput
+            label="Ceremony at"
+            type="datetime-local"
+            value={form.startsAtLocal}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, startsAtLocal: e.currentTarget.value }))
+            }
+            disabled={readOnly}
+          />
+          <TextInput
+            label="Draft warning (hours before)"
+            type="number"
+            min={0}
+            value={form.warningHours}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, warningHours: e.currentTarget.value }))
+            }
+            disabled={readOnly}
+          />
+        </Box>
 
-        <div className="inline-actions" style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            className="button"
-            onClick={onSave}
-            disabled={saving || readOnly}
-          >
+        <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Button type="button" onClick={onSave} disabled={saving || readOnly}>
             {saving ? "Saving..." : "Save changes"}
-          </button>
+          </Button>
 
           {ceremony.status === "DRAFT" ? (
-            <button
+            <Button
               type="button"
-              className="button"
               onClick={onPublish}
               disabled={publishing || !completeness.ok}
               title={
@@ -170,25 +179,33 @@ export function AdminCeremoniesOverviewScreen(props: {
               }
             >
               {publishing ? "Publishing..." : "Publish"}
-            </button>
+            </Button>
           ) : null}
 
-          <Link to={`/admin/ceremonies/${ceremony.id}/nominees`} className="button ghost">
+          <Button
+            component={Link}
+            to={`/admin/ceremonies/${ceremony.id}/nominees`}
+            variant="subtle"
+          >
             Manage nominees
-          </Link>
-          <Link to={`/admin/ceremonies/${ceremony.id}/winners`} className="button ghost">
+          </Button>
+          <Button
+            component={Link}
+            to={`/admin/ceremonies/${ceremony.id}/winners`}
+            variant="subtle"
+          >
             Enter winners
-          </Link>
-        </div>
+          </Button>
+        </Group>
 
         {form.code.trim().length === 0 || form.name.trim().length === 0 ? (
-          <div className="status status-warning" role="status">
+          <Box className="status status-warning" role="status">
             Code and name are required before publishing.
-          </div>
+          </Box>
         ) : null}
 
         <FormStatus loading={saving || publishing} result={status} />
-      </div>
-    </div>
+      </Card>
+    </Stack>
   );
 }

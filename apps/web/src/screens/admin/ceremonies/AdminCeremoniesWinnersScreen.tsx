@@ -1,3 +1,4 @@
+import { Box, Button, Card, Checkbox, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -59,115 +60,140 @@ export function AdminCeremoniesWinnersScreen(props: {
   if (loadState?.ok === false) return <PageError message={loadState.message} />;
 
   return (
-    <div className="stack-lg" style={{ marginTop: 16 }}>
-      <div className="card nested">
-        <header className="header-with-controls">
-          <div>
-            <h3>Winners</h3>
-            <p className="muted">Enter or edit winners per category for this ceremony.</p>
-          </div>
-          <div className="pill-list">
-            <span className={`pill ${draftLock.draft_locked ? "warning" : ""}`}>
+    <Stack className="stack-lg" mt="md" gap="lg">
+      <Card className="card nested" component="section">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Box>
+            <Title order={3}>Winners</Title>
+            <Text className="muted">
+              Enter or edit winners per category for this ceremony.
+            </Text>
+          </Box>
+          <Group className="pill-list" wrap="wrap">
+            <Box component="span" className="pill">
               {draftLock.draft_locked ? "Drafts locked" : "Drafts open"}
-            </span>
-          </div>
-        </header>
+            </Box>
+          </Group>
+        </Group>
         {draftLock.draft_locked_at ? (
-          <p className="muted">
+          <Text className="muted">
             Locked at {new Date(draftLock.draft_locked_at).toLocaleString()}
-          </p>
+          </Text>
         ) : null}
-        <div className="status status-warning">
+        <Box className="status status-warning">
           First winner entry locks drafts. Changing winners keeps drafts locked.
-        </div>
-      </div>
+        </Box>
+      </Card>
 
       {groupedNominations.length === 0 ? (
         <PageError message="No nominees loaded. Add nominees for this ceremony first." />
       ) : (
-        <div className="stack-lg">
+        <Stack className="stack-lg" gap="lg">
           {groupedNominations.map(({ categoryId, nominations }) => (
-            <div key={categoryId} className="card nested">
-              <header className="header-with-controls">
-                <div>
-                  <h4>Category {categoryId}</h4>
-                  <p className="muted">Pick the winner</p>
-                </div>
-                <div className="pill-list">
+            <Card key={categoryId} className="card nested" component="section">
+              <Group
+                className="header-with-controls"
+                justify="space-between"
+                align="start"
+                wrap="wrap"
+              >
+                <Box>
+                  <Title order={4}>Category {categoryId}</Title>
+                  <Text className="muted">Pick the winner</Text>
+                </Box>
+                <Group className="pill-list" wrap="wrap">
                   {(winnerByCategory[categoryId] ?? []).length > 0 ? (
-                    <span className="pill success">Winner set</span>
+                    <Box component="span" className="pill">
+                      Winner set
+                    </Box>
                   ) : (
-                    <span className="pill muted">Unset</span>
+                    <Box component="span" className="pill muted">
+                      Unset
+                    </Box>
                   )}
                   {!draftLock.draft_locked &&
                   (winnerByCategory[categoryId] ?? []).length === 0 ? (
-                    <span className="pill warning">Will lock drafts</span>
+                    <Box component="span" className="pill">
+                      Will lock drafts
+                    </Box>
                   ) : null}
-                </div>
-              </header>
-              <div className="stack-sm">
+                </Group>
+              </Group>
+              <Stack className="stack-sm" gap="sm">
                 {nominations.map((nom) => (
-                  <label key={nom.id} className="list-row">
-                    <input
-                      type="checkbox"
+                  <Group
+                    key={nom.id}
+                    className="list-row"
+                    wrap="nowrap"
+                    align="flex-start"
+                  >
+                    <Checkbox
+                      aria-label={`Nomination #${nom.id}`}
                       checked={(selectedWinner[categoryId] ?? []).includes(nom.id)}
                       onChange={(e) =>
-                        toggleNomination(categoryId, nom.id, e.target.checked)
+                        toggleNomination(categoryId, nom.id, e.currentTarget.checked)
                       }
                     />
-                    <div>
-                      <p className="eyebrow">Nomination #{nom.id}</p>
-                      <strong>{nominationLabel(nom)}</strong>
-                    </div>
-                  </label>
+                    <Box>
+                      <Text className="eyebrow" size="xs">
+                        Nomination #{nom.id}
+                      </Text>
+                      <Text fw={700}>{nominationLabel(nom)}</Text>
+                    </Box>
+                  </Group>
                 ))}
-                <div className="inline-actions">
-                  <button
+                <Group className="inline-actions" wrap="wrap">
+                  <Button
                     type="button"
                     onClick={() => requestSaveWinners(categoryId)}
                     disabled={savingCategory === categoryId}
                   >
                     {savingCategory === categoryId ? "Saving..." : "Save winners"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="ghost"
+                    variant="subtle"
                     onClick={() => resetCategory(categoryId)}
                   >
                     Reset
-                  </button>
-                </div>
+                  </Button>
+                </Group>
                 <FormStatus
                   loading={savingCategory === categoryId}
                   result={winnerStatus[categoryId] ?? null}
                 />
-              </div>
-            </div>
+              </Stack>
+            </Card>
           ))}
-        </div>
+        </Stack>
       )}
 
       {pendingWinner ? (
-        <div className="modal-backdrop" role="presentation">
-          <div
+        <Box className="modal-backdrop" role="presentation">
+          <Card
             className="modal"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm winner"
           >
-            <h4>Confirm winner</h4>
-            <p className="muted">{pendingWinner.message}</p>
-            <div className="inline-actions">
-              <button type="button" onClick={dismissPendingWinner}>
+            <Title order={4}>Confirm winner</Title>
+            <Text className="muted">{pendingWinner.message}</Text>
+            <Group className="inline-actions" wrap="wrap">
+              <Button type="button" onClick={dismissPendingWinner}>
                 Cancel
-              </button>
-              <button type="button" className="ghost" onClick={confirmPendingWinner}>
+              </Button>
+              <Button type="button" variant="subtle" onClick={confirmPendingWinner}>
                 Yes, save winners
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </Group>
+          </Card>
+        </Box>
       ) : null}
-    </div>
+    </Stack>
   );
 }

@@ -1,3 +1,14 @@
+import {
+  Box,
+  Button,
+  Card,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title
+} from "@mantine/core";
 import type { ApiResult } from "../../../lib/types";
 import type { StaticKey } from "../../../decisions/adminContent";
 import { PageError, PageLoader } from "../../../ui/page-state";
@@ -33,50 +44,60 @@ export function AdminStaticContentEditorScreen(props: {
   if (loading) return <PageLoader label="Loading content..." />;
 
   return (
-    <section className="stack">
-      <header className="header-with-controls">
-        <div>
-          <h3>{meta.label}</h3>
-          <p className="muted">{meta.hint}</p>
-        </div>
-        <div className="inline-actions">
-          <button type="button" onClick={onSave} disabled={saving}>
+    <Stack component="section" className="stack">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={3}>{meta.label}</Title>
+          <Text className="muted">{meta.hint}</Text>
+        </Box>
+        <Group className="inline-actions" wrap="wrap">
+          <Button type="button" onClick={onSave} disabled={saving}>
             {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </header>
+          </Button>
+        </Group>
+      </Group>
 
-      <section className="card nested">
-        <div className="stack-sm">
+      <Card className="card nested" component="section">
+        <Stack className="stack-sm" gap="sm">
           {loadError ? (
-            <div className="status status-error" role="status" aria-live="polite">
+            <Box className="status status-error" role="status" aria-live="polite">
               {loadError} (You can still edit and save.)
-            </div>
+            </Box>
           ) : null}
-          <label className="field">
-            <span>Title</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </label>
-          <label className="field">
-            <span>Body (Markdown)</span>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={16} />
-          </label>
+          <TextInput
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+          />
+          <Textarea
+            label="Body (Markdown)"
+            value={body}
+            onChange={(e) => setBody(e.currentTarget.value)}
+            autosize
+            minRows={12}
+          />
           {saving ? (
-            <div className="status status-loading" role="status" aria-live="polite">
-              <span className="spinner" aria-hidden="true" /> Saving...
-            </div>
+            <Box className="status status-loading" role="status" aria-live="polite">
+              <Box component="span" className="spinner" aria-hidden="true" />{" "}
+              <Text span>Saving...</Text>
+            </Box>
           ) : null}
           {!saving && status ? (
-            <div
+            <Box
               className={`status ${status.ok ? "status-success" : "status-error"}`}
               role="status"
               aria-live="polite"
             >
               {status.message}
-            </div>
+            </Box>
           ) : null}
-        </div>
-      </section>
-    </section>
+        </Stack>
+      </Card>
+    </Stack>
   );
 }

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Grid, Stack, Text, Title } from "@mantine/core";
 import type { ApiResult, FieldErrors } from "../../lib/types";
 import { FormField, FormStatus } from "../../ui/forms";
 
@@ -10,36 +11,42 @@ export function RegisterScreen(props: {
 }) {
   const { errors, result, loading, onSubmit } = props;
   return (
-    <div className="card-grid">
-      <section className="card">
-        <header>
-          <h2>Create Account</h2>
-          <p>Pick a username and join a league.</p>
-        </header>
-        <form onSubmit={onSubmit}>
-          <FormField label="Username" name="username" error={errors.username} />
-          <FormField label="Email" name="email" error={errors.email} />
-          <FormField
-            label="Password"
-            name="password"
-            type="password"
-            error={errors.password}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Register"}
-          </button>
-        </form>
-        <FormStatus loading={loading} result={result} />
-      </section>
-      <section className="card">
-        <header>
-          <h3>Already have an account?</h3>
-          <p>Sign in to view leagues and drafts.</p>
-        </header>
-        <Link to="/login" className="button ghost">
-          Go to login
-        </Link>
-      </section>
-    </div>
+    <Grid className="card-grid" gutter="lg">
+      <Grid.Col span={{ base: 12, md: 6 }}>
+        <Card className="card" component="section">
+          <Box component="header">
+            <Title order={2}>Create Account</Title>
+            <Text>Pick a username and join a league.</Text>
+          </Box>
+          <Box component="form" onSubmit={onSubmit}>
+            <Stack gap="sm">
+              <FormField label="Username" name="username" error={errors.username} />
+              <FormField label="Email" name="email" error={errors.email} />
+              <FormField
+                label="Password"
+                name="password"
+                type="password"
+                error={errors.password}
+              />
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating..." : "Register"}
+              </Button>
+              <FormStatus loading={loading} result={result} />
+            </Stack>
+          </Box>
+        </Card>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, md: 6 }}>
+        <Card className="card" component="section">
+          <Box component="header">
+            <Title order={3}>Already have an account?</Title>
+            <Text>Sign in to view leagues and drafts.</Text>
+          </Box>
+          <Button component={Link} to="/login" variant="subtle">
+            Go to login
+          </Button>
+        </Card>
+      </Grid.Col>
+    </Grid>
   );
 }

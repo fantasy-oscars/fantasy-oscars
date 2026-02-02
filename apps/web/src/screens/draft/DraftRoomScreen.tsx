@@ -1,97 +1,106 @@
 import { Link } from "react-router-dom";
-import { FormStatus } from "../../ui/forms";
+import { Box, Button, Group, Stack, Text, Title, UnstyledButton } from "@mantine/core";
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
+import { FormStatus } from "../../ui/forms";
+import { NomineePill } from "../../components/NomineePill";
+import { computeRoundPickLabel } from "../../decisions/draft";
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
 
   if (o.state.loadingInitial) {
     return (
-      <section className="draft-shell">
-        <div className="status status-loading" role="status">
-          <span className="spinner" aria-hidden="true" /> Loading draft…
-        </div>
-      </section>
+      <Box component="section" className="draft-shell">
+        <Box className="status status-loading" role="status">
+          <Box component="span" className="spinner" aria-hidden="true" />{" "}
+          <Text span>Loading draft…</Text>
+        </Box>
+      </Box>
     );
   }
 
   if (o.state.error && !o.nav.backToSeasonHref) {
     return (
-      <section className="draft-shell">
-        <div className="status status-error" role="status">
-          Error: {o.state.error}{" "}
-          <button type="button" className="ghost" onClick={o.refresh}>
+      <Box component="section" className="draft-shell">
+        <Box className="status status-error" role="status">
+          <Text span>{o.state.error}</Text>
+          <Button type="button" variant="subtle" onClick={o.refresh}>
             Retry
-          </button>
-        </div>
-      </section>
+          </Button>
+        </Box>
+      </Box>
     );
   }
 
+  const cols = o.layout.showRosterOnly ? "minmax(0, 1fr)" : o.layout.boardCols;
+
   return (
-    <section className="draft-shell">
-      <div className="draft-topbar">
-        {o.nav.backToSeasonHref ? (
-          <Link to={o.nav.backToSeasonHref} className="button ghost">
-            Back to Season
-          </Link>
+    <Box component="section" className="draft-shell">
+      <DraftHeader o={o} />
+
+      <Box className="draft-main" style={{ ["--draft-cols" as never]: cols }}>
+        {!o.layout.showRosterOnly && o.layout.rails.ledger.visible ? (
+          <DraftLedger o={o} />
         ) : null}
-      </div>
 
-      {!o.layout.showRosterOnly ? <DraftHeader o={o} /> : null}
+        <Box className="draft-center">
+          {o.layout.showRosterOnly ? (
+            <RosterBoard o={o} />
+          ) : o.header.view === "roster" ? (
+            <RosterBoard o={o} />
+          ) : (
+            <DraftBoard o={o} />
+          )}
+        </Box>
 
-      {o.layout.phase === "POST" ? (
-        <RosterBoard o={o} />
-      ) : o.header.view === "roster" && o.layout.phase !== "PRE" ? (
-        <RosterBoard o={o} />
-      ) : (
-        <>
-          <div
-            className={`draft-board ${o.layout.phase === "PRE" ? "pre" : "live"}`}
-            style={{ ["--draft-cols" as never]: o.layout.boardCols }}
-          >
-            {o.layout.rails.ledger.visible ? <DraftLedger o={o} /> : null}
-            <DraftPool o={o} />
-            {o.layout.rails.myRoster.visible ? <MyRosterRail o={o} /> : null}
-            {o.layout.rails.autodraft.visible ? <AutoDraftRail o={o} /> : null}
-          </div>
+        {!o.layout.showRosterOnly && o.layout.rails.myRoster.visible ? (
+          <MyRosterRail o={o} />
+        ) : null}
 
-          {o.layout.phase !== "PRE" && o.layout.rails.ledger.collapsed ? (
-            <button
-              type="button"
-              className="rail-handle rail-handle-left"
-              onClick={o.layout.rails.ledger.show}
-            >
-              Ledger
-            </button>
-          ) : null}
-          {o.layout.phase !== "PRE" && o.layout.rails.myRoster.collapsed ? (
-            <button
-              type="button"
-              className="rail-handle rail-handle-right rail-handle-right-1"
-              onClick={o.layout.rails.myRoster.show}
-            >
-              My roster
-            </button>
-          ) : null}
-          {o.layout.rails.autodraft.collapsed ? (
-            <button
-              type="button"
-              className="rail-handle rail-handle-right rail-handle-right-2"
-              onClick={o.layout.rails.autodraft.show}
-            >
-              Auto-draft
-            </button>
-          ) : null}
-        </>
-      )}
+        {!o.layout.showRosterOnly && o.layout.rails.autodraft.visible ? (
+          <AutoDraftRail o={o} />
+        ) : null}
+      </Box>
+
+      {!o.layout.showRosterOnly &&
+      o.layout.phase !== "PRE" &&
+      o.layout.rails.ledger.collapsed ? (
+        <UnstyledButton
+          type="button"
+          className="rail-handle rail-handle-left"
+          onClick={o.layout.rails.ledger.show}
+        >
+          Ledger
+        </UnstyledButton>
+      ) : null}
+      {!o.layout.showRosterOnly &&
+      o.layout.phase !== "PRE" &&
+      o.layout.rails.myRoster.collapsed ? (
+        <UnstyledButton
+          type="button"
+          className="rail-handle rail-handle-right rail-handle-right-1"
+          onClick={o.layout.rails.myRoster.show}
+        >
+          My roster
+        </UnstyledButton>
+      ) : null}
+      {!o.layout.showRosterOnly && o.layout.rails.autodraft.collapsed ? (
+        <UnstyledButton
+          type="button"
+          className="rail-handle rail-handle-right rail-handle-right-2"
+          onClick={o.layout.rails.autodraft.show}
+        >
+          Auto-draft
+        </UnstyledButton>
+      ) : null}
 
       {o.state.refreshing ? (
-        <div className="status status-loading" role="status">
-          <span className="spinner" aria-hidden="true" /> Refreshing…
-        </div>
+        <Box className="status status-loading" role="status">
+          <Box component="span" className="spinner" aria-hidden="true" />{" "}
+          <Text span>Refreshing…</Text>
+        </Box>
       ) : null}
-    </section>
+    </Box>
   );
 }
 
@@ -99,270 +108,305 @@ function DraftHeader(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   const { header } = o;
 
+  const active = header.participants.find((p) => p.active) ?? null;
+  const activeName = active?.label ?? "—";
+  const rp =
+    header.pickNumber && header.participants.length
+      ? computeRoundPickLabel({
+          pickNumber: header.pickNumber,
+          seatCount: header.participants.length
+        })
+      : "—";
+
+  const isMyTurn =
+    Boolean(o.myRoster.seatNumber) && active?.seatNumber === o.myRoster.seatNumber;
+
+  const hideDrafted = header.poolMode === "UNDRAFTED_ONLY";
+
   return (
-    <div className="draft-header">
-      <div className="draft-header-left">
-        <div className="draft-participants">
-          {header.participants.length === 0 ? (
-            <span className="muted">Seats will appear when the draft starts.</span>
-          ) : (
-            header.participants.map((p) => (
-              <span
-                key={p.seatNumber}
-                className={`pill ${p.active ? "pill-active" : ""}`}
-                title={`Seat ${p.seatNumber}`}
-              >
-                {p.label}
-              </span>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="draft-header-meta">
-        <div className="draft-meta-row">
-          <span className="pill">Status: {header.status ?? "—"}</span>
-          {header.roundNumber && header.pickNumber ? (
-            <>
-              <span className="pill">Round {header.roundNumber}</span>
-              <span className="pill">Pick {header.pickNumber}</span>
-            </>
-          ) : (
-            <span className="pill">Pick —</span>
-          )}
-          <span className="pill">Clock: {header.clockText}</span>
-        </div>
-
-        <div className="draft-meta-row">
-          <button
-            type="button"
-            className={header.poolMode === "UNDRAFTED_ONLY" ? "" : "ghost"}
-            onClick={() => header.setPoolMode("UNDRAFTED_ONLY")}
-          >
-            Only undrafted
-          </button>
-          <button
-            type="button"
-            className={header.poolMode === "ALL_MUTED" ? "" : "ghost"}
-            onClick={() => header.setPoolMode("ALL_MUTED")}
-          >
-            All (mute drafted)
-          </button>
-
-          {header.canToggleView ? (
-            <>
-              <span className="muted">|</span>
-              <button
-                type="button"
-                className={header.view === "draft" ? "" : "ghost"}
-                onClick={() => header.setView("draft")}
-              >
-                Draft board
-              </button>
-              <button
-                type="button"
-                className={header.view === "roster" ? "" : "ghost"}
-                onClick={() => header.setView("roster")}
-              >
-                Roster view
-              </button>
-            </>
+    <Box className="draft-header" data-my-turn={isMyTurn ? "true" : "false"}>
+      <Box className="draft-header-left">
+        <Group className="draft-actions" gap="xs" wrap="wrap">
+          {o.nav.backToSeasonHref ? (
+            <Button component={Link} to={o.nav.backToSeasonHref} variant="subtle">
+              Back to Season
+            </Button>
           ) : null}
-        </div>
-      </div>
 
-      <div className="draft-header-right">
-        {header.canStartDraft ? (
-          <div className="inline-actions">
-            <button
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={() =>
+              header.setPoolMode(hideDrafted ? "ALL_MUTED" : "UNDRAFTED_ONLY")
+            }
+          >
+            {hideDrafted ? "Show drafted" : "Hide drafted"}
+          </Button>
+
+          <Button
+            type="button"
+            variant={header.view === "draft" ? "default" : "subtle"}
+            onClick={() => header.setView("draft")}
+            disabled={!header.canToggleView}
+          >
+            Draft board
+          </Button>
+          <Button
+            type="button"
+            variant={header.view === "roster" ? "default" : "subtle"}
+            onClick={() => header.setView("roster")}
+            disabled={!header.canToggleView}
+          >
+            Roster view
+          </Button>
+
+          {header.canStartDraft ? (
+            <Button
               type="button"
               onClick={header.onStartDraft}
               disabled={header.startLoading}
             >
               {header.startLoading ? "Starting..." : "Start draft"}
-            </button>
-          </div>
-        ) : null}
+            </Button>
+          ) : null}
+        </Group>
+
         {header.startResult ? (
           <FormStatus loading={header.startLoading} result={header.startResult} />
         ) : null}
-      </div>
-    </div>
+      </Box>
+
+      <Box className="draft-header-center">
+        <Box className="turn-emblem">
+          <Text className="turn-timer">{header.clockText}</Text>
+          <Text className="turn-name">{activeName}</Text>
+          <Text className="turn-rp">R-{rp}</Text>
+        </Box>
+      </Box>
+
+      <Box className="draft-header-right">
+        <Group className="draft-participants" gap="xs" justify="flex-end" wrap="wrap">
+          {header.participants.length === 0 ? (
+            <Text className="muted" size="sm">
+              Seats will appear when the draft starts.
+            </Text>
+          ) : (
+            header.participants.map((p) => (
+              <Box
+                key={p.seatNumber}
+                component="span"
+                className={`pill ${p.active ? "pill-active" : ""}`}
+                title={`Seat ${p.seatNumber}`}
+              >
+                {p.label}
+              </Box>
+            ))
+          )}
+        </Group>
+      </Box>
+    </Box>
   );
 }
 
 function DraftLedger(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   return (
-    <aside className="draft-rail draft-ledger">
-      <header className="rail-header">
-        <div className="header-with-controls">
-          <h4>Draft ledger</h4>
-          <button
+    <Box component="aside" className="draft-rail draft-ledger">
+      <Box component="header" className="rail-header">
+        <Group className="header-with-controls" justify="space-between" wrap="wrap">
+          <Title order={4}>Ledger</Title>
+          <Button
             type="button"
-            className="ghost"
+            variant="subtle"
             onClick={o.layout.rails.ledger.hide}
             aria-label="Close ledger"
           >
             ×
-          </button>
-        </div>
-      </header>
-      <div className="rail-body">
-        <div className="ledger-list">
+          </Button>
+        </Group>
+      </Box>
+      <Box className="rail-body">
+        <Stack className="ledger-list" gap="xs">
           {o.ledger.rows.map((r) => (
-            <div key={r.pickNumber} className={`ledger-row ${r.active ? "active" : ""}`}>
-              <span className="mono">#{r.pickNumber}</span>
-              <span className="muted">{r.seatNumber ? `Seat ${r.seatNumber}` : "—"}</span>
-              <span className={r.seatNumber ? "" : "muted"}>{r.label}</span>
-            </div>
+            <Box key={r.pickNumber} className={`ledger-row ${r.active ? "active" : ""}`}>
+              <Text span className="mono">
+                {r.roundPick}
+              </Text>
+              <Text span className={r.seatNumber ? "" : "muted"}>
+                {r.seatLabel}
+              </Text>
+              <NomineePill
+                label={r.label}
+                icon={r.icon}
+                state={r.label === "—" ? "disabled" : r.active ? "active" : "default"}
+              />
+            </Box>
           ))}
-        </div>
-      </div>
-    </aside>
+        </Stack>
+      </Box>
+    </Box>
   );
 }
 
-function DraftPool(props: { o: DraftRoomOrchestration }) {
+function DraftBoard(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   return (
-    <div className="draft-pool">
-      <div className="category-grid">
+    <Box className="draft-board">
+      <Box className="category-columns">
         {o.pool.categories.map((c) => (
-          <div key={c.id} className="category-card">
-            <div className="category-header">
-              <span className="muted">{c.title}</span>
-            </div>
-            <div className="category-body">
+          <Box
+            key={c.id}
+            className={`category-card ${c.nominations.length ? "" : "empty"}`}
+          >
+            <Box className="category-header">
+              <Text className="category-title">{c.title}</Text>
+            </Box>
+            <Box className="category-body">
               {c.emptyText ? (
-                <p className="muted small">{c.emptyText}</p>
+                <Text className="muted small" size="sm">
+                  {c.emptyText}
+                </Text>
               ) : (
-                c.nominations.map((n) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    className={`nominee-line ${n.muted ? "muted" : ""} ${n.selected ? "selected" : ""}`}
-                    onClick={() => o.pool.onSelectNomination(n.id)}
-                    title={`Nomination #${n.id}`}
-                  >
-                    <span className="icon-code mono">{c.icon}</span>
-                    <span className="nominee-label">{n.label}</span>
-                  </button>
-                ))
+                c.nominations.map((n) => {
+                  const state = n.selected ? "active" : n.muted ? "picked" : "default";
+                  return (
+                    <UnstyledButton
+                      key={n.id}
+                      type="button"
+                      className="nominee-line"
+                      onClick={() => o.pool.onSelectNomination(n.id)}
+                      title={`Nomination #${n.id}`}
+                    >
+                      <NomineePill label={n.label} icon={c.icon} state={state} />
+                    </UnstyledButton>
+                  );
+                })
               )}
-            </div>
-          </div>
+            </Box>
+          </Box>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
 function MyRosterRail(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   const { myRoster } = o;
+
   return (
-    <aside className="draft-rail draft-my-roster">
-      <header className="rail-header">
-        <div className="header-with-controls">
-          <h4>My roster</h4>
-          <button
+    <Box component="aside" className="draft-rail draft-my-roster">
+      <Box component="header" className="rail-header">
+        <Group className="header-with-controls" justify="space-between" wrap="wrap">
+          <Title order={4}>My roster</Title>
+          <Button
             type="button"
-            className="ghost"
+            variant="subtle"
             onClick={o.layout.rails.myRoster.hide}
             aria-label="Close roster"
           >
             ×
-          </button>
-        </div>
-      </header>
-      <div className="rail-body stack-sm">
+          </Button>
+        </Group>
+      </Box>
+      <Box className="rail-body stack-sm">
         {!myRoster.seatNumber ? (
-          <p className="muted">You are not seated in this draft.</p>
+          <Text className="muted">You are not seated in this draft.</Text>
         ) : null}
 
         {myRoster.picks.length === 0 ? (
-          <p className="muted">No picks yet.</p>
+          <Text className="muted">No picks yet.</Text>
         ) : (
-          <div className="stack-sm">
+          <Stack className="stack-sm" gap="xs">
             {myRoster.picks.map((p) => (
-              <div key={p.pickNumber} className="list-row">
-                <span className="mono">#{p.pickNumber}</span>
-                <span>{p.label}</span>
-              </div>
+              <Box key={p.pickNumber} className="list-row">
+                <Text span className="mono">
+                  {p.roundPick}
+                </Text>
+                <NomineePill label={p.label} icon={p.icon} state="default" />
+              </Box>
             ))}
-          </div>
+          </Stack>
         )}
 
-        <div className="card nested">
-          <header className="header-with-controls">
-            <div>
-              <h5>Pick</h5>
-              <p className="muted small">Select a nominee in the pool, then confirm.</p>
-            </div>
-          </header>
+        <Box className="card nested">
+          <Box component="header" className="header-with-controls">
+            <Box>
+              <Title order={5}>Pick</Title>
+              <Text className="muted small" size="sm">
+                Select a nominee in the pool, then confirm.
+              </Text>
+            </Box>
+          </Box>
 
           {myRoster.selected ? (
-            <div className="stack-sm">
-              <div className="list-row">
-                <span className="muted">Selected</span>
-                <span>{myRoster.selected.label}</span>
-                <button
+            <Stack className="stack-sm" gap="xs">
+              <Box className="list-row">
+                <Text span className="muted">
+                  Selected
+                </Text>
+                <NomineePill
+                  label={myRoster.selected.label}
+                  icon={myRoster.selected.icon}
+                />
+                <Button
                   type="button"
-                  className="ghost"
+                  variant="subtle"
                   onClick={myRoster.clearSelection}
                   disabled={myRoster.pickLoading}
                 >
                   Clear
-                </button>
-              </div>
-              <button
+                </Button>
+              </Box>
+              <Button
                 type="button"
                 onClick={myRoster.submitPick}
                 disabled={!myRoster.canPick || myRoster.pickLoading}
               >
                 {myRoster.pickLoading ? "Submitting..." : "Submit pick"}
-              </button>
-            </div>
+              </Button>
+            </Stack>
           ) : (
-            <p className="muted small">Nothing selected.</p>
+            <Text className="muted small" size="sm">
+              Nothing selected.
+            </Text>
           )}
 
           {myRoster.pickDisabledReason ? (
-            <div className="status status-error">{myRoster.pickDisabledReason}</div>
+            <Box className="status status-error">{myRoster.pickDisabledReason}</Box>
           ) : null}
           <FormStatus loading={myRoster.pickLoading} result={myRoster.pickState} />
-        </div>
-      </div>
-    </aside>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
 function AutoDraftRail(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   return (
-    <aside className="draft-rail draft-autodraft">
-      <header className="rail-header">
-        <div className="header-with-controls">
-          <h4>Auto-draft</h4>
-          <button
+    <Box component="aside" className="draft-rail draft-autodraft">
+      <Box component="header" className="rail-header">
+        <Group className="header-with-controls" justify="space-between" wrap="wrap">
+          <Title order={4}>Auto-draft</Title>
+          <Button
             type="button"
-            className="ghost"
+            variant="subtle"
             onClick={o.layout.rails.autodraft.hide}
             aria-label="Close auto-draft"
           >
             ×
-          </button>
-        </div>
-      </header>
-      <div className="rail-body">
-        <p className="muted">Auto-draft is coming soon.</p>
-        <p className="muted small">
-          You&apos;ll be able to set a per-user strategy and (optionally) a custom ranking
-          list.
-        </p>
-      </div>
-    </aside>
+          </Button>
+        </Group>
+      </Box>
+      <Box className="rail-body">
+        <Text className="muted">Coming soon.</Text>
+        <Text className="muted small" size="sm">
+          You&apos;ll be able to configure per-user auto-draft behavior and review
+          upcoming picks.
+        </Text>
+      </Box>
+    </Box>
   );
 }
 
@@ -370,34 +414,41 @@ function RosterBoard(props: { o: DraftRoomOrchestration }) {
   const { o } = props;
   const { seats, maxRows, rowsBySeat, emptyText } = o.rosterBoard;
 
-  if (emptyText) return <p className="muted">{emptyText}</p>;
+  if (emptyText) return <Text className="muted">{emptyText}</Text>;
 
   return (
-    <div className="roster-board">
-      <div
+    <Box className="roster-board">
+      <Box
         className="roster-grid"
-        style={{ gridTemplateColumns: `repeat(${seats.length}, minmax(180px, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${seats.length}, minmax(0, 1fr))` }}
       >
         {seats.map((s) => (
-          <div key={s.seatNumber} className="roster-col">
-            <div className="roster-col-header">
-              <strong>{s.username ?? `Seat ${s.seatNumber}`}</strong>
-              <span className="muted small">Seat {s.seatNumber}</span>
-            </div>
-            <div className="roster-col-body">
+          <Box key={s.seatNumber} className="roster-col">
+            <Box className="roster-col-header">
+              <Text fw={700}>{s.username ?? `Seat ${s.seatNumber}`}</Text>
+              <Text className="muted small" size="sm">
+                Seat {s.seatNumber}
+              </Text>
+            </Box>
+            <Box className="roster-col-body">
               {Array.from({ length: maxRows }, (_, idx) => {
                 const p = (rowsBySeat.get(s.seatNumber) ?? [])[idx] ?? null;
                 return (
-                  <div key={idx} className={`roster-row ${p ? "" : "muted"}`}>
-                    <span className="mono">#{p ? p.pickNumber : ""}</span>
-                    <span>{p ? p.label : "—"}</span>
-                  </div>
+                  <Box key={idx} className={`roster-row ${p ? "" : "muted"}`}>
+                    {p ? (
+                      <NomineePill label={p.label} icon={p.icon} state="default" />
+                    ) : (
+                      <Text className="muted" size="sm">
+                        —
+                      </Text>
+                    )}
+                  </Box>
                 );
               })}
-            </div>
-          </div>
+            </Box>
+          </Box>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }

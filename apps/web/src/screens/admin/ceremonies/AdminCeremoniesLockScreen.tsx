@@ -1,3 +1,4 @@
+import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -20,62 +21,67 @@ export function AdminCeremoniesLockScreen(props: {
   if (!lockState && status?.ok === false) return <PageError message={status.message} />;
 
   return (
-    <section className="stack" style={{ marginTop: 16 }}>
-      <header>
-        <h3>Lock / Archive</h3>
-        <p className="muted">
+    <Stack component="section" className="stack" mt="md">
+      <Box component="header">
+        <Title order={3}>Lock / Archive</Title>
+        <Text className="muted">
           Lock blocks new seasons/drafts for this ceremony and cancels in-progress drafts.
           Archived ceremonies stop appearing as active.
-        </p>
-      </header>
+        </Text>
+      </Box>
 
       {lockState ? (
-        <div className="card nested">
-          <header className="header-with-controls">
-            <div>
-              <h4>Status</h4>
-              <p className="muted">Current ceremony lifecycle state.</p>
-            </div>
-            <div className="pill-list">
-              <span className="pill">{lockState.status}</span>
-              <span className={`pill ${lockState.draft_locked ? "warning" : "muted"}`}>
+        <Card className="card nested" component="section">
+          <Group
+            className="header-with-controls"
+            justify="space-between"
+            align="start"
+            wrap="wrap"
+          >
+            <Box>
+              <Title order={4}>Status</Title>
+              <Text className="muted">Current ceremony lifecycle state.</Text>
+            </Box>
+            <Group className="pill-list" wrap="wrap">
+              <Box component="span" className="pill">
+                {lockState.status}
+              </Box>
+              <Box
+                component="span"
+                className={`pill ${lockState.draft_locked ? "" : "muted"}`}
+              >
                 {lockState.draft_locked ? "Drafts locked" : "Drafts open"}
-              </span>
-            </div>
-          </header>
+              </Box>
+            </Group>
+          </Group>
           {lockState.draft_locked_at ? (
-            <p className="muted">
+            <Text className="muted">
               Locked at {new Date(lockState.draft_locked_at).toLocaleString()}
-            </p>
+            </Text>
           ) : null}
-        </div>
+        </Card>
       ) : null}
 
-      <div className="card nested">
-        <header>
-          <h4>Actions</h4>
-          <p className="muted">
+      <Card className="card nested" component="section">
+        <Box component="header">
+          <Title order={4}>Actions</Title>
+          <Text className="muted">
             These actions affect all leagues/seasons for this ceremony.
-          </p>
-        </header>
-        <div className="inline-actions" style={{ marginTop: 12 }}>
-          <button type="button" className="button" onClick={onLock} disabled={saving}>
+          </Text>
+        </Box>
+        <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Button type="button" onClick={onLock} disabled={saving}>
             Lock ceremony
-          </button>
-          <button
-            type="button"
-            className="button danger"
-            onClick={onArchive}
-            disabled={saving}
-          >
+          </Button>
+          <Button type="button" className="danger" onClick={onArchive} disabled={saving}>
             Archive ceremony
-          </button>
-        </div>
+          </Button>
+        </Group>
         <FormStatus loading={saving} result={status} />
-        <p className="muted">
+        <Text className="muted">
           Note: entering the first winner will also lock the ceremony automatically.
-        </p>
-      </div>
-    </section>
+        </Text>
+      </Card>
+    </Stack>
   );
 }

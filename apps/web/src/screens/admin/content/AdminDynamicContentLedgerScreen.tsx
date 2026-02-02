@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import {
@@ -36,89 +37,101 @@ export function AdminDynamicContentLedgerScreen(props: {
   if (loading) return <PageLoader label="Loading entries..." />;
 
   return (
-    <section className="stack">
-      <header className="header-with-controls">
-        <div>
-          <h3>{meta.label}</h3>
-          <p className="muted">{meta.hint}</p>
-        </div>
-        <div className="inline-actions">
-          <button type="button" onClick={onCreateEntry} disabled={busy}>
+    <Stack component="section" className="stack">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={3}>{meta.label}</Title>
+          <Text className="muted">{meta.hint}</Text>
+        </Box>
+        <Group className="inline-actions" wrap="wrap">
+          <Button type="button" onClick={onCreateEntry} disabled={busy}>
             New entry
-          </button>
-        </div>
-      </header>
+          </Button>
+        </Group>
+      </Group>
 
       <FormStatus loading={busy} result={status} />
 
       {entries.length === 0 ? (
-        <div className="empty-state">
-          <strong>No entries yet.</strong>
-          <div className="muted" style={{ marginTop: 6 }}>
+        <Card className="empty-state">
+          <Text fw={700}>No entries yet.</Text>
+          <Text className="muted" mt="xs">
             Create a new entry to start writing.
-          </div>
-        </div>
+          </Text>
+        </Card>
       ) : (
-        <ul className="list" aria-label="Content entries">
+        <Stack component="ul" className="list" aria-label="Content entries">
           {entries.map((e) => (
-            <li key={e.id} className="list-row">
-              <div>
-                <strong>{e.title || "(untitled)"}</strong>
-                <div className="muted">
+            <Box key={e.id} component="li" className="list-row">
+              <Box>
+                <Text fw={700}>{e.title || "(untitled)"}</Text>
+                <Text className="muted">
                   {e.status === "PUBLISHED" ? "Published" : "Draft"} • updated{" "}
                   {formatDateTimeForHumans(e.updated_at)}
                   {e.published_at
                     ? ` • published ${formatDateTimeForHumans(e.published_at)}`
                     : ""}
-                </div>
-              </div>
-              <div className="inline-actions">
+                </Text>
+              </Box>
+              <Group className="inline-actions" wrap="wrap">
                 {e.status === "PUBLISHED" ? (
-                  <button
+                  <Button
                     type="button"
-                    className="pill success"
+                    variant="subtle"
                     onClick={() => onUnpublishEntry(e.id)}
                     disabled={busy}
                     title="Click to unpublish"
                   >
                     Published
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
-                    className="pill muted"
+                    variant="subtle"
                     onClick={() => onPublishDraft(e.id)}
                     disabled={busy}
                     title="Click to publish"
                   >
                     Draft
-                  </button>
+                  </Button>
                 )}
-                {e.variant ? <span className="pill">{e.variant}</span> : null}
-                {formatSchedule(e.starts_at, e.ends_at) ? (
-                  <span className="pill">{formatSchedule(e.starts_at, e.ends_at)}</span>
+                {e.variant ? (
+                  <Box component="span" className="pill">
+                    {e.variant}
+                  </Box>
                 ) : null}
-                <Link
-                  className="button ghost"
+                {formatSchedule(e.starts_at, e.ends_at) ? (
+                  <Box component="span" className="pill">
+                    {formatSchedule(e.starts_at, e.ends_at)}
+                  </Box>
+                ) : null}
+                <Button
+                  component={Link}
+                  variant="subtle"
                   to={`/admin/content/dynamic/${contentKey}/drafts/${e.id}`}
                 >
                   {e.status === "DRAFT" ? "Edit" : "View"}
-                </Link>
+                </Button>
                 {e.status === "PUBLISHED" ? (
-                  <button
+                  <Button
                     type="button"
-                    className="button"
+                    variant="subtle"
                     onClick={() => onUnpublishEntry(e.id)}
                     disabled={busy}
                   >
                     Unpublish
-                  </button>
+                  </Button>
                 ) : null}
-              </div>
-            </li>
+              </Group>
+            </Box>
           ))}
-        </ul>
+        </Stack>
       )}
-    </section>
+    </Stack>
   );
 }

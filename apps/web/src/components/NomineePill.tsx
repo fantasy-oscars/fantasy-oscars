@@ -1,15 +1,23 @@
+import { Box, Text } from "@mantine/core";
+
 type NomineeState = "default" | "active" | "picked" | "disabled";
 
 export function NomineePill(props: {
-  name: string;
-  category?: string;
+  label: string;
+  icon?: string | null;
   state?: NomineeState;
 }) {
-  const { name, category, state = "default" } = props;
+  const { label, icon, state = "default" } = props;
   return (
-    <div className="nominee-pill" data-state={state} title={name} aria-label={name}>
-      <span className="nominee-name">{name}</span>
-      {category ? <span className="nominee-category">{category}</span> : null}
-    </div>
+    <Box className="nominee-pill" data-state={state} title={label} aria-label={label}>
+      {icon ? (
+        <Text component="span" className="nominee-icon icon-code mono" aria-hidden="true">
+          {icon}
+        </Text>
+      ) : null}
+      <Text component="span" className="nominee-name">
+        {label}
+      </Text>
+    </Box>
   );
 }

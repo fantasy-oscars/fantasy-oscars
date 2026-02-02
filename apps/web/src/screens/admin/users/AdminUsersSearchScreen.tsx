@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Group, Stack, Text, TextInput } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import type { ApiResult } from "../../../lib/types";
 import type { AdminUserRow } from "../../../orchestration/adminUsers";
@@ -14,49 +15,50 @@ export function AdminUsersSearchScreen(props: {
   const { query, setQuery, searching, status, results, onSearch } = props;
 
   return (
-    <section className="stack">
-      <div className="inline-form">
-        <label className="field" style={{ flex: 1, minWidth: 240 }}>
-          <span>Username or email</span>
-          <input
-            className="inline-input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Start typing..."
-          />
-        </label>
-        <button className="button" type="button" disabled={searching} onClick={onSearch}>
+    <Stack component="section" className="stack">
+      <Group className="inline-form" wrap="wrap" align="flex-end">
+        <TextInput
+          label="Username or email"
+          value={query}
+          onChange={(e) => setQuery(e.currentTarget.value)}
+          placeholder="Start typing..."
+        />
+        <Button type="button" disabled={searching} onClick={onSearch}>
           {searching ? "Searching..." : "Search"}
-        </button>
-      </div>
+        </Button>
+      </Group>
 
       <FormStatus loading={searching} result={status} />
 
       {results.length === 0 ? (
-        <div className="empty-state">
-          <strong>No results.</strong>
-          <div className="muted" style={{ marginTop: 6 }}>
+        <Card className="empty-state">
+          <Text fw={700}>No results.</Text>
+          <Text className="muted" mt="xs">
             Enter a username or email and run a search.
-          </div>
-        </div>
+          </Text>
+        </Card>
       ) : (
-        <ul className="list" aria-label="User results">
+        <Stack component="ul" className="list" aria-label="User results">
           {results.map((u) => (
-            <li key={u.id} className="list-row">
-              <div>
-                <strong>{u.username}</strong>
-                <div className="muted">{u.email}</div>
-              </div>
-              <div className="inline-actions">
-                {u.is_admin ? <span className="pill warning">Admin</span> : null}
-                <Link className="button ghost" to={`/admin/users/${u.id}`}>
+            <Box key={u.id} component="li" className="list-row">
+              <Box>
+                <Text fw={700}>{u.username}</Text>
+                <Text className="muted">{u.email}</Text>
+              </Box>
+              <Group className="inline-actions" wrap="wrap">
+                {u.is_admin ? (
+                  <Box component="span" className="pill">
+                    Admin
+                  </Box>
+                ) : null}
+                <Button component={Link} variant="subtle" to={`/admin/users/${u.id}`}>
                   Open
-                </Link>
-              </div>
-            </li>
+                </Button>
+              </Group>
+            </Box>
           ))}
-        </ul>
+        </Stack>
       )}
-    </section>
+    </Stack>
   );
 }

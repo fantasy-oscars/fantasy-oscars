@@ -1,4 +1,5 @@
 import type { ApiResult } from "../../lib/types";
+import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../ui/forms";
 
 export function InviteClaimScreen(props: {
@@ -11,28 +12,30 @@ export function InviteClaimScreen(props: {
   const { token, loading, result, onAccept, onDecline } = props;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Invite</h2>
-          <p>Claim a league invite.</p>
-        </div>
-      </header>
-      <div className="stack">
-        <p className="muted">
+    <Card className="card" component="section">
+      <Group className="header-with-controls" justify="space-between" align="start">
+        <Box>
+          <Title order={2}>Invite</Title>
+          <Text>Claim a league invite.</Text>
+        </Box>
+      </Group>
+      <Stack className="stack" gap="sm">
+        <Text className="muted" c="dimmed">
           You have been invited to join a league. Accept to join the season roster.
-        </p>
-        <div className="inline-actions">
-          <button type="button" onClick={onAccept} disabled={loading}>
+        </Text>
+        <Group className="inline-actions" justify="flex-start">
+          <Button type="button" onClick={onAccept} disabled={loading}>
             {loading ? "Working..." : "Accept invite"}
-          </button>
-          <button type="button" className="ghost" onClick={onDecline} disabled={loading}>
+          </Button>
+          <Button type="button" variant="subtle" onClick={onDecline} disabled={loading}>
             Decline
-          </button>
-        </div>
-        <small className="muted">Invite: {token}</small>
+          </Button>
+        </Group>
+        <Text size="sm" c="dimmed">
+          Invite: {token}
+        </Text>
         <FormStatus loading={loading} result={result} />
-      </div>
-    </section>
+      </Stack>
+    </Card>
   );
 }

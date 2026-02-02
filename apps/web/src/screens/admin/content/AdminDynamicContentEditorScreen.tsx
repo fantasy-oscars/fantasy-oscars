@@ -1,4 +1,17 @@
 import { Link } from "react-router-dom";
+import {
+  Box,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title
+} from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -54,128 +67,116 @@ export function AdminDynamicContentEditorScreen(props: {
   if (!entry) return <PageError message={status?.message ?? "Entry not found"} />;
 
   return (
-    <section className="stack">
-      <header className="header-with-controls">
-        <div>
-          <h3>
+    <Stack component="section" className="stack">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={3}>
             {meta.label}: {entry.status === "DRAFT" ? "Draft" : "Published"} #{entry.id}
-          </h3>
-          <p className="muted">
+          </Title>
+          <Text className="muted">
             {entry.status === "PUBLISHED"
               ? "This entry is published. Saving will update it in place (live)."
               : "Edit the draft and publish when ready."}
-          </p>
-        </div>
-        <div className="inline-actions">
-          <Link className="button ghost" to={`/admin/content/dynamic/${contentKey}`}>
+          </Text>
+        </Box>
+        <Group className="inline-actions" wrap="wrap">
+          <Button
+            component={Link}
+            variant="subtle"
+            to={`/admin/content/dynamic/${contentKey}`}
+          >
             Back to ledger
-          </Link>
+          </Button>
           {entry.status === "PUBLISHED" ? (
             <>
-              <button type="button" className="button" onClick={onSave} disabled={busy}>
+              <Button type="button" onClick={onSave} disabled={busy}>
                 Save
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="button"
+                variant="subtle"
                 onClick={onUnpublish}
                 disabled={busy}
               >
                 Unpublish
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <button type="button" className="button" onClick={onSave} disabled={busy}>
+              <Button type="button" onClick={onSave} disabled={busy}>
                 Save
-              </button>
-              <button
-                type="button"
-                className="button"
-                onClick={onPublish}
-                disabled={busy}
-              >
+              </Button>
+              <Button type="button" onClick={onPublish} disabled={busy}>
                 Publish
-              </button>
-              <button
-                type="button"
-                className="button danger"
-                onClick={onDelete}
-                disabled={busy}
-              >
+              </Button>
+              <Button type="button" className="danger" onClick={onDelete} disabled={busy}>
                 Delete
-              </button>
+              </Button>
             </>
           )}
-        </div>
-      </header>
+        </Group>
+      </Group>
 
-      <section className="card nested">
-        <div className="stack-sm">
+      <Card className="card nested" component="section">
+        <Stack className="stack-sm" gap="sm">
           {fields.isBanner ? (
-            <div className="stack-sm">
-              <div className="grid two-col">
-                <label className="field">
-                  <span>Variant</span>
-                  <select
-                    value={fields.variant}
-                    onChange={(e) => fields.setVariant(e.target.value as never)}
-                  >
-                    <option value="info">info</option>
-                    <option value="warning">warning</option>
-                    <option value="success">success</option>
-                    <option value="error">error</option>
-                  </select>
-                </label>
-                <label className="field">
-                  <span>Dismissible</span>
-                  <input
-                    type="checkbox"
-                    checked={fields.dismissible}
-                    onChange={(e) => fields.setDismissible(e.target.checked)}
-                  />
-                </label>
-              </div>
+            <Stack className="stack-sm" gap="sm">
+              <Box className="grid two-col">
+                <Select
+                  label="Variant"
+                  value={fields.variant}
+                  onChange={(v) => fields.setVariant((v ?? "info") as never)}
+                  data={[
+                    { value: "info", label: "info" },
+                    { value: "warning", label: "warning" },
+                    { value: "success", label: "success" },
+                    { value: "error", label: "error" }
+                  ]}
+                />
+                <Checkbox
+                  label="Dismissible"
+                  checked={fields.dismissible}
+                  onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
+                />
+              </Box>
 
-              <div className="grid two-col">
-                <label className="field">
-                  <span>Starts at (optional)</span>
-                  <input
-                    type="datetime-local"
-                    value={fields.startsAtLocal}
-                    onChange={(e) => fields.setStartsAtLocal(e.target.value)}
-                  />
-                </label>
-                <label className="field">
-                  <span>Ends at (optional)</span>
-                  <input
-                    type="datetime-local"
-                    value={fields.endsAtLocal}
-                    onChange={(e) => fields.setEndsAtLocal(e.target.value)}
-                  />
-                </label>
-              </div>
-            </div>
+              <Box className="grid two-col">
+                <TextInput
+                  label="Starts at (optional)"
+                  type="datetime-local"
+                  value={fields.startsAtLocal}
+                  onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
+                />
+                <TextInput
+                  label="Ends at (optional)"
+                  type="datetime-local"
+                  value={fields.endsAtLocal}
+                  onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
+                />
+              </Box>
+            </Stack>
           ) : null}
 
-          <label className="field">
-            <span>Title</span>
-            <input
-              value={fields.title}
-              onChange={(e) => fields.setTitle(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Body (Markdown)</span>
-            <textarea
-              value={fields.body}
-              onChange={(e) => fields.setBody(e.target.value)}
-              rows={16}
-            />
-          </label>
+          <TextInput
+            label="Title"
+            value={fields.title}
+            onChange={(e) => fields.setTitle(e.currentTarget.value)}
+          />
+          <Textarea
+            label="Body (Markdown)"
+            value={fields.body}
+            onChange={(e) => fields.setBody(e.currentTarget.value)}
+            autosize
+            minRows={12}
+          />
           <FormStatus loading={busy} result={status} />
-        </div>
-      </section>
-    </section>
+        </Stack>
+      </Card>
+    </Stack>
   );
 }

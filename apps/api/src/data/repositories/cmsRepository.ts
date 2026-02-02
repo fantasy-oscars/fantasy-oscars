@@ -6,10 +6,12 @@ import { AppError } from "../../errors.js";
 export type CmsStaticKey =
   | "about"
   | "faq"
+  | "how_it_works"
   | "landing_blurb"
   | "code_of_conduct"
   | "legal_terms"
-  | "legal_privacy";
+  | "legal_privacy"
+  | "legal_disclaimer";
 
 export type CmsDynamicKey = "banner" | "home_main";
 

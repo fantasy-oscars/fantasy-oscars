@@ -1,4 +1,5 @@
 import type { InboxInvite } from "../../lib/types";
+import { Alert, Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { PageLoader } from "../../ui/page-state";
 import type { InvitesInboxView } from "../../orchestration/invites";
 
@@ -12,53 +13,66 @@ export function InvitesInboxScreen(props: {
   if (view.state === "loading") return <PageLoader label="Loading invites..." />;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Invites</h2>
-          <p className="muted">Accept or decline season invites sent to you.</p>
-        </div>
-      </header>
-      {view.state === "error" && (
-        <div className="status status-error">{view.message}</div>
-      )}
+    <Card className="card" component="section">
+      <Group className="header-with-controls" justify="space-between" align="start">
+        <Box>
+          <Title order={2}>Invites</Title>
+          <Text className="muted" c="dimmed">
+            Accept or decline season invites sent to you.
+          </Text>
+        </Box>
+      </Group>
+      {view.state === "error" && <Alert color="red">{view.message}</Alert>}
       {view.state === "ready" && view.invites.length === 0 ? (
-        <p className="muted">No pending invites.</p>
+        <Text className="muted" c="dimmed">
+          No pending invites.
+        </Text>
       ) : null}
       {view.state === "ready" && view.invites.length > 0 ? (
-        <div className="list">
+        <Stack className="list" gap="sm">
           {view.invites.map((invite) => (
-            <div key={invite.id} className="list-row">
-              <div>
-                <div className="pill-list">
-                  <span className="pill">#{invite.id}</span>
+            <Group
+              key={invite.id}
+              className="list-row"
+              justify="space-between"
+              align="start"
+            >
+              <Stack gap={6}>
+                <Group className="pill-list" gap={6} wrap="wrap">
+                  <Text component="span" className="pill">
+                    #{invite.id}
+                  </Text>
                   {invite.league_name && (
-                    <span className="pill">{invite.league_name}</span>
+                    <Text component="span" className="pill">
+                      {invite.league_name}
+                    </Text>
                   )}
                   {invite.ceremony_id && (
-                    <span className="pill">Ceremony {invite.ceremony_id}</span>
+                    <Text component="span" className="pill">
+                      Ceremony {invite.ceremony_id}
+                    </Text>
                   )}
-                </div>
-                <p className="muted">
+                </Group>
+                <Text className="muted" c="dimmed">
                   Season {invite.season_id} • {invite.kind}
-                </p>
-              </div>
-              <div className="pill-actions">
-                <button type="button" onClick={() => void onAccept(invite)}>
+                </Text>
+              </Stack>
+              <Group className="pill-actions" gap="sm">
+                <Button type="button" onClick={() => void onAccept(invite)}>
                   Accept
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="ghost"
+                  variant="subtle"
                   onClick={() => void onDecline(invite)}
                 >
                   Decline
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Group>
+            </Group>
           ))}
-        </div>
+        </Stack>
       ) : null}
-    </section>
+    </Card>
   );
 }

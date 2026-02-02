@@ -1,4 +1,5 @@
 import type { ApiResult } from "../lib/types";
+import { Alert, Button, Loader, Text, TextInput } from "@mantine/core";
 
 export function FormField(props: {
   label: string;
@@ -9,11 +10,14 @@ export function FormField(props: {
 }) {
   const { label, name, type = "text", error, defaultValue } = props;
   return (
-    <label className="field">
-      <span>{label}</span>
-      <input name={name} type={type} defaultValue={defaultValue} aria-invalid={!!error} />
-      {error && <small className="error">{error}</small>}
-    </label>
+    <TextInput
+      className="field"
+      label={label}
+      name={name}
+      type={type}
+      defaultValue={defaultValue}
+      error={error}
+    />
   );
 }
 
@@ -25,9 +29,14 @@ export function FormStatus(props: {
   const { loading, result, onRetry } = props;
   if (loading) {
     return (
-      <div className="status status-loading" role="status" aria-live="polite">
-        <span className="spinner" aria-hidden="true" /> Working...
-      </div>
+      <Alert
+        className="status status-loading"
+        icon={<Loader size="sm" />}
+        role="status"
+        aria-live="polite"
+      >
+        Working...
+      </Alert>
     );
   }
   if (result) {
@@ -38,18 +47,18 @@ export function FormStatus(props: {
           ? "Success"
           : result.message;
     return (
-      <div
+      <Alert
         className={`status ${result.ok ? "status-success" : "status-error"}`}
         role="status"
         aria-live="polite"
       >
-        {result.ok ? message : `Error: ${result.message}`}
+        <Text size="sm">{message}</Text>
         {!result.ok && onRetry && (
-          <button type="button" className="ghost" onClick={onRetry}>
+          <Button variant="subtle" onClick={onRetry} mt="xs">
             Retry
-          </button>
+          </Button>
         )}
-      </div>
+      </Alert>
     );
   }
   return null;

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Alert, Box, Card, Group, Stack, Text, Title } from "@mantine/core";
 import type { SeasonsIndexView } from "../../orchestration/seasons";
 import { PageLoader } from "../../ui/page-state";
 
@@ -6,52 +7,65 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
   const { view } = props;
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Seasons</h2>
-          <p className="muted">Seasons are created per league per ceremony.</p>
-        </div>
-      </header>
+    <Card className="card" component="section">
+      <Group className="header-with-controls" justify="space-between" align="start">
+        <Box>
+          <Title order={2}>Seasons</Title>
+          <Text className="muted" c="dimmed">
+            Seasons are created per league per ceremony.
+          </Text>
+        </Box>
+      </Group>
 
       {view.state === "loading" && <PageLoader label="Loading seasons..." />}
-      {view.state === "error" && (
-        <div className="status status-error">{view.message}</div>
-      )}
+      {view.state === "error" && <Alert color="red">{view.message}</Alert>}
       {view.state === "ready" && view.rows.length === 0 && (
-        <p className="muted">No seasons yet.</p>
+        <Text className="muted" c="dimmed">
+          No seasons yet.
+        </Text>
       )}
       {view.state === "ready" && view.rows.length > 0 && (
-        <div className="stack-lg">
+        <Stack className="stack-lg" gap="lg">
           {view.rows.map(({ league, seasons }) => (
-            <div key={league.id} className="card nested">
-              <header>
-                <h3>{league.name}</h3>
-                <p className="muted">League code: {league.code}</p>
-              </header>
+            <Card key={league.id} className="card nested">
+              <Box component="header">
+                <Title order={3}>{league.name}</Title>
+                <Text className="muted" c="dimmed">
+                  League code: {league.code}
+                </Text>
+              </Box>
               {seasons.length === 0 ? (
-                <p className="muted">No seasons found for this league.</p>
+                <Text className="muted" c="dimmed">
+                  No seasons found for this league.
+                </Text>
               ) : (
-                <div className="list">
+                <Stack className="list" gap="sm">
                   {seasons.map((s) => (
-                    <div key={s.id} className="list-row">
-                      <div>
-                        <strong>Season #{s.id}</strong>
-                        <p className="muted">
+                    <Group
+                      key={s.id}
+                      className="list-row"
+                      justify="space-between"
+                      align="start"
+                    >
+                      <Stack gap={6}>
+                        <Text fw={600}>Season #{s.id}</Text>
+                        <Text className="muted" c="dimmed">
                           Ceremony {s.ceremony_id} • {s.status}
-                        </p>
-                      </div>
-                      <div className="pill-actions">
-                        <Link to={`/seasons/${s.id}`}>Open</Link>
-                      </div>
-                    </div>
+                        </Text>
+                      </Stack>
+                      <Group className="pill-actions" gap="sm">
+                        <Text component={Link} to={`/seasons/${s.id}`}>
+                          Open
+                        </Text>
+                      </Group>
+                    </Group>
                   ))}
-                </div>
+                </Stack>
               )}
-            </div>
+            </Card>
           ))}
-        </div>
+        </Stack>
       )}
-    </section>
+    </Card>
   );
 }

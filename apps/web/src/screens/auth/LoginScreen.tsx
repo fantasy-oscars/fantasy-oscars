@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Grid, Stack, Text, Title } from "@mantine/core";
 import type { ApiResult, FieldErrors } from "../../lib/types";
 import { FormField, FormStatus } from "../../ui/forms";
 
@@ -10,35 +11,41 @@ export function LoginScreen(props: {
 }) {
   const { errors, result, loading, onSubmit } = props;
   return (
-    <div className="card-grid">
-      <section className="card">
-        <header>
-          <h2>Login</h2>
-          <p>Sign in with your username and password.</p>
-        </header>
-        <form onSubmit={onSubmit}>
-          <FormField label="Username" name="username" error={errors.username} />
-          <FormField
-            label="Password"
-            name="password"
-            type="password"
-            error={errors.password}
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Login"}
-          </button>
-        </form>
-        <FormStatus loading={loading} result={result} />
-      </section>
-      <section className="card">
-        <header>
-          <h3>New here?</h3>
-          <p>Create an account to join or run drafts.</p>
-        </header>
-        <Link to="/register" className="button ghost">
-          Go to registration
-        </Link>
-      </section>
-    </div>
+    <Grid className="card-grid" gutter="lg">
+      <Grid.Col span={{ base: 12, md: 6 }}>
+        <Card className="card" component="section">
+          <Box component="header">
+            <Title order={2}>Login</Title>
+            <Text>Sign in with your username and password.</Text>
+          </Box>
+          <Box component="form" onSubmit={onSubmit}>
+            <Stack gap="sm">
+              <FormField label="Username" name="username" error={errors.username} />
+              <FormField
+                label="Password"
+                name="password"
+                type="password"
+                error={errors.password}
+              />
+              <Button type="submit" disabled={loading}>
+                {loading ? "Signing in..." : "Login"}
+              </Button>
+              <FormStatus loading={loading} result={result} />
+            </Stack>
+          </Box>
+        </Card>
+      </Grid.Col>
+      <Grid.Col span={{ base: 12, md: 6 }}>
+        <Card className="card" component="section">
+          <Box component="header">
+            <Title order={3}>New here?</Title>
+            <Text>Create an account to join or run drafts.</Text>
+          </Box>
+          <Button component={Link} to="/register" variant="subtle">
+            Go to registration
+          </Button>
+        </Card>
+      </Grid.Col>
+    </Grid>
   );
 }

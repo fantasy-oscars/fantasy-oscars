@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -20,69 +21,90 @@ export function AdminCeremoniesIndexScreen(props: {
   if (state === "loading") return <PageLoader label="Loading ceremonies..." />;
   if (state === "error")
     return (
-      <div className="status status-error">{error ?? "Unable to load ceremonies"}</div>
+      <Box className="status status-error">{error ?? "Unable to load ceremonies"}</Box>
     );
 
   return (
-    <section className="card">
-      <header className="header-with-controls">
-        <div>
-          <h2>Ceremonies</h2>
-          <p className="muted">Create, edit, publish, lock, and archive ceremonies.</p>
-        </div>
-        <div className="inline-actions">
-          <button type="button" className="button" onClick={onCreate} disabled={creating}>
+    <Card className="card" component="section">
+      <Group
+        className="header-with-controls"
+        justify="space-between"
+        align="start"
+        wrap="wrap"
+      >
+        <Box>
+          <Title order={2}>Ceremonies</Title>
+          <Text className="muted">
+            Create, edit, publish, lock, and archive ceremonies.
+          </Text>
+        </Box>
+        <Group className="inline-actions" wrap="wrap">
+          <Button type="button" onClick={onCreate} disabled={creating}>
             {creating ? "Creating..." : "New ceremony"}
-          </button>
-        </div>
-      </header>
+          </Button>
+        </Group>
+      </Group>
 
       <FormStatus loading={creating || workingId !== null} result={status} />
 
       {ceremonies.length === 0 ? (
-        <div className="empty-state">
-          <strong>No ceremonies yet.</strong>
-          <div className="muted" style={{ marginTop: 6 }}>
+        <Card className="empty-state">
+          <Text fw={700}>No ceremonies yet.</Text>
+          <Text className="muted" mt="xs">
             Create one to begin setting up nominees, publishing, and winners.
-          </div>
-        </div>
+          </Text>
+        </Card>
       ) : (
-        <div className="list">
+        <Stack className="list">
           {ceremonies.map((c) => (
-            <div key={c.id} className="list-row">
-              <div>
-                <div className="pill-list">
-                  <span className="pill">ID {c.id}</span>
-                  {c.status ? <span className="pill">{c.status}</span> : null}
+            <Box key={c.id} className="list-row">
+              <Box>
+                <Group className="pill-list" wrap="wrap">
+                  <Box component="span" className="pill">
+                    ID {c.id}
+                  </Box>
+                  {c.status ? (
+                    <Box component="span" className="pill">
+                      {c.status}
+                    </Box>
+                  ) : null}
                   {c.code ? (
-                    <span className="pill">{c.code}</span>
+                    <Box component="span" className="pill">
+                      {c.code}
+                    </Box>
                   ) : (
-                    <span className="pill muted">(no code)</span>
+                    <Box component="span" className="pill muted">
+                      (no code)
+                    </Box>
                   )}
-                </div>
-                <p className="muted">
+                </Group>
+                <Text className="muted">
                   {c.name || "(Unnamed)"}{" "}
                   {c.starts_at ? `• ${new Date(c.starts_at).toLocaleString()}` : ""}
-                </p>
-              </div>
-              <div className="pill-actions">
-                <Link className="button" to={`/admin/ceremonies/${c.id}/overview`}>
+                </Text>
+              </Box>
+              <Group className="pill-actions" wrap="wrap">
+                <Button
+                  component={Link}
+                  to={`/admin/ceremonies/${c.id}/overview`}
+                  variant="subtle"
+                >
                   Open
-                </Link>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="button danger"
+                  className="danger"
                   onClick={() => onDelete(c.id)}
                   disabled={workingId === c.id}
                   title="Delete is only allowed for draft ceremonies with no dependent data."
                 >
                   {workingId === c.id ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Group>
+            </Box>
           ))}
-        </div>
+        </Stack>
       )}
-    </section>
+    </Card>
   );
 }

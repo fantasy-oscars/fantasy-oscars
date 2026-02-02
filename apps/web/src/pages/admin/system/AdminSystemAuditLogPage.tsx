@@ -1,17 +1,21 @@
+import { Box, Card, Stack, Text, Title } from "@mantine/core";
+
 export function AdminSystemAuditLogPage() {
   return (
-    <section className="stack">
-      <header>
-        <h3>Audit Log</h3>
-        <p className="muted">Track admin actions (uploads, winner changes, locks).</p>
-      </header>
+    <Stack component="section" className="stack">
+      <Box component="header">
+        <Title order={3}>Audit Log</Title>
+        <Text className="muted">
+          Track admin actions (uploads, winner changes, locks).
+        </Text>
+      </Box>
 
-      <div className="empty-state">
-        <strong>Not wired yet.</strong>
-        <div className="muted" style={{ marginTop: 6 }}>
+      <Card className="empty-state">
+        <Text fw={700}>Not wired yet.</Text>
+        <Text className="muted" mt="xs">
           We will add an audit table once the API captures admin events.
-        </div>
-      </div>
-    </section>
+        </Text>
+      </Card>
+    </Stack>
   );
 }

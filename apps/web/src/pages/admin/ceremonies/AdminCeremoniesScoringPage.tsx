@@ -1,17 +1,19 @@
+import { Card, Stack, Text, Title } from "@mantine/core";
+
 export function AdminCeremoniesScoringPage() {
   return (
-    <section className="stack">
-      <header>
-        <h3>Scoring</h3>
-        <p className="muted">Configure how picks are scored for this ceremony.</p>
-      </header>
+    <Stack component="section" className="stack">
+      <Stack gap={0}>
+        <Title order={3}>Scoring</Title>
+        <Text className="muted">Configure how picks are scored for this ceremony.</Text>
+      </Stack>
 
-      <div className="empty-state">
-        <strong>Not wired yet.</strong>
-        <div className="muted" style={{ marginTop: 6 }}>
+      <Card className="empty-state">
+        <Text fw={700}>Not wired yet.</Text>
+        <Text className="muted" mt="xs">
           We&apos;ll add scoring configuration once we settle on the scoring model.
-        </div>
-      </div>
-    </section>
+        </Text>
+      </Card>
+    </Stack>
   );
 }

@@ -1,23 +1,29 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { Box, Card, Group, Text, Title } from "@mantine/core";
 
 export function AdminSystemLayout() {
   const sublinkClass = ({ isActive }: { isActive: boolean }) =>
     `admin-sublink${isActive ? " is-active" : ""}`;
 
   return (
-    <section className="card">
-      <header>
-        <h2>System</h2>
-        <p className="muted">Operational tools and audit trails.</p>
-      </header>
+    <Card className="card" component="section">
+      <Box component="header">
+        <Title order={2}>System</Title>
+        <Text className="muted">Operational tools and audit trails.</Text>
+      </Box>
 
-      <nav className="admin-subnav" aria-label="System admin">
+      <Group
+        component="nav"
+        className="admin-subnav"
+        aria-label="System admin"
+        wrap="wrap"
+      >
         <NavLink to="/admin/system/audit" className={sublinkClass}>
           Audit Log
         </NavLink>
-      </nav>
+      </Group>
 
       <Outlet />
-    </section>
+    </Card>
   );
 }
