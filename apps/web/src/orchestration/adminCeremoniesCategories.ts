@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
+import { notify } from "../notifications";
 
 export type CeremonyOption = {
   id: number;
@@ -24,6 +25,7 @@ export type FamilyRow = {
   default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   icon_id: number;
   icon_code?: string;
+  icon_variant?: "default" | "inverted";
 };
 
 export type CategoryRow = {
@@ -36,6 +38,7 @@ export type CategoryRow = {
   family_name: string;
   family_default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   family_icon_id: number;
+  family_icon_variant?: "default" | "inverted";
   icon_code: string;
   family_icon_code: string;
 };
@@ -72,6 +75,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
 
   const [familyQuery, setFamilyQuery] = useState("");
   const [familyResults, setFamilyResults] = useState<FamilyRow[]>([]);
+  const [familySearchError, setFamilySearchError] = useState<string | null>(null);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>("");
 
   const [newFamily, setNewFamily] = useState<{
@@ -79,12 +83,14 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     name: string;
     default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
     icon_id: string;
+    icon_variant: "default" | "inverted";
     add_to_ceremony: boolean;
   }>({
     code: "",
     name: "",
     default_unit_kind: "FILM",
-    icon_id: "",
+    icon_id: "trophy",
+    icon_variant: "default",
     add_to_ceremony: true
   });
 
@@ -100,6 +106,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     name: string;
     default_unit_kind: FamilyRow["default_unit_kind"];
     icon: string;
+    icon_variant: "default" | "inverted";
   } | null>(null);
 
   const canEdit = ceremonyStatus === "DRAFT";
@@ -155,11 +162,18 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       { method: "GET" }
     );
     if (!res.ok) {
-      setStatus({ ok: false, message: res.error ?? "Search failed" });
+      // "No results" should not be treated as an error in UI.
+      if (res.errorCode === "NOT_FOUND") {
+        setFamilyResults([]);
+        setFamilySearchError(null);
+        return;
+      }
       setFamilyResults([]);
+      setFamilySearchError(res.error ?? "Search failed");
       return;
     }
     setFamilyResults(res.data?.families ?? []);
+    setFamilySearchError(null);
   }, [familyQuery]);
 
   useEffect(() => {
@@ -180,7 +194,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       code: editingTemplate.code,
       name: editingTemplate.name,
       default_unit_kind: editingTemplate.default_unit_kind,
-      icon: editingTemplate.icon_code ?? ""
+      icon: editingTemplate.icon_code ?? "",
+      icon_variant: editingTemplate.icon_variant ?? "default"
     });
   }, [editingTemplate]);
 
@@ -207,7 +222,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       return false;
     }
     setCategories((prev) => prev.filter((c) => c.id !== id));
-    setStatus({ ok: true, message: "Removed" });
+    notify({
+      id: "admin.categories.remove.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Removed"
+    });
+    setStatus(null);
     return true;
   }, []);
 
@@ -233,7 +257,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Add failed" });
       return false;
     }
-    setStatus({ ok: true, message: "Added" });
+    notify({
+      id: "admin.categories.add.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Added"
+    });
+    setStatus(null);
     await load();
     setSelectedFamilyId("");
     return true;
@@ -261,7 +294,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
         code,
         name,
         default_unit_kind: newFamily.default_unit_kind,
-        icon: iconCode
+        icon: iconCode,
+        icon_variant: newFamily.icon_variant
       })
     });
     setWorking(false);
@@ -274,7 +308,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       setStatus({ ok: false, message: "Create failed" });
       return false;
     }
-    setStatus({ ok: true, message: "Template created" });
+    notify({
+      id: "admin.category_template.create.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Template created"
+    });
+    setStatus(null);
     setFamilyResults((prev) => {
       const next = [created, ...prev.filter((f) => f.id !== created.id)];
       return next.slice(0, 50);
@@ -299,7 +342,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
         });
         return false;
       }
-      setStatus({ ok: true, message: "Template created and added" });
+      notify({
+        id: "admin.category_template.create_and_add.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Template created and added"
+      });
+      setStatus(null);
       await load();
     }
     return true;
@@ -312,6 +364,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       name: string;
       default_unit_kind: FamilyRow["default_unit_kind"];
       icon: string;
+      icon_variant?: "default" | "inverted";
     }) => {
       setWorking(true);
       setStatus(null);
@@ -324,7 +377,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
             code: next.code.trim(),
             name: next.name.trim(),
             default_unit_kind: next.default_unit_kind,
-            icon: next.icon.trim()
+            icon: next.icon.trim(),
+            icon_variant: next.icon_variant
           })
         }
       );
@@ -333,7 +387,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
         setStatus({ ok: false, message: res.error ?? "Update failed" });
         return false;
       }
-      setStatus({ ok: true, message: "Template updated" });
+      notify({
+        id: "admin.category_template.update.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Template updated"
+      });
+      setStatus(null);
       setEditingTemplate(null);
       await Promise.all([load(), searchFamilies()]);
       return true;
@@ -363,7 +426,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Clone failed" });
       return false;
     }
-    setStatus({ ok: true, message: `Cloned ${res.data?.inserted ?? 0} categories` });
+    notify({
+      id: "admin.categories.clone.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: `Cloned ${res.data?.inserted ?? 0} categories`
+    });
+    setStatus(null);
     await load();
     return true;
   }, [ceremonyId, cloneFromId, load]);
@@ -382,7 +454,16 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
         setStatus({ ok: false, message: res.error ?? "Update failed" });
         return false;
       }
-      setStatus({ ok: true, message: "Updated" });
+      notify({
+        id: "admin.category_icon.update.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Updated"
+      });
+      setStatus(null);
       await load();
       return true;
     },
@@ -407,6 +488,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     familyQuery,
     setFamilyQuery,
     familyResults,
+    familySearchError,
     selectedFamilyId,
     setSelectedFamilyId,
     newFamily,

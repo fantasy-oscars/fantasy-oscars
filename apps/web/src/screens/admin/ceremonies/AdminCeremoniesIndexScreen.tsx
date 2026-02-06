@@ -1,9 +1,26 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Modal,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
+import { useState } from "react";
+import { StandardCard } from "../../../primitives";
+import "../../../primitives/baseline.css";
+
+const ICON_VISIBILITY = "visibility";
+const ICON_EDIT = "edit";
+const ICON_DELETE = "delete";
 
 export function AdminCeremoniesIndexScreen(props: {
   state: "loading" | "error" | "ready";
@@ -18,6 +35,9 @@ export function AdminCeremoniesIndexScreen(props: {
   const { state, error, ceremonies, creating, workingId, status, onCreate, onDelete } =
     props;
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+
   if (state === "loading") return <PageLoader label="Loading ceremonies..." />;
   if (state === "error")
     return (
@@ -25,86 +45,157 @@ export function AdminCeremoniesIndexScreen(props: {
     );
 
   return (
-    <Card className="card" component="section">
-      <Group
-        className="header-with-controls"
-        justify="space-between"
-        align="start"
-        wrap="wrap"
-      >
-        <Box>
-          <Title order={2}>Ceremonies</Title>
-          <Text className="muted">
-            Create, edit, publish, lock, and archive ceremonies.
-          </Text>
-        </Box>
-        <Group className="inline-actions" wrap="wrap">
-          <Button type="button" onClick={onCreate} disabled={creating}>
-            {creating ? "Creating..." : "New ceremony"}
-          </Button>
-        </Group>
-      </Group>
+    <Stack component="section" gap="md">
+      <Box component="header" className="admin-page-header">
+        <Title order={2} className="baseline-textHeroTitle">
+          Ceremonies
+        </Title>
+        <Text className="baseline-textBody" c="dimmed">
+          Ceremonies define draftable events (like awards shows) that seasons can be
+          created against.
+        </Text>
+        <Button type="button" onClick={onCreate} disabled={creating}>
+          {creating ? "Creating..." : "New ceremony"}
+        </Button>
+        <FormStatus loading={creating} result={status} />
+      </Box>
 
-      <FormStatus loading={creating || workingId !== null} result={status} />
+      <Divider />
+
+      <Title order={3} className="baseline-textSectionHeader">
+        Your ceremonies
+      </Title>
 
       {ceremonies.length === 0 ? (
-        <Card className="empty-state">
-          <Text fw={700}>No ceremonies yet.</Text>
-          <Text className="muted" mt="xs">
-            Create one to begin setting up nominees, publishing, and winners.
+        <StandardCard>
+          <Text fw={700} className="baseline-textBody">
+            No ceremonies exist yet.
           </Text>
-        </Card>
+          <Text className="baseline-textBody" c="dimmed" mt="xs">
+            A ceremony defines the draftable event that leagues and seasons are built
+            around.
+          </Text>
+          <Button type="button" onClick={onCreate} disabled={creating} mt="md">
+            {creating ? "Creating..." : "Create your first ceremony"}
+          </Button>
+        </StandardCard>
       ) : (
-        <Stack className="list">
-          {ceremonies.map((c) => (
-            <Box key={c.id} className="list-row">
-              <Box>
-                <Group className="pill-list" wrap="wrap">
-                  <Box component="span" className="pill">
-                    ID {c.id}
-                  </Box>
-                  {c.status ? (
-                    <Box component="span" className="pill">
-                      {c.status}
+        <Stack gap="sm">
+          {ceremonies.map((c) => {
+            const statusUpper = String(c.status || "DRAFT").toUpperCase();
+            const isArchived = statusUpper === "ARCHIVED";
+            const isDraft = statusUpper === "DRAFT";
+            const needsConfirm = !isDraft && !isArchived; // e.g. PUBLISHED / LOCKED
+            const deleting = workingId === c.id;
+
+            return (
+              <StandardCard key={c.id}>
+                <Group
+                  justify="space-between"
+                  align="center"
+                  wrap="nowrap"
+                  style={{ gap: 10 }}
+                >
+                  <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                    <Box style={{ minWidth: 0 }}>
+                      <Text
+                        fw={700}
+                        component={Link}
+                        to={`/admin/ceremonies/${c.id}`}
+                        className="link-plain"
+                        style={{ display: "block" }}
+                        lineClamp={1}
+                      >
+                        {c.name || "Untitled ceremony"}
+                      </Text>
                     </Box>
-                  ) : null}
-                  {c.code ? (
-                    <Box component="span" className="pill">
-                      {c.code}
+                    <Box component="span" className="baseline-statusPill">
+                      <Text
+                        className="baseline-textMeta"
+                        fw={650}
+                        style={{ letterSpacing: "0.06em" }}
+                      >
+                        {statusUpper}
+                      </Text>
                     </Box>
-                  ) : (
-                    <Box component="span" className="pill muted">
-                      (no code)
-                    </Box>
-                  )}
+                  </Group>
+
+                  <Group gap="xs" align="center" wrap="nowrap">
+                    <ActionIcon
+                      component="a"
+                      href={`/drafts/preview/ceremonies/${c.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      variant="subtle"
+                      aria-label="Preview draft board"
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        {ICON_VISIBILITY}
+                      </Text>
+                    </ActionIcon>
+                    <ActionIcon
+                      component={Link}
+                      to={`/admin/ceremonies/${c.id}`}
+                      variant="subtle"
+                      aria-label="Edit ceremony"
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        {ICON_EDIT}
+                      </Text>
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      aria-label="Delete ceremony"
+                      disabled={isArchived || deleting}
+                      onClick={() => {
+                        if (isArchived || deleting) return;
+                        if (needsConfirm) {
+                          setConfirmId(c.id);
+                          setConfirmOpen(true);
+                          return;
+                        }
+                        onDelete(c.id);
+                      }}
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        {ICON_DELETE}
+                      </Text>
+                    </ActionIcon>
+                  </Group>
                 </Group>
-                <Text className="muted">
-                  {c.name || "(Unnamed)"}{" "}
-                  {c.starts_at ? `• ${new Date(c.starts_at).toLocaleString()}` : ""}
-                </Text>
-              </Box>
-              <Group className="pill-actions" wrap="wrap">
-                <Button
-                  component={Link}
-                  to={`/admin/ceremonies/${c.id}/overview`}
-                  variant="subtle"
-                >
-                  Open
-                </Button>
-                <Button
-                  type="button"
-                  className="danger"
-                  onClick={() => onDelete(c.id)}
-                  disabled={workingId === c.id}
-                  title="Delete is only allowed for draft ceremonies with no dependent data."
-                >
-                  {workingId === c.id ? "Deleting..." : "Delete"}
-                </Button>
-              </Group>
-            </Box>
-          ))}
+              </StandardCard>
+            );
+          })}
         </Stack>
       )}
-    </Card>
+
+      <Modal
+        opened={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Delete ceremony?"
+        centered
+      >
+        <Stack gap="md">
+          <Text className="baseline-textBody" c="dimmed">
+            This ceremony is published. Deleting it will remove it for everyone.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="subtle" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              onClick={() => {
+                if (confirmId) onDelete(confirmId);
+                setConfirmOpen(false);
+                setConfirmId(null);
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
   );
 }

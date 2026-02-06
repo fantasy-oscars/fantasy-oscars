@@ -79,14 +79,14 @@ describe("leagues integration", () => {
     return `${data}.${signature}`;
   }
 
-  it("creates a league, initial season, and owner membership for the active ceremony", async () => {
-    const ceremony = await createActiveCeremony();
+  it("creates a league and owner membership (league is ceremony-agnostic)", async () => {
+    await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), username: user.username });
 
     const res = await post<{
-      league: { id: number; code: string; ceremony_id: number };
-      season: { id: number; ceremony_id: number };
+      league: { id: number; code: string; ceremony_id: number | null };
+      season: null;
     }>(
       "/leagues",
       {
@@ -96,8 +96,8 @@ describe("leagues integration", () => {
     );
     expect(res.status).toBe(201);
     expect(res.json.league.code).toMatch(/^league-one-[a-f0-9]{6}$/);
-    expect(res.json.league.ceremony_id).toBe(ceremony.id);
-    expect(res.json.season.ceremony_id).toBe(ceremony.id);
+    expect(res.json.league.ceremony_id).toBeNull();
+    expect(res.json.season).toBeNull();
     const { rows } = await db.pool.query<{ count: string }>(
       `SELECT COUNT(*)::int AS count FROM league_member WHERE league_id = $1 AND user_id = $2`,
       [res.json.league.id, user.id]

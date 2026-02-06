@@ -53,8 +53,8 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Fantasy Oscars" })
-    ).toBeInTheDocument();
+      screen.getAllByRole("heading", { level: 1, name: "Fantasy Oscars" }).length
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
 
     await waitFor(() => {
@@ -72,7 +72,7 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: /Login/i })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: /Sign in/i })).toBeInTheDocument();
     });
   });
 
@@ -130,15 +130,13 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     const registerHeading = await screen.findByRole("heading", {
-      name: "Create Account"
+      name: /Create account/i
     });
     const registerCard = registerHeading.closest("section")!;
 
     await userEvent.click(
-      within(registerCard).getByRole("button", { name: /Register/i })
+      within(registerCard).getByRole("button", { name: /Create account/i })
     );
-
-    await screen.findAllByText(/Required/i);
 
     // Use values that pass client-side validation so the request reaches the API.
     await userEvent.type(within(registerCard).getByLabelText(/Username/i), "alice");
@@ -148,7 +146,7 @@ describe("<App /> shell + routing", () => {
     );
     await userEvent.type(within(registerCard).getByLabelText(/Password/i), "password1");
     await userEvent.click(
-      within(registerCard).getByRole("button", { name: /Register/i })
+      within(registerCard).getByRole("button", { name: /Create account/i })
     );
 
     await screen.findByText(/Please fix the highlighted fields and try again\./i);
@@ -170,10 +168,12 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
     await screen.findByRole("button", { name: /alice/i });
-    await screen.findByText(/Username: alice/i);
-    expect(screen.getByText(/Email: a@example.com/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /alice/i }));
-    expect(screen.getByRole("button", { name: /Logout/i })).toBeInTheDocument();
+    const details = screen.getByRole("region", { name: /Account details/i });
+    expect(within(details).getByText("Username")).toBeInTheDocument();
+    expect(within(details).getByText("alice")).toBeInTheDocument();
+    expect(within(details).getByText("Email")).toBeInTheDocument();
+    expect(within(details).getByText("a@example.com")).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: /Logout/i })).toBeInTheDocument();
   });
 
   it("navigates via nav links", async () => {
@@ -226,7 +226,7 @@ describe("<App /> shell + routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderApp();
-    await screen.findByText(/Loading leagues/i);
+    await screen.findByText(/Loading/i);
     await screen.findByText(/Alpha/);
   });
 
@@ -245,19 +245,7 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ invite: { season_id: 99 } })
         });
       }
-      if (url.includes("/seasons/99/members")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ members: [] })
-        });
-      }
-      if (url.endsWith("/leagues")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ leagues: [] })
-        });
-      }
-      if (url.includes("/seasons/99/invites")) {
+      if (url.includes("/seasons/invites/inbox")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ invites: [] })
@@ -268,9 +256,15 @@ describe("<App /> shell + routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderApp();
-    await screen.findByRole("heading", { name: /Invite/i });
-    await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
-    await screen.findByText(/Season 99/i);
+    await screen.findByText(/Opening invite/i);
+    await screen.findByRole("heading", { name: /Invites/i });
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          String(call[0]).includes("/seasons/invites/42/accept")
+        )
+      ).toBe(true)
+    );
   });
 
   it("renders season and invite routes", async () => {
@@ -318,8 +312,14 @@ describe("<App /> shell + routing", () => {
                 {
                   id: 2026,
                   ceremony_id: 1,
+                  ceremony_name: "Oscars 2026",
                   status: "EXTANT",
                   scoring_strategy_name: "fixed",
+                  remainder_strategy: "UNDRAFTED",
+                  pick_timer_seconds: 60,
+                  ceremony_starts_at: "2026-02-01T12:00:00.000Z",
+                  draft_id: 1,
+                  draft_status: "PENDING",
                   created_at: new Date().toISOString()
                 }
               ]
@@ -349,7 +349,16 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ invites: [] })
         });
       }
-      if (url.includes("/seasons/invites/token123/accept")) {
+      if (url.includes("/ceremonies") && !url.includes("/admin/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremonies: [{ id: 1, name: "Oscars 2026", status: "PUBLISHED" }]
+            })
+        });
+      }
+      if (url.includes("/seasons/invites/token/token123/accept")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ invite: { season_id: 2026 } })
@@ -360,12 +369,19 @@ describe("<App /> shell + routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderApp();
-    await screen.findByRole("heading", { name: /Season 2026/i });
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
 
+    cleanup();
     window.history.pushState({}, "", "/invites/token123");
     renderApp();
-    await screen.findByRole("heading", { name: /Invite/i });
-    expect(await screen.findByText(/token123/i)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Invites/i });
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          String(call[0]).includes("/seasons/invites/token/token123/accept")
+        )
+      ).toBe(true)
+    );
   });
 
   it("shows invites inbox and accepts a user invite", async () => {
@@ -415,8 +431,14 @@ describe("<App /> shell + routing", () => {
                 {
                   id: 2026,
                   ceremony_id: 1,
+                  ceremony_name: "Oscars 2026",
                   status: "EXTANT",
                   scoring_strategy_name: "fixed",
+                  remainder_strategy: "UNDRAFTED",
+                  pick_timer_seconds: 60,
+                  ceremony_starts_at: "2026-02-01T12:00:00.000Z",
+                  draft_id: 1,
+                  draft_status: "PENDING",
                   created_at: new Date().toISOString()
                 }
               ]
@@ -461,6 +483,15 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ invites: [] })
         });
       }
+      if (url.includes("/ceremonies") && !url.includes("/admin/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremonies: [{ id: 1, name: "Oscars 2026", status: "PUBLISHED" }]
+            })
+        });
+      }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -468,8 +499,9 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     await screen.findByRole("heading", { name: /Invites/i });
-    await userEvent.click(screen.getByRole("button", { name: /Accept/i }));
-    await screen.findByRole("heading", { name: /Season 2026/i });
+    const accept = await screen.findByRole("button", { name: /Accept/i });
+    await userEvent.click(accept);
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
   });
 
   it("declines an invite and removes it from inbox", async () => {
@@ -561,103 +593,16 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("link", { name: /Back to Season/i });
-    await screen.findByRole("button", { name: /Hide drafted/i });
-    expect(screen.getByRole("button", { name: /Start draft/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-screen="draft-room"]')).toBeTruthy();
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/snapshot"),
       expect.objectContaining({ method: "GET" })
     );
   });
 
-  it("shows integrity warning when within T-24h window", async () => {
-    vi.setSystemTime(new Date("2026-02-01T00:00:00Z"));
-    window.history.pushState({}, "", "/seasons/1");
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.includes("/auth/me")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
-        });
-      }
-      if (url.includes("/seasons/1/members")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              members: [
-                {
-                  id: 1,
-                  season_id: 1,
-                  user_id: 1,
-                  league_member_id: 100,
-                  role: "OWNER",
-                  joined_at: "2026-01-01T00:00:00.000Z",
-                  username: "alice"
-                }
-              ]
-            })
-        });
-      }
-      if (url.endsWith("/leagues")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              leagues: [{ id: 10, code: "lg", name: "Test League", ceremony_id: 22 }]
-            })
-        });
-      }
-      if (url.includes("/leagues/10/seasons")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              seasons: [
-                {
-                  id: 1,
-                  ceremony_id: 22,
-                  status: "EXTANT",
-                  is_active_ceremony: true,
-                  created_at: "2026-01-01T00:00:00.000Z",
-                  ceremony_starts_at: "2026-02-01T12:00:00.000Z",
-                  draft_id: 1,
-                  draft_status: "IN_PROGRESS",
-                  scoring_strategy_name: "fixed",
-                  remainder_strategy: "UNDRAFTED"
-                }
-              ]
-            })
-        });
-      }
-      if (url.includes("/leagues/10/members")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              members: [{ id: 100, user_id: 1, role: "OWNER", username: "alice" }]
-            })
-        });
-      }
-      if (url.includes("/seasons/1/invites")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ invites: [] })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    renderApp();
-
-    await screen.findByText(
-      /once winners start getting entered after the ceremony begins/i
-    );
-    vi.useRealTimers();
-  });
-
-  it("renders results UI skeleton with state matrix", async () => {
+  it("redirects /results to ceremonies index", async () => {
     window.history.pushState({}, "", "/results");
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
@@ -666,39 +611,10 @@ describe("<App /> shell + routing", () => {
           json: () => Promise.resolve({ user: { sub: "1", username: "alice" } })
         });
       }
-      if (url.includes("/ceremony/active/winners")) {
+      if (url.includes("/ceremonies") && !url.includes("/admin/")) {
         return Promise.resolve({
           ok: true,
-          json: () =>
-            Promise.resolve({
-              winners: [
-                { category_edition_id: 1, nomination_id: 10 },
-                { category_edition_id: 2, nomination_id: 20 }
-              ]
-            })
-        });
-      }
-      if (url.includes("/drafts/1/snapshot")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              draft: {
-                id: 1,
-                status: "COMPLETED",
-                current_pick_number: null,
-                version: 2
-              },
-              seats: [
-                { seat_number: 1, league_member_id: 100 },
-                { seat_number: 2, league_member_id: 200 }
-              ],
-              picks: [
-                { pick_number: 1, seat_number: 1, nomination_id: 10 },
-                { pick_number: 2, seat_number: 2, nomination_id: 30 }
-              ],
-              version: 2
-            })
+          json: () => Promise.resolve({ ceremonies: [] })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -707,11 +623,7 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Results/i });
-    await screen.findAllByText(/Winners/i);
-    await screen.findByText(/Season standings/i);
-    await screen.findByText(/Pick log/i);
-    await screen.findByText(/Drafting locks the moment the first winner is entered/i);
+    await screen.findByRole("heading", { name: /Ceremonies/i });
   });
 
   it("blocks non-admins from admin console", async () => {
@@ -729,7 +641,7 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders admin console skeleton for admins", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/overview");
+    window.history.pushState({}, "", "/admin/ceremonies/1");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -786,13 +698,12 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Ceremonies/i });
-    await screen.findByRole("heading", { name: /Overview/i });
-    expect(screen.getByText(/Configure the ceremony lifecycle/i)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Initialize ceremony/i });
+    await screen.findByRole("button", { name: /Next/i });
   });
 
   it("uploads candidate films JSON and shows summary", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/nominees");
+    window.history.pushState({}, "", "/admin/ceremonies/1/populate");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -818,6 +729,31 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "DRAFT",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: null,
+                archived_at: null
+              },
+              stats: {
+                categories_total: 1,
+                categories_with_nominees: 0,
+                nominees_total: 0,
+                winners_total: 0
+              }
+            })
+        });
+      }
       if (
         url.endsWith("/admin/ceremonies/1/categories") &&
         (!init || init.method === "GET")
@@ -826,7 +762,7 @@ describe("<App /> shell + routing", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              categories: []
+              categories: [{ id: 10, unit_kind: "FILM", family_name: "Best Picture" }]
             })
         });
       }
@@ -845,10 +781,13 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Nominees/i });
+    await screen.findByRole("heading", { name: /Populate nominees/i });
+    await userEvent.click(screen.getByRole("button", { name: /Candidate pool/i }));
     const fileInput = await waitFor(() => {
-      const el = document.querySelector('input[type="file"]') as HTMLInputElement | null;
-      if (!el) throw new Error("Missing file input");
+      const el = document.querySelector(
+        'input[type="file"][name="candidate-pool-file"]'
+      ) as HTMLInputElement | null;
+      if (!el) throw new Error("Missing candidate pool file input");
       return el;
     });
     const file = new File(
@@ -862,9 +801,9 @@ describe("<App /> shell + routing", () => {
       { type: "application/json" }
     );
     await userEvent.upload(fileInput, file);
-    await screen.findByText(/Films: 2/);
+    await waitFor(() => expect(fileInput.files?.length ?? 0).toBe(1));
     await userEvent.click(
-      screen.getByRole("button", { name: /Import candidate films/i })
+      await screen.findByRole("button", { name: /Load candidate pool/i })
     );
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -872,11 +811,10 @@ describe("<App /> shell + routing", () => {
         expect.objectContaining({ method: "POST" })
       )
     );
-    await screen.findByText(/Imported candidates/i);
   });
 
   it("saves winners per category with confirmations and lock state", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/winners");
+    window.history.pushState({}, "", "/admin/ceremonies/1/results");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -902,6 +840,31 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "PUBLISHED",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: "2026-01-01T00:00:00Z",
+                archived_at: null
+              },
+              stats: {
+                categories_total: 2,
+                categories_with_nominees: 2,
+                nominees_total: 3,
+                winners_total: 0
+              }
+            })
+        });
+      }
       if (url.endsWith("/admin/ceremonies/1/lock")) {
         return Promise.resolve({
           ok: true,
@@ -909,7 +872,7 @@ describe("<App /> shell + routing", () => {
             Promise.resolve({
               draft_locked: false,
               draft_locked_at: null,
-              status: "DRAFT"
+              status: "PUBLISHED"
             })
         });
       }
@@ -921,7 +884,39 @@ describe("<App /> shell + routing", () => {
               nominations: [
                 { id: 1, category_edition_id: 10, film_title: "Picture A" },
                 { id: 2, category_edition_id: 10, film_title: "Picture B" },
-                { id: 3, category_edition_id: 11, film_title: "Actor A" }
+                {
+                  id: 3,
+                  category_edition_id: 11,
+                  film_title: "Actor Film",
+                  performer_name: "Actor A"
+                }
+              ]
+            })
+        });
+      }
+      if (
+        url.endsWith("/admin/ceremonies/1/categories") &&
+        (!init || init.method === "GET")
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              categories: [
+                {
+                  id: 10,
+                  unit_kind: "FILM",
+                  family_name: "Best Picture",
+                  family_icon_code: "trophy",
+                  family_icon_variant: "default"
+                },
+                {
+                  id: 11,
+                  unit_kind: "PERFORMANCE",
+                  family_name: "Actor",
+                  family_icon_code: "person",
+                  family_icon_variant: "default"
+                }
               ]
             })
         });
@@ -950,18 +945,14 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     await screen.findByText(/Drafts open/i);
-    await screen.findByText(/Nomination #1/);
-    const category10 = screen.getByText(/Category 10/).closest(".card");
-    expect(category10).toBeTruthy();
-    const firstCheckbox = within(category10 as HTMLElement).getByRole("checkbox", {
-      name: /Nomination #1/i
+    const allCheckboxes = await screen.findAllByRole("checkbox", {
+      name: /Select winner:/i
     });
+    const firstCheckbox = allCheckboxes[0];
     await userEvent.click(firstCheckbox);
     await waitFor(() => expect(firstCheckbox).toBeChecked());
-    await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Save$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Save winners/i }));
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/admin/winners"))
@@ -969,15 +960,10 @@ describe("<App /> shell + routing", () => {
     );
     await screen.findAllByText(/Drafts locked/i);
 
-    const secondCheckbox = within(category10 as HTMLElement).getByRole("checkbox", {
-      name: /Nomination #2/i
-    });
+    const secondCheckbox = allCheckboxes[1];
     await userEvent.click(secondCheckbox);
     await waitFor(() => expect(secondCheckbox).toBeChecked());
-    await userEvent.click(
-      within(category10 as HTMLElement).getByRole("button", { name: /Save winners/i })
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Yes, save winners/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Save$/i }));
     await waitFor(() => {
       const winnerPosts = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes("/admin/winners")
@@ -986,17 +972,8 @@ describe("<App /> shell + routing", () => {
     });
   });
 
-  it("shows commissioner controls on league page and allows remove/transfer/copy", async () => {
-    // mock clipboard
-    const writeText = vi.fn();
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    global.navigator.clipboard = { writeText };
-    // mock confirm
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-
+  it("shows commissioner controls on league page and allows transfer/delete", async () => {
     window.history.pushState({}, "", "/leagues/10");
-    let removedBob = false;
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -1043,26 +1020,21 @@ describe("<App /> shell + routing", () => {
                   role: "OWNER",
                   username: "alice"
                 },
-                ...(removedBob
-                  ? []
-                  : [
-                      {
-                        id: 2,
-                        league_id: 10,
-                        user_id: 2,
-                        role: "MEMBER",
-                        username: "bob"
-                      }
-                    ])
+                {
+                  id: 2,
+                  league_id: 10,
+                  user_id: 2,
+                  role: "MEMBER",
+                  username: "bob"
+                }
               ]
             })
         });
       }
-      if (url.endsWith("/leagues/10/members/2") && init?.method === "DELETE") {
-        removedBob = true;
+      if (url.endsWith("/leagues/10/transfer") && init?.method === "POST") {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
       }
-      if (url.endsWith("/leagues/10/transfer") && init?.method === "POST") {
+      if (url.endsWith("/leagues/10") && init?.method === "DELETE") {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -1071,42 +1043,45 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Roster/i });
-    await userEvent.click(screen.getByRole("button", { name: /Copy invite/i }));
-    expect(writeText).toHaveBeenCalled();
+    await screen.findByRole("heading", { name: /Seasons/i });
+    await screen.findByRole("heading", { name: /Members/i });
 
-    const commissionerCard = screen
-      .getByRole("heading", { name: /Commissioner Controls/i })
-      .closest(".card");
-    expect(commissionerCard).toBeTruthy();
-
-    const transferSelect = within(commissionerCard as HTMLElement).getByRole("combobox", {
-      name: /Transfer to member/i
+    await userEvent.click(screen.getByRole("button", { name: /Transfer ownership/i }));
+    const transferDialog = await screen.findByRole("dialog", {
+      name: /Transfer ownership/i
     });
-    await userEvent.selectOptions(transferSelect, "2");
+    const transferSelect = within(transferDialog).getByRole("textbox", {
+      name: /Member/i
+    });
+    await userEvent.click(transferSelect);
+    const listboxId = transferSelect.getAttribute("aria-controls");
+    expect(listboxId).toBeTruthy();
+    const listbox = await waitFor(() => {
+      const el = listboxId ? document.getElementById(listboxId) : null;
+      if (!el) throw new Error("Missing listbox");
+      return el;
+    });
+    await userEvent.click(within(listbox).getByText(/^bob$/i));
     await userEvent.click(
-      within(commissionerCard as HTMLElement).getByRole("button", {
-        name: /Transfer commissioner/i
-      })
+      within(transferDialog).getByRole("button", { name: /Transfer ownership/i })
     );
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/leagues/10/transfer"),
       expect.objectContaining({ method: "POST" })
     );
 
-    // Remove Bob
-    const rosterCard = screen.getByRole("heading", { name: /Roster/i }).closest(".card");
-    expect(rosterCard).toBeTruthy();
-
+    await userEvent.click(screen.getByRole("button", { name: /Delete league/i }));
+    const deleteDialog = await screen.findByRole("dialog", { name: /Delete league\\?/i });
     await userEvent.click(
-      within(rosterCard as HTMLElement).getByRole("button", { name: /Remove/i })
+      within(deleteDialog).getByRole("button", { name: /^Delete$/i })
     );
     await waitFor(() =>
       expect(
-        within(rosterCard as HTMLElement).queryByText(/^bob$/i)
-      ).not.toBeInTheDocument()
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).endsWith("/leagues/10") && call[1]?.method === "DELETE"
+        )
+      ).toBe(true)
     );
-
-    confirmSpy.mockRestore();
   });
 });

@@ -39,17 +39,14 @@ import type {
 import {
   getLeagueById,
   getLeagueMember,
-  getDraftSeatForUser,
-  setLeagueCeremonyIdIfMissing
+  getDraftSeatForUser
 } from "../data/repositories/leagueRepository.js";
-import {
-  createExtantSeason,
-  getExtantSeasonForLeagueCeremony,
-  getSeasonById
-} from "../data/repositories/seasonRepository.js";
+import { getSeasonById } from "../data/repositories/seasonRepository.js";
 import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
-import { listSeasonMembers } from "../data/repositories/seasonMemberRepository.js";
-import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
+import {
+  getSeasonMember,
+  listSeasonMembers
+} from "../data/repositories/seasonMemberRepository.js";
 import type { DbClient } from "../data/db.js";
 import { query, runInTransaction } from "../data/db.js";
 import { mapDraftStateError, transitionDraftState } from "../domain/draftState.js";
@@ -59,8 +56,14 @@ import { revokePendingInvitesForSeason } from "../data/repositories/seasonInvite
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import type { Pool } from "pg";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
+import {
+  getDraftAutodraftConfig,
+  listDraftPlanNominationIdsForUserCeremony,
+  upsertDraftAutodraftConfig
+} from "../data/repositories/draftAutodraftRepository.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import { scoreDraft } from "../domain/scoring.js";
+import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -210,17 +213,25 @@ function chooseCustomUser(
   return match ?? undefined;
 }
 
-async function autoPickIfExpired(options: {
+async function autoPickOne(options: {
   tx: DbClient;
   draft: DraftRecord;
   season: { id: number; ceremony_id: number };
   league: { roster_size: number | string | null };
+  reason: "TIMER_EXPIRED" | "USER_AUTODRAFT";
+  force: boolean;
 }) {
-  const { tx, draft, season, league } = options;
+  const { tx, draft, season, league, reason, force } = options;
   if (draft.status !== "IN_PROGRESS") return draft;
-  if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
-  const now = new Date();
-  if (now <= new Date(draft.pick_deadline_at)) return draft;
+  // Timer expiry requires deadline/timer, but user-enabled auto-draft is allowed even
+  // for untimed drafts (force=true).
+  if (!force) {
+    if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
+    const nowMs = Date.now();
+    const deadlineMs = new Date(draft.pick_deadline_at).getTime();
+    if (!Number.isFinite(deadlineMs)) return draft;
+    if (nowMs <= deadlineMs) return draft;
+  }
 
   const seats = await listDraftSeats(tx, draft.id);
   const seatCount = seats.length;
@@ -257,50 +268,85 @@ async function autoPickIfExpired(options: {
   let chosen: number | undefined;
   let seedUsed = draft.auto_pick_seed ?? null;
 
-  switch (strategy) {
-    case "ALPHABETICAL":
-      chosen = chooseAlphabetical(
-        available,
-        (draft.auto_pick_config as AutoPickConfig)?.alphabetical_field
-      );
-      break;
-    case "CANONICAL":
-      chosen = chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig);
-      break;
-    case "CUSTOM_USER":
-      chosen = chooseCustomUser(
-        seat.user_id,
-        availableIds,
-        draft.auto_pick_config as AutoPickConfig
-      );
-      break;
-    case "SMART":
-      chosen =
-        chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig) ??
-        (draft.auto_pick_config as AutoPickConfig | undefined)?.smart_priorities?.find(
-          (id) => availableIds.includes(id)
-        );
-      break;
-    case "RANDOM_SEED": {
-      const result = chooseRandomized(availableIds, seedUsed);
-      chosen = result.id;
-      seedUsed = result.seed;
-      if (!draft.auto_pick_seed && seedUsed) {
-        await tx.query(`UPDATE draft SET auto_pick_seed = $2 WHERE id = $1`, [
-          draft.id,
-          seedUsed
-        ]);
-      }
-      break;
+  // Per-user auto-draft (opt-in): if enabled for this seat, it overrides the draft-level default.
+  const userAuto = await getDraftAutodraftConfig(tx, {
+    draft_id: draft.id,
+    user_id: seat.user_id
+  });
+  const userEnabled = Boolean(userAuto?.enabled);
+  const userStrategy = userAuto?.strategy ?? "RANDOM";
+
+  if (userEnabled && userStrategy === "PLAN" && userAuto?.plan_id) {
+    const planIds = await listDraftPlanNominationIdsForUserCeremony(tx, {
+      plan_id: userAuto.plan_id,
+      user_id: seat.user_id,
+      ceremony_id: season.ceremony_id
+    });
+    chosen = planIds.find((id) => availableIds.includes(id));
+  }
+
+  if (userEnabled && userStrategy === "RANDOM" && !chosen) {
+    const result = chooseRandomized(availableIds, seedUsed);
+    chosen = result.id;
+    seedUsed = result.seed;
+    if (!draft.auto_pick_seed && seedUsed) {
+      await tx.query(`UPDATE draft SET auto_pick_seed = $2 WHERE id = $1`, [
+        draft.id,
+        seedUsed
+      ]);
     }
-    case "NEXT_AVAILABLE":
-    default:
-      chosen = availableIds.sort((a, b) => a - b)[0];
-      break;
+  }
+
+  // Fall back to the season/draft-level strategy if the user has not enabled auto-draft,
+  // or their chosen override does not yield an available nomination.
+  if (!chosen) {
+    switch (strategy) {
+      case "ALPHABETICAL":
+        chosen = chooseAlphabetical(
+          available,
+          (draft.auto_pick_config as AutoPickConfig)?.alphabetical_field
+        );
+        break;
+      case "CANONICAL":
+        chosen = chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig);
+        break;
+      case "CUSTOM_USER":
+        chosen = chooseCustomUser(
+          seat.user_id,
+          availableIds,
+          draft.auto_pick_config as AutoPickConfig
+        );
+        break;
+      case "SMART":
+        chosen =
+          chooseCanonical(availableIds, draft.auto_pick_config as AutoPickConfig) ??
+          (draft.auto_pick_config as AutoPickConfig | undefined)?.smart_priorities?.find(
+            (id) => availableIds.includes(id)
+          );
+        break;
+      case "RANDOM_SEED": {
+        const result = chooseRandomized(availableIds, seedUsed);
+        chosen = result.id;
+        seedUsed = result.seed;
+        if (!draft.auto_pick_seed && seedUsed) {
+          await tx.query(`UPDATE draft SET auto_pick_seed = $2 WHERE id = $1`, [
+            draft.id,
+            seedUsed
+          ]);
+        }
+        break;
+      }
+      case "NEXT_AVAILABLE":
+      default:
+        // `available` preserves ceremony/category ordering from `listNominationsForCeremony`.
+        // Prefer the first available in that canonical order (not lowest id).
+        chosen = available[0]?.id;
+        break;
+    }
   }
 
   if (!chosen) {
-    chosen = availableIds.sort((a, b) => a - b)[0];
+    chosen = available[0]?.id ?? availableIds.sort((a, b) => a - b)[0];
   }
 
   const nowPick = new Date();
@@ -313,7 +359,7 @@ async function autoPickIfExpired(options: {
     user_id: seat.user_id,
     nomination_id: chosen,
     made_at: nowPick,
-    request_id: `auto-${nowPick.getTime()}`
+    request_id: `auto-${reason.toLowerCase()}-${nowPick.getTime()}`
   });
 
   const newPickCount = picks.length + 1;
@@ -350,7 +396,7 @@ async function autoPickIfExpired(options: {
     draft_id: draft.id,
     event_type: "draft.pick.autopicked",
     payload: {
-      reason: "TIMER_EXPIRED",
+      reason,
       strategy,
       pick: {
         id: pick.id,
@@ -377,6 +423,95 @@ async function autoPickIfExpired(options: {
   return nextDraft;
 }
 
+async function autoPickIfExpired(options: {
+  tx: DbClient;
+  draft: DraftRecord;
+  season: { id: number; ceremony_id: number };
+  league: { roster_size: number | string | null };
+}) {
+  const { tx, draft, season, league } = options;
+  if (draft.status !== "IN_PROGRESS") return draft;
+  if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
+  const deadlineMs = new Date(draft.pick_deadline_at).getTime();
+  if (!Number.isFinite(deadlineMs)) return draft;
+  if (Date.now() <= deadlineMs) return draft;
+
+  const after = await autoPickOne({
+    tx,
+    draft,
+    season,
+    league,
+    reason: "TIMER_EXPIRED",
+    force: true
+  });
+  return await autoPickImmediateChain({ tx, draft: after, season, league });
+}
+
+async function autoPickImmediateChain(options: {
+  tx: DbClient;
+  draft: DraftRecord;
+  season: { id: number; ceremony_id: number };
+  league: { roster_size: number | string | null };
+}) {
+  const { tx, season, league } = options;
+  let draft = options.draft;
+  // Bound the loop to prevent runaway behavior if invariants are broken.
+  for (let i = 0; i < 100; i += 1) {
+    if (draft.status !== "IN_PROGRESS") return draft;
+    const seats = await listDraftSeats(tx, draft.id);
+    const seatCount = seats.length;
+    if (seatCount === 0) return draft;
+    const currentPickNumber = draft.current_pick_number ?? null;
+    if (!currentPickNumber) return draft;
+    const assignment = computePickAssignment({
+      draft_order_type: "SNAKE",
+      seat_count: seatCount,
+      pick_number: currentPickNumber,
+      status: draft.status
+    });
+    const seat = seats.find((s) => s.seat_number === assignment.seat_number);
+    if (!seat?.user_id) return draft;
+
+    const userAuto = await getDraftAutodraftConfig(tx, {
+      draft_id: draft.id,
+      user_id: seat.user_id
+    });
+    if (!userAuto?.enabled) return draft;
+
+    const next = await autoPickOne({
+      tx,
+      draft,
+      season,
+      league,
+      reason: "USER_AUTODRAFT",
+      force: true
+    });
+    // If nothing changed, stop.
+    if (
+      next.current_pick_number === draft.current_pick_number &&
+      next.status === draft.status
+    ) {
+      return draft;
+    }
+    draft = next;
+  }
+  return draft;
+}
+
+async function runImmediateAutodraftIfEnabled(args: { pool: Pool; draftId: number }) {
+  const { pool, draftId } = args;
+  await runInTransaction(pool, async (tx) => {
+    const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
+    if (!lockedDraft) return;
+    if (lockedDraft.status !== "IN_PROGRESS") return;
+    const season = await getSeasonById(tx, lockedDraft.season_id);
+    if (!season) return;
+    const league = await getLeagueById(tx, season.league_id);
+    if (!league) return;
+    await autoPickImmediateChain({ tx, draft: lockedDraft, season, league });
+  });
+}
+
 function computeDeadline(
   now: Date,
   pickTimerSeconds: number | null | undefined,
@@ -395,8 +530,7 @@ export function buildCreateDraftHandler(client: DbClient) {
     next: express.NextFunction
   ) {
     try {
-      const { league_id, draft_order_type, pick_timer_seconds, auto_pick_strategy } =
-        req.body ?? {};
+      const { league_id, draft_order_type, pick_timer_seconds } = req.body ?? {};
       const seasonIdRaw = (req.body ?? {}).season_id;
 
       const leagueIdNum = Number(league_id);
@@ -417,18 +551,20 @@ export function buildCreateDraftHandler(client: DbClient) {
       ) {
         throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
       }
-      const autoPick =
-        auto_pick_strategy && auto_pick_strategy !== "NEXT_AVAILABLE"
+      const pickTimerSecondsNum =
+        pick_timer_seconds === undefined || pick_timer_seconds === null
           ? null
-          : (auto_pick_strategy ?? null);
+          : Number(pick_timer_seconds);
+      const autoPickStrategy =
+        pickTimerSecondsNum && pickTimerSecondsNum > 0 ? "RANDOM_SEED" : null;
 
       const league = await getLeagueById(client, leagueIdNum);
       if (!league) {
         throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
       }
 
-      // Newer flow: create a draft for a specific season (supports leagues with multiple seasons).
-      // Back-compat: if season_id is omitted, we fall back to the legacy "active ceremony" flow.
+      // Create a draft for a specific season (supports leagues with multiple seasons/ceremonies).
+      // A league can have multiple extant seasons (one per ceremony), so `season_id` is required.
       if (seasonIdRaw !== undefined && seasonIdRaw !== null) {
         const seasonIdNum = Number(seasonIdRaw);
         if (!Number.isFinite(seasonIdNum) || seasonIdNum <= 0) {
@@ -488,82 +624,15 @@ export function buildCreateDraftHandler(client: DbClient) {
           completed_at: null,
           remainder_strategy: season.remainder_strategy ?? "UNDRAFTED",
           pick_timer_seconds:
-            pick_timer_seconds === undefined || pick_timer_seconds === null
-              ? null
-              : Number(pick_timer_seconds),
-          auto_pick_strategy: autoPick === "NEXT_AVAILABLE" ? "NEXT_AVAILABLE" : null
+            pickTimerSecondsNum && pickTimerSecondsNum > 0
+              ? Math.floor(pickTimerSecondsNum)
+              : null,
+          auto_pick_strategy: autoPickStrategy
         });
 
         return res.status(201).json({ draft });
       }
-
-      const activeCeremonyId = await getActiveCeremonyId(client);
-      if (!activeCeremonyId) {
-        throw new AppError(
-          "ACTIVE_CEREMONY_NOT_SET",
-          409,
-          "Active ceremony is not configured"
-        );
-      }
-      const activeCeremonyIdNum = Number(activeCeremonyId);
-      if (Number.isNaN(activeCeremonyIdNum)) {
-        throw new AppError("INTERNAL_ERROR", 500, "Invalid active ceremony id");
-      }
-
-      const ceremonyIdToUse =
-        league.ceremony_id == null
-          ? ((
-              await setLeagueCeremonyIdIfMissing(client, leagueIdNum, activeCeremonyIdNum)
-            )?.ceremony_id ?? activeCeremonyIdNum)
-          : league.ceremony_id;
-
-      if (ceremonyIdToUse !== activeCeremonyIdNum) {
-        throw new AppError(
-          "CEREMONY_INACTIVE",
-          409,
-          "Drafts can only be created for the active ceremony"
-        );
-      }
-
-      const season =
-        (await getExtantSeasonForLeagueCeremony(client, leagueIdNum, ceremonyIdToUse)) ??
-        (await createExtantSeason(client, {
-          league_id: leagueIdNum,
-          ceremony_id: ceremonyIdToUse
-        }));
-
-      const userId = Number((req as AuthedRequest).auth?.sub);
-      const leagueMember = await getLeagueMember(client, leagueIdNum, userId);
-      const isCommissioner =
-        league.created_by_user_id === userId ||
-        (leagueMember &&
-          (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
-      if (!isCommissioner) {
-        throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
-      }
-
-      const existing = await getDraftBySeasonId(client, season.id);
-      if (existing) {
-        throw new AppError("DRAFT_EXISTS", 409, "Draft already exists for this season");
-      }
-
-      const draft = await createDraft(client, {
-        league_id: leagueIdNum,
-        season_id: season.id,
-        status: "PENDING",
-        draft_order_type: "SNAKE",
-        current_pick_number: null,
-        started_at: null,
-        completed_at: null,
-        remainder_strategy: season.remainder_strategy ?? "UNDRAFTED",
-        pick_timer_seconds:
-          pick_timer_seconds === undefined || pick_timer_seconds === null
-            ? null
-            : Number(pick_timer_seconds),
-        auto_pick_strategy: autoPick === "NEXT_AVAILABLE" ? "NEXT_AVAILABLE" : null
-      });
-
-      return res.status(201).json({ draft });
+      throw validationError("Missing season_id", ["season_id"]);
     } catch (err) {
       next(err);
     }
@@ -604,21 +673,7 @@ export function buildStartDraftHandler(pool: Pool) {
         const league = await getLeagueById(tx, season.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
-        const activeCeremonyId = await getActiveCeremonyId(tx);
-        if (!activeCeremonyId) {
-          throw new AppError(
-            "ACTIVE_CEREMONY_NOT_SET",
-            409,
-            "Active ceremony is not configured"
-          );
-        }
-        if (Number(season.ceremony_id) !== Number(activeCeremonyId)) {
-          throw new AppError(
-            "CEREMONY_INACTIVE",
-            409,
-            "Draft actions are limited to the active ceremony"
-          );
-        }
+        // Multi-ceremony: drafting is scoped to the ceremony attached to this season.
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
         if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
@@ -626,10 +681,13 @@ export function buildStartDraftHandler(pool: Pool) {
         const isOverrideActive = Boolean(lockedAt) && draft.allow_drafting_after_lock;
 
         const leagueMember = await getLeagueMember(tx, league.id, userId);
+        const seasonMember = await getSeasonMember(tx, season.id, userId);
         const isCommissioner =
           league.created_by_user_id === userId ||
           (leagueMember &&
-            (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER"));
+            (leagueMember.role === "OWNER" || leagueMember.role === "CO_OWNER")) ||
+          (seasonMember &&
+            (seasonMember.role === "OWNER" || seasonMember.role === "CO_OWNER"));
         if (!isCommissioner) {
           throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
@@ -726,6 +784,7 @@ export function buildStartDraftHandler(pool: Pool) {
               picks_per_seat: updated.picks_per_seat,
               started_at: updated.started_at,
               completed_at: updated.completed_at,
+              pick_deadline_at: updated.pick_deadline_at ?? deadline ?? null,
               allow_drafting_after_lock: updated.allow_drafting_after_lock,
               lock_override_set_by_user_id: updated.lock_override_set_by_user_id ?? null,
               lock_override_set_at: updated.lock_override_set_at ?? null,
@@ -739,6 +798,8 @@ export function buildStartDraftHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
+      // If the next (or subsequent) seat has user-enabled auto-draft, pick immediately.
+      await runImmediateAutodraftIfEnabled({ pool, draftId: result.draft.id });
       return res.status(200).json({ draft: result.draft });
     } catch (err) {
       next(err);
@@ -810,6 +871,8 @@ export function buildOverrideDraftLockHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
+      // If the current seat has user-enabled auto-draft, pick immediately upon resume.
+      await runImmediateAutodraftIfEnabled({ pool, draftId: result.draft.id });
       return res.status(200).json({ draft: result.draft });
     } catch (err) {
       next(err);
@@ -837,17 +900,7 @@ export function buildPauseDraftHandler(pool: Pool) {
         }
         const league = await getLeagueById(tx, season.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-        const activeCeremonyId = await getActiveCeremonyId(tx);
-        if (
-          !activeCeremonyId ||
-          Number(season.ceremony_id) !== Number(activeCeremonyId)
-        ) {
-          throw new AppError(
-            "CEREMONY_INACTIVE",
-            409,
-            "Draft actions are limited to the active ceremony"
-          );
-        }
+        // Multi-ceremony: drafting is scoped to the ceremony attached to this season.
         const leagueMember = await getLeagueMember(tx, league.id, userId);
         const isCommissioner = requireCommissionerOrOwner(userId, league, leagueMember);
         if (!isCommissioner) {
@@ -946,17 +999,7 @@ export function buildResumeDraftHandler(pool: Pool) {
         }
         const league = await getLeagueById(tx, season.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-        const activeCeremonyId = await getActiveCeremonyId(tx);
-        if (
-          !activeCeremonyId ||
-          Number(season.ceremony_id) !== Number(activeCeremonyId)
-        ) {
-          throw new AppError(
-            "CEREMONY_INACTIVE",
-            409,
-            "Draft actions are limited to the active ceremony"
-          );
-        }
+        // Multi-ceremony: drafting is scoped to the ceremony attached to this season.
         const leagueMember = await getLeagueMember(tx, league.id, userId);
         const isCommissioner = requireCommissionerOrOwner(userId, league, leagueMember);
         if (!isCommissioner) {
@@ -1162,62 +1205,44 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
       }
 
-      const categories = season
-        ? (
-            await query<{
-              id: number;
-              unit_kind: string;
-              sort_index: number;
-              family_name: string;
-              icon_code: string | null;
-            }>(
-              pool,
-              `SELECT
-                 ce.id::int,
-                 ce.unit_kind,
-                 ce.sort_index::int,
-                 cf.name AS family_name,
-                 i.code AS icon_code
-               FROM category_edition ce
-               JOIN category_family cf ON cf.id = ce.family_id
-               LEFT JOIN icon i ON i.id = COALESCE(ce.icon_id, cf.icon_id)
-               WHERE ce.ceremony_id = $1
-               ORDER BY ce.sort_index ASC, ce.id ASC`,
-              [season.ceremony_id]
-            )
-          ).rows
-        : [];
-
-      const unitKindByCategoryId = new Map<number, string>();
-      for (const c of categories) {
-        unitKindByCategoryId.set(Number(c.id), String(c.unit_kind));
+      // Pre-draft: seats don't exist yet (and seat order is intentionally secret). For display,
+      // use the season membership roster so the header can render participants.
+      if (draft.status === "PENDING" && seats.length === 0 && season) {
+        const display = await query<{
+          user_id: number;
+          league_member_id: number | null;
+          username: string;
+          avatar_key: string | null;
+        }>(
+          pool,
+          `
+            SELECT
+              sm.user_id::int,
+              sm.league_member_id::int,
+              u.username,
+              u.avatar_key
+            FROM season_member sm
+            JOIN app_user u ON u.id = sm.user_id
+            WHERE sm.season_id = $1
+            ORDER BY lower(u.username) ASC, sm.joined_at ASC, sm.id ASC
+          `,
+          [season.id]
+        );
+        seats = display.rows.map((r, idx) => ({
+          seat_number: idx + 1,
+          league_member_id: r.league_member_id ?? 0,
+          user_id: r.user_id,
+          username: r.username,
+          avatar_key: r.avatar_key ?? null
+        })) as unknown as typeof seats;
       }
 
-      const nominations = season
-        ? (await listNominationsForCeremony(pool, season.ceremony_id)).map((n) => {
-            // Draft room display label should follow the category's unit kind, not
-            // incidental contributor data (e.g. producers attached to Best Picture).
-            const kind = unitKindByCategoryId.get(Number(n.category_edition_id)) ?? "";
-            const label =
-              kind === "SONG"
-                ? (n.song_title ?? n.film_title ?? `Nomination #${n.id}`)
-                : kind === "PERFORMANCE"
-                  ? (n.performer_name ??
-                    n.song_title ??
-                    n.film_title ??
-                    `Nomination #${n.id}`)
-                  : (n.film_title ??
-                    n.song_title ??
-                    n.performer_name ??
-                    `Nomination #${n.id}`);
-            return {
-              id: n.id,
-              category_edition_id: n.category_edition_id,
-              label,
-              status: n.status ?? "ACTIVE"
-            };
-          })
-        : [];
+      const board = season
+        ? await getDraftBoardForCeremony(pool, season.ceremony_id)
+        : { categories: [], nominations: [] };
+      const categories = board.categories;
+      const nominations = board.nominations;
+      const winners = season ? await listWinnersByCeremony(pool, season.ceremony_id) : [];
 
       let turn: {
         current_pick_number: number;
@@ -1250,6 +1275,21 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         viewerUserId && seats.length
           ? (seats.find((s) => Number(s.user_id) === viewerUserId)?.seat_number ?? null)
           : null;
+      const viewerLeagueMember =
+        viewerUserId && league
+          ? await getLeagueMember(pool, league.id, viewerUserId)
+          : null;
+      const viewerSeasonMember =
+        viewerUserId && season
+          ? await getSeasonMember(pool, season.id, viewerUserId)
+          : null;
+      const canManageDraft = Boolean(
+        viewerUserId &&
+        league &&
+        (league.created_by_user_id === viewerUserId ||
+          ["OWNER", "CO_OWNER"].includes(String(viewerLeagueMember?.role ?? "")) ||
+          ["OWNER", "CO_OWNER"].includes(String(viewerSeasonMember?.role ?? "")))
+      );
 
       return res.status(200).json({
         draft,
@@ -1257,7 +1297,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
           seat_number: s.seat_number,
           league_member_id: s.league_member_id,
           user_id: s.user_id ?? null,
-          username: (s as { username?: string }).username ?? null
+          username: (s as { username?: string }).username ?? null,
+          avatar_key: (s as { avatar_key?: string | null }).avatar_key ?? null
         })),
         picks,
         version: draft.version,
@@ -1274,10 +1315,18 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         pick_timer_remaining_ms: draft.pick_timer_remaining_ms ?? null,
         nominee_pool_size: nomineePoolSize,
         turn,
+        ceremony_id: season?.ceremony_id ?? null,
         ceremony_starts_at: season?.ceremony_starts_at ?? null,
+        ceremony_status:
+          (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
+        scoring_strategy_name:
+          (season as { scoring_strategy_name?: string | null } | null)
+            ?.scoring_strategy_name ?? null,
         my_seat_number: mySeatNumber,
+        can_manage_draft: canManageDraft,
         categories,
-        nominations
+        nominations,
+        winners
       });
     } catch (err) {
       next(err);
@@ -1360,21 +1409,7 @@ export function buildSubmitPickHandler(pool: Pool) {
         const league = await getLeagueById(tx, season.league_id);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
-        const activeCeremonyId = await getActiveCeremonyId(tx);
-        if (!activeCeremonyId) {
-          throw new AppError(
-            "ACTIVE_CEREMONY_NOT_SET",
-            409,
-            "Active ceremony is not configured"
-          );
-        }
-        if (Number(season.ceremony_id) !== Number(activeCeremonyId)) {
-          throw new AppError(
-            "CEREMONY_INACTIVE",
-            409,
-            "Draft actions are limited to the active ceremony"
-          );
-        }
+        // Multi-ceremony: drafting is scoped to the ceremony attached to this season.
         const lockedAt = await getCeremonyDraftLockedAt(tx, season.ceremony_id);
         if (lockedAt && !draft.allow_drafting_after_lock) {
           throw new AppError("DRAFT_LOCKED", 409, "Draft is locked after winners entry");
@@ -1573,7 +1608,8 @@ export function buildSubmitPickHandler(pool: Pool) {
             draft: {
               status: draft.status,
               current_pick_number: draft.current_pick_number,
-              completed_at: draft.completed_at ?? null
+              completed_at: draft.completed_at ?? null,
+              pick_deadline_at: draft.pick_deadline_at ?? null
             }
           }
         });
@@ -1585,6 +1621,8 @@ export function buildSubmitPickHandler(pool: Pool) {
       if (result?.event) {
         emitDraftEvent(result.event);
       }
+      // If the next (or subsequent) seat has user-enabled auto-draft, pick immediately.
+      await runImmediateAutodraftIfEnabled({ pool, draftId: draftIdNum });
       return res.status(status).json({ pick: result.pick });
     } catch (err) {
       if (draftId !== null && requestId) {
@@ -1832,6 +1870,51 @@ export function buildDraftStandingsHandler(pool: Pool) {
   };
 }
 
+export async function tickDraft(pool: Pool, draftId: number) {
+  return await runInTransaction(pool, async (tx) => {
+    const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
+    if (!lockedDraft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+
+    const season = await getSeasonById(tx, lockedDraft.season_id);
+    if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+
+    const league = await getLeagueById(tx, season.league_id);
+    if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+
+    // If a pick timer is enabled, this can auto-pick when the deadline has passed.
+    return await autoPickIfExpired({ tx, draft: lockedDraft, season, league });
+  });
+}
+
+export function buildTickDraftHandler(pool: Pool) {
+  return async function handleTickDraft(
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+
+      const updatedDraft = await tickDraft(pool, draftId);
+
+      return res.status(200).json({
+        draft: {
+          id: updatedDraft.id,
+          status: updatedDraft.status,
+          current_pick_number: updatedDraft.current_pick_number ?? null,
+          pick_deadline_at: updatedDraft.pick_deadline_at ?? null,
+          pick_timer_seconds: updatedDraft.pick_timer_seconds ?? null
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 export function createDraftsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
 
@@ -1841,11 +1924,114 @@ export function createDraftsRouter(client: DbClient, authSecret: string): Router
   router.post("/:id/override-lock", buildOverrideDraftLockHandler(client as Pool));
   router.post("/:id/pause", buildPauseDraftHandler(client as Pool));
   router.post("/:id/resume", buildResumeDraftHandler(client as Pool));
+  router.post("/:id/tick", buildTickDraftHandler(client as Pool));
   router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
   router.get("/:id/export", buildExportDraftHandler(client as Pool));
   router.post("/:id/results", buildDraftResultsHandler(client as Pool));
   router.get("/:id/standings", buildDraftStandingsHandler(client as Pool));
   router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
+
+  // Per-user auto-draft preferences for this draft.
+  router.get("/:id/autodraft", async (req: AuthedRequest, res, next) => {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+      const userId = Number(req.auth?.sub);
+      if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+
+      const draft = await getDraftById(client, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      const season = await getSeasonById(client, draft.season_id);
+      if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+      const membership = await getSeasonMember(client, season.id, userId);
+      if (!membership) throw new AppError("FORBIDDEN", 403, "Not a season member");
+
+      const cfg = (await getDraftAutodraftConfig(client, {
+        draft_id: draftId,
+        user_id: userId
+      })) ?? { enabled: false, strategy: "RANDOM" as const, plan_id: null };
+
+      return res.status(200).json({ autodraft: cfg });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/:id/autodraft", async (req: AuthedRequest, res, next) => {
+    try {
+      const draftId = Number(req.params.id);
+      if (Number.isNaN(draftId)) {
+        throw validationError("Invalid draft id", ["id"]);
+      }
+      const userId = Number(req.auth?.sub);
+      if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+
+      const enabled = Boolean(req.body?.enabled);
+      const strategyRaw = String(req.body?.strategy ?? "RANDOM").toUpperCase();
+      if (strategyRaw !== "RANDOM" && strategyRaw !== "PLAN") {
+        throw validationError("Invalid strategy", ["strategy"]);
+      }
+      const strategy = strategyRaw as "RANDOM" | "PLAN";
+      const planIdRaw = req.body?.plan_id;
+      const planId =
+        planIdRaw === null || planIdRaw === undefined || planIdRaw === ""
+          ? null
+          : Number(planIdRaw);
+      if (planId !== null && (!Number.isFinite(planId) || planId <= 0)) {
+        throw validationError("Invalid plan_id", ["plan_id"]);
+      }
+
+      const result = await runInTransaction(client as Pool, async (tx) => {
+        const draft = await getDraftByIdForUpdate(tx, draftId);
+        if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+        if (draft.status === "COMPLETED") {
+          throw new AppError(
+            "DRAFT_SETTINGS_LOCKED",
+            409,
+            "Auto-draft settings are locked once the draft completes"
+          );
+        }
+
+        const season = await getSeasonById(tx, draft.season_id);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        const membership = await getSeasonMember(tx, season.id, userId);
+        if (!membership) throw new AppError("FORBIDDEN", 403, "Not a season member");
+
+        let resolvedPlanId = enabled && strategy === "PLAN" ? planId : null;
+        if (resolvedPlanId) {
+          // Validate the plan belongs to this user and ceremony.
+          const { rows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int FROM draft_plan WHERE id = $1 AND user_id = $2 AND ceremony_id = $3`,
+            [resolvedPlanId, userId, season.ceremony_id]
+          );
+          if (!rows[0]) {
+            throw new AppError("NOT_FOUND", 404, "Draft plan not found");
+          }
+        }
+
+        const cfg = await upsertDraftAutodraftConfig(tx, {
+          draft_id: draftId,
+          user_id: userId,
+          enabled,
+          strategy,
+          plan_id: resolvedPlanId
+        });
+
+        return cfg;
+      });
+
+      if (result.enabled) {
+        // If the current seat user enables auto-draft, pick immediately (no timer wait).
+        await runImmediateAutodraftIfEnabled({ pool: client as Pool, draftId });
+      }
+      return res.status(200).json({ autodraft: result });
+    } catch (err) {
+      next(err);
+    }
+  });
 
   return router;
 }

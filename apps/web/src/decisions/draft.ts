@@ -166,16 +166,19 @@ export function computePickDisabledReason(args: {
 
 export function computeDraftBoardCols(args: {
   hasSnapshot: boolean;
-  showLedger: boolean;
-  showRoster: boolean;
-  showAutodraft: boolean;
+  showLedger: "hidden" | "collapsed" | "open";
+  showRoster: "hidden" | "collapsed" | "open";
+  showAutodraft: "hidden" | "collapsed" | "open";
 }) {
   if (!args.hasSnapshot) return "minmax(0, 1fr)";
   const cols: string[] = [];
-  if (args.showLedger) cols.push("minmax(0, 1fr)");
+  if (args.showLedger === "open") cols.push("minmax(210px, 1fr)");
+  if (args.showLedger === "collapsed") cols.push("36px");
   // Draft pool gets the most space.
   cols.push("minmax(0, 3fr)");
-  if (args.showRoster) cols.push("minmax(0, 1fr)");
-  if (args.showAutodraft) cols.push("minmax(0, 1fr)");
+  if (args.showRoster === "open") cols.push("minmax(210px, 1fr)");
+  if (args.showRoster === "collapsed") cols.push("36px");
+  if (args.showAutodraft === "open") cols.push("minmax(210px, 1fr)");
+  if (args.showAutodraft === "collapsed") cols.push("36px");
   return cols.join(" ");
 }

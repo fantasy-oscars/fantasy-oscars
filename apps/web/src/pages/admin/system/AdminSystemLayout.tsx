@@ -1,16 +1,21 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Box, Card, Group, Text, Title } from "@mantine/core";
+import { Box, Divider, Group, Text, Title } from "@mantine/core";
+import "../../../primitives/baseline.css";
 
 export function AdminSystemLayout() {
   const sublinkClass = ({ isActive }: { isActive: boolean }) =>
     `admin-sublink${isActive ? " is-active" : ""}`;
 
   return (
-    <Card className="card" component="section">
+    <Box component="section">
       <Box component="header">
-        <Title order={2}>System</Title>
-        <Text className="muted">Operational tools and audit trails.</Text>
+        <Title order={2} className="baseline-textHeroTitle">
+          System
+        </Title>
+        <Text className="baseline-textBody">Operational tools and audit trails.</Text>
       </Box>
+
+      <Divider my="md" />
 
       <Group
         component="nav"
@@ -23,7 +28,9 @@ export function AdminSystemLayout() {
         </NavLink>
       </Group>
 
+      <Divider my="md" />
+
       <Outlet />
-    </Card>
+    </Box>
   );
 }

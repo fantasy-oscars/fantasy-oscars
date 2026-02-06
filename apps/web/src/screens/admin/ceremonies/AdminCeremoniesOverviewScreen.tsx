@@ -1,19 +1,32 @@
-import { Link } from "react-router-dom";
 import type { Dispatch, SetStateAction } from "react";
-import { Box, Button, Card, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { useMemo, useState } from "react";
+import {
+  Box,
+  Button,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+  Title,
+  UnstyledButton
+} from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
+import { StandardCard } from "../../../primitives";
+import "../../../primitives/baseline.css";
+
+const INFO_ICON = String.fromCharCode(0xe88e);
 
 export function AdminCeremoniesOverviewScreen(props: {
   loading: boolean;
   saving: boolean;
-  publishing: boolean;
   loadError: string | null;
   status: ApiResult | null;
   ceremony: {
     id: number;
-    status: "DRAFT" | "PUBLISHED" | "LOCKED" | "ARCHIVED";
+    status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
     code: string | null;
     name: string | null;
     starts_at: string | null;
@@ -32,26 +45,35 @@ export function AdminCeremoniesOverviewScreen(props: {
       warningHours: string;
     }>
   >;
-  completeness: { ok: boolean; label: string };
   readOnly: boolean;
   onSave: () => void;
-  onPublish: () => void;
 }) {
   const {
     loading,
     saving,
-    publishing,
     loadError,
     status,
     ceremony,
-    stats,
     form,
     setForm,
-    completeness,
     readOnly,
-    onSave,
-    onPublish
+    onSave
   } = props;
+
+  const [touched, setTouched] = useState({ code: false, name: false });
+
+  const required = useMemo(
+    () => ({
+      code: form.code.trim().length > 0,
+      name: form.name.trim().length > 0
+    }),
+    [form.code, form.name]
+  );
+  const isComplete = required.code && required.name;
+  const canSave = isComplete && !saving && !readOnly;
+
+  const showCodeError = touched.code && !required.code;
+  const showNameError = touched.name && !required.name;
 
   if (loading && !ceremony) return <PageLoader label="Loading ceremony..." />;
   if (loadError) return <PageError message={loadError} />;
@@ -59,7 +81,7 @@ export function AdminCeremoniesOverviewScreen(props: {
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <Card className="card nested" component="section">
+      <StandardCard component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -67,33 +89,16 @@ export function AdminCeremoniesOverviewScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Overview</Title>
-            <Text className="muted">Configure the ceremony lifecycle and key dates.</Text>
+            <Title order={3}>Initialize ceremony</Title>
+            <Text className="muted">
+              Give this ceremony a stable identity and scheduled start time.
+            </Text>
           </Box>
-          <Group className="pill-list" wrap="wrap">
-            <Box
-              component="span"
-              className={`pill ${ceremony.status === "DRAFT" ? "muted" : ""}`}
-            >
+          <Box>
+            <Box component="span" className="status-pill">
               {ceremony.status}
+              {ceremony.draft_locked_at ? " · Drafts locked" : ""}
             </Box>
-            {ceremony.draft_locked_at ? (
-              <Box component="span" className="pill">
-                Drafts locked
-              </Box>
-            ) : null}
-          </Group>
-        </Group>
-
-        <Group className="pill-list" wrap="wrap" mt="xs">
-          <Box component="span" className="pill">
-            Nominees: {stats?.nominees_total ?? 0}
-          </Box>
-          <Box component="span" className="pill">
-            Winners: {stats?.winners_total ?? 0}
-          </Box>
-          <Box component="span" className="pill">
-            {completeness.label}
           </Box>
         </Group>
 
@@ -107,9 +112,9 @@ export function AdminCeremoniesOverviewScreen(props: {
             Archived at {new Date(ceremony.archived_at).toLocaleString()}
           </Text>
         ) : null}
-      </Card>
+      </StandardCard>
 
-      <Card className="card nested" component="section">
+      <StandardCard component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -117,9 +122,64 @@ export function AdminCeremoniesOverviewScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Init</Title>
-            <Text className="muted">Identity and mechanically relevant dates.</Text>
+            <Title order={3}>Foundation details</Title>
           </Box>
+          <Tooltip
+            withArrow
+            multiline
+            w={360}
+            position="bottom-end"
+            withinPortal
+            events={{ hover: true, focus: true, touch: true }}
+            label={
+              <Stack gap="sm">
+                <Stack gap={2}>
+                  <Text fw={700} size="sm">
+                    Name
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Display name shown to users across drafts, leagues, and results.
+                  </Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text fw={700} size="sm">
+                    Ceremony code
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Stable identifier used in URLs and internal references. Not shown to
+                    users.
+                  </Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text fw={700} size="sm">
+                    Ceremony date &amp; time
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Scheduled start time. Entered and displayed in your local time. Stored
+                    internally in UTC.
+                  </Text>
+                </Stack>
+                <Stack gap={2}>
+                  <Text fw={700} size="sm">
+                    Draft warning
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Controls how many hours before the draft users are notified.
+                  </Text>
+                </Stack>
+              </Stack>
+            }
+          >
+            <UnstyledButton
+              type="button"
+              className="admin-help-icon"
+              aria-label="Help: field meanings"
+            >
+              <Text component="span" className="gicon" aria-hidden="true">
+                {INFO_ICON}
+              </Text>
+            </UnstyledButton>
+          </Tooltip>
         </Group>
 
         {readOnly ? (
@@ -130,82 +190,58 @@ export function AdminCeremoniesOverviewScreen(props: {
 
         <Box className="grid">
           <TextInput
-            label="Code"
-            value={form.code}
-            onChange={(e) => setForm((p) => ({ ...p, code: e.currentTarget.value }))}
-            disabled={readOnly}
-            placeholder="Required"
-          />
-          <TextInput
             label="Name"
             value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.currentTarget.value }))}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setForm((p) => ({ ...p, name: v }));
+            }}
+            onBlur={() => setTouched((p) => ({ ...p, name: true }))}
             disabled={readOnly}
-            placeholder="Required"
+            error={showNameError ? "Name is required." : null}
           />
           <TextInput
-            label="Ceremony at"
+            label="Ceremony code"
+            value={form.code}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setForm((p) => ({ ...p, code: v }));
+            }}
+            onBlur={() => setTouched((p) => ({ ...p, code: true }))}
+            disabled={readOnly}
+            error={showCodeError ? "Ceremony code is required." : null}
+          />
+          <TextInput
+            label="Ceremony date & time"
             type="datetime-local"
             value={form.startsAtLocal}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, startsAtLocal: e.currentTarget.value }))
-            }
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setForm((p) => ({ ...p, startsAtLocal: v }));
+            }}
             disabled={readOnly}
           />
           <TextInput
-            label="Draft warning (hours before)"
+            label="Draft warning (hours)"
             type="number"
             min={0}
             value={form.warningHours}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, warningHours: e.currentTarget.value }))
-            }
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setForm((p) => ({ ...p, warningHours: v }));
+            }}
             disabled={readOnly}
           />
         </Box>
 
         <Group className="inline-actions" mt="sm" wrap="wrap">
-          <Button type="button" onClick={onSave} disabled={saving || readOnly}>
-            {saving ? "Saving..." : "Save changes"}
-          </Button>
-
-          {ceremony.status === "DRAFT" ? (
-            <Button
-              type="button"
-              onClick={onPublish}
-              disabled={publishing || !completeness.ok}
-              title={
-                completeness.ok ? "" : "All categories must have nominees before publish"
-              }
-            >
-              {publishing ? "Publishing..." : "Publish"}
-            </Button>
-          ) : null}
-
-          <Button
-            component={Link}
-            to={`/admin/ceremonies/${ceremony.id}/nominees`}
-            variant="subtle"
-          >
-            Manage nominees
-          </Button>
-          <Button
-            component={Link}
-            to={`/admin/ceremonies/${ceremony.id}/winners`}
-            variant="subtle"
-          >
-            Enter winners
+          <Button type="button" onClick={onSave} disabled={!canSave}>
+            {saving ? "Saving..." : "Save initialization"}
           </Button>
         </Group>
 
-        {form.code.trim().length === 0 || form.name.trim().length === 0 ? (
-          <Box className="status status-warning" role="status">
-            Code and name are required before publishing.
-          </Box>
-        ) : null}
-
-        <FormStatus loading={saving || publishing} result={status} />
-      </Card>
+        <FormStatus loading={saving} result={status} />
+      </StandardCard>
     </Stack>
   );
 }

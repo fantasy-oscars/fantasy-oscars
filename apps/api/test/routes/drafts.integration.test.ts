@@ -3,7 +3,7 @@ import { createServer } from "../../src/server.js";
 import { signToken } from "../../src/auth/token.js";
 import { startTestDatabase, truncateAllTables } from "../db.js";
 import { createApiAgent, type ApiAgent } from "../support/supertest.js";
-import { insertLeague, insertUser } from "../factories/db.js";
+import { insertLeague, insertSeason, insertUser } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -55,11 +55,22 @@ describe("drafts integration", () => {
     await truncateAllTables(db.pool);
   });
 
+  async function publishCeremony(ceremonyId: number) {
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      ceremonyId
+    ]);
+  }
+
   it("rejects draft creation when unauthenticated", async () => {
     const league = await insertLeague(db.pool);
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
     const res = await post<{ error: { code: string } }>(
       "/drafts",
-      { league_id: league.id, draft_order_type: "SNAKE" },
+      { league_id: league.id, season_id: season.id, draft_order_type: "SNAKE" },
       { auth: false }
     );
     expect(res.status).toBe(401);
@@ -69,9 +80,14 @@ describe("drafts integration", () => {
   it("creates a draft in pending state when commissioner", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
     const res = await post<{ draft: { id: number; league_id: number; status: string } }>(
       "/drafts",
-      { league_id: league.id, draft_order_type: "SNAKE" }
+      { league_id: league.id, season_id: season.id, draft_order_type: "SNAKE" }
     );
     expect(res.status).toBe(201);
     expect(res.json.draft.league_id).toBe(league.id);
@@ -86,14 +102,17 @@ describe("drafts integration", () => {
   });
 
   it("rejects when league is missing", async () => {
+    await insertUser(db.pool, { id: 1 });
     const res = await post<{ error: { code: string } }>("/drafts", {});
     expect(res.status).toBe(400);
     expect(res.json.error.code).toBe("VALIDATION_ERROR");
   });
 
   it("rejects when league does not exist", async () => {
+    await insertUser(db.pool, { id: 1 });
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: 999,
+      season_id: 1,
       draft_order_type: "SNAKE"
     });
     expect(res.status).toBe(404);
@@ -103,8 +122,14 @@ describe("drafts integration", () => {
   it("rejects non-snake draft order", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
+      season_id: season.id,
       draft_order_type: "LINEAR"
     });
     expect(res.status).toBe(400);
@@ -114,9 +139,19 @@ describe("drafts integration", () => {
   it("rejects when draft already exists for league", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });
-    await post("/drafts", { league_id: league.id, draft_order_type: "SNAKE" });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
+    await post("/drafts", {
+      league_id: league.id,
+      season_id: season.id,
+      draft_order_type: "SNAKE"
+    });
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
+      season_id: season.id,
       draft_order_type: "SNAKE"
     });
     expect(res.status).toBe(409);
@@ -126,8 +161,14 @@ describe("drafts integration", () => {
   it("pauses and resumes a draft as commissioner", async () => {
     await insertUser(db.pool, { id: 1 });
     const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
     const draftRes = await post<{ draft: { id: number } }>("/drafts", {
       league_id: league.id,
+      season_id: season.id,
       draft_order_type: "SNAKE"
     });
     const draftId = draftRes.json.draft.id;
@@ -156,8 +197,14 @@ describe("drafts integration", () => {
     await insertUser(db.pool, { id: 1 });
     await insertUser(db.pool, { id: 2 });
     const league = await insertLeague(db.pool, { created_by_user_id: 2 });
+    const season = await insertSeason(db.pool, {
+      league_id: league.id,
+      ceremony_id: league.ceremony_id
+    });
+    await publishCeremony(season.ceremony_id);
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
+      season_id: season.id,
       draft_order_type: "SNAKE"
     });
     expect(res.status).toBe(403);

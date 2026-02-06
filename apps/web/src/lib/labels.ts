@@ -7,3 +7,14 @@ export function allocationLabel(strategy?: string | null) {
       return "Leave extras undrafted";
   }
 }
+
+export function scoringLabel(strategy?: string | null) {
+  switch (strategy) {
+    case "negative":
+      return "Negative";
+    case "fixed":
+    default:
+      // User-facing: "fixed" is the standard scoring mode.
+      return "Standard";
+  }
+}

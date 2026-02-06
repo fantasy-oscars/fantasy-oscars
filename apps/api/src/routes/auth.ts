@@ -3,6 +3,7 @@ import type { Router } from "express";
 import crypto from "crypto";
 import {
   PASSWORD_MIN_LENGTH,
+  ANIMAL_AVATAR_KEYS,
   normalizeEmail,
   normalizeUsername,
   validatePassword,
@@ -118,18 +119,19 @@ async function insertUserWithFallback(
     // deduping/searching case-insensitively via lower(username) indexes/queries.
     username_display: string;
     email: string;
+    avatar_key: string;
     password_hash: string;
     password_algo: string;
   }
 ) {
-  // Try to insert into the "new" schema first (username/email/is_admin).
+  // Try to insert into the "new" schema first (username/email/is_admin/avatar_key).
   try {
     const { rows } = await query(
       client,
-      `INSERT INTO app_user (username, email)
-       VALUES ($1, $2)
-       RETURNING id, username, email, created_at, is_admin`,
-      [input.username_display, input.email]
+      `INSERT INTO app_user (username, email, avatar_key)
+       VALUES ($1, $2, $3)
+       RETURNING id, username, email, created_at, is_admin, avatar_key`,
+      [input.username_display, input.email, input.avatar_key]
     );
     const user = rows[0];
     await query(
@@ -139,6 +141,25 @@ async function insertUserWithFallback(
     );
     return { user };
   } catch (err) {
+    // DB may be missing the new column during a deploy; retry without it and
+    // still return a best-effort avatar for the session.
+    if (isMissingColumnError(err, "avatar_key")) {
+      const { rows } = await query(
+        client,
+        `INSERT INTO app_user (username, email)
+         VALUES ($1, $2)
+         RETURNING id, username, email, created_at, is_admin`,
+        [input.username_display, input.email]
+      );
+      const user = rows[0];
+      await query(
+        client,
+        `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
+        [user.id, input.password_hash, input.password_algo]
+      );
+      return { user: { ...user, avatar_key: input.avatar_key } };
+    }
+
     // Legacy schema sometimes required `display_name` (NOT NULL). If so, mirror the
     // username as display_name to keep dogfooding ergonomic until DB reset.
     if (isNotNullViolation(err, "display_name")) {
@@ -156,7 +177,7 @@ async function insertUserWithFallback(
           `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
           [user.id, input.password_hash, input.password_algo]
         );
-        return { user };
+        return { user: { ...user, avatar_key: input.avatar_key } };
       } catch (displayErr) {
         if (isMissingColumnError(displayErr, "is_admin")) {
           const { rows } = await query(
@@ -172,7 +193,7 @@ async function insertUserWithFallback(
             `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
             [user.id, input.password_hash, input.password_algo]
           );
-          return { user: { ...user, is_admin: false } };
+          return { user: { ...user, is_admin: false, avatar_key: input.avatar_key } };
         }
         throw displayErr;
       }
@@ -193,7 +214,7 @@ async function insertUserWithFallback(
         `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
         [user.id, input.password_hash, input.password_algo]
       );
-      return { user: { ...user, is_admin: false } };
+      return { user: { ...user, is_admin: false, avatar_key: input.avatar_key } };
     }
 
     if (isMissingColumnError(err, "username")) {
@@ -212,7 +233,7 @@ async function insertUserWithFallback(
           `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
           [user.id, input.password_hash, input.password_algo]
         );
-        return { user };
+        return { user: { ...user, avatar_key: input.avatar_key } };
       } catch (legacyErr) {
         if (isNotNullViolation(legacyErr, "display_name")) {
           try {
@@ -229,7 +250,7 @@ async function insertUserWithFallback(
               `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
               [user.id, input.password_hash, input.password_algo]
             );
-            return { user };
+            return { user: { ...user, avatar_key: input.avatar_key } };
           } catch (legacyDisplayErr) {
             if (isMissingColumnError(legacyDisplayErr, "is_admin")) {
               const { rows } = await query(
@@ -245,7 +266,7 @@ async function insertUserWithFallback(
                 `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
                 [user.id, input.password_hash, input.password_algo]
               );
-              return { user: { ...user, is_admin: false } };
+              return { user: { ...user, is_admin: false, avatar_key: input.avatar_key } };
             }
             throw legacyDisplayErr;
           }
@@ -265,7 +286,7 @@ async function insertUserWithFallback(
             `INSERT INTO auth_password (user_id, password_hash, password_algo) VALUES ($1, $2, $3)`,
             [user.id, input.password_hash, input.password_algo]
           );
-          return { user: { ...user, is_admin: false } };
+          return { user: { ...user, is_admin: false, avatar_key: input.avatar_key } };
         }
         throw legacyErr;
       }
@@ -335,11 +356,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
       const password_hash = await hashPassword(password);
       const password_algo = "scrypt";
+      const avatar_key =
+        ANIMAL_AVATAR_KEYS[crypto.randomInt(0, ANIMAL_AVATAR_KEYS.length)] ?? "monkey";
 
       try {
         const { user } = await insertUserWithFallback(client, {
           username_display: usernameDisplay,
           email: normalizedEmail,
+          avatar_key,
           password_hash,
           password_algo
         });
@@ -414,7 +438,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           (
             await query(
               client,
-              `SELECT u.id, u.username, u.email, u.is_admin, p.password_hash, p.password_algo
+              `SELECT u.id, u.username, u.email, u.is_admin, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.username) = $1`,
@@ -425,7 +449,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           (
             await query(
               client,
-              `SELECT u.id, u.username, u.email, false AS is_admin, p.password_hash, p.password_algo
+              `SELECT u.id, u.username, u.email, false AS is_admin, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.username) = $1`,
@@ -468,7 +492,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           if (
             !isMissingColumnError(err, "is_admin") &&
             !isMissingColumnError(err, "username") &&
-            !isMissingColumnError(err, "handle")
+            !isMissingColumnError(err, "handle") &&
+            !isMissingColumnError(err, "avatar_key")
           ) {
             break;
           }
@@ -478,7 +503,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         if (
           isMissingColumnError(lastErr, "username") ||
           isMissingColumnError(lastErr, "handle") ||
-          isMissingColumnError(lastErr, "is_admin")
+          isMissingColumnError(lastErr, "is_admin") ||
+          isMissingColumnError(lastErr, "avatar_key")
         ) {
           throw new AppError(
             "SERVICE_UNAVAILABLE",
@@ -494,6 +520,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
         username: string;
         email: string;
         is_admin: boolean;
+        avatar_key?: string | null;
         password_hash: string;
         password_algo: string;
       };
@@ -509,8 +536,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       }
 
       // Skeleton: return placeholder token (non-secure) for v0.
+      const avatarKey = String(user.avatar_key ?? "monkey");
       const token = signToken(
-        { sub: String(user.id), username: user.username, is_admin: user.is_admin },
+        {
+          sub: String(user.id),
+          username: user.username,
+          is_admin: user.is_admin,
+          avatar_key: avatarKey
+        },
         authSecret,
         Math.floor(cookieConfig.maxAgeMs / 1000)
       );
@@ -526,7 +559,8 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           id: user.id,
           username: user.username,
           email: user.email,
-          is_admin: user.is_admin
+          is_admin: user.is_admin,
+          avatar_key: avatarKey
         },
         token
       });
@@ -535,8 +569,88 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
     }
   });
 
-  router.get("/me", requireAuth(authSecret), (req: AuthedRequest, res) => {
-    return res.json({ user: req.auth });
+  router.get("/me", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
+    try {
+      const userId = req.auth?.sub;
+      if (!userId) return res.json({ user: req.auth });
+
+      const tryQueries: Array<() => Promise<unknown[]>> = [
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT id::text AS sub, username, email, is_admin, avatar_key
+               FROM app_user
+               WHERE id = $1`,
+              [userId]
+            )
+          ).rows as unknown[],
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT id::text AS sub, username, email, is_admin
+               FROM app_user
+               WHERE id = $1`,
+              [userId]
+            )
+          ).rows as unknown[],
+        async () =>
+          (
+            await query(
+              client,
+              `SELECT id::text AS sub, handle AS username, email, is_admin
+               FROM app_user
+               WHERE id = $1`,
+              [userId]
+            )
+          ).rows as unknown[]
+      ];
+
+      let rows: unknown[] | undefined;
+      let lastErr: unknown = undefined;
+      for (const run of tryQueries) {
+        try {
+          rows = await run();
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (
+            !isMissingColumnError(err, "avatar_key") &&
+            !isMissingColumnError(err, "username") &&
+            !isMissingColumnError(err, "handle") &&
+            !isMissingColumnError(err, "is_admin")
+          ) {
+            break;
+          }
+        }
+      }
+
+      if (!rows) throw lastErr;
+      const user = rows[0] as
+        | undefined
+        | {
+            sub: string;
+            username?: string;
+            email?: string;
+            is_admin?: boolean;
+            avatar_key?: string | null;
+          };
+
+      if (!user) return res.json({ user: req.auth });
+
+      return res.json({
+        user: {
+          sub: user.sub,
+          username: user.username ?? req.auth?.username,
+          email: user.email,
+          is_admin: user.is_admin ?? req.auth?.is_admin,
+          avatar_key: user.avatar_key ?? req.auth?.avatar_key ?? "monkey"
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
   });
 
   router.post("/logout", (_req, res) => {

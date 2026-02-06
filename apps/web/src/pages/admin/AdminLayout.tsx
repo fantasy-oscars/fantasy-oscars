@@ -1,55 +1,60 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Box, Card, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Stack, Title } from "@mantine/core";
+import "../../primitives/baseline.css";
 
 export function AdminLayout() {
   const { pathname } = useLocation();
-  const linkClass = (active: boolean) => `admin-link${active ? " is-active" : ""}`;
+  const linkClass = (active: boolean) => `nav-link${active ? " active" : ""}`;
 
   return (
-    <Box component="section" className="admin-shell">
-      <Card className="admin-nav" component="aside" aria-label="Admin">
-        <Box className="admin-nav-header">
-          <Title order={2}>Admin</Title>
-          <Text className="muted">Tools and configuration</Text>
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <Box component="section" className="admin-shell">
+          <Box component="header" className="admin-header">
+            <Title order={2} className="baseline-textHeroTitle">
+              Admin
+            </Title>
+            <Box component="nav" className="site-nav" aria-label="Admin sections">
+              <Group className="nav-links" gap="md" wrap="wrap">
+                <NavLink end to="/admin" className={linkClass(pathname === "/admin")}>
+                  Home
+                </NavLink>
+
+                <NavLink
+                  to="/admin/ceremonies"
+                  className={linkClass(pathname.startsWith("/admin/ceremonies"))}
+                >
+                  Ceremonies
+                </NavLink>
+
+                <NavLink
+                  to="/admin/users"
+                  className={linkClass(pathname.startsWith("/admin/users"))}
+                >
+                  Users
+                </NavLink>
+
+                <NavLink
+                  to="/admin/content"
+                  className={linkClass(pathname.startsWith("/admin/content"))}
+                >
+                  Content &amp; Messaging
+                </NavLink>
+
+                <NavLink
+                  to="/admin/system"
+                  className={linkClass(pathname.startsWith("/admin/system"))}
+                >
+                  System
+                </NavLink>
+              </Group>
+            </Box>
+          </Box>
+
+          <Stack className="admin-content" gap="md">
+            <Outlet />
+          </Stack>
         </Box>
-
-        <Stack component="nav" className="admin-nav-links" aria-label="Admin sections">
-          <NavLink end to="/admin" className={linkClass(pathname === "/admin")}>
-            Home
-          </NavLink>
-
-          <NavLink
-            to="/admin/ceremonies"
-            className={linkClass(pathname.startsWith("/admin/ceremonies"))}
-          >
-            Ceremonies
-          </NavLink>
-
-          <NavLink
-            to="/admin/users"
-            className={linkClass(pathname.startsWith("/admin/users"))}
-          >
-            Users
-          </NavLink>
-
-          <NavLink
-            to="/admin/content"
-            className={linkClass(pathname.startsWith("/admin/content"))}
-          >
-            Content &amp; Messaging
-          </NavLink>
-
-          <NavLink
-            to="/admin/system"
-            className={linkClass(pathname.startsWith("/admin/system"))}
-          >
-            System
-          </NavLink>
-        </Stack>
-      </Card>
-
-      <Box className="admin-content">
-        <Outlet />
       </Box>
     </Box>
   );

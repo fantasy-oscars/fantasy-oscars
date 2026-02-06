@@ -1,7 +1,7 @@
-import { useLeaguesIndexOrchestration } from "../orchestration/leagues";
-import { LeaguesIndexScreen } from "../screens/leagues/LeaguesIndexScreen";
+import { useLeagueIndexOrchestration } from "../orchestration/leagueIndex";
+import { LeagueIndexScreen } from "../screens/LeagueIndexScreen";
 
 export function LeaguesPage() {
-  const { view } = useLeaguesIndexOrchestration();
-  return <LeaguesIndexScreen view={view} />;
+  const { view } = useLeagueIndexOrchestration();
+  return <LeagueIndexScreen view={view} />;
 }

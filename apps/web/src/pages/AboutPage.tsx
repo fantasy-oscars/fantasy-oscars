@@ -1,7 +1,7 @@
 import { useStaticContentOrchestration } from "../orchestration/content";
-import { StaticContentScreen } from "../screens/content/StaticContentScreen";
+import { AboutScreen } from "../screens/AboutScreen";
 
 export function AboutPage() {
   const { view } = useStaticContentOrchestration("about");
-  return <StaticContentScreen fallbackTitle="About" view={view} />;
+  return <AboutScreen title="About" view={view} />;
 }

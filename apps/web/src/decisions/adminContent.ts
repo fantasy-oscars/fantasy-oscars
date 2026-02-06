@@ -10,36 +10,36 @@ export type StaticKey =
 
 export const STATIC_META: Record<StaticKey, { label: string; hint: string }> = {
   landing_blurb: {
-    label: "Landing Page Blurb",
-    hint: "Live immediately. Keep it short and punchy."
+    label: "Hero",
+    hint: "The hero card at the top of the Home page (title + tagline)."
   },
   about: {
     label: "About",
-    hint: "Live immediately. Shown at /about."
+    hint: "Single-page site content shown under About."
   },
   faq: {
     label: "FAQ",
-    hint: "Live immediately. Shown at /faq."
+    hint: "Single-page site content shown under FAQ."
   },
   how_it_works: {
     label: "How It Works",
-    hint: "Live immediately. Shown at /how-it-works."
+    hint: "Single-page site content shown under How It Works."
   },
   code_of_conduct: {
     label: "Code of Conduct",
-    hint: "Live immediately. Shown at /code-of-conduct."
+    hint: "Legal page shown under Code of Conduct."
   },
   legal_terms: {
     label: "Terms",
-    hint: "Live immediately. Shown at /terms."
+    hint: "Legal page shown under Terms."
   },
   legal_privacy: {
     label: "Privacy",
-    hint: "Live immediately. Shown at /privacy."
+    hint: "Legal page shown under Privacy."
   },
   legal_disclaimer: {
     label: "Disclaimer",
-    hint: "Live immediately. Shown at /disclaimer."
+    hint: "Legal page shown under Disclaimer."
   }
 };
 
@@ -47,12 +47,12 @@ export type DynamicKey = "banner" | "home_main";
 
 export const DYNAMIC_META: Record<DynamicKey, { label: string; hint: string }> = {
   home_main: {
-    label: "Home Main Body",
-    hint: "Long-form content shown on the landing page."
+    label: "Home main body",
+    hint: "Exactly one entry is shown on the landing page at a time."
   },
   banner: {
-    label: "Banner",
-    hint: "Short message shown prominently in-app."
+    label: "Banner messages",
+    hint: "Multiple banners may be shown at the same time."
   }
 };
 

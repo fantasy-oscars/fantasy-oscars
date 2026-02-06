@@ -23,18 +23,8 @@ export function AdminDynamicContentLedgerPage() {
             navigate(`/admin/content/dynamic/${key}/drafts/${res.draftId}`);
         });
       }}
-      onPublishDraft={(draftId) => {
-        if (
-          window.confirm(
-            "Publish this entry? It will replace the currently published entry."
-          )
-        ) {
-          void o.publishDraft(draftId);
-        }
-      }}
-      onUnpublishEntry={(entryId) => {
-        if (window.confirm("Unpublish this entry?")) void o.unpublishEntry(entryId);
-      }}
+      onPublishDraft={(draftId) => void o.publishDraft(draftId)}
+      onUnpublishEntry={(entryId) => void o.unpublishEntry(entryId)}
     />
   );
 }

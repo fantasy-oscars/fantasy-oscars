@@ -1,17 +1,14 @@
-import { Box, Card, Text, Title } from "@mantine/core";
-import { ResultsPage } from "./ResultsPage";
+import { useCeremoniesIndexOrchestration } from "../orchestration/ceremonies";
+import { CeremoniesIndexBaselineScreen } from "../screens/CeremoniesIndexBaselineScreen";
 
 export function CeremoniesPage() {
+  const o = useCeremoniesIndexOrchestration();
   return (
-    <Card className="card" component="section">
-      <Box component="header">
-        <Title order={2}>Ceremonies</Title>
-        <Text className="muted">
-          Active ceremony winners and draft standings. (MVP: uses a selected draft to
-          compute standings.)
-        </Text>
-      </Box>
-      <ResultsPage />
-    </Card>
+    <CeremoniesIndexBaselineScreen
+      state={o.state}
+      error={o.error}
+      active={o.active}
+      archived={o.archived}
+    />
   );
 }

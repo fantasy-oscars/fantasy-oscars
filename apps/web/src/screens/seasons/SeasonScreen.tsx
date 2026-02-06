@@ -1,18 +1,23 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Box,
   Button,
-  Card,
+  Divider,
   Group,
+  Modal,
+  NumberInput,
   Select,
   Stack,
+  Switch,
   Text,
   TextInput,
   Title
 } from "@mantine/core";
-import { allocationLabel } from "../../lib/labels";
-import { FormStatus } from "../../ui/forms";
+import { allocationLabel, scoringLabel } from "../../lib/labels";
 import { PageLoader } from "../../ui/page-state";
+import { CommissionerPill, StatusPill } from "../../ui/pills";
+import "../../primitives/baseline.css";
 
 export function SeasonScreen(props: {
   seasonIdLabel: string;
@@ -20,291 +25,294 @@ export function SeasonScreen(props: {
   view: ReturnType<typeof import("../../orchestration/seasons").useSeasonOrchestration>;
   onDeleteSeason: () => void | Promise<void>;
 }) {
-  const { seasonIdLabel, leagueIdForBackLink, view: s, onDeleteSeason } = props;
+  const { seasonIdLabel, view: s, onDeleteSeason } = props;
+
+  const [invitesOpen, setInvitesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [settingsDraft, setSettingsDraft] = useState<{
+    scoringStrategy: "fixed" | "negative";
+    allocationStrategy: "UNDRAFTED" | "FULL_POOL";
+    timerEnabled: boolean;
+    pickTimerSeconds: number;
+  } | null>(null);
+
+  const leagueName = s.leagueContext?.league?.name ?? null;
+  const ceremonyId = s.leagueContext?.season?.ceremony_id ?? null;
+  const ceremonyName =
+    s.leagueContext?.season?.ceremony_name ??
+    (ceremonyId ? `Ceremony ${ceremonyId}` : `Ceremony`);
+
+  const progression = useMemo(() => {
+    if (s.isArchived) return "Archived";
+    const ds = String(s.draftStatus ?? "").toUpperCase();
+    if (ds === "COMPLETED") return "Draft complete";
+    if (ds === "IN_PROGRESS" || ds === "LIVE") return "Drafting";
+    if (ds === "PAUSED") return "Paused";
+    return "Pre-draft";
+  }, [s.draftStatus, s.isArchived]);
+
+  const isLocked = useMemo(() => {
+    if (s.isArchived) return true;
+    const ds = String(s.draftStatus ?? "").toUpperCase();
+    return Boolean(ds && ds !== "PENDING");
+  }, [s.draftStatus, s.isArchived]);
+
+  const draftRoomCtaLabel = useMemo(() => {
+    const cs = String(s.ceremonyStatus ?? "").toUpperCase();
+    if (cs === "COMPLETE" || cs === "ARCHIVED") return "View results";
+
+    const ds = String(s.draftStatus ?? "").toUpperCase();
+    if (ds === "COMPLETED") return "View draft results";
+
+    // PENDING / IN_PROGRESS / LIVE / PAUSED (and other pre-complete states)
+    return "Enter draft room";
+  }, [s.ceremonyStatus, s.draftStatus]);
+
+  const draftDefaults = useMemo(() => {
+    const scoring = (s.scoringStrategy ?? "fixed") as "fixed" | "negative";
+    const allocation = (s.allocationStrategy ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL";
+    const timerEnabled = Boolean(s.leagueContext?.season?.pick_timer_seconds);
+    const pickTimerSeconds = s.leagueContext?.season?.pick_timer_seconds
+      ? Number(s.leagueContext.season.pick_timer_seconds)
+      : 60;
+
+    return { scoring, allocation, timerEnabled, pickTimerSeconds };
+  }, [
+    s.scoringStrategy,
+    s.allocationStrategy,
+    s.leagueContext?.season?.pick_timer_seconds
+  ]);
 
   if (s.loading) return <PageLoader label="Loading season..." />;
   if (s.error) {
     return (
-      <Card className="card" component="section">
-        <Box component="header">
-          <Title order={2}>Season {seasonIdLabel}</Title>
-          <Text className="muted">Could not load season data.</Text>
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack component="section" gap="md">
+            <Box component="header">
+              <Title order={2} className="baseline-textHeroTitle">
+                Season {seasonIdLabel}
+              </Title>
+              <Text className="baseline-textBody">Could not load season data.</Text>
+            </Box>
+            <Box className="status status-error">{s.error}</Box>
+          </Stack>
         </Box>
-        <Box className="status status-error">{s.error}</Box>
-      </Card>
+      </Box>
     );
   }
 
   return (
-    <Card className="card" component="section">
-      <Group
-        className="header-with-controls"
-        justify="space-between"
-        align="start"
-        wrap="wrap"
-      >
-        <Box>
-          <Title order={2}>Season {seasonIdLabel}</Title>
-          <Text className="muted">
-            {s.leagueContext?.league?.name
-              ? `League ${s.leagueContext.league.name} • Ceremony ${
-                  s.leagueContext.league.ceremony_id ?? "TBD"
-                }`
-              : "Season participants and invites"}
-          </Text>
-        </Box>
-        {s.canEdit && (
-          <Group className="inline-actions" wrap="wrap">
-            <Button
-              type="button"
-              className="danger"
-              disabled={s.working}
-              onClick={onDeleteSeason}
-            >
-              Delete season
-            </Button>
-          </Group>
-        )}
-        <Group className="pill-list" wrap="wrap">
-          <Box component="span" className="pill">
-            Status: {s.seasonStatus}
-          </Box>
-          <Box component="span" className="pill">
-            {s.isArchived ? "ARCHIVED (read-only)" : "ACTIVE"}
-          </Box>
-          <Box component="span" className="pill">
-            Scoring: {s.scoringStrategy}
-          </Box>
-          <Box component="span" className="pill">
-            Allocation: {allocationLabel(s.allocationStrategy)}
-          </Box>
-        </Group>
-        {leagueIdForBackLink ? (
-          <Group className="inline-actions" wrap="wrap">
-            <Button
-              component={Link}
-              to={`/leagues/${leagueIdForBackLink}`}
-              variant="subtle"
-            >
-              Back to league
-            </Button>
-          </Group>
-        ) : null}
-      </Group>
-      {s.canEdit && <FormStatus loading={s.working} result={s.cancelResult} />}
-
-      {s.isArchived && (
-        <Box className="status status-info" role="status">
-          Archived season: roster, invites, and scoring are locked. Draft room and
-          standings remain view-only year-round.
-        </Box>
-      )}
-
-      <Card className="card nested" component="section" mt="md">
-        <Group
-          className="header-with-controls"
-          justify="space-between"
-          align="start"
-          wrap="wrap"
-        >
-          <Box>
-            <Title order={3}>Draft Room</Title>
-            <Text className="muted">Join the live draft for this season.</Text>
-          </Box>
-          <Group className="inline-actions" wrap="wrap">
-            {s.draftId ? (
-              <Button component={Link} to={`/drafts/${s.draftId}`} variant="subtle">
-                Enter draft room
-              </Button>
-            ) : s.canEdit ? (
-              <Button
-                type="button"
-                onClick={() => void s.createDraft()}
-                disabled={s.working}
-              >
-                Create draft
-              </Button>
-            ) : (
-              <Box component="span" className="pill">
-                Draft not created yet
-              </Box>
-            )}
-          </Group>
-        </Group>
-        {s.isArchived && (
-          <Text className="muted">
-            Past season — draft actions are locked; results remain viewable.
-          </Text>
-        )}
-        {!s.draftId && s.canEdit && (
-          <FormStatus loading={s.working} result={s.draftCreateResult} />
-        )}
-        {s.integrityWarningActive && (
-          <Box className="status status-warning" role="status">
-            Heads up: once winners start getting entered after the ceremony begins,
-            drafting stops immediately. If you are in the room then, it ends just like a
-            cancellation.
-          </Box>
-        )}
-        {s.leagueContext?.season?.draft_status && (
-          <Text className="muted">
-            Timer:{" "}
-            {s.leagueContext.season.pick_timer_seconds
-              ? `${s.leagueContext.season.pick_timer_seconds}s per pick (auto-pick: next available)`
-              : "Off"}
-          </Text>
-        )}
-        {s.ceremonyStartsAt && (
-          <Text className="muted">
-            Ceremony starts {s.formatDate(s.ceremonyStartsAt)} (warning window: 24h
-            prior).
-          </Text>
-        )}
-        {!s.draftId && (
-          <Text className="muted">
-            The commissioner will create the draft for this season.
-          </Text>
-        )}
-      </Card>
-
-      <Box className="grid two-col" mt="md">
-        <Card className="card nested" component="section">
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <Stack component="section" gap="md">
+          {/* Full-width header */}
           <Group
-            className="header-with-controls"
+            component="header"
             justify="space-between"
-            align="start"
+            align="flex-start"
             wrap="wrap"
           >
             <Box>
-              <Title order={3}>Participants</Title>
-              <Text className="muted">Season roster.</Text>
+              <Title order={2} className="baseline-textHeroTitle">
+                {ceremonyName}
+              </Title>
+              <Text className="baseline-textBody">{leagueName ?? "—"}</Text>
             </Box>
+            <StatusPill>{progression.toUpperCase()}</StatusPill>
           </Group>
-          {s.isArchived && (
-            <Box className="status status-info" role="status">
-              Roster locked (archived season).
-            </Box>
-          )}
-          {s.members.length === 0 ? (
-            <Text className="muted">No participants yet.</Text>
-          ) : (
-            <Stack component="ul" className="list">
-              {s.members.map((m) => {
-                const leagueProfile = s.leagueContext?.leagueMembers?.find(
-                  (lm) => lm.user_id === m.user_id
-                );
-                return (
-                  <Box key={m.user_id} component="li" className="list-row">
-                    <Text span>
-                      {m.username ?? leagueProfile?.username ?? `User ${m.user_id}`}
-                    </Text>
-                    <Box component="span" className="pill">
-                      {m.role}
-                    </Box>
-                    {s.canEdit && m.role !== "OWNER" && (
-                      <Button
-                        type="button"
-                        variant="subtle"
-                        disabled={s.working}
-                        onClick={() => void s.removeMember(m.user_id)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-          {s.canEdit && (
-            <>
-              <Group className="inline-actions" wrap="wrap">
-                <Select
-                  aria-label="Select league member"
-                  placeholder="Add league member..."
-                  value={s.selectedLeagueMember || null}
-                  onChange={(v) => s.setSelectedLeagueMember(v ?? "")}
-                  data={s.availableLeagueMembers.map((lm) => ({
-                    value: String(lm.user_id),
-                    label: lm.username
-                  }))}
-                  disabled={s.working}
-                />
-                <Text className="muted" span>
-                  or
+
+          {/* Three-column functional layout */}
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+              gap: 18,
+              alignItems: "start"
+            }}
+          >
+            {/* Column 1: Rules */}
+            <Stack gap="sm">
+              <Title order={3}>Rules</Title>
+              <Divider />
+              <Stack gap={6}>
+                <Text>
+                  <Text component="span" className="muted">
+                    Scoring:
+                  </Text>{" "}
+                  {scoringLabel(s.scoringStrategy)}
                 </Text>
-                <TextInput
-                  placeholder="Username…"
-                  value={s.manualUsername}
-                  onChange={(e) => s.setManualUsername(e.currentTarget.value)}
-                  disabled={s.working}
-                  aria-label="Username"
-                />
+                <Text>
+                  <Text component="span" className="muted">
+                    Allocation:
+                  </Text>{" "}
+                  {allocationLabel(s.allocationStrategy)}
+                </Text>
+                <Text>
+                  <Text component="span" className="muted">
+                    Draft timer:
+                  </Text>{" "}
+                  {s.leagueContext?.season?.pick_timer_seconds
+                    ? `${s.leagueContext.season.pick_timer_seconds}s`
+                    : "Off"}
+                </Text>
+                <Text>
+                  <Text component="span" className="muted">
+                    Ceremony time:
+                  </Text>{" "}
+                  {s.formatDate(s.ceremonyStartsAt)}
+                </Text>
+              </Stack>
+            </Stack>
+
+            {/* Column 2: Participants */}
+            <Stack gap="sm">
+              <Title order={3}>Participants</Title>
+              <Divider />
+              {s.members.length === 0 ? (
+                <Text className="muted">No participants.</Text>
+              ) : (
+                <Stack
+                  component="ul"
+                  gap="xs"
+                  style={{ listStyle: "none", margin: 0, padding: 0 }}
+                >
+                  {s.members.map((m) => (
+                    <Group
+                      key={m.id}
+                      justify="space-between"
+                      align="center"
+                      wrap="nowrap"
+                    >
+                      <Text>{m.username ?? `User ${m.user_id}`}</Text>
+                      {m.role === "OWNER" ? <CommissionerPill /> : null}
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+
+            {/* Column 3: Draft room */}
+            <Stack gap="sm">
+              <Title order={3}>Draft room</Title>
+              <Divider />
+              <Group wrap="wrap">
+                {s.draftId ? (
+                  <Button component={Link} to={`/drafts/${s.draftId}`} variant="filled">
+                    {draftRoomCtaLabel}
+                  </Button>
+                ) : (
+                  <Button disabled variant="filled">
+                    {draftRoomCtaLabel}
+                  </Button>
+                )}
+                {ceremonyId ? (
+                  <Button
+                    component={Link}
+                    to={`/ceremonies/${ceremonyId}/draft-plans`}
+                    variant="subtle"
+                  >
+                    Draft plans
+                  </Button>
+                ) : (
+                  <Button disabled variant="subtle">
+                    Draft plans
+                  </Button>
+                )}
+              </Group>
+            </Stack>
+          </Box>
+
+          {/* Season management aligned under the Draft room column */}
+          {s.canEdit ? (
+            <Box
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+                gap: 18,
+                alignItems: "start"
+              }}
+            >
+              <Box />
+              <Box />
+              <Stack gap="sm">
+                <Title order={3} className="baseline-textSectionHeader">
+                  Season management
+                </Title>
+                <Stack gap="xs">
+                  <Button
+                    variant="outline"
+                    onClick={() => setInvitesOpen(true)}
+                    disabled={isLocked}
+                    title={
+                      isLocked ? "Invites are locked once drafting starts" : undefined
+                    }
+                  >
+                    Manage invites
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSettingsDraft({
+                        scoringStrategy: draftDefaults.scoring,
+                        allocationStrategy: draftDefaults.allocation,
+                        timerEnabled: draftDefaults.timerEnabled,
+                        pickTimerSeconds: draftDefaults.pickTimerSeconds
+                      });
+                      setSettingsOpen(true);
+                    }}
+                    disabled={isLocked}
+                    title={
+                      isLocked
+                        ? "Draft settings are locked once drafting starts"
+                        : undefined
+                    }
+                  >
+                    Adjust draft settings
+                  </Button>
+                </Stack>
+                <Divider my="sm" />
+                <Title order={4} className="baseline-textSectionHeader">
+                  Danger zone
+                </Title>
                 <Button
-                  type="button"
-                  onClick={() => void s.addMember()}
+                  color="red"
+                  variant="outline"
+                  onClick={() => setDeleteOpen(true)}
                   disabled={s.working}
                 >
-                  Add to season
+                  Delete season
                 </Button>
-              </Group>
-              <Text className="muted">
-                You can add anyone by username; if they aren&apos;t already a league
-                member, they&apos;ll be added to the league automatically.
-              </Text>
-              <FormStatus loading={s.working} result={s.addMemberResult} />
-            </>
-          )}
-        </Card>
-
-        <Card className="card nested" component="section">
-          <Group
-            className="header-with-controls"
-            justify="space-between"
-            align="start"
-            wrap="wrap"
-          >
-            <Box>
-              <Title order={3}>Commissioner Controls</Title>
-              <Text className="muted">Scoring + invites. Draft must be pending.</Text>
+              </Stack>
             </Box>
-          </Group>
-          {s.isArchived ? (
-            <Text className="muted">
-              Archived season — scoring and invites are read-only. No edits allowed.
-            </Text>
-          ) : (
-            <Stack className="stack">
-              <Group className="pill-list" wrap="wrap">
-                <Box component="span" className="pill">
-                  Scoring: {s.scoringStrategy}
-                </Box>
-                <Box component="span" className="pill">
-                  Leftovers: {allocationLabel(s.allocationStrategy)}
-                </Box>
-              </Group>
-              <Text className="muted">
-                Scoring and leftovers are set when creating the season (editing coming
-                later).
-              </Text>
+          ) : null}
 
+          {/* Modals */}
+          <Modal
+            opened={invitesOpen}
+            onClose={() => setInvitesOpen(false)}
+            title="Manage invites"
+            centered
+          >
+            <Stack gap="md">
               <Group className="inline-form" wrap="wrap" align="flex-end">
                 <TextInput
                   label="Username to invite"
                   name="username"
                   value={s.userInviteQuery}
                   onChange={(e) => s.setUserInviteQuery(e.currentTarget.value)}
-                  disabled={!s.canEdit || s.working}
+                  disabled={!s.canEdit || s.working || isLocked}
                 />
                 <Button
                   type="button"
                   onClick={() => void s.createUserInvite()}
-                  disabled={!s.canEdit || s.working}
+                  disabled={!s.canEdit || s.working || isLocked}
                 >
                   Create invite
                 </Button>
               </Group>
-              <FormStatus loading={s.working} result={s.userInviteResult} />
 
               <Group className="inline-form" wrap="wrap" align="flex-end">
                 <TextInput
@@ -312,22 +320,21 @@ export function SeasonScreen(props: {
                   name="label"
                   value={s.placeholderLabel}
                   onChange={(e) => s.setPlaceholderLabel(e.currentTarget.value)}
-                  disabled={!s.canEdit || s.working}
+                  disabled={!s.canEdit || s.working || isLocked}
                 />
                 <Button
                   type="button"
                   onClick={() => void s.createPlaceholderInvite()}
-                  disabled={!s.canEdit || s.working}
+                  disabled={!s.canEdit || s.working || isLocked}
                 >
                   Generate link
                 </Button>
               </Group>
-              <FormStatus loading={s.working} result={s.inviteResult} />
 
               {s.invites.length === 0 ? (
                 <Text className="muted">No invites created yet.</Text>
               ) : (
-                <Stack className="list">
+                <Stack className="list" gap="sm">
                   {s.invites.map((invite) => (
                     <Box key={invite.id} className="list-row">
                       <Box>
@@ -380,9 +387,200 @@ export function SeasonScreen(props: {
                 </Stack>
               )}
             </Stack>
-          )}
-        </Card>
+          </Modal>
+
+          <Modal
+            opened={settingsOpen}
+            onClose={() => {
+              setSettingsOpen(false);
+              setSettingsDraft(null);
+            }}
+            title="Adjust draft settings"
+            centered
+          >
+            <Stack gap="md">
+              <Select
+                label="Scoring"
+                value={
+                  (settingsDraft?.scoringStrategy ?? draftDefaults.scoring) as string
+                }
+                onChange={(v) => {
+                  const next = (v ?? "fixed") as "fixed" | "negative";
+                  setSettingsDraft((p) => ({
+                    scoringStrategy: next,
+                    allocationStrategy: (p?.allocationStrategy ??
+                      draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
+                    timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
+                    pickTimerSeconds:
+                      p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                  }));
+                }}
+                disabled={!s.canEdit || s.working || isLocked}
+                data={[
+                  { value: "fixed", label: "Standard" },
+                  { value: "negative", label: "Negative" }
+                ]}
+              />
+
+              <Select
+                label="Allocation"
+                value={
+                  (settingsDraft?.allocationStrategy ??
+                    draftDefaults.allocation) as string
+                }
+                onChange={(v) => {
+                  const next = (v ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL";
+                  setSettingsDraft((p) => ({
+                    scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
+                      | "fixed"
+                      | "negative",
+                    allocationStrategy: next,
+                    timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
+                    pickTimerSeconds:
+                      p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                  }));
+                }}
+                disabled={!s.canEdit || s.working || isLocked}
+                data={[
+                  { value: "UNDRAFTED", label: "Leave extras undrafted" },
+                  { value: "FULL_POOL", label: "Use full pool (extras drafted)" }
+                ]}
+              />
+
+              <Group className="inline-form" wrap="wrap" align="flex-end">
+                <Switch
+                  label="Pick timer"
+                  checked={settingsDraft?.timerEnabled ?? draftDefaults.timerEnabled}
+                  onChange={(e) => {
+                    const next = e.currentTarget.checked;
+                    setSettingsDraft((p) => ({
+                      scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
+                        | "fixed"
+                        | "negative",
+                      allocationStrategy: (p?.allocationStrategy ??
+                        draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
+                      timerEnabled: next,
+                      pickTimerSeconds:
+                        p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                    }));
+                  }}
+                  disabled={!s.canEdit || s.working || isLocked}
+                />
+                <NumberInput
+                  label="Seconds per pick"
+                  value={
+                    settingsDraft?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                  }
+                  onChange={(v) => {
+                    const next = Number(v) || 0;
+                    setSettingsDraft((p) => ({
+                      scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
+                        | "fixed"
+                        | "negative",
+                      allocationStrategy: (p?.allocationStrategy ??
+                        draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
+                      timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
+                      pickTimerSeconds: next
+                    }));
+                  }}
+                  min={0}
+                  step={5}
+                  disabled={
+                    !s.canEdit ||
+                    s.working ||
+                    isLocked ||
+                    !(settingsDraft?.timerEnabled ?? draftDefaults.timerEnabled)
+                  }
+                />
+              </Group>
+
+              <Group justify="flex-end" wrap="wrap">
+                <Button
+                  type="button"
+                  variant="subtle"
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    setSettingsDraft(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    const draft = settingsDraft ?? {
+                      scoringStrategy: draftDefaults.scoring,
+                      allocationStrategy: draftDefaults.allocation,
+                      timerEnabled: draftDefaults.timerEnabled,
+                      pickTimerSeconds: draftDefaults.pickTimerSeconds
+                    };
+
+                    const nextTimerSeconds = draft.timerEnabled
+                      ? draft.pickTimerSeconds
+                      : null;
+
+                    const dirty =
+                      draft.scoringStrategy !== draftDefaults.scoring ||
+                      draft.allocationStrategy !== draftDefaults.allocation ||
+                      (draftDefaults.timerEnabled
+                        ? draftDefaults.pickTimerSeconds
+                        : null) !== nextTimerSeconds;
+
+                    if (!dirty) {
+                      setSettingsOpen(false);
+                      setSettingsDraft(null);
+                      return;
+                    }
+
+                    if (draft.scoringStrategy !== draftDefaults.scoring) {
+                      await s.updateScoring(draft.scoringStrategy);
+                    }
+                    if (draft.allocationStrategy !== draftDefaults.allocation) {
+                      await s.updateAllocation(draft.allocationStrategy);
+                    }
+                    await s.updateTimerWith(nextTimerSeconds);
+
+                    setSettingsOpen(false);
+                    setSettingsDraft(null);
+                  }}
+                  disabled={!s.canEdit || s.working || isLocked}
+                >
+                  Save
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            title="Delete season?"
+            centered
+          >
+            <Stack gap="md">
+              <Text>
+                Delete this season? This cancels the season and blocks drafting. This
+                cannot be undone.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  color="red"
+                  onClick={() => {
+                    setDeleteOpen(false);
+                    void onDeleteSeason();
+                  }}
+                  disabled={s.working}
+                >
+                  Delete season
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+        </Stack>
       </Box>
-    </Card>
+    </Box>
   );
 }

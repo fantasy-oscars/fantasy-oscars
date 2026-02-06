@@ -1,129 +1,168 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import "../../../primitives/baseline.css";
 
 export function AdminContentHomePage() {
   return (
     <Stack component="section" className="stack">
-      <Card className="card nested" component="section">
-        <Box component="header">
-          <Title order={3}>Static Content (live)</Title>
-          <Text className="muted">
-            Changes apply immediately. Use for evergreen pages like About/FAQ and legal
-            copy.
-          </Text>
-        </Box>
-
-        <Box className="grid two-col">
-          <Card className="card nested">
-            <Title order={4}>Landing</Title>
-            <Text className="muted">Short blurb at the top of the landing page.</Text>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
-              <Button
-                component={Link}
-                to="/admin/content/static/landing_blurb"
-                variant="subtle"
-              >
-                Edit landing blurb
+      <Title order={4} className="baseline-textSectionHeader">
+        Landing page
+      </Title>
+      <Stack gap={0}>
+        {[
+          {
+            title: "Hero",
+            description: "The hero card at the top of the Home page (title + tagline).",
+            action: "Edit",
+            to: "/admin/content/static/landing_blurb"
+          },
+          {
+            title: "Home main body",
+            description: "Exactly one entry is shown on the landing page at a time.",
+            action: "Open",
+            to: "/admin/content/dynamic/home_main"
+          }
+        ].map((row, idx, all) => (
+          <Box key={row.to}>
+            <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+              <Box>
+                <Text fw={600} className="baseline-textBody">
+                  {row.title}
+                </Text>
+                <Text className="baseline-textBody" c="dimmed">
+                  {row.description}
+                </Text>
+              </Box>
+              <Button component={Link} to={row.to} variant="subtle">
+                {row.action}
               </Button>
             </Group>
-          </Card>
+            {idx === all.length - 1 ? null : <Divider />}
+          </Box>
+        ))}
+      </Stack>
 
-          <Card className="card nested">
-            <Title order={4}>Site Pages</Title>
-            <Text className="muted">Evergreen pages shown in the main nav/footer.</Text>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
-              <Button component={Link} to="/admin/content/static/about" variant="subtle">
-                Edit About
-              </Button>
-              <Button
-                component={Link}
-                to="/admin/content/static/how_it_works"
-                variant="subtle"
-              >
-                Edit How It Works
-              </Button>
-              <Button component={Link} to="/admin/content/static/faq" variant="subtle">
-                Edit FAQ
+      <Divider my="md" />
+
+      <Title order={3} className="baseline-textSectionHeader">
+        Site Pages
+      </Title>
+      <Stack gap={0}>
+        {[
+          {
+            label: "About",
+            description: "Single-page site content shown under About.",
+            to: "/admin/content/static/about"
+          },
+          {
+            label: "How It Works",
+            description: "Single-page site content shown under How It Works.",
+            to: "/admin/content/static/how_it_works"
+          },
+          {
+            label: "FAQ",
+            description: "Single-page site content shown under FAQ.",
+            to: "/admin/content/static/faq"
+          }
+        ].map((row, idx, all) => (
+          <Box key={row.to}>
+            <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+              <Box>
+                <Text fw={600} className="baseline-textBody">
+                  {row.label}
+                </Text>
+                <Text className="baseline-textBody" c="dimmed">
+                  {row.description}
+                </Text>
+              </Box>
+              <Button component={Link} to={row.to} variant="subtle">
+                Edit
               </Button>
             </Group>
-          </Card>
+            {idx === all.length - 1 ? null : <Divider />}
+          </Box>
+        ))}
+      </Stack>
 
-          <Card className="card nested">
-            <Title order={4}>Legal</Title>
-            <Text className="muted">Live legal copy.</Text>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
-              <Button
-                component={Link}
-                to="/admin/content/static/code_of_conduct"
-                variant="subtle"
-              >
-                Edit Code of Conduct
-              </Button>
-              <Button
-                component={Link}
-                to="/admin/content/static/legal_terms"
-                variant="subtle"
-              >
-                Edit Terms
-              </Button>
-              <Button
-                component={Link}
-                to="/admin/content/static/legal_privacy"
-                variant="subtle"
-              >
-                Edit Privacy
-              </Button>
-              <Button
-                component={Link}
-                to="/admin/content/static/legal_disclaimer"
-                variant="subtle"
-              >
-                Edit Disclaimer
+      <Divider my="md" />
+
+      <Title order={3} className="baseline-textSectionHeader">
+        Announcements &amp; Messaging
+      </Title>
+      <Stack gap={0}>
+        {[
+          {
+            label: "Banner messages",
+            description: "Multiple banners may be shown at the same time.",
+            to: "/admin/content/dynamic/banner",
+            action: "Open"
+          }
+        ].map((row, idx, all) => (
+          <Box key={row.to}>
+            <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+              <Box>
+                <Text fw={600} className="baseline-textBody">
+                  {row.label}
+                </Text>
+                <Text className="baseline-textBody" c="dimmed">
+                  {row.description}
+                </Text>
+              </Box>
+              <Button component={Link} to={row.to} variant="subtle">
+                {row.action}
               </Button>
             </Group>
-          </Card>
-        </Box>
-      </Card>
+            {idx === all.length - 1 ? null : <Divider />}
+          </Box>
+        ))}
+      </Stack>
 
-      <Card className="card nested" component="section">
-        <Box component="header">
-          <Title order={3}>Dynamic Content (publish)</Title>
-          <Text className="muted">
-            Draft, review, and publish. Treat these like blog entries with a
-            ledger/history.
-          </Text>
-        </Box>
+      <Divider my="md" />
 
-        <Box className="grid two-col">
-          <Card className="card nested">
-            <Title order={4}>Home main body</Title>
-            <Text className="muted">The longer prose block on the landing page.</Text>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
-              <Button
-                component={Link}
-                to="/admin/content/dynamic/home_main"
-                variant="subtle"
-              >
-                Manage entries
+      <Title order={3} className="baseline-textSectionHeader" style={{ opacity: 0.85 }}>
+        Legal
+      </Title>
+      <Stack gap={0} style={{ opacity: 0.92 }}>
+        {[
+          {
+            label: "Code of Conduct",
+            description: "Legal page shown under Code of Conduct.",
+            to: "/admin/content/static/code_of_conduct"
+          },
+          {
+            label: "Terms",
+            description: "Legal page shown under Terms.",
+            to: "/admin/content/static/legal_terms"
+          },
+          {
+            label: "Privacy",
+            description: "Legal page shown under Privacy.",
+            to: "/admin/content/static/legal_privacy"
+          },
+          {
+            label: "Disclaimer",
+            description: "Legal page shown under Disclaimer.",
+            to: "/admin/content/static/legal_disclaimer"
+          }
+        ].map((row, idx, all) => (
+          <Box key={row.to}>
+            <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+              <Box>
+                <Text fw={600} className="baseline-textBody">
+                  {row.label}
+                </Text>
+                <Text className="baseline-textBody" c="dimmed">
+                  {row.description}
+                </Text>
+              </Box>
+              <Button component={Link} to={row.to} variant="subtle">
+                Edit
               </Button>
             </Group>
-          </Card>
-
-          <Card className="card nested">
-            <Title order={4}>Banner</Title>
-            <Text className="muted">A short in-app banner message.</Text>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
-              <Button
-                component={Link}
-                to="/admin/content/dynamic/banner"
-                variant="subtle"
-              >
-                Manage entries
-              </Button>
-            </Group>
-          </Card>
-        </Box>
-      </Card>
+            {idx === all.length - 1 ? null : <Divider />}
+          </Box>
+        ))}
+      </Stack>
     </Stack>
   );
 }

@@ -1,7 +1,19 @@
 import type { InboxInvite } from "../../lib/types";
-import { Alert, Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
 import { PageLoader } from "../../ui/page-state";
 import type { InvitesInboxView } from "../../orchestration/invites";
+import { StandardCard } from "../../primitives";
+import "../../primitives/baseline.css";
+
+function inviteContext(invite: InboxInvite) {
+  const left = invite.league_name
+    ? invite.league_name
+    : invite.league_id
+      ? `League ${invite.league_id}`
+      : "League";
+  const right = invite.season_id ? `Season ${invite.season_id}` : "Season";
+  return `${left} · ${right}`;
+}
 
 export function InvitesInboxScreen(props: {
   view: InvitesInboxView;
@@ -10,69 +22,69 @@ export function InvitesInboxScreen(props: {
 }) {
   const { view, onAccept, onDecline } = props;
 
-  if (view.state === "loading") return <PageLoader label="Loading invites..." />;
-
   return (
-    <Card className="card" component="section">
-      <Group className="header-with-controls" justify="space-between" align="start">
-        <Box>
-          <Title order={2}>Invites</Title>
-          <Text className="muted" c="dimmed">
-            Accept or decline season invites sent to you.
-          </Text>
-        </Box>
-      </Group>
-      {view.state === "error" && <Alert color="red">{view.message}</Alert>}
-      {view.state === "ready" && view.invites.length === 0 ? (
-        <Text className="muted" c="dimmed">
-          No pending invites.
-        </Text>
-      ) : null}
-      {view.state === "ready" && view.invites.length > 0 ? (
-        <Stack className="list" gap="sm">
-          {view.invites.map((invite) => (
-            <Group
-              key={invite.id}
-              className="list-row"
-              justify="space-between"
-              align="start"
-            >
-              <Stack gap={6}>
-                <Group className="pill-list" gap={6} wrap="wrap">
-                  <Text component="span" className="pill">
-                    #{invite.id}
-                  </Text>
-                  {invite.league_name && (
-                    <Text component="span" className="pill">
-                      {invite.league_name}
-                    </Text>
-                  )}
-                  {invite.ceremony_id && (
-                    <Text component="span" className="pill">
-                      Ceremony {invite.ceremony_id}
-                    </Text>
-                  )}
-                </Group>
-                <Text className="muted" c="dimmed">
-                  Season {invite.season_id} • {invite.kind}
-                </Text>
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <Stack gap="md">
+          <Box component="header">
+            <Title order={2} className="baseline-textHeroTitle">
+              Invites
+            </Title>
+            <Text className="baseline-textBody">
+              Accept or decline season invites sent to you.
+            </Text>
+          </Box>
+
+          <StandardCard component="section" aria-label="Pending invites">
+            {view.state === "loading" ? (
+              <PageLoader label="Loading invites..." />
+            ) : view.state === "error" ? (
+              <Alert color="red">{view.message}</Alert>
+            ) : view.invites.length === 0 ? (
+              <Text className="baseline-textBody">No pending invites.</Text>
+            ) : (
+              <Stack gap={0}>
+                {view.invites.map((invite, idx) => (
+                  <Box key={invite.id}>
+                    {idx !== 0 ? <Divider /> : null}
+                    <Group
+                      justify="space-between"
+                      align="flex-start"
+                      wrap="nowrap"
+                      py="sm"
+                    >
+                      <Stack gap={4} style={{ minWidth: 0 }}>
+                        <Text
+                          className="baseline-textCardTitle"
+                          style={{ lineHeight: 1.2 }}
+                        >
+                          {inviteContext(invite)}
+                        </Text>
+                      </Stack>
+                      <Group gap="sm" wrap="nowrap">
+                        <Button
+                          type="button"
+                          variant="filled"
+                          onClick={() => void onAccept(invite)}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void onDecline(invite)}
+                        >
+                          Decline
+                        </Button>
+                      </Group>
+                    </Group>
+                  </Box>
+                ))}
               </Stack>
-              <Group className="pill-actions" gap="sm">
-                <Button type="button" onClick={() => void onAccept(invite)}>
-                  Accept
-                </Button>
-                <Button
-                  type="button"
-                  variant="subtle"
-                  onClick={() => void onDecline(invite)}
-                >
-                  Decline
-                </Button>
-              </Group>
-            </Group>
-          ))}
+            )}
+          </StandardCard>
         </Stack>
-      ) : null}
-    </Card>
+      </Box>
+    </Box>
   );
 }

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../errors.js";
+import { query } from "../data/db.js";
 import { TokenClaims, verifyToken } from "./token.js";
 
 export type AuthedRequest = Request & { auth?: TokenClaims };
@@ -25,13 +26,43 @@ function extractToken(req: Request): string | null {
 }
 
 export function requireAuth(secret: string) {
-  return (req: AuthedRequest, _res: Response, next: NextFunction) => {
+  return async (req: AuthedRequest, res: Response, next: NextFunction) => {
     const token = extractToken(req);
     if (!token) {
       return next(new AppError("UNAUTHORIZED", 401, "Missing auth token"));
     }
     try {
       req.auth = verifyToken(token, secret);
+      // If a token is valid but the user no longer exists (e.g. DB reset),
+      // treat it as an expired session instead of letting downstream FKs 500.
+      const sub = req.auth?.sub;
+      const userId = sub ? Number(sub) : NaN;
+      const db = (req.app as unknown as { locals?: { db?: unknown } })?.locals?.db;
+      if (db && Number.isInteger(userId) && userId > 0) {
+        const { rows } = await query<{ id: number; is_admin: boolean }>(
+          db as never,
+          `SELECT id::int, is_admin FROM app_user WHERE id = $1`,
+          [userId]
+        );
+        if (!rows[0]) {
+          // Clear auth cookie if present; bearer-token callers can ignore.
+          res.setHeader(
+            "Set-Cookie",
+            "auth_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+          );
+          return next(
+            new AppError(
+              "UNAUTHORIZED",
+              401,
+              "Your session has expired. Please log in again."
+            )
+          );
+        }
+
+        // Use the database as the source of truth for admin role so permission
+        // changes take effect immediately without forcing a logout/login cycle.
+        req.auth.is_admin = Boolean(rows[0].is_admin);
+      }
       return next();
     } catch (err) {
       return next(err);

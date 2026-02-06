@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
 
@@ -72,7 +73,16 @@ export function useAdminCeremoniesIndexOrchestration() {
       return { ok: false as const, error: res.error ?? "Failed to create ceremony" };
     }
     const id = res.data?.ceremony?.id ?? null;
-    setStatus({ ok: true, message: "Ceremony created (draft)" });
+    notify({
+      id: "admin.ceremony.create.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony created"
+    });
+    setStatus(null);
     await refresh();
     return { ok: true as const, ceremonyId: id };
   }, [refresh]);
@@ -80,14 +90,13 @@ export function useAdminCeremoniesIndexOrchestration() {
   const deleteCeremony = useCallback(
     async (id: number) => {
       setWorkingId(id);
+      // Clear any prior create status so the page doesn't show stale alerts.
       setStatus(null);
       const res = await fetchJson(`/admin/ceremonies/${id}`, { method: "DELETE" });
       setWorkingId(null);
       if (!res.ok) {
-        setStatus({ ok: false, message: res.error ?? "Delete failed" });
         return { ok: false as const, error: res.error ?? "Delete failed" };
       }
-      setStatus({ ok: true, message: "Ceremony deleted" });
       await refresh();
       return { ok: true as const };
     },
@@ -149,7 +158,7 @@ type CeremonyDetail = {
   code: string | null;
   name: string | null;
   starts_at: string | null;
-  status: "DRAFT" | "PUBLISHED" | "LOCKED" | "ARCHIVED";
+  status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
   draft_warning_hours: number;
   draft_locked_at: string | null;
   published_at: string | null;
@@ -277,7 +286,16 @@ export function useAdminCeremonyOverviewOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Save failed" });
       return;
     }
-    setStatus({ ok: true, message: "Saved" });
+    notify({
+      id: "admin.ceremony.initialize.save.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Saved"
+    });
+    setStatus(null);
     await load();
   }, [ceremony, form.code, form.name, form.startsAtLocal, form.warningHours, load]);
 
@@ -294,7 +312,17 @@ export function useAdminCeremonyOverviewOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Publish failed" });
       return;
     }
-    setStatus({ ok: true, message: "Published" });
+    notify({
+      id: "admin.ceremony.publish.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony published."
+    });
+    // Avoid stale success messaging on the Publish step; the new ceremony status is the source of truth.
+    setStatus(null);
     await load();
   }, [ceremony, load]);
 
@@ -368,7 +396,16 @@ export function useAdminCeremonyLockOrchestration(args: { ceremonyId: number | n
       setStatus({ ok: false, message: res.error ?? "Lock failed" });
       return;
     }
-    setStatus({ ok: true, message: "Ceremony locked" });
+    notify({
+      id: "admin.ceremony.lock.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony locked"
+    });
+    setStatus(null);
     await load();
   }, [ceremonyId, load]);
 
@@ -384,7 +421,16 @@ export function useAdminCeremonyLockOrchestration(args: { ceremonyId: number | n
       setStatus({ ok: false, message: res.error ?? "Archive failed" });
       return;
     }
-    setStatus({ ok: true, message: "Ceremony archived" });
+    notify({
+      id: "admin.ceremony.archive.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony archived"
+    });
+    setStatus(null);
     await load();
   }, [ceremonyId, load]);
 
@@ -429,6 +475,15 @@ export function useAdminCeremonyWinnersOrchestration(args: {
 
   const [loading, setLoading] = useState(true);
   const [loadState, setLoadState] = useState<ApiResult | null>(null);
+  const [categories, setCategories] = useState<
+    Array<{
+      id: number;
+      unit_kind: "FILM" | "SONG" | "PERFORMANCE";
+      family_name?: string | null;
+      family_icon_code?: string | null;
+      family_icon_variant?: "default" | "inverted" | null;
+    }>
+  >([]);
   const [nominations, setNominations] = useState<WinnersNominationRow[]>([]);
   const [winnerByCategory, setWinnerByCategory] = useState<Record<number, number[]>>({});
   const [selectedWinner, setSelectedWinner] = useState<Record<number, number[]>>({});
@@ -441,11 +496,17 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     draft_locked: false,
     draft_locked_at: null
   });
+  const [ceremonyStatus, setCeremonyStatus] = useState<string>("DRAFT");
   const [pendingWinner, setPendingWinner] = useState<{
     categoryId: number;
     nominationIds: number[];
     message: string;
   } | null>(null);
+  const [pendingSaveAll, setPendingSaveAll] = useState<{ message: string } | null>(null);
+  const [pendingFinalize, setPendingFinalize] = useState<{ message: string } | null>(
+    null
+  );
+  const [finalizeStatus, setFinalizeStatus] = useState<ApiResult | null>(null);
 
   const load = useCallback(async () => {
     if (ceremonyId === null || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
@@ -455,7 +516,16 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     }
     setLoading(true);
     setLoadState({ ok: true, message: "Loading" });
-    const [nomsRes, winnersRes, lockRes] = await Promise.all([
+    const [categoriesRes, nomsRes, winnersRes, lockRes] = await Promise.all([
+      fetchJson<{
+        categories: Array<{
+          id: number;
+          unit_kind: "FILM" | "SONG" | "PERFORMANCE";
+          family_name?: string | null;
+          family_icon_code?: string | null;
+          family_icon_variant?: "default" | "inverted" | null;
+        }>;
+      }>(`/admin/ceremonies/${ceremonyId}/categories`, { method: "GET" }),
       fetchJson<{ nominations: WinnersNominationRow[] }>(
         `/admin/ceremonies/${ceremonyId}/nominations`,
         { method: "GET" }
@@ -470,10 +540,11 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       }>(`/admin/ceremonies/${ceremonyId}/lock`, { method: "GET" })
     ]);
 
-    if (!nomsRes.ok || !winnersRes.ok || !lockRes.ok) {
+    if (!categoriesRes.ok || !nomsRes.ok || !winnersRes.ok || !lockRes.ok) {
       setLoadState({
         ok: false,
         message:
+          categoriesRes.error ??
           nomsRes.error ??
           winnersRes.error ??
           lockRes.error ??
@@ -483,6 +554,7 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       return;
     }
 
+    setCategories(categoriesRes.data?.categories ?? []);
     const noms = nomsRes.data?.nominations ?? [];
     setNominations(noms);
 
@@ -506,6 +578,7 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       draft_locked: Boolean(lockRes.data?.draft_locked),
       draft_locked_at: lockRes.data?.draft_locked_at ?? null
     });
+    setCeremonyStatus(String(lockRes.data?.status ?? "DRAFT").toUpperCase());
 
     setLoadState({ ok: true, message: "Ready" });
     setLoading(false);
@@ -521,13 +594,36 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       groups[n.category_edition_id] = groups[n.category_edition_id] ?? [];
       groups[n.category_edition_id].push(n);
     }
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
     return Object.entries(groups)
-      .map(([categoryId, noms]) => ({
-        categoryId: Number(categoryId),
-        nominations: noms
-      }))
+      .map(([categoryId, noms]) => {
+        const id = Number(categoryId);
+        return {
+          categoryId: id,
+          category: categoryById.get(id) ?? null,
+          nominations: noms
+        };
+      })
       .sort((a, b) => a.categoryId - b.categoryId);
-  }, [nominations]);
+  }, [categories, nominations]);
+
+  const hasAnyWinners = useMemo(
+    () => Object.values(winnerByCategory).some((val) => (val ?? []).length > 0),
+    [winnerByCategory]
+  );
+
+  const isDirty = useMemo(() => {
+    const allCategoryIds = new Set<number>();
+    for (const n of nominations) allCategoryIds.add(n.category_edition_id);
+    for (const c of categories) allCategoryIds.add(c.id);
+    for (const catId of allCategoryIds) {
+      const a = [...(selectedWinner[catId] ?? [])].sort((x, y) => x - y);
+      const b = [...(winnerByCategory[catId] ?? [])].sort((x, y) => x - y);
+      if (a.length !== b.length) return true;
+      for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true;
+    }
+    return false;
+  }, [categories, nominations, selectedWinner, winnerByCategory]);
 
   const requestSaveWinners = useCallback(
     (categoryId: number) => {
@@ -574,11 +670,12 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     );
     setSavingCategory(null);
     if (!res.ok) {
+      const msg = res.error ?? "Failed to save winners";
       setWinnerStatus((prev) => ({
         ...prev,
-        [categoryId]: { ok: false, message: res.error ?? "Failed to save winner" }
+        [categoryId]: { ok: false, message: msg }
       }));
-      return;
+      return { ok: false, message: msg } satisfies ApiResult;
     }
     setWinnerByCategory((prev) => ({ ...prev, [categoryId]: nominationIds }));
     setDraftLock((prev) => ({
@@ -589,7 +686,122 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       ...prev,
       [categoryId]: { ok: true, message: "Saved" }
     }));
+    return { ok: true, message: "Saved" } satisfies ApiResult;
   }, []);
+
+  const saveAllWinners = useCallback(async () => {
+    if (ceremonyId === null) return;
+    const changed: Array<{ categoryId: number; nominationIds: number[] }> = [];
+    const allCategoryIds = new Set<number>();
+    for (const n of nominations) allCategoryIds.add(n.category_edition_id);
+    for (const c of categories) allCategoryIds.add(c.id);
+    for (const catId of allCategoryIds) {
+      const next = [...(selectedWinner[catId] ?? [])].sort((x, y) => x - y);
+      const prev = [...(winnerByCategory[catId] ?? [])].sort((x, y) => x - y);
+      const same =
+        next.length === prev.length && next.every((val, idx) => val === prev[idx]);
+      if (!same) changed.push({ categoryId: catId, nominationIds: next });
+    }
+    if (changed.length === 0) return;
+
+    let firstFailure: ApiResult | null = null;
+    for (const item of changed) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await saveWinners(item.categoryId, item.nominationIds);
+      if (!res.ok && !firstFailure) firstFailure = res;
+    }
+
+    if (firstFailure) {
+      notify({
+        id: "admin.ceremony.winners.save_all.error",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        title: "Save failed",
+        message: firstFailure.message
+      });
+    } else {
+      notify({
+        id: "admin.ceremony.winners.save_all.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Winners saved"
+      });
+    }
+  }, [
+    categories,
+    ceremonyId,
+    nominations,
+    saveWinners,
+    selectedWinner,
+    winnerByCategory
+  ]);
+
+  const requestSaveAll = useCallback(() => {
+    if (!isDirty) return;
+    if (!draftLock.draft_locked && !hasAnyWinners) {
+      setPendingSaveAll({
+        message: "Saving the first winner will lock this ceremony for users. Proceed?"
+      });
+      return;
+    }
+    void saveAllWinners();
+  }, [draftLock.draft_locked, hasAnyWinners, isDirty, saveAllWinners]);
+
+  const confirmPendingSaveAll = useCallback(() => {
+    setPendingSaveAll(null);
+    void saveAllWinners();
+  }, [saveAllWinners]);
+
+  const requestFinalizeWinners = useCallback(() => {
+    setPendingFinalize({
+      message:
+        "Finalize winners for this ceremony? This will switch user results views to the final results state."
+    });
+  }, []);
+
+  const confirmFinalizeWinners = useCallback(async () => {
+    if (ceremonyId === null) return;
+    setPendingFinalize(null);
+    setFinalizeStatus({ ok: true, message: "Loading" });
+    const res = await fetchJson<{ ceremony: { id: number; status: string } }>(
+      `/admin/ceremonies/${ceremonyId}/finalize-winners`,
+      { method: "POST" }
+    );
+    if (!res.ok) {
+      setFinalizeStatus({
+        ok: false,
+        message: res.error ?? "Failed to finalize winners"
+      });
+      notify({
+        id: "admin.ceremony.winners.finalize.error",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        title: "Finalize failed",
+        message: res.error ?? "Failed to finalize winners"
+      });
+      return;
+    }
+    notify({
+      id: "admin.ceremony.winners.finalize.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Winners finalized"
+    });
+    setFinalizeStatus({ ok: true, message: "Finalized" });
+    void load();
+  }, [ceremonyId, load]);
 
   const toggleNomination = useCallback(
     (categoryId: number, nominationId: number, checked: boolean) => {
@@ -632,10 +844,25 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     winnerStatus,
     savingCategory,
     draftLock,
+    ceremonyStatus,
+    isDirty,
     nominationLabel: winnersNominationLabel,
     pendingWinner,
     dismissPendingWinner: () => setPendingWinner(null),
     requestSaveWinners,
-    confirmPendingWinner
+    confirmPendingWinner,
+    pendingSaveAll,
+    dismissPendingSaveAll: () => setPendingSaveAll(null),
+    requestSaveAll,
+    confirmPendingSaveAll,
+    pendingFinalize,
+    dismissPendingFinalize: () => setPendingFinalize(null),
+    requestFinalizeWinners,
+    confirmFinalizeWinners,
+    finalizeStatus
   };
 }
+
+export type AdminCeremonyWinnersOrchestration = ReturnType<
+  typeof useAdminCeremonyWinnersOrchestration
+>;

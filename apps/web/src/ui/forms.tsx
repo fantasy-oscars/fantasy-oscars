@@ -39,21 +39,14 @@ export function FormStatus(props: {
       </Alert>
     );
   }
-  if (result) {
-    const message =
-      result.ok && result.message
-        ? result.message
-        : result.ok
-          ? "Success"
-          : result.message;
+  // FormStatus is an Inline Alert (surface C) and should only be used for
+  // persistent, local constraints/errors. Action outcomes are communicated via Toast.
+  if (result && !result.ok) {
+    const message = result.message;
     return (
-      <Alert
-        className={`status ${result.ok ? "status-success" : "status-error"}`}
-        role="status"
-        aria-live="polite"
-      >
+      <Alert className="status status-error" role="status" aria-live="polite">
         <Text size="sm">{message}</Text>
-        {!result.ok && onRetry && (
+        {onRetry && (
           <Button variant="subtle" onClick={onRetry} mt="xs">
             Retry
           </Button>

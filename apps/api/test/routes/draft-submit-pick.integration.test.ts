@@ -244,6 +244,7 @@ describe("draft submit pick integration", () => {
   });
 
   it("rejects invalid payloads", async () => {
+    await insertUser(db.pool, { id: 1, username: "tester" });
     const draft = await insertDraft(db.pool, {
       status: "IN_PROGRESS",
       current_pick_number: 1

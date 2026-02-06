@@ -30,6 +30,7 @@ export type SeasonSummary = {
   id: number;
   league_id: number;
   ceremony_id: number;
+  ceremony_name?: string | null;
   status: string;
   created_at: string;
   ceremony_starts_at?: string | null;
@@ -70,6 +71,7 @@ export type InboxInvite = SeasonInvite & {
 export type SeasonMeta = {
   id: number;
   ceremony_id: number;
+  ceremony_name?: string | null;
   status: string;
   scoring_strategy_name?: string;
   is_active_ceremony?: boolean;
@@ -103,11 +105,13 @@ export type Snapshot = {
     lock_override_set_by_user_id?: number | null;
     lock_override_set_at?: string | null;
   };
+  can_manage_draft?: boolean;
   seats: Array<{
     seat_number: number;
     league_member_id: number;
     user_id?: number | null;
     username?: string | null;
+    avatar_key?: string | null;
   }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
@@ -121,7 +125,10 @@ export type Snapshot = {
     round_number: number;
     direction: "FORWARD" | "REVERSE";
   } | null;
+  ceremony_id?: number | null;
   ceremony_starts_at?: string | null;
+  ceremony_status?: string | null;
+  scoring_strategy_name?: string | null;
   my_seat_number?: number | null;
   categories?: Array<{
     id: number;
@@ -129,17 +136,31 @@ export type Snapshot = {
     sort_index: number;
     family_name: string;
     icon_code: string | null;
+    icon_variant?: "default" | "inverted";
   }>;
   nominations?: Array<{
     id: number;
     category_edition_id: number;
     label: string;
     status: string;
+    film_title?: string | null;
+    film_poster_url?: string | null;
+    film_year?: number | null;
+    contributors?: string[];
+    song_title?: string | null;
+    performer_name?: string | null;
+    performer_character?: string | null;
+    performer_profile_url?: string | null;
+    performer_profile_path?: string | null;
   }>;
   nomination_flags?: Array<{
     nomination_id: number;
     status: string;
     replaced_by_nomination_id?: number | null;
+  }>;
+  winners?: Array<{
+    category_edition_id: number;
+    nomination_id: number;
   }>;
 };
 

@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Card, Grid, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Grid, Stack, Text, Title } from "@mantine/core";
 import type { ApiResult, FieldErrors } from "../../lib/types";
 import { FormField, FormStatus } from "../../ui/forms";
+import { StandardCard } from "../../primitives";
+import "../../primitives/baseline.css";
 
 export function RegisterScreen(props: {
   errors: FieldErrors;
@@ -13,12 +15,14 @@ export function RegisterScreen(props: {
   return (
     <Grid className="card-grid" gutter="lg">
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <Card className="card" component="section">
+        <StandardCard className="card" component="section">
           <Box component="header">
-            <Title order={2}>Create Account</Title>
-            <Text>Pick a username and join a league.</Text>
+            <Title order={2} className="baseline-textHeroTitle">
+              Create account
+            </Title>
+            <Text className="baseline-textBody">Pick a username and join a league.</Text>
           </Box>
-          <Box component="form" onSubmit={onSubmit}>
+          <Box component="form" onSubmit={onSubmit} mt="md">
             <Stack gap="sm">
               <FormField label="Username" name="username" error={errors.username} />
               <FormField label="Email" name="email" error={errors.email} />
@@ -29,23 +33,25 @@ export function RegisterScreen(props: {
                 error={errors.password}
               />
               <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Register"}
+                {loading ? "Creating..." : "Create account"}
               </Button>
               <FormStatus loading={loading} result={result} />
             </Stack>
           </Box>
-        </Card>
+        </StandardCard>
       </Grid.Col>
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <Card className="card" component="section">
+        <StandardCard className="card nested" component="section">
           <Box component="header">
-            <Title order={3}>Already have an account?</Title>
-            <Text>Sign in to view leagues and drafts.</Text>
+            <Title order={3} className="baseline-textCardTitle">
+              Already have an account?
+            </Title>
+            <Text className="baseline-textBody">Sign in to view leagues and drafts.</Text>
           </Box>
-          <Button component={Link} to="/login" variant="subtle">
+          <Button component={Link} to="/login" variant="outline">
             Go to login
           </Button>
-        </Card>
+        </StandardCard>
       </Grid.Col>
     </Grid>
   );

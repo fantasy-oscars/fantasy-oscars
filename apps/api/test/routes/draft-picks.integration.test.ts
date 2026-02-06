@@ -64,19 +64,33 @@ describe("draft picks integration", () => {
   it("rejects pick when not active turn", async () => {
     const pool = db.pool;
     const league = await insertLeague(pool);
-    const draft = await insertDraft(db.pool, {
+    const draft = await insertDraft(pool, {
       league_id: league.id,
       status: "IN_PROGRESS",
       current_pick_number: 1
     });
-    const seat1 = await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
-    await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
-    const nomination = await insertNomination(db.pool);
+    const user1 = await insertUser(pool);
+    const user2 = await insertUser(pool);
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 1,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user1.id })
+      ).id
+    });
+    await insertDraftSeat(pool, {
+      draft_id: draft.id,
+      seat_number: 2,
+      league_member_id: (
+        await insertLeagueMember(pool, { league_id: league.id, user_id: user2.id })
+      ).id
+    });
+    const nomination = await insertNomination(pool);
 
     const res = await postJson<{ error: { code: string } }>(
       `/drafts/${draft.id}/picks`,
       { nomination_id: nomination.id, request_id: "req-not-active" },
-      { token: tokenFor(seat1.league_member_id + 1) }
+      { token: tokenFor(user2.id) }
     );
 
     expect(res.status).toBe(409);

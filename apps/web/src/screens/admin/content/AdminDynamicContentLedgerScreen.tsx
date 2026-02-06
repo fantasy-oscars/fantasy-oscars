@@ -1,14 +1,18 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import {
   formatDateTimeForHumans,
-  formatSchedule,
   type DynamicKey
 } from "../../../decisions/adminContent";
 import type { ApiResult } from "../../../lib/types";
 import type { CmsDynamicRow } from "../../../orchestration/adminContent";
+import "../../../primitives/baseline.css";
+
+function statusLabel(entry: CmsDynamicRow) {
+  return entry.status === "PUBLISHED" ? "Active" : "Inactive";
+}
 
 export function AdminDynamicContentLedgerScreen(props: {
   contentKey: DynamicKey | null;
@@ -36,8 +40,12 @@ export function AdminDynamicContentLedgerScreen(props: {
   if (!contentKey || !meta) return <PageError message="Unknown dynamic content key" />;
   if (loading) return <PageLoader label="Loading entries..." />;
 
+  const isSequential = contentKey === "home_main";
+  const headerTitle = meta.label;
+  const headerHint = meta.hint;
+
   return (
-    <Stack component="section" className="stack">
+    <Stack component="section">
       <Group
         className="header-with-controls"
         justify="space-between"
@@ -45,12 +53,16 @@ export function AdminDynamicContentLedgerScreen(props: {
         wrap="wrap"
       >
         <Box>
-          <Title order={3}>{meta.label}</Title>
-          <Text className="muted">{meta.hint}</Text>
+          <Title order={3} className="baseline-textHeroTitle">
+            {headerTitle}
+          </Title>
+          <Text className="baseline-textBody" c="dimmed">
+            {headerHint}
+          </Text>
         </Box>
         <Group className="inline-actions" wrap="wrap">
           <Button type="button" onClick={onCreateEntry} disabled={busy}>
-            New entry
+            {contentKey === "banner" ? "New banner" : "New entry"}
           </Button>
         </Group>
       </Group>
@@ -58,76 +70,91 @@ export function AdminDynamicContentLedgerScreen(props: {
       <FormStatus loading={busy} result={status} />
 
       {entries.length === 0 ? (
-        <Card className="empty-state">
-          <Text fw={700}>No entries yet.</Text>
-          <Text className="muted" mt="xs">
-            Create a new entry to start writing.
-          </Text>
-        </Card>
+        <Text className="baseline-textBody" c="dimmed">
+          No entries yet.
+        </Text>
       ) : (
-        <Stack component="ul" className="list" aria-label="Content entries">
-          {entries.map((e) => (
-            <Box key={e.id} component="li" className="list-row">
-              <Box>
-                <Text fw={700}>{e.title || "(untitled)"}</Text>
-                <Text className="muted">
-                  {e.status === "PUBLISHED" ? "Published" : "Draft"} • updated{" "}
-                  {formatDateTimeForHumans(e.updated_at)}
-                  {e.published_at
-                    ? ` • published ${formatDateTimeForHumans(e.published_at)}`
-                    : ""}
-                </Text>
-              </Box>
-              <Group className="inline-actions" wrap="wrap">
-                {e.status === "PUBLISHED" ? (
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => onUnpublishEntry(e.id)}
-                    disabled={busy}
-                    title="Click to unpublish"
-                  >
-                    Published
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => onPublishDraft(e.id)}
-                    disabled={busy}
-                    title="Click to publish"
-                  >
-                    Draft
-                  </Button>
-                )}
-                {e.variant ? (
-                  <Box component="span" className="pill">
-                    {e.variant}
-                  </Box>
-                ) : null}
-                {formatSchedule(e.starts_at, e.ends_at) ? (
-                  <Box component="span" className="pill">
-                    {formatSchedule(e.starts_at, e.ends_at)}
-                  </Box>
-                ) : null}
-                <Button
-                  component={Link}
-                  variant="subtle"
-                  to={`/admin/content/dynamic/${contentKey}/drafts/${e.id}`}
-                >
-                  {e.status === "DRAFT" ? "Edit" : "View"}
-                </Button>
-                {e.status === "PUBLISHED" ? (
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => onUnpublishEntry(e.id)}
-                    disabled={busy}
-                  >
-                    Unpublish
-                  </Button>
-                ) : null}
+        <Stack
+          component="ul"
+          gap={0}
+          style={{ listStyle: "none", margin: 0, padding: 0 }}
+        >
+          {entries.map((e, idx) => (
+            <Box key={e.id} component="li">
+              <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+                <Box>
+                  <Text fw={600} className="baseline-textBody">
+                    {e.title || "(untitled)"}
+                  </Text>
+                  <Text className="baseline-textMeta" c="dimmed">
+                    {statusLabel(e)}
+                    {isSequential
+                      ? ` • updated ${formatDateTimeForHumans(e.updated_at)}`
+                      : ""}
+                  </Text>
+                </Box>
+
+                <Group className="inline-actions" wrap="wrap">
+                  {isSequential ? (
+                    <>
+                      <Button
+                        component={Link}
+                        variant="subtle"
+                        to={`/admin/content/dynamic/${contentKey}/drafts/${e.id}?view=1`}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        component={Link}
+                        variant="subtle"
+                        to={`/admin/content/dynamic/${contentKey}/drafts/${e.id}`}
+                      >
+                        Edit
+                      </Button>
+                      {e.status !== "PUBLISHED" ? (
+                        <Button
+                          type="button"
+                          variant="subtle"
+                          onClick={() => onPublishDraft(e.id)}
+                          disabled={busy}
+                        >
+                          Make active
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        component={Link}
+                        variant="subtle"
+                        to={`/admin/content/dynamic/${contentKey}/drafts/${e.id}`}
+                      >
+                        Edit
+                      </Button>
+                      {e.status === "PUBLISHED" ? (
+                        <Button
+                          type="button"
+                          variant="subtle"
+                          onClick={() => onUnpublishEntry(e.id)}
+                          disabled={busy}
+                        >
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="subtle"
+                          onClick={() => onPublishDraft(e.id)}
+                          disabled={busy}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </Group>
               </Group>
+              {idx === entries.length - 1 ? null : <Divider />}
             </Box>
           ))}
         </Stack>

@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import {
   Box,
   Button,
-  Card,
   Checkbox,
+  Divider,
   Group,
   Select,
   Stack,
@@ -17,6 +17,7 @@ import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
 import type { CmsDynamicRow } from "../../../orchestration/adminContent";
 import type { DynamicKey } from "../../../decisions/adminContent";
+import "../../../primitives/baseline.css";
 
 export function AdminDynamicContentEditorScreen(props: {
   contentKey: DynamicKey | null;
@@ -26,6 +27,7 @@ export function AdminDynamicContentEditorScreen(props: {
   busy: boolean;
   status: ApiResult | null;
   entry: CmsDynamicRow | null;
+  viewOnly: boolean;
   fields: {
     title: string;
     setTitle: (v: string) => void;
@@ -42,8 +44,8 @@ export function AdminDynamicContentEditorScreen(props: {
     isBanner: boolean;
   };
   onSave: () => void;
-  onPublish: () => void;
-  onUnpublish: () => void;
+  onActivate: () => void;
+  onDeactivate: () => void;
   onDelete: () => void;
 }) {
   const {
@@ -54,10 +56,11 @@ export function AdminDynamicContentEditorScreen(props: {
     busy,
     status,
     entry,
+    viewOnly,
     fields,
     onSave,
-    onPublish,
-    onUnpublish,
+    onActivate,
+    onDeactivate,
     onDelete
   } = props;
 
@@ -66,8 +69,11 @@ export function AdminDynamicContentEditorScreen(props: {
   if (loading) return <PageLoader label="Loading entry..." />;
   if (!entry) return <PageError message={status?.message ?? "Entry not found"} />;
 
+  const isSequential = contentKey === "home_main";
+  const isActive = entry.status === "PUBLISHED";
+
   return (
-    <Stack component="section" className="stack">
+    <Stack component="section">
       <Group
         className="header-with-controls"
         justify="space-between"
@@ -75,13 +81,11 @@ export function AdminDynamicContentEditorScreen(props: {
         wrap="wrap"
       >
         <Box>
-          <Title order={3}>
-            {meta.label}: {entry.status === "DRAFT" ? "Draft" : "Published"} #{entry.id}
+          <Title order={3} className="baseline-textHeroTitle">
+            {meta.label}
           </Title>
-          <Text className="muted">
-            {entry.status === "PUBLISHED"
-              ? "This entry is published. Saving will update it in place (live)."
-              : "Edit the draft and publish when ready."}
+          <Text className="baseline-textMeta" c="dimmed">
+            Status: {isActive ? "Active" : "Inactive"}
           </Text>
         </Box>
         <Group className="inline-actions" wrap="wrap">
@@ -90,93 +94,105 @@ export function AdminDynamicContentEditorScreen(props: {
             variant="subtle"
             to={`/admin/content/dynamic/${contentKey}`}
           >
-            Back to ledger
+            Back
           </Button>
-          {entry.status === "PUBLISHED" ? (
+          {viewOnly ? null : (
             <>
               <Button type="button" onClick={onSave} disabled={busy}>
                 Save
               </Button>
-              <Button
-                type="button"
-                variant="subtle"
-                onClick={onUnpublish}
-                disabled={busy}
-              >
-                Unpublish
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button type="button" onClick={onSave} disabled={busy}>
-                Save
-              </Button>
-              <Button type="button" onClick={onPublish} disabled={busy}>
-                Publish
-              </Button>
-              <Button type="button" className="danger" onClick={onDelete} disabled={busy}>
-                Delete
-              </Button>
+              {isSequential ? (
+                !isActive ? (
+                  <Button type="button" onClick={onActivate} disabled={busy}>
+                    Make active
+                  </Button>
+                ) : null
+              ) : (
+                <Button
+                  type="button"
+                  variant="subtle"
+                  onClick={isActive ? onDeactivate : onActivate}
+                  disabled={busy}
+                >
+                  {isActive ? "Deactivate" : "Activate"}
+                </Button>
+              )}
+              {!isActive ? (
+                <Button
+                  type="button"
+                  className="danger"
+                  onClick={onDelete}
+                  disabled={busy}
+                >
+                  Delete
+                </Button>
+              ) : null}
             </>
           )}
         </Group>
       </Group>
 
-      <Card className="card nested" component="section">
-        <Stack className="stack-sm" gap="sm">
-          {fields.isBanner ? (
-            <Stack className="stack-sm" gap="sm">
-              <Box className="grid two-col">
-                <Select
-                  label="Variant"
-                  value={fields.variant}
-                  onChange={(v) => fields.setVariant((v ?? "info") as never)}
-                  data={[
-                    { value: "info", label: "info" },
-                    { value: "warning", label: "warning" },
-                    { value: "success", label: "success" },
-                    { value: "error", label: "error" }
-                  ]}
-                />
-                <Checkbox
-                  label="Dismissible"
-                  checked={fields.dismissible}
-                  onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
-                />
-              </Box>
+      <Divider />
 
-              <Box className="grid two-col">
-                <TextInput
-                  label="Starts at (optional)"
-                  type="datetime-local"
-                  value={fields.startsAtLocal}
-                  onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
-                />
-                <TextInput
-                  label="Ends at (optional)"
-                  type="datetime-local"
-                  value={fields.endsAtLocal}
-                  onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
-                />
-              </Box>
-            </Stack>
-          ) : null}
+      <Stack className="stack-sm" gap="sm">
+        {fields.isBanner ? (
+          <Stack className="stack-sm" gap="sm">
+            <Box className="grid two-col">
+              <Select
+                label="Variant"
+                value={fields.variant}
+                onChange={(v) => fields.setVariant((v ?? "info") as never)}
+                data={[
+                  { value: "info", label: "info" },
+                  { value: "warning", label: "warning" },
+                  { value: "success", label: "success" },
+                  { value: "error", label: "error" }
+                ]}
+                disabled={viewOnly}
+              />
+              <Checkbox
+                label="Dismissible"
+                checked={fields.dismissible}
+                onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
+                disabled={viewOnly}
+              />
+            </Box>
 
-          <TextInput
-            label="Title"
-            value={fields.title}
-            onChange={(e) => fields.setTitle(e.currentTarget.value)}
-          />
-          <Textarea
-            label="Body (Markdown)"
-            value={fields.body}
-            onChange={(e) => fields.setBody(e.currentTarget.value)}
-            autosize
-            minRows={12}
-          />
-          <FormStatus loading={busy} result={status} />
-        </Stack>
-      </Card>
+            <Box className="grid two-col">
+              <TextInput
+                label="Starts at (optional)"
+                type="datetime-local"
+                value={fields.startsAtLocal}
+                onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
+                disabled={viewOnly}
+              />
+              <TextInput
+                label="Ends at (optional)"
+                type="datetime-local"
+                value={fields.endsAtLocal}
+                onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
+                disabled={viewOnly}
+              />
+            </Box>
+          </Stack>
+        ) : null}
+
+        <TextInput
+          label="Title"
+          value={fields.title}
+          onChange={(e) => fields.setTitle(e.currentTarget.value)}
+          disabled={viewOnly}
+        />
+        <Textarea
+          label="Body (Markdown)"
+          value={fields.body}
+          onChange={(e) => fields.setBody(e.currentTarget.value)}
+          autosize
+          minRows={12}
+          disabled={viewOnly}
+        />
+        <FormStatus loading={busy} result={status} />
+      </Stack>
     </Stack>
   );
 }

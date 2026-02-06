@@ -2,9 +2,10 @@ import { Link } from "react-router-dom";
 import {
   Box,
   Button,
-  Card,
+  Divider,
   Group,
-  NativeSelect,
+  Modal,
+  Select,
   Stack,
   Text,
   Title
@@ -12,22 +13,24 @@ import {
 import type { AuthUser } from "../../auth/context";
 import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";
-import { allocationLabel } from "../../lib/labels";
 import type { LeagueDetailView } from "../../orchestration/leagues";
+import { useMemo, useState } from "react";
+import { CommissionerPill, StatusPill } from "../../ui/pills";
+import { StandardCard } from "../../primitives";
+import "../../primitives/baseline.css";
 
-function seasonLabel(season: {
-  id: number;
+function ceremonyLabelForSeason(season: {
   ceremony_starts_at?: string | null;
-  created_at?: string | null;
+  ceremony_name?: string | null;
+  ceremony_id: number;
 }) {
-  const date = season.ceremony_starts_at ?? season.created_at;
-  try {
-    const year = new Date(date ?? "").getFullYear();
-    if (Number.isFinite(year)) return `Season ${year}`;
-  } catch {
-    // Fall back to id below.
+  if (season.ceremony_name) return season.ceremony_name;
+  const iso = season.ceremony_starts_at;
+  if (iso) {
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) return `Ceremony ${d.getFullYear()}`;
   }
-  return `Season ${season.id}`;
+  return `Ceremony ${season.ceremony_id}`;
 }
 
 export function LeagueDetailScreen(props: {
@@ -36,11 +39,8 @@ export function LeagueDetailScreen(props: {
   view: LeagueDetailView;
   working: boolean;
   rosterStatus: { ok: boolean; message: string } | null;
-  transferTarget: string;
-  setTransferTarget: (v: string) => void;
-  onCopyInvite: () => void | Promise<unknown>;
-  onTransferOwnership: () => void | Promise<unknown>;
-  onRemoveMember: (userId: number, role: string) => void | Promise<unknown>;
+  onTransferOwnershipTo: (userId: number) => void | Promise<unknown>;
+  onDeleteLeague: () => Promise<{ ok: boolean }> | { ok: boolean };
 }) {
   const {
     user,
@@ -48,199 +48,275 @@ export function LeagueDetailScreen(props: {
     view,
     working,
     rosterStatus,
-    transferTarget,
-    setTransferTarget,
-    onCopyInvite,
-    onTransferOwnership,
-    onRemoveMember
+    onTransferOwnershipTo,
+    onDeleteLeague
   } = props;
+
+  // Hooks must not be conditional (Rules of Hooks).
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<string | null>(null);
+
+  const rosterList = view.state === "ready" ? (view.roster ?? []) : [];
+  const transferOptions = useMemo(() => {
+    const me = Number(user?.sub);
+    return rosterList
+      .filter((m) => m.user_id !== me)
+      .map((m) => ({ value: String(m.user_id), label: m.username }));
+  }, [rosterList, user?.sub]);
 
   if (view.state === "loading") {
     return <PageLoader label="Loading league..." />;
   }
   if (view.state === "forbidden") {
     return (
-      <Card className="card" component="section">
-        <Box component="header">
-          <Title order={2}>League</Title>
-          <Text className="muted">Access denied.</Text>
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack component="section" gap="md">
+            <Box component="header">
+              <Title order={2} className="baseline-textHeroTitle">
+                League
+              </Title>
+              <Text className="baseline-textBody">Access denied.</Text>
+            </Box>
+            <PageError message={view.message} />
+          </Stack>
         </Box>
-        <PageError message={view.message} />
-      </Card>
+      </Box>
     );
   }
   if (view.state === "error") {
     return (
-      <Card className="card" component="section">
-        <Box component="header">
-          <Title order={2}>League</Title>
-          <Text className="muted">Unable to load</Text>
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack component="section" gap="md">
+            <Box component="header">
+              <Title order={2} className="baseline-textHeroTitle">
+                League
+              </Title>
+              <Text className="baseline-textBody">Unable to load</Text>
+            </Box>
+            <PageError message={view.message} />
+          </Stack>
         </Box>
-        <PageError message={view.message} />
-      </Card>
+      </Box>
     );
   }
 
   const league = view.league;
 
   return (
-    <Card className="card" component="section">
-      <Group
-        className="header-with-controls"
-        justify="space-between"
-        align="start"
-        wrap="wrap"
-      >
-        <Box>
-          <Title order={2}>{league.name ?? `League #${leagueId}`}</Title>
-          <Text className="muted">Roster, seasons, and commissioner actions.</Text>
-        </Box>
-      </Group>
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <Stack component="section" gap="md">
+          <Group
+            component="header"
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+          >
+            <Title order={2} className="baseline-textHeroTitle">
+              {league.name ?? `League #${leagueId}`}
+            </Title>
+          </Group>
 
-      <Card className="card nested" component="section" mt="md">
-        <Box component="header">
-          <Title order={3}>Roster</Title>
-          <Text className="muted">Members and roles</Text>
-        </Box>
-        {view.roster === null ? (
-          <Text className="muted">Roster hidden (commissioner-only).</Text>
-        ) : view.roster.length === 0 ? (
-          <Text className="muted">No members yet.</Text>
-        ) : (
-          <Stack component="ul" className="list">
-            {view.roster.map((m) => (
-              <Box key={m.id} component="li" className="list-row">
-                <Text span>{m.username}</Text>
-                <Box component="span" className="pill">
-                  {m.role}
-                </Box>
-                {view.isCommissioner && m.role !== "OWNER" && (
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => void onRemoveMember(m.user_id, m.role)}
-                    disabled={working}
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
+              gap: 18,
+              alignItems: "start"
+            }}
+          >
+            {/* LEFT: Seasons */}
+            <Stack gap="sm">
+              <Group justify="space-between" align="flex-end" wrap="wrap">
+                <Title order={3}>Seasons</Title>
+                <Button
+                  component={Link}
+                  to={`/leagues/${leagueId}/seasons/new`}
+                  disabled={!view.isCommissioner}
+                  title={
+                    view.isCommissioner ? undefined : "Commissioner permission required"
+                  }
+                >
+                  Create season
+                </Button>
+              </Group>
+
+              {view.seasons.length === 0 ? (
+                <Text className="baseline-textBody">No seasons yet.</Text>
+              ) : (
+                <Stack
+                  component="ul"
+                  gap="sm"
+                  style={{ listStyle: "none", margin: 0, padding: 0 }}
+                >
+                  {view.seasons.map((s) => {
+                    const ceremonyLabel = ceremonyLabelForSeason(s);
+                    const statusLabel = (() => {
+                      const seasonStatus = String(s.status ?? "").toUpperCase();
+                      if (s.is_active_ceremony === false || seasonStatus === "ARCHIVED")
+                        return "Archived";
+                      if (seasonStatus === "COMPLETE") return "Complete";
+                      if (seasonStatus === "IN_PROGRESS") return "In progress";
+                      const ds = String(s.draft_status ?? "").toUpperCase();
+                      if (ds === "COMPLETED") return "Draft complete";
+                      if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED")
+                        return "Drafting";
+                      return "Pre-draft";
+                    })();
+
+                    return (
+                      <StandardCard
+                        key={s.id}
+                        component={Link}
+                        to={`/seasons/${s.id}`}
+                        interactive
+                      >
+                        <Group
+                          justify="space-between"
+                          align="flex-start"
+                          wrap="nowrap"
+                          gap="md"
+                        >
+                          <Box style={{ minWidth: 0 }}>
+                            <Text className="baseline-textCardTitle">
+                              {ceremonyLabel}
+                            </Text>
+                          </Box>
+                          <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
+                        </Group>
+                      </StandardCard>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Stack>
+
+            {/* RIGHT: Members + controls */}
+            <Stack gap="md">
+              <Stack gap="sm">
+                <Title order={4}>Members</Title>
+                <Divider />
+
+                {rosterList.length === 0 ? (
+                  <Text className="baseline-textBody">No members yet.</Text>
+                ) : (
+                  <Stack
+                    component="ul"
+                    gap={0}
+                    style={{ listStyle: "none", margin: 0, padding: 0 }}
                   >
-                    Remove
-                  </Button>
+                    {rosterList.map((m, idx) => (
+                      <Box key={m.id} component="li">
+                        <Group justify="space-between" align="center" wrap="wrap" py="sm">
+                          <Text className="baseline-textBody">{m.username}</Text>
+                          {m.role === "OWNER" ? <CommissionerPill /> : null}
+                        </Group>
+                        {idx === rosterList.length - 1 ? null : <Divider />}
+                      </Box>
+                    ))}
+                  </Stack>
                 )}
-              </Box>
-            ))}
-          </Stack>
-        )}
-        {view.isCommissioner && (
-          <Group className="inline-actions" mt="sm" wrap="wrap">
-            <Button type="button" onClick={() => void onCopyInvite()}>
-              Copy invite
-            </Button>
-            <FormStatus loading={working} result={rosterStatus} />
-          </Group>
-        )}
-      </Card>
+              </Stack>
 
-      {view.isCommissioner && (
-        <Card className="card nested" component="section" mt="md">
-          <Box component="header">
-            <Title order={3}>Commissioner Controls</Title>
-            <Text className="muted">
-              Transfer commissioner role or remove members. Owner only for transfer.
-            </Text>
-          </Box>
-          <Group className="inline-actions" wrap="wrap">
-            <NativeSelect
-              aria-label="Transfer to member"
-              value={transferTarget}
-              onChange={(e) => setTransferTarget(e.currentTarget.value)}
-              disabled={!view.isOwner || working}
-              data={[
-                { value: "", label: "Transfer to...", disabled: true },
-                ...(view.roster
-                  ?.filter((m) => m.user_id !== Number(user?.sub))
-                  .map((m) => ({
-                    value: String(m.user_id),
-                    label: `${m.username} (${m.role})`
-                  })) ?? [])
-              ]}
-            />
-            <Button
-              type="button"
-              onClick={() => void onTransferOwnership()}
-              disabled={!view.isOwner || working || !transferTarget}
-            >
-              Transfer commissioner
-            </Button>
-          </Group>
-          <FormStatus loading={working} result={rosterStatus} />
-        </Card>
-      )}
+              {view.isOwner ? (
+                <Stack gap="sm">
+                  <Title order={4}>Management</Title>
+                  <Divider />
 
-      <Card className="card nested" component="section" mt="md">
-        <Group
-          className="header-with-controls"
-          justify="space-between"
-          align="start"
-          wrap="wrap"
-        >
-          <Box>
-            <Title order={3}>Seasons</Title>
-            <Text className="muted">Active and past seasons for this league.</Text>
+                  <Group wrap="wrap">
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      onClick={() => setTransferOpen(true)}
+                    >
+                      Transfer ownership
+                    </Button>
+                    <Button
+                      type="button"
+                      color="red"
+                      variant="subtle"
+                      onClick={() => setDeleteOpen(true)}
+                    >
+                      Delete league
+                    </Button>
+                  </Group>
+                  <FormStatus loading={working} result={rosterStatus} />
+                </Stack>
+              ) : null}
+            </Stack>
           </Box>
-          {view.isCommissioner && (
-            <Group className="inline-actions" wrap="wrap">
-              <Button component={Link} to={`/leagues/${leagueId}/seasons/new`}>
-                Create season
-              </Button>
-            </Group>
-          )}
-        </Group>
-        {view.seasons.length === 0 ? (
-          <Text className="muted">
-            No seasons yet. Once an active ceremony is configured, you can create the
-            first season.
-          </Text>
-        ) : (
-          <Box className="grid">
-            {view.seasons.map((s) => (
-              <Card key={s.id} className="card">
-                <Box component="header">
-                  <Title order={4}>{seasonLabel(s)}</Title>
-                  <Text className="muted">
-                    {s.is_active_ceremony === false
-                      ? "Archived season"
-                      : "Current season"}
-                  </Text>
-                </Box>
-                <Group className="pill-list" wrap="wrap">
-                  <Box component="span" className="pill">
-                    {s.is_active_ceremony === false ? "ARCHIVED" : "ACTIVE"}
-                  </Box>
-                  <Box component="span" className="pill">
-                    Status: {s.status}
-                  </Box>
-                  <Box component="span" className="pill">
-                    Ceremony {s.ceremony_id}
-                  </Box>
-                  {s.remainder_strategy && (
-                    <Box component="span" className="pill">
-                      {allocationLabel(s.remainder_strategy)}
-                    </Box>
-                  )}
-                  {s.draft_status && (
-                    <Box component="span" className="pill">
-                      Draft: {s.draft_status}
-                    </Box>
-                  )}
-                </Group>
-                <Group className="inline-actions" mt="sm" wrap="wrap">
-                  <Button component={Link} to={`/seasons/${s.id}`} variant="subtle">
-                    Open season
-                  </Button>
-                </Group>
-              </Card>
-            ))}
-          </Box>
-        )}
-      </Card>
-    </Card>
+
+          <Modal
+            opened={transferOpen}
+            onClose={() => setTransferOpen(false)}
+            title="Transfer ownership"
+            centered
+          >
+            <Stack gap="sm">
+              <Text className="baseline-textBody">
+                Transfer league ownership to another member. The new commissioner will
+                manage seasons and winners.
+              </Text>
+              <Select
+                label="Member"
+                placeholder="Select member"
+                value={transferTarget}
+                onChange={setTransferTarget}
+                data={transferOptions}
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setTransferOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    const id = transferTarget ? Number(transferTarget) : NaN;
+                    if (!Number.isFinite(id)) return;
+                    void onTransferOwnershipTo(id);
+                    setTransferOpen(false);
+                    setTransferTarget(null);
+                  }}
+                  disabled={!transferTarget || working}
+                >
+                  Transfer ownership
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            title="Delete league?"
+            centered
+          >
+            <Stack gap="sm">
+              <Text className="baseline-textBody">
+                Delete this league and all of its seasons. This cannot be undone.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  color="red"
+                  onClick={() => {
+                    void Promise.resolve(onDeleteLeague()).then(() =>
+                      setDeleteOpen(false)
+                    );
+                  }}
+                  disabled={working}
+                >
+                  Delete
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+        </Stack>
+      </Box>
+    </Box>
   );
 }

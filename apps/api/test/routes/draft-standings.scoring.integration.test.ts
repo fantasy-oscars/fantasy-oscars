@@ -8,11 +8,13 @@ import {
   insertDraftPick,
   insertDraftSeat,
   insertLeague,
+  insertLeagueMember,
   insertCeremonyWinner,
   insertCategoryEdition,
   insertNomination,
   insertSeason
 } from "../factories/db.js";
+import { insertUser } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -43,25 +45,42 @@ describe("draft standings scoring strategies", () => {
   });
 
   it("computes different standings for fixed vs negative strategies", async () => {
+    await insertUser(db.pool, { id: 1 });
     // Fixed strategy draft
-    const leagueFixed = await insertLeague(db.pool);
+    const leagueFixed = await insertLeague(db.pool, { created_by_user_id: 1 });
     const seasonFixed = await insertSeason(db.pool, {
       league_id: leagueFixed.id,
       ceremony_id: leagueFixed.ceremony_id,
       scoring_strategy_name: "fixed"
     });
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      seasonFixed.ceremony_id
+    ]);
     const draftFixed = await insertDraft(db.pool, {
       league_id: leagueFixed.id,
       season_id: seasonFixed.id,
       status: "COMPLETED"
     });
+    const lm1 = await insertLeagueMember(db.pool, {
+      league_id: leagueFixed.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    const user2 = await insertUser(db.pool, { id: 2 });
+    const lm2 = await insertLeagueMember(db.pool, {
+      league_id: leagueFixed.id,
+      user_id: user2.id,
+      role: "MEMBER"
+    });
     const seat1 = await insertDraftSeat(db.pool, {
       draft_id: draftFixed.id,
-      seat_number: 1
+      seat_number: 1,
+      league_member_id: lm1.id
     });
     const seat2 = await insertDraftSeat(db.pool, {
       draft_id: draftFixed.id,
-      seat_number: 2
+      seat_number: 2,
+      league_member_id: lm2.id
     });
     const nomWin = await insertNomination(db.pool, {
       ceremony_id: leagueFixed.ceremony_id
@@ -102,24 +121,40 @@ describe("draft standings scoring strategies", () => {
     expect(fixedPoints.get(2)).toBe(0);
 
     // Negative strategy draft
-    const leagueNeg = await insertLeague(db.pool);
+    const leagueNeg = await insertLeague(db.pool, { created_by_user_id: 1 });
     const seasonNeg = await insertSeason(db.pool, {
       league_id: leagueNeg.id,
       ceremony_id: leagueNeg.ceremony_id,
       scoring_strategy_name: "negative"
     });
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      seasonNeg.ceremony_id
+    ]);
     const draftNeg = await insertDraft(db.pool, {
       league_id: leagueNeg.id,
       season_id: seasonNeg.id,
       status: "COMPLETED"
     });
+    const lmNeg1 = await insertLeagueMember(db.pool, {
+      league_id: leagueNeg.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    const user3 = await insertUser(db.pool, { id: 3 });
+    const lmNeg2 = await insertLeagueMember(db.pool, {
+      league_id: leagueNeg.id,
+      user_id: user3.id,
+      role: "MEMBER"
+    });
     const negSeat1 = await insertDraftSeat(db.pool, {
       draft_id: draftNeg.id,
-      seat_number: 1
+      seat_number: 1,
+      league_member_id: lmNeg1.id
     });
     const negSeat2 = await insertDraftSeat(db.pool, {
       draft_id: draftNeg.id,
-      seat_number: 2
+      seat_number: 2,
+      league_member_id: lmNeg2.id
     });
     const nomWin2 = await insertNomination(db.pool, {
       ceremony_id: leagueNeg.ceremony_id
@@ -161,24 +196,41 @@ describe("draft standings scoring strategies", () => {
   });
 
   it("recomputes standings when ceremony winners change", async () => {
-    const league = await insertLeague(db.pool);
+    await insertUser(db.pool, { id: 1 });
+    const league = await insertLeague(db.pool, { created_by_user_id: 1 });
     const season = await insertSeason(db.pool, {
       league_id: league.id,
       ceremony_id: league.ceremony_id,
       scoring_strategy_name: "fixed"
     });
+    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+      season.ceremony_id
+    ]);
     const draft = await insertDraft(db.pool, {
       league_id: league.id,
       season_id: season.id,
       status: "COMPLETED"
     });
+    const lm1 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    const user2 = await insertUser(db.pool, { id: 2 });
+    const lm2 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: user2.id,
+      role: "MEMBER"
+    });
     const seat1 = await insertDraftSeat(db.pool, {
       draft_id: draft.id,
-      seat_number: 1
+      seat_number: 1,
+      league_member_id: lm1.id
     });
     const seat2 = await insertDraftSeat(db.pool, {
       draft_id: draft.id,
-      seat_number: 2
+      seat_number: 2,
+      league_member_id: lm2.id
     });
 
     const category = await insertCategoryEdition(db.pool, {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import { getAuthToken } from "../lib/authToken";
 import type { ApiResult, DraftEventMessage, Snapshot } from "../lib/types";
@@ -44,10 +45,17 @@ export type DraftRoomOrchestration = {
     backToSeasonHref: string | null;
   };
   header: {
-    participants: Array<{ seatNumber: number; label: string; active: boolean }>;
+    participants: Array<{
+      seatNumber: number;
+      label: string;
+      active: boolean;
+      avatarKey: string | null;
+    }>;
     status: Snapshot["draft"]["status"] | null;
     roundNumber: number | null;
     pickNumber: number | null;
+    direction: "FORWARD" | "REVERSE" | null;
+    hasTimer: boolean;
     clockText: string;
     poolMode: PoolMode;
     setPoolMode: (m: PoolMode) => void;
@@ -55,9 +63,20 @@ export type DraftRoomOrchestration = {
     setView: (v: DraftRoomView) => void;
     canToggleView: boolean;
     canStartDraft: boolean;
+    startDisabled?: boolean;
     startLoading: boolean;
     startResult: ApiResult | null;
     onStartDraft: () => void;
+    canManageDraft: boolean;
+    pauseLoading: boolean;
+    pauseResult: ApiResult | null;
+    onPauseDraft: () => void;
+    resumeLoading: boolean;
+    resumeResult: ApiResult | null;
+    onResumeDraft: () => void;
+    ceremonyStatus: string | null;
+    isFinalResults: boolean;
+    resultsWinnerLabel: string | null;
   };
   layout: {
     phase: "PRE" | "LIVE" | "POST";
@@ -65,19 +84,22 @@ export type DraftRoomOrchestration = {
     boardCols: string;
     rails: {
       ledger: {
-        visible: boolean;
+        present?: boolean;
+        visible?: boolean;
         collapsed: boolean;
         hide: () => void;
         show: () => void;
       };
       myRoster: {
-        visible: boolean;
+        present?: boolean;
+        visible?: boolean;
         collapsed: boolean;
         hide: () => void;
         show: () => void;
       };
       autodraft: {
-        visible: boolean;
+        present?: boolean;
+        visible?: boolean;
         collapsed: boolean;
         hide: () => void;
         show: () => void;
@@ -90,9 +112,11 @@ export type DraftRoomOrchestration = {
       roundPick: string;
       seatNumber: number | null;
       seatLabel: string;
+      nominationId: number | null;
       icon: string | null;
       label: string;
       active: boolean;
+      winner: boolean;
     }>;
   };
   pool: {
@@ -100,23 +124,38 @@ export type DraftRoomOrchestration = {
       id: number;
       title: string;
       icon: string;
+      iconVariant?: "default" | "inverted";
+      unitKind?: string;
       nominations: Array<{
         id: number;
         label: string;
+        posterUrl?: string | null;
+        filmTitle?: string | null;
+        filmYear?: number | null;
+        contributors?: string[];
+        songTitle?: string | null;
+        performerName?: string | null;
+        performerCharacter?: string | null;
+        performerProfileUrl?: string | null;
+        performerProfilePath?: string | null;
         muted: boolean;
         selected: boolean;
+        winner: boolean;
       }>;
       emptyText: string | null;
     }>;
     onSelectNomination: (id: number) => void;
+    selectable?: boolean;
   };
   myRoster: {
     seatNumber: number | null;
     picks: Array<{
       pickNumber: number;
       roundPick: string;
+      nominationId: number;
       icon: string | null;
       label: string;
+      winner: boolean;
     }>;
     selected: { id: number; icon: string | null; label: string } | null;
     clearSelection: () => void;
@@ -125,15 +164,35 @@ export type DraftRoomOrchestration = {
     pickLoading: boolean;
     pickState: ApiResult | null;
     submitPick: () => void;
+    submitPickNomination: (nominationId: number) => void;
   };
   rosterBoard: {
-    seats: Array<{ seatNumber: number; username: string | null }>;
+    seats: Array<{ seatNumber: number; username: string | null; winnerCount: number }>;
     maxRows: number;
     rowsBySeat: Map<
       number,
-      Array<{ pickNumber: number; icon: string | null; label: string }>
+      Array<{
+        pickNumber: number;
+        nominationId: number;
+        icon: string | null;
+        label: string;
+        winner: boolean;
+      }>
     >;
     emptyText: string | null;
+  };
+  autodraft: {
+    enabled: boolean;
+    setEnabled: (v: boolean) => void;
+    strategy: "random" | "custom";
+    setStrategy: (v: "random" | "custom") => void;
+    plans: Array<{ id: number; name: string }>;
+    selectedPlanId: number | null;
+    setSelectedPlanId: (v: number | null) => void;
+    list: Array<{ nominationId: number; icon: string | null; label: string }>;
+    loading: boolean;
+    saving: boolean;
+    error: string | null;
   };
   refresh: () => void;
 };
@@ -161,11 +220,26 @@ export function useDraftRoomOrchestration(args: {
   const [pickLoading, setPickLoading] = useState(false);
   const [startState, setStartState] = useState<ApiResult | null>(null);
   const [startLoading, setStartLoading] = useState(false);
+  const [pauseState, setPauseState] = useState<ApiResult | null>(null);
+  const [pauseLoading, setPauseLoading] = useState(false);
+  const [resumeState, setResumeState] = useState<ApiResult | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
   const [nowTs, setNowTs] = useState(() => Date.now());
 
   const socketRef = useRef<Socket | null>(null);
   const snapshotRef = useRef<Snapshot | null>(null);
   const lastVersionRef = useRef<number | null>(null);
+  const lastStatusRef = useRef<string | null>(null);
+
+  // Per-user auto-draft
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoStrategy, setAutoStrategy] = useState<"random" | "custom">("random");
+  const [autoPlanId, setAutoPlanId] = useState<number | null>(null);
+  const [autoPlans, setAutoPlans] = useState<Array<{ id: number; name: string }>>([]);
+  const [autoList, setAutoList] = useState<number[]>([]);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoError, setAutoError] = useState<string | null>(null);
 
   const loadSnapshot = useCallback(
     async (options?: { preserveSnapshot?: boolean }) => {
@@ -192,6 +266,60 @@ export function useDraftRoomOrchestration(args: {
     void loadSnapshot({ preserveSnapshot: true });
   }, [loadSnapshot]);
 
+  const loadAutodraft = useCallback(async (nextSnapshot?: Snapshot | null) => {
+    const s = nextSnapshot ?? snapshotRef.current;
+    if (!s?.draft?.id) return;
+    const ceremonyId = s.ceremony_id ?? null;
+    if (!ceremonyId) return;
+
+    setAutoLoading(true);
+    setAutoError(null);
+
+    const [cfgRes, plansRes] = await Promise.all([
+      fetchJson<{
+        autodraft: { enabled: boolean; strategy: string; plan_id: number | null };
+      }>(`/drafts/${s.draft.id}/autodraft`, { method: "GET" }),
+      fetchJson<{ plans: Array<{ id: number; name: string }> }>(
+        `/draft-plans/ceremonies/${ceremonyId}`,
+        { method: "GET" }
+      )
+    ]);
+
+    if (!plansRes.ok) {
+      setAutoPlans([]);
+    } else {
+      setAutoPlans(plansRes.data?.plans ?? []);
+    }
+
+    if (!cfgRes.ok) {
+      setAutoError(cfgRes.error ?? "Failed to load auto-draft settings");
+      setAutoLoading(false);
+      return;
+    }
+
+    const cfg = cfgRes.data?.autodraft;
+    const enabled = Boolean(cfg?.enabled);
+    const strategy = String(cfg?.strategy ?? "RANDOM").toUpperCase();
+    const planId = cfg?.plan_id ?? null;
+
+    setAutoEnabled(enabled);
+    setAutoStrategy(strategy === "PLAN" ? "custom" : "random");
+    setAutoPlanId(planId);
+
+    if (enabled && strategy === "PLAN" && planId) {
+      const planRes = await fetchJson<{ nomination_ids: number[] }>(
+        `/draft-plans/${planId}`,
+        { method: "GET" }
+      );
+      if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
+      else setAutoList([]);
+    } else {
+      setAutoList([]);
+    }
+
+    setAutoLoading(false);
+  }, []);
+
   useEffect(() => {
     if (!snapshot && !loading) void loadSnapshot();
   }, [loadSnapshot, loading, snapshot]);
@@ -199,17 +327,64 @@ export function useDraftRoomOrchestration(args: {
   useEffect(() => {
     snapshotRef.current = snapshot;
     lastVersionRef.current = snapshot?.version ?? null;
+    lastStatusRef.current = snapshot?.draft.status ?? null;
   }, [snapshot]);
+
+  // Load per-user auto-draft settings once we have the initial snapshot.
+  useEffect(() => {
+    if (disabled) return;
+    if (!snapshot?.draft?.id) return;
+    void loadAutodraft(snapshot);
+  }, [disabled, loadAutodraft, snapshot?.draft?.id]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
+  // Heartbeat: if a pick timer expires, trigger an auto-pick on the server.
+  // We only call the endpoint when the local view believes the deadline has passed.
+  useEffect(() => {
+    if (disabled) return;
+    if (!snapshot?.draft.id) return;
+
+    const intervalId = window.setInterval(() => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      const d = current.draft;
+      if (d.status !== "IN_PROGRESS") return;
+      if (!d.pick_timer_seconds) return;
+      const deadlineMs = d.pick_deadline_at
+        ? new Date(d.pick_deadline_at).getTime()
+        : null;
+      if (!deadlineMs || !Number.isFinite(deadlineMs)) return;
+      if (Date.now() <= deadlineMs) return;
+
+      void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [disabled, snapshot?.draft.id]);
+
   const drafted = useMemo(
     () => buildDraftedSet(snapshot?.picks ?? []),
     [snapshot?.picks]
   );
+  const winnerSet = useMemo(() => {
+    const set = new Set<number>();
+    for (const w of snapshot?.winners ?? []) set.add(w.nomination_id);
+    return set;
+  }, [snapshot?.winners]);
+  const winnerCountBySeat = useMemo(() => {
+    const m = new Map<number, number>();
+    if (!snapshot) return m;
+    for (const s of snapshot.seats) m.set(s.seat_number, 0);
+    for (const p of snapshot.picks) {
+      if (!winnerSet.has(p.nomination_id)) continue;
+      m.set(p.seat_number, (m.get(p.seat_number) ?? 0) + 1);
+    }
+    return m;
+  }, [snapshot, winnerSet]);
   const nominationLabelById = useMemo(
     () => buildNominationLabelById(snapshot),
     [snapshot]
@@ -221,9 +396,126 @@ export function useDraftRoomOrchestration(args: {
     [snapshot]
   );
 
+  const ceremonyStatus = snapshot?.ceremony_status ?? null;
+  const scoringStrategyName = snapshot?.scoring_strategy_name ?? "fixed";
+  const isFinalResults =
+    (snapshot?.draft.status ?? null) === "COMPLETED" && ceremonyStatus === "COMPLETE";
+
+  const resultsWinnerLabel = useMemo(() => {
+    if (!snapshot || !isFinalResults) return null;
+    const scores = snapshot.seats.map((s) => ({
+      seatNumber: s.seat_number,
+      username: s.username ?? `Seat ${s.seat_number}`,
+      score: winnerCountBySeat.get(s.seat_number) ?? 0
+    }));
+    if (!scores.length) return null;
+    const bestScore =
+      scoringStrategyName === "negative"
+        ? Math.min(...scores.map((s) => s.score))
+        : Math.max(...scores.map((s) => s.score));
+    const winners = scores.filter((s) => s.score === bestScore);
+    if (!winners.length) return null;
+    if (winners.length === 1) return winners[0].username;
+    return `Tie: ${winners.map((w) => w.username).join(", ")}`;
+  }, [isFinalResults, scoringStrategyName, snapshot, winnerCountBySeat]);
+
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;
   const mySeatNumber = snapshot?.my_seat_number ?? null;
+
+  const updateAutodraft = useCallback(
+    async (next: {
+      enabled: boolean;
+      strategy: "random" | "custom";
+      planId: number | null;
+    }) => {
+      const current = snapshotRef.current;
+      if (!current?.draft?.id) return false;
+      const hasPlans = autoPlans.length > 0;
+      const resolvedStrategy =
+        next.strategy === "custom" && hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+      const resolvedPlanId =
+        next.enabled && resolvedStrategy === "PLAN" ? next.planId : null;
+
+      setAutoSaving(true);
+      setAutoError(null);
+      const res = await fetchJson<{
+        autodraft: { enabled: boolean; strategy: string; plan_id: number | null };
+      }>(`/drafts/${current.draft.id}/autodraft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: next.enabled,
+          strategy: resolvedStrategy,
+          plan_id: resolvedPlanId
+        })
+      });
+      setAutoSaving(false);
+      if (!res.ok) {
+        setAutoError(res.error ?? "Failed to save auto-draft settings");
+        return false;
+      }
+
+      setAutoEnabled(Boolean(res.data?.autodraft?.enabled));
+      const s = String(res.data?.autodraft?.strategy ?? "RANDOM").toUpperCase();
+      setAutoStrategy(s === "PLAN" ? "custom" : "random");
+      setAutoPlanId(res.data?.autodraft?.plan_id ?? null);
+
+      // Refresh the selected list if a plan was chosen.
+      const planId = res.data?.autodraft?.plan_id ?? null;
+      if (next.enabled && s === "PLAN" && planId) {
+        const planRes = await fetchJson<{ nomination_ids: number[] }>(
+          `/draft-plans/${planId}`,
+          { method: "GET" }
+        );
+        if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
+        else setAutoList([]);
+      } else {
+        setAutoList([]);
+      }
+      return true;
+    },
+    [autoPlans.length]
+  );
+
+  const autodraftList = useMemo(() => {
+    // Primary source of truth is the saved plan order. If it's empty (e.g. plan created before
+    // nominees existed), fall back to the ceremony's default ordering so the rail is still useful.
+    const ids: number[] = (() => {
+      if (autoList.length > 0) return autoList;
+      if (autoStrategy !== "custom") return [];
+      if (!autoPlanId) return [];
+      const rows = snapshot?.nominations ?? [];
+      if (rows.length === 0) return [];
+      const catIndex = new Map<number, number>();
+      for (const c of snapshot?.categories ?? []) {
+        catIndex.set(c.id, c.sort_index ?? 0);
+      }
+      return rows
+        .filter((n) => n.status === "ACTIVE")
+        .slice()
+        .sort((a, b) => {
+          const ai = catIndex.get(a.category_edition_id) ?? 0;
+          const bi = catIndex.get(b.category_edition_id) ?? 0;
+          if (ai !== bi) return ai - bi;
+          return a.id - b.id;
+        })
+        .map((n) => n.id);
+    })();
+
+    return ids.map((id) => ({
+      nominationId: id,
+      icon: nominationIconById.get(id) ?? null,
+      label: nominationLabelById.get(id) ?? `#${id}`
+    }));
+  }, [
+    autoList,
+    autoPlanId,
+    autoStrategy,
+    nominationIconById,
+    nominationLabelById,
+    snapshot
+  ]);
 
   const pickDisabledReason = useMemo(
     () =>
@@ -240,29 +532,56 @@ export function useDraftRoomOrchestration(args: {
 
   const canPick = Boolean(snapshot && !pickDisabledReason);
 
+  const submitPickNomination = useCallback(
+    async (nominationId: number) => {
+      if (!snapshot) return;
+      setPickLoading(true);
+      setPickState(null);
+
+      const res = await fetchJson(`/drafts/${snapshot.draft.id}/picks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomination_id: nominationId,
+          request_id: makeRequestId()
+        })
+      });
+
+      if (res.ok) {
+        setPickState(null);
+        setSelectedNominationId(null);
+        notify({
+          id: "draft.pick.submitted",
+          severity: "success",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message: "Pick submitted"
+        });
+        await loadSnapshot();
+      } else {
+        const message = res.error ?? "Pick failed";
+        setPickState({ ok: false, message });
+        notify({
+          id: "draft.pick.failed",
+          severity: "error",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message
+        });
+      }
+      setPickLoading(false);
+    },
+    [loadSnapshot, snapshot]
+  );
+
   const submitPick = useCallback(async () => {
-    if (!snapshot || !selectedNominationId) return;
-    setPickLoading(true);
-    setPickState(null);
-
-    const res = await fetchJson(`/drafts/${snapshot.draft.id}/picks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nomination_id: selectedNominationId,
-        request_id: makeRequestId()
-      })
-    });
-
-    if (res.ok) {
-      setPickState({ ok: true, message: "Pick submitted" });
-      setSelectedNominationId(null);
-      await loadSnapshot();
-    } else {
-      setPickState({ ok: false, message: res.error ?? "Pick failed" });
-    }
-    setPickLoading(false);
-  }, [loadSnapshot, selectedNominationId, snapshot]);
+    if (!selectedNominationId) return;
+    await submitPickNomination(selectedNominationId);
+  }, [selectedNominationId, submitPickNomination]);
 
   const startDraft = useCallback(async () => {
     if (!snapshot) return;
@@ -273,12 +592,99 @@ export function useDraftRoomOrchestration(args: {
       headers: { "Content-Type": "application/json" }
     });
     if (res.ok) {
-      setStartState({ ok: true, message: "Draft started" });
+      setStartState(null);
+      notify({
+        id: "draft.start.ok",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Draft started"
+      });
       await loadSnapshot();
     } else {
-      setStartState({ ok: false, message: res.error ?? "Failed to start draft" });
+      const message = res.error ?? "Failed to start draft";
+      setStartState({ ok: false, message });
+      notify({
+        id: "draft.start.failed",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message
+      });
     }
     setStartLoading(false);
+  }, [loadSnapshot, snapshot]);
+
+  const pauseDraft = useCallback(async () => {
+    if (!snapshot) return;
+    setPauseLoading(true);
+    setPauseState(null);
+    const res = await fetchJson(`/drafts/${snapshot.draft.id}/pause`, { method: "POST" });
+    if (res.ok) {
+      setPauseState(null);
+      notify({
+        id: "draft.pause.ok",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Draft paused"
+      });
+      await loadSnapshot();
+    } else {
+      const message = res.error ?? "Failed to pause draft";
+      setPauseState({ ok: false, message });
+      notify({
+        id: "draft.pause.failed",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message
+      });
+    }
+    setPauseLoading(false);
+  }, [loadSnapshot, snapshot]);
+
+  const resumeDraft = useCallback(async () => {
+    if (!snapshot) return;
+    setResumeLoading(true);
+    setResumeState(null);
+    const res = await fetchJson(`/drafts/${snapshot.draft.id}/resume`, {
+      method: "POST"
+    });
+    if (res.ok) {
+      setResumeState(null);
+      notify({
+        id: "draft.resume.ok",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Draft resumed"
+      });
+      await loadSnapshot();
+    } else {
+      const message = res.error ?? "Failed to resume draft";
+      setResumeState({ ok: false, message });
+      notify({
+        id: "draft.resume.failed",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message
+      });
+    }
+    setResumeLoading(false);
   }, [loadSnapshot, snapshot]);
 
   useEffect(() => {
@@ -321,8 +727,38 @@ export function useDraftRoomOrchestration(args: {
         return;
       }
 
-      // For structural changes (e.g. seats created on start), reload the snapshot.
-      if (event.event_type === "draft.started" && current.seats.length === 0) {
+      if (event.event_type === "draft.pick.autopicked") {
+        const nominationId = event.payload?.pick?.nomination_id;
+        const seatNumber = event.payload?.pick?.seat_number;
+
+        const labels = buildNominationLabelById(current);
+        const nomineeLabel =
+          typeof nominationId === "number"
+            ? (labels.get(nominationId) ?? `#${nominationId}`)
+            : null;
+        const seatLabel =
+          typeof seatNumber === "number"
+            ? (current.seats.find((s) => s.seat_number === seatNumber)?.username ??
+              `Seat ${seatNumber}`)
+            : "A player";
+
+        notify({
+          id: "draft.autopick.expired",
+          severity: "info",
+          trigger_type: "async",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message: nomineeLabel
+            ? `Auto-picked ${nomineeLabel} for ${seatLabel}.`
+            : `Auto-picked for ${seatLabel}.`
+        });
+      }
+
+      // Draft start creates the real seat order (which is intentionally hidden pre-start).
+      // Even if the pre-start snapshot includes "display seats", we must refresh so the UI
+      // reflects the authoritative seat assignment for picks/turns.
+      if (event.event_type === "draft.started") {
         void loadSnapshot({ preserveSnapshot: true });
         return;
       }
@@ -344,6 +780,11 @@ export function useDraftRoomOrchestration(args: {
             nextDraft.current_pick_number =
               event.payload.draft.current_pick_number ?? null;
           }
+          if ("pick_deadline_at" in event.payload.draft) {
+            const raw = (event.payload.draft as { pick_deadline_at?: unknown })
+              .pick_deadline_at;
+            nextDraft.pick_deadline_at = typeof raw === "string" ? raw : null;
+          }
           if (event.payload.draft.completed_at !== undefined)
             nextDraft.completed_at = event.payload.draft.completed_at ?? null;
           if (event.payload.draft.started_at !== undefined)
@@ -361,17 +802,78 @@ export function useDraftRoomOrchestration(args: {
       });
     };
 
+    const onWinnersUpdated = (msg: {
+      ceremony_id: number;
+      category_edition_id: number;
+      nomination_ids: number[];
+    }) => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      // Update winners in-place for this ceremony/category.
+      setSnapshot((prev) => {
+        if (!prev || prev.draft.id !== current.draft.id) return prev;
+        const nextWinners = [
+          ...(prev.winners ?? []).filter(
+            (w) => w.category_edition_id !== msg.category_edition_id
+          ),
+          ...msg.nomination_ids.map((id) => ({
+            category_edition_id: msg.category_edition_id,
+            nomination_id: id
+          }))
+        ];
+        return { ...prev, winners: nextWinners };
+      });
+
+      const labels = buildNominationLabelById(current);
+      const first = msg.nomination_ids[0];
+      const winnerLabelRaw =
+        typeof first === "number" ? (labels.get(first) ?? `#${first}`) : null;
+      const winnerLabel =
+        winnerLabelRaw && msg.nomination_ids.length > 1
+          ? `${winnerLabelRaw} +${msg.nomination_ids.length - 1}`
+          : winnerLabelRaw;
+      const categoryName =
+        current.categories?.find((c) => c.id === msg.category_edition_id)?.family_name ??
+        `Category ${msg.category_edition_id}`;
+      notify({
+        id: "ceremony.winner.updated",
+        severity: "info",
+        trigger_type: "async",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: winnerLabel
+          ? `${categoryName}: ${winnerLabel}`
+          : `${categoryName}: updated`
+      });
+    };
+
+    const onCeremonyFinalized = (msg: { ceremony_id: number; status: "COMPLETE" }) => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      // Keep the local snapshot in sync for results presentation without a full resync.
+      setSnapshot((prev) => {
+        if (!prev || prev.draft.id !== current.draft.id) return prev;
+        return { ...prev, ceremony_status: msg.status };
+      });
+    };
+
     socket.on("draft:event", onDraftEvent);
+    socket.on("ceremony:winners.updated", onWinnersUpdated);
+    socket.on("ceremony:finalized", onCeremonyFinalized);
     socket.connect();
 
     return () => {
       socket.off("draft:event", onDraftEvent);
+      socket.off("ceremony:winners.updated", onWinnersUpdated);
+      socket.off("ceremony:finalized", onCeremonyFinalized);
       socket.disconnect();
       socketRef.current = null;
     };
   }, [disabled, loadSnapshot, snapshot?.draft.id]);
 
   const draftStatus = snapshot?.draft.status ?? null;
+  const canManageDraft = Boolean(snapshot?.can_manage_draft);
   const phase: DraftRoomOrchestration["layout"]["phase"] =
     draftStatus === "PENDING" ? "PRE" : draftStatus === "COMPLETED" ? "POST" : "LIVE";
   const isPre = phase === "PRE";
@@ -380,9 +882,9 @@ export function useDraftRoomOrchestration(args: {
   const showRosterOnly = isPost;
 
   const rails = useMemo(() => {
-    const showLedger = !isPre && !ledgerCollapsed;
-    const showRoster = !isPre && !rosterCollapsed;
-    const showAutodraft = !autodraftCollapsed;
+    const showLedger = !isPre;
+    const showRoster = !isPre;
+    const showAutodraft = true;
     return {
       showLedger,
       showRoster,
@@ -394,11 +896,31 @@ export function useDraftRoomOrchestration(args: {
     () =>
       computeDraftBoardCols({
         hasSnapshot: Boolean(snapshot),
-        showLedger: rails.showLedger,
-        showRoster: rails.showRoster,
+        showLedger: rails.showLedger
+          ? ledgerCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden",
+        showRoster: rails.showRoster
+          ? rosterCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden",
         showAutodraft: rails.showAutodraft
+          ? autodraftCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden"
       }),
-    [rails.showAutodraft, rails.showLedger, rails.showRoster, snapshot]
+    [
+      autodraftCollapsed,
+      ledgerCollapsed,
+      rails.showAutodraft,
+      rails.showLedger,
+      rails.showRoster,
+      rosterCollapsed,
+      snapshot
+    ]
   );
 
   const picksByNumber = useMemo(
@@ -420,9 +942,11 @@ export function useDraftRoomOrchestration(args: {
       roundPick: string;
       seatNumber: number | null;
       seatLabel: string;
+      nominationId: number | null;
       icon: string | null;
       label: string;
       active: boolean;
+      winner: boolean;
     }> = [];
 
     for (let idx = 0; idx < total; idx++) {
@@ -442,9 +966,11 @@ export function useDraftRoomOrchestration(args: {
         roundPick: computeRoundPickLabel({ pickNumber, seatCount }),
         seatNumber,
         seatLabel,
+        nominationId: pick?.nomination_id ?? null,
         icon,
         label,
-        active: activePick === pickNumber
+        active: activePick === pickNumber,
+        winner: Boolean(pick?.nomination_id && winnerSet.has(pick.nomination_id))
       });
     }
     return rows;
@@ -453,7 +979,8 @@ export function useDraftRoomOrchestration(args: {
     nominationLabelById,
     picksByNumber,
     snapshot,
-    turn?.current_pick_number
+    turn?.current_pick_number,
+    winnerSet
   ]);
 
   const poolCategories = useMemo(() => {
@@ -471,14 +998,31 @@ export function useDraftRoomOrchestration(args: {
         return {
           id: n.id,
           label: n.label,
+          posterUrl: (n as { film_poster_url?: string | null }).film_poster_url ?? null,
+          filmTitle: (n as { film_title?: string | null }).film_title ?? null,
+          filmYear: (n as { film_year?: number | null }).film_year ?? null,
+          contributors: (n as { contributors?: string[] }).contributors ?? [],
+          songTitle: (n as { song_title?: string | null }).song_title ?? null,
+          performerName: (n as { performer_name?: string | null }).performer_name ?? null,
+          performerCharacter:
+            (n as { performer_character?: string | null }).performer_character ?? null,
+          performerProfileUrl:
+            (n as { performer_profile_url?: string | null }).performer_profile_url ??
+            null,
+          performerProfilePath:
+            (n as { performer_profile_path?: string | null }).performer_profile_path ??
+            null,
           muted: poolMode === "ALL_MUTED" && isDrafted,
-          selected: selectedNominationId === n.id
+          selected: selectedNominationId === n.id,
+          winner: winnerSet.has(n.id)
         };
       });
       return {
         id: c.id,
         title: c.family_name,
         icon,
+        iconVariant: (c.icon_variant ?? "default") as "default" | "inverted",
+        unitKind: String(c.unit_kind ?? ""),
         nominations,
         emptyText: nominations.length ? null : "No nominees."
       };
@@ -489,7 +1033,8 @@ export function useDraftRoomOrchestration(args: {
     nominationsByCategoryId,
     poolMode,
     selectedNominationId,
-    snapshot
+    snapshot,
+    winnerSet
   ]);
 
   const myPicks = useMemo(() => {
@@ -501,10 +1046,12 @@ export function useDraftRoomOrchestration(args: {
       .map((p) => ({
         pickNumber: p.pick_number,
         roundPick: computeRoundPickLabel({ pickNumber: p.pick_number, seatCount }),
+        nominationId: p.nomination_id,
         icon: nominationIconById.get(p.nomination_id) ?? null,
-        label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`
+        label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`,
+        winner: winnerSet.has(p.nomination_id)
       }));
-  }, [mySeatNumber, nominationIconById, nominationLabelById, snapshot]);
+  }, [mySeatNumber, nominationIconById, nominationLabelById, snapshot, winnerSet]);
 
   const selected = useMemo(() => {
     if (!selectedNominationId) return null;
@@ -520,20 +1067,27 @@ export function useDraftRoomOrchestration(args: {
     const picksBySeat = buildPicksBySeat(snapshot);
     const out = new Map<
       number,
-      Array<{ pickNumber: number; icon: string | null; label: string }>
+      Array<{
+        pickNumber: number;
+        nominationId: number;
+        icon: string | null;
+        label: string;
+      }>
     >();
     for (const seat of snapshot.seats) {
       out.set(
         seat.seat_number,
         (picksBySeat.get(seat.seat_number) ?? []).map((p) => ({
           pickNumber: p.pick_number,
+          nominationId: p.nomination_id,
           icon: nominationIconById.get(p.nomination_id) ?? null,
-          label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`
+          label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`,
+          winner: winnerSet.has(p.nomination_id)
         }))
       );
     }
     return out;
-  }, [nominationIconById, nominationLabelById, snapshot]);
+  }, [nominationIconById, nominationLabelById, snapshot, winnerSet]);
 
   const maxRows = useMemo(() => {
     if (!snapshot) return 0;
@@ -548,15 +1102,38 @@ export function useDraftRoomOrchestration(args: {
     return snapshot.seats.map((s) => ({
       seatNumber: s.seat_number,
       label: s.username ?? `Seat ${s.seat_number}`,
-      active: turn?.seat_number === s.seat_number
+      active: turn?.seat_number === s.seat_number,
+      avatarKey: s.avatar_key ?? null
     }));
   }, [snapshot, turn?.seat_number]);
 
   const backToSeasonHref = snapshot ? `/seasons/${snapshot.draft.season_id}` : null;
 
-  const isLive = draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED";
-  const canToggleView = isLive;
+  // Switching between Draft/Roster is purely presentational and should not depend on live status.
+  // This keeps the UI consistent across PRE/IN_PROGRESS/POST states without affecting the websocket.
+  const canToggleView =
+    Boolean(snapshot) && draftStatus !== "PENDING" && draftStatus !== "COMPLETED";
   const canStartDraft = draftStatus === "PENDING";
+
+  // When the draft completes (including via auto-pick), move to roster view with a toast.
+  useEffect(() => {
+    if (!snapshot) return;
+    const prev = lastStatusRef.current;
+    const next = snapshot.draft.status ?? null;
+    if (prev && prev !== "COMPLETED" && next === "COMPLETED") {
+      notify({
+        id: "draft.completed.transition",
+        severity: "info",
+        trigger_type: "async",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Draft complete! Moving to roster view."
+      });
+      setView("roster");
+    }
+    lastStatusRef.current = next;
+  }, [snapshot, setView]);
 
   return {
     state: {
@@ -566,11 +1143,16 @@ export function useDraftRoomOrchestration(args: {
     },
     nav: { backToSeasonHref },
     header: {
-      participants,
+      participants:
+        draftStatus === "PENDING"
+          ? [...participants].sort((a, b) => a.label.localeCompare(b.label))
+          : participants,
       status: draftStatus,
       roundNumber: turn?.round_number ?? null,
       pickNumber:
         turn?.current_pick_number ?? snapshot?.draft.current_pick_number ?? null,
+      direction: turn?.direction ?? null,
+      hasTimer: Boolean(snapshot?.draft.pick_timer_seconds),
       clockText,
       poolMode,
       setPoolMode,
@@ -580,7 +1162,17 @@ export function useDraftRoomOrchestration(args: {
       canStartDraft,
       startLoading,
       startResult: startState,
-      onStartDraft: () => void startDraft()
+      onStartDraft: () => void startDraft(),
+      canManageDraft,
+      pauseLoading,
+      pauseResult: pauseState,
+      onPauseDraft: () => void pauseDraft(),
+      resumeLoading,
+      resumeResult: resumeState,
+      onResumeDraft: () => void resumeDraft(),
+      ceremonyStatus,
+      isFinalResults,
+      resultsWinnerLabel
     },
     layout: {
       phase,
@@ -588,19 +1180,19 @@ export function useDraftRoomOrchestration(args: {
       boardCols,
       rails: {
         ledger: {
-          visible: !isPre && !ledgerCollapsed,
+          present: !isPre,
           collapsed: ledgerCollapsed,
           hide: () => setLedgerCollapsed(true),
           show: () => setLedgerCollapsed(false)
         },
         myRoster: {
-          visible: !isPre && !rosterCollapsed,
+          present: !isPre,
           collapsed: rosterCollapsed,
           hide: () => setRosterCollapsed(true),
           show: () => setRosterCollapsed(false)
         },
         autodraft: {
-          visible: !autodraftCollapsed,
+          present: true,
           collapsed: autodraftCollapsed,
           hide: () => setAutodraftCollapsed(true),
           show: () => setAutodraftCollapsed(false)
@@ -621,20 +1213,98 @@ export function useDraftRoomOrchestration(args: {
       pickDisabledReason,
       pickLoading,
       pickState,
-      submitPick: () => void submitPick()
+      submitPick: () => void submitPick(),
+      submitPickNomination: (nominationId) => void submitPickNomination(nominationId)
     },
     rosterBoard: {
-      seats:
-        snapshot?.seats.map((s) => ({
-          seatNumber: s.seat_number,
-          username: s.username ?? null
-        })) ?? [],
+      seats: (() => {
+        const base =
+          snapshot?.seats.map((s) => ({
+            seatNumber: s.seat_number,
+            username: s.username ?? null,
+            winnerCount: winnerCountBySeat.get(s.seat_number) ?? 0
+          })) ?? [];
+        if (!snapshot || !isFinalResults) return base;
+        const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins
+        return [...base].sort((a, b) => {
+          if (a.winnerCount !== b.winnerCount)
+            return (a.winnerCount - b.winnerCount) * dir;
+          return a.seatNumber - b.seatNumber;
+        });
+      })(),
       maxRows,
       rowsBySeat: rosterPicksBySeat,
       emptyText:
         snapshot && snapshot.seats.length === 0
           ? "Roster view is available once the draft starts."
           : null
+    },
+    autodraft: {
+      enabled: autoEnabled,
+      setEnabled: (v) => {
+        const prev = autoEnabled;
+        setAutoEnabled(v);
+        // Persist when toggled (pre-draft included). This is the user's explicit intent signal.
+        void (async () => {
+          const ok = await updateAutodraft({
+            enabled: v,
+            strategy: autoStrategy,
+            planId: autoPlanId
+          });
+          if (!ok) setAutoEnabled(prev);
+        })();
+      },
+      strategy: autoStrategy,
+      setStrategy: (v) => {
+        const prev = autoStrategy;
+        setAutoStrategy(v);
+        // Allow configuring strategy pre-draft without forcing enablement.
+        if (!autoEnabled) return;
+        void (async () => {
+          const ok = await updateAutodraft({
+            enabled: autoEnabled,
+            strategy: v,
+            planId: autoPlanId
+          });
+          if (!ok) setAutoStrategy(prev);
+        })();
+      },
+      plans: autoPlans,
+      selectedPlanId: autoPlanId,
+      setSelectedPlanId: (v) => {
+        const prev = autoPlanId;
+        setAutoPlanId(v);
+        // Allow selecting a plan pre-draft without forcing enablement.
+        if (!autoEnabled) {
+          if (!v) {
+            setAutoList([]);
+            return;
+          }
+          void (async () => {
+            const planRes = await fetchJson<{ nomination_ids: number[] }>(
+              `/draft-plans/${v}`,
+              {
+                method: "GET"
+              }
+            );
+            if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
+            else setAutoList([]);
+          })();
+          return;
+        }
+        void (async () => {
+          const ok = await updateAutodraft({
+            enabled: autoEnabled,
+            strategy: autoStrategy,
+            planId: v
+          });
+          if (!ok) setAutoPlanId(prev);
+        })();
+      },
+      list: autodraftList,
+      loading: autoLoading,
+      saving: autoSaving,
+      error: autoError
     },
     refresh
   };

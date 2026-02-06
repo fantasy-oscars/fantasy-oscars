@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { bumpContentRevision } from "../lib/revision";
 import type { ApiResult } from "../lib/types";
+import { notify } from "../notifications";
 import {
   DYNAMIC_META,
   STATIC_META,
@@ -83,7 +84,16 @@ export function useAdminStaticContentEditorOrchestration(args: {
       setStatus({ ok: false, message: msg });
       return;
     }
-    setStatus({ ok: true, message: "Saved" });
+    notify({
+      id: "admin.content.static.save.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Saved"
+    });
+    setStatus(null);
     bumpContentRevision();
   }, [body, key, title]);
 
@@ -177,7 +187,16 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
         return;
       }
       await load();
-      setStatus({ ok: true, message: "Published" });
+      notify({
+        id: "admin.content.dynamic.activate.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: key === "banner" ? "Banner activated" : "Entry made active"
+      });
+      setStatus(null);
       bumpContentRevision();
     },
     [key, load]
@@ -198,7 +217,16 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
         return;
       }
       await load();
-      setStatus({ ok: true, message: "Unpublished" });
+      notify({
+        id: "admin.content.dynamic.deactivate.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: key === "banner" ? "Banner deactivated" : "Entry deactivated"
+      });
+      setStatus(null);
       bumpContentRevision();
     },
     [key, load]
@@ -301,7 +329,16 @@ export function useAdminDynamicContentEditorOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Failed to save" });
       return;
     }
-    setStatus({ ok: true, message: "Saved" });
+    notify({
+      id: "admin.content.dynamic.edit.save.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Saved"
+    });
+    setStatus(null);
     await load();
     bumpContentRevision();
   }, [body, dismissible, endsAtLocal, entry, key, load, startsAtLocal, title, variant]);
@@ -320,7 +357,16 @@ export function useAdminDynamicContentEditorOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Failed to publish" });
       return;
     }
-    setStatus({ ok: true, message: "Published" });
+    notify({
+      id: "admin.content.dynamic.edit.publish.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Published"
+    });
+    setStatus(null);
     await load();
     bumpContentRevision();
   }, [entry, key, load]);
@@ -339,7 +385,16 @@ export function useAdminDynamicContentEditorOrchestration(args: {
       setStatus({ ok: false, message: res.error ?? "Failed to unpublish" });
       return;
     }
-    setStatus({ ok: true, message: "Unpublished" });
+    notify({
+      id: "admin.content.dynamic.edit.unpublish.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Unpublished"
+    });
+    setStatus(null);
     await load();
     bumpContentRevision();
   }, [entry, key, load]);

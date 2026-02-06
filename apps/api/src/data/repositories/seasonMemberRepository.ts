@@ -103,3 +103,33 @@ export async function removeSeasonMember(
     userId
   ]);
 }
+
+export async function transferSeasonOwnership(
+  client: DbClient,
+  seasonId: number,
+  targetUserId: number
+): Promise<boolean> {
+  const { rows } = await query<{ ok: boolean }>(
+    client,
+    `WITH target AS (
+       SELECT 1 AS ok
+       FROM season_member
+       WHERE season_id = $1 AND user_id = $2
+     ),
+     demote AS (
+       UPDATE season_member
+       SET role = 'MEMBER'
+       WHERE season_id = $1 AND role = 'OWNER' AND EXISTS (SELECT 1 FROM target)
+       RETURNING 1
+     ),
+     promote AS (
+       UPDATE season_member
+       SET role = 'OWNER'
+       WHERE season_id = $1 AND user_id = $2 AND EXISTS (SELECT 1 FROM target)
+       RETURNING 1
+     )
+     SELECT EXISTS (SELECT 1 FROM promote) AS ok`,
+    [seasonId, targetUserId]
+  );
+  return Boolean(rows[0]?.ok);
+}

@@ -157,12 +157,20 @@ describe("MVP end-to-end flow", () => {
 
     // League creation
     const leagueRes = await postJson<{
-      league: { id: number; ceremony_id: number };
-      season: { id: number };
+      league: { id: number; ceremony_id: number | null };
+      season: null;
     }>("/leagues", { name: "E2E League" }, commishLogin.json.token);
     expect(leagueRes.status).toBe(201);
     const leagueId = leagueRes.json.league.id;
-    const seasonId = leagueRes.json.season.id;
+    expect(leagueRes.json.league.ceremony_id).toBeNull();
+
+    const seasonRes = await postJson<{ season: { id: number; ceremony_id: number } }>(
+      `/seasons/leagues/${leagueId}/seasons`,
+      {},
+      commishLogin.json.token
+    );
+    expect(seasonRes.status).toBe(201);
+    const seasonId = seasonRes.json.season.id;
 
     // Ensure commissioner is registered as season member (safety against setup drift)
     const { rows: lmRows } = await db.pool.query<{ id: number }>(
@@ -208,7 +216,7 @@ describe("MVP end-to-end flow", () => {
     // Draft creation
     const draftCreate = await postJson<{ draft: { id: number } }>(
       "/drafts",
-      { league_id: leagueId, draft_order_type: "SNAKE" },
+      { league_id: leagueId, season_id: seasonId, draft_order_type: "SNAKE" },
       commishLogin.json.token
     );
     expect(draftCreate.status).toBe(201);

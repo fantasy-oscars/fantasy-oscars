@@ -340,6 +340,7 @@ describe("draft start integration", () => {
   });
 
   it("rejects when draft missing", async () => {
+    await insertUser(db.pool, { id: 1 });
     const res = await post<{ error: { code: string } }>(`/drafts/999/start`, {});
     expect(res.status).toBe(404);
     expect(res.json.error.code).toBe("DRAFT_NOT_FOUND");
