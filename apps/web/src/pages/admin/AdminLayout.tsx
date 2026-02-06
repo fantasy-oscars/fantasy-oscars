@@ -28,6 +28,13 @@ export function AdminLayout() {
                 </NavLink>
 
                 <NavLink
+                  to="/admin/category-templates"
+                  className={linkClass(pathname.startsWith("/admin/category-templates"))}
+                >
+                  Category Templates
+                </NavLink>
+
+                <NavLink
                   to="/admin/users"
                   className={linkClass(pathname.startsWith("/admin/users"))}
                 >

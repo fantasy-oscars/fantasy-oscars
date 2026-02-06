@@ -31,15 +31,19 @@ export type CategoryFamily = {
   code: string;
   name: string;
   icon_id: number;
+  icon_variant: "default" | "inverted";
   default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
 };
 
 export type CategoryEdition = {
   id: number;
   ceremony_id: number;
-  family_id: number;
+  family_id: number | null;
+  code: string;
+  name: string;
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   icon_id: number | null;
+  icon_variant: "default" | "inverted";
   sort_index: number;
 };
 
@@ -200,6 +204,7 @@ export function buildCategoryFamily(
     code: `catfam-${n}`,
     name: `Category Family ${n}`,
     icon_id: overrides.icon_id ?? n,
+    icon_variant: "default",
     default_unit_kind: "FILM",
     ...overrides
   };
@@ -213,8 +218,11 @@ export function buildCategoryEdition(
     id: n,
     ceremony_id: overrides.ceremony_id ?? n,
     family_id: overrides.family_id ?? n,
+    code: overrides.code ?? `cat-${n}`,
+    name: overrides.name ?? `Category ${n}`,
     unit_kind: "FILM",
     icon_id: overrides.icon_id ?? null,
+    icon_variant: "default",
     sort_index: overrides.sort_index ?? 0,
     ...overrides
   };

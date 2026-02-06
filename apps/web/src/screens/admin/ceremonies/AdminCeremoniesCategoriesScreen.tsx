@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   ActionIcon,
   Box,
@@ -193,6 +194,13 @@ export function AdminCeremoniesCategoriesScreen(props: {
         )}
 
         <Group className="admin-secondary-actions" mt="sm" wrap="wrap">
+          <UnstyledButton
+            component={Link}
+            to="/admin/category-templates"
+            className="link-action"
+          >
+            Category templates
+          </UnstyledButton>
           <UnstyledButton
             type="button"
             className="link-action"

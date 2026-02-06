@@ -38,12 +38,11 @@ export async function getDraftBoardForCeremony(
            ce.id::int,
            ce.unit_kind,
            ce.sort_index::int,
-           cf.name AS family_name,
+           ce.name AS family_name,
            i.code AS icon_code,
-           cf.icon_variant
+           ce.icon_variant
          FROM category_edition ce
-         JOIN category_family cf ON cf.id = ce.family_id
-         LEFT JOIN icon i ON i.id = COALESCE(ce.icon_id, cf.icon_id)
+         LEFT JOIN icon i ON i.id = ce.icon_id
          WHERE ce.ceremony_id = $1
          ORDER BY ce.sort_index ASC, ce.id ASC`,
         [ceremonyId]

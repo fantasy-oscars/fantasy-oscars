@@ -10,14 +10,18 @@ type CategoryFamilyInput = {
   code: string;
   name: string;
   icon_id: number;
+  icon_variant?: "default" | "inverted";
   default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
 };
 type CategoryEditionInput = {
   id: number;
   ceremony_id: number;
   family_id: number;
+  code?: string;
+  name?: string;
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   icon_id: number | null;
+  icon_variant?: "default" | "inverted";
   sort_index: number;
 };
 type FilmInput = { id: number; title: string; country: string | null };
@@ -74,11 +78,38 @@ export async function loadNominees(pool: Pool, dataset: Dataset) {
       ["id", "code", "name", "icon_id", "default_unit_kind"],
       dataset.category_families
     );
+
+    // category_edition now stores template-derived display fields (copy-on-add).
+    const familyById = new Map<number, CategoryFamilyInput>();
+    for (const fam of dataset.category_families ?? []) {
+      familyById.set(Number(fam.id), fam);
+    }
+    const editionsWithCopyFields = (dataset.category_editions ?? []).map((ce) => {
+      const fam = familyById.get(Number(ce.family_id));
+      const icon_variant = (fam?.icon_variant ?? "default") as "default" | "inverted";
+      return {
+        ...ce,
+        code: ce.code ?? fam?.code ?? `cat-${ce.id}`,
+        name: ce.name ?? fam?.name ?? `Category ${ce.id}`,
+        icon_variant: ce.icon_variant ?? icon_variant,
+        icon_id: ce.icon_id ?? fam?.icon_id ?? null
+      };
+    });
     await insertAll(
       pool,
       "category_edition",
-      ["id", "ceremony_id", "family_id", "unit_kind", "icon_id", "sort_index"],
-      dataset.category_editions
+      [
+        "id",
+        "ceremony_id",
+        "family_id",
+        "code",
+        "name",
+        "unit_kind",
+        "icon_id",
+        "icon_variant",
+        "sort_index"
+      ],
+      editionsWithCopyFields
     );
     await insertAll(pool, "person", ["id", "full_name"], dataset.people);
     await insertAll(pool, "film", ["id", "title", "country"], dataset.films);

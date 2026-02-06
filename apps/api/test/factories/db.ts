@@ -71,9 +71,9 @@ export async function insertCategoryFamily(
 
   await pool.query(
     `INSERT INTO category_family
-     (id, code, name, icon_id, default_unit_kind)
-     VALUES ($1,$2,$3,$4,$5)`,
-    [fam.id, fam.code, fam.name, fam.icon_id, fam.default_unit_kind]
+     (id, code, name, icon_id, icon_variant, default_unit_kind)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [fam.id, fam.code, fam.name, fam.icon_id, fam.icon_variant, fam.default_unit_kind]
   );
   return fam;
 }
@@ -88,14 +88,27 @@ export async function insertCategoryEdition(
   const cat = buildCategoryEdition({
     ceremony_id: overrides.ceremony_id ?? ceremony?.id ?? 1,
     family_id: overrides.family_id ?? fam?.id ?? 1,
+    code: overrides.code ?? fam?.code ?? `cat-${Date.now()}`,
+    name: overrides.name ?? fam?.name ?? "Category",
+    icon_variant: overrides.icon_variant ?? fam?.icon_variant ?? "default",
     ...overrides
   });
 
   await pool.query(
     `INSERT INTO category_edition
-     (id, ceremony_id, family_id, unit_kind, icon_id, sort_index)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [cat.id, cat.ceremony_id, cat.family_id, cat.unit_kind, cat.icon_id, cat.sort_index]
+     (id, ceremony_id, family_id, code, name, unit_kind, icon_id, icon_variant, sort_index)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [
+      cat.id,
+      cat.ceremony_id,
+      cat.family_id,
+      cat.code,
+      cat.name,
+      cat.unit_kind,
+      cat.icon_id,
+      cat.icon_variant,
+      cat.sort_index
+    ]
   );
   return cat;
 }
