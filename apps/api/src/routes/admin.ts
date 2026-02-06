@@ -3762,22 +3762,34 @@ export function createAdminRouter(client: DbClient): Router {
         const duplicateIdsRaw = (req.body as { duplicate_ids?: unknown } | undefined)
           ?.duplicate_ids;
         if (!Array.isArray(duplicateIdsRaw) || duplicateIdsRaw.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "duplicate_ids must be a non-empty array", {
-            fields: ["duplicate_ids"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "duplicate_ids must be a non-empty array",
+            {
+              fields: ["duplicate_ids"]
+            }
+          );
         }
         const duplicateIds = Array.from(
           new Set(
             duplicateIdsRaw
-              .map((v) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN))
+              .map((v) =>
+                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
+              )
               .filter((v) => Number.isInteger(v) && v > 0)
               .map((v) => Number(v))
           )
         ).filter((id) => id !== canonicalId);
         if (duplicateIds.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "No valid duplicate_ids provided", {
-            fields: ["duplicate_ids"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "No valid duplicate_ids provided",
+            {
+              fields: ["duplicate_ids"]
+            }
+          );
         }
 
         const actorId = Number(req.auth?.sub) || null;
@@ -3795,7 +3807,8 @@ export function createAdminRouter(client: DbClient): Router {
             [canonicalId]
           );
           const canonical = canonicalRows[0];
-          if (!canonical) throw new AppError("NOT_FOUND", 404, "Canonical film not found");
+          if (!canonical)
+            throw new AppError("NOT_FOUND", 404, "Canonical film not found");
 
           const { rows: dupRows } = await query<{
             id: number;
@@ -3813,9 +3826,14 @@ export function createAdminRouter(client: DbClient): Router {
           const foundIds = new Set(dupRows.map((r) => r.id));
           const missing = duplicateIds.filter((id) => !foundIds.has(id));
           if (missing.length > 0) {
-            throw new AppError("NOT_FOUND", 404, "One or more duplicate films not found", {
-              missing_ids: missing
-            });
+            throw new AppError(
+              "NOT_FOUND",
+              404,
+              "One or more duplicate films not found",
+              {
+                missing_ids: missing
+              }
+            );
           }
 
           for (const d of dupRows) {

@@ -16,9 +16,12 @@ export function AdminFilmsPage() {
       setCanonicalForGroup={o.setCanonicalForGroup}
       onReload={() => void o.reload()}
       onMergeGroup={(group) => {
-        const canonicalId = o.canonicalByGroup[group.norm_title] ?? group.films[0]?.id ?? 0;
+        const canonicalId =
+          o.canonicalByGroup[group.norm_title] ?? group.films[0]?.id ?? 0;
         if (!canonicalId) return;
-        const duplicateIds = group.films.map((f) => f.id).filter((id) => id !== canonicalId);
+        const duplicateIds = group.films
+          .map((f) => f.id)
+          .filter((id) => id !== canonicalId);
         if (duplicateIds.length === 0) return;
 
         void confirm({
@@ -36,4 +39,3 @@ export function AdminFilmsPage() {
     />
   );
 }
-

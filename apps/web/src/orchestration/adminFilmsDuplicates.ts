@@ -20,9 +20,9 @@ export type AdminFilmDuplicateGroup = {
 export function useAdminFilmDuplicatesOrchestration() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ ok: true } | { ok: false; message: string } | null>(
-    null
-  );
+  const [status, setStatus] = useState<
+    { ok: true } | { ok: false; message: string } | null
+  >(null);
   const [groups, setGroups] = useState<AdminFilmDuplicateGroup[]>([]);
 
   // UI state: which film is treated as canonical in each group.
@@ -32,7 +32,9 @@ export function useAdminFilmDuplicatesOrchestration() {
     setLoading(true);
     setStatus(null);
     const q = query.trim();
-    const path = q ? `/admin/films/duplicates?q=${encodeURIComponent(q)}` : "/admin/films/duplicates";
+    const path = q
+      ? `/admin/films/duplicates?q=${encodeURIComponent(q)}`
+      : "/admin/films/duplicates";
     const res = await fetchJson<{ groups: AdminFilmDuplicateGroup[] }>(path, {
       method: "GET"
     });
@@ -136,4 +138,3 @@ export function useAdminFilmDuplicatesOrchestration() {
 
   return merged;
 }
-

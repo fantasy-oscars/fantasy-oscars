@@ -1,4 +1,13 @@
-import { Button, Divider, Group, Radio, Stack, Text, TextInput, Title } from "@mantine/core";
+import {
+  Button,
+  Divider,
+  Group,
+  Radio,
+  Stack,
+  Text,
+  TextInput,
+  Title
+} from "@mantine/core";
 import { StandardCard } from "../../../primitives/cards/StandardCard";
 
 import type { AdminFilmDuplicateGroup } from "../../../orchestration/adminFilmsDuplicates";
@@ -15,7 +24,11 @@ export type AdminFilmDuplicatesScreenProps = {
   onMergeGroup: (group: AdminFilmDuplicateGroup) => void;
 };
 
-function formatFilmLabel(f: { title: string; release_year: number | null; tmdb_id: number | null }) {
+function formatFilmLabel(f: {
+  title: string;
+  release_year: number | null;
+  tmdb_id: number | null;
+}) {
   const year = typeof f.release_year === "number" ? ` (${f.release_year})` : "";
   const tmdb = typeof f.tmdb_id === "number" && f.tmdb_id ? ` · TMDB ${f.tmdb_id}` : "";
   return `${f.title}${year}${tmdb}`;
@@ -116,4 +129,3 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
     </Stack>
   );
 }
-
