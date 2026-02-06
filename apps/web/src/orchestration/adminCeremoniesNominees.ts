@@ -712,7 +712,9 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         return {
           ok: false as const,
           hydrated: false,
-          error: res.error ?? "Failed to link film"
+          error: res.error ?? "Failed to link film",
+          errorCode: res.errorCode,
+          errorDetails: res.errorDetails
         };
       }
       await Promise.all([loadManualContext(), loadNominations()]);
@@ -737,7 +739,9 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         return {
           ok: false as const,
           hydrated: false,
-          error: res.error ?? "Failed to link person"
+          error: res.error ?? "Failed to link person",
+          errorCode: res.errorCode,
+          errorDetails: res.errorDetails
         };
       }
       await Promise.all([loadManualContext(), loadNominations()]);

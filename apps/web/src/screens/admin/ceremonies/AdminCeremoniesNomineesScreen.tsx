@@ -690,68 +690,8 @@ export function AdminCeremoniesNomineesScreen(props: {
           people={o.peopleResults}
           peopleLoading={o.peopleLoading}
           onClose={() => setEditingNominationId(null)}
-          onLinkFilm={async (filmId, tmdbId) => {
-            const r = await linkFilmTmdb(filmId, tmdbId);
-            if (r.ok) {
-              notify({
-                id: "admin.nominees.film.link.success",
-                severity: "success",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                title: tmdbId ? "Film linked" : "Film unlinked",
-                message: tmdbId
-                  ? r.hydrated
-                    ? "Hydrated details from TMDB."
-                    : "Linked."
-                  : "Unlinked."
-              });
-            } else {
-              notify({
-                id: "admin.nominees.film.link.error",
-                severity: "error",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                title: tmdbId ? "Could not link film" : "Could not unlink film",
-                message: r.error ?? "Failed to update film"
-              });
-            }
-          }}
-          onLinkPerson={async (personId, tmdbId) => {
-            const r = await linkPersonTmdb(personId, tmdbId);
-            if (r.ok) {
-              notify({
-                id: "admin.nominees.person.link.success",
-                severity: "success",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                title: tmdbId ? "Contributor linked" : "Contributor unlinked",
-                message: tmdbId
-                  ? r.hydrated
-                    ? "Hydrated details from TMDB."
-                    : "Linked."
-                  : "Unlinked."
-              });
-            } else {
-              notify({
-                id: "admin.nominees.person.link.error",
-                severity: "error",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                title: tmdbId
-                  ? "Could not link contributor"
-                  : "Could not unlink contributor",
-                message: r.error ?? "Failed to update contributor"
-              });
-            }
-          }}
+          onLinkFilm={linkFilmTmdb}
+          onLinkPerson={linkPersonTmdb}
           onAddContributor={async (nominationId, input) => {
             const ok = await addNominationContributor(nominationId, input);
             if (ok) {
@@ -909,8 +849,32 @@ function NominationEditModal(props: {
   people: Array<{ id: number; full_name: string; tmdb_id: number | null }>;
   peopleLoading: boolean;
   onClose: () => void;
-  onLinkFilm: (filmId: number, tmdbId: number | null) => Promise<void>;
-  onLinkPerson: (personId: number, tmdbId: number | null) => Promise<void>;
+  onLinkFilm: (
+    filmId: number,
+    tmdbId: number | null
+  ) => Promise<
+    | { ok: true; hydrated: boolean }
+    | {
+        ok: false;
+        hydrated: false;
+        error: string;
+        errorCode?: string;
+        errorDetails?: Record<string, unknown>;
+      }
+  >;
+  onLinkPerson: (
+    personId: number,
+    tmdbId: number | null
+  ) => Promise<
+    | { ok: true; hydrated: boolean }
+    | {
+        ok: false;
+        hydrated: false;
+        error: string;
+        errorCode?: string;
+        errorDetails?: Record<string, unknown>;
+      }
+  >;
   onAddContributor: (
     nominationId: number,
     input: { person_id?: number; name?: string; tmdb_id?: number }
@@ -953,6 +917,11 @@ function NominationEditModal(props: {
   const [pendingContributorInput, setPendingContributorInput] = useState("");
 
   const [filmCredits, setFilmCredits] = useState<FilmCredits | null>(null);
+  const [filmLinkConflict, setFilmLinkConflict] = useState<{
+    tmdbId: number;
+    linkedFilmId: number;
+    linkedFilmTitle: string | null;
+  } | null>(null);
 
   const filmId = nomination?.display_film_id ?? null;
   const film = filmId ? (films.find((f) => f.id === filmId) ?? null) : null;
@@ -1159,7 +1128,10 @@ function NominationEditModal(props: {
                 <ActionIcon
                   variant="subtle"
                   aria-label="Link film to TMDB"
-                  onClick={() => setFilmLinkOpen((v) => !v)}
+                  onClick={() => {
+                    setFilmLinkOpen((v) => !v);
+                    setFilmTmdbId(film?.tmdb_id ? String(film.tmdb_id) : "");
+                  }}
                 >
                   <Text component="span" className="gicon" aria-hidden="true">
                     add_link
@@ -1183,16 +1155,101 @@ function NominationEditModal(props: {
                 onChange={(e) => setFilmTmdbId(e.currentTarget.value)}
                 placeholder="603"
               />
+              {film?.tmdb_id ? (
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Remove TMDB link"
+                  onClick={() =>
+                    void (async () => {
+                      const r = await onLinkFilm(filmId, null);
+                      if (r.ok) {
+                        notify({
+                          id: "admin.nominees.film.unlink.success",
+                          severity: "success",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Film unlinked",
+                          message: "Removed TMDB link."
+                        });
+                        setFilmLinkOpen(false);
+                        setFilmTmdbId("");
+                      } else {
+                        notify({
+                          id: "admin.nominees.film.unlink.error",
+                          severity: "error",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Could not unlink film",
+                          message: r.error
+                        });
+                      }
+                    })()
+                  }
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    link_off
+                  </Text>
+                </ActionIcon>
+              ) : null}
               <Button
                 type="button"
                 onClick={() =>
                   void (async () => {
-                    await onLinkFilm(
-                      filmId,
-                      filmTmdbId.trim() ? Number(filmTmdbId.trim()) : null
-                    );
-                    setFilmLinkOpen(false);
-                    setFilmTmdbId("");
+                    const nextTmdbId = filmTmdbId.trim()
+                      ? Number(filmTmdbId.trim())
+                      : null;
+                    const r = await onLinkFilm(filmId, nextTmdbId);
+                    if (r.ok) {
+                      notify({
+                        id: "admin.nominees.film.link.success",
+                        severity: "success",
+                        trigger_type: "user_action",
+                        scope: "local",
+                        durability: "ephemeral",
+                        requires_decision: false,
+                        title: nextTmdbId ? "Film linked" : "Film unlinked",
+                        message: nextTmdbId
+                          ? r.hydrated
+                            ? "Hydrated details from TMDB."
+                            : "Linked."
+                          : "Unlinked."
+                      });
+                      setFilmLinkOpen(false);
+                      setFilmTmdbId("");
+                      return;
+                    }
+
+                    if (
+                      nextTmdbId &&
+                      r.errorCode === "TMDB_ID_ALREADY_LINKED" &&
+                      r.errorDetails &&
+                      typeof r.errorDetails.linked_film_id === "number"
+                    ) {
+                      setFilmLinkConflict({
+                        tmdbId: nextTmdbId,
+                        linkedFilmId: r.errorDetails.linked_film_id,
+                        linkedFilmTitle:
+                          typeof r.errorDetails.linked_film_title === "string"
+                            ? r.errorDetails.linked_film_title
+                            : null
+                      });
+                      return;
+                    }
+
+                    notify({
+                      id: "admin.nominees.film.link.error",
+                      severity: "error",
+                      trigger_type: "user_action",
+                      scope: "local",
+                      durability: "ephemeral",
+                      requires_decision: false,
+                      title: nextTmdbId ? "Could not link film" : "Could not unlink film",
+                      message: r.error
+                    });
                   })()
                 }
               >
@@ -1201,6 +1258,83 @@ function NominationEditModal(props: {
             </Group>
           ) : null}
         </Box>
+
+        <Modal
+          opened={Boolean(filmId) && Boolean(filmLinkConflict)}
+          onClose={() => setFilmLinkConflict(null)}
+          title="TMDB id already linked"
+          centered
+          size="md"
+          overlayProps={{ opacity: 0.45, blur: 2 }}
+        >
+          <Stack gap="sm">
+            <Text size="sm">
+              {filmLinkConflict?.linkedFilmTitle
+                ? `That TMDB id is already linked to “${filmLinkConflict.linkedFilmTitle}”.`
+                : "That TMDB id is already linked to another film."}
+            </Text>
+            <Text size="sm" className="muted">
+              If it was linked to the wrong film, you can remove it there and link it
+              here.
+            </Text>
+            <Group justify="flex-end">
+              <Button variant="subtle" onClick={() => setFilmLinkConflict(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() =>
+                  void (async () => {
+                    if (!filmId || !filmLinkConflict) return;
+                    const { tmdbId, linkedFilmId } = filmLinkConflict;
+                    const unlink = await onLinkFilm(linkedFilmId, null);
+                    if (!unlink.ok) {
+                      notify({
+                        id: "admin.nominees.film.unlink.other.error",
+                        severity: "error",
+                        trigger_type: "user_action",
+                        scope: "local",
+                        durability: "ephemeral",
+                        requires_decision: false,
+                        title: "Could not remove link",
+                        message: unlink.error
+                      });
+                      return;
+                    }
+                    const link = await onLinkFilm(filmId, tmdbId);
+                    if (!link.ok) {
+                      notify({
+                        id: "admin.nominees.film.link.after-unlink.error",
+                        severity: "error",
+                        trigger_type: "user_action",
+                        scope: "local",
+                        durability: "ephemeral",
+                        requires_decision: false,
+                        title: "Could not link film",
+                        message: link.error
+                      });
+                      return;
+                    }
+                    notify({
+                      id: "admin.nominees.film.link.after-unlink.success",
+                      severity: "success",
+                      trigger_type: "user_action",
+                      scope: "local",
+                      durability: "ephemeral",
+                      requires_decision: false,
+                      title: "Film linked",
+                      message: link.hydrated ? "Hydrated details from TMDB." : "Linked."
+                    });
+                    setFilmLinkConflict(null);
+                    setFilmLinkOpen(false);
+                    setFilmTmdbId("");
+                  })()
+                }
+              >
+                Remove &amp; link
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
 
         <Box>
           <Text fw={700}>People</Text>
@@ -1250,7 +1384,7 @@ function NominationEditModal(props: {
                         setPersonLinkOpenId((prev) =>
                           prev === c.person_id ? null : c.person_id
                         );
-                        setPersonTmdbId("");
+                        setPersonTmdbId(c.tmdb_id ? String(c.tmdb_id) : "");
                       }}
                     >
                       <Text component="span" className="gicon" aria-hidden="true">
@@ -1286,13 +1420,88 @@ function NominationEditModal(props: {
                 onChange={(e) => setPersonTmdbId(e.currentTarget.value)}
                 placeholder="6384"
               />
+              {(nomination.contributors ?? []).some(
+                (c) => c.person_id === personLinkOpenId && Boolean(c.tmdb_id)
+              ) ? (
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Remove TMDB link"
+                  onClick={() =>
+                    void (async () => {
+                      const r = await onLinkPerson(personLinkOpenId, null);
+                      if (r.ok) {
+                        notify({
+                          id: "admin.nominees.person.unlink.success",
+                          severity: "success",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Contributor unlinked",
+                          message: "Removed TMDB link."
+                        });
+                        setPersonLinkOpenId(null);
+                        setPersonTmdbId("");
+                      } else {
+                        notify({
+                          id: "admin.nominees.person.unlink.error",
+                          severity: "error",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Could not unlink contributor",
+                          message: r.error
+                        });
+                      }
+                    })()
+                  }
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    link_off
+                  </Text>
+                </ActionIcon>
+              ) : null}
               <Button
                 type="button"
                 onClick={() =>
-                  void onLinkPerson(
-                    personLinkOpenId,
-                    personTmdbId.trim() ? Number(personTmdbId.trim()) : null
-                  )
+                  void (async () => {
+                    const nextTmdbId = personTmdbId.trim()
+                      ? Number(personTmdbId.trim())
+                      : null;
+                    const r = await onLinkPerson(personLinkOpenId, nextTmdbId);
+                    if (r.ok) {
+                      notify({
+                        id: "admin.nominees.person.link.success",
+                        severity: "success",
+                        trigger_type: "user_action",
+                        scope: "local",
+                        durability: "ephemeral",
+                        requires_decision: false,
+                        title: nextTmdbId ? "Contributor linked" : "Contributor unlinked",
+                        message: nextTmdbId
+                          ? r.hydrated
+                            ? "Hydrated details from TMDB."
+                            : "Linked."
+                          : "Unlinked."
+                      });
+                      setPersonLinkOpenId(null);
+                      setPersonTmdbId("");
+                      return;
+                    }
+                    notify({
+                      id: "admin.nominees.person.link.error",
+                      severity: "error",
+                      trigger_type: "user_action",
+                      scope: "local",
+                      durability: "ephemeral",
+                      requires_decision: false,
+                      title: nextTmdbId
+                        ? "Could not link contributor"
+                        : "Could not unlink contributor",
+                      message: r.error
+                    });
+                  })()
                 }
               >
                 Save
