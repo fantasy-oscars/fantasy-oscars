@@ -950,9 +950,7 @@ describe("<App /> shell + routing", () => {
     const firstCheckbox = allCheckboxes[0];
     await userEvent.click(firstCheckbox);
     await waitFor(() => expect(firstCheckbox).toBeChecked());
-    await userEvent.click(
-      screen.getByRole("button", { name: /^Save$/i })
-    );
+    await userEvent.click(screen.getByRole("button", { name: /^Save$/i }));
     await userEvent.click(screen.getByRole("button", { name: /Save winners/i }));
     await waitFor(() =>
       expect(
@@ -964,9 +962,7 @@ describe("<App /> shell + routing", () => {
     const secondCheckbox = allCheckboxes[1];
     await userEvent.click(secondCheckbox);
     await waitFor(() => expect(secondCheckbox).toBeChecked());
-    await userEvent.click(
-      screen.getByRole("button", { name: /^Save$/i })
-    );
+    await userEvent.click(screen.getByRole("button", { name: /^Save$/i }));
     await waitFor(() => {
       const winnerPosts = fetchMock.mock.calls.filter((call) =>
         String(call[0]).includes("/admin/winners")
@@ -1049,9 +1045,7 @@ describe("<App /> shell + routing", () => {
     await screen.findByRole("heading", { name: /Seasons/i });
     await screen.findByRole("heading", { name: /Members/i });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Transfer ownership/i })
-    );
+    await userEvent.click(screen.getByRole("button", { name: /Transfer ownership/i }));
     const transferDialog = await screen.findByRole("dialog", {
       name: /Transfer ownership/i
     });
@@ -1075,15 +1069,16 @@ describe("<App /> shell + routing", () => {
       expect.objectContaining({ method: "POST" })
     );
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Delete league/i })
-    );
+    await userEvent.click(screen.getByRole("button", { name: /Delete league/i }));
     const deleteDialog = await screen.findByRole("dialog", { name: /Delete league\\?/i });
-    await userEvent.click(within(deleteDialog).getByRole("button", { name: /^Delete$/i }));
+    await userEvent.click(
+      within(deleteDialog).getByRole("button", { name: /^Delete$/i })
+    );
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some(
-          (call) => String(call[0]).endsWith("/leagues/10") && call[1]?.method === "DELETE"
+          (call) =>
+            String(call[0]).endsWith("/leagues/10") && call[1]?.method === "DELETE"
         )
       ).toBe(true)
     );
