@@ -687,8 +687,6 @@ export function AdminCeremoniesNomineesScreen(props: {
           nomination={nominations.find((n) => n.id === editingNominationId) ?? null}
           films={films}
           people={o.peopleResults}
-          peopleQuery={o.peopleQuery}
-          onPeopleQueryChange={o.setPeopleQuery}
           peopleLoading={o.peopleLoading}
           onClose={() => setEditingNominationId(null)}
           onLinkFilm={async (filmId, tmdbId) => {
@@ -883,8 +881,6 @@ function NominationEditModal(props: {
     release_year?: number | null;
   }>;
   people: Array<{ id: number; full_name: string; tmdb_id: number | null }>;
-  peopleQuery: string;
-  onPeopleQueryChange: (q: string) => void;
   peopleLoading: boolean;
   onClose: () => void;
   onLinkFilm: (filmId: number, tmdbId: number | null) => Promise<void>;
@@ -902,8 +898,6 @@ function NominationEditModal(props: {
     nomination,
     films,
     people,
-    peopleQuery,
-    onPeopleQueryChange,
     peopleLoading,
     onClose,
     onLinkFilm,
@@ -912,51 +906,37 @@ function NominationEditModal(props: {
     onRemoveContributor
   } = props;
 
+  type CreditPerson = {
+    tmdb_id?: number;
+    id?: number;
+    name?: string;
+    character?: string | null;
+    job?: string | null;
+    department?: string | null;
+    profile_path?: string | null;
+    credit_id?: string | null;
+  };
+  type FilmCredits = { cast?: CreditPerson[]; crew?: CreditPerson[] };
+
   const [filmLinkOpen, setFilmLinkOpen] = useState(false);
   const [filmTmdbId, setFilmTmdbId] = useState("");
 
   const [personLinkOpenId, setPersonLinkOpenId] = useState<number | null>(null);
   const [personTmdbId, setPersonTmdbId] = useState("");
 
-  const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [pendingContributorInput, setPendingContributorInput] = useState("");
 
-  const [filmCredits, setFilmCredits] = useState<null | {
-    cast?: Array<{
-      tmdb_id?: number;
-      id?: number;
-      name?: string;
-      character?: string | null;
-      job?: string | null;
-      department?: string | null;
-      profile_path?: string | null;
-      credit_id?: string | null;
-    }>;
-    crew?: Array<{
-      tmdb_id?: number;
-      id?: number;
-      name?: string;
-      job?: string | null;
-      department?: string | null;
-      profile_path?: string | null;
-      credit_id?: string | null;
-    }>;
-  }>(null);
+  const [filmCredits, setFilmCredits] = useState<FilmCredits | null>(null);
 
-  if (!nomination) return null;
-
-  const filmId = nomination.display_film_id ?? null;
+  const filmId = nomination?.display_film_id ?? null;
   const film = filmId ? (films.find((f) => f.id === filmId) ?? null) : null;
   const filmLinked = Boolean(film?.tmdb_id);
 
-  const contributorRows = (nomination.contributors ?? [])
-    .slice()
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  const peopleOptions = people.slice(0, 50).map((p) => ({
-    value: String(p.id),
-    label: p.full_name
-  }));
+  const contributorRows = useMemo(() => {
+    return (nomination?.contributors ?? [])
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order);
+  }, [nomination?.contributors]);
 
   const creditByPersonId = useMemo(() => {
     const map = new Map<
@@ -974,15 +954,14 @@ function NominationEditModal(props: {
     if (!credits) return map;
 
     for (const c of credits.crew ?? []) {
-      const tmdbId = Number((c as any)?.tmdb_id ?? (c as any)?.id);
-      const name = typeof (c as any)?.name === "string" ? String((c as any).name) : "";
+      const tmdbId = Number(c.tmdb_id ?? c.id);
+      const name = typeof c.name === "string" ? String(c.name) : "";
       if (!tmdbId || !name) continue;
       const job =
-        typeof (c as any)?.job === "string" && String((c as any).job).trim()
-          ? String((c as any).job).trim()
-          : typeof (c as any)?.department === "string" &&
-              String((c as any).department).trim()
-            ? String((c as any).department).trim()
+        typeof c.job === "string" && String(c.job).trim()
+          ? String(c.job).trim()
+          : typeof c.department === "string" && String(c.department).trim()
+            ? String(c.department).trim()
             : "";
       if (!job) continue;
       const existing = map.get(tmdbId) ?? {
@@ -1001,12 +980,12 @@ function NominationEditModal(props: {
     }
 
     for (const c of credits.cast ?? []) {
-      const tmdbId = Number((c as any)?.tmdb_id ?? (c as any)?.id);
-      const name = typeof (c as any)?.name === "string" ? String((c as any).name) : "";
+      const tmdbId = Number(c.tmdb_id ?? c.id);
+      const name = typeof c.name === "string" ? String(c.name) : "";
       if (!tmdbId || !name) continue;
       const character =
-        typeof (c as any)?.character === "string" && String((c as any).character).trim()
-          ? String((c as any).character).trim()
+        typeof c.character === "string" && String(c.character).trim()
+          ? String(c.character).trim()
           : "";
       const existing = map.get(tmdbId) ?? {
         name,
@@ -1090,7 +1069,7 @@ function NominationEditModal(props: {
           ]
         : [];
     return [...create, ...base];
-  }, [creditOptions.length, creditOptions, pendingContributorInput, people]);
+  }, [creditOptions, pendingContributorInput, people]);
 
   useEffect(() => {
     // When the film becomes TMDB-linked, load credits so the contributor dropdown can use cast/crew.
@@ -1109,10 +1088,23 @@ function NominationEditModal(props: {
         setFilmCredits(null);
         return;
       }
-      const credits = res.data?.credits as any;
-      setFilmCredits(credits && typeof credits === "object" ? credits : null);
+      const creditsUnknown = res.data?.credits;
+      if (!creditsUnknown || typeof creditsUnknown !== "object") {
+        setFilmCredits(null);
+        return;
+      }
+      const creditsObj = creditsUnknown as { cast?: unknown; crew?: unknown };
+      const cast = Array.isArray(creditsObj.cast)
+        ? (creditsObj.cast as CreditPerson[])
+        : undefined;
+      const crew = Array.isArray(creditsObj.crew)
+        ? (creditsObj.crew as CreditPerson[])
+        : undefined;
+      setFilmCredits({ cast, crew });
     })();
   }, [filmId, filmLinked]);
+
+  if (!nomination) return null;
 
   return (
     <Modal
@@ -1329,17 +1321,18 @@ function NominationEditModal(props: {
   );
 }
 
+type ContributorOption =
+  | { kind: "tmdb"; value: string; label: string; name: string; tmdb_id: number }
+  | { kind: "person"; value: string; label: string; name: string; person_id: number }
+  | { kind: "create"; value: string; label: string; name: string };
+
 function ContributorCombobox(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: Array<
-    | { kind: "tmdb"; value: string; label: string; name: string; tmdb_id: number }
-    | { kind: "person"; value: string; label: string; name: string; person_id: number }
-    | { kind: "create"; value: string; label: string; name: string }
-  >;
+  options: ContributorOption[];
   disabled: boolean;
-  onSubmit: (picked: any) => Promise<void>;
+  onSubmit: (picked: ContributorOption) => Promise<void>;
 }) {
   const { label, value, onChange, options, disabled, onSubmit } = props;
   const combobox = useCombobox({

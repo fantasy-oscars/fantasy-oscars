@@ -19,21 +19,6 @@ import { CommissionerPill, StatusPill } from "../../ui/pills";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 
-function seasonLabel(season: {
-  id: number;
-  ceremony_starts_at?: string | null;
-  created_at?: string | null;
-}) {
-  const date = season.ceremony_starts_at ?? season.created_at;
-  try {
-    const year = new Date(date ?? "").getFullYear();
-    if (Number.isFinite(year)) return `Season ${year}`;
-  } catch {
-    // Fall back to id below.
-  }
-  return `Season ${season.id}`;
-}
-
 function ceremonyLabelForSeason(season: {
   ceremony_starts_at?: string | null;
   ceremony_name?: string | null;
@@ -46,15 +31,6 @@ function ceremonyLabelForSeason(season: {
     if (!Number.isNaN(d.getTime())) return `Ceremony ${d.getFullYear()}`;
   }
   return `Ceremony ${season.ceremony_id}`;
-}
-
-function draftStatusLabelForSeason(season: {
-  draft_status?: string | null;
-  draft_id?: number | null;
-}) {
-  const ds = (season.draft_status ?? "").toUpperCase();
-  if (ds) return ds.replaceAll("_", " ");
-  return season.draft_id ? "Draft not started" : "Not started";
 }
 
 export function LeagueDetailScreen(props: {

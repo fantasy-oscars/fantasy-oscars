@@ -112,23 +112,25 @@ export function DraftPlansScreen(props: {
 }) {
   const { plans: o } = props;
 
-  if (props.ceremonyState === "loading")
-    return <PageLoader label="Loading draft plans..." />;
-  if (props.ceremonyState === "error")
-    return <PageError message={props.ceremonyError ?? "Failed to load"} />;
-  if (!props.detail) return <PageError message="Ceremony not found" />;
-
-  const { ceremony, categories, nominations } = props.detail;
-
-  const label =
-    ceremony.name?.trim() || ceremony.code?.trim() || `Ceremony #${ceremony.id}`;
-
-  const combobox = useCombobox({ onDropdownClose: () => combobox.resetSelectedOption() });
+  // Hooks must not be conditional (Rules of Hooks).
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption()
+  });
   const [planQuery, setPlanQuery] = useState("");
 
-  const filteredPlans = o.plans.filter((p) =>
-    p.name.toLowerCase().includes(planQuery.trim().toLowerCase())
-  );
+  const ceremony = props.detail?.ceremony ?? null;
+  const categories = props.detail?.categories ?? [];
+  const nominations = props.detail?.nominations ?? [];
+
+  const label =
+    ceremony?.name?.trim() ||
+    ceremony?.code?.trim() ||
+    (ceremony ? `Ceremony #${ceremony.id}` : "Ceremony");
+
+  const filteredPlans = useMemo(() => {
+    const q = planQuery.trim().toLowerCase();
+    return o.plans.filter((p) => p.name.toLowerCase().includes(q));
+  }, [o.plans, planQuery]);
 
   const categoryById = useMemo(
     () =>
@@ -225,6 +227,12 @@ export function DraftPlansScreen(props: {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
+
+  if (props.ceremonyState === "loading")
+    return <PageLoader label="Loading draft plans..." />;
+  if (props.ceremonyState === "error")
+    return <PageError message={props.ceremonyError ?? "Failed to load"} />;
+  if (!props.detail) return <PageError message="Ceremony not found" />;
 
   return (
     <Box className="baseline-page">
