@@ -941,6 +941,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const response = seasons.map((s) => ({
           id: s.id,
           ceremony_id: s.ceremony_id,
+          ceremony_name: s.ceremony_name ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
           remainder_strategy: s.remainder_strategy,
