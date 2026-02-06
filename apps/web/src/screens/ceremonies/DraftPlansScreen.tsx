@@ -23,6 +23,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { StandardCard } from "../../primitives";
+import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import "../../primitives/baseline.css";
 
 function DraftCategoryIcon(props: { icon: string; variant: "default" | "inverted" }) {
@@ -128,8 +129,8 @@ export function DraftPlansScreen(props: {
     (ceremony ? `Ceremony #${ceremony.id}` : "Ceremony");
 
   const filteredPlans = useMemo(() => {
-    const q = planQuery.trim().toLowerCase();
-    return o.plans.filter((p) => p.name.toLowerCase().includes(q));
+    const q = normalizeForSearch(planQuery);
+    return o.plans.filter((p) => includesNormalized(p.name, q));
   }, [o.plans, planQuery]);
 
   const categoryById = useMemo(

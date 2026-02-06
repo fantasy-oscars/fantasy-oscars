@@ -52,6 +52,24 @@ import {
 } from "../data/repositories/seasonInviteRepository.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 
+// Search helpers: case-insensitive + accent-insensitive matching (best-effort).
+// This must not change rendering, only which results match user queries.
+const SEARCH_TRANSLATE_FROM = "áàâäãåæçéèêëíìîïñóòôöõøœßúùûüýÿ";
+const SEARCH_TRANSLATE_TO = "aaaaaaaceeeeiiiinooooooosuuuuyy";
+function escapeLike(input: string) {
+  return input.replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+function normalizeForSearch(input: string) {
+  return String(input ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+function sqlNorm(exprSql: string) {
+  return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
+}
+
 export function createSeasonsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
 
@@ -941,6 +959,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const response = seasons.map((s) => ({
           id: s.id,
           ceremony_id: s.ceremony_id,
+          ceremony_name: s.ceremony_name ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
           remainder_strategy: s.remainder_strategy,
@@ -1277,6 +1296,74 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         });
 
         return res.status(created ? 201 : 200).json({ invite: sanitizeInvite(invite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // Commissioner helper: search users to invite to a season.
+  // Used by the season "Manage invites" UI combobox.
+  router.get(
+    "/:id/invitees",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const q = normalizeForSearch(qRaw);
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid season id", ["id"]);
+        }
+        if (!q) return res.status(200).json({ users: [] });
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorSeasonMember = await getSeasonMember(client, seasonId, actorId);
+        const actorLeagueMember = actorSeasonMember
+          ? null
+          : await getLeagueMember(client, season.league_id, actorId);
+        ensureCommissioner(actorSeasonMember ?? actorLeagueMember);
+
+        const likeRaw = `%${escapeLike(qRaw)}%`;
+        const likeNorm = `%${escapeLike(q)}%`;
+        const { rows } = await query<{
+          id: number;
+          username: string;
+          email: string | null;
+        }>(
+          client,
+          `
+            SELECT u.id::int, u.username, u.email
+            FROM app_user u
+            WHERE (
+                u.username ILIKE $1 ESCAPE '\\'
+                OR u.email ILIKE $1 ESCAPE '\\'
+                OR ${sqlNorm("u.username")} LIKE $2 ESCAPE '\\'
+                OR ${sqlNorm("coalesce(u.email, '')")} LIKE $2 ESCAPE '\\'
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM season_member sm
+                WHERE sm.season_id = $3
+                  AND sm.user_id = u.id
+              )
+            ORDER BY u.created_at DESC
+            LIMIT 25
+          `,
+          [likeRaw, likeNorm, seasonId]
+        );
+
+        return res.status(200).json({ users: rows });
       } catch (err) {
         next(err);
       }

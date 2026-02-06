@@ -89,6 +89,7 @@ export async function fetchJson<T>(
   error?: string;
   errorCode?: string;
   errorFields?: string[];
+  errorDetails?: Record<string, unknown>;
   requestId?: string;
 }> {
   try {
@@ -150,6 +151,15 @@ export async function fetchJson<T>(
           err.message ??
           (textBody ? `Request failed: ${textBody.slice(0, 160)}` : undefined)
       });
+      const details =
+        err &&
+        typeof err === "object" &&
+        "details" in err &&
+        err.details &&
+        typeof err.details === "object" &&
+        !Array.isArray(err.details)
+          ? (err.details as Record<string, unknown>)
+          : undefined;
       const fields =
         Array.isArray((err as { details?: { fields?: unknown } })?.details?.fields) &&
         (err as { details: { fields?: unknown[] } }).details.fields?.every(
@@ -157,7 +167,14 @@ export async function fetchJson<T>(
         )
           ? ((err as { details: { fields: string[] } }).details.fields as string[])
           : undefined;
-      return { ok: false, error: msg, errorCode: code, errorFields: fields, requestId };
+      return {
+        ok: false,
+        error: msg,
+        errorCode: code,
+        errorFields: fields,
+        errorDetails: details,
+        requestId
+      };
     }
     return { ok: true, data: json as T, requestId };
   } catch (err) {

@@ -50,6 +50,24 @@ import {
 export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
 
+  // Search helpers: case-insensitive + accent-insensitive matching (best-effort).
+  // This must not change rendering, only which results match user queries.
+  const SEARCH_TRANSLATE_FROM = "áàâäãåæçéèêëíìîïñóòôöõøœßúùûüýÿ";
+  const SEARCH_TRANSLATE_TO = "aaaaaaaceeeeiiiinooooooosuuuuyy";
+  function escapeLike(input: string) {
+    return input.replace(/%/g, "\\%").replace(/_/g, "\\_");
+  }
+  function normalizeForSearch(input: string) {
+    return String(input ?? "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+  function sqlNorm(exprSql: string) {
+    return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
+  }
+
   router.get(
     "/users",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
@@ -57,16 +75,19 @@ export function createAdminRouter(client: DbClient): Router {
         const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
         if (!q) return res.status(200).json({ users: [] });
 
-        const like = `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+        const likeRaw = `%${escapeLike(q)}%`;
+        const likeNorm = `%${escapeLike(normalizeForSearch(q))}%`;
         const { rows } = await query(
           client,
           `SELECT id::int, username, email, is_admin, created_at
            FROM app_user
            WHERE username ILIKE $1 ESCAPE '\\'
               OR email ILIKE $1 ESCAPE '\\'
+              OR ${sqlNorm("username")} LIKE $2 ESCAPE '\\'
+              OR ${sqlNorm("coalesce(email, '')")} LIKE $2 ESCAPE '\\'
            ORDER BY created_at DESC
            LIMIT 25`,
-          [like]
+          [likeRaw, likeNorm]
         );
         return res.status(200).json({ users: rows });
       } catch (err) {
@@ -1643,8 +1664,9 @@ export function createAdminRouter(client: DbClient): Router {
     "/category-families",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
-        const like = q ? `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%` : null;
+        const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const q = normalizeForSearch(qRaw);
+        const like = q ? `%${escapeLike(q)}%` : null;
         const { rows } = await query(
           client,
           `SELECT
@@ -1657,7 +1679,7 @@ export function createAdminRouter(client: DbClient): Router {
              i.code AS icon_code
            FROM category_family cf
            JOIN icon i ON i.id = cf.icon_id
-           WHERE ${like ? "(LOWER(cf.code) LIKE $1 ESCAPE '\\\\' OR LOWER(cf.name) LIKE $1 ESCAPE '\\\\')" : "TRUE"}
+           WHERE ${like ? `(${sqlNorm("cf.code")} LIKE $1 ESCAPE '\\\\' OR ${sqlNorm("cf.name")} LIKE $1 ESCAPE '\\\\')` : "TRUE"}
            ORDER BY cf.code ASC
            LIMIT 200`,
           like ? [like] : []
@@ -3437,6 +3459,36 @@ export function createAdminRouter(client: DbClient): Router {
   );
 
   router.get(
+    "/films/by-tmdb/:tmdbId",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const tmdbId = Number(req.params.tmdbId);
+        if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "tmdbId must be a positive integer"
+          );
+        }
+        const { rows } = await query<{ id: number; title: string; tmdb_id: number }>(
+          client,
+          `SELECT id::int, title, tmdb_id::int
+           FROM film
+           WHERE tmdb_id = $1::int
+           ORDER BY id ASC
+           LIMIT 1`,
+          [tmdbId]
+        );
+        const film = rows[0];
+        if (!film) throw new AppError("NOT_FOUND", 404, "Film not found");
+        return res.status(200).json({ film });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
     "/films/:id/credits",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
@@ -3557,29 +3609,65 @@ export function createAdminRouter(client: DbClient): Router {
               }
             : null;
 
-          const { rows } = await query(
-            tx,
-            `UPDATE film
-             SET tmdb_id = $2::int,
-                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
-                 title = $3,
-                 release_year = $4,
-                 poster_path = $5,
-                 poster_url = $6,
-                 tmdb_last_synced_at = now(),
-                 tmdb_credits = $7
-             WHERE id = $1
-             RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
-            [
-              id,
-              Number(tmdbId),
-              movie.title,
-              releaseYear,
-              posterPath,
-              posterUrl,
-              credits ? JSON.stringify(credits) : null
-            ]
-          );
+          let rows: unknown[] = [];
+          try {
+            ({ rows } = await query(
+              tx,
+              `UPDATE film
+               SET tmdb_id = $2::int,
+                   external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                   title = $3,
+                   release_year = $4,
+                   poster_path = $5,
+                   poster_url = $6,
+                   tmdb_last_synced_at = now(),
+                   tmdb_credits = $7
+               WHERE id = $1
+               RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
+              [
+                id,
+                Number(tmdbId),
+                movie.title,
+                releaseYear,
+                posterPath,
+                posterUrl,
+                credits ? JSON.stringify(credits) : null
+              ]
+            ));
+          } catch (err) {
+            // Friendly feedback for a common admin mistake: trying to link the same TMDB id twice.
+            const pg = err as { code?: unknown; constraint?: unknown };
+            if (pg?.code === "23505" && pg?.constraint === "film_tmdb_id_key") {
+              const { rows: dupeRows } = await query<{
+                id: number;
+                title: string;
+              }>(
+                tx,
+                `SELECT id::int, title
+                 FROM film
+                 WHERE tmdb_id = $1::int
+                 ORDER BY id ASC
+                 LIMIT 1`,
+                [Number(tmdbId)]
+              );
+              const dupe = dupeRows[0];
+              throw new AppError(
+                "TMDB_ID_ALREADY_LINKED",
+                409,
+                dupe?.title
+                  ? `That TMDB id is already linked to “${dupe.title}”.`
+                  : "That TMDB id is already linked to another film.",
+                dupe
+                  ? {
+                      tmdb_id: Number(tmdbId),
+                      linked_film_id: dupe.id,
+                      linked_film_title: dupe.title
+                    }
+                  : { tmdb_id: Number(tmdbId) }
+              );
+            }
+            throw err;
+          }
           return { film: rows[0], hydrated: true };
         });
 
@@ -3688,19 +3776,54 @@ export function createAdminRouter(client: DbClient): Router {
           const profilePath = details?.profile_path ?? null;
           const profileUrl = await buildTmdbImageUrl("profile", profilePath, "w185");
 
-          const { rows } = await query(
-            tx,
-            `UPDATE person
-             SET tmdb_id = $2::int,
-                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
-                 full_name = COALESCE(NULLIF($3, ''), full_name),
-                 profile_path = $4,
-                 profile_url = $5,
-                 updated_at = now()
-             WHERE id = $1
-             RETURNING id::int, full_name, tmdb_id::int, profile_url`,
-            [id, Number(tmdbId), String(details?.name ?? ""), profilePath, profileUrl]
-          );
+          let rows: unknown[] = [];
+          try {
+            ({ rows } = await query(
+              tx,
+              `UPDATE person
+               SET tmdb_id = $2::int,
+                   external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                   full_name = COALESCE(NULLIF($3, ''), full_name),
+                   profile_path = $4,
+                   profile_url = $5,
+                   updated_at = now()
+               WHERE id = $1
+               RETURNING id::int, full_name, tmdb_id::int, profile_url`,
+              [id, Number(tmdbId), String(details?.name ?? ""), profilePath, profileUrl]
+            ));
+          } catch (err) {
+            const pg = err as { code?: unknown; constraint?: unknown };
+            if (pg?.code === "23505" && pg?.constraint === "person_tmdb_id_key") {
+              const { rows: dupeRows } = await query<{
+                id: number;
+                full_name: string;
+              }>(
+                tx,
+                `SELECT id::int, full_name
+                 FROM person
+                 WHERE tmdb_id = $1::int
+                 ORDER BY id ASC
+                 LIMIT 1`,
+                [Number(tmdbId)]
+              );
+              const dupe = dupeRows[0];
+              throw new AppError(
+                "TMDB_ID_ALREADY_LINKED",
+                409,
+                dupe?.full_name
+                  ? `That TMDB id is already linked to “${dupe.full_name}”.`
+                  : "That TMDB id is already linked to another contributor.",
+                dupe
+                  ? {
+                      tmdb_id: Number(tmdbId),
+                      linked_person_id: dupe.id,
+                      linked_person_name: dupe.full_name
+                    }
+                  : { tmdb_id: Number(tmdbId) }
+              );
+            }
+            throw err;
+          }
           return { person: rows[0], hydrated: true };
         });
 

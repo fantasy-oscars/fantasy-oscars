@@ -699,7 +699,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const linkFilmTmdb = useCallback(
     async (filmId: number, tmdbId: number | null) => {
       setManualLoading(true);
-      setManualState(null);
       const res = await fetchJson<{ film: unknown; hydrated?: boolean }>(
         `/admin/films/${filmId}`,
         {
@@ -710,12 +709,16 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       );
       setManualLoading(false);
       if (!res.ok) {
-        setManualState({ ok: false, message: res.error ?? "Failed to link film" });
-        return { ok: false, hydrated: false };
+        return {
+          ok: false as const,
+          hydrated: false,
+          error: res.error ?? "Failed to link film",
+          errorCode: res.errorCode,
+          errorDetails: res.errorDetails
+        };
       }
-      setManualState({ ok: true, message: tmdbId ? "Film linked" : "Film unlinked" });
       await Promise.all([loadManualContext(), loadNominations()]);
-      return { ok: true, hydrated: Boolean(res.data?.hydrated) };
+      return { ok: true as const, hydrated: Boolean(res.data?.hydrated) };
     },
     [loadManualContext, loadNominations]
   );
@@ -723,7 +726,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const linkPersonTmdb = useCallback(
     async (personId: number, tmdbId: number | null) => {
       setManualLoading(true);
-      setManualState(null);
       const res = await fetchJson<{ person: unknown; hydrated?: boolean }>(
         `/admin/people/${personId}`,
         {
@@ -734,15 +736,16 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       );
       setManualLoading(false);
       if (!res.ok) {
-        setManualState({ ok: false, message: res.error ?? "Failed to link person" });
-        return { ok: false, hydrated: false };
+        return {
+          ok: false as const,
+          hydrated: false,
+          error: res.error ?? "Failed to link person",
+          errorCode: res.errorCode,
+          errorDetails: res.errorDetails
+        };
       }
-      setManualState({
-        ok: true,
-        message: tmdbId ? "Contributor linked" : "Contributor unlinked"
-      });
       await Promise.all([loadManualContext(), loadNominations()]);
-      return { ok: true, hydrated: Boolean(res.data?.hydrated) };
+      return { ok: true as const, hydrated: Boolean(res.data?.hydrated) };
     },
     [loadManualContext, loadNominations]
   );
