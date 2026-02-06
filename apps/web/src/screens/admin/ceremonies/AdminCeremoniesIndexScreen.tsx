@@ -123,7 +123,9 @@ export function AdminCeremoniesIndexScreen(props: {
                   <Group gap="xs" align="center" wrap="nowrap">
                     <ActionIcon
                       component="a"
-                      href={`/drafts/preview/ceremonies/${c.id}`}
+                      // Open via the admin route first so deployments that only rewrite /admin/*
+                      // still reach the SPA, then client-side redirect into the chrome-less draft layout.
+                      href={`/admin/ceremonies/${c.id}/preview`}
                       target="_blank"
                       rel="noreferrer"
                       variant="subtle"

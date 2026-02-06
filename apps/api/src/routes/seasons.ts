@@ -1283,6 +1283,67 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
     }
   );
 
+  // Commissioner helper: search users to invite to a season.
+  // Used by the season "Manage invites" UI combobox.
+  router.get(
+    "/:id/invitees",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        if (Number.isNaN(seasonId) || !actorId) {
+          throw validationError("Invalid season id", ["id"]);
+        }
+        if (!q) return res.status(200).json({ users: [] });
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
+        if (draftsStarted) {
+          throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
+        }
+
+        const actorSeasonMember = await getSeasonMember(client, seasonId, actorId);
+        const actorLeagueMember = actorSeasonMember
+          ? null
+          : await getLeagueMember(client, season.league_id, actorId);
+        ensureCommissioner(actorSeasonMember ?? actorLeagueMember);
+
+        const like = `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+        const { rows } = await query<{
+          id: number;
+          username: string;
+          email: string | null;
+        }>(
+          client,
+          `
+            SELECT u.id::int, u.username, u.email
+            FROM app_user u
+            WHERE (u.username ILIKE $1 ESCAPE '\\' OR u.email ILIKE $1 ESCAPE '\\')
+              AND NOT EXISTS (
+                SELECT 1
+                FROM season_member sm
+                WHERE sm.season_id = $2
+                  AND sm.user_id = u.id
+              )
+            ORDER BY u.created_at DESC
+            LIMIT 25
+          `,
+          [like, seasonId]
+        );
+
+        return res.status(200).json({ users: rows });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   // Placeholder invite claim via token (used by InviteClaimPage).
   router.post(
     "/invites/token/:token/accept",

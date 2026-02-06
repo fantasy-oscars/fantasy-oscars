@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Box,
   Button,
+  Combobox,
   Divider,
   Group,
   Modal,
@@ -12,7 +13,8 @@ import {
   Switch,
   Text,
   TextInput,
-  Title
+  Title,
+  useCombobox
 } from "@mantine/core";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
 import { PageLoader } from "../../ui/page-state";
@@ -298,12 +300,21 @@ export function SeasonScreen(props: {
           >
             <Stack gap="md">
               <Group className="inline-form" wrap="wrap" align="flex-end">
-                <TextInput
-                  label="Username to invite"
-                  name="username"
+                <InviteUserCombobox
+                  label="Username or email"
                   value={s.userInviteQuery}
-                  onChange={(e) => s.setUserInviteQuery(e.currentTarget.value)}
                   disabled={!s.canEdit || s.working || isLocked}
+                  searching={Boolean(s.userInviteSearching)}
+                  options={s.userInviteMatches.map((u) => ({
+                    id: u.id,
+                    username: u.username,
+                    email: u.email ?? null
+                  }))}
+                  onChange={(next) => s.setUserInviteQuery(next)}
+                  onPick={(id, username) => {
+                    s.setUserInviteSelectedUserId(id);
+                    s.setUserInviteQuery(username);
+                  }}
                 />
                 <Button
                   type="button"
@@ -582,5 +593,84 @@ export function SeasonScreen(props: {
         </Stack>
       </Box>
     </Box>
+  );
+}
+
+function InviteUserCombobox(props: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  searching: boolean;
+  options: Array<{ id: number; username: string; email: string | null }>;
+  onChange: (next: string) => void;
+  onPick: (id: number, username: string) => void;
+}) {
+  const { label, value, disabled, searching, options, onChange, onPick } = props;
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption()
+  });
+
+  const hasValue = Boolean(value.trim());
+
+  return (
+    <Combobox
+      store={combobox}
+      withinPortal={false}
+      onOptionSubmit={(v) => {
+        const id = Number(v);
+        const picked = options.find((o) => o.id === id);
+        if (!picked) return;
+        onPick(picked.id, picked.username);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.Target>
+        <TextInput
+          label={label}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => {
+            onChange(e.currentTarget.value);
+            if (!disabled) combobox.openDropdown();
+          }}
+          onFocus={() => {
+            if (!disabled) combobox.openDropdown();
+          }}
+          onBlur={() => combobox.closeDropdown()}
+          placeholder="Username or email"
+          rightSection={
+            searching ? (
+              <Text component="span" className="baseline-textMeta" c="dimmed">
+                …
+              </Text>
+            ) : null
+          }
+        />
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {options.length === 0 ? (
+            <Combobox.Empty>
+              <Text className="baseline-textBody" c="dimmed">
+                {hasValue ? "No matches" : "Type to search"}
+              </Text>
+            </Combobox.Empty>
+          ) : (
+            options.map((o) => (
+              <Combobox.Option key={o.id} value={String(o.id)}>
+                <Stack gap={0}>
+                  <Text className="baseline-textBody">{o.username}</Text>
+                  {o.email ? (
+                    <Text className="baseline-textMeta" c="dimmed" size="sm">
+                      {o.email}
+                    </Text>
+                  ) : null}
+                </Stack>
+              </Combobox.Option>
+            ))
+          )}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 }

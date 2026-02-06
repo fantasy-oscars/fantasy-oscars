@@ -257,6 +257,13 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   const [selectedLeagueMember, setSelectedLeagueMember] = useState<string>("");
   const [manualUsername, setManualUsername] = useState("");
   const [userInviteQuery, setUserInviteQuery] = useState("");
+  const [userInviteSelectedUserId, setUserInviteSelectedUserId] = useState<number | null>(
+    null
+  );
+  const [userInviteMatches, setUserInviteMatches] = useState<
+    Array<{ id: number; username: string; email: string | null }>
+  >([]);
+  const [userInviteSearching, setUserInviteSearching] = useState(false);
   const [placeholderLabel, setPlaceholderLabel] = useState("");
   const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
@@ -281,6 +288,45 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       leagueContext.season.status !== "EXTANT"
     : false;
   const canEdit = !isArchived && isCommissioner;
+
+  // Search for invitees by username/email as the commissioner types.
+  useEffect(() => {
+    if (!canEdit) {
+      setUserInviteMatches([]);
+      setUserInviteSearching(false);
+      return;
+    }
+
+    const q = userInviteQuery.trim();
+    if (!q) {
+      setUserInviteMatches([]);
+      setUserInviteSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const handle = window.setTimeout(() => {
+      void (async () => {
+        setUserInviteSearching(true);
+        const res = await fetchJson<{
+          users: Array<{ id: number; username: string; email: string | null }>;
+        }>(`/seasons/${seasonId}/invitees?q=${encodeURIComponent(q)}`, { method: "GET" });
+        if (cancelled) return;
+        setUserInviteSearching(false);
+        if (!res.ok) {
+          // Treat failures as empty results; the create endpoint remains authoritative.
+          setUserInviteMatches([]);
+          return;
+        }
+        setUserInviteMatches(res.data?.users ?? []);
+      })();
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [canEdit, seasonId, userInviteQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -695,8 +741,8 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
 
   async function createUserInvite() {
     const username = userInviteQuery.trim();
-    if (!username) {
-      setUserInviteResult({ ok: false, message: "Enter a username" });
+    if (!username && !userInviteSelectedUserId) {
+      setUserInviteResult({ ok: false, message: "Enter a username or select a user" });
       return;
     }
     setWorking(true);
@@ -704,7 +750,9 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     const res = await fetchJson(`/seasons/${seasonId}/user-invites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
+      body: JSON.stringify(
+        userInviteSelectedUserId ? { user_id: userInviteSelectedUserId } : { username }
+      )
     });
     setWorking(false);
     if (res.ok) {
@@ -718,6 +766,8 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
         message: "Invite created (user must accept in app)"
       });
       setUserInviteQuery("");
+      setUserInviteSelectedUserId(null);
+      setUserInviteMatches([]);
       setUserInviteResult(null);
       return;
     }
@@ -914,7 +964,15 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     manualUsername,
     setManualUsername,
     userInviteQuery,
-    setUserInviteQuery,
+    setUserInviteQuery: (next: string) => {
+      // If the user starts typing after selecting an option, clear the selection.
+      setUserInviteSelectedUserId(null);
+      setUserInviteQuery(next);
+    },
+    userInviteMatches,
+    userInviteSearching,
+    userInviteSelectedUserId,
+    setUserInviteSelectedUserId,
     placeholderLabel,
     setPlaceholderLabel,
     labelDrafts,
