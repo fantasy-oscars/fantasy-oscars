@@ -254,7 +254,21 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     );
     setWorking(false);
     if (!res.ok) {
-      setStatus({ ok: false, message: res.error ?? "Add failed" });
+      const msg = res.error ?? "Add failed";
+      if (msg === "Category already exists in ceremony") {
+        notify({
+          id: "admin.categories.add.duplicate",
+          severity: "error",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message: msg
+        });
+        setStatus(null);
+        return false;
+      }
+      setStatus({ ok: false, message: msg });
       return false;
     }
     notify({
@@ -470,6 +484,52 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     [load]
   );
 
+  const reorderCategories = useCallback(
+    async (categoryIds: number[]) => {
+      if (ceremonyId === null) return false;
+      if (!Array.isArray(categoryIds) || categoryIds.length < 1) return false;
+
+      setWorking(true);
+      setStatus(null);
+      const res = await fetchJson(`/admin/ceremonies/${ceremonyId}/categories/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category_ids: categoryIds })
+      });
+      setWorking(false);
+      if (!res.ok) {
+        setStatus({ ok: false, message: res.error ?? "Failed to reorder categories" });
+        return false;
+      }
+      notify({
+        id: "admin.categories.reorder.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Reordered"
+      });
+      setStatus(null);
+
+      // Update local order immediately without forcing a reload.
+      setCategories((prev) => {
+        const byId = new Map(prev.map((c) => [c.id, c]));
+        const next: CategoryRow[] = [];
+        const idSet = new Set<number>(categoryIds);
+        for (let i = 0; i < categoryIds.length; i += 1) {
+          const c = byId.get(categoryIds[i]);
+          if (c) next.push({ ...c, sort_index: i + 1 });
+        }
+        // Keep any unexpected rows at the end.
+        for (const c of prev) if (!idSet.has(c.id)) next.push(c);
+        return next;
+      });
+      return true;
+    },
+    [ceremonyId]
+  );
+
   const closeNewTemplate = useCallback(() => setNewTemplateOpen(false), []);
   const openNewTemplate = useCallback(() => setNewTemplateOpen(true), []);
 
@@ -516,6 +576,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       saveTemplateEdits,
       cloneCategories,
       setCategoryIcon,
+      reorderCategories,
       closeEditTemplate
     }
   };
