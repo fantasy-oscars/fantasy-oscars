@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { revisionFor } from "../decisions/banners";
+import { useContentRevision } from "../lib/useContentRevision";
 
 export type BannerRow = {
   id: number;
@@ -48,6 +49,7 @@ function clearDismiss(id: number) {
 export function useBannerOrchestration() {
   const [view, setView] = useState<BannerState>({ state: "loading" });
   const [dismissTick, setDismissTick] = useState(0);
+  const rev = useContentRevision();
 
   const refresh = useCallback(async () => {
     setView({ state: "loading" });
@@ -63,7 +65,7 @@ export function useBannerOrchestration() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, rev]);
 
   const visibleBanners = useMemo(() => {
     // Force recompute after localStorage dismiss without waiting on a refetch.

@@ -47,13 +47,6 @@ export function AdminLayout() {
                 >
                   Content &amp; Messaging
                 </NavLink>
-
-                <NavLink
-                  to="/admin/system"
-                  className={linkClass(pathname.startsWith("/admin/system"))}
-                >
-                  System
-                </NavLink>
               </Group>
             </Box>
           </Box>

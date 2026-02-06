@@ -1,5 +1,17 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Box, Button } from "@mantine/core";
+import { Alert, Box } from "@mantine/core";
+
+function bannerColor(variant: RuntimeBanner["variant"]): string {
+  switch (variant) {
+    case "warning":
+      return "yellow";
+    case "error":
+      return "red";
+    case "info":
+    default:
+      return "gray";
+  }
+}
 
 export type RuntimeBanner = {
   id: string;
@@ -85,30 +97,21 @@ export function RuntimeBannerStack() {
   return (
     <Box component="section" className="banner-stack" aria-label="Notifications">
       {visible.map((b) => (
-        <Box
+        <Alert
           key={b.id}
-          className={
-            b.variant === "warning"
-              ? "banner banner-warning"
-              : b.variant === "error"
-                ? "banner banner-error"
-                : "banner banner-info"
-          }
           role="status"
+          variant="light"
+          color={bannerColor(b.variant)}
+          withCloseButton={b.dismissible}
+          closeButtonLabel="Dismiss notification"
+          onClose={b.dismissible ? () => dismiss(b.id) : undefined}
+          styles={{
+            root: { justifyContent: "center" },
+            body: { width: "100%", textAlign: "center" }
+          }}
         >
-          <Box className="banner-body">{b.message}</Box>
-          {b.dismissible ? (
-            <Button
-              type="button"
-              className="banner-dismiss"
-              variant="subtle"
-              aria-label="Dismiss notification"
-              onClick={() => dismiss(b.id)}
-            >
-              ×
-            </Button>
-          ) : null}
-        </Box>
+          <Box style={{ width: "100%", textAlign: "center" }}>{b.message}</Box>
+        </Alert>
       ))}
     </Box>
   );
