@@ -499,7 +499,8 @@ describe("<App /> shell + routing", () => {
     renderApp();
 
     await screen.findByRole("heading", { name: /Invites/i });
-    await userEvent.click(screen.getByRole("button", { name: /Accept/i }));
+    const accept = await screen.findByRole("button", { name: /Accept/i });
+    await userEvent.click(accept);
     await screen.findByRole("heading", { name: /Oscars 2026/i });
   });
 
