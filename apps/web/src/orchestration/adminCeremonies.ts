@@ -38,18 +38,21 @@ export function useAdminCeremoniesIndexOrchestration() {
   const [status, setStatus] = useState<ApiResult | null>(null);
 
   const refresh = useCallback(async () => {
-    setState("loading");
+    // Global refresh policy: keep list visible during refresh.
+    if (state !== "ready") setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
-      setRows([]);
       setError(res.error ?? "Failed to load ceremonies");
-      setState("error");
+      if (state !== "ready") {
+        setRows([]);
+        setState("error");
+      }
       return;
     }
     setRows(res.data?.ceremonies ?? []);
     setState("ready");
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     void refresh();
@@ -124,18 +127,21 @@ export function useAdminCeremoniesLayoutOrchestration(args: { ceremonyIdRaw?: st
   const [rows, setRows] = useState<CeremonyOption[]>([]);
 
   const refresh = useCallback(async () => {
-    setState("loading");
+    // Global refresh policy: keep list visible during refresh.
+    if (state !== "ready") setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
-      setRows([]);
       setError(res.error ?? "Failed to load ceremonies");
-      setState("error");
+      if (state !== "ready") {
+        setRows([]);
+        setState("error");
+      }
       return;
     }
     setRows(res.data?.ceremonies ?? []);
     setState("ready");
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     void refresh();

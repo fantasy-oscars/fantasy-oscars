@@ -37,10 +37,15 @@ export function useLeagueIndexOrchestration() {
   const [view, setView] = useState<LeagueIndexView>({ state: "loading" });
 
   const refresh = useCallback(async () => {
-    setView({ state: "loading" });
+    // Global refresh policy: keep results visible during refresh.
+    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
     if (!leaguesRes.ok) {
-      setView({ state: "error", message: leaguesRes.error ?? "Failed to load leagues" });
+      setView((prev) =>
+        prev.state === "ready"
+          ? prev
+          : { state: "error", message: leaguesRes.error ?? "Failed to load leagues" }
+      );
       return;
     }
     const leagues = leaguesRes.data?.leagues ?? [];

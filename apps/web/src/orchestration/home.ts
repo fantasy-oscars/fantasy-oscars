@@ -103,25 +103,36 @@ export function useHomeOrchestration(opts: { seasonsEnabled: boolean }) {
   const [seasons, setSeasons] = useState<HomeSeasonPreviewView>({ state: "idle" });
 
   const refreshLandingBlurb = useCallback(async () => {
-    setLandingBlurb({ state: "loading" });
+    // Global refresh policy: keep last content visible during refresh.
+    setLandingBlurb((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const res = await loadStaticContent("landing_blurb");
     if (!res.ok) {
-      setLandingBlurb({ state: "error", message: res.error ?? "Failed to load content" });
+      setLandingBlurb((prev) =>
+        prev.state === "ready"
+          ? prev
+          : { state: "error", message: res.error ?? "Failed to load content" }
+      );
       return;
     }
     const content = res.data?.content;
     if (!content) {
-      setLandingBlurb({ state: "error", message: "Content not found" });
+      setLandingBlurb((prev) =>
+        prev.state === "ready" ? prev : { state: "error", message: "Content not found" }
+      );
       return;
     }
     setLandingBlurb({ state: "ready", content });
   }, []);
 
   const refreshHomeMain = useCallback(async () => {
-    setHomeMain({ state: "loading" });
+    setHomeMain((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const res = await loadDynamicContent("home_main");
     if (!res.ok) {
-      setHomeMain({ state: "error", message: res.error ?? "Failed to load content" });
+      setHomeMain((prev) =>
+        prev.state === "ready"
+          ? prev
+          : { state: "error", message: res.error ?? "Failed to load content" }
+      );
       return;
     }
     setHomeMain({ state: "ready", content: res.data?.content ?? null });
@@ -133,15 +144,19 @@ export function useHomeOrchestration(opts: { seasonsEnabled: boolean }) {
       return;
     }
 
-    setSeasons({ state: "loading" });
+    setSeasons((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     try {
       const active = await loadSeasonPreview();
       setSeasons({ state: "ready", total: active.length, seasons: active.slice(0, 2) });
     } catch (err) {
-      setSeasons({
-        state: "error",
-        message: err instanceof Error ? err.message : "Failed to load seasons"
-      });
+      setSeasons((prev) =>
+        prev.state === "ready"
+          ? prev
+          : {
+              state: "error",
+              message: err instanceof Error ? err.message : "Failed to load seasons"
+            }
+      );
     }
   }, [seasonsEnabled]);
 

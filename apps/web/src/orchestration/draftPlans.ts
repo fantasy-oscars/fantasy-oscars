@@ -23,21 +23,24 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
 
   const refreshPlans = useCallback(async () => {
     if (!ceremonyId) return;
-    setState("loading");
+    // Global refresh policy: keep the current screen visible while refreshing.
+    if (state !== "ready") setState("loading");
     setError(null);
     const res = await fetchJson<{ plans: DraftPlanSummary[] }>(
       `/draft-plans/ceremonies/${ceremonyId}`,
       { method: "GET" }
     );
     if (!res.ok) {
-      setPlans([]);
-      setState("error");
       setError(res.error ?? "Failed to load draft plans");
+      if (state !== "ready") {
+        setPlans([]);
+        setState("error");
+      }
       return;
     }
     setPlans(res.data?.plans ?? []);
     setState("ready");
-  }, [ceremonyId]);
+  }, [ceremonyId, state]);
 
   useEffect(() => {
     if (!ceremonyId) {

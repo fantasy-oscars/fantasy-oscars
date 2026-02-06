@@ -27,20 +27,25 @@ export function useCeremoniesIndexOrchestration() {
   const [rows, setRows] = useState<CeremonyIndexRow[]>([]);
 
   const refresh = useCallback(async () => {
-    setState("loading");
+    // Global refresh policy: if we already have data on-screen, refresh in-place.
+    // Only enter "loading" when we have nothing rendered yet.
+    if (state !== "ready") setState("loading");
     setError(null);
     const res = await fetchJson<{ ceremonies: CeremonyIndexRow[] }>("/ceremonies", {
       method: "GET"
     });
     if (!res.ok) {
-      setRows([]);
       setError(res.error ?? "Failed to load ceremonies");
-      setState("error");
+      // Keep the last-known-good rows visible on background refresh failures.
+      if (state !== "ready") {
+        setRows([]);
+        setState("error");
+      }
       return;
     }
     setRows(res.data?.ceremonies ?? []);
     setState("ready");
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     void refresh();
@@ -103,20 +108,23 @@ export function useCeremonyDetailOrchestration(args: { ceremonyId: number | null
       setDetail(null);
       return;
     }
-    setState("loading");
+    // If we already have ceremony content rendered, refresh in-place.
+    if (state !== "ready") setState("loading");
     setError(null);
     const res = await fetchJson<CeremonyDetail>(`/ceremonies/${ceremonyId}`, {
       method: "GET"
     });
     if (!res.ok) {
-      setDetail(null);
       setError(res.error ?? "Failed to load ceremony");
-      setState("error");
+      if (state !== "ready") {
+        setDetail(null);
+        setState("error");
+      }
       return;
     }
     setDetail(res.data ?? null);
     setState("ready");
-  }, [ceremonyId]);
+  }, [ceremonyId, state]);
 
   useEffect(() => {
     void refresh();
