@@ -11,6 +11,11 @@ import {
   clearDraftEventEmitter,
   registerDraftEventEmitter
 } from "./realtime/draftEvents.js";
+import {
+  clearCeremonyEventEmitter,
+  registerCeremonyEventEmitter
+} from "./realtime/ceremonyEvents.js";
+import { startDraftSweeper } from "./services/draftSweeper.js";
 
 const config = loadConfig();
 const app = createServer();
@@ -29,11 +34,16 @@ if (config.realtimeEnabled) {
     authSecret: config.authSecret
   });
   registerDraftEventEmitter(draftNamespace);
+  registerCeremonyEventEmitter(draftNamespace);
 } else {
   clearDraftEventEmitter();
+  clearCeremonyEventEmitter();
 }
 
 httpServer.listen(config.port, () => {
   // eslint-disable-next-line no-console
   console.log(`API listening on http://localhost:${config.port}`);
 });
+
+// Server-side timer enforcement: ensures timed drafts progress even if no clients are open.
+startDraftSweeper(app.locals.db);

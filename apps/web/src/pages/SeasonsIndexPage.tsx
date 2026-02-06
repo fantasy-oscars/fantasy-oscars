@@ -1,7 +1,7 @@
-import { useSeasonsIndexOrchestration } from "../orchestration/seasons";
-import { SeasonsIndexScreen } from "../screens/seasons/SeasonsIndexScreen";
+import { useSeasonsIndexBaselineOrchestration } from "../orchestration/seasonsIndexBaseline";
+import { SeasonsIndexBaselineScreen } from "../screens/SeasonsIndexBaselineScreen";
 
 export function SeasonsIndexPage() {
-  const { view } = useSeasonsIndexOrchestration();
-  return <SeasonsIndexScreen view={view} />;
+  const { view } = useSeasonsIndexBaselineOrchestration();
+  return <SeasonsIndexBaselineScreen view={view} />;
 }

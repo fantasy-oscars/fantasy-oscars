@@ -30,7 +30,10 @@ export function isIntegrityWarningWindow(
 
 export function formatTimer(draft: Snapshot["draft"], nowMs: number) {
   if (!draft.pick_timer_seconds) return "Off";
-  if (draft.status !== "IN_PROGRESS") return "Paused/idle";
+  if (draft.status === "PENDING") return "Not started";
+  if (draft.status === "PAUSED") return "Paused";
+  if (draft.status === "COMPLETED") return "Draft complete";
+  if (draft.status !== "IN_PROGRESS") return "—";
   const deadline = draft.pick_deadline_at
     ? new Date(draft.pick_deadline_at).getTime()
     : null;

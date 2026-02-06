@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyCategoriesOrchestration } from "../../../orchestration/adminCeremoniesCategories";
 import { AdminCeremoniesCategoriesScreen } from "../../../screens/admin/ceremonies/AdminCeremoniesCategoriesScreen";
 import { PageError } from "../../../ui/page-state";
+import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremoniesCategoriesPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
@@ -9,6 +10,7 @@ export function AdminCeremoniesCategoriesPage() {
   const ceremonyId =
     Number.isFinite(ceremonyIdParsed) && ceremonyIdParsed > 0 ? ceremonyIdParsed : null;
 
+  const wizard = useCeremonyWizardContext();
   const o = useAdminCeremonyCategoriesOrchestration({ ceremonyId });
   if (ceremonyId === null) return <PageError message="Invalid ceremony id" />;
 
@@ -16,19 +18,18 @@ export function AdminCeremoniesCategoriesPage() {
     <AdminCeremoniesCategoriesScreen
       ceremonyId={ceremonyId}
       o={o}
-      onConfirmClone={() => {
-        if (
-          window.confirm(
-            "Replace this ceremony's categories by cloning from the selected ceremony?"
-          )
-        ) {
-          void o.actions.cloneCategories();
-        }
+      onAfterChange={async () => {
+        await wizard?.reloadWorksheet();
       }}
-      onConfirmRemoveCategory={(categoryId) => {
-        if (window.confirm("Remove this category from the ceremony?")) {
-          void o.actions.removeCategory(categoryId);
-        }
+      onConfirmClone={async () => {
+        const ok = await o.actions.cloneCategories();
+        if (ok) await wizard?.reloadWorksheet();
+        return ok;
+      }}
+      onConfirmRemoveCategory={async (categoryId) => {
+        const ok = await o.actions.removeCategory(categoryId);
+        if (ok) await wizard?.reloadWorksheet();
+        return ok;
       }}
     />
   );

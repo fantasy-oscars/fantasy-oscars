@@ -1,7 +1,7 @@
 import {
   Box,
   Button,
-  Card,
+  Divider,
   Group,
   Stack,
   Text,
@@ -12,6 +12,7 @@ import {
 import type { ApiResult } from "../../../lib/types";
 import type { StaticKey } from "../../../decisions/adminContent";
 import { PageError, PageLoader } from "../../../ui/page-state";
+import "../../../primitives/baseline.css";
 
 export function AdminStaticContentEditorScreen(props: {
   contentKey: StaticKey | null;
@@ -44,7 +45,7 @@ export function AdminStaticContentEditorScreen(props: {
   if (loading) return <PageLoader label="Loading content..." />;
 
   return (
-    <Stack component="section" className="stack">
+    <Stack component="section">
       <Group
         className="header-with-controls"
         justify="space-between"
@@ -52,8 +53,12 @@ export function AdminStaticContentEditorScreen(props: {
         wrap="wrap"
       >
         <Box>
-          <Title order={3}>{meta.label}</Title>
-          <Text className="muted">{meta.hint}</Text>
+          <Title order={3} className="baseline-textHeroTitle">
+            {meta.label}
+          </Title>
+          <Text className="baseline-textBody" c="dimmed">
+            {meta.hint}
+          </Text>
         </Box>
         <Group className="inline-actions" wrap="wrap">
           <Button type="button" onClick={onSave} disabled={saving}>
@@ -62,42 +67,38 @@ export function AdminStaticContentEditorScreen(props: {
         </Group>
       </Group>
 
-      <Card className="card nested" component="section">
-        <Stack className="stack-sm" gap="sm">
-          {loadError ? (
-            <Box className="status status-error" role="status" aria-live="polite">
-              {loadError} (You can still edit and save.)
-            </Box>
-          ) : null}
-          <TextInput
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)}
-          />
-          <Textarea
-            label="Body (Markdown)"
-            value={body}
-            onChange={(e) => setBody(e.currentTarget.value)}
-            autosize
-            minRows={12}
-          />
-          {saving ? (
-            <Box className="status status-loading" role="status" aria-live="polite">
-              <Box component="span" className="spinner" aria-hidden="true" />{" "}
-              <Text span>Saving...</Text>
-            </Box>
-          ) : null}
-          {!saving && status ? (
-            <Box
-              className={`status ${status.ok ? "status-success" : "status-error"}`}
-              role="status"
-              aria-live="polite"
-            >
-              {status.message}
-            </Box>
-          ) : null}
-        </Stack>
-      </Card>
+      <Divider />
+
+      <Stack className="stack-sm" gap="sm">
+        {loadError ? (
+          <Box className="status status-error" role="status" aria-live="polite">
+            {loadError} (You can still edit and save.)
+          </Box>
+        ) : null}
+        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
+        <Textarea
+          label="Body (Markdown)"
+          value={body}
+          onChange={(e) => setBody(e.currentTarget.value)}
+          autosize
+          minRows={12}
+        />
+        {saving ? (
+          <Box className="status status-loading" role="status" aria-live="polite">
+            <Box component="span" className="spinner" aria-hidden="true" />{" "}
+            <Text span>Saving...</Text>
+          </Box>
+        ) : null}
+        {!saving && status ? (
+          <Box
+            className={`status ${status.ok ? "status-success" : "status-error"}`}
+            role="status"
+            aria-live="polite"
+          >
+            {status.message}
+          </Box>
+        ) : null}
+      </Stack>
     </Stack>
   );
 }

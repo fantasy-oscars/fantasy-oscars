@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
+import { notify } from "../notifications";
 import type {
   ApiResult,
   LeagueDetail,
@@ -80,7 +81,6 @@ export function useLeagueDetailOrchestration(input: {
   const [view, setView] = useState<LeagueDetailView>({ state: "loading" });
   const [working, setWorking] = useState(false);
   const [rosterStatus, setRosterStatus] = useState<ApiResult | null>(null);
-  const [transferTarget, setTransferTarget] = useState("");
 
   const userId = useMemo(() => Number(userSub), [userSub]);
 
@@ -131,23 +131,9 @@ export function useLeagueDetailOrchestration(input: {
     void refresh();
   }, [refresh]);
 
-  const copyInvite = useCallback(async () => {
-    if (view.state !== "ready") return;
-    const origin = window.location.origin;
-    const link = `${origin}/leagues/${view.league.id}`;
-    const text = `League invite code: ${view.league.code}\nLink: ${link}`;
-    await navigator.clipboard?.writeText(text);
-    setRosterStatus({ ok: true, message: "Invite copied" });
-  }, [view.state === "ready" ? view.league : null]);
-
-  const transferOwnership = useCallback(async () => {
+  const transferOwnershipTo = useCallback(async (targetUserId: number) => {
     if (view.state !== "ready") return { ok: false as const };
-    if (!transferTarget) return { ok: false as const };
-    const targetUserId = Number(transferTarget);
     if (!Number.isFinite(targetUserId)) return { ok: false as const };
-    if (!window.confirm("Transfer commissioner role to this member?"))
-      return { ok: false as const };
-
     setWorking(true);
     setRosterStatus(null);
     const res = await fetchJson(`/leagues/${view.league.id}/transfer`, {
@@ -157,48 +143,51 @@ export function useLeagueDetailOrchestration(input: {
     });
     setWorking(false);
     if (res.ok) {
-      setTransferTarget("");
-      setRosterStatus({ ok: true, message: "Commissioner role transferred" });
+      notify({
+        id: "league.commissioner.transfer.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Commissioner role transferred"
+      });
+      setRosterStatus(null);
       await refresh();
       return { ok: true as const };
     }
     setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
     return { ok: false as const };
-  }, [refresh, transferTarget, view]);
+  }, [refresh, view]);
 
-  const removeMember = useCallback(
-    async (memberUserId: number, role: string) => {
-      if (view.state !== "ready") return { ok: false as const };
-      if (role === "OWNER") return { ok: false as const };
-      if (!window.confirm("Remove this member from the league?"))
-        return { ok: false as const };
-
-      setWorking(true);
-      setRosterStatus(null);
-      const res = await fetchJson(`/leagues/${view.league.id}/members/${memberUserId}`, {
-        method: "DELETE"
-      });
-      setWorking(false);
-      if (res.ok) {
-        setRosterStatus({ ok: true, message: "Member removed" });
-        await refresh();
-        return { ok: true as const };
-      }
-      setRosterStatus({ ok: false, message: res.error ?? "Remove failed" });
+  const deleteLeague = useCallback(async () => {
+    if (view.state !== "ready") return { ok: false as const };
+    setWorking(true);
+    setRosterStatus(null);
+    const res = await fetchJson(`/leagues/${view.league.id}`, { method: "DELETE" });
+    setWorking(false);
+    if (!res.ok) {
+      setRosterStatus({ ok: false, message: res.error ?? "Delete failed" });
       return { ok: false as const };
-    },
-    [refresh, view]
-  );
+    }
+    notify({
+      id: "league.delete.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "League deleted"
+    });
+    return { ok: true as const };
+  }, [view]);
 
   return {
     view,
     refresh,
     working,
     rosterStatus,
-    transferTarget,
-    setTransferTarget,
-    copyInvite,
-    transferOwnership,
-    removeMember
+    transferOwnershipTo,
+    deleteLeague
   };
 }

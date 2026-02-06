@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Box, MantineProvider } from "@mantine/core";
-import { SiteFooter } from "./SiteFooter";
 import { fantasyOscarsTheme } from "../theme/theme";
+import "../primitives/draftLayout.css";
 
 export function DraftLayout() {
   return (
@@ -15,12 +15,11 @@ export function DraftLayout() {
         }
       }}
     >
-      <Box className="page draft-page">
-        <Box className="draft-page-inner">
-          <Box component="main" className="draft-content">
+      <Box className="draftLayoutRoot">
+        <Box className="draftLayoutInner">
+          <Box component="main" className="draftLayoutMain">
             <Outlet />
           </Box>
-          <SiteFooter />
         </Box>
       </Box>
     </MantineProvider>

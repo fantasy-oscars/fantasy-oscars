@@ -1,32 +1,45 @@
-import { Link } from "react-router-dom";
-import { Box, Button, Card, Group, List, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { useAuthContext } from "../auth/context";
+import { StandardCard } from "../primitives";
+import "../primitives/baseline.css";
 
 export function AccountPage() {
   const { user, logout } = useAuthContext();
   return (
-    <Card className="card" component="section">
-      <Box component="header">
-        <Title order={2}>Account</Title>
-        <Text>Manage your profile and security.</Text>
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <Stack gap="md">
+          <Box component="header">
+            <Title order={2} className="baseline-textHeroTitle">
+              Account
+            </Title>
+            <Text className="baseline-textBody">Manage your profile and security.</Text>
+          </Box>
+
+          <StandardCard component="section" aria-label="Account details">
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="nowrap" gap="md">
+                <Text className="baseline-textMeta">Username</Text>
+                <Text component="span" className="baseline-statusPill baseline-textMeta">
+                  {user?.username ?? "—"}
+                </Text>
+              </Group>
+              <Group justify="space-between" wrap="nowrap" gap="md">
+                <Text className="baseline-textMeta">Email</Text>
+                <Text component="span" className="baseline-statusPill baseline-textMeta">
+                  {user?.email ?? "—"}
+                </Text>
+              </Group>
+
+              <Group justify="flex-start" mt="xs">
+                <Button type="button" variant="outline" onClick={() => void logout()}>
+                  Logout
+                </Button>
+              </Group>
+            </Stack>
+          </StandardCard>
+        </Stack>
       </Box>
-      <Box className="stack">
-        <Text className="muted" c="dimmed">
-          Signed in as {user?.username ?? user?.sub ?? "unknown"}.
-        </Text>
-        <List className="pill-list">
-          <List.Item className="pill">Username: {user?.username ?? "—"}</List.Item>
-          <List.Item className="pill">Email: {user?.email ?? "—"}</List.Item>
-        </List>
-        <Group className="inline-actions" justify="flex-start">
-          <Button type="button" onClick={() => void logout()}>
-            Logout
-          </Button>
-          <Button component={Link} to="/reset" variant="subtle">
-            Password reset
-          </Button>
-        </Group>
-      </Box>
-    </Card>
+    </Box>
   );
 }

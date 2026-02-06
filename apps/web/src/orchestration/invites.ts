@@ -10,36 +10,46 @@ export function useInviteClaimOrchestration(input: { token?: string }) {
 
   const accept = useCallback(async () => {
     if (!token) {
-      setResult({ ok: false, message: "Invalid invite link" });
-      return { ok: false as const };
+      const message = "Invalid invite link";
+      setResult({ ok: false, message });
+      return { ok: false as const, error: message };
     }
+    const isNumericId = /^\d+$/.test(token);
     setLoading(true);
     const res = await fetchJson<{ invite?: { season_id?: number } }>(
-      `/seasons/invites/${token}/accept`,
+      isNumericId ? `/seasons/invites/${token}/accept` : `/seasons/invites/token/${token}/accept`,
       { method: "POST" }
     );
     setLoading(false);
     if (!res.ok) {
-      setResult({ ok: false, message: mapInviteError(res.errorCode, res.error) });
-      return { ok: false as const };
+      const message = mapInviteError(res.errorCode, res.error);
+      setResult({ ok: false, message });
+      return { ok: false as const, error: message };
     }
-    setResult({ ok: true, message: "Invite accepted" });
+    setResult(null);
     return { ok: true as const, seasonId: res.data?.invite?.season_id };
   }, [token]);
 
   const decline = useCallback(async () => {
     if (!token) {
-      setResult({ ok: false, message: "Invalid invite link" });
-      return { ok: false as const };
+      const message = "Invalid invite link";
+      setResult({ ok: false, message });
+      return { ok: false as const, error: message };
     }
+    const isNumericId = /^\d+$/.test(token);
     setLoading(true);
-    const res = await fetchJson(`/seasons/invites/${token}/decline`, { method: "POST" });
+    const res = await fetchJson(
+      isNumericId ? `/seasons/invites/${token}/decline` : `/seasons/invites/token/${token}/decline`,
+      { method: "POST" }
+    );
     setLoading(false);
-    setResult({
-      ok: res.ok as boolean,
-      message: res.ok ? "Invite declined" : (res.error ?? "Decline failed")
-    });
-    return { ok: res.ok as boolean };
+    if (!res.ok) {
+      const message = mapInviteError(res.errorCode, res.error ?? "Decline failed");
+      setResult({ ok: false, message });
+      return { ok: false as const, error: message };
+    }
+    setResult(null);
+    return { ok: true as const };
   }, [token]);
 
   return { loading, result, accept, decline };
@@ -62,7 +72,17 @@ export function useInvitesInboxOrchestration() {
       setView({ state: "error", message: res.error ?? "Could not load invites" });
       return;
     }
-    setView({ state: "ready", invites: res.data?.invites ?? [] });
+    // Defensive: treat null/invalid rows as already-resolved invites and hide them.
+    const invites = Array.isArray(res.data?.invites)
+      ? (res.data!.invites as unknown[]).filter(
+          (i): i is InboxInvite =>
+            Boolean(i) &&
+            typeof (i as { id?: unknown }).id === "number" &&
+            Number.isFinite((i as { id: number }).id) &&
+            (i as { id: number }).id > 0
+        )
+      : [];
+    setView({ state: "ready", invites });
   }, []);
 
   useEffect(() => {
@@ -74,7 +94,11 @@ export function useInvitesInboxOrchestration() {
       method: "POST"
     });
     if (!res.ok)
-      return { ok: false as const, error: res.error ?? "Unable to accept invite" };
+      return {
+        ok: false as const,
+        error: res.error ?? "Unable to accept invite",
+        errorCode: res.errorCode
+      };
 
     // Try to navigate to season if extant; otherwise league fallback.
     if (invite.league_id) {
@@ -100,7 +124,11 @@ export function useInvitesInboxOrchestration() {
       method: "POST"
     });
     if (!res.ok)
-      return { ok: false as const, error: res.error ?? "Unable to decline invite" };
+      return {
+        ok: false as const,
+        error: res.error ?? "Unable to decline invite",
+        errorCode: res.errorCode
+      };
     return { ok: true as const };
   }, []);
 

@@ -1,10 +1,10 @@
 import { useAuthContext } from "../auth/context";
-import { useHomeOrchestration } from "../orchestration/home";
-import { HomeScreen } from "../screens/HomeScreen";
+import { LandingScreen } from "../screens/LandingScreen";
+import { useLandingOrchestration } from "../orchestration/landing";
 
 export function HomePage() {
   const { user, loading } = useAuthContext();
-  const { view } = useHomeOrchestration({ seasonsEnabled: Boolean(user) });
+  const { view } = useLandingOrchestration({ seasonsEnabled: Boolean(user) });
 
-  return <HomeScreen user={user} authLoading={loading} view={view} />;
+  return <LandingScreen user={user} authLoading={loading} view={view} />;
 }

@@ -11,6 +11,7 @@ import { createAdminRouter } from "./routes/admin.js";
 import { createCeremonyRouter } from "./routes/ceremony.js";
 import { createCeremoniesRouter } from "./routes/ceremonies.js";
 import { createContentRouter } from "./routes/content.js";
+import { createDraftPlansRouter } from "./routes/draftPlans.js";
 import { requireAdmin, requireAuth } from "./auth/middleware.js";
 import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
@@ -113,6 +114,7 @@ export function createServer(deps?: { db?: Pool }): Express {
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
   app.use("/seasons", createSeasonsRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
+  app.use("/draft-plans", createDraftPlansRouter(pool, config.authSecret));
   app.use("/ceremony", createCeremonyRouter(pool));
   app.use("/ceremonies", createCeremoniesRouter(pool));
   app.use("/content", createContentRouter(pool));

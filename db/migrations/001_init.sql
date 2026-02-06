@@ -112,7 +112,8 @@ CREATE TABLE public.app_user (
     username text NOT NULL,
     email text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    is_admin boolean DEFAULT false NOT NULL
+    is_admin boolean DEFAULT false NOT NULL,
+    avatar_key text DEFAULT 'monkey'::text NOT NULL
 );
 
 
@@ -223,8 +224,10 @@ CREATE TABLE public.category_family (
     code text NOT NULL,
     name text NOT NULL,
     icon_id bigint NOT NULL,
+    icon_variant text NOT NULL DEFAULT 'default'::text,
     default_unit_kind text NOT NULL,
-    CONSTRAINT category_family_default_unit_kind_check CHECK ((default_unit_kind = ANY (ARRAY['FILM'::text, 'SONG'::text, 'PERFORMANCE'::text])))
+    CONSTRAINT category_family_default_unit_kind_check CHECK ((default_unit_kind = ANY (ARRAY['FILM'::text, 'SONG'::text, 'PERFORMANCE'::text]))),
+    CONSTRAINT category_family_icon_variant_check CHECK ((icon_variant = ANY (ARRAY['default'::text, 'inverted'::text])))
 );
 
 
@@ -743,6 +746,7 @@ ALTER SEQUENCE public.league_member_id_seq OWNED BY public.league_member.id;
 CREATE TABLE public.nomination (
     id bigint NOT NULL,
     category_edition_id bigint NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
     film_id bigint,
     song_id bigint,
     performance_id bigint,

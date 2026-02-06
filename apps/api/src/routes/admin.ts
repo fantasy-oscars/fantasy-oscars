@@ -23,10 +23,14 @@ import {
 import { loadNominees } from "../scripts/load-nominees.js";
 import {
   buildTmdbImageUrlFromConfig,
+  buildTmdbImageUrl,
   fetchTmdbMovieDetailsWithCredits,
+  fetchTmdbPersonDetails,
   getTmdbImageConfig,
   parseReleaseYear
 } from "../lib/tmdb.js";
+import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
+import { emitCeremonyFinalized, emitCeremonyWinnersUpdated } from "../realtime/ceremonyEvents.js";
 import type { Pool } from "pg";
 import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
 import type { Router } from "express";
@@ -548,27 +552,58 @@ export function createAdminRouter(client: DbClient): Router {
             );
           }
 
-          const { rows: depRows } = await query<{
-            seasons: number;
-            categories: number;
-            winners: number;
-          }>(
+          // Pre-launch behavior: deleting an unpublished ceremony should cascade
+          // to all dependent rows (seasons/drafts, categories, nominations, etc.).
+          // We'll revisit a safer, explicit flow for published ceremonies later.
+
+          // Detach any pointers to this ceremony.
+          await query(
             tx,
-            `SELECT
-               (SELECT COUNT(*)::int FROM season WHERE ceremony_id = $1) AS seasons,
-               (SELECT COUNT(*)::int FROM category_edition WHERE ceremony_id = $1) AS categories,
-               (SELECT COUNT(*)::int FROM ceremony_winner WHERE ceremony_id = $1) AS winners`,
+            `UPDATE app_config SET active_ceremony_id = NULL WHERE active_ceremony_id = $1`,
             [id]
           );
-          const deps = depRows[0] ?? { seasons: 0, categories: 0, winners: 0 };
-          if (deps.seasons > 0 || deps.categories > 0 || deps.winners > 0) {
-            throw new AppError(
-              "CANNOT_DELETE",
-              409,
-              "Cannot delete a ceremony with dependent data (seasons, categories, or winners). Archive instead."
-            );
-          }
+          await query(tx, `UPDATE league SET ceremony_id = NULL WHERE ceremony_id = $1`, [
+            id
+          ]);
 
+          // Delete any seasons (will cascade to drafts, invites, members).
+          await query(tx, `DELETE FROM season WHERE ceremony_id = $1`, [id]);
+
+          // Winners (normally none for DRAFT, but safe).
+          await query(tx, `DELETE FROM ceremony_winner WHERE ceremony_id = $1`, [id]);
+
+          // Delete nominations + related tables, then categories.
+          await query(
+            tx,
+            `DELETE FROM nomination_change_audit
+             WHERE nomination_id IN (
+               SELECT n.id
+               FROM nomination n
+               JOIN category_edition ce ON ce.id = n.category_edition_id
+               WHERE ce.ceremony_id = $1
+             )`,
+            [id]
+          );
+          await query(
+            tx,
+            `DELETE FROM nomination_contributor
+             WHERE nomination_id IN (
+               SELECT n.id
+               FROM nomination n
+               JOIN category_edition ce ON ce.id = n.category_edition_id
+               WHERE ce.ceremony_id = $1
+             )`,
+            [id]
+          );
+          await query(
+            tx,
+            `DELETE FROM nomination
+             WHERE category_edition_id IN (SELECT id FROM category_edition WHERE ceremony_id = $1)`,
+            [id]
+          );
+          await query(tx, `DELETE FROM category_edition WHERE ceremony_id = $1`, [id]);
+
+          // Finally delete the ceremony itself.
           await query(tx, `DELETE FROM ceremony WHERE id = $1`, [id]);
         });
 
@@ -651,6 +686,31 @@ export function createAdminRouter(client: DbClient): Router {
         };
 
         return res.status(200).json({ ceremony, stats });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/ceremonies/:id/draft-board",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
+        }
+
+        // Ensure ceremony exists (and avoid leaking row-level information).
+        const { rows } = await query<{ id: number }>(
+          client,
+          `SELECT id::int FROM ceremony WHERE id = $1`,
+          [id]
+        );
+        if (!rows[0]) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+
+        const board = await getDraftBoardForCeremony(client, id);
+        return res.status(200).json(board);
       } catch (err) {
         next(err);
       }
@@ -1105,6 +1165,14 @@ export function createAdminRouter(client: DbClient): Router {
             throw new AppError("INTERNAL_ERROR", 500, "Failed to resolve film");
 
           let nominationId: number | null = null;
+          const { rows: sortRows } = await query<{ max: number | null }>(
+            tx,
+            `SELECT COALESCE(MAX(sort_order), -1)::int AS max
+             FROM nomination
+             WHERE category_edition_id = $1`,
+            [categoryEditionId]
+          );
+          const nextSortOrder = (sortRows[0]?.max ?? -1) + 1;
 
           if (unitKind === "SONG") {
             if (!songTitle) {
@@ -1123,10 +1191,10 @@ export function createAdminRouter(client: DbClient): Router {
 
             const { rows: nomRows } = await query<{ id: number }>(
               tx,
-              `INSERT INTO nomination (category_edition_id, song_id)
-               VALUES ($1, $2)
+              `INSERT INTO nomination (category_edition_id, song_id, sort_order)
+               VALUES ($1, $2, $3)
                RETURNING id::int`,
-              [categoryEditionId, songId]
+              [categoryEditionId, songId, nextSortOrder]
             );
             nominationId = nomRows[0]?.id ?? null;
           } else if (unitKind === "PERFORMANCE") {
@@ -1142,20 +1210,20 @@ export function createAdminRouter(client: DbClient): Router {
             }
             const { rows: nomRows } = await query<{ id: number }>(
               tx,
-              `INSERT INTO nomination (category_edition_id, film_id)
-               VALUES ($1, $2)
+              `INSERT INTO nomination (category_edition_id, film_id, sort_order)
+               VALUES ($1, $2, $3)
                RETURNING id::int`,
-              [categoryEditionId, resolvedFilmId]
+              [categoryEditionId, resolvedFilmId, nextSortOrder]
             );
             nominationId = nomRows[0]?.id ?? null;
           } else {
             // FILM default.
             const { rows: nomRows } = await query<{ id: number }>(
               tx,
-              `INSERT INTO nomination (category_edition_id, film_id)
-               VALUES ($1, $2)
+              `INSERT INTO nomination (category_edition_id, film_id, sort_order)
+               VALUES ($1, $2, $3)
                RETURNING id::int`,
-              [categoryEditionId, resolvedFilmId]
+              [categoryEditionId, resolvedFilmId, nextSortOrder]
             );
             nominationId = nomRows[0]?.id ?? null;
           }
@@ -1196,11 +1264,115 @@ export function createAdminRouter(client: DbClient): Router {
               const personId = personRows[0]?.id ?? null;
               if (!personId) continue;
 
+              // Best-effort: if this is a performance nomination and no role label was supplied,
+              // try to infer the character name from the film's stored TMDB credits.
+              let inferredRole: string | null = roleLabel;
+              if (
+                !inferredRole &&
+                unitKind === "PERFORMANCE" &&
+                tmdbId &&
+                Number.isFinite(tmdbId)
+              ) {
+                try {
+                  const { rows: filmRows } = await query<{ tmdb_credits: unknown }>(
+                    tx,
+                    `SELECT tmdb_credits FROM film WHERE id = $1`,
+                    [resolvedFilmId]
+                  );
+                  const credits = filmRows[0]?.tmdb_credits as
+                    | {
+                        cast?: Array<{
+                          id?: number;
+                          tmdb_id?: number;
+                          character?: string | null;
+                          profile_path?: string | null;
+                        }>;
+                      }
+                    | null
+                    | undefined;
+                  const cast = Array.isArray(credits?.cast) ? credits!.cast! : [];
+                  const match = cast.find(
+                    (p) => Number(p?.tmdb_id ?? p?.id) === Number(tmdbId)
+                  );
+                  const character =
+                    typeof match?.character === "string" ? match.character.trim() : "";
+                  inferredRole = character ? character : null;
+
+                  // If the person doesn't have a profile image yet, use the film credits profile_path.
+                  const profilePath =
+                    typeof match?.profile_path === "string" ? match.profile_path : null;
+                  if (profilePath) {
+                    const { rows: existingRows } = await query<{
+                      profile_url: string | null;
+                      profile_path: string | null;
+                    }>(
+                      tx,
+                      `SELECT profile_url, profile_path FROM person WHERE id = $1`,
+                      [personId]
+                    );
+                    const existing = existingRows[0];
+                    if (!existing?.profile_url && !existing?.profile_path) {
+                      const profileUrl = await buildTmdbImageUrl(
+                        "profile",
+                        profilePath,
+                        "w185"
+                      );
+                      await query(
+                        tx,
+                        `UPDATE person
+                         SET profile_path = $2,
+                             profile_url = $3,
+                             updated_at = now()
+                         WHERE id = $1`,
+                        [personId, profilePath, profileUrl]
+                      );
+                    }
+                  }
+                } catch {
+                  // Ignore; role label is optional and should not block nominee creation.
+                }
+              }
+
+              // Best-effort: hydrate person profile image from TMDB when we have a tmdb_id.
+              if (tmdbId && Number.isFinite(tmdbId)) {
+                try {
+                  const { rows: existingRows } = await query<{
+                    profile_url: string | null;
+                    profile_path: string | null;
+                  }>(
+                    tx,
+                    `SELECT profile_url, profile_path FROM person WHERE id = $1`,
+                    [personId]
+                  );
+                  const existing = existingRows[0];
+                  if (!existing?.profile_url && !existing?.profile_path) {
+                    const details = await fetchTmdbPersonDetails(Number(tmdbId));
+                    const profilePath = details?.profile_path ?? null;
+                    const profileUrl = await buildTmdbImageUrl(
+                      "profile",
+                      profilePath,
+                      "w185"
+                    );
+                    await query(
+                      tx,
+                      `UPDATE person
+                       SET profile_path = $2,
+                           profile_url = $3,
+                           updated_at = now()
+                       WHERE id = $1`,
+                      [personId, profilePath, profileUrl]
+                    );
+                  }
+                } catch {
+                  // Ignore; person image is a convenience, not a requirement.
+                }
+              }
+
               await query(
                 tx,
                 `INSERT INTO nomination_contributor (nomination_id, person_id, role_label, sort_order)
                  VALUES ($1, $2, $3, $4)`,
-                [nominationId, personId, roleLabel, sort]
+                [nominationId, personId, inferredRole, sort]
               );
               sort += 1;
             }
@@ -1230,6 +1402,116 @@ export function createAdminRouter(client: DbClient): Router {
         }
 
         return res.status(201).json({ ok: true, ...result });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.put(
+    "/ceremonies/:id/nominations/reorder",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const ceremonyId = Number(req.params.id);
+        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
+        }
+
+        const categoryEditionId = Number(req.body?.category_edition_id);
+        if (!Number.isInteger(categoryEditionId) || categoryEditionId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "category_edition_id is required");
+        }
+
+        const idsRaw = req.body?.nomination_ids;
+        const nominationIds = Array.isArray(idsRaw)
+          ? idsRaw
+              .map((v) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN))
+              .filter((n) => Number.isInteger(n) && n > 0)
+          : [];
+
+        if (nominationIds.length < 1) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "nomination_ids must include at least one nomination id"
+          );
+        }
+
+        await runInTransaction(client as Pool, async (tx) => {
+          const { rows: ceremonyRows } = await query<{ status: string }>(
+            tx,
+            `SELECT status FROM ceremony WHERE id = $1`,
+            [ceremonyId]
+          );
+          const status = ceremonyRows[0]?.status;
+          if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+          if (status !== "DRAFT") {
+            throw new AppError(
+              "CEREMONY_NOT_DRAFT",
+              409,
+              "Nominations can only be edited while the ceremony is in draft"
+            );
+          }
+
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, ceremonyId);
+          if (draftsStarted) {
+            throw new AppError(
+              "DRAFTS_LOCKED",
+              409,
+              "Nominee structural changes are locked after drafts start"
+            );
+          }
+
+          const { rows: catRows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int
+             FROM category_edition
+             WHERE id = $1 AND ceremony_id = $2`,
+            [categoryEditionId, ceremonyId]
+          );
+          if (!catRows[0]?.id) {
+            throw new AppError("NOT_FOUND", 404, "Category not found for ceremony");
+          }
+
+          const { rows: existingRows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int
+             FROM nomination
+             WHERE category_edition_id = $1
+               AND id = ANY($2::bigint[])`,
+            [categoryEditionId, nominationIds]
+          );
+          if (existingRows.length !== nominationIds.length) {
+            throw new AppError(
+              "VALIDATION_FAILED",
+              400,
+              "All nomination_ids must belong to the selected category",
+              { fields: ["nomination_ids"] }
+            );
+          }
+
+          for (let i = 0; i < nominationIds.length; i += 1) {
+            await query(
+              tx,
+              `UPDATE nomination
+               SET sort_order = $2
+               WHERE id = $1 AND category_edition_id = $3`,
+              [nominationIds[i], i, categoryEditionId]
+            );
+          }
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "reorder_nominations",
+            target_type: "ceremony",
+            target_id: ceremonyId,
+            meta: { category_edition_id: categoryEditionId, nomination_ids: nominationIds }
+          });
+        }
+
+        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }
@@ -1367,6 +1649,7 @@ export function createAdminRouter(client: DbClient): Router {
              cf.name,
              cf.default_unit_kind,
              cf.icon_id::int,
+             cf.icon_variant,
              i.code AS icon_code
            FROM category_family cf
            JOIN icon i ON i.id = cf.icon_id
@@ -1392,6 +1675,9 @@ export function createAdminRouter(client: DbClient): Router {
         const default_unit_kind =
           typeof unitKindRaw === "string" ? String(unitKindRaw).toUpperCase() : "";
         const iconCode = typeof req.body?.icon === "string" ? req.body.icon.trim() : "";
+        const iconVariantRaw = req.body?.icon_variant;
+        const icon_variant =
+          typeof iconVariantRaw === "string" ? iconVariantRaw.trim() : "default";
         const iconIdRaw = req.body?.icon_id;
         const icon_id =
           iconIdRaw === undefined || iconIdRaw === null ? null : Number(iconIdRaw);
@@ -1408,14 +1694,17 @@ export function createAdminRouter(client: DbClient): Router {
         if (!["FILM", "SONG", "PERFORMANCE"].includes(default_unit_kind)) {
           throw new AppError("VALIDATION_FAILED", 400, "Invalid default_unit_kind");
         }
+        if (!["default", "inverted"].includes(icon_variant)) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_variant");
+        }
 
         let resolvedIconId: number | null = null;
         if (iconCode) {
-          if (!/^[a-z0-9-]+$/.test(iconCode)) {
+          if (!/^[a-z0-9-_]+$/.test(iconCode)) {
             throw new AppError(
               "VALIDATION_FAILED",
               400,
-              "Icon must be lowercase letters/numbers/dashes only"
+              "Icon must be lowercase letters/numbers/dashes/underscores only"
             );
           }
           const { rows: iconRows } = await query<{ id: number }>(
@@ -1438,10 +1727,10 @@ export function createAdminRouter(client: DbClient): Router {
 
         const { rows } = await query(
           client,
-          `INSERT INTO category_family (code, name, icon_id, default_unit_kind)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id::int, code, name, icon_id::int, default_unit_kind`,
-          [code, name, resolvedIconId, default_unit_kind]
+          `INSERT INTO category_family (code, name, icon_id, icon_variant, default_unit_kind)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id::int, code, name, icon_id::int, icon_variant, default_unit_kind`,
+          [code, name, resolvedIconId, icon_variant, default_unit_kind]
         );
         const family = rows[0];
 
@@ -1451,7 +1740,13 @@ export function createAdminRouter(client: DbClient): Router {
             action: "create_category_family",
             target_type: "category_family",
             target_id: family.id,
-            meta: { code, name, icon: iconCode || resolvedIconId, default_unit_kind }
+            meta: {
+              code,
+              name,
+              icon: iconCode || resolvedIconId,
+              icon_variant,
+              default_unit_kind
+            }
           });
         }
 
@@ -1489,6 +1784,13 @@ export function createAdminRouter(client: DbClient): Router {
               : "";
         const iconCode =
           typeof req.body?.icon === "string" ? req.body.icon.trim() : undefined;
+        const iconVariantRaw = req.body?.icon_variant;
+        const icon_variant =
+          iconVariantRaw === undefined
+            ? undefined
+            : typeof iconVariantRaw === "string"
+              ? iconVariantRaw.trim()
+              : "";
 
         if (code !== undefined) {
           if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
@@ -1508,15 +1810,20 @@ export function createAdminRouter(client: DbClient): Router {
             throw new AppError("VALIDATION_FAILED", 400, "Invalid default_unit_kind");
           }
         }
+        if (icon_variant !== undefined) {
+          if (!["default", "inverted"].includes(icon_variant)) {
+            throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_variant");
+          }
+        }
 
         let resolvedIconId: number | null = null;
         if (iconCode !== undefined) {
           if (!iconCode) throw new AppError("VALIDATION_FAILED", 400, "Icon is required");
-          if (!/^[a-z0-9-]+$/.test(iconCode)) {
+          if (!/^[a-z0-9-_]+$/.test(iconCode)) {
             throw new AppError(
               "VALIDATION_FAILED",
               400,
-              "Icon must be lowercase letters/numbers/dashes only"
+              "Icon must be lowercase letters/numbers/dashes/underscores only"
             );
           }
           const { rows: iconRows } = await query<{ id: number }>(
@@ -1545,6 +1852,7 @@ export function createAdminRouter(client: DbClient): Router {
         if (default_unit_kind !== undefined)
           push(`default_unit_kind = $X`, default_unit_kind);
         if (resolvedIconId !== null) push(`icon_id = $X`, resolvedIconId);
+        if (icon_variant !== undefined) push(`icon_variant = $X`, icon_variant);
 
         if (updates.length === 0) {
           throw new AppError("VALIDATION_FAILED", 400, "No fields to update");
@@ -1555,7 +1863,7 @@ export function createAdminRouter(client: DbClient): Router {
           `UPDATE category_family
            SET ${updates.join(", ")}
            WHERE id = $1
-           RETURNING id::int, code, name, icon_id::int, default_unit_kind`,
+           RETURNING id::int, code, name, icon_id::int, icon_variant, default_unit_kind`,
           params
         );
         const family = rows[0];
@@ -1702,6 +2010,7 @@ export function createAdminRouter(client: DbClient): Router {
              cf.name AS family_name,
              cf.default_unit_kind,
              cf.icon_id::int AS family_icon_id,
+             cf.icon_variant AS family_icon_variant,
              COALESCE(i.code, fi.code) AS icon_code,
              fi.code AS family_icon_code
            FROM category_edition ce
@@ -2437,6 +2746,13 @@ export function createAdminRouter(client: DbClient): Router {
               "Archived ceremonies are read-only"
             );
           }
+          if (ceremony.status === "COMPLETE") {
+            throw new AppError(
+              "CEREMONY_COMPLETE",
+              409,
+              "This ceremony has finalized winners and is read-only for results entry"
+            );
+          }
 
           const winners = await setWinnersForCategoryEdition(tx, {
             ceremony_id: category.ceremony_id,
@@ -2484,11 +2800,104 @@ export function createAdminRouter(client: DbClient): Router {
           });
         }
 
+        // Notify any connected draft rooms (results view) that winners changed.
+        void emitCeremonyWinnersUpdated({
+          db: client,
+          ceremonyId: result.ceremony_id,
+          categoryEditionId,
+          nominationIds
+        });
+
         return res.status(200).json({
           winners: result.winners,
           draft_locked_at: result.draft_locked_at,
           cancelled_drafts: result.cancelled_drafts
         });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/ceremonies/:id/finalize-winners",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const ceremonyId = Number(req.params.id);
+        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: ceremonyRows } = await query<{ status: string; code: string | null; name: string | null }>(
+            tx,
+            `SELECT status, code, name FROM ceremony WHERE id = $1`,
+            [ceremonyId]
+          );
+          const ceremony = ceremonyRows[0];
+          if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+          if (ceremony.status === "ARCHIVED") {
+            throw new AppError("CEREMONY_ARCHIVED", 409, "Archived ceremonies are read-only");
+          }
+          if (ceremony.status === "DRAFT") {
+            throw new AppError(
+              "CEREMONY_NOT_PUBLISHED",
+              409,
+              "Publish the ceremony before finalizing winners"
+            );
+          }
+          if (ceremony.status !== "LOCKED") {
+            throw new AppError(
+              "CEREMONY_NOT_LOCKED",
+              409,
+              "Winners can only be finalized once results entry has started (ceremony locked)"
+            );
+          }
+
+          const { rows: winnerRows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int FROM ceremony_winner WHERE ceremony_id = $1 LIMIT 1`,
+            [ceremonyId]
+          );
+          if (!winnerRows[0]) {
+            throw new AppError(
+              "NO_WINNERS",
+              409,
+              "At least one winner must be set before finalizing"
+            );
+          }
+
+          try {
+            await query(tx, `UPDATE ceremony SET status = 'COMPLETE' WHERE id = $1`, [
+              ceremonyId
+            ]);
+          } catch (err) {
+            const code = (err as { code?: string } | null)?.code;
+            if (code === "23514" || code === "42P01") {
+              throw new AppError(
+                "MIGRATION_REQUIRED",
+                409,
+                "Database schema is out of date. Apply migrations and restart the API."
+              );
+            }
+            throw err;
+          }
+          return { id: ceremonyId, status: "COMPLETE", code: ceremony.code, name: ceremony.name };
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "finalize_winners",
+            target_type: "ceremony",
+            target_id: ceremonyId,
+            meta: { status: "COMPLETE" }
+          });
+        }
+
+        void emitCeremonyFinalized({ db: client, ceremonyId });
+
+        return res.status(200).json({ ceremony: result });
       } catch (err) {
         next(err);
       }
@@ -2856,6 +3265,484 @@ export function createAdminRouter(client: DbClient): Router {
         const credits = rows[0]?.tmdb_credits ?? null;
         // Don't over-validate; this payload is sourced from TMDB and stored as jsonb.
         return res.status(200).json({ credits });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.patch(
+    "/films/:id",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid film id");
+        }
+
+        const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
+        const tmdbId =
+          tmdbIdRaw === null || tmdbIdRaw === undefined
+            ? null
+            : typeof tmdbIdRaw === "number"
+              ? tmdbIdRaw
+              : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
+                ? Number(tmdbIdRaw)
+                : NaN;
+
+        if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
+          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
+            fields: ["tmdb_id"]
+          });
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: existingRows } = await query<{
+            id: number;
+            title: string;
+            release_year: number | null;
+            tmdb_id: number | null;
+          }>(
+            tx,
+            `SELECT id::int, title, release_year::int, tmdb_id::int
+             FROM film
+             WHERE id = $1`,
+            [id]
+          );
+          const existing = existingRows[0];
+          if (!existing) throw new AppError("NOT_FOUND", 404, "Film not found");
+
+          if (tmdbId === null) {
+            const { rows } = await query(
+              tx,
+              `UPDATE film
+               SET tmdb_id = NULL,
+                   external_ids = NULL,
+                   poster_path = NULL,
+                   poster_url = NULL,
+                   tmdb_last_synced_at = NULL,
+                   tmdb_credits = NULL
+               WHERE id = $1
+               RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
+              [id]
+            );
+            return { film: rows[0], hydrated: false };
+          }
+
+          // Hydrate details + credits from TMDB and store them on the film record.
+          const cfg = await getTmdbImageConfig();
+          const movie = await fetchTmdbMovieDetailsWithCredits(Number(tmdbId));
+          const releaseYear = parseReleaseYear(movie.release_date ?? null);
+          const posterPath = movie.poster_path ?? null;
+          const posterUrl = buildTmdbImageUrlFromConfig(cfg, "poster", posterPath, "w500");
+          const credits = movie.credits
+            ? {
+                cast: Array.isArray(movie.credits.cast)
+                  ? movie.credits.cast.map((c) => ({
+                      tmdb_id: c.id,
+                      name: c.name,
+                      character: c.character ?? null,
+                      order: c.order ?? null,
+                      credit_id: c.credit_id ?? null,
+                      profile_path: c.profile_path ?? null
+                    }))
+                  : [],
+                crew: Array.isArray(movie.credits.crew)
+                  ? movie.credits.crew.map((c) => ({
+                      tmdb_id: c.id,
+                      name: c.name,
+                      department: c.department ?? null,
+                      job: c.job ?? null,
+                      credit_id: c.credit_id ?? null,
+                      profile_path: c.profile_path ?? null
+                    }))
+                  : []
+              }
+            : null;
+
+          const { rows } = await query(
+            tx,
+            `UPDATE film
+             SET tmdb_id = $2::int,
+                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                 title = $3,
+                 release_year = $4,
+                 poster_path = $5,
+                 poster_url = $6,
+                 tmdb_last_synced_at = now(),
+                 tmdb_credits = $7
+             WHERE id = $1
+             RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
+            [
+              id,
+              Number(tmdbId),
+              movie.title,
+              releaseYear,
+              posterPath,
+              posterUrl,
+              credits ? JSON.stringify(credits) : null
+            ]
+          );
+          return { film: rows[0], hydrated: true };
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "link_film_tmdb",
+            target_type: "film",
+            target_id: id,
+            meta: { tmdb_id: tmdbId, hydrated: result.hydrated }
+          });
+        }
+
+        return res.status(200).json({ film: result.film, hydrated: result.hydrated });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.get(
+    "/people",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const like = q ? `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%` : null;
+        const { rows } = await query(
+          client,
+          `SELECT id::int, full_name, tmdb_id::int, profile_url
+           FROM person
+           WHERE ($1::text IS NULL OR full_name ILIKE $1 ESCAPE '\\')
+           ORDER BY full_name ASC, id ASC
+           LIMIT 250`,
+          [like]
+        );
+        return res.status(200).json({ people: rows });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.patch(
+    "/people/:id",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid person id");
+        }
+
+        const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
+        const tmdbId =
+          tmdbIdRaw === null || tmdbIdRaw === undefined
+            ? null
+            : typeof tmdbIdRaw === "number"
+              ? tmdbIdRaw
+              : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
+                ? Number(tmdbIdRaw)
+                : NaN;
+
+        if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
+          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
+            fields: ["tmdb_id"]
+          });
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: existingRows } = await query<{
+            id: number;
+            full_name: string;
+            tmdb_id: number | null;
+            profile_url: string | null;
+          }>(
+            tx,
+            `SELECT id::int, full_name, tmdb_id::int, profile_url
+             FROM person
+             WHERE id = $1`,
+            [id]
+          );
+          const existing = existingRows[0];
+          if (!existing) throw new AppError("NOT_FOUND", 404, "Person not found");
+
+          if (tmdbId === null) {
+            const { rows } = await query(
+              tx,
+              `UPDATE person
+               SET tmdb_id = NULL,
+                   external_ids = NULL,
+                   profile_path = NULL,
+                   profile_url = NULL,
+                   updated_at = now()
+               WHERE id = $1
+               RETURNING id::int, full_name, tmdb_id::int, profile_url`,
+              [id]
+            );
+            return { person: rows[0], hydrated: false };
+          }
+
+          const details = await fetchTmdbPersonDetails(Number(tmdbId));
+          const profilePath = details?.profile_path ?? null;
+          const profileUrl = await buildTmdbImageUrl("profile", profilePath, "w185");
+
+          const { rows } = await query(
+            tx,
+            `UPDATE person
+             SET tmdb_id = $2::int,
+                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                 full_name = COALESCE(NULLIF($3, ''), full_name),
+                 profile_path = $4,
+                 profile_url = $5,
+                 updated_at = now()
+             WHERE id = $1
+             RETURNING id::int, full_name, tmdb_id::int, profile_url`,
+            [id, Number(tmdbId), String(details?.name ?? ""), profilePath, profileUrl]
+          );
+          return { person: rows[0], hydrated: true };
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "link_person_tmdb",
+            target_type: "person",
+            target_id: id,
+            meta: { tmdb_id: tmdbId, hydrated: result.hydrated }
+          });
+        }
+
+        return res.status(200).json({ person: result.person, hydrated: result.hydrated });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/nominations/:id/contributors",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const nominationId = Number(req.params.id);
+        if (!Number.isInteger(nominationId) || nominationId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
+        }
+
+        const personIdRaw = (req.body as { person_id?: unknown } | undefined)?.person_id;
+        const personId =
+          typeof personIdRaw === "number"
+            ? personIdRaw
+            : typeof personIdRaw === "string" && personIdRaw.trim()
+              ? Number(personIdRaw)
+              : null;
+        const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+        const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
+        const tmdbId =
+          typeof tmdbIdRaw === "number"
+            ? tmdbIdRaw
+            : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
+              ? Number(tmdbIdRaw)
+              : null;
+
+        if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
+          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
+            fields: ["tmdb_id"]
+          });
+        }
+
+        if (!personId && !name) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "person_id or name is required",
+            { fields: ["person_id", "name"] }
+          );
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: metaRows } = await query<{ ceremony_id: number; status: string }>(
+            tx,
+            `SELECT ce.ceremony_id::int AS ceremony_id, c.status
+             FROM nomination n
+             JOIN category_edition ce ON ce.id = n.category_edition_id
+             JOIN ceremony c ON c.id = ce.ceremony_id
+             WHERE n.id = $1`,
+            [nominationId]
+          );
+          const meta = metaRows[0];
+          if (!meta) throw new AppError("NOT_FOUND", 404, "Nomination not found");
+          if (meta.status !== "DRAFT") {
+            throw new AppError(
+              "CEREMONY_NOT_DRAFT",
+              409,
+              "Nominations can only be edited while the ceremony is in draft"
+            );
+          }
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, meta.ceremony_id);
+          if (draftsStarted) {
+            throw new AppError(
+              "DRAFTS_LOCKED",
+              409,
+              "Nominee structural changes are locked after drafts start"
+            );
+          }
+
+          let resolvedPersonId: number | null = null;
+          if (personId && Number.isFinite(personId)) {
+            const { rows: personRows } = await query<{ id: number }>(
+              tx,
+              `SELECT id::int FROM person WHERE id = $1`,
+              [Number(personId)]
+            );
+            if (!personRows[0]?.id) throw new AppError("NOT_FOUND", 404, "Person not found");
+            resolvedPersonId = personRows[0].id;
+          } else if (tmdbId && Number.isFinite(tmdbId)) {
+            if (!name) {
+              throw new AppError(
+                "VALIDATION_FAILED",
+                400,
+                "name is required when providing tmdb_id",
+                { fields: ["name"] }
+              );
+            }
+            const { rows: personRows } = await query<{ id: number }>(
+              tx,
+              `INSERT INTO person (full_name, tmdb_id, external_ids, updated_at)
+               VALUES ($1, $2::int, jsonb_build_object('tmdb_id', $2::int), now())
+               ON CONFLICT (tmdb_id)
+               DO UPDATE SET full_name = EXCLUDED.full_name, updated_at = now()
+               RETURNING id::int`,
+              [name, Number(tmdbId)]
+            );
+            resolvedPersonId = personRows[0]?.id ?? null;
+          } else {
+            const { rows: personRows } = await query<{ id: number }>(
+              tx,
+              `INSERT INTO person (full_name) VALUES ($1) RETURNING id::int`,
+              [name]
+            );
+            resolvedPersonId = personRows[0]?.id ?? null;
+          }
+
+          if (!resolvedPersonId)
+            throw new AppError("INTERNAL_ERROR", 500, "Failed to resolve person");
+
+          const { rows: sortRows } = await query<{ max: number | null }>(
+            tx,
+            `SELECT COALESCE(MAX(sort_order), -1)::int AS max
+             FROM nomination_contributor
+             WHERE nomination_id = $1`,
+            [nominationId]
+          );
+          const nextSortOrder = (sortRows[0]?.max ?? -1) + 1;
+
+          const { rows: insertedRows } = await query<{ id: number }>(
+            tx,
+            `INSERT INTO nomination_contributor (nomination_id, person_id, role_label, sort_order)
+             VALUES ($1, $2, NULL, $3)
+             RETURNING id::int`,
+            [nominationId, resolvedPersonId, nextSortOrder]
+          );
+          const nominationContributorId = insertedRows[0]?.id ?? null;
+          if (!nominationContributorId)
+            throw new AppError("INTERNAL_ERROR", 500, "Failed to add contributor");
+
+          const { rows: peopleRows } = await query<{
+            id: number;
+            full_name: string;
+            tmdb_id: number | null;
+            profile_url: string | null;
+          }>(
+            tx,
+            `SELECT id::int, full_name, tmdb_id::int, profile_url
+             FROM person WHERE id = $1`,
+            [resolvedPersonId]
+          );
+
+          return {
+            nomination_contributor_id: nominationContributorId,
+            person: peopleRows[0]
+          };
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "add_nomination_contributor",
+            target_type: "nomination",
+            target_id: nominationId,
+            meta: { person_id: result.person?.id ?? null }
+          });
+        }
+
+        return res.status(201).json({ ok: true, ...result });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.delete(
+    "/nominations/:id/contributors/:contributorId",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const nominationId = Number(req.params.id);
+        const contributorId = Number(req.params.contributorId);
+        if (!Number.isInteger(nominationId) || nominationId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
+        }
+        if (!Number.isInteger(contributorId) || contributorId <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid contributor id");
+        }
+
+        await runInTransaction(client as Pool, async (tx) => {
+          const { rows: metaRows } = await query<{ ceremony_id: number; status: string }>(
+            tx,
+            `SELECT ce.ceremony_id::int AS ceremony_id, c.status
+             FROM nomination n
+             JOIN category_edition ce ON ce.id = n.category_edition_id
+             JOIN ceremony c ON c.id = ce.ceremony_id
+             WHERE n.id = $1`,
+            [nominationId]
+          );
+          const meta = metaRows[0];
+          if (!meta) throw new AppError("NOT_FOUND", 404, "Nomination not found");
+          if (meta.status !== "DRAFT") {
+            throw new AppError(
+              "CEREMONY_NOT_DRAFT",
+              409,
+              "Nominations can only be edited while the ceremony is in draft"
+            );
+          }
+          const draftsStarted = await hasDraftsStartedForCeremony(tx, meta.ceremony_id);
+          if (draftsStarted) {
+            throw new AppError(
+              "DRAFTS_LOCKED",
+              409,
+              "Nominee structural changes are locked after drafts start"
+            );
+          }
+
+          const { rowCount } = await query(
+            tx,
+            `DELETE FROM nomination_contributor
+             WHERE id = $1 AND nomination_id = $2`,
+            [contributorId, nominationId]
+          );
+          if (!rowCount) throw new AppError("NOT_FOUND", 404, "Contributor not found");
+        });
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "remove_nomination_contributor",
+            target_type: "nomination",
+            target_id: nominationId,
+            meta: { nomination_contributor_id: contributorId }
+          });
+        }
+
+        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }

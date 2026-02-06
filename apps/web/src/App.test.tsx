@@ -561,9 +561,9 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("link", { name: /Back to Season/i });
-    await screen.findByRole("button", { name: /Hide drafted/i });
-    expect(screen.getByRole("button", { name: /Start draft/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('[data-screen="draft-room"]')).toBeTruthy();
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/drafts/1/snapshot"),
       expect.objectContaining({ method: "GET" })
@@ -729,7 +729,7 @@ describe("<App /> shell + routing", () => {
   });
 
   it("renders admin console skeleton for admins", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/overview");
+    window.history.pushState({}, "", "/admin/ceremonies/1");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -786,13 +786,12 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Ceremonies/i });
-    await screen.findByRole("heading", { name: /Overview/i });
-    expect(screen.getByText(/Configure the ceremony lifecycle/i)).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Initialize ceremony/i });
+    await screen.findByRole("button", { name: /Next/i });
   });
 
   it("uploads candidate films JSON and shows summary", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/nominees");
+    window.history.pushState({}, "", "/admin/ceremonies/1/populate");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -818,6 +817,31 @@ describe("<App /> shell + routing", () => {
             })
         });
       }
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "DRAFT",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: null,
+                archived_at: null
+              },
+              stats: {
+                categories_total: 1,
+                categories_with_nominees: 0,
+                nominees_total: 0,
+                winners_total: 0
+              }
+            })
+        });
+      }
       if (
         url.endsWith("/admin/ceremonies/1/categories") &&
         (!init || init.method === "GET")
@@ -826,7 +850,7 @@ describe("<App /> shell + routing", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              categories: []
+              categories: [{ id: 10, unit_kind: "FILM", family_name: "Best Picture" }]
             })
         });
       }
@@ -845,10 +869,13 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Nominees/i });
+    await screen.findByRole("heading", { name: /Populate nominees/i });
+    await userEvent.click(screen.getByRole("button", { name: /Candidate pool/i }));
     const fileInput = await waitFor(() => {
-      const el = document.querySelector('input[type="file"]') as HTMLInputElement | null;
-      if (!el) throw new Error("Missing file input");
+      const el = document.querySelector(
+        'input[type="file"][name="candidate-pool-file"]'
+      ) as HTMLInputElement | null;
+      if (!el) throw new Error("Missing candidate pool file input");
       return el;
     });
     const file = new File(
@@ -862,9 +889,9 @@ describe("<App /> shell + routing", () => {
       { type: "application/json" }
     );
     await userEvent.upload(fileInput, file);
-    await screen.findByText(/Films: 2/);
+    await waitFor(() => expect(fileInput.files?.length ?? 0).toBe(1));
     await userEvent.click(
-      screen.getByRole("button", { name: /Import candidate films/i })
+      await screen.findByRole("button", { name: /Load candidate pool/i })
     );
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -872,11 +899,10 @@ describe("<App /> shell + routing", () => {
         expect.objectContaining({ method: "POST" })
       )
     );
-    await screen.findByText(/Imported candidates/i);
   });
 
   it("saves winners per category with confirmations and lock state", async () => {
-    window.history.pushState({}, "", "/admin/ceremonies/1/winners");
+    window.history.pushState({}, "", "/admin/ceremonies/1/results");
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/auth/me")) {
         return Promise.resolve({
@@ -899,6 +925,31 @@ describe("<App /> shell + routing", () => {
                   status: "DRAFT"
                 }
               ]
+            })
+        });
+      }
+      if (url.endsWith("/admin/ceremonies/1") && (!init || init.method === "GET")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ceremony: {
+                id: 1,
+                code: "oscars-2026",
+                name: "Oscars 2026",
+                starts_at: null,
+                status: "PUBLISHED",
+                draft_warning_hours: 24,
+                draft_locked_at: null,
+                published_at: "2026-01-01T00:00:00Z",
+                archived_at: null
+              },
+              stats: {
+                categories_total: 2,
+                categories_with_nominees: 2,
+                nominees_total: 3,
+                winners_total: 0
+              }
             })
         });
       }

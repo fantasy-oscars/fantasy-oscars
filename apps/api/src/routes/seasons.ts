@@ -28,7 +28,6 @@ import type { Pool } from "pg";
 import {
   createDraftEvent,
   getDraftBySeasonId,
-  hasDraftsStartedForCeremony
 } from "../data/repositories/draftRepository.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import {
@@ -36,10 +35,12 @@ import {
   countSeasonMembers,
   getSeasonMember,
   listSeasonMembers,
-  removeSeasonMember
+  removeSeasonMember,
+  transferSeasonOwnership
 } from "../data/repositories/seasonMemberRepository.js";
 import {
   createPlaceholderInvite,
+  findPendingPlaceholderInviteByTokenHash,
   getPlaceholderInviteById,
   listPlaceholderInvites,
   revokePendingPlaceholderInvite,
@@ -551,6 +552,87 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
   router.post("/seasons/:id/allocation", handleUpdateAllocation);
   router.post("/:id/allocation", handleUpdateAllocation);
 
+  const handleUpdateTimer = async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    try {
+      const seasonId = Number(req.params.id);
+      const actorId = Number(req.auth?.sub);
+      const timerRaw = (req.body ?? {}).pick_timer_seconds;
+      const pickTimerSeconds =
+        timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
+      if (Number.isNaN(seasonId) || !actorId) {
+        throw validationError("Invalid season id", ["id"]);
+      }
+      if (
+        pickTimerSeconds !== null &&
+        (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
+      ) {
+        throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
+      }
+
+      const result = await runInTransaction(client as Pool, async (tx) => {
+        const season = await getSeasonById(tx, seasonId);
+        if (!season) throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        const league = await getLeagueById(tx, season.league_id);
+        if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const member = await getLeagueMember(tx, league.id, actorId);
+        ensureCommissioner(member);
+
+        const draft = await getDraftBySeasonId(tx, season.id);
+        if (!draft) {
+          throw new AppError("DRAFT_NOT_FOUND", 409, "Draft not created yet");
+        }
+        if (draft.status !== "PENDING") {
+          throw new AppError(
+            "TIMER_LOCKED",
+            409,
+            "Cannot change timer after draft has started"
+          );
+        }
+
+        const nextSeconds =
+          pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null;
+
+        const { rows } = await query<{
+          id: number;
+          pick_timer_seconds: number | null;
+          auto_pick_strategy: string | null;
+        }>(
+          tx,
+          `
+            UPDATE draft
+            SET pick_timer_seconds = $2,
+                auto_pick_strategy = $3,
+                auto_pick_seed = NULL,
+                auto_pick_config = NULL,
+                pick_deadline_at = NULL,
+                pick_timer_remaining_ms = NULL
+            WHERE id = $1
+            RETURNING
+              id::int,
+              pick_timer_seconds::int,
+              auto_pick_strategy
+          `,
+          [draft.id, nextSeconds, nextSeconds ? "RANDOM_SEED" : null]
+        );
+        const updated = rows[0];
+        if (!updated) {
+          throw new AppError("INTERNAL_ERROR", 500, "Failed to update timer");
+        }
+        return { draft: updated };
+      });
+
+      return res.status(200).json({ draft: result.draft });
+    } catch (err) {
+      next(err);
+    }
+  };
+  router.post("/seasons/:id/timer", handleUpdateTimer);
+  router.post("/:id/timer", handleUpdateTimer);
+
   router.get(
     "/:id/invites",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
@@ -599,10 +681,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
         }
@@ -667,10 +747,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
         }
@@ -710,10 +788,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
         }
@@ -809,10 +885,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
         }
@@ -877,7 +951,9 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status
-            ? ["PUBLISHED", "LOCKED"].includes(String(s.ceremony_status).toUpperCase())
+            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(
+                String(s.ceremony_status).toUpperCase()
+              )
             : false
         }));
         return res.json({ seasons: response });
@@ -933,10 +1009,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("MEMBERSHIP_LOCKED", 409, "Season membership is locked");
         }
@@ -1019,10 +1093,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         if (!season || season.status !== "EXTANT") {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("MEMBERSHIP_LOCKED", 409, "Season membership is locked");
         }
@@ -1057,6 +1129,51 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
   );
 
   router.post(
+    "/:id/transfer-ownership",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const seasonId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        const targetUserId = Number(req.body?.user_id);
+        if (Number.isNaN(seasonId) || !actorId || Number.isNaN(targetUserId)) {
+          throw validationError("Invalid ids", ["id", "user_id"]);
+        }
+
+        const season = await getSeasonById(client, seasonId);
+        if (!season || season.status !== "EXTANT") {
+          throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
+        }
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
+        if (draftsStarted) {
+          throw new AppError("OWNERSHIP_LOCKED", 409, "Season ownership is locked");
+        }
+
+        const actorMember = await getSeasonMember(client, seasonId, actorId);
+        if (
+          !actorMember ||
+          (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")
+        ) {
+          throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
+        }
+
+        const ok = await transferSeasonOwnership(client, seasonId, targetUserId);
+        if (!ok) {
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "User is not a season participant"
+          );
+        }
+
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
     "/:id/leave",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
@@ -1070,10 +1187,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         if (!season || season.status !== "EXTANT") {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("MEMBERSHIP_LOCKED", 409, "Season membership is locked");
         }
@@ -1129,20 +1244,30 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          season.ceremony_id
-        );
+        const draft = await getDraftBySeasonId(client, seasonId);
+        const draftsStarted = Boolean(draft && draft.status !== "PENDING");
         if (draftsStarted) {
           throw new AppError("INVITES_LOCKED", 409, "Season invites are locked");
         }
 
-        const actorMember = await getSeasonMember(client, seasonId, actorId);
-        ensureCommissioner(actorMember);
+        const actorSeasonMember = await getSeasonMember(client, seasonId, actorId);
+        const actorLeagueMember = actorSeasonMember
+          ? null
+          : await getLeagueMember(client, season.league_id, actorId);
+        ensureCommissioner(actorSeasonMember ?? actorLeagueMember);
 
         const targetUser = await getUserById(client, resolvedUserId);
         if (!targetUser) {
           throw new AppError("USER_NOT_FOUND", 404, "User not found");
+        }
+
+        const existingMember = await getSeasonMember(client, seasonId, resolvedUserId);
+        if (existingMember) {
+          throw new AppError(
+            "USER_ALREADY_MEMBER",
+            409,
+            "That user is already in this season."
+          );
         }
 
         const { invite, created } = await createUserTargetedInvite(client, {
@@ -1152,6 +1277,116 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         });
 
         return res.status(created ? 201 : 200).json({ invite: sanitizeInvite(invite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // Placeholder invite claim via token (used by InviteClaimPage).
+  router.post(
+    "/invites/token/:token/accept",
+    inviteClaimLimiter.middleware,
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const token = String(req.params.token ?? "").trim();
+        const userId = Number(req.auth?.sub);
+        if (!token || !userId) {
+          throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        }
+
+        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const invite = await findPendingPlaceholderInviteByTokenHash(tx, tokenHash);
+          if (!invite) return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+
+          // Lock invite row to prevent double-claims.
+          await query(tx, `SELECT id FROM season_invite WHERE id = $1 FOR UPDATE`, [
+            invite.id
+          ]);
+
+          const season = await getSeasonById(tx, invite.season_id);
+          if (!season || season.status !== "EXTANT") {
+            return { error: new AppError("SEASON_NOT_FOUND", 404, "Season not found") };
+          }
+
+          const draft = await getDraftBySeasonId(tx, season.id);
+          const draftsStarted = Boolean(draft && draft.status !== "PENDING");
+          if (draftsStarted) {
+            return { error: new AppError("INVITES_LOCKED", 409, "Season invites are locked") };
+          }
+
+          // Ensure league membership exists, then add season member.
+          let leagueMember = await getLeagueMember(tx, season.league_id, userId);
+          if (!leagueMember) {
+            leagueMember = await createLeagueMember(tx, {
+              league_id: season.league_id,
+              user_id: userId,
+              role: "MEMBER"
+            });
+          }
+          await addSeasonMember(tx, {
+            season_id: season.id,
+            user_id: userId,
+            league_member_id: leagueMember.id,
+            role: "MEMBER"
+          });
+
+          const { rows } = await query<{
+            id: number;
+            season_id: number;
+            kind: string;
+            status: string;
+            label: string | null;
+            created_at: Date;
+            updated_at: Date;
+            claimed_at: Date | null;
+          }>(
+            tx,
+            `UPDATE season_invite
+             SET status = 'CLAIMED',
+                 claimed_by_user_id = $2,
+                 claimed_at = NOW()
+             WHERE id = $1 AND kind = 'PLACEHOLDER' AND status = 'PENDING'
+             RETURNING
+               id::int,
+               season_id::int,
+               kind,
+               status,
+               label,
+               created_at,
+               updated_at,
+               claimed_at`,
+            [invite.id, userId]
+          );
+          const updated = rows[0];
+          if (!updated) return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          return { invite: updated };
+        });
+
+        if ("error" in result && result.error) throw result.error;
+        if (!result.invite) throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+
+        return res.status(200).json({ invite: sanitizeInvite(result.invite) });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    "/invites/token/:token/decline",
+    inviteClaimLimiter.middleware,
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const token = String(req.params.token ?? "").trim();
+        const userId = Number(req.auth?.sub);
+        if (!token || !userId) {
+          throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        }
+        // Decline is intentionally non-destructive for placeholder invites.
+        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }
@@ -1267,7 +1502,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
             };
           }
 
-          const draftsStarted = await hasDraftsStartedForCeremony(tx, season.ceremony_id);
+          const draft = await getDraftBySeasonId(tx, season.id);
+          const draftsStarted = Boolean(draft && draft.status !== "PENDING");
           if (draftsStarted) {
             return {
               error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")

@@ -1,0 +1,26 @@
+/* Draft layout primitives.
+   This intentionally mirrors the legacy draft layout rules so the UI does not change,
+   while letting the draft routes opt into the new primitives layer. */
+
+.draftLayoutRoot {
+  min-height: 100vh;
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.draftLayoutInner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.draftLayoutMain {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+}
+

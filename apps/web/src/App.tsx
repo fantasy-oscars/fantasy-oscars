@@ -2,12 +2,11 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/context";
 import { RedirectIfAuthed, RequireAdmin, RequireAuth } from "./auth/guards";
 import { ShellLayout } from "./layout/ShellLayout";
+import { AuthLayout } from "./layout/AuthLayout";
 import { DraftLayout } from "./layout/DraftLayout";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
-import { ResetConfirmPage } from "./pages/ResetConfirmPage";
-import { ResetRequestPage } from "./pages/ResetRequestPage";
 import { AboutPage } from "./pages/AboutPage";
 import { CodeOfConductPage } from "./pages/CodeOfConductPage";
 import { ContactPage } from "./pages/ContactPage";
@@ -25,6 +24,8 @@ import { InviteClaimPage } from "./pages/InviteClaimPage";
 import { InvitesInboxPage } from "./pages/InvitesInboxPage";
 import { AccountPage } from "./pages/AccountPage";
 import { CeremoniesPage } from "./pages/CeremoniesPage";
+import { CeremonyPage } from "./pages/CeremonyPage";
+import { DraftPlansPage } from "./pages/DraftPlansPage";
 import { SeasonsIndexPage } from "./pages/SeasonsIndexPage";
 import { SeasonPage } from "./pages/SeasonPage";
 import { DraftRoomPage } from "./pages/DraftRoomPage";
@@ -32,15 +33,11 @@ import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminHomePage } from "./pages/admin/AdminHomePage";
 import { AdminCeremoniesLayout } from "./pages/admin/ceremonies/AdminCeremoniesLayout";
 import { AdminCeremoniesIndexPage } from "./pages/admin/ceremonies/AdminCeremoniesIndexPage";
-import { AdminCeremoniesOverviewPage } from "./pages/admin/ceremonies/AdminCeremoniesOverviewPage";
-import { AdminCeremoniesCategoriesPage } from "./pages/admin/ceremonies/AdminCeremoniesCategoriesPage";
-import { AdminCeremoniesNomineesPage } from "./pages/admin/ceremonies/AdminCeremoniesNomineesPage";
-import { AdminCeremoniesWinnersPage } from "./pages/admin/ceremonies/AdminCeremoniesWinnersPage";
-import { AdminCeremoniesScoringPage } from "./pages/admin/ceremonies/AdminCeremoniesScoringPage";
-import { AdminCeremoniesLockPage } from "./pages/admin/ceremonies/AdminCeremoniesLockPage";
+import { AdminCeremonyPreviewPage } from "./pages/admin/ceremonies/AdminCeremonyPreviewPage";
+import { AdminCeremonyWizardPage } from "./pages/admin/ceremonies/AdminCeremonyWizardPage";
+import { DraftCeremonyPreviewPage } from "./pages/draft/DraftCeremonyPreviewPage";
 import { AdminUsersLayout } from "./pages/admin/users/AdminUsersLayout";
 import { AdminUsersSearchPage } from "./pages/admin/users/AdminUsersSearchPage";
-import { AdminUserDetailPage } from "./pages/admin/users/AdminUserDetailPage";
 import { AdminContentLayout } from "./pages/admin/content/AdminContentLayout";
 import { AdminContentHomePage } from "./pages/admin/content/AdminContentHomePage";
 import { AdminStaticContentEditorPage } from "./pages/admin/content/AdminStaticContentEditorPage";
@@ -53,8 +50,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 function RoutesConfig() {
   return (
     <Routes>
-      <Route element={<ShellLayout />}>
-        <Route path="/" element={<HomePage />} />
+      <Route element={<AuthLayout />}>
         <Route
           path="/login"
           element={
@@ -71,22 +67,11 @@ function RoutesConfig() {
             </RedirectIfAuthed>
           }
         />
-        <Route
-          path="/reset"
-          element={
-            <RedirectIfAuthed>
-              <ResetRequestPage />
-            </RedirectIfAuthed>
-          }
-        />
-        <Route
-          path="/reset/confirm"
-          element={
-            <RedirectIfAuthed>
-              <ResetConfirmPage />
-            </RedirectIfAuthed>
-          }
-        />
+        <Route path="/reset" element={<Navigate to="/login" replace />} />
+        <Route path="/reset/confirm" element={<Navigate to="/login" replace />} />
+      </Route>
+      <Route element={<ShellLayout />}>
+        <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/code-of-conduct" element={<CodeOfConductPage />} />
         <Route path="/disclaimer" element={<DisclaimerPage />} />
@@ -170,6 +155,22 @@ function RoutesConfig() {
           }
         />
         <Route
+          path="/ceremonies/:id"
+          element={
+            <RequireAuth>
+              <CeremonyPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/ceremonies/:id/draft-plans"
+          element={
+            <RequireAuth>
+              <DraftPlansPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/account"
           element={
             <RequireAuth>
@@ -189,19 +190,14 @@ function RoutesConfig() {
           <Route path="ceremonies">
             <Route index element={<AdminCeremoniesIndexPage />} />
             <Route path=":ceremonyId" element={<AdminCeremoniesLayout />}>
-              <Route index element={<Navigate to="overview" replace />} />
-              <Route path="overview" element={<AdminCeremoniesOverviewPage />} />
-              <Route path="categories" element={<AdminCeremoniesCategoriesPage />} />
-              <Route path="nominees" element={<AdminCeremoniesNomineesPage />} />
-              <Route path="winners" element={<AdminCeremoniesWinnersPage />} />
-              <Route path="scoring" element={<AdminCeremoniesScoringPage />} />
-              <Route path="lock" element={<AdminCeremoniesLockPage />} />
+              <Route index element={<AdminCeremonyWizardPage />} />
+              <Route path="preview" element={<AdminCeremonyPreviewPage />} />
+              <Route path="*" element={<AdminCeremonyWizardPage />} />
             </Route>
           </Route>
 
           <Route path="users" element={<AdminUsersLayout />}>
             <Route index element={<AdminUsersSearchPage />} />
-            <Route path=":userId" element={<AdminUserDetailPage />} />
           </Route>
 
           <Route path="content" element={<AdminContentLayout />}>
@@ -222,6 +218,14 @@ function RoutesConfig() {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route element={<DraftLayout />}>
+        <Route
+          path="/drafts/preview/ceremonies/:ceremonyId"
+          element={
+            <RequireAdmin>
+              <DraftCeremonyPreviewPage />
+            </RequireAdmin>
+          }
+        />
         <Route
           path="/drafts/:id"
           element={

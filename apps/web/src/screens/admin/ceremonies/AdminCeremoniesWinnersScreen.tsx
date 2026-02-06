@@ -1,7 +1,19 @@
-import { Box, Button, Card, Checkbox, Group, Stack, Text, Title } from "@mantine/core";
+import {
+  Accordion,
+  Box,
+  Button,
+  Checkbox,
+  Group,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
+import * as React from "react";
+import type { AdminCeremonyWinnersOrchestration } from "../../../orchestration/adminCeremonies";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
-import type { ApiResult } from "../../../lib/types";
+import { StandardCard } from "../../../primitives";
+import "../../../primitives/baseline.css";
 
 type WinnersNomination = {
   id: number;
@@ -17,66 +29,68 @@ type WinnersNomination = {
   }>;
 };
 
-export function AdminCeremoniesWinnersScreen(props: {
-  loading: boolean;
-  loadState: ApiResult | null;
-  groupedNominations: Array<{
-    categoryId: number;
-    nominations: WinnersNomination[];
-  }>;
-  selectedWinner: Record<number, number[]>;
-  toggleNomination: (categoryId: number, nominationId: number, checked: boolean) => void;
-  resetCategory: (categoryId: number) => void;
-  winnerByCategory: Record<number, number[]>;
-  winnerStatus: Record<number, ApiResult | null>;
-  savingCategory: number | null;
-  draftLock: { draft_locked: boolean; draft_locked_at: string | null };
-  nominationLabel: (n: WinnersNomination) => string;
-  pendingWinner: { categoryId: number; nominationIds: number[]; message: string } | null;
-  dismissPendingWinner: () => void;
-  requestSaveWinners: (categoryId: number) => void;
-  confirmPendingWinner: () => void;
-}) {
+function materialGlyph(code: string | null | undefined) {
+  const raw = (code ?? "").trim();
+  if (!raw) return "";
+  if (/^[0-9a-f]{4}$/i.test(raw)) return String.fromCharCode(Number.parseInt(raw, 16));
+  return raw;
+}
+
+const CHECK_ICON = String.fromCharCode(0xe5ca);
+
+export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrchestration }) {
+  const { o } = props;
+
   const {
     loading,
     loadState,
     groupedNominations,
     selectedWinner,
     toggleNomination,
-    resetCategory,
     winnerByCategory,
     winnerStatus,
     savingCategory,
     draftLock,
+    ceremonyStatus,
+    isDirty,
     nominationLabel,
-    pendingWinner,
-    dismissPendingWinner,
-    requestSaveWinners,
-    confirmPendingWinner
-  } = props;
+    pendingSaveAll,
+    dismissPendingSaveAll,
+    requestSaveAll,
+    confirmPendingSaveAll,
+    pendingFinalize,
+    dismissPendingFinalize,
+    requestFinalizeWinners,
+    confirmFinalizeWinners,
+    finalizeStatus
+  } = o;
 
-  if (loading && loadState?.message === "Loading")
-    return <PageLoader label="Loading winners..." />;
+  const [openItems, setOpenItems] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    setOpenItems((prev) => {
+      if (prev.length > 0) return prev;
+      return groupedNominations.map((g) => String(g.categoryId));
+    });
+  }, [groupedNominations]);
+
+  if (loading && loadState?.message === "Loading") return <PageLoader label="Loading..." />;
   if (loadState?.ok === false) return <PageError message={loadState.message} />;
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <Card className="card nested" component="section">
-        <Group
-          className="header-with-controls"
-          justify="space-between"
-          align="start"
-          wrap="wrap"
-        >
+      <StandardCard className="card nested" component="section">
+        <Group className="header-with-controls" justify="space-between" align="start" wrap="wrap">
           <Box>
-            <Title order={3}>Winners</Title>
-            <Text className="muted">
-              Enter or edit winners per category for this ceremony.
-            </Text>
+            <Title order={3}>Results</Title>
+            <Text className="muted">Select one or more winners per category.</Text>
           </Box>
           <Group className="pill-list" wrap="wrap">
             <Box component="span" className="pill">
               {draftLock.draft_locked ? "Drafts locked" : "Drafts open"}
+            </Box>
+            <Box component="span" className="pill muted">
+              Ceremony: {ceremonyStatus}
             </Box>
           </Group>
         </Group>
@@ -85,113 +99,170 @@ export function AdminCeremoniesWinnersScreen(props: {
             Locked at {new Date(draftLock.draft_locked_at).toLocaleString()}
           </Text>
         ) : null}
-        <Box className="status status-warning">
-          First winner entry locks drafts. Changing winners keeps drafts locked.
-        </Box>
-      </Card>
+      </StandardCard>
 
       {groupedNominations.length === 0 ? (
         <PageError message="No nominees loaded. Add nominees for this ceremony first." />
       ) : (
-        <Stack className="stack-lg" gap="lg">
-          {groupedNominations.map(({ categoryId, nominations }) => (
-            <Card key={categoryId} className="card nested" component="section">
-              <Group
-                className="header-with-controls"
-                justify="space-between"
-                align="start"
-                wrap="wrap"
-              >
-                <Box>
-                  <Title order={4}>Category {categoryId}</Title>
-                  <Text className="muted">Pick the winner</Text>
-                </Box>
-                <Group className="pill-list" wrap="wrap">
-                  {(winnerByCategory[categoryId] ?? []).length > 0 ? (
-                    <Box component="span" className="pill">
-                      Winner set
-                    </Box>
-                  ) : (
-                    <Box component="span" className="pill muted">
-                      Unset
-                    </Box>
-                  )}
-                  {!draftLock.draft_locked &&
-                  (winnerByCategory[categoryId] ?? []).length === 0 ? (
-                    <Box component="span" className="pill">
-                      Will lock drafts
-                    </Box>
-                  ) : null}
-                </Group>
+        <Box>
+          <Box className="results-sticky-header">
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <Text fw={700}>Winners</Text>
+              <Group gap="xs" wrap="nowrap">
+                <Button
+                  type="button"
+                  onClick={requestSaveAll}
+                  disabled={!isDirty || savingCategory !== null || ceremonyStatus === "COMPLETE"}
+                >
+                  Save
+                </Button>
               </Group>
-              <Stack className="stack-sm" gap="sm">
-                {nominations.map((nom) => (
-                  <Group
-                    key={nom.id}
-                    className="list-row"
-                    wrap="nowrap"
-                    align="flex-start"
-                  >
-                    <Checkbox
-                      aria-label={`Nomination #${nom.id}`}
-                      checked={(selectedWinner[categoryId] ?? []).includes(nom.id)}
-                      onChange={(e) =>
-                        toggleNomination(categoryId, nom.id, e.currentTarget.checked)
-                      }
-                    />
-                    <Box>
-                      <Text className="eyebrow" size="xs">
-                        Nomination #{nom.id}
+            </Group>
+          </Box>
+
+          <Accordion
+            multiple
+            value={openItems}
+            onChange={setOpenItems}
+            className="results-accordion"
+            variant="contained"
+          >
+            {groupedNominations.map(({ categoryId, category, nominations }) => {
+              const label = category?.family_name ?? `Category ${categoryId}`;
+              const iconCode = category?.family_icon_code ?? null;
+              const isInverted = category?.family_icon_variant === "inverted";
+              const hasWinner = (winnerByCategory[categoryId] ?? []).length > 0;
+
+              return (
+                <Accordion.Item key={categoryId} value={String(categoryId)}>
+                  <Accordion.Control>
+                    <Group justify="space-between" align="center" wrap="nowrap" w="100%">
+                      <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                        <Text
+                          component="span"
+                          className={["mi-icon", isInverted ? "mi-icon-inverted" : ""]
+                            .filter(Boolean)
+                            .join(" ")}
+                          aria-hidden="true"
+                        >
+                          {materialGlyph(iconCode || "trophy")}
+                        </Text>
+                        <Text className="nomination-group-title" component="h3" lineClamp={1}>
+                          {label}{" "}
+                          <Text component="span" className="nomination-group-count">
+                            ({nominations.length})
+                          </Text>
+                        </Text>
+                        <Box className="results-winner-checkSlot" aria-hidden="true">
+                          {hasWinner ? (
+                            <Box className="results-winner-check">
+                              <Text component="span" className="gicon" aria-hidden="true">
+                                {CHECK_ICON}
+                              </Text>
+                            </Box>
+                          ) : null}
+                        </Box>
+                      </Group>
+                    </Group>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    {nominations.length === 0 ? (
+                      <Text className="muted" size="sm">
+                        No nominations yet.
                       </Text>
-                      <Text fw={700}>{nominationLabel(nom)}</Text>
-                    </Box>
-                  </Group>
-                ))}
-                <Group className="inline-actions" wrap="wrap">
-                  <Button
-                    type="button"
-                    onClick={() => requestSaveWinners(categoryId)}
-                    disabled={savingCategory === categoryId}
-                  >
-                    {savingCategory === categoryId ? "Saving..." : "Save winners"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => resetCategory(categoryId)}
-                  >
-                    Reset
-                  </Button>
-                </Group>
-                <FormStatus
-                  loading={savingCategory === categoryId}
-                  result={winnerStatus[categoryId] ?? null}
-                />
-              </Stack>
-            </Card>
-          ))}
-        </Stack>
+                    ) : (
+                      <Stack gap={0} className="nomination-list">
+                        {nominations.map((nom: WinnersNomination) => (
+                          <Group
+                            key={nom.id}
+                            className={["nomination-row", "nomination-row-compact"].join(" ")}
+                            justify="space-between"
+                            align="center"
+                            wrap="nowrap"
+                          >
+                            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                              <Checkbox
+                                aria-label={`Select winner: ${nominationLabel(nom)}`}
+                                checked={(selectedWinner[categoryId] ?? []).includes(nom.id)}
+                                onChange={(e) =>
+                                  toggleNomination(categoryId, nom.id, e.currentTarget.checked)
+                                }
+                              />
+                              <Text fw={700} lineClamp={1} style={{ minWidth: 0 }}>
+                                {nominationLabel(nom)}
+                              </Text>
+                            </Group>
+                          </Group>
+                        ))}
+                      </Stack>
+                    )}
+
+                    <FormStatus
+                      loading={savingCategory === categoryId}
+                      result={winnerStatus[categoryId] ?? null}
+                    />
+                  </Accordion.Panel>
+                </Accordion.Item>
+              );
+            })}
+          </Accordion>
+
+          <Box mt="lg">
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={requestFinalizeWinners}
+                disabled={ceremonyStatus !== "LOCKED" || savingCategory !== null}
+              >
+                Finalize winners
+              </Button>
+              {finalizeStatus?.ok === false ? (
+                <Text className="muted" size="sm">
+                  {finalizeStatus.message}
+                </Text>
+              ) : null}
+            </Group>
+          </Box>
+        </Box>
       )}
 
-      {pendingWinner ? (
+      {pendingSaveAll ? (
         <Box className="modal-backdrop" role="presentation">
-          <Card
+          <StandardCard className="modal" role="dialog" aria-modal="true" aria-label="Confirm save">
+            <Title order={4}>Confirm</Title>
+            <Text className="muted">{pendingSaveAll.message}</Text>
+            <Group className="inline-actions" wrap="wrap">
+              <Button type="button" onClick={dismissPendingSaveAll}>
+                Cancel
+              </Button>
+              <Button type="button" variant="subtle" onClick={confirmPendingSaveAll}>
+                Save winners
+              </Button>
+            </Group>
+          </StandardCard>
+        </Box>
+      ) : null}
+
+      {pendingFinalize ? (
+        <Box className="modal-backdrop" role="presentation">
+          <StandardCard
             className="modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Confirm winner"
+            aria-label="Finalize winners"
           >
-            <Title order={4}>Confirm winner</Title>
-            <Text className="muted">{pendingWinner.message}</Text>
+            <Title order={4}>Finalize winners</Title>
+            <Text className="muted">{pendingFinalize.message}</Text>
             <Group className="inline-actions" wrap="wrap">
-              <Button type="button" onClick={dismissPendingWinner}>
+              <Button type="button" onClick={dismissPendingFinalize}>
                 Cancel
               </Button>
-              <Button type="button" variant="subtle" onClick={confirmPendingWinner}>
-                Yes, save winners
+              <Button type="button" variant="subtle" onClick={confirmFinalizeWinners}>
+                Finalize
               </Button>
             </Group>
-          </Card>
+          </StandardCard>
         </Box>
       ) : null}
     </Stack>

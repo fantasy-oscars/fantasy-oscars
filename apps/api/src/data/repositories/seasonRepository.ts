@@ -4,6 +4,7 @@ export type SeasonRecord = {
   id: number;
   league_id: number;
   ceremony_id: number;
+  ceremony_name?: string | null;
   status: "EXTANT" | "CANCELLED";
   scoring_strategy_name: "fixed" | "negative";
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
@@ -26,6 +27,7 @@ export async function getExtantSeasonForLeague(
 	       s.id::int,
 	       s.league_id::int,
 	       s.ceremony_id::int,
+         c.name AS ceremony_name,
 	       s.status,
 	       s.scoring_strategy_name,
 	       s.remainder_strategy,
@@ -58,6 +60,7 @@ export async function getExtantSeasonForLeagueCeremony(
        s.id::int,
        s.league_id::int,
        s.ceremony_id::int,
+       c.name AS ceremony_name,
        s.status,
        s.scoring_strategy_name,
        s.remainder_strategy,
@@ -113,6 +116,7 @@ export async function getSeasonById(
 	       s.id::int,
 	       s.league_id::int,
 	       s.ceremony_id::int,
+         c.name AS ceremony_name,
 	       s.status,
 	       s.scoring_strategy_name,
 	       s.remainder_strategy,
@@ -165,6 +169,7 @@ export async function listSeasonsForLeague(
 	       s.id::int,
 	       s.league_id::int,
 	       s.ceremony_id::int,
+         c.name AS ceremony_name,
 	       s.status,
 	       s.scoring_strategy_name,
 	       s.remainder_strategy,
@@ -196,6 +201,7 @@ export async function getMostRecentSeason(
 	       s.id::int,
 	       s.league_id::int,
 	       s.ceremony_id::int,
+         c.name AS ceremony_name,
 	       s.status,
 	       s.scoring_strategy_name,
 	       s.remainder_strategy,

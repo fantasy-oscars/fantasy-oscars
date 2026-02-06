@@ -189,6 +189,34 @@ export async function revokePendingInvitesForSeason(
   return rowCount ?? 0;
 }
 
+export async function findPendingPlaceholderInviteByTokenHash(
+  client: DbClient,
+  tokenHash: string
+): Promise<SeasonInviteRecord | null> {
+  const { rows } = await query(
+    client,
+    `SELECT
+       id,
+       season_id,
+       intended_user_id,
+       token_hash,
+       kind,
+       status,
+       label,
+       created_by_user_id,
+       claimed_by_user_id,
+       claimed_at,
+       created_at,
+       updated_at
+     FROM season_invite
+     WHERE token_hash = $1
+       AND kind = 'PLACEHOLDER'
+       AND status = 'PENDING'`,
+    [tokenHash]
+  );
+  return rows[0] ? mapInvite(rows[0]) : null;
+}
+
 export async function findPendingUserInvite(
   client: DbClient,
   seasonId: number,

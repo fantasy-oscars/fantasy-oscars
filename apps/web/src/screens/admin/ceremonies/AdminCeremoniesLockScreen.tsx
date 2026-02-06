@@ -1,7 +1,9 @@
-import { Box, Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
+import { StandardCard } from "../../../primitives";
+import "../../../primitives/baseline.css";
 
 export function AdminCeremoniesLockScreen(props: {
   loading: boolean;
@@ -23,7 +25,7 @@ export function AdminCeremoniesLockScreen(props: {
   return (
     <Stack component="section" className="stack" mt="md">
       <Box component="header">
-        <Title order={3}>Lock / Archive</Title>
+        <Title order={3}>Archive</Title>
         <Text className="muted">
           Lock blocks new seasons/drafts for this ceremony and cancels in-progress drafts.
           Archived ceremonies stop appearing as active.
@@ -31,7 +33,7 @@ export function AdminCeremoniesLockScreen(props: {
       </Box>
 
       {lockState ? (
-        <Card className="card nested" component="section">
+        <StandardCard className="card nested" component="section">
           <Group
             className="header-with-controls"
             justify="space-between"
@@ -59,10 +61,10 @@ export function AdminCeremoniesLockScreen(props: {
               Locked at {new Date(lockState.draft_locked_at).toLocaleString()}
             </Text>
           ) : null}
-        </Card>
+        </StandardCard>
       ) : null}
 
-      <Card className="card nested" component="section">
+      <StandardCard className="card nested" component="section">
         <Box component="header">
           <Title order={4}>Actions</Title>
           <Text className="muted">
@@ -81,7 +83,7 @@ export function AdminCeremoniesLockScreen(props: {
         <Text className="muted">
           Note: entering the first winner will also lock the ceremony automatically.
         </Text>
-      </Card>
+      </StandardCard>
     </Stack>
   );
 }

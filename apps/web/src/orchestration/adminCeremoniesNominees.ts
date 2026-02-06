@@ -8,6 +8,8 @@ type CeremonyCategory = {
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   family_name?: string;
   family_code?: string;
+  family_icon_code?: string | null;
+  family_icon_variant?: "default" | "inverted" | null;
 };
 
 type CandidateFilm = {
@@ -47,12 +49,18 @@ type CreditOption = {
 type NominationRow = {
   id: number;
   category_edition_id: number;
+  sort_order?: number;
+  display_film_id?: number | null;
+  display_film_tmdb_id?: number | null;
   film_title?: string | null;
   song_title?: string | null;
   performer_name?: string | null;
+  performer_character?: string | null;
   contributors?: Array<{
+    nomination_contributor_id?: number;
     person_id: number;
     full_name: string;
+    tmdb_id?: number | null;
     role_label: string | null;
     sort_order: number;
   }>;
@@ -60,8 +68,10 @@ type NominationRow = {
 
 export function useAdminCeremonyNomineesOrchestration(args: {
   ceremonyId: number | null;
+  onWorksheetChange?: (() => void | Promise<void>) | null;
 }) {
   const ceremonyId = args.ceremonyId;
+  const onWorksheetChange = args.onWorksheetChange ?? null;
 
   const [tab, setTab] = useState<"candidates" | "add" | "list">("candidates");
 
@@ -81,6 +91,13 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [nominations, setNominations] = useState<NominationRow[]>([]);
   const [nominationsLoading, setNominationsLoading] = useState(false);
   const [nominationsState, setNominationsState] = useState<ApiResult | null>(null);
+
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [peopleResults, setPeopleResults] = useState<
+    Array<{ id: number; full_name: string; tmdb_id: number | null; profile_url?: string | null }>
+  >([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleState, setPeopleState] = useState<ApiResult | null>(null);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const selectedCategory = useMemo(
@@ -145,6 +162,27 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   useEffect(() => {
     void loadManualContext();
   }, [loadManualContext]);
+
+  const searchPeople = useCallback(async () => {
+    const q = peopleQuery.trim();
+    setPeopleLoading(true);
+    setPeopleState(null);
+    const res = await fetchJson<{
+      people: Array<{ id: number; full_name: string; tmdb_id: number | null; profile_url?: string | null }>;
+    }>(q ? `/admin/people?q=${encodeURIComponent(q)}` : `/admin/people`, { method: "GET" });
+    setPeopleLoading(false);
+    if (!res.ok) {
+      setPeopleResults([]);
+      setPeopleState({ ok: false, message: res.error ?? "Failed to load people" });
+      return;
+    }
+    setPeopleResults(res.data?.people ?? []);
+    setPeopleState({ ok: true, message: "Loaded" });
+  }, [peopleQuery]);
+
+  useEffect(() => {
+    void searchPeople();
+  }, [searchPeople]);
 
   const creditByPersonId = useMemo(() => {
     const map = new Map<
@@ -448,14 +486,14 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setCandidateUploadState({
       ok: res.ok,
       message: res.ok
-        ? `Imported candidates${typeof upserted === "number" ? ` (upserted: ${upserted}` : ""}${
+        ? `Loaded candidates${typeof upserted === "number" ? ` (upserted: ${upserted}` : ""}${
             typeof hydrated === "number"
               ? `${typeof upserted === "number" ? ", " : " ("}hydrated from TMDB: ${hydrated}`
               : ""
           }${
             typeof upserted === "number" || typeof hydrated === "number" ? `)` : ""
           }${tmdbErrorsCount ? `. TMDB errors: ${tmdbErrorsCount}` : ""}.`
-        : (res.error ?? "Import failed")
+        : (res.error ?? "Load failed")
     });
   }, [candidateDataset, ceremonyId]);
 
@@ -494,7 +532,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const deleteNomination = useCallback(
     async (nominationId: number) => {
-      if (!window.confirm("Delete this nomination?")) return;
       setNominationsLoading(true);
       setNominationsState(null);
       const res = await fetchJson(`/admin/nominations/${nominationId}`, {
@@ -508,10 +545,60 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         });
         return;
       }
+      setNominations((prev) => prev.filter((n) => n.id !== nominationId));
       setNominationsState({ ok: true, message: "Deleted" });
-      void loadNominations();
+      // Wizard progression depends on ceremony stats; keep them in sync.
+      void onWorksheetChange?.();
     },
-    [loadNominations]
+    [onWorksheetChange]
+  );
+
+  const reorderNominationsInCategory = useCallback(
+    async (categoryEditionId: number, orderedNominationIds: number[]) => {
+      if (ceremonyId === null || !Number.isFinite(ceremonyId) || ceremonyId <= 0) return;
+      setNominations((prev) => {
+        const order = new Map<number, number>();
+        for (let i = 0; i < orderedNominationIds.length; i += 1) {
+          order.set(orderedNominationIds[i], i);
+        }
+        return [...prev].sort((a, b) => {
+          if (a.category_edition_id !== b.category_edition_id) {
+            return a.category_edition_id - b.category_edition_id;
+          }
+          if (a.category_edition_id !== categoryEditionId) {
+            return (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id;
+          }
+          const ao = order.get(a.id);
+          const bo = order.get(b.id);
+          if (ao === undefined || bo === undefined) {
+            return (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id;
+          }
+          return ao - bo;
+        });
+      });
+
+      setNominationsLoading(true);
+      setNominationsState(null);
+      const res = await fetchJson(`/admin/ceremonies/${ceremonyId}/nominations/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category_edition_id: categoryEditionId,
+          nomination_ids: orderedNominationIds
+        })
+      });
+      setNominationsLoading(false);
+      if (!res.ok) {
+        setNominationsState({
+          ok: false,
+          message: res.error ?? "Failed to reorder nominations"
+        });
+        void loadNominations();
+        return;
+      }
+      setNominationsState({ ok: true, message: "Reordered" });
+    },
+    [ceremonyId, loadNominations]
   );
 
   useEffect(() => {
@@ -573,21 +660,112 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       ok: true,
       message: `Created nomination #${res.data?.nomination_id ?? "?"}`
     });
-    // Keep category/film for fast data entry; reset the variable pieces.
+    // Keep category for fast entry; clear everything else.
+    setFilmInput("");
+    setSelectedFilmId(null);
+    setFilmTitleFallback("");
     setSongTitle("");
+    setCredits(null);
+    setCreditsState(null);
     setSelectedContributorIds([]);
     setPendingContributorId("");
+    setCreditQuery("");
     void loadNominations();
+    void onWorksheetChange?.();
   }, [
     ceremonyId,
     filmTitleFallback,
     loadNominations,
+    onWorksheetChange,
     selectedCategory?.unit_kind,
     selectedCategoryId,
     selectedCredits,
     selectedFilmId,
     songTitle
   ]);
+
+  const linkFilmTmdb = useCallback(
+    async (filmId: number, tmdbId: number | null) => {
+      setManualLoading(true);
+      setManualState(null);
+      const res = await fetchJson<{ film: unknown; hydrated?: boolean }>(`/admin/films/${filmId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdb_id: tmdbId })
+      });
+      setManualLoading(false);
+      if (!res.ok) {
+        setManualState({ ok: false, message: res.error ?? "Failed to link film" });
+        return { ok: false, hydrated: false };
+      }
+      setManualState({ ok: true, message: tmdbId ? "Film linked" : "Film unlinked" });
+      await Promise.all([loadManualContext(), loadNominations()]);
+      return { ok: true, hydrated: Boolean(res.data?.hydrated) };
+    },
+    [loadManualContext, loadNominations]
+  );
+
+  const linkPersonTmdb = useCallback(async (personId: number, tmdbId: number | null) => {
+    setManualLoading(true);
+    setManualState(null);
+    const res = await fetchJson<{ person: unknown; hydrated?: boolean }>(`/admin/people/${personId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tmdb_id: tmdbId })
+    });
+    setManualLoading(false);
+    if (!res.ok) {
+      setManualState({ ok: false, message: res.error ?? "Failed to link person" });
+      return { ok: false, hydrated: false };
+    }
+    setManualState({ ok: true, message: tmdbId ? "Contributor linked" : "Contributor unlinked" });
+    await Promise.all([loadManualContext(), loadNominations()]);
+    return { ok: true, hydrated: Boolean(res.data?.hydrated) };
+  }, [loadManualContext, loadNominations]);
+
+  const addNominationContributor = useCallback(
+    async (
+      nominationId: number,
+      input: { person_id?: number; name?: string; tmdb_id?: number }
+    ) => {
+      setManualLoading(true);
+      setManualState(null);
+      const res = await fetchJson(`/admin/nominations/${nominationId}/contributors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input)
+      });
+      setManualLoading(false);
+      if (!res.ok) {
+        setManualState({ ok: false, message: res.error ?? "Failed to add contributor" });
+        return false;
+      }
+      setManualState({ ok: true, message: "Contributor added" });
+      await loadNominations();
+      return true;
+    },
+    [loadNominations]
+  );
+
+  const removeNominationContributor = useCallback(
+    async (nominationId: number, nominationContributorId: number) => {
+      setManualLoading(true);
+      setManualState(null);
+      const res = await fetchJson(
+        `/admin/nominations/${nominationId}/contributors/${nominationContributorId}`,
+        { method: "DELETE" }
+      );
+      setManualLoading(false);
+      if (!res.ok) {
+        setManualState({ ok: false, message: res.error ?? "Failed to remove contributor" });
+        return false;
+      }
+      setManualState({ ok: true, message: "Contributor removed" });
+      await loadNominations();
+      return true;
+    },
+    [loadNominations]
+  );
 
   return {
     ceremonyId,
@@ -610,6 +788,12 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     nominations,
     nominationsLoading,
     nominationsState,
+
+    peopleQuery,
+    setPeopleQuery,
+    peopleResults,
+    peopleLoading,
+    peopleState,
 
     selectedCategoryId,
     setSelectedCategoryId,
@@ -641,6 +825,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
     actions: {
       loadManualContext,
+      searchPeople,
       resolveFilmSelection,
       onCandidateFile,
       onCandidateFileChange,
@@ -649,7 +834,12 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       uploadCandidateFilms,
       loadNominations,
       deleteNomination,
-      createNomination
+      reorderNominationsInCategory,
+      createNomination,
+      linkFilmTmdb,
+      linkPersonTmdb,
+      addNominationContributor,
+      removeNominationContributor
     }
   };
 }

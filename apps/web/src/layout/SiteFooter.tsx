@@ -10,8 +10,8 @@ import {
   Title,
   useMantineColorScheme
 } from "@mantine/core";
-import tmdbLogoBlackUrl from "../assets/tmdb-black.svg";
-import tmdbLogoWhiteUrl from "../assets/tmdb-white.svg";
+import tmdbLogoBlackUrl from "../assets/tmdb/tmdb-black.svg";
+import tmdbLogoWhiteUrl from "../assets/tmdb/tmdb-white.svg";
 
 export function SiteFooter() {
   const { colorScheme } = useMantineColorScheme();
@@ -91,6 +91,16 @@ export function SiteFooter() {
         </SimpleGrid>
       </Box>
 
+      <Text className="footer-fineprint" ta="center" size="sm">
+        © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
+      </Text>
+    </Box>
+  );
+}
+
+export function SiteFooterFineprintOnly() {
+  return (
+    <Box component="footer" className="site-footer">
       <Text className="footer-fineprint" ta="center" size="sm">
         © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
       </Text>

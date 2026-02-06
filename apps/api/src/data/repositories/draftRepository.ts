@@ -39,6 +39,7 @@ export type DraftSeatRecord = {
   is_active: boolean;
   user_id?: number;
   username?: string;
+  avatar_key?: string | null;
 };
 
 export type DraftPickRecord = {
@@ -473,7 +474,8 @@ export async function listDraftSeats(
        ds.seat_number::int,
        ds.is_active,
        lm.user_id::int AS user_id,
-       u.username
+       u.username,
+       u.avatar_key
      FROM draft_seat ds
      JOIN league_member lm ON lm.id = ds.league_member_id
      JOIN app_user u ON u.id = lm.user_id

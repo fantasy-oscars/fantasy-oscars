@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { Box, Button, Card, Group, Select, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Select, Stack, Text, Title } from "@mantine/core";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
 
 export function AdminCeremoniesLayoutScreen(props: {
@@ -14,7 +14,7 @@ export function AdminCeremoniesLayoutScreen(props: {
     `admin-sublink${isActive ? " is-active" : ""}`;
 
   return (
-    <Card className="card" component="section">
+    <Stack component="section" className="stack" gap="md">
       <Group
         className="header-with-controls"
         justify="space-between"
@@ -22,7 +22,12 @@ export function AdminCeremoniesLayoutScreen(props: {
         wrap="wrap"
       >
         <Box>
-          <Title order={2}>Ceremonies</Title>
+          <Title
+            order={2}
+            style={{ fontFamily: '"Cinzel", ui-serif, Georgia, "Times New Roman", serif' }}
+          >
+            Ceremonies
+          </Title>
           <Text className="muted">
             Selected: {selected.name || "(Unnamed)"}{" "}
             {selected.code ? `(${selected.code})` : ""}
@@ -44,6 +49,8 @@ export function AdminCeremoniesLayoutScreen(props: {
           />
         </Group>
       </Group>
+
+      <Divider />
 
       <Group
         component="nav"
@@ -80,7 +87,9 @@ export function AdminCeremoniesLayoutScreen(props: {
         </NavLink>
       </Group>
 
+      <Divider />
+
       {children}
-    </Card>
+    </Stack>
   );
 }

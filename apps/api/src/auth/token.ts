@@ -5,6 +5,7 @@ export type TokenClaims = {
   sub: string;
   username: string;
   is_admin?: boolean;
+  avatar_key?: string;
   exp?: number; // unix seconds
 };
 

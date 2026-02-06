@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAdminCeremoniesIndexOrchestration } from "../../../orchestration/adminCeremonies";
 import { AdminCeremoniesIndexScreen } from "../../../screens/admin/ceremonies/AdminCeremoniesIndexScreen";
+import { notify } from "../../../notifications";
 
 export function AdminCeremoniesIndexPage() {
   const navigate = useNavigate();
@@ -15,13 +16,33 @@ export function AdminCeremoniesIndexPage() {
       status={o.status}
       onCreate={() => {
         void o.createDraftCeremony().then((res) => {
-          if (res.ok && res.ceremonyId)
-            navigate(`/admin/ceremonies/${res.ceremonyId}/overview`);
+          if (res.ok && res.ceremonyId) navigate(`/admin/ceremonies/${res.ceremonyId}`);
         });
       }}
       onDelete={(id) => {
-        if (window.confirm("Delete this ceremony? This cannot be undone."))
-          void o.deleteCeremony(id);
+        void o.deleteCeremony(id).then((res) => {
+          if (res.ok) {
+            notify({
+              id: "admin.ceremony.delete.success",
+              severity: "success",
+              trigger_type: "user_action",
+              scope: "local",
+              durability: "ephemeral",
+              requires_decision: false,
+              message: "Ceremony deleted."
+            });
+          } else {
+            notify({
+              id: "admin.ceremony.delete.error",
+              severity: "error",
+              trigger_type: "user_action",
+              scope: "local",
+              durability: "ephemeral",
+              requires_decision: false,
+              message: res.error ?? "Delete failed."
+            });
+          }
+        });
       }}
     />
   );

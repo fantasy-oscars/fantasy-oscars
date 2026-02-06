@@ -11,6 +11,7 @@ import {
   listPublicLeagues,
   listLeagueRoster,
   getLeagueMember,
+  deleteLeague,
   deleteLeagueMember,
   updateLeagueMemberRole,
   countCommissioners
@@ -19,7 +20,6 @@ import {
   listSeasonsForLeague,
   createExtantSeason
 } from "../data/repositories/seasonRepository.js";
-import { getActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
 import type { DbClient } from "../data/db.js";
 import { query, runInTransaction } from "../data/db.js";
 import type { Pool } from "pg";
@@ -81,16 +81,6 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
         throw validationError("Invalid name", ["name"]);
       }
 
-      const activeCeremonyId = await getActiveCeremonyId(client);
-      const ceremonyIdNum = activeCeremonyId ? Number(activeCeremonyId) : null;
-      if (
-        activeCeremonyId !== null &&
-        ceremonyIdNum !== null &&
-        Number.isNaN(ceremonyIdNum)
-      ) {
-        throw new AppError("INTERNAL_ERROR", 500, "Invalid active ceremony id");
-      }
-
       const maxMembersNum = DEFAULT_LEAGUE_MAX_MEMBERS;
 
       // Generate a shareable code server-side; retry if a collision occurs.
@@ -101,19 +91,12 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
             const league = await createLeague(tx, {
               code: generateLeagueCode(nameStr),
               name: nameStr,
-              ceremony_id: ceremonyIdNum,
+              ceremony_id: null,
               max_members: maxMembersNum,
               roster_size: maxMembersNum, // placeholder until draft sizing is derived at start
               is_public: false,
               created_by_user_id: Number(creator.sub)
             });
-
-            const season = league.ceremony_id
-              ? await createExtantSeason(tx, {
-                  league_id: league.id,
-                  ceremony_id: league.ceremony_id
-                })
-              : null;
 
             const ownerMembership = await createLeagueMember(tx, {
               league_id: league.id,
@@ -122,7 +105,7 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
             });
             void ownerMembership;
 
-            return { league, season };
+            return { league, season: null };
           });
 
           return res
@@ -350,6 +333,36 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
   );
 
   router.delete(
+    "/:id",
+    requireAuth(authSecret),
+    async (req: AuthedRequest, res, next) => {
+      try {
+        const leagueId = Number(req.params.id);
+        const actorId = Number(req.auth?.sub);
+        if (Number.isNaN(leagueId) || Number.isNaN(actorId)) {
+          throw validationError("Invalid ids", ["id"]);
+        }
+
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const league = await getLeagueById(tx, leagueId);
+          if (!league) return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+          const actor = await getLeagueMember(tx, leagueId, actorId);
+          if (!actor || actor.role !== "OWNER") {
+            return new AppError("FORBIDDEN", 403, "Only owner can delete league");
+          }
+          await deleteLeague(tx, leagueId);
+          return null;
+        });
+
+        if (result instanceof AppError) throw result;
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.delete(
     "/:id/members/:userId",
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
@@ -435,7 +448,9 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status
-            ? ["PUBLISHED", "LOCKED"].includes(String(s.ceremony_status).toUpperCase())
+            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(
+                String(s.ceremony_status).toUpperCase()
+              )
             : false
         }));
 
@@ -482,12 +497,18 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
           throw validationError("Invalid remainder_strategy", ["remainder_strategy"]);
         }
 
-        // Back-compat: if no ceremony_id provided, fall back to the legacy single-active ceremony.
-        const fallbackActiveCeremonyId = ceremonyId
-          ? null
-          : await getActiveCeremonyId(client);
-        const chosenCeremonyId = ceremonyId ?? fallbackActiveCeremonyId;
-        if (!chosenCeremonyId || Number.isNaN(Number(chosenCeremonyId))) {
+        const timerRaw = req.body?.pick_timer_seconds;
+        const pickTimerSeconds =
+          timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
+        if (
+          pickTimerSeconds !== null &&
+          (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
+        ) {
+          throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
+        }
+
+        // Multi-ceremony: season creation must explicitly choose a ceremony.
+        if (!ceremonyId || Number.isNaN(Number(ceremonyId))) {
           throw new AppError(
             "CEREMONY_REQUIRED",
             409,
@@ -495,7 +516,7 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
           );
         }
 
-        const ceremonyIdNum = Number(chosenCeremonyId);
+        const ceremonyIdNum = Number(ceremonyId);
         const { rows: ceremonyRows } = await query<{ status: string }>(
           client,
           `SELECT status FROM ceremony WHERE id = $1`,
@@ -578,7 +599,11 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
             current_pick_number: null,
             started_at: null,
             completed_at: null,
-            remainder_strategy: remainderStrategy as "UNDRAFTED" | "FULL_POOL"
+            remainder_strategy: remainderStrategy as "UNDRAFTED" | "FULL_POOL",
+            pick_timer_seconds:
+              pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null,
+            auto_pick_strategy:
+              pickTimerSeconds && pickTimerSeconds > 0 ? "RANDOM_SEED" : null
           });
 
           return { season, draft };

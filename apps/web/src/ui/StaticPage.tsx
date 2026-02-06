@@ -1,12 +1,20 @@
-import { Box, Card, Title } from "@mantine/core";
+import { Box, Stack, Title } from "@mantine/core";
+import { StandardCard } from "../primitives";
+import "../primitives/baseline.css";
 
 export function StaticPage(props: { title: string; children: React.ReactNode }) {
   return (
-    <Card className="card" component="section">
-      <Box component="header">
-        <Title order={2}>{props.title}</Title>
+    <Box className="baseline-page">
+      <Box className="baseline-pageInner">
+        <StandardCard>
+          <Stack gap="sm">
+            <Title order={2} className="baseline-textHeroTitle">
+              {props.title}
+            </Title>
+            {props.children}
+          </Stack>
+        </StandardCard>
       </Box>
-      <Box className="prose">{props.children}</Box>
-    </Card>
+    </Box>
   );
 }

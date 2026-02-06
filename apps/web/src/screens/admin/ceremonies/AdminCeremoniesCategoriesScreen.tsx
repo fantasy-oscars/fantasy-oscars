@@ -1,16 +1,20 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useMemo, useState } from "react";
 import {
+  ActionIcon,
   Box,
   Button,
-  Card,
   Checkbox,
-  Grid,
+  Combobox,
   Group,
+  InputBase,
   Select,
   Stack,
   Text,
   TextInput,
-  Title
+  Title,
+  UnstyledButton,
+  useCombobox
 } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
@@ -18,21 +22,69 @@ import type {
   AdminCeremonyCategoriesOrchestration,
   FamilyRow
 } from "../../../orchestration/adminCeremoniesCategories";
+import { StandardCard } from "../../../primitives";
+import "../../../primitives/baseline.css";
+
+function unitKindLabel(kind: "FILM" | "SONG" | "PERFORMANCE") {
+  switch (kind) {
+    case "FILM":
+      return "Film";
+    case "SONG":
+      return "Song + Film";
+    case "PERFORMANCE":
+      return "Person + Film";
+  }
+}
+
+const TRASH_ICON = String.fromCharCode(0xe872);
+
+function materialGlyph(code: string | null | undefined) {
+  const raw = (code ?? "").trim();
+  if (!raw) return "";
+  if (/^[0-9a-f]{4}$/i.test(raw)) return String.fromCharCode(Number.parseInt(raw, 16));
+  return raw;
+}
 
 export function AdminCeremoniesCategoriesScreen(props: {
   ceremonyId: number;
   o: AdminCeremonyCategoriesOrchestration;
-  onConfirmClone: () => void;
+  onAfterChange?: () => void | Promise<void>;
+  onConfirmClone: () => Promise<boolean>;
   onConfirmRemoveCategory: (categoryId: number) => void;
 }) {
-  const { ceremonyId, o, onConfirmClone, onConfirmRemoveCategory } = props;
+  const { ceremonyId, o, onAfterChange, onConfirmClone, onConfirmRemoveCategory } = props;
+  const [cloneOpen, setCloneOpen] = useState(false);
+
+  const cloneOptions = useMemo(
+    () =>
+      o.ceremonyOptions
+        .filter((c) => c.id !== ceremonyId)
+        .map((c) => ({
+          value: String(c.id),
+          label: `${c.name || "(Unnamed)"}${c.code ? ` (${c.code})` : ""} #${c.id}`
+        })),
+    [ceremonyId, o.ceremonyOptions]
+  );
+
+  const templateOptions = useMemo(
+    () =>
+      o.familyResults.map((f) => ({ value: String(f.id), name: f.name, code: f.code })),
+    [o.familyResults]
+  );
 
   if (o.loading) return <PageLoader label="Loading categories..." />;
   if (o.error) return <PageError message={o.error} />;
 
+  const hasCategories = o.categories.length > 0;
+
+  const handleAddCategory = async () => {
+    const ok = await o.actions.addCategory();
+    if (ok) await onAfterChange?.();
+  };
+
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <Card className="card nested" component="section">
+      <StandardCard className="card nested" component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -41,28 +93,17 @@ export function AdminCeremoniesCategoriesScreen(props: {
         >
           <Box>
             <Title order={3}>Categories</Title>
-            <Text className="muted">Define the category set for this ceremony.</Text>
+            <Text className="muted">Define the award categories for this ceremony.</Text>
           </Box>
-          <Group className="pill-list" wrap="wrap">
-            <Box component="span" className="pill">
-              Ceremony status: {o.ceremonyStatus}
+          <Box>
+            <Box component="span" className="status-pill">
+              {o.ceremonyStatus}
             </Box>
-            {!o.canEdit ? (
-              <Box component="span" className="pill muted">
-                Read-only
-              </Box>
-            ) : null}
-          </Group>
-        </Group>
-        {!o.canEdit ? (
-          <Box className="status status-warning" role="status">
-            Categories can only be edited while the ceremony is in DRAFT.
           </Box>
-        ) : null}
-        <FormStatus loading={o.working} result={o.status} />
-      </Card>
+        </Group>
+      </StandardCard>
 
-      <Card className="card nested" component="section">
+      <StandardCard className="card nested" component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -70,230 +111,127 @@ export function AdminCeremoniesCategoriesScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={4}>Mode</Title>
-            <Text className="muted">Clone/import a set, or add/remove categories.</Text>
+            <Title order={3}>Current ceremony categories</Title>
+            <Text className="muted">These determine what is draftable in this ceremony.</Text>
           </Box>
-          <Group className="inline-actions" wrap="wrap">
-            <Button
-              type="button"
-              variant={o.tab === "import" ? "default" : "subtle"}
-              onClick={() => o.setTab("import")}
-            >
-              Import / clone
-            </Button>
-            <Button
-              type="button"
-              variant={o.tab === "edit" ? "default" : "subtle"}
-              onClick={() => o.setTab("edit")}
-            >
-              Add / remove
-            </Button>
-          </Group>
-        </Group>
-      </Card>
-
-      {o.tab === "import" ? (
-        <Card className="card nested" component="section">
-          <Box component="header">
-            <Title order={4}>Import / clone</Title>
-            <Text className="muted">
-              Copy the category set from a previous ceremony (no linkage).
-            </Text>
-          </Box>
-          <Group className="inline-actions" wrap="wrap" align="flex-end">
-            <Select
-              aria-label="Clone from ceremony"
-              placeholder="Select ceremony..."
-              value={o.cloneFromId || null}
-              onChange={(v) => o.setCloneFromId(v ?? "")}
-              disabled={!o.canEdit}
-              data={o.ceremonyOptions
-                .filter((c) => c.id !== ceremonyId)
-                .map((c) => ({
-                  value: String(c.id),
-                  label: `${c.name || "(Unnamed)"}${c.code ? ` (${c.code})` : ""} #${c.id}`
-                }))}
-            />
-            <Button
-              type="button"
-              onClick={onConfirmClone}
-              disabled={!o.canEdit || o.working}
-            >
-              Clone set
-            </Button>
-          </Group>
-          <Text className="muted" mt="sm">
-            This replaces the entire set for the current ceremony. After cloning, you can
-            edit the set independently.
+          <Text className="muted" size="sm">
+            {o.categories.length} categories
           </Text>
-        </Card>
-      ) : (
-        <Grid gutter="md">
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <Card className="card nested" component="section">
-              <Box component="header">
-                <Title order={4}>Templates</Title>
-                <Text className="muted">
-                  Search templates and add them to this ceremony.
-                </Text>
-              </Box>
+        </Group>
 
-              <Group className="inline-actions" wrap="wrap" align="flex-end">
-                <TextInput
-                  type="search"
-                  placeholder="Search templates..."
-                  value={o.familyQuery}
-                  onChange={(e) => o.setFamilyQuery(e.currentTarget.value)}
-                  disabled={!o.canEdit}
-                />
-                <Button
-                  type="button"
-                  onClick={() => void o.actions.searchFamilies()}
-                  disabled={!o.canEdit}
-                >
-                  {o.familyQuery.trim() ? "Search" : "Show all"}
-                </Button>
-              </Group>
+        <Group className="admin-add-row" mt="sm" align="flex-end" wrap="nowrap">
+          <CategoryTemplateCombobox
+            disabled={!o.canEdit}
+            value={o.selectedFamilyId || null}
+            onChange={(v) => o.setSelectedFamilyId(v ?? "")}
+            query={o.familyQuery}
+            onQueryChange={(q) => o.setFamilyQuery(q)}
+            options={templateOptions}
+          />
+          <Button
+            type="button"
+            onClick={() => void handleAddCategory()}
+            disabled={!o.canEdit || o.working}
+          >
+            + Add
+          </Button>
+        </Group>
 
-              <Group className="inline-actions" wrap="wrap" mt="sm">
-                <Select
-                  placeholder="Select template..."
-                  value={o.selectedFamilyId || null}
-                  onChange={(v) => o.setSelectedFamilyId(v ?? "")}
-                  disabled={!o.canEdit || o.familyResults.length === 0}
-                  data={o.familyResults.map((f) => ({
-                    value: String(f.id),
-                    label: `${f.code} — ${f.name}`
-                  }))}
-                />
-                <Button
+        {!o.canEdit ? (
+          <Box className="status status-warning" role="status" mt="sm">
+            Categories can only be edited while the ceremony is in DRAFT.
+          </Box>
+        ) : null}
+
+        {!hasCategories ? (
+          <Text className="muted" mt="md">
+            No categories yet.
+          </Text>
+        ) : (
+          <Box className="admin-category-list" mt="md">
+            {o.categories.map((c) => (
+              <Box key={c.id} className="admin-category-row">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text
+                      component="span"
+                      className={[
+                        "mi-icon",
+                        c.family_icon_variant === "inverted" ? "mi-icon-inverted" : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      aria-hidden="true"
+                    >
+                      {materialGlyph(c.icon_code || c.family_icon_code)}
+                    </Text>
+                    <Text fw={700} lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
+                      {c.family_name}
+                    </Text>
+                  </Group>
+                  <Text className="muted" size="sm">
+                    {unitKindLabel(c.unit_kind)}
+                  </Text>
+                </Box>
+                <ActionIcon
                   type="button"
-                  onClick={() => void o.actions.addCategory()}
+                  variant="subtle"
+                  aria-label="Remove category"
+                  onClick={() => onConfirmRemoveCategory(c.id)}
                   disabled={!o.canEdit || o.working}
+                  className="admin-trash"
                 >
-                  Add
-                </Button>
-              </Group>
-
-              <Button
-                type="button"
-                variant="subtle"
-                onClick={o.openNewTemplate}
-                disabled={o.working}
-                mt="sm"
-              >
-                New template…
-              </Button>
-            </Card>
-          </Grid.Col>
-
-          <Grid.Col span={{ base: 12, md: 8 }}>
-            <Card className="card nested" component="section">
-              <Group
-                className="header-with-controls"
-                justify="space-between"
-                align="start"
-                wrap="wrap"
-              >
-                <Box>
-                  <Title order={4}>Current ceremony categories</Title>
-                  <Text className="muted">
-                    Short list. Remove and replace via templates if needed.
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    {TRASH_ICON}
                   </Text>
-                </Box>
-                <Box component="span" className="pill">
-                  {o.categories.length} categories
-                </Box>
-              </Group>
+                </ActionIcon>
+              </Box>
+            ))}
+          </Box>
+        )}
 
-              {o.categories.length === 0 ? (
-                <Card className="empty-state">
-                  <Text fw={700}>No categories yet.</Text>
-                  <Text className="muted" mt="xs">
-                    Clone from a prior ceremony or add templates on the left.
-                  </Text>
-                </Card>
-              ) : (
-                <Stack className="list" gap="sm">
-                  {o.categories.map((c) => (
-                    <Box key={c.id} className="list-row">
-                      <Box>
-                        <Group className="inline-actions" wrap="wrap">
-                          <Text fw={700}>{c.family_name}</Text>
-                          <Button
-                            type="button"
-                            variant="subtle"
-                            aria-label="Category details"
-                            title="Details"
-                            onClick={() =>
-                              o.setExpandedCategoryId((prev) =>
-                                prev === c.id ? null : c.id
-                              )
-                            }
-                          >
-                            i
-                          </Button>
-                        </Group>
-                        {o.expandedCategoryId === c.id ? (
-                          <Box className="status status-info" mt="sm">
-                            <Group className="pill-list" wrap="wrap">
-                              <Box component="span" className="pill">
-                                Template: {c.family_code}
-                              </Box>
-                              <Box component="span" className="pill">
-                                Type: {c.unit_kind}
-                              </Box>
-                              <Box component="span" className="pill">
-                                Icon: {c.icon_code || c.family_icon_code}
-                              </Box>
-                              <Box component="span" className="pill muted">
-                                Sort: {c.sort_index}
-                              </Box>
-                            </Group>
-                            <Group className="inline-actions" mt="sm" wrap="wrap">
-                              <Button
-                                type="button"
-                                variant="subtle"
-                                onClick={() =>
-                                  o.setEditingTemplate({
-                                    id: c.family_id,
-                                    code: c.family_code,
-                                    name: c.family_name,
-                                    default_unit_kind: c.family_default_unit_kind,
-                                    icon_id: c.family_icon_id,
-                                    icon_code: c.family_icon_code
-                                  })
-                                }
-                                disabled={o.working}
-                              >
-                                Edit template
-                              </Button>
-                            </Group>
-                            <Text className="muted" mt="xs">
-                              Warning: editing a template changes it everywhere it is
-                              used.
-                            </Text>
-                          </Box>
-                        ) : null}
-                      </Box>
-                      <Group className="pill-actions" wrap="wrap">
-                        <Button
-                          type="button"
-                          className="danger"
-                          onClick={() => onConfirmRemoveCategory(c.id)}
-                          disabled={!o.canEdit || o.working}
-                        >
-                          Remove
-                        </Button>
-                      </Group>
-                    </Box>
-                  ))}
-                </Stack>
-              )}
-            </Card>
-          </Grid.Col>
-        </Grid>
-      )}
+        <Group className="admin-secondary-actions" mt="sm" wrap="wrap">
+          <UnstyledButton
+            type="button"
+            className="link-action"
+            onClick={o.openNewTemplate}
+            disabled={!o.canEdit || o.working}
+          >
+            Create new template
+          </UnstyledButton>
+          <UnstyledButton
+            type="button"
+            className="link-action"
+            onClick={() => setCloneOpen(true)}
+            disabled={!o.canEdit || o.working}
+          >
+            Replace all categories…
+          </UnstyledButton>
+        </Group>
+
+        {o.status ? <FormStatus loading={o.working} result={o.status} /> : null}
+
+        {hasCategories ? (
+          <Text className="muted" size="sm" mt="sm">
+            Categories defined.
+          </Text>
+        ) : null}
+      </StandardCard>
+
+      {cloneOpen ? (
+        <CloneCategoriesModal
+          working={o.working}
+          canEdit={o.canEdit}
+          options={cloneOptions}
+          value={o.cloneFromId}
+          onChange={o.setCloneFromId}
+          onCancel={() => setCloneOpen(false)}
+          onSubmit={async () => {
+            const ok = await onConfirmClone();
+            if (ok) setCloneOpen(false);
+          }}
+        />
+      ) : null}
 
       {o.newTemplateOpen ? (
         <NewTemplateModal
@@ -304,22 +242,140 @@ export function AdminCeremoniesCategoriesScreen(props: {
           onCancel={o.closeNewTemplate}
           onSubmit={async () => {
             const ok = await o.actions.createFamily();
-            if (ok) o.closeNewTemplate();
+            if (ok) {
+              o.closeNewTemplate();
+              await onAfterChange?.();
+            }
           }}
         />
       ) : null}
-
-      {o.editingTemplate && o.editTemplateValue ? (
-        <EditTemplateModal
-          working={o.working}
-          iconCodes={o.iconCodes}
-          value={o.editTemplateValue}
-          onChange={o.setEditTemplateValue}
-          onCancel={o.actions.closeEditTemplate}
-          onSubmit={(next) => void o.actions.saveTemplateEdits(next)}
-        />
-      ) : null}
     </Stack>
+  );
+}
+
+function CategoryTemplateCombobox(props: {
+  disabled: boolean;
+  value: string | null;
+  onChange: (v: string | null) => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  options: Array<{ value: string; name: string; code: string }>;
+}) {
+  const { disabled, value, onChange, query, onQueryChange, options } = props;
+
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption()
+  });
+
+  const selectedLabel = useMemo(() => {
+    if (!value) return "";
+    const found = options.find((o) => o.value === value);
+    return found?.name ?? "";
+  }, [options, value]);
+
+  return (
+    <Box className="admin-add-select">
+      <Combobox
+        store={combobox}
+        onOptionSubmit={(val) => {
+          onChange(val);
+          combobox.closeDropdown();
+        }}
+      >
+        <Combobox.Target>
+          <InputBase
+            component="button"
+            type="button"
+            disabled={disabled}
+            onClick={() => combobox.toggleDropdown()}
+            rightSectionPointerEvents="none"
+            rightSection="▾"
+            aria-label="Add category from template"
+          >
+            {selectedLabel || "Add category from template..."}
+          </InputBase>
+        </Combobox.Target>
+
+        <Combobox.Dropdown>
+          <Combobox.Search
+            value={query}
+            onChange={(e) => onQueryChange(e.currentTarget.value)}
+            placeholder="Search templates..."
+          />
+          <Combobox.Options>
+            {options.length === 0 ? (
+              <Combobox.Empty>
+                <Text size="sm">No matching templates</Text>
+              </Combobox.Empty>
+            ) : (
+              options.map((o) => (
+                <Combobox.Option value={o.value} key={o.value}>
+                  <Stack gap={2}>
+                    <Text fw={700} size="sm">
+                      {o.name}
+                    </Text>
+                    <Text className="muted" size="xs">
+                      {o.code}
+                    </Text>
+                  </Stack>
+                </Combobox.Option>
+              ))
+            )}
+          </Combobox.Options>
+        </Combobox.Dropdown>
+      </Combobox>
+    </Box>
+  );
+}
+
+function CloneCategoriesModal(props: {
+  working: boolean;
+  canEdit: boolean;
+  options: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: Dispatch<SetStateAction<string>>;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const { working, canEdit, options, value, onChange, onCancel, onSubmit } = props;
+
+  return (
+    <Box className="modal-backdrop" role="presentation">
+      <StandardCard
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Clone from ceremony"
+      >
+        <Title order={4}>Clone from ceremony</Title>
+        <Text className="muted">Copy the category structure (no linkage).</Text>
+        <Box className="status status-warning" role="status" mt="sm">
+          This will replace all categories for the current ceremony.
+        </Box>
+
+        <Stack className="stack-sm" gap="sm" mt="sm">
+          <Select
+            label="Select a ceremony to clone categories from"
+            placeholder="Search ceremonies..."
+            searchable
+            clearable
+            value={value || null}
+            onChange={(v) => onChange(v ?? "")}
+            disabled={working || !canEdit}
+            data={options}
+          />
+        </Stack>
+
+        <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Button type="button" onClick={onCancel} disabled={working}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={working || !canEdit}>
+            Clone categories
+          </Button>
+        </Group>
+      </StandardCard>
+    </Box>
   );
 }
 
@@ -331,6 +387,7 @@ function NewTemplateModal(props: {
     name: string;
     default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
     icon_id: string;
+    icon_variant: "default" | "inverted";
     add_to_ceremony: boolean;
   };
   onChange: Dispatch<
@@ -339,6 +396,7 @@ function NewTemplateModal(props: {
       name: string;
       default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
       icon_id: string;
+      icon_variant: "default" | "inverted";
       add_to_ceremony: boolean;
     }>
   >;
@@ -348,7 +406,7 @@ function NewTemplateModal(props: {
   const { working, canAddToCeremony, value, onChange, onCancel, onSubmit } = props;
   return (
     <Box className="modal-backdrop" role="presentation">
-      <Card className="modal" role="dialog" aria-modal="true" aria-label="New template">
+      <StandardCard className="modal" role="dialog" aria-modal="true" aria-label="New template">
         <Title order={4}>New template</Title>
         <Text className="muted">
           Create a category template, then add it to ceremonies as needed.
@@ -358,14 +416,20 @@ function NewTemplateModal(props: {
           <TextInput
             label="Code"
             value={value.code}
-            onChange={(e) => onChange((p) => ({ ...p, code: e.currentTarget.value }))}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              onChange((p) => ({ ...p, code: v }));
+            }}
             placeholder="oscar-best-picture"
             disabled={working}
           />
           <TextInput
             label="Name"
             value={value.name}
-            onChange={(e) => onChange((p) => ({ ...p, name: e.currentTarget.value }))}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              onChange((p) => ({ ...p, name: v }));
+            }}
             placeholder="Best Picture"
             disabled={working}
           />
@@ -386,11 +450,29 @@ function NewTemplateModal(props: {
             ]}
           />
           <TextInput
-            label="Icon (text)"
+            label="Icon"
             value={value.icon_id}
-            onChange={(e) => onChange((p) => ({ ...p, icon_id: e.currentTarget.value }))}
-            placeholder="e4eb or e4eb-i"
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              onChange((p) => ({ ...p, icon_id: v }));
+            }}
+            placeholder="trophy"
             disabled={working}
+          />
+          <Select
+            label="Icon variant"
+            value={value.icon_variant}
+            onChange={(v) =>
+              onChange((p) => ({
+                ...p,
+                icon_variant: (v ?? "default") as "default" | "inverted"
+              }))
+            }
+            disabled={working}
+            data={[
+              { value: "default", label: "Default" },
+              { value: "inverted", label: "Inverted" }
+            ]}
           />
           <Checkbox
             label="Add to this ceremony"
@@ -410,104 +492,7 @@ function NewTemplateModal(props: {
             Create template
           </Button>
         </Group>
-      </Card>
-    </Box>
-  );
-}
-
-function EditTemplateModal(props: {
-  working: boolean;
-  iconCodes: string[];
-  value: {
-    id: number;
-    code: string;
-    name: string;
-    default_unit_kind: FamilyRow["default_unit_kind"];
-    icon: string;
-  };
-  onChange: Dispatch<
-    SetStateAction<{
-      id: number;
-      code: string;
-      name: string;
-      default_unit_kind: FamilyRow["default_unit_kind"];
-      icon: string;
-    } | null>
-  >;
-  onCancel: () => void;
-  onSubmit: (next: {
-    id: number;
-    code: string;
-    name: string;
-    default_unit_kind: FamilyRow["default_unit_kind"];
-    icon: string;
-  }) => void;
-}) {
-  const { working, value, onChange, onCancel, onSubmit } = props;
-
-  return (
-    <Box className="modal-backdrop" role="presentation">
-      <Card className="modal" role="dialog" aria-modal="true" aria-label="Edit template">
-        <Title order={4}>Edit template</Title>
-        <Text className="muted">This changes the template everywhere it is used.</Text>
-
-        <Stack className="stack-sm" gap="sm" mt="sm">
-          <TextInput
-            label="Code"
-            value={value.code}
-            onChange={(e) =>
-              onChange((p) => (p ? { ...p, code: e.currentTarget.value } : p))
-            }
-            disabled={working}
-          />
-          <TextInput
-            label="Name"
-            value={value.name}
-            onChange={(e) =>
-              onChange((p) => (p ? { ...p, name: e.currentTarget.value } : p))
-            }
-            disabled={working}
-          />
-          <Select
-            label="Default nominee type"
-            value={value.default_unit_kind}
-            onChange={(v) =>
-              onChange((p) =>
-                p
-                  ? {
-                      ...p,
-                      default_unit_kind: (v ?? "FILM") as FamilyRow["default_unit_kind"]
-                    }
-                  : p
-              )
-            }
-            disabled={working}
-            data={[
-              { value: "FILM", label: "Film" },
-              { value: "SONG", label: "Song" },
-              { value: "PERFORMANCE", label: "Performance" }
-            ]}
-          />
-          <TextInput
-            label="Icon (text)"
-            value={value.icon}
-            onChange={(e) =>
-              onChange((p) => (p ? { ...p, icon: e.currentTarget.value } : p))
-            }
-            placeholder="e4eb or e4eb-i"
-            disabled={working}
-          />
-        </Stack>
-
-        <Group className="inline-actions" mt="sm" wrap="wrap">
-          <Button type="button" onClick={onCancel} disabled={working}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={() => onSubmit(value)} disabled={working}>
-            Save template
-          </Button>
-        </Group>
-      </Card>
+      </StandardCard>
     </Box>
   );
 }

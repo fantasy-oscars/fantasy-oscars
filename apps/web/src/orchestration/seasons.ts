@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { isIntegrityWarningWindow } from "../lib/draft";
+import { notify } from "../notifications";
 import type {
   ApiResult,
   CeremonySummary,
@@ -26,6 +27,8 @@ export type LeagueSeasonCreateView =
       ceremonyId: number | null;
       scoringStrategy: "fixed" | "negative";
       remainderStrategy: "UNDRAFTED" | "FULL_POOL";
+      timerEnabled: boolean;
+      pickTimerSeconds: number;
       canSubmit: boolean;
     };
 
@@ -46,6 +49,8 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
   const [remainderStrategy, setRemainderStrategy] = useState<"UNDRAFTED" | "FULL_POOL">(
     "UNDRAFTED"
   );
+  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [pickTimerSeconds, setPickTimerSeconds] = useState(60);
 
   const refresh = useCallback(async () => {
     if (!Number.isFinite(leagueId) || leagueId <= 0) {
@@ -103,7 +108,8 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
         body: JSON.stringify({
           ceremony_id: ceremonyId,
           scoring_strategy_name: scoringStrategy,
-          remainder_strategy: remainderStrategy
+          remainder_strategy: remainderStrategy,
+          pick_timer_seconds: timerEnabled ? pickTimerSeconds : null
         })
       }
     );
@@ -120,14 +126,32 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
       return { ok: false as const };
     }
 
-    setStatus({ ok: true, message: "Season created" });
+    notify({
+      id: "season.create.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Season created"
+    });
+    setStatus(null);
     return { ok: true as const, seasonId };
-  }, [ceremonyId, leagueId, remainderStrategy, scoringStrategy]);
+  }, [
+    ceremonyId,
+    leagueId,
+    pickTimerSeconds,
+    remainderStrategy,
+    scoringStrategy,
+    timerEnabled
+  ]);
 
   const reset = useCallback(() => {
     setCeremonyId(null);
     setScoringStrategy("fixed");
     setRemainderStrategy("UNDRAFTED");
+    setTimerEnabled(true);
+    setPickTimerSeconds(60);
     setStatus(null);
   }, []);
 
@@ -147,6 +171,8 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
               ceremonyId,
               scoringStrategy,
               remainderStrategy,
+              timerEnabled,
+              pickTimerSeconds,
               canSubmit
             };
 
@@ -157,6 +183,8 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
       setCeremonyId,
       setScoringStrategy,
       setRemainderStrategy,
+      setTimerEnabled,
+      setPickTimerSeconds,
       reset,
       submit
     }
@@ -216,8 +244,10 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   const [invites, setInvites] = useState<SeasonInvite[]>([]);
   const [inviteTokens, setInviteTokens] = useState<TokenMap>({});
   const [leagueContext, setLeagueContext] = useState<LeagueContext | null>(null);
+  const [ceremonyStatus, setCeremonyStatus] = useState<string | null>(null);
   const [scoringState, setScoringState] = useState<ApiResult | null>(null);
   const [allocationState, setAllocationState] = useState<ApiResult | null>(null);
+  const [timerState, setTimerState] = useState<ApiResult | null>(null);
   const [draftCreateResult, setDraftCreateResult] = useState<ApiResult | null>(null);
   const [cancelResult, setCancelResult] = useState<ApiResult | null>(null);
   const [addMemberResult, setAddMemberResult] = useState<ApiResult | null>(null);
@@ -231,13 +261,20 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
 
+  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [pickTimerSeconds, setPickTimerSeconds] = useState(60);
+
   const userId = useMemo(() => Number(userSub), [userSub]);
   const isCommissioner = useMemo(() => {
     if (!Number.isFinite(userId)) return false;
-    return members.some(
+    const seasonRole = members.some(
       (m) => m.user_id === userId && (m.role === "OWNER" || m.role === "CO_OWNER")
     );
-  }, [members, userId]);
+    const leagueRole = (leagueContext?.leagueMembers ?? []).some(
+      (m) => m.user_id === userId && (m.role === "OWNER" || m.role === "CO_OWNER")
+    );
+    return seasonRole || leagueRole;
+  }, [members, leagueContext?.leagueMembers, userId]);
 
   const isArchived = leagueContext?.season
     ? leagueContext.season.is_active_ceremony === false ||
@@ -294,6 +331,18 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       }
       if (!cancelled && found) {
         setLeagueContext({ ...found, leagueMembers });
+
+        // Ceremony status drives small bits of UI copy (e.g. "View results" once COMPLETE).
+        // We intentionally keep this lightweight (no draft board payload).
+        const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>("/ceremonies", {
+          method: "GET"
+        });
+        const status =
+          ceremoniesRes.ok && ceremoniesRes.data?.ceremonies
+            ? ceremoniesRes.data.ceremonies.find((c) => c.id === found!.season.ceremony_id)
+                ?.status ?? null
+            : null;
+        if (!cancelled) setCeremonyStatus(status);
       }
 
       const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
@@ -316,6 +365,17 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const value = leagueContext?.season?.pick_timer_seconds ?? null;
+    if (value && value > 0) {
+      setTimerEnabled(true);
+      setPickTimerSeconds(value);
+    } else {
+      setTimerEnabled(false);
+      setPickTimerSeconds(60);
+    }
+  }, [leagueContext?.season?.pick_timer_seconds]);
 
   async function addMember() {
     const username = manualUsername.trim();
@@ -348,7 +408,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     setMembers((prev) => [...prev, res.data!.member]);
     setSelectedLeagueMember("");
     setManualUsername("");
-    setAddMemberResult({ ok: true, message: "Member added" });
+    setAddMemberResult(null);
+    notify({
+      id: "season.members.added",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Member added"
+    });
   }
 
   async function removeMember(userIdToRemove: number) {
@@ -364,7 +433,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       return;
     }
     setMembers((prev) => prev.filter((m) => m.user_id !== userIdToRemove));
-    setAddMemberResult({ ok: true, message: "Member removed" });
+    setAddMemberResult(null);
+    notify({
+      id: "season.members.removed",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Member removed"
+    });
   }
 
   async function updateScoring(strategy: string) {
@@ -384,7 +462,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
           scoring_strategy_name: res.data.season.scoring_strategy_name
         }
       });
-      setScoringState({ ok: true, message: "Scoring updated" });
+      notify({
+        id: "season.scoring.update.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Scoring updated"
+      });
+      setScoringState(null);
     } else {
       setScoringState({ ok: false, message: res.error ?? "Update failed" });
     }
@@ -410,10 +497,59 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
           remainder_strategy: res.data.season.remainder_strategy
         }
       });
-      setAllocationState({ ok: true, message: "Allocation updated" });
+      notify({
+        id: "season.allocation.update.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Allocation updated"
+      });
+      setAllocationState(null);
     } else {
       setAllocationState({ ok: false, message: res.error ?? "Update failed" });
     }
+  }
+
+  async function updateTimerWith(pick_timer_seconds: number | null) {
+    setTimerState(null);
+    setWorking(true);
+    const res = await fetchJson<{
+      draft: { id: number; pick_timer_seconds: number | null; auto_pick_strategy: string | null };
+    }>(`/seasons/${seasonId}/timer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pick_timer_seconds
+      })
+    });
+    setWorking(false);
+    if (res.ok && res.data?.draft && leagueContext) {
+      setLeagueContext({
+        ...leagueContext,
+        season: {
+          ...leagueContext.season,
+          pick_timer_seconds: res.data.draft.pick_timer_seconds ?? null
+        }
+      });
+      notify({
+        id: "season.timer.update.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Timer updated"
+      });
+      setTimerState(null);
+    } else {
+      setTimerState({ ok: false, message: res.error ?? "Update failed" });
+    }
+  }
+
+  async function updateTimer() {
+    return updateTimerWith(timerEnabled ? pickTimerSeconds : null);
   }
 
   async function createDraft() {
@@ -460,7 +596,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
           }
         : prev
     );
-    setDraftCreateResult({ ok: true, message: "Draft created" });
+    notify({
+      id: "season.draft.create.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Draft created"
+    });
+    setDraftCreateResult(null);
   }
 
   async function cancelSeason() {
@@ -486,7 +631,58 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
           }
         : prev
     );
-    setCancelResult({ ok: true, message: "Season deleted" });
+    notify({
+      id: "season.delete.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Season deleted"
+    });
+    setCancelResult(null);
+  }
+
+  async function transferSeasonOwnership(targetUserId: number) {
+    if (!Number.isFinite(targetUserId) || targetUserId <= 0) return;
+    setWorking(true);
+    const res = await fetchJson<{ ok: true }>(`/seasons/${seasonId}/transfer-ownership`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: targetUserId })
+    });
+    setWorking(false);
+
+    if (!res.ok) {
+      notify({
+        id: "season.ownership.transfer.error",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: res.error ?? "Ownership transfer failed"
+      });
+      return;
+    }
+
+    setMembers((prev) =>
+      prev.map((m) => {
+        if (m.role === "OWNER") return { ...m, role: "MEMBER" };
+        if (m.user_id === targetUserId) return { ...m, role: "OWNER" };
+        return m;
+      })
+    );
+
+    notify({
+      id: "season.ownership.transfer.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ownership transferred"
+    });
   }
 
   async function createUserInvite() {
@@ -503,13 +699,31 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       body: JSON.stringify({ username })
     });
     setWorking(false);
-    setUserInviteResult({
-      ok: res.ok,
-      message: res.ok
-        ? "Invite created (user must accept in app)"
-        : (res.error ?? "Invite failed")
+    if (res.ok) {
+      notify({
+        id: "season.invite.create.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Invite created (user must accept in app)"
+      });
+      setUserInviteQuery("");
+      setUserInviteResult(null);
+      return;
+    }
+    const message = res.error ?? "Invite failed";
+    notify({
+      id: "season.invite.create.error",
+      severity: "error",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message
     });
-    if (res.ok) setUserInviteQuery("");
+    setUserInviteResult({ ok: false, message });
   }
 
   async function createPlaceholderInvite() {
@@ -532,7 +746,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       setInvites((prev) => [invite, ...prev]);
       setInviteTokens((prev) => ({ ...prev, [invite.id]: token }));
       setPlaceholderLabel("");
-      setInviteResult({ ok: true, message: "Link generated" });
+      notify({
+        id: "season.invite.link.generate.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Link generated"
+      });
+      setInviteResult(null);
     } else {
       setInviteResult({ ok: false, message: res.error ?? "Invite failed" });
     }
@@ -567,7 +790,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     if (res.ok && invite && token) {
       setInvites((prev) => prev.map((i) => (i.id === inviteId ? invite : i)));
       setInviteTokens((prev) => ({ ...prev, [invite.id]: token }));
-      setInviteResult({ ok: true, message: "New link generated" });
+      notify({
+        id: "season.invite.link.regenerate.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "New link generated"
+      });
+      setInviteResult(null);
     } else {
       setInviteResult({ ok: false, message: res.error ?? "Regenerate failed" });
     }
@@ -588,7 +820,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     const invite = res.data?.invite;
     if (res.ok && invite) {
       setInvites((prev) => prev.map((i) => (i.id === inviteId ? invite : i)));
-      setInviteResult({ ok: true, message: "Label saved" });
+      notify({
+        id: "season.invite.label.save.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Label saved"
+      });
+      setInviteResult(null);
     } else {
       setInviteResult({ ok: false, message: res.error ?? "Save failed" });
     }
@@ -612,7 +853,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   function copyLink(inviteId: number) {
     const link = buildInviteLink(inviteId);
     void navigator.clipboard?.writeText(link);
-    setInviteResult({ ok: true, message: "Link copied" });
+    notify({
+      id: "season.invite.link.copy.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Link copied"
+    });
+    setInviteResult(null);
   }
 
   const seasonStatus = leagueContext?.season?.status ?? "UNKNOWN";
@@ -641,8 +891,10 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     invites,
     inviteTokens,
     leagueContext,
+    ceremonyStatus,
     scoringState,
     allocationState,
+    timerState,
     draftCreateResult,
     cancelResult,
     addMemberResult,
@@ -665,6 +917,10 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     seasonStatus,
     scoringStrategy,
     allocationStrategy,
+    timerEnabled,
+    setTimerEnabled,
+    pickTimerSeconds,
+    setPickTimerSeconds,
     availableLeagueMembers,
     ceremonyStartsAt,
     draftId,
@@ -674,8 +930,11 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     removeMember,
     updateScoring,
     updateAllocation,
+    updateTimer,
+    updateTimerWith,
     createDraft,
     cancelSeason,
+    transferSeasonOwnership,
     createUserInvite,
     createPlaceholderInvite,
     revokeInvite,

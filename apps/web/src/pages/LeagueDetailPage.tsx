@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
 import { useLeagueDetailOrchestration } from "../orchestration/leagues";
 import { LeagueDetailScreen } from "../screens/leagues/LeagueDetailScreen";
@@ -7,6 +7,7 @@ export function LeagueDetailPage() {
   const { id } = useParams();
   const leagueId = Number(id);
   const { user } = useAuthContext();
+  const navigate = useNavigate();
   const league = useLeagueDetailOrchestration({ leagueId, userSub: user?.sub });
 
   return (
@@ -16,11 +17,12 @@ export function LeagueDetailPage() {
       view={league.view}
       working={league.working}
       rosterStatus={league.rosterStatus}
-      transferTarget={league.transferTarget}
-      setTransferTarget={league.setTransferTarget}
-      onCopyInvite={league.copyInvite}
-      onTransferOwnership={league.transferOwnership}
-      onRemoveMember={league.removeMember}
+      onTransferOwnershipTo={league.transferOwnershipTo}
+      onDeleteLeague={async () => {
+        const res = await league.deleteLeague();
+        if (res.ok) navigate("/leagues");
+        return res;
+      }}
     />
   );
 }
