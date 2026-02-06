@@ -38,9 +38,13 @@ type TmdbPersonDetails = {
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 function requireTmdbReadToken(env: NodeJS.ProcessEnv = process.env): string {
-  const token = env.TMDB_READ_ACCESS_TOKEN;
+  // Backwards-compatible: we previously used `TMDB_API_TOKEN` locally/ops.
+  // Prefer the explicit "read access token" name going forward.
+  const token = env.TMDB_READ_ACCESS_TOKEN ?? env.TMDB_API_TOKEN;
   if (!token || token.trim() === "") {
-    throw new Error("TMDB_READ_ACCESS_TOKEN is not set");
+    throw new Error(
+      "TMDB token env var is not set (expected TMDB_READ_ACCESS_TOKEN; falling back to TMDB_API_TOKEN)"
+    );
   }
   return token.trim();
 }
