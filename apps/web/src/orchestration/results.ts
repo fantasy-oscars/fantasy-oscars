@@ -36,7 +36,8 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
 
     async function load() {
       // Global refresh policy: if we already have something rendered, refresh in-place.
-      const hasContent = snapshot !== null || state === "ready" || state === "unavailable";
+      const hasContent =
+        snapshot !== null || state === "ready" || state === "unavailable";
       if (!hasContent) setState("loading");
       setError(null);
 

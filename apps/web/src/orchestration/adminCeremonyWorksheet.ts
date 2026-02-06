@@ -40,33 +40,33 @@ export function useAdminCeremonyWorksheetOrchestration(args: {
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
       const silent = opts?.silent ?? false;
-    if (!ceremonyId || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
-      setError("Invalid ceremony id");
-      setState("error");
-      return;
-    }
-    // For background refreshes, avoid flipping the orchestration into "loading"
-    // because that unmounts wizard step content and resets local UI state.
-    if (!silent || state !== "ready") {
-      setState("loading");
-    }
-    setError(null);
-    const res = await fetchJson<{ ceremony: CeremonyDetail; stats: CeremonyStats }>(
-      `/admin/ceremonies/${ceremonyId}`,
-      { method: "GET" }
-    );
-    if (!res.ok) {
-      // If we already have data, keep rendering and only record the error.
-      // This prevents "flash" reloads after actions like adding nominees.
-      setError(res.error ?? "Unable to load ceremony");
-      if (!silent || state !== "ready") {
+      if (!ceremonyId || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
+        setError("Invalid ceremony id");
         setState("error");
+        return;
       }
-      return;
-    }
-    setCeremony(res.data?.ceremony ?? null);
-    setStats(res.data?.stats ?? null);
-    setState("ready");
+      // For background refreshes, avoid flipping the orchestration into "loading"
+      // because that unmounts wizard step content and resets local UI state.
+      if (!silent || state !== "ready") {
+        setState("loading");
+      }
+      setError(null);
+      const res = await fetchJson<{ ceremony: CeremonyDetail; stats: CeremonyStats }>(
+        `/admin/ceremonies/${ceremonyId}`,
+        { method: "GET" }
+      );
+      if (!res.ok) {
+        // If we already have data, keep rendering and only record the error.
+        // This prevents "flash" reloads after actions like adding nominees.
+        setError(res.error ?? "Unable to load ceremony");
+        if (!silent || state !== "ready") {
+          setState("error");
+        }
+        return;
+      }
+      setCeremony(res.data?.ceremony ?? null);
+      setStats(res.data?.stats ?? null);
+      setState("ready");
     },
     [ceremonyId, state]
   );
