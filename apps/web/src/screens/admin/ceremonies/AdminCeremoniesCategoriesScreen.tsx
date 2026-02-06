@@ -1,6 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   ActionIcon,
   Box,
@@ -55,6 +58,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
 }) {
   const { ceremonyId, o, onAfterChange, onConfirmClone, onConfirmRemoveCategory } = props;
   const [cloneOpen, setCloneOpen] = useState(false);
+  const sensors = useSensors(useSensor(PointerSensor));
 
   const cloneOptions = useMemo(
     () =>
@@ -77,6 +81,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
   if (o.error) return <PageError message={o.error} />;
 
   const hasCategories = o.categories.length > 0;
+  const categoryIds = useMemo(() => o.categories.map((c) => c.id), [o.categories]);
 
   const handleAddCategory = async () => {
     const ok = await o.actions.addCategory();
@@ -151,46 +156,36 @@ export function AdminCeremoniesCategoriesScreen(props: {
             No categories yet.
           </Text>
         ) : (
-          <Box className="admin-category-list" mt="md">
-            {o.categories.map((c) => (
-              <Box key={c.id} className="admin-category-row">
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap="xs" wrap="nowrap">
-                    <Text
-                      component="span"
-                      className={[
-                        "mi-icon",
-                        c.family_icon_variant === "inverted" ? "mi-icon-inverted" : ""
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      aria-hidden="true"
-                    >
-                      {materialGlyph(c.icon_code || c.family_icon_code)}
-                    </Text>
-                    <Text fw={700} lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
-                      {c.family_name}
-                    </Text>
-                  </Group>
-                  <Text className="muted" size="sm">
-                    {unitKindLabel(c.unit_kind)}
-                  </Text>
-                </Box>
-                <ActionIcon
-                  type="button"
-                  variant="subtle"
-                  aria-label="Remove category"
-                  onClick={() => onConfirmRemoveCategory(c.id)}
-                  disabled={!o.canEdit || o.working}
-                  className="admin-trash"
-                >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    {TRASH_ICON}
-                  </Text>
-                </ActionIcon>
+          <DndContext
+            sensors={sensors}
+            onDragEnd={(event) => {
+              const activeId = Number(event.active?.id);
+              const overId = Number(event.over?.id);
+              if (!activeId || !overId || activeId === overId) return;
+              const oldIndex = categoryIds.indexOf(activeId);
+              const newIndex = categoryIds.indexOf(overId);
+              if (oldIndex < 0 || newIndex < 0) return;
+              const nextIds = arrayMove(categoryIds, oldIndex, newIndex);
+              void o.actions.reorderCategories(nextIds);
+            }}
+          >
+            <SortableContext items={categoryIds}>
+              <Box className="admin-category-list" mt="md">
+                {o.categories.map((c) => (
+                  <SortableCategoryRow
+                    key={c.id}
+                    id={c.id}
+                    iconVariant={c.family_icon_variant}
+                    iconGlyph={materialGlyph(c.icon_code || c.family_icon_code)}
+                    name={c.family_name}
+                    unitKindLabel={unitKindLabel(c.unit_kind)}
+                    canEdit={o.canEdit && !o.working}
+                    onRemove={() => onConfirmRemoveCategory(c.id)}
+                  />
+                ))}
               </Box>
-            ))}
-          </Box>
+            </SortableContext>
+          </DndContext>
         )}
 
         <Group className="admin-secondary-actions" mt="sm" wrap="wrap">
@@ -260,6 +255,82 @@ export function AdminCeremoniesCategoriesScreen(props: {
         />
       ) : null}
     </Stack>
+  );
+}
+
+function SortableCategoryRow(props: {
+  id: number;
+  iconVariant?: "default" | "inverted";
+  iconGlyph: string;
+  name: string;
+  unitKindLabel: string;
+  canEdit: boolean;
+  onRemove: () => void;
+}) {
+  const { id, iconVariant, iconGlyph, name, unitKindLabel, canEdit, onRemove } = props;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id, disabled: !canEdit });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      className={["admin-category-row", isDragging ? "is-dragging" : ""].join(" ")}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition
+      }}
+    >
+      <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+        <Box
+          component="button"
+          type="button"
+          className="nomination-drag-handle-button"
+          {...attributes}
+          {...listeners}
+          aria-label="Reorder category"
+          aria-roledescription="draggable"
+          aria-grabbed={isDragging}
+          disabled={!canEdit}
+        >
+          <Text component="span" className="gicon nomination-drag-handle" aria-hidden="true">
+            drag_indicator
+          </Text>
+        </Box>
+
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Group gap="xs" wrap="nowrap">
+            <Text
+              component="span"
+              className={["mi-icon", iconVariant === "inverted" ? "mi-icon-inverted" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              aria-hidden="true"
+            >
+              {iconGlyph}
+            </Text>
+            <Text fw={700} lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
+              {name}
+            </Text>
+          </Group>
+          <Text className="muted" size="sm">
+            {unitKindLabel}
+          </Text>
+        </Box>
+      </Group>
+
+      <ActionIcon
+        type="button"
+        variant="subtle"
+        aria-label="Remove category"
+        onClick={onRemove}
+        disabled={!canEdit}
+        className="admin-trash"
+      >
+        <Text component="span" className="gicon" aria-hidden="true">
+          {TRASH_ICON}
+        </Text>
+      </ActionIcon>
+    </Box>
   );
 }
 
