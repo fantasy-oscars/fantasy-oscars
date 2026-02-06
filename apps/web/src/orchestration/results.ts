@@ -35,7 +35,10 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
     let cancelled = false;
 
     async function load() {
-      setState("loading");
+      // Global refresh policy: if we already have something rendered, refresh in-place.
+      const hasContent =
+        snapshot !== null || state === "ready" || state === "unavailable";
+      if (!hasContent) setState("loading");
       setError(null);
 
       const winnersRes = await fetchJson<{ winners: ResultsWinner[] }>(
@@ -45,7 +48,7 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
       if (!winnersRes.ok) {
         if (!cancelled) {
           setError(winnersRes.error ?? "Failed to load winners");
-          setState("error");
+          if (!hasContent) setState("error");
         }
         return;
       }
@@ -56,7 +59,7 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
       if (!snapshotRes.ok) {
         if (!cancelled) {
           setError(snapshotRes.error ?? "Failed to load draft results");
-          setState("error");
+          if (!hasContent) setState("error");
         }
         return;
       }

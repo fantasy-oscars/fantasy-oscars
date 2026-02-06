@@ -68,12 +68,18 @@ export function useInvitesInboxOrchestration() {
   const [view, setView] = useState<InvitesInboxView>({ state: "loading" });
 
   const refresh = useCallback(async () => {
-    setView({ state: "loading" });
+    // Global refresh policy: keep the current view visible while refreshing.
+    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const res = await fetchJson<{ invites: InboxInvite[] }>("/seasons/invites/inbox", {
       method: "GET"
     });
     if (!res.ok) {
-      setView({ state: "error", message: res.error ?? "Could not load invites" });
+      // Keep last-known-good invites on background refresh errors.
+      setView((prev) =>
+        prev.state === "ready"
+          ? prev
+          : { state: "error", message: res.error ?? "Could not load invites" }
+      );
       return;
     }
     // Defensive: treat null/invalid rows as already-resolved invites and hide them.

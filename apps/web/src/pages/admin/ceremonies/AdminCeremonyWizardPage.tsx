@@ -239,7 +239,7 @@ export function AdminCeremonyWizardPage() {
   })();
 
   return (
-    <CeremonyWizardProvider value={{ reloadWorksheet: worksheet.reload }}>
+    <CeremonyWizardProvider value={{ reloadWorksheet: worksheet.reloadSilent }}>
       <Group align="start" wrap="nowrap" className="wizard-shell">
         <Box className="wizard-stepper">
           <Stepper

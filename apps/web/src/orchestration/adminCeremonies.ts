@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
@@ -37,14 +37,23 @@ export function useAdminCeremoniesIndexOrchestration() {
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
 
+  const hasRenderedRef = useRef(false);
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const refresh = useCallback(async () => {
-    setState("loading");
+    // Global refresh policy: keep list visible during refresh.
+    const canRefreshInPlace = hasRenderedRef.current;
+    if (!canRefreshInPlace) setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
-      setRows([]);
       setError(res.error ?? "Failed to load ceremonies");
-      setState("error");
+      if (!canRefreshInPlace) {
+        setRows([]);
+        setState("error");
+      }
       return;
     }
     setRows(res.data?.ceremonies ?? []);
@@ -123,14 +132,23 @@ export function useAdminCeremoniesLayoutOrchestration(args: { ceremonyIdRaw?: st
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<CeremonyOption[]>([]);
 
+  const hasRenderedRef = useRef(false);
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const refresh = useCallback(async () => {
-    setState("loading");
+    // Global refresh policy: keep list visible during refresh.
+    const canRefreshInPlace = hasRenderedRef.current;
+    if (!canRefreshInPlace) setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
-      setRows([]);
       setError(res.error ?? "Failed to load ceremonies");
-      setState("error");
+      if (!canRefreshInPlace) {
+        setRows([]);
+        setState("error");
+      }
       return;
     }
     setRows(res.data?.ceremonies ?? []);

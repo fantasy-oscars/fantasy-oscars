@@ -19,10 +19,15 @@ export function useLeaguesIndexOrchestration() {
   const [view, setView] = useState<LeaguesIndexView>({ state: "loading" });
 
   const refresh = useCallback(async () => {
-    setView({ state: "loading" });
+    // Global refresh policy: keep the current view visible while refreshing.
+    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const res = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
     if (!res.ok) {
-      setView({ state: "error", message: res.error ?? "Failed to load leagues" });
+      setView((prev) =>
+        prev.state === "ready"
+          ? prev
+          : { state: "error", message: res.error ?? "Failed to load leagues" }
+      );
       return;
     }
     const leagues = res.data?.leagues ?? [];
@@ -90,7 +95,8 @@ export function useLeagueDetailOrchestration(input: {
       return;
     }
 
-    setView({ state: "loading" });
+    // Global refresh policy: if the league is already rendered, refresh in-place.
+    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
     const [detail, seasonRes, rosterRes] = await Promise.all([
       fetchJson<{ league: LeagueDetail }>(`/leagues/${leagueId}`),
       fetchJson<{ seasons: SeasonSummary[] }>(`/leagues/${leagueId}/seasons`),
@@ -98,9 +104,12 @@ export function useLeagueDetailOrchestration(input: {
     ]);
 
     if (!detail.ok || !detail.data?.league) {
-      setView({
-        state: detail.errorCode === "FORBIDDEN" ? "forbidden" : "error",
-        message: detail.error ?? "Unable to load league"
+      setView((prev) => {
+        if (prev.state === "ready") return prev;
+        return {
+          state: detail.errorCode === "FORBIDDEN" ? "forbidden" : "error",
+          message: detail.error ?? "Unable to load league"
+        };
       });
       return;
     }

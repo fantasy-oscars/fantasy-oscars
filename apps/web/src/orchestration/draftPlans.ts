@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/api";
 
 export type DraftPlanSummary = { id: number; name: string; updated_at?: string };
@@ -21,18 +21,27 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
   const [order, setOrder] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const hasRenderedRef = useRef(false);
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const refreshPlans = useCallback(async () => {
     if (!ceremonyId) return;
-    setState("loading");
+    // Global refresh policy: keep the current screen visible while refreshing.
+    const canRefreshInPlace = hasRenderedRef.current;
+    if (!canRefreshInPlace) setState("loading");
     setError(null);
     const res = await fetchJson<{ plans: DraftPlanSummary[] }>(
       `/draft-plans/ceremonies/${ceremonyId}`,
       { method: "GET" }
     );
     if (!res.ok) {
-      setPlans([]);
-      setState("error");
       setError(res.error ?? "Failed to load draft plans");
+      if (!canRefreshInPlace) {
+        setPlans([]);
+        setState("error");
+      }
       return;
     }
     setPlans(res.data?.plans ?? []);
