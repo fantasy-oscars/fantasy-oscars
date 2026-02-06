@@ -94,7 +94,12 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleResults, setPeopleResults] = useState<
-    Array<{ id: number; full_name: string; tmdb_id: number | null; profile_url?: string | null }>
+    Array<{
+      id: number;
+      full_name: string;
+      tmdb_id: number | null;
+      profile_url?: string | null;
+    }>
   >([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [peopleState, setPeopleState] = useState<ApiResult | null>(null);
@@ -168,8 +173,15 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setPeopleLoading(true);
     setPeopleState(null);
     const res = await fetchJson<{
-      people: Array<{ id: number; full_name: string; tmdb_id: number | null; profile_url?: string | null }>;
-    }>(q ? `/admin/people?q=${encodeURIComponent(q)}` : `/admin/people`, { method: "GET" });
+      people: Array<{
+        id: number;
+        full_name: string;
+        tmdb_id: number | null;
+        profile_url?: string | null;
+      }>;
+    }>(q ? `/admin/people?q=${encodeURIComponent(q)}` : `/admin/people`, {
+      method: "GET"
+    });
     setPeopleLoading(false);
     if (!res.ok) {
       setPeopleResults([]);
@@ -688,11 +700,14 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     async (filmId: number, tmdbId: number | null) => {
       setManualLoading(true);
       setManualState(null);
-      const res = await fetchJson<{ film: unknown; hydrated?: boolean }>(`/admin/films/${filmId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdb_id: tmdbId })
-      });
+      const res = await fetchJson<{ film: unknown; hydrated?: boolean }>(
+        `/admin/films/${filmId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: tmdbId })
+        }
+      );
       setManualLoading(false);
       if (!res.ok) {
         setManualState({ ok: false, message: res.error ?? "Failed to link film" });
@@ -705,23 +720,32 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [loadManualContext, loadNominations]
   );
 
-  const linkPersonTmdb = useCallback(async (personId: number, tmdbId: number | null) => {
-    setManualLoading(true);
-    setManualState(null);
-    const res = await fetchJson<{ person: unknown; hydrated?: boolean }>(`/admin/people/${personId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id: tmdbId })
-    });
-    setManualLoading(false);
-    if (!res.ok) {
-      setManualState({ ok: false, message: res.error ?? "Failed to link person" });
-      return { ok: false, hydrated: false };
-    }
-    setManualState({ ok: true, message: tmdbId ? "Contributor linked" : "Contributor unlinked" });
-    await Promise.all([loadManualContext(), loadNominations()]);
-    return { ok: true, hydrated: Boolean(res.data?.hydrated) };
-  }, [loadManualContext, loadNominations]);
+  const linkPersonTmdb = useCallback(
+    async (personId: number, tmdbId: number | null) => {
+      setManualLoading(true);
+      setManualState(null);
+      const res = await fetchJson<{ person: unknown; hydrated?: boolean }>(
+        `/admin/people/${personId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tmdb_id: tmdbId })
+        }
+      );
+      setManualLoading(false);
+      if (!res.ok) {
+        setManualState({ ok: false, message: res.error ?? "Failed to link person" });
+        return { ok: false, hydrated: false };
+      }
+      setManualState({
+        ok: true,
+        message: tmdbId ? "Contributor linked" : "Contributor unlinked"
+      });
+      await Promise.all([loadManualContext(), loadNominations()]);
+      return { ok: true, hydrated: Boolean(res.data?.hydrated) };
+    },
+    [loadManualContext, loadNominations]
+  );
 
   const addNominationContributor = useCallback(
     async (
@@ -757,7 +781,10 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       );
       setManualLoading(false);
       if (!res.ok) {
-        setManualState({ ok: false, message: res.error ?? "Failed to remove contributor" });
+        setManualState({
+          ok: false,
+          message: res.error ?? "Failed to remove contributor"
+        });
         return false;
       }
       setManualState({ ok: true, message: "Contributor removed" });

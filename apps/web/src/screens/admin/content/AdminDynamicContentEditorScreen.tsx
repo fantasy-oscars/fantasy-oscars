@@ -118,7 +118,12 @@ export function AdminDynamicContentEditorScreen(props: {
                 </Button>
               )}
               {!isActive ? (
-                <Button type="button" className="danger" onClick={onDelete} disabled={busy}>
+                <Button
+                  type="button"
+                  className="danger"
+                  onClick={onDelete}
+                  disabled={busy}
+                >
                   Delete
                 </Button>
               ) : null}

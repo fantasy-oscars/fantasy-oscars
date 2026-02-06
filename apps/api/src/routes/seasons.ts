@@ -27,7 +27,7 @@ import type { DbClient } from "../data/db.js";
 import type { Pool } from "pg";
 import {
   createDraftEvent,
-  getDraftBySeasonId,
+  getDraftBySeasonId
 } from "../data/repositories/draftRepository.js";
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import {
@@ -1299,7 +1299,8 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const invite = await findPendingPlaceholderInviteByTokenHash(tx, tokenHash);
-          if (!invite) return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          if (!invite)
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
 
           // Lock invite row to prevent double-claims.
           await query(tx, `SELECT id FROM season_invite WHERE id = $1 FOR UPDATE`, [
@@ -1314,7 +1315,9 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           const draft = await getDraftBySeasonId(tx, season.id);
           const draftsStarted = Boolean(draft && draft.status !== "PENDING");
           if (draftsStarted) {
-            return { error: new AppError("INVITES_LOCKED", 409, "Season invites are locked") };
+            return {
+              error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")
+            };
           }
 
           // Ensure league membership exists, then add season member.
@@ -1361,12 +1364,14 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
             [invite.id, userId]
           );
           const updated = rows[0];
-          if (!updated) return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
+          if (!updated)
+            return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
           return { invite: updated };
         });
 
         if ("error" in result && result.error) throw result.error;
-        if (!result.invite) throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
+        if (!result.invite)
+          throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
 
         return res.status(200).json({ invite: sanitizeInvite(result.invite) });
       } catch (err) {

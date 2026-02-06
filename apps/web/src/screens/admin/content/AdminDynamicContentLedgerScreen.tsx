@@ -74,7 +74,11 @@ export function AdminDynamicContentLedgerScreen(props: {
           No entries yet.
         </Text>
       ) : (
-        <Stack component="ul" gap={0} style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <Stack
+          component="ul"
+          gap={0}
+          style={{ listStyle: "none", margin: 0, padding: 0 }}
+        >
           {entries.map((e, idx) => (
             <Box key={e.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
@@ -84,7 +88,9 @@ export function AdminDynamicContentLedgerScreen(props: {
                   </Text>
                   <Text className="baseline-textMeta" c="dimmed">
                     {statusLabel(e)}
-                    {isSequential ? ` • updated ${formatDateTimeForHumans(e.updated_at)}` : ""}
+                    {isSequential
+                      ? ` • updated ${formatDateTimeForHumans(e.updated_at)}`
+                      : ""}
                   </Text>
                 </Box>
 

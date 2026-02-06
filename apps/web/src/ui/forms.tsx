@@ -44,11 +44,7 @@ export function FormStatus(props: {
   if (result && !result.ok) {
     const message = result.message;
     return (
-      <Alert
-        className="status status-error"
-        role="status"
-        aria-live="polite"
-      >
+      <Alert className="status status-error" role="status" aria-live="polite">
         <Text size="sm">{message}</Text>
         {onRetry && (
           <Button variant="subtle" onClick={onRetry} mt="xs">

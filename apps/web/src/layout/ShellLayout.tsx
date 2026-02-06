@@ -40,9 +40,12 @@ export function ShellLayout() {
         setInviteCount(0);
         return;
       }
-      const res = await fetchJson<{ invites: Array<{ id: number }> }>("/seasons/invites/inbox", {
-        method: "GET"
-      });
+      const res = await fetchJson<{ invites: Array<{ id: number }> }>(
+        "/seasons/invites/inbox",
+        {
+          method: "GET"
+        }
+      );
       if (cancelled) return;
       if (!res.ok) {
         setInviteCount(0);
@@ -58,7 +61,8 @@ export function ShellLayout() {
     // - periodically, so invites sent from other users appear without a full refresh
     const onInvitesChanged = () => void loadInvites();
     const onFocus = () => void loadInvites();
-    const interval = typeof window !== "undefined" ? window.setInterval(loadInvites, 15_000) : null;
+    const interval =
+      typeof window !== "undefined" ? window.setInterval(loadInvites, 15_000) : null;
     if (typeof window !== "undefined") {
       window.addEventListener("fo:invites-changed", onInvitesChanged as EventListener);
       window.addEventListener("focus", onFocus);
@@ -66,7 +70,10 @@ export function ShellLayout() {
     return () => {
       cancelled = true;
       if (typeof window !== "undefined") {
-        window.removeEventListener("fo:invites-changed", onInvitesChanged as EventListener);
+        window.removeEventListener(
+          "fo:invites-changed",
+          onInvitesChanged as EventListener
+        );
         window.removeEventListener("focus", onFocus);
         if (interval) window.clearInterval(interval);
       }

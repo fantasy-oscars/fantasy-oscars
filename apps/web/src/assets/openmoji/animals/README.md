@@ -7,6 +7,6 @@ for use in the Fantasy Oscars UI.
 - License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
 
 Notes:
+
 - Files are taken from the `openmoji-svg-black` distribution and renamed to the
   app's internal animal identifiers (e.g. `monkey.svg`, `gorilla.svg`).
-

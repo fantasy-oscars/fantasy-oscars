@@ -46,7 +46,14 @@ export function NomineeTooltipCard(props: {
           ? `https://image.tmdb.org/t/p/w185${performerProfilePath}`
           : performerProfilePath);
 
-  const hero = unitKind === "SONG" ? (songTitle ? `"${songTitle}"` : "") : unitKind === "PERFORMANCE" ? (performerName ?? "") : (filmTitle ?? "");
+  const hero =
+    unitKind === "SONG"
+      ? songTitle
+        ? `"${songTitle}"`
+        : ""
+      : unitKind === "PERFORMANCE"
+        ? (performerName ?? "")
+        : (filmTitle ?? "");
   const support =
     unitKind === "FILM"
       ? filmYear
@@ -86,12 +93,22 @@ export function NomineeTooltipCard(props: {
           <Box className="fo-tip-poster" aria-hidden="true">
             {unitKind === "PERFORMANCE" ? (
               resolvedPersonUrl ? (
-                <img className="fo-tip-poster-img" src={resolvedPersonUrl} alt="" loading="lazy" />
+                <img
+                  className="fo-tip-poster-img"
+                  src={resolvedPersonUrl}
+                  alt=""
+                  loading="lazy"
+                />
               ) : (
                 <Box className="fo-tip-poster-ph" />
               )
             ) : resolvedFilmPosterUrl ? (
-              <img className="fo-tip-poster-img" src={resolvedFilmPosterUrl} alt="" loading="lazy" />
+              <img
+                className="fo-tip-poster-img"
+                src={resolvedFilmPosterUrl}
+                alt=""
+                loading="lazy"
+              />
             ) : (
               <Box className="fo-tip-poster-ph" />
             )}

@@ -18,9 +18,7 @@ function toTs(iso: string | null): number {
 }
 
 function sortNewestFirst(rows: CeremonyIndexRow[]): CeremonyIndexRow[] {
-  return [...rows].sort(
-    (a, b) => toTs(b.starts_at) - toTs(a.starts_at) || b.id - a.id
-  );
+  return [...rows].sort((a, b) => toTs(b.starts_at) - toTs(a.starts_at) || b.id - a.id);
 }
 
 export function useCeremoniesIndexOrchestration() {

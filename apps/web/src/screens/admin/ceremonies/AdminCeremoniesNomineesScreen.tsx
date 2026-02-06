@@ -55,7 +55,8 @@ function nominationPrimaryLabel(input: {
   contributors?: Array<{ full_name: string; sort_order: number }>;
   fallbackId: number;
 }) {
-  if (input.unit_kind === "SONG") return input.song_title ?? `Nomination #${input.fallbackId}`;
+  if (input.unit_kind === "SONG")
+    return input.song_title ?? `Nomination #${input.fallbackId}`;
   if (input.unit_kind === "PERFORMANCE") {
     const names =
       input.contributors && input.contributors.length > 0
@@ -74,7 +75,8 @@ function nominationSecondaryLabel(input: {
   unit_kind: "FILM" | "SONG" | "PERFORMANCE";
   film_title?: string | null;
 }) {
-  if (input.unit_kind === "PERFORMANCE" && input.film_title) return `from ${input.film_title}`;
+  if (input.unit_kind === "PERFORMANCE" && input.film_title)
+    return `from ${input.film_title}`;
   return null;
 }
 
@@ -121,7 +123,11 @@ function SortableNominationRow(props: {
           aria-roledescription="draggable"
           aria-grabbed={isDragging}
         >
-          <Text component="span" className="gicon nomination-drag-handle" aria-hidden="true">
+          <Text
+            component="span"
+            className="gicon nomination-drag-handle"
+            aria-hidden="true"
+          >
             drag_indicator
           </Text>
         </Box>
@@ -171,7 +177,13 @@ function SortableNominationRow(props: {
 }
 
 function CategoryNominationSection(props: {
-  category: { id: number; unit_kind: "FILM" | "SONG" | "PERFORMANCE"; family_name?: string; family_icon_code?: string | null; family_icon_variant?: "default" | "inverted" | null; };
+  category: {
+    id: number;
+    unit_kind: "FILM" | "SONG" | "PERFORMANCE";
+    family_name?: string;
+    family_icon_code?: string | null;
+    family_icon_variant?: "default" | "inverted" | null;
+  };
   nominations: Array<{
     id: number;
     category_edition_id: number;
@@ -191,8 +203,17 @@ function CategoryNominationSection(props: {
   onEditNomination: (id: number) => void;
   onReorder: (categoryId: number, orderedIds: number[]) => void;
 }) {
-  const { category: c, nominations, collapsed, setCollapsed, sensors, nominationsLoading, onRemoveNomination, onEditNomination, onReorder } =
-    props;
+  const {
+    category: c,
+    nominations,
+    collapsed,
+    setCollapsed,
+    sensors,
+    nominationsLoading,
+    onRemoveNomination,
+    onEditNomination,
+    onReorder
+  } = props;
 
   const label = c.family_name ?? `Category ${c.id}`;
   const items = nominations;
@@ -237,7 +258,9 @@ function CategoryNominationSection(props: {
           <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
             <Text
               component="span"
-              className={["mi-icon", isInverted ? "mi-icon-inverted" : ""].filter(Boolean).join(" ")}
+              className={["mi-icon", isInverted ? "mi-icon-inverted" : ""]
+                .filter(Boolean)
+                .join(" ")}
               aria-hidden="true"
             >
               {materialGlyph(iconCode || "trophy")}
@@ -249,7 +272,11 @@ function CategoryNominationSection(props: {
               </Text>
             </Text>
           </Group>
-          <Text component="span" className="gicon nomination-group-chevron" aria-hidden="true">
+          <Text
+            component="span"
+            className="gicon nomination-group-chevron"
+            aria-hidden="true"
+          >
             {collapsed ? "chevron_right" : "expand_more"}
           </Text>
         </Group>
@@ -287,8 +314,16 @@ function CategoryNominationSection(props: {
                           fallbackId: n.id
                         })}
                       </Text>
-                      {n.display_film_id && !n.display_film_tmdb_id && (c.unit_kind === "FILM" || c.unit_kind === "PERFORMANCE" || c.unit_kind === "SONG") ? (
-                        <Text component="span" className="gicon muted" aria-label="Film not linked to TMDB">
+                      {n.display_film_id &&
+                      !n.display_film_tmdb_id &&
+                      (c.unit_kind === "FILM" ||
+                        c.unit_kind === "PERFORMANCE" ||
+                        c.unit_kind === "SONG") ? (
+                        <Text
+                          component="span"
+                          className="gicon muted"
+                          aria-label="Film not linked to TMDB"
+                        >
                           link_off
                         </Text>
                       ) : null}
@@ -363,7 +398,9 @@ export function AdminCeremoniesNomineesScreen(props: {
 
   const [candidateOpen, setCandidateOpen] = useState<string | null>(null);
 
-  const hasTmdbCredits = Boolean(o.credits && (o.credits.cast?.length || o.credits.crew?.length));
+  const hasTmdbCredits = Boolean(
+    o.credits && (o.credits.cast?.length || o.credits.crew?.length)
+  );
   const requiresContributor = selectedCategory?.unit_kind === "PERFORMANCE";
 
   const candidateLoaded = useMemo(() => {
@@ -373,10 +410,12 @@ export function AdminCeremoniesNomineesScreen(props: {
 
   const giconCheck = String.fromCharCode(0xe5ca);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
-  const [collapsedByCategoryId, setCollapsedByCategoryId] = useState<Record<number, boolean>>(
-    {}
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
+  const [collapsedByCategoryId, setCollapsedByCategoryId] = useState<
+    Record<number, boolean>
+  >({});
   const [editingNominationId, setEditingNominationId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -399,12 +438,19 @@ export function AdminCeremoniesNomineesScreen(props: {
         className="wizard-accordion"
         variant="contained"
       >
-        <Accordion.Item value="candidate-pool" className="wizard-accordion-item is-optional">
+        <Accordion.Item
+          value="candidate-pool"
+          className="wizard-accordion-item is-optional"
+        >
           <Accordion.Control>
             <Group justify="space-between" wrap="nowrap" w="100%">
               <Text fw={700}>Candidate pool (optional)</Text>
               {candidateLoaded ? (
-                <Text component="span" className="gicon wizard-inline-check" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="gicon wizard-inline-check"
+                  aria-hidden="true"
+                >
                   {giconCheck}
                 </Text>
               ) : null}
@@ -489,7 +535,11 @@ export function AdminCeremoniesNomineesScreen(props: {
                 <Group gap="xs" align="center" wrap="nowrap">
                   <Text fw={700}>Contributor</Text>
                   {hasTmdbCredits ? (
-                    <Text component="span" className="gicon wizard-inline-check" aria-hidden="true">
+                    <Text
+                      component="span"
+                      className="gicon wizard-inline-check"
+                      aria-hidden="true"
+                    >
                       {giconCheck}
                     </Text>
                   ) : null}
@@ -565,10 +615,19 @@ export function AdminCeremoniesNomineesScreen(props: {
           ) : null}
 
           <Group className="inline-actions" wrap="wrap">
-            <Button type="button" onClick={() => void createNomination()} disabled={manualLoading}>
+            <Button
+              type="button"
+              onClick={() => void createNomination()}
+              disabled={manualLoading}
+            >
               {manualLoading ? "Saving..." : "Add nomination"}
             </Button>
-            <Button type="button" variant="subtle" onClick={resetManual} disabled={manualLoading}>
+            <Button
+              type="button"
+              variant="subtle"
+              onClick={resetManual}
+              disabled={manualLoading}
+            >
               Reset
             </Button>
           </Group>
@@ -685,7 +744,10 @@ export function AdminCeremoniesNomineesScreen(props: {
             }
           }}
           onRemoveContributor={async (nominationId, nominationContributorId) => {
-            const ok = await removeNominationContributor(nominationId, nominationContributorId);
+            const ok = await removeNominationContributor(
+              nominationId,
+              nominationContributorId
+            );
             if (ok) {
               notify({
                 id: "admin.nominees.contributor.remove.success",
@@ -814,7 +876,12 @@ function NominationEditModal(props: {
       sort_order: number;
     }>;
   };
-  films: Array<{ id: number; title: string; tmdb_id?: number | null; release_year?: number | null }>;
+  films: Array<{
+    id: number;
+    title: string;
+    tmdb_id?: number | null;
+    release_year?: number | null;
+  }>;
   people: Array<{ id: number; full_name: string; tmdb_id: number | null }>;
   peopleQuery: string;
   onPeopleQueryChange: (q: string) => void;
@@ -826,7 +893,10 @@ function NominationEditModal(props: {
     nominationId: number,
     input: { person_id?: number; name?: string; tmdb_id?: number }
   ) => Promise<void>;
-  onRemoveContributor: (nominationId: number, nominationContributorId: number) => Promise<void>;
+  onRemoveContributor: (
+    nominationId: number,
+    nominationContributorId: number
+  ) => Promise<void>;
 }) {
   const {
     nomination,
@@ -852,17 +922,36 @@ function NominationEditModal(props: {
   const [pendingContributorInput, setPendingContributorInput] = useState("");
 
   const [filmCredits, setFilmCredits] = useState<null | {
-    cast?: Array<{ tmdb_id?: number; id?: number; name?: string; character?: string | null; job?: string | null; department?: string | null; profile_path?: string | null; credit_id?: string | null }>;
-    crew?: Array<{ tmdb_id?: number; id?: number; name?: string; job?: string | null; department?: string | null; profile_path?: string | null; credit_id?: string | null }>;
+    cast?: Array<{
+      tmdb_id?: number;
+      id?: number;
+      name?: string;
+      character?: string | null;
+      job?: string | null;
+      department?: string | null;
+      profile_path?: string | null;
+      credit_id?: string | null;
+    }>;
+    crew?: Array<{
+      tmdb_id?: number;
+      id?: number;
+      name?: string;
+      job?: string | null;
+      department?: string | null;
+      profile_path?: string | null;
+      credit_id?: string | null;
+    }>;
   }>(null);
 
   if (!nomination) return null;
 
   const filmId = nomination.display_film_id ?? null;
-  const film = filmId ? films.find((f) => f.id === filmId) ?? null : null;
+  const film = filmId ? (films.find((f) => f.id === filmId) ?? null) : null;
   const filmLinked = Boolean(film?.tmdb_id);
 
-  const contributorRows = (nomination.contributors ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const contributorRows = (nomination.contributors ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   const peopleOptions = people.slice(0, 50).map((p) => ({
     value: String(p.id),
@@ -891,7 +980,8 @@ function NominationEditModal(props: {
       const job =
         typeof (c as any)?.job === "string" && String((c as any).job).trim()
           ? String((c as any).job).trim()
-          : typeof (c as any)?.department === "string" && String((c as any).department).trim()
+          : typeof (c as any)?.department === "string" &&
+              String((c as any).department).trim()
             ? String((c as any).department).trim()
             : "";
       if (!job) continue;
@@ -938,7 +1028,8 @@ function NominationEditModal(props: {
   }, [filmCredits]);
 
   const creditOptions = useMemo(() => {
-    const opts: Array<{ tmdb_id: number; name: string; label: string; search: string }> = [];
+    const opts: Array<{ tmdb_id: number; name: string; label: string; search: string }> =
+      [];
     for (const [tmdbId, info] of creditByPersonId.entries()) {
       const jobs: string[] = [];
       for (const j of info.crewJobs) jobs.push(j);
@@ -975,9 +1066,7 @@ function NominationEditModal(props: {
     const fromPeople =
       creditOptions.length === 0
         ? people
-            .filter((p) =>
-              q ? p.full_name.toLowerCase().includes(q) : true
-            )
+            .filter((p) => (q ? p.full_name.toLowerCase().includes(q) : true))
             .slice(0, 50)
             .map((p) => ({
               kind: "person" as const,
@@ -988,9 +1077,7 @@ function NominationEditModal(props: {
             }))
         : [];
     const base = [...fromCredits, ...fromPeople];
-    const exact = q
-      ? base.some((o) => o.name.toLowerCase() === q)
-      : true;
+    const exact = q ? base.some((o) => o.name.toLowerCase() === q) : true;
     const create =
       q && !exact
         ? [
@@ -1012,9 +1099,12 @@ function NominationEditModal(props: {
       return;
     }
     void (async () => {
-      const res = await fetchJson<{ credits: unknown | null }>(`/admin/films/${filmId}/credits`, {
-        method: "GET"
-      });
+      const res = await fetchJson<{ credits: unknown | null }>(
+        `/admin/films/${filmId}/credits`,
+        {
+          method: "GET"
+        }
+      );
       if (!res.ok) {
         setFilmCredits(null);
         return;
@@ -1061,7 +1151,7 @@ function NominationEditModal(props: {
             ) : null}
           </Group>
           <Text className="muted" size="sm">
-            {film ? film.title : nomination.film_title ?? "—"}
+            {film ? film.title : (nomination.film_title ?? "—")}
           </Text>
           <Text className="muted" size="xs">
             Changes here affect every nomination that references this film.
@@ -1154,7 +1244,10 @@ function NominationEditModal(props: {
                       aria-label="Remove contributor"
                       onClick={() => {
                         if (!c.nomination_contributor_id) return;
-                        void onRemoveContributor(nomination.id, c.nomination_contributor_id);
+                        void onRemoveContributor(
+                          nomination.id,
+                          c.nomination_contributor_id
+                        );
                       }}
                     >
                       <Text component="span" className="gicon" aria-hidden="true">
@@ -1204,7 +1297,9 @@ function NominationEditModal(props: {
                       name: picked.name
                     });
                   } else if (picked.kind === "person") {
-                    await onAddContributor(nomination.id, { person_id: picked.person_id });
+                    await onAddContributor(nomination.id, {
+                      person_id: picked.person_id
+                    });
                   } else if (picked.kind === "create") {
                     await onAddContributor(nomination.id, { name: picked.name });
                   }
@@ -1217,7 +1312,9 @@ function NominationEditModal(props: {
               variant="subtle"
               onClick={() => {
                 if (pendingContributorInput.trim()) {
-                  void onAddContributor(nomination.id, { name: pendingContributorInput.trim() });
+                  void onAddContributor(nomination.id, {
+                    name: pendingContributorInput.trim()
+                  });
                   setPendingContributorInput("");
                 }
               }}

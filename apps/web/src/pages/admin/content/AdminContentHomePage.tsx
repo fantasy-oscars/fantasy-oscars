@@ -129,8 +129,16 @@ export function AdminContentHomePage() {
             description: "Legal page shown under Code of Conduct.",
             to: "/admin/content/static/code_of_conduct"
           },
-          { label: "Terms", description: "Legal page shown under Terms.", to: "/admin/content/static/legal_terms" },
-          { label: "Privacy", description: "Legal page shown under Privacy.", to: "/admin/content/static/legal_privacy" },
+          {
+            label: "Terms",
+            description: "Legal page shown under Terms.",
+            to: "/admin/content/static/legal_terms"
+          },
+          {
+            label: "Privacy",
+            description: "Legal page shown under Privacy.",
+            to: "/admin/content/static/legal_privacy"
+          },
           {
             label: "Disclaimer",
             description: "Legal page shown under Disclaimer.",

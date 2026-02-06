@@ -70,14 +70,14 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
       const trimmed = name.trim();
       if (!trimmed) return false;
       setSaving(true);
-      const res = await fetchJson<{ plan: { id: number; name: string }; nomination_ids: number[] }>(
-        `/draft-plans/ceremonies/${ceremonyId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: trimmed })
-        }
-      );
+      const res = await fetchJson<{
+        plan: { id: number; name: string };
+        nomination_ids: number[];
+      }>(`/draft-plans/ceremonies/${ceremonyId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed })
+      });
       setSaving(false);
       if (!res.ok || !res.data?.plan?.id) {
         setError(res.error ?? "Failed to create plan");
@@ -93,27 +93,24 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
     [ceremonyId, refreshPlans]
   );
 
-  const saveOrder = useCallback(
-    async (planId: number, nominationIds: number[]) => {
-      if (!planId) return false;
-      setSaving(true);
-      const res = await fetchJson(`/draft-plans/${planId}/items`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nomination_ids: nominationIds })
-      });
-      setSaving(false);
-      if (!res.ok) {
-        setError(res.error ?? "Failed to save order");
-        return false;
-      }
-      return true;
-    },
-    []
-  );
+  const saveOrder = useCallback(async (planId: number, nominationIds: number[]) => {
+    if (!planId) return false;
+    setSaving(true);
+    const res = await fetchJson(`/draft-plans/${planId}/items`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nomination_ids: nominationIds })
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setError(res.error ?? "Failed to save order");
+      return false;
+    }
+    return true;
+  }, []);
 
   const selectedPlan = useMemo(
-    () => (selectedPlanId ? plans.find((p) => p.id === selectedPlanId) ?? null : null),
+    () => (selectedPlanId ? (plans.find((p) => p.id === selectedPlanId) ?? null) : null),
     [plans, selectedPlanId]
   );
 

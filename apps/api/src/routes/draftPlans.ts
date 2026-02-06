@@ -116,7 +116,10 @@ export function createDraftPlansRouter(pool: Pool, authSecret: string): Router {
             [plan.id]
           );
           if (itemRows.length === 0) {
-            const nominationIds = await listDefaultNominationIdsForCeremony(tx, ceremonyId);
+            const nominationIds = await listDefaultNominationIdsForCeremony(
+              tx,
+              ceremonyId
+            );
             if (nominationIds.length > 0) {
               const values: string[] = [];
               const params: unknown[] = [plan.id];
@@ -196,7 +199,10 @@ export function createDraftPlansRouter(pool: Pool, authSecret: string): Router {
           // If a plan was created before nominees existed, it may be empty. In that case,
           // lazily seed it with the default ceremony ordering so it becomes immediately usable.
           if (rows.length === 0) {
-            const nominationIds = await listDefaultNominationIdsForCeremony(tx, plan.ceremony_id);
+            const nominationIds = await listDefaultNominationIdsForCeremony(
+              tx,
+              plan.ceremony_id
+            );
             if (nominationIds.length > 0) {
               const values: string[] = [];
               const params: unknown[] = [planId];

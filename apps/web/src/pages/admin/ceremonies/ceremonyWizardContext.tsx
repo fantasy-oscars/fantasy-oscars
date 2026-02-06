@@ -22,4 +22,3 @@ export function CeremonyWizardProvider(props: {
     </CeremonyWizardContext.Provider>
   );
 }
-

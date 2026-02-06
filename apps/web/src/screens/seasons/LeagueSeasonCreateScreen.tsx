@@ -77,12 +77,19 @@ export function LeagueSeasonCreateScreen(props: {
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
         <Stack gap="md" component="section">
-          <Group component="header" justify="space-between" align="flex-start" wrap="wrap">
+          <Group
+            component="header"
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+          >
             <Box>
               <Title order={2} className="baseline-textHeroTitle">
                 Create season
               </Title>
-              <Text className="baseline-textBody">Create a new season for {leagueName}.</Text>
+              <Text className="baseline-textBody">
+                Create a new season for {leagueName}.
+              </Text>
             </Box>
             <Button component={Link} to={`/leagues/${leagueId}`} variant="outline">
               Back to league
@@ -103,7 +110,9 @@ export function LeagueSeasonCreateScreen(props: {
                 }))}
               />
               {view.ceremonies.length === 0 && (
-                <Text className="baseline-textMeta">No published ceremonies available yet.</Text>
+                <Text className="baseline-textMeta">
+                  No published ceremonies available yet.
+                </Text>
               )}
 
               <Select
@@ -153,10 +162,20 @@ export function LeagueSeasonCreateScreen(props: {
               </Group>
 
               <Group wrap="wrap" justify="flex-start">
-                <Button type="button" onClick={actions.submit} disabled={!view.canSubmit} variant="filled">
+                <Button
+                  type="button"
+                  onClick={actions.submit}
+                  disabled={!view.canSubmit}
+                  variant="filled"
+                >
                   {view.working ? "Creating..." : "Create season"}
                 </Button>
-                <Button type="button" variant="outline" onClick={actions.reset} disabled={view.working}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={actions.reset}
+                  disabled={view.working}
+                >
                   Reset
                 </Button>
               </Group>

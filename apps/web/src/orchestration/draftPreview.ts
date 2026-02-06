@@ -40,10 +40,10 @@ export function useDraftPreviewOrchestration(args: {
         setCategories([]);
         setNominations([]);
       }
-      const res = await fetchJson<{ categories: DraftBoardCategory[]; nominations: DraftBoardNomination[] }>(
-        `/admin/ceremonies/${ceremonyId}/draft-board`,
-        { method: "GET" }
-      );
+      const res = await fetchJson<{
+        categories: DraftBoardCategory[];
+        nominations: DraftBoardNomination[];
+      }>(`/admin/ceremonies/${ceremonyId}/draft-board`, { method: "GET" });
       setLoading(false);
       if (!res.ok) {
         setError(res.error ?? "Failed to load draft board");
@@ -99,7 +99,11 @@ export function useDraftPreviewOrchestration(args: {
         hasSnapshot: Boolean(snapshot),
         showLedger: "hidden",
         showRoster: "hidden",
-        showAutodraft: rails.showAutodraft ? (autodraftCollapsed ? "collapsed" : "open") : "hidden"
+        showAutodraft: rails.showAutodraft
+          ? autodraftCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden"
       }),
     [autodraftCollapsed, rails.showAutodraft, snapshot]
   );
@@ -114,8 +118,7 @@ export function useDraftPreviewOrchestration(args: {
         poolMode === "UNDRAFTED_ONLY" ? active.filter((n) => !drafted.has(n.id)) : active;
       const icon = iconByCategoryId.get(c.id) ?? "";
       const iconVariant =
-        (c as { icon_variant?: "default" | "inverted" | null }).icon_variant ??
-        "default";
+        (c as { icon_variant?: "default" | "inverted" | null }).icon_variant ?? "default";
       const nominations = filtered.map((n) => ({
         id: n.id,
         label: n.label,
@@ -128,8 +131,7 @@ export function useDraftPreviewOrchestration(args: {
         performerCharacter:
           (n as { performer_character?: string | null }).performer_character ?? null,
         performerProfileUrl:
-          (n as { performer_profile_url?: string | null }).performer_profile_url ??
-          null,
+          (n as { performer_profile_url?: string | null }).performer_profile_url ?? null,
         performerProfilePath:
           (n as { performer_profile_path?: string | null }).performer_profile_path ??
           null,

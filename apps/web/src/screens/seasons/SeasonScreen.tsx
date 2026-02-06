@@ -79,7 +79,11 @@ export function SeasonScreen(props: {
       : 60;
 
     return { scoring, allocation, timerEnabled, pickTimerSeconds };
-  }, [s.scoringStrategy, s.allocationStrategy, s.leagueContext?.season?.pick_timer_seconds]);
+  }, [
+    s.scoringStrategy,
+    s.allocationStrategy,
+    s.leagueContext?.season?.pick_timer_seconds
+  ]);
 
   if (s.loading) return <PageLoader label="Loading season..." />;
   if (s.error) {
@@ -105,7 +109,12 @@ export function SeasonScreen(props: {
       <Box className="baseline-pageInner">
         <Stack component="section" gap="md">
           {/* Full-width header */}
-          <Group component="header" justify="space-between" align="flex-start" wrap="wrap">
+          <Group
+            component="header"
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+          >
             <Box>
               <Title order={2} className="baseline-textHeroTitle">
                 {ceremonyName}
@@ -124,91 +133,96 @@ export function SeasonScreen(props: {
               alignItems: "start"
             }}
           >
-        {/* Column 1: Rules */}
-        <Stack gap="sm">
-          <Title order={3}>Rules</Title>
-          <Divider />
-          <Stack gap={6}>
-            <Text>
-              <Text component="span" className="muted">
-                Scoring:
-              </Text>{" "}
-              {scoringLabel(s.scoringStrategy)}
-            </Text>
-            <Text>
-              <Text component="span" className="muted">
-                Allocation:
-              </Text>{" "}
-              {allocationLabel(s.allocationStrategy)}
-            </Text>
-            <Text>
-              <Text component="span" className="muted">
-                Draft timer:
-              </Text>{" "}
-              {s.leagueContext?.season?.pick_timer_seconds
-                ? `${s.leagueContext.season.pick_timer_seconds}s`
-                : "Off"}
-            </Text>
-            <Text>
-              <Text component="span" className="muted">
-                Ceremony time:
-              </Text>{" "}
-              {s.formatDate(s.ceremonyStartsAt)}
-            </Text>
-          </Stack>
-        </Stack>
-
-        {/* Column 2: Participants */}
-        <Stack gap="sm">
-          <Title order={3}>Participants</Title>
-          <Divider />
-          {s.members.length === 0 ? (
-            <Text className="muted">No participants.</Text>
-          ) : (
-            <Stack
-              component="ul"
-              gap="xs"
-              style={{ listStyle: "none", margin: 0, padding: 0 }}
-            >
-              {s.members.map((m) => (
-                <Group key={m.id} justify="space-between" align="center" wrap="nowrap">
-                  <Text>{m.username ?? `User ${m.user_id}`}</Text>
-                  {m.role === "OWNER" ? <CommissionerPill /> : null}
-                </Group>
-              ))}
+            {/* Column 1: Rules */}
+            <Stack gap="sm">
+              <Title order={3}>Rules</Title>
+              <Divider />
+              <Stack gap={6}>
+                <Text>
+                  <Text component="span" className="muted">
+                    Scoring:
+                  </Text>{" "}
+                  {scoringLabel(s.scoringStrategy)}
+                </Text>
+                <Text>
+                  <Text component="span" className="muted">
+                    Allocation:
+                  </Text>{" "}
+                  {allocationLabel(s.allocationStrategy)}
+                </Text>
+                <Text>
+                  <Text component="span" className="muted">
+                    Draft timer:
+                  </Text>{" "}
+                  {s.leagueContext?.season?.pick_timer_seconds
+                    ? `${s.leagueContext.season.pick_timer_seconds}s`
+                    : "Off"}
+                </Text>
+                <Text>
+                  <Text component="span" className="muted">
+                    Ceremony time:
+                  </Text>{" "}
+                  {s.formatDate(s.ceremonyStartsAt)}
+                </Text>
+              </Stack>
             </Stack>
-          )}
-        </Stack>
 
-        {/* Column 3: Draft room */}
-        <Stack gap="sm">
-          <Title order={3}>Draft room</Title>
-          <Divider />
-          <Group wrap="wrap">
-            {s.draftId ? (
-              <Button component={Link} to={`/drafts/${s.draftId}`} variant="filled">
-                {draftRoomCtaLabel}
-              </Button>
-            ) : (
-              <Button disabled variant="filled">
-                {draftRoomCtaLabel}
-              </Button>
-            )}
-            {ceremonyId ? (
-              <Button
-                component={Link}
-                to={`/ceremonies/${ceremonyId}/draft-plans`}
-                variant="subtle"
-              >
-                Draft plans
-              </Button>
-            ) : (
-              <Button disabled variant="subtle">
-                Draft plans
-              </Button>
-            )}
-          </Group>
-        </Stack>
+            {/* Column 2: Participants */}
+            <Stack gap="sm">
+              <Title order={3}>Participants</Title>
+              <Divider />
+              {s.members.length === 0 ? (
+                <Text className="muted">No participants.</Text>
+              ) : (
+                <Stack
+                  component="ul"
+                  gap="xs"
+                  style={{ listStyle: "none", margin: 0, padding: 0 }}
+                >
+                  {s.members.map((m) => (
+                    <Group
+                      key={m.id}
+                      justify="space-between"
+                      align="center"
+                      wrap="nowrap"
+                    >
+                      <Text>{m.username ?? `User ${m.user_id}`}</Text>
+                      {m.role === "OWNER" ? <CommissionerPill /> : null}
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+
+            {/* Column 3: Draft room */}
+            <Stack gap="sm">
+              <Title order={3}>Draft room</Title>
+              <Divider />
+              <Group wrap="wrap">
+                {s.draftId ? (
+                  <Button component={Link} to={`/drafts/${s.draftId}`} variant="filled">
+                    {draftRoomCtaLabel}
+                  </Button>
+                ) : (
+                  <Button disabled variant="filled">
+                    {draftRoomCtaLabel}
+                  </Button>
+                )}
+                {ceremonyId ? (
+                  <Button
+                    component={Link}
+                    to={`/ceremonies/${ceremonyId}/draft-plans`}
+                    variant="subtle"
+                  >
+                    Draft plans
+                  </Button>
+                ) : (
+                  <Button disabled variant="subtle">
+                    Draft plans
+                  </Button>
+                )}
+              </Group>
+            </Stack>
           </Box>
 
           {/* Season management aligned under the Draft room column */}
@@ -232,7 +246,9 @@ export function SeasonScreen(props: {
                     variant="outline"
                     onClick={() => setInvitesOpen(true)}
                     disabled={isLocked}
-                    title={isLocked ? "Invites are locked once drafting starts" : undefined}
+                    title={
+                      isLocked ? "Invites are locked once drafting starts" : undefined
+                    }
                   >
                     Manage invites
                   </Button>
@@ -249,7 +265,9 @@ export function SeasonScreen(props: {
                     }}
                     disabled={isLocked}
                     title={
-                      isLocked ? "Draft settings are locked once drafting starts" : undefined
+                      isLocked
+                        ? "Draft settings are locked once drafting starts"
+                        : undefined
                     }
                   >
                     Adjust draft settings
@@ -278,97 +296,97 @@ export function SeasonScreen(props: {
             title="Manage invites"
             centered
           >
-        <Stack gap="md">
-          <Group className="inline-form" wrap="wrap" align="flex-end">
-            <TextInput
-              label="Username to invite"
-              name="username"
-              value={s.userInviteQuery}
-              onChange={(e) => s.setUserInviteQuery(e.currentTarget.value)}
-              disabled={!s.canEdit || s.working || isLocked}
-            />
-            <Button
-              type="button"
-              onClick={() => void s.createUserInvite()}
-              disabled={!s.canEdit || s.working || isLocked}
-            >
-              Create invite
-            </Button>
-          </Group>
+            <Stack gap="md">
+              <Group className="inline-form" wrap="wrap" align="flex-end">
+                <TextInput
+                  label="Username to invite"
+                  name="username"
+                  value={s.userInviteQuery}
+                  onChange={(e) => s.setUserInviteQuery(e.currentTarget.value)}
+                  disabled={!s.canEdit || s.working || isLocked}
+                />
+                <Button
+                  type="button"
+                  onClick={() => void s.createUserInvite()}
+                  disabled={!s.canEdit || s.working || isLocked}
+                >
+                  Create invite
+                </Button>
+              </Group>
 
-          <Group className="inline-form" wrap="wrap" align="flex-end">
-            <TextInput
-              label="Placeholder invite label"
-              name="label"
-              value={s.placeholderLabel}
-              onChange={(e) => s.setPlaceholderLabel(e.currentTarget.value)}
-              disabled={!s.canEdit || s.working || isLocked}
-            />
-            <Button
-              type="button"
-              onClick={() => void s.createPlaceholderInvite()}
-              disabled={!s.canEdit || s.working || isLocked}
-            >
-              Generate link
-            </Button>
-          </Group>
+              <Group className="inline-form" wrap="wrap" align="flex-end">
+                <TextInput
+                  label="Placeholder invite label"
+                  name="label"
+                  value={s.placeholderLabel}
+                  onChange={(e) => s.setPlaceholderLabel(e.currentTarget.value)}
+                  disabled={!s.canEdit || s.working || isLocked}
+                />
+                <Button
+                  type="button"
+                  onClick={() => void s.createPlaceholderInvite()}
+                  disabled={!s.canEdit || s.working || isLocked}
+                >
+                  Generate link
+                </Button>
+              </Group>
 
-          {s.invites.length === 0 ? (
-            <Text className="muted">No invites created yet.</Text>
-          ) : (
-            <Stack className="list" gap="sm">
-              {s.invites.map((invite) => (
-                <Box key={invite.id} className="list-row">
-                  <Box>
-                    <Group className="pill-list" wrap="wrap">
-                      <Box component="span" className="pill">
-                        #{invite.id}
+              {s.invites.length === 0 ? (
+                <Text className="muted">No invites created yet.</Text>
+              ) : (
+                <Stack className="list" gap="sm">
+                  {s.invites.map((invite) => (
+                    <Box key={invite.id} className="list-row">
+                      <Box>
+                        <Group className="pill-list" wrap="wrap">
+                          <Box component="span" className="pill">
+                            #{invite.id}
+                          </Box>
+                          <Box component="span" className="pill">
+                            {invite.kind}
+                          </Box>
+                          <Box
+                            component="span"
+                            className={`pill ${invite.status === "REVOKED" ? "muted" : ""}`}
+                          >
+                            {invite.status}
+                          </Box>
+                        </Group>
+                        <Text className="muted">{invite.label ?? "No label"}</Text>
+                        <Text className="muted">{s.buildInviteLink(invite.id)}</Text>
                       </Box>
-                      <Box component="span" className="pill">
-                        {invite.kind}
-                      </Box>
-                      <Box
-                        component="span"
-                        className={`pill ${invite.status === "REVOKED" ? "muted" : ""}`}
-                      >
-                        {invite.status}
-                      </Box>
-                    </Group>
-                    <Text className="muted">{invite.label ?? "No label"}</Text>
-                    <Text className="muted">{s.buildInviteLink(invite.id)}</Text>
-                  </Box>
-                  <Group className="pill-actions" wrap="wrap">
-                    <Button
-                      type="button"
-                      onClick={() => s.copyLink(invite.id)}
-                      disabled={s.working}
-                    >
-                      Copy link
-                    </Button>
-                    {invite.status !== "REVOKED" ? (
-                      <Button
-                        type="button"
-                        variant="subtle"
-                        onClick={() => void s.revokeInvite(invite.id)}
-                        disabled={s.working}
-                      >
-                        Revoke
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      onClick={() => void s.regenerateInvite(invite.id)}
-                      disabled={s.working}
-                    >
-                      Regenerate
-                    </Button>
-                  </Group>
-                </Box>
-              ))}
+                      <Group className="pill-actions" wrap="wrap">
+                        <Button
+                          type="button"
+                          onClick={() => s.copyLink(invite.id)}
+                          disabled={s.working}
+                        >
+                          Copy link
+                        </Button>
+                        {invite.status !== "REVOKED" ? (
+                          <Button
+                            type="button"
+                            variant="subtle"
+                            onClick={() => void s.revokeInvite(invite.id)}
+                            disabled={s.working}
+                          >
+                            Revoke
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="subtle"
+                          onClick={() => void s.regenerateInvite(invite.id)}
+                          disabled={s.working}
+                        >
+                          Regenerate
+                        </Button>
+                      </Group>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </Stack>
-          )}
-        </Stack>
           </Modal>
 
           <Modal
@@ -383,16 +401,18 @@ export function SeasonScreen(props: {
             <Stack gap="md">
               <Select
                 label="Scoring"
-                value={(settingsDraft?.scoringStrategy ?? draftDefaults.scoring) as string}
+                value={
+                  (settingsDraft?.scoringStrategy ?? draftDefaults.scoring) as string
+                }
                 onChange={(v) => {
                   const next = (v ?? "fixed") as "fixed" | "negative";
                   setSettingsDraft((p) => ({
                     scoringStrategy: next,
-                    allocationStrategy: (p?.allocationStrategy ?? draftDefaults.allocation) as
-                      | "UNDRAFTED"
-                      | "FULL_POOL",
+                    allocationStrategy: (p?.allocationStrategy ??
+                      draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
                     timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
-                    pickTimerSeconds: p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                    pickTimerSeconds:
+                      p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
                   }));
                 }}
                 disabled={!s.canEdit || s.working || isLocked}
@@ -404,7 +424,10 @@ export function SeasonScreen(props: {
 
               <Select
                 label="Allocation"
-                value={(settingsDraft?.allocationStrategy ?? draftDefaults.allocation) as string}
+                value={
+                  (settingsDraft?.allocationStrategy ??
+                    draftDefaults.allocation) as string
+                }
                 onChange={(v) => {
                   const next = (v ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL";
                   setSettingsDraft((p) => ({
@@ -413,7 +436,8 @@ export function SeasonScreen(props: {
                       | "negative",
                     allocationStrategy: next,
                     timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
-                    pickTimerSeconds: p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                    pickTimerSeconds:
+                      p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
                   }));
                 }}
                 disabled={!s.canEdit || s.working || isLocked}
@@ -433,27 +457,28 @@ export function SeasonScreen(props: {
                       scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
                         | "fixed"
                         | "negative",
-                      allocationStrategy: (p?.allocationStrategy ?? draftDefaults.allocation) as
-                        | "UNDRAFTED"
-                        | "FULL_POOL",
+                      allocationStrategy: (p?.allocationStrategy ??
+                        draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
                       timerEnabled: next,
-                      pickTimerSeconds: p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                      pickTimerSeconds:
+                        p?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
                     }));
                   }}
                   disabled={!s.canEdit || s.working || isLocked}
                 />
                 <NumberInput
                   label="Seconds per pick"
-                  value={settingsDraft?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds}
+                  value={
+                    settingsDraft?.pickTimerSeconds ?? draftDefaults.pickTimerSeconds
+                  }
                   onChange={(v) => {
                     const next = Number(v) || 0;
                     setSettingsDraft((p) => ({
                       scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
                         | "fixed"
                         | "negative",
-                      allocationStrategy: (p?.allocationStrategy ?? draftDefaults.allocation) as
-                        | "UNDRAFTED"
-                        | "FULL_POOL",
+                      allocationStrategy: (p?.allocationStrategy ??
+                        draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
                       timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
                       pickTimerSeconds: next
                     }));
@@ -490,13 +515,16 @@ export function SeasonScreen(props: {
                       pickTimerSeconds: draftDefaults.pickTimerSeconds
                     };
 
-                    const nextTimerSeconds = draft.timerEnabled ? draft.pickTimerSeconds : null;
+                    const nextTimerSeconds = draft.timerEnabled
+                      ? draft.pickTimerSeconds
+                      : null;
 
                     const dirty =
                       draft.scoringStrategy !== draftDefaults.scoring ||
                       draft.allocationStrategy !== draftDefaults.allocation ||
-                      (draftDefaults.timerEnabled ? draftDefaults.pickTimerSeconds : null) !==
-                        nextTimerSeconds;
+                      (draftDefaults.timerEnabled
+                        ? draftDefaults.pickTimerSeconds
+                        : null) !== nextTimerSeconds;
 
                     if (!dirty) {
                       setSettingsOpen(false);
@@ -529,27 +557,27 @@ export function SeasonScreen(props: {
             title="Delete season?"
             centered
           >
-        <Stack gap="md">
-          <Text>
-            Delete this season? This cancels the season and blocks drafting. This cannot
-            be undone.
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              onClick={() => {
-                setDeleteOpen(false);
-                void onDeleteSeason();
-              }}
-              disabled={s.working}
-            >
-              Delete season
-            </Button>
-          </Group>
-        </Stack>
+            <Stack gap="md">
+              <Text>
+                Delete this season? This cancels the season and blocks drafting. This
+                cannot be undone.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  color="red"
+                  onClick={() => {
+                    setDeleteOpen(false);
+                    void onDeleteSeason();
+                  }}
+                  disabled={s.working}
+                >
+                  Delete season
+                </Button>
+              </Group>
+            </Stack>
           </Modal>
         </Stack>
       </Box>

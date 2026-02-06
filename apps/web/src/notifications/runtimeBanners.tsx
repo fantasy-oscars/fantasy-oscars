@@ -71,7 +71,9 @@ export function RuntimeBannerProvider(props: { children: React.ReactNode }) {
 
   const api = useMemo(() => ({ banners, dismiss }), [banners, dismiss]);
 
-  return <RuntimeBannerContext.Provider value={api}>{children}</RuntimeBannerContext.Provider>;
+  return (
+    <RuntimeBannerContext.Provider value={api}>{children}</RuntimeBannerContext.Provider>
+  );
 }
 
 export function RuntimeBannerStack() {
@@ -111,4 +113,3 @@ export function RuntimeBannerStack() {
     </Box>
   );
 }
-

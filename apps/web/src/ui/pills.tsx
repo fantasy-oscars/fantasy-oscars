@@ -11,4 +11,3 @@ export function StatusPill(props: { children: React.ReactNode }) {
 export function CommissionerPill() {
   return <StatusPill>Commissioner</StatusPill>;
 }
-

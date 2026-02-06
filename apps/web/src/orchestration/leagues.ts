@@ -131,34 +131,37 @@ export function useLeagueDetailOrchestration(input: {
     void refresh();
   }, [refresh]);
 
-  const transferOwnershipTo = useCallback(async (targetUserId: number) => {
-    if (view.state !== "ready") return { ok: false as const };
-    if (!Number.isFinite(targetUserId)) return { ok: false as const };
-    setWorking(true);
-    setRosterStatus(null);
-    const res = await fetchJson(`/leagues/${view.league.id}/transfer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: targetUserId })
-    });
-    setWorking(false);
-    if (res.ok) {
-      notify({
-        id: "league.commissioner.transfer.success",
-        severity: "success",
-        trigger_type: "user_action",
-        scope: "local",
-        durability: "ephemeral",
-        requires_decision: false,
-        message: "Commissioner role transferred"
-      });
+  const transferOwnershipTo = useCallback(
+    async (targetUserId: number) => {
+      if (view.state !== "ready") return { ok: false as const };
+      if (!Number.isFinite(targetUserId)) return { ok: false as const };
+      setWorking(true);
       setRosterStatus(null);
-      await refresh();
-      return { ok: true as const };
-    }
-    setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
-    return { ok: false as const };
-  }, [refresh, view]);
+      const res = await fetchJson(`/leagues/${view.league.id}/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: targetUserId })
+      });
+      setWorking(false);
+      if (res.ok) {
+        notify({
+          id: "league.commissioner.transfer.success",
+          severity: "success",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message: "Commissioner role transferred"
+        });
+        setRosterStatus(null);
+        await refresh();
+        return { ok: true as const };
+      }
+      setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
+      return { ok: false as const };
+    },
+    [refresh, view]
+  );
 
   const deleteLeague = useCallback(async () => {
     if (view.state !== "ready") return { ok: false as const };

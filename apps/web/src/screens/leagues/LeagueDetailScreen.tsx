@@ -48,7 +48,10 @@ function ceremonyLabelForSeason(season: {
   return `Ceremony ${season.ceremony_id}`;
 }
 
-function draftStatusLabelForSeason(season: { draft_status?: string | null; draft_id?: number | null }) {
+function draftStatusLabelForSeason(season: {
+  draft_status?: string | null;
+  draft_id?: number | null;
+}) {
   const ds = (season.draft_status ?? "").toUpperCase();
   if (ds) return ds.replaceAll("_", " ");
   return season.draft_id ? "Draft not started" : "Not started";
@@ -78,7 +81,7 @@ export function LeagueDetailScreen(props: {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
 
-  const rosterList = view.state === "ready" ? view.roster ?? [] : [];
+  const rosterList = view.state === "ready" ? (view.roster ?? []) : [];
   const transferOptions = useMemo(() => {
     const me = Number(user?.sub);
     return rosterList
@@ -130,164 +133,212 @@ export function LeagueDetailScreen(props: {
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
         <Stack component="section" gap="md">
-          <Group component="header" justify="space-between" align="flex-start" wrap="wrap">
+          <Group
+            component="header"
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+          >
             <Title order={2} className="baseline-textHeroTitle">
               {league.name ?? `League #${leagueId}`}
             </Title>
           </Group>
 
-      <Box
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
-          gap: 18,
-          alignItems: "start"
-        }}
-      >
-        {/* LEFT: Seasons */}
-        <Stack gap="sm">
-          <Group justify="space-between" align="flex-end" wrap="wrap">
-            <Title order={3}>Seasons</Title>
-            <Button
-              component={Link}
-              to={`/leagues/${leagueId}/seasons/new`}
-              disabled={!view.isCommissioner}
-              title={view.isCommissioner ? undefined : "Commissioner permission required"}
-            >
-              Create season
-            </Button>
-          </Group>
-
-          {view.seasons.length === 0 ? (
-            <Text className="baseline-textBody">No seasons yet.</Text>
-          ) : (
-            <Stack component="ul" gap="sm" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {view.seasons.map((s) => {
-                const ceremonyLabel = ceremonyLabelForSeason(s);
-                const statusLabel = (() => {
-                  const seasonStatus = String(s.status ?? "").toUpperCase();
-                  if (s.is_active_ceremony === false || seasonStatus === "ARCHIVED") return "Archived";
-                  if (seasonStatus === "COMPLETE") return "Complete";
-                  if (seasonStatus === "IN_PROGRESS") return "In progress";
-                  const ds = String(s.draft_status ?? "").toUpperCase();
-                  if (ds === "COMPLETED") return "Draft complete";
-                  if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED") return "Drafting";
-                  return "Pre-draft";
-                })();
-
-                return (
-                  <StandardCard
-                    key={s.id}
-                    component={Link}
-                    to={`/seasons/${s.id}`}
-                    interactive
-                  >
-                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
-                      <Box style={{ minWidth: 0 }}>
-                        <Text className="baseline-textCardTitle">{ceremonyLabel}</Text>
-                      </Box>
-                      <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
-                    </Group>
-                  </StandardCard>
-                );
-              })}
-            </Stack>
-          )}
-        </Stack>
-
-        {/* RIGHT: Members + controls */}
-        <Stack gap="md">
-          <Stack gap="sm">
-            <Title order={4}>Members</Title>
-            <Divider />
-
-            {rosterList.length === 0 ? (
-              <Text className="baseline-textBody">No members yet.</Text>
-            ) : (
-              <Stack component="ul" gap={0} style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {rosterList.map((m, idx) => (
-                  <Box key={m.id} component="li">
-                    <Group justify="space-between" align="center" wrap="wrap" py="sm">
-                      <Text className="baseline-textBody">{m.username}</Text>
-                      {m.role === "OWNER" ? <CommissionerPill /> : null}
-                    </Group>
-                    {idx === rosterList.length - 1 ? null : <Divider />}
-                  </Box>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-
-          {view.isOwner ? (
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
+              gap: 18,
+              alignItems: "start"
+            }}
+          >
+            {/* LEFT: Seasons */}
             <Stack gap="sm">
-              <Title order={4}>Management</Title>
-              <Divider />
-
-              <Group wrap="wrap">
-                <Button type="button" variant="subtle" onClick={() => setTransferOpen(true)}>
-                  Transfer ownership
-                </Button>
-                <Button type="button" color="red" variant="subtle" onClick={() => setDeleteOpen(true)}>
-                  Delete league
+              <Group justify="space-between" align="flex-end" wrap="wrap">
+                <Title order={3}>Seasons</Title>
+                <Button
+                  component={Link}
+                  to={`/leagues/${leagueId}/seasons/new`}
+                  disabled={!view.isCommissioner}
+                  title={
+                    view.isCommissioner ? undefined : "Commissioner permission required"
+                  }
+                >
+                  Create season
                 </Button>
               </Group>
-              <FormStatus loading={working} result={rosterStatus} />
+
+              {view.seasons.length === 0 ? (
+                <Text className="baseline-textBody">No seasons yet.</Text>
+              ) : (
+                <Stack
+                  component="ul"
+                  gap="sm"
+                  style={{ listStyle: "none", margin: 0, padding: 0 }}
+                >
+                  {view.seasons.map((s) => {
+                    const ceremonyLabel = ceremonyLabelForSeason(s);
+                    const statusLabel = (() => {
+                      const seasonStatus = String(s.status ?? "").toUpperCase();
+                      if (s.is_active_ceremony === false || seasonStatus === "ARCHIVED")
+                        return "Archived";
+                      if (seasonStatus === "COMPLETE") return "Complete";
+                      if (seasonStatus === "IN_PROGRESS") return "In progress";
+                      const ds = String(s.draft_status ?? "").toUpperCase();
+                      if (ds === "COMPLETED") return "Draft complete";
+                      if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED")
+                        return "Drafting";
+                      return "Pre-draft";
+                    })();
+
+                    return (
+                      <StandardCard
+                        key={s.id}
+                        component={Link}
+                        to={`/seasons/${s.id}`}
+                        interactive
+                      >
+                        <Group
+                          justify="space-between"
+                          align="flex-start"
+                          wrap="nowrap"
+                          gap="md"
+                        >
+                          <Box style={{ minWidth: 0 }}>
+                            <Text className="baseline-textCardTitle">
+                              {ceremonyLabel}
+                            </Text>
+                          </Box>
+                          <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
+                        </Group>
+                      </StandardCard>
+                    );
+                  })}
+                </Stack>
+              )}
             </Stack>
-          ) : null}
-        </Stack>
-      </Box>
 
-      <Modal opened={transferOpen} onClose={() => setTransferOpen(false)} title="Transfer ownership" centered>
-        <Stack gap="sm">
-          <Text className="baseline-textBody">
-            Transfer league ownership to another member. The new commissioner will manage seasons and winners.
-          </Text>
-          <Select
-            label="Member"
-            placeholder="Select member"
-            value={transferTarget}
-            onChange={setTransferTarget}
-            data={transferOptions}
-          />
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={() => setTransferOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const id = transferTarget ? Number(transferTarget) : NaN;
-                if (!Number.isFinite(id)) return;
-                void onTransferOwnershipTo(id);
-                setTransferOpen(false);
-                setTransferTarget(null);
-              }}
-              disabled={!transferTarget || working}
-            >
-              Transfer ownership
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+            {/* RIGHT: Members + controls */}
+            <Stack gap="md">
+              <Stack gap="sm">
+                <Title order={4}>Members</Title>
+                <Divider />
 
-      <Modal opened={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete league?" centered>
-        <Stack gap="sm">
-          <Text className="baseline-textBody">Delete this league and all of its seasons. This cannot be undone.</Text>
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              onClick={() => {
-                void Promise.resolve(onDeleteLeague()).then(() => setDeleteOpen(false));
-              }}
-              disabled={working}
-            >
-              Delete
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+                {rosterList.length === 0 ? (
+                  <Text className="baseline-textBody">No members yet.</Text>
+                ) : (
+                  <Stack
+                    component="ul"
+                    gap={0}
+                    style={{ listStyle: "none", margin: 0, padding: 0 }}
+                  >
+                    {rosterList.map((m, idx) => (
+                      <Box key={m.id} component="li">
+                        <Group justify="space-between" align="center" wrap="wrap" py="sm">
+                          <Text className="baseline-textBody">{m.username}</Text>
+                          {m.role === "OWNER" ? <CommissionerPill /> : null}
+                        </Group>
+                        {idx === rosterList.length - 1 ? null : <Divider />}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+
+              {view.isOwner ? (
+                <Stack gap="sm">
+                  <Title order={4}>Management</Title>
+                  <Divider />
+
+                  <Group wrap="wrap">
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      onClick={() => setTransferOpen(true)}
+                    >
+                      Transfer ownership
+                    </Button>
+                    <Button
+                      type="button"
+                      color="red"
+                      variant="subtle"
+                      onClick={() => setDeleteOpen(true)}
+                    >
+                      Delete league
+                    </Button>
+                  </Group>
+                  <FormStatus loading={working} result={rosterStatus} />
+                </Stack>
+              ) : null}
+            </Stack>
+          </Box>
+
+          <Modal
+            opened={transferOpen}
+            onClose={() => setTransferOpen(false)}
+            title="Transfer ownership"
+            centered
+          >
+            <Stack gap="sm">
+              <Text className="baseline-textBody">
+                Transfer league ownership to another member. The new commissioner will
+                manage seasons and winners.
+              </Text>
+              <Select
+                label="Member"
+                placeholder="Select member"
+                value={transferTarget}
+                onChange={setTransferTarget}
+                data={transferOptions}
+              />
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setTransferOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    const id = transferTarget ? Number(transferTarget) : NaN;
+                    if (!Number.isFinite(id)) return;
+                    void onTransferOwnershipTo(id);
+                    setTransferOpen(false);
+                    setTransferTarget(null);
+                  }}
+                  disabled={!transferTarget || working}
+                >
+                  Transfer ownership
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            title="Delete league?"
+            centered
+          >
+            <Stack gap="sm">
+              <Text className="baseline-textBody">
+                Delete this league and all of its seasons. This cannot be undone.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  color="red"
+                  onClick={() => {
+                    void Promise.resolve(onDeleteLeague()).then(() =>
+                      setDeleteOpen(false)
+                    );
+                  }}
+                  disabled={working}
+                >
+                  Delete
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
         </Stack>
       </Box>
     </Box>

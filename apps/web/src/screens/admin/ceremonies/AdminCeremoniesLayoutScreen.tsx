@@ -24,7 +24,9 @@ export function AdminCeremoniesLayoutScreen(props: {
         <Box>
           <Title
             order={2}
-            style={{ fontFamily: '"Cinzel", ui-serif, Georgia, "Times New Roman", serif' }}
+            style={{
+              fontFamily: '"Cinzel", ui-serif, Georgia, "Times New Roman", serif'
+            }}
           >
             Ceremonies
           </Title>

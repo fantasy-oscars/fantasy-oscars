@@ -30,7 +30,10 @@ import {
   parseReleaseYear
 } from "../lib/tmdb.js";
 import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
-import { emitCeremonyFinalized, emitCeremonyWinnersUpdated } from "../realtime/ceremonyEvents.js";
+import {
+  emitCeremonyFinalized,
+  emitCeremonyWinnersUpdated
+} from "../realtime/ceremonyEvents.js";
 import type { Pool } from "pg";
 import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
 import type { Router } from "express";
@@ -1305,11 +1308,9 @@ export function createAdminRouter(client: DbClient): Router {
                     const { rows: existingRows } = await query<{
                       profile_url: string | null;
                       profile_path: string | null;
-                    }>(
-                      tx,
-                      `SELECT profile_url, profile_path FROM person WHERE id = $1`,
-                      [personId]
-                    );
+                    }>(tx, `SELECT profile_url, profile_path FROM person WHERE id = $1`, [
+                      personId
+                    ]);
                     const existing = existingRows[0];
                     if (!existing?.profile_url && !existing?.profile_path) {
                       const profileUrl = await buildTmdbImageUrl(
@@ -1339,11 +1340,9 @@ export function createAdminRouter(client: DbClient): Router {
                   const { rows: existingRows } = await query<{
                     profile_url: string | null;
                     profile_path: string | null;
-                  }>(
-                    tx,
-                    `SELECT profile_url, profile_path FROM person WHERE id = $1`,
-                    [personId]
-                  );
+                  }>(tx, `SELECT profile_url, profile_path FROM person WHERE id = $1`, [
+                    personId
+                  ]);
                   const existing = existingRows[0];
                   if (!existing?.profile_url && !existing?.profile_path) {
                     const details = await fetchTmdbPersonDetails(Number(tmdbId));
@@ -1425,7 +1424,9 @@ export function createAdminRouter(client: DbClient): Router {
         const idsRaw = req.body?.nomination_ids;
         const nominationIds = Array.isArray(idsRaw)
           ? idsRaw
-              .map((v) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN))
+              .map((v) =>
+                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
+              )
               .filter((n) => Number.isInteger(n) && n > 0)
           : [];
 
@@ -1507,7 +1508,10 @@ export function createAdminRouter(client: DbClient): Router {
             action: "reorder_nominations",
             target_type: "ceremony",
             target_id: ceremonyId,
-            meta: { category_edition_id: categoryEditionId, nomination_ids: nominationIds }
+            meta: {
+              category_edition_id: categoryEditionId,
+              nomination_ids: nominationIds
+            }
           });
         }
 
@@ -2829,15 +2833,19 @@ export function createAdminRouter(client: DbClient): Router {
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
-          const { rows: ceremonyRows } = await query<{ status: string; code: string | null; name: string | null }>(
-            tx,
-            `SELECT status, code, name FROM ceremony WHERE id = $1`,
-            [ceremonyId]
-          );
+          const { rows: ceremonyRows } = await query<{
+            status: string;
+            code: string | null;
+            name: string | null;
+          }>(tx, `SELECT status, code, name FROM ceremony WHERE id = $1`, [ceremonyId]);
           const ceremony = ceremonyRows[0];
           if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
           if (ceremony.status === "ARCHIVED") {
-            throw new AppError("CEREMONY_ARCHIVED", 409, "Archived ceremonies are read-only");
+            throw new AppError(
+              "CEREMONY_ARCHIVED",
+              409,
+              "Archived ceremonies are read-only"
+            );
           }
           if (ceremony.status === "DRAFT") {
             throw new AppError(
@@ -2882,7 +2890,12 @@ export function createAdminRouter(client: DbClient): Router {
             }
             throw err;
           }
-          return { id: ceremonyId, status: "COMPLETE", code: ceremony.code, name: ceremony.name };
+          return {
+            id: ceremonyId,
+            status: "COMPLETE",
+            code: ceremony.code,
+            name: ceremony.name
+          };
         });
 
         if (req.auth?.sub) {
@@ -3291,9 +3304,14 @@ export function createAdminRouter(client: DbClient): Router {
                 : NaN;
 
         if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
-            fields: ["tmdb_id"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "tmdb_id must be a positive integer",
+            {
+              fields: ["tmdb_id"]
+            }
+          );
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -3334,7 +3352,12 @@ export function createAdminRouter(client: DbClient): Router {
           const movie = await fetchTmdbMovieDetailsWithCredits(Number(tmdbId));
           const releaseYear = parseReleaseYear(movie.release_date ?? null);
           const posterPath = movie.poster_path ?? null;
-          const posterUrl = buildTmdbImageUrlFromConfig(cfg, "poster", posterPath, "w500");
+          const posterUrl = buildTmdbImageUrlFromConfig(
+            cfg,
+            "poster",
+            posterPath,
+            "w500"
+          );
           const credits = movie.credits
             ? {
                 cast: Array.isArray(movie.credits.cast)
@@ -3445,9 +3468,14 @@ export function createAdminRouter(client: DbClient): Router {
                 : NaN;
 
         if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
-            fields: ["tmdb_id"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "tmdb_id must be a positive integer",
+            {
+              fields: ["tmdb_id"]
+            }
+          );
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -3545,18 +3573,20 @@ export function createAdminRouter(client: DbClient): Router {
               : null;
 
         if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
-            fields: ["tmdb_id"]
-          });
-        }
-
-        if (!personId && !name) {
           throw new AppError(
             "VALIDATION_FAILED",
             400,
-            "person_id or name is required",
-            { fields: ["person_id", "name"] }
+            "tmdb_id must be a positive integer",
+            {
+              fields: ["tmdb_id"]
+            }
           );
+        }
+
+        if (!personId && !name) {
+          throw new AppError("VALIDATION_FAILED", 400, "person_id or name is required", {
+            fields: ["person_id", "name"]
+          });
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -3594,7 +3624,8 @@ export function createAdminRouter(client: DbClient): Router {
               `SELECT id::int FROM person WHERE id = $1`,
               [Number(personId)]
             );
-            if (!personRows[0]?.id) throw new AppError("NOT_FOUND", 404, "Person not found");
+            if (!personRows[0]?.id)
+              throw new AppError("NOT_FOUND", 404, "Person not found");
             resolvedPersonId = personRows[0].id;
           } else if (tmdbId && Number.isFinite(tmdbId)) {
             if (!name) {

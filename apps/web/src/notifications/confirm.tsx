@@ -89,4 +89,3 @@ export function ConfirmProvider(props: { children: React.ReactNode }) {
     </ConfirmContext.Provider>
   );
 }
-

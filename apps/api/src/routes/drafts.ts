@@ -41,9 +41,7 @@ import {
   getLeagueMember,
   getDraftSeatForUser
 } from "../data/repositories/leagueRepository.js";
-import {
-  getSeasonById
-} from "../data/repositories/seasonRepository.js";
+import { getSeasonById } from "../data/repositories/seasonRepository.js";
 import { getCeremonyDraftLockedAt } from "../data/repositories/ceremonyRepository.js";
 import {
   getSeasonMember,
@@ -489,7 +487,10 @@ async function autoPickImmediateChain(options: {
       force: true
     });
     // If nothing changed, stop.
-    if (next.current_pick_number === draft.current_pick_number && next.status === draft.status) {
+    if (
+      next.current_pick_number === draft.current_pick_number &&
+      next.status === draft.status
+    ) {
       return draft;
     }
     draft = next;
@@ -555,7 +556,8 @@ export function buildCreateDraftHandler(client: DbClient) {
         pick_timer_seconds === undefined || pick_timer_seconds === null
           ? null
           : Number(pick_timer_seconds);
-      const autoPickStrategy = pickTimerSecondsNum && pickTimerSecondsNum > 0 ? "RANDOM_SEED" : null;
+      const autoPickStrategy =
+        pickTimerSecondsNum && pickTimerSecondsNum > 0 ? "RANDOM_SEED" : null;
 
       const league = await getLeagueById(client, leagueIdNum);
       if (!league) {
@@ -623,7 +625,9 @@ export function buildCreateDraftHandler(client: DbClient) {
           completed_at: null,
           remainder_strategy: season.remainder_strategy ?? "UNDRAFTED",
           pick_timer_seconds:
-            pickTimerSecondsNum && pickTimerSecondsNum > 0 ? Math.floor(pickTimerSecondsNum) : null,
+            pickTimerSecondsNum && pickTimerSecondsNum > 0
+              ? Math.floor(pickTimerSecondsNum)
+              : null,
           auto_pick_strategy: autoPickStrategy
         });
 
@@ -1273,15 +1277,19 @@ export function buildSnapshotDraftHandler(pool: Pool) {
           ? (seats.find((s) => Number(s.user_id) === viewerUserId)?.seat_number ?? null)
           : null;
       const viewerLeagueMember =
-        viewerUserId && league ? await getLeagueMember(pool, league.id, viewerUserId) : null;
+        viewerUserId && league
+          ? await getLeagueMember(pool, league.id, viewerUserId)
+          : null;
       const viewerSeasonMember =
-        viewerUserId && season ? await getSeasonMember(pool, season.id, viewerUserId) : null;
+        viewerUserId && season
+          ? await getSeasonMember(pool, season.id, viewerUserId)
+          : null;
       const canManageDraft = Boolean(
         viewerUserId &&
-          league &&
-          (league.created_by_user_id === viewerUserId ||
-            ["OWNER", "CO_OWNER"].includes(String(viewerLeagueMember?.role ?? "")) ||
-            ["OWNER", "CO_OWNER"].includes(String(viewerSeasonMember?.role ?? "")))
+        league &&
+        (league.created_by_user_id === viewerUserId ||
+          ["OWNER", "CO_OWNER"].includes(String(viewerLeagueMember?.role ?? "")) ||
+          ["OWNER", "CO_OWNER"].includes(String(viewerSeasonMember?.role ?? "")))
       );
 
       return res.status(200).json({
@@ -1310,10 +1318,11 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         turn,
         ceremony_id: season?.ceremony_id ?? null,
         ceremony_starts_at: season?.ceremony_starts_at ?? null,
-        ceremony_status: (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
+        ceremony_status:
+          (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
         scoring_strategy_name:
-          (season as { scoring_strategy_name?: string | null } | null)?.scoring_strategy_name ??
-          null,
+          (season as { scoring_strategy_name?: string | null } | null)
+            ?.scoring_strategy_name ?? null,
         my_seat_number: mySeatNumber,
         can_manage_draft: canManageDraft,
         categories,
@@ -1940,9 +1949,10 @@ export function createDraftsRouter(client: DbClient, authSecret: string): Router
       const membership = await getSeasonMember(client, season.id, userId);
       if (!membership) throw new AppError("FORBIDDEN", 403, "Not a season member");
 
-      const cfg =
-        (await getDraftAutodraftConfig(client, { draft_id: draftId, user_id: userId })) ??
-        { enabled: false, strategy: "RANDOM" as const, plan_id: null };
+      const cfg = (await getDraftAutodraftConfig(client, {
+        draft_id: draftId,
+        user_id: userId
+      })) ?? { enabled: false, strategy: "RANDOM" as const, plan_id: null };
 
       return res.status(200).json({ autodraft: cfg });
     } catch (err) {

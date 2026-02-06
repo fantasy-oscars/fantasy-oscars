@@ -11,7 +11,9 @@ export function ActionCard(props: ActionCardProps) {
   return (
     <Box
       {...rest}
-      className={["baseline-card", "baseline-actionCard", className].filter(Boolean).join(" ")}
+      className={["baseline-card", "baseline-actionCard", className]
+        .filter(Boolean)
+        .join(" ")}
     />
   );
 }

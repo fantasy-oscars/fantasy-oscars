@@ -90,7 +90,12 @@ export function AdminCeremoniesIndexScreen(props: {
 
             return (
               <StandardCard key={c.id}>
-                <Group justify="space-between" align="center" wrap="nowrap" style={{ gap: 10 }}>
+                <Group
+                  justify="space-between"
+                  align="center"
+                  wrap="nowrap"
+                  style={{ gap: 10 }}
+                >
                   <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
                     <Box style={{ minWidth: 0 }}>
                       <Text

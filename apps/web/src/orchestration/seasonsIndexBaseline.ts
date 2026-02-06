@@ -98,4 +98,3 @@ export function useSeasonsIndexBaselineOrchestration() {
 
   return useMemo(() => ({ view, refresh }), [view, refresh]);
 }
-

@@ -19,15 +19,15 @@ export function LeagueSeasonCreatePage() {
     <LeagueSeasonCreateScreen
       leagueId={leagueId}
       view={orchestrator.view}
-        actions={{
-          setCeremonyId: orchestrator.actions.setCeremonyId,
-          setScoringStrategy: orchestrator.actions.setScoringStrategy,
-          setRemainderStrategy: orchestrator.actions.setRemainderStrategy,
-          setTimerEnabled: orchestrator.actions.setTimerEnabled,
-          setPickTimerSeconds: orchestrator.actions.setPickTimerSeconds,
-          reset: orchestrator.actions.reset,
-          submit: () => void submitAndRedirect()
-        }}
-      />
-    );
-  }
+      actions={{
+        setCeremonyId: orchestrator.actions.setCeremonyId,
+        setScoringStrategy: orchestrator.actions.setScoringStrategy,
+        setRemainderStrategy: orchestrator.actions.setRemainderStrategy,
+        setTimerEnabled: orchestrator.actions.setTimerEnabled,
+        setPickTimerSeconds: orchestrator.actions.setPickTimerSeconds,
+        reset: orchestrator.actions.reset,
+        submit: () => void submitAndRedirect()
+      }}
+    />
+  );
+}

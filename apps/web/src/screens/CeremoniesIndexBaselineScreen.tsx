@@ -34,7 +34,9 @@ export function CeremoniesIndexBaselineScreen(props: {
             </StandardCard>
           ) : state === "error" ? (
             <StandardCard>
-              <Text className="baseline-textBody">{error ?? "Failed to load ceremonies."}</Text>
+              <Text className="baseline-textBody">
+                {error ?? "Failed to load ceremonies."}
+              </Text>
             </StandardCard>
           ) : (
             <Stack gap="lg">
@@ -94,4 +96,3 @@ export function CeremoniesIndexBaselineScreen(props: {
     </Box>
   );
 }
-

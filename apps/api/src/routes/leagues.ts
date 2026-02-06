@@ -601,7 +601,9 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
             completed_at: null,
             remainder_strategy: remainderStrategy as "UNDRAFTED" | "FULL_POOL",
             pick_timer_seconds:
-              pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null,
+              pickTimerSeconds && pickTimerSeconds > 0
+                ? Math.floor(pickTimerSeconds)
+                : null,
             auto_pick_strategy:
               pickTimerSeconds && pickTimerSeconds > 0 ? "RANDOM_SEED" : null
           });

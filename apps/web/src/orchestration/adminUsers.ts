@@ -55,39 +55,47 @@ export function useAdminUsersSearchOrchestration() {
     };
   }, [query, search]);
 
-  const setAdminForUser = useCallback(
-    async (userId: number, nextIsAdmin: boolean) => {
-      if (!Number.isFinite(userId) || userId <= 0) return;
-      setUpdatingById((m) => ({ ...m, [userId]: true }));
-      setStatus(null);
-      const res = await fetchJson<{
-        user: { id: number; username: string; email: string; is_admin: boolean };
-      }>(`/admin/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_admin: nextIsAdmin })
-      });
-      setUpdatingById((m) => ({ ...m, [userId]: false }));
-      if (!res.ok) {
-        setStatus({ ok: false, message: res.error ?? "Failed to update role" });
-        return;
-      }
-      const u = res.data?.user;
-      if (u) {
-        setResults((prev) => prev.map((row) => (row.id === userId ? { ...row, ...u } : row)));
-      }
-      notify({
-        id: "admin.users.role.updated",
-        severity: "success",
-        trigger_type: "user_action",
-        scope: "local",
-        durability: "ephemeral",
-        requires_decision: false,
-        message: nextIsAdmin ? "User promoted to admin" : "User demoted"
-      });
-    },
-    []
-  );
+  const setAdminForUser = useCallback(async (userId: number, nextIsAdmin: boolean) => {
+    if (!Number.isFinite(userId) || userId <= 0) return;
+    setUpdatingById((m) => ({ ...m, [userId]: true }));
+    setStatus(null);
+    const res = await fetchJson<{
+      user: { id: number; username: string; email: string; is_admin: boolean };
+    }>(`/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_admin: nextIsAdmin })
+    });
+    setUpdatingById((m) => ({ ...m, [userId]: false }));
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Failed to update role" });
+      return;
+    }
+    const u = res.data?.user;
+    if (u) {
+      setResults((prev) =>
+        prev.map((row) => (row.id === userId ? { ...row, ...u } : row))
+      );
+    }
+    notify({
+      id: "admin.users.role.updated",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: nextIsAdmin ? "User promoted to admin" : "User demoted"
+    });
+  }, []);
 
-  return { query, setQuery, searching, status, results, search, setAdminForUser, updatingById };
+  return {
+    query,
+    setQuery,
+    searching,
+    status,
+    results,
+    search,
+    setAdminForUser,
+    updatingById
+  };
 }

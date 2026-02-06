@@ -38,7 +38,9 @@ function materialGlyph(code: string | null | undefined) {
 
 const CHECK_ICON = String.fromCharCode(0xe5ca);
 
-export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrchestration }) {
+export function AdminCeremoniesWinnersScreen(props: {
+  o: AdminCeremonyWinnersOrchestration;
+}) {
   const { o } = props;
 
   const {
@@ -74,13 +76,19 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
     });
   }, [groupedNominations]);
 
-  if (loading && loadState?.message === "Loading") return <PageLoader label="Loading..." />;
+  if (loading && loadState?.message === "Loading")
+    return <PageLoader label="Loading..." />;
   if (loadState?.ok === false) return <PageError message={loadState.message} />;
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
       <StandardCard className="card nested" component="section">
-        <Group className="header-with-controls" justify="space-between" align="start" wrap="wrap">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
           <Box>
             <Title order={3}>Results</Title>
             <Text className="muted">Select one or more winners per category.</Text>
@@ -112,7 +120,9 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
                 <Button
                   type="button"
                   onClick={requestSaveAll}
-                  disabled={!isDirty || savingCategory !== null || ceremonyStatus === "COMPLETE"}
+                  disabled={
+                    !isDirty || savingCategory !== null || ceremonyStatus === "COMPLETE"
+                  }
                 >
                   Save
                 </Button>
@@ -137,7 +147,12 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
                 <Accordion.Item key={categoryId} value={String(categoryId)}>
                   <Accordion.Control>
                     <Group justify="space-between" align="center" wrap="nowrap" w="100%">
-                      <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                      <Group
+                        gap="sm"
+                        align="center"
+                        wrap="nowrap"
+                        style={{ minWidth: 0 }}
+                      >
                         <Text
                           component="span"
                           className={["mi-icon", isInverted ? "mi-icon-inverted" : ""]
@@ -147,7 +162,11 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
                         >
                           {materialGlyph(iconCode || "trophy")}
                         </Text>
-                        <Text className="nomination-group-title" component="h3" lineClamp={1}>
+                        <Text
+                          className="nomination-group-title"
+                          component="h3"
+                          lineClamp={1}
+                        >
                           {label}{" "}
                           <Text component="span" className="nomination-group-count">
                             ({nominations.length})
@@ -175,17 +194,30 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
                         {nominations.map((nom: WinnersNomination) => (
                           <Group
                             key={nom.id}
-                            className={["nomination-row", "nomination-row-compact"].join(" ")}
+                            className={["nomination-row", "nomination-row-compact"].join(
+                              " "
+                            )}
                             justify="space-between"
                             align="center"
                             wrap="nowrap"
                           >
-                            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                            <Group
+                              gap="sm"
+                              align="center"
+                              wrap="nowrap"
+                              style={{ minWidth: 0 }}
+                            >
                               <Checkbox
                                 aria-label={`Select winner: ${nominationLabel(nom)}`}
-                                checked={(selectedWinner[categoryId] ?? []).includes(nom.id)}
+                                checked={(selectedWinner[categoryId] ?? []).includes(
+                                  nom.id
+                                )}
                                 onChange={(e) =>
-                                  toggleNomination(categoryId, nom.id, e.currentTarget.checked)
+                                  toggleNomination(
+                                    categoryId,
+                                    nom.id,
+                                    e.currentTarget.checked
+                                  )
                                 }
                               />
                               <Text fw={700} lineClamp={1} style={{ minWidth: 0 }}>
@@ -229,7 +261,12 @@ export function AdminCeremoniesWinnersScreen(props: { o: AdminCeremonyWinnersOrc
 
       {pendingSaveAll ? (
         <Box className="modal-backdrop" role="presentation">
-          <StandardCard className="modal" role="dialog" aria-modal="true" aria-label="Confirm save">
+          <StandardCard
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm save"
+          >
             <Title order={4}>Confirm</Title>
             <Text className="muted">{pendingSaveAll.message}</Text>
             <Group className="inline-actions" wrap="wrap">

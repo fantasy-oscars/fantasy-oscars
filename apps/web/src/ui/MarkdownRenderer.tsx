@@ -57,12 +57,7 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
         const content = renderInline(node.children, key);
         if (isExternalUrl(node.url)) {
           return (
-            <Anchor
-              key={key}
-              href={node.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Anchor key={key} href={node.url} target="_blank" rel="noopener noreferrer">
               {content}
             </Anchor>
           );
@@ -113,12 +108,7 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
       }
       case "paragraph": {
         out.push(
-          <Text
-            key={key}
-            component="p"
-            style={{ margin: 0 }}
-            mb="sm"
-          >
+          <Text key={key} component="p" style={{ margin: 0 }} mb="sm">
             {renderInline(node.children as PhrasingContent[], key)}
           </Text>
         );

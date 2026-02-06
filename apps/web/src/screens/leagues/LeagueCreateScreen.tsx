@@ -27,7 +27,12 @@ export function LeagueCreateScreen(props: {
             <Box
               component="form"
               // Keep the existing layout composition (single column, sensible width).
-              style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, maxWidth: 520 }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: 16,
+                maxWidth: 520
+              }}
               onSubmit={onCreate}
             >
               <FormField label="Name" name="name" />

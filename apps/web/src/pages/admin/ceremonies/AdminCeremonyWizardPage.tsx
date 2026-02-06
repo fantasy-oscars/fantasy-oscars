@@ -85,7 +85,8 @@ function computeStepState(args: {
   }
 
   if (step === "categories") {
-    if (!hasIdentity) return { state: "GATED", reason: "Requires ceremony name and code." };
+    if (!hasIdentity)
+      return { state: "GATED", reason: "Requires ceremony name and code." };
     if (ceremony.status !== "DRAFT") return { state: "COMPLETE_LOCKED" };
     return {
       state: hasCategories ? "COMPLETE_EDITABLE" : "INCOMPLETE_EDITABLE",
@@ -94,7 +95,8 @@ function computeStepState(args: {
   }
 
   if (step === "populate") {
-    if (!hasIdentity) return { state: "GATED", reason: "Requires ceremony name and code." };
+    if (!hasIdentity)
+      return { state: "GATED", reason: "Requires ceremony name and code." };
     if (!hasCategories)
       return { state: "GATED", reason: "Requires at least one category." };
     if (ceremony.status === "ARCHIVED") return { state: "COMPLETE_LOCKED" };
@@ -105,7 +107,8 @@ function computeStepState(args: {
   }
 
   if (step === "publish") {
-    if (!hasIdentity) return { state: "GATED", reason: "Requires ceremony name and code." };
+    if (!hasIdentity)
+      return { state: "GATED", reason: "Requires ceremony name and code." };
     if (!hasCategories)
       return { state: "GATED", reason: "Requires at least one category." };
     if (!nomineesComplete)
@@ -121,7 +124,10 @@ function computeStepState(args: {
     if (ceremony.status === "COMPLETE") return { state: "COMPLETE_LOCKED" };
     return {
       state: stats.winners_total > 0 ? "COMPLETE_EDITABLE" : "INCOMPLETE_EDITABLE",
-      reason: stats.winners_total > 0 ? undefined : "Add at least one winner to complete results."
+      reason:
+        stats.winners_total > 0
+          ? undefined
+          : "Add at least one winner to complete results."
     };
   }
 
@@ -129,7 +135,10 @@ function computeStepState(args: {
   if (ceremony.status === "DRAFT")
     return { state: "GATED", reason: "Publish the ceremony before archiving." };
   if (ceremony.status === "ARCHIVED") return { state: "COMPLETE_LOCKED" };
-  return { state: "INCOMPLETE_EDITABLE", reason: "Archive the ceremony to complete this step." };
+  return {
+    state: "INCOMPLETE_EDITABLE",
+    reason: "Archive the ceremony to complete this step."
+  };
 }
 
 const CHECK_ICON = String.fromCharCode(0xe5ca);
@@ -186,7 +195,11 @@ export function AdminCeremonyWizardPage() {
 
   const stepStates = STEP_ORDER.map((s) => ({
     ...s,
-    ...computeStepState({ step: s.id, ceremony: { ...ceremony, status: ceremonyStatus }, stats })
+    ...computeStepState({
+      step: s.id,
+      ceremony: { ...ceremony, status: ceremonyStatus },
+      stats
+    })
   }));
 
   const furthestCompleteIndex = stepStates.reduce((maxIdx, s, idx) => {
@@ -210,7 +223,7 @@ export function AdminCeremonyWizardPage() {
     currentIndex >= STEP_ORDER.length - 1
       ? null
       : current.state === "INCOMPLETE_EDITABLE" || current.state === "GATED"
-        ? current.reason ?? "Complete this step to continue."
+        ? (current.reason ?? "Complete this step to continue.")
         : null;
 
   const content = (() => {
@@ -228,91 +241,112 @@ export function AdminCeremonyWizardPage() {
   return (
     <CeremonyWizardProvider value={{ reloadWorksheet: worksheet.reload }}>
       <Group align="start" wrap="nowrap" className="wizard-shell">
-      <Box className="wizard-stepper">
-        <Stepper
-          active={active}
-          onStepClick={setActive}
-          orientation="vertical"
-          allowNextStepsSelect
-          wrap={false}
-          color="gray"
-          size="xs"
-          iconSize={22}
-          contentPadding={0}
-          styles={{
-            step: { padding: "6px 0" },
-            stepLabel: { fontSize: 12, lineHeight: 1.1 },
-            stepBody: { paddingLeft: 8 }
-          }}
-        >
-          {stepStates.map((s, idx) => (
-            <Stepper.Step
-              key={s.id}
-              label={s.label}
-              className={[
-                "wizard-step",
-                idx === active ? "is-active" : "",
-                s.state === "COMPLETE_EDITABLE" ? "is-complete" : "",
-                s.state === "COMPLETE_LOCKED" ? "is-locked" : "",
-                s.state === "GATED" ? "is-gated" : "",
-                s.state === "INCOMPLETE_EDITABLE" ? "is-incomplete" : "",
-                idx <= furthestCompleteIndex ? "is-progress" : "is-future",
-                idx <= furthestCompleteIndex ? "connector-gold" : "connector-gray"
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              icon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
-                  {stepIconFor(s.state)}
-                </Text>
-              }
-              progressIcon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
-                  {stepIconFor(s.state)}
-                </Text>
-              }
-              completedIcon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
-                  {stepIconFor(s.state)}
-                </Text>
-              }
-            />
-          ))}
-        </Stepper>
-      </Box>
+        <Box className="wizard-stepper">
+          <Stepper
+            active={active}
+            onStepClick={setActive}
+            orientation="vertical"
+            allowNextStepsSelect
+            wrap={false}
+            color="gray"
+            size="xs"
+            iconSize={22}
+            contentPadding={0}
+            styles={{
+              step: { padding: "6px 0" },
+              stepLabel: { fontSize: 12, lineHeight: 1.1 },
+              stepBody: { paddingLeft: 8 }
+            }}
+          >
+            {stepStates.map((s, idx) => (
+              <Stepper.Step
+                key={s.id}
+                label={s.label}
+                className={[
+                  "wizard-step",
+                  idx === active ? "is-active" : "",
+                  s.state === "COMPLETE_EDITABLE" ? "is-complete" : "",
+                  s.state === "COMPLETE_LOCKED" ? "is-locked" : "",
+                  s.state === "GATED" ? "is-gated" : "",
+                  s.state === "INCOMPLETE_EDITABLE" ? "is-incomplete" : "",
+                  idx <= furthestCompleteIndex ? "is-progress" : "is-future",
+                  idx <= furthestCompleteIndex ? "connector-gold" : "connector-gray"
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                icon={
+                  <Text
+                    component="span"
+                    className="gicon wizard-step-icon"
+                    aria-hidden="true"
+                  >
+                    {stepIconFor(s.state)}
+                  </Text>
+                }
+                progressIcon={
+                  <Text
+                    component="span"
+                    className="gicon wizard-step-icon"
+                    aria-hidden="true"
+                  >
+                    {stepIconFor(s.state)}
+                  </Text>
+                }
+                completedIcon={
+                  <Text
+                    component="span"
+                    className="gicon wizard-step-icon"
+                    aria-hidden="true"
+                  >
+                    {stepIconFor(s.state)}
+                  </Text>
+                }
+              />
+            ))}
+          </Stepper>
+        </Box>
 
-      <Box className="wizard-content">
-        <Stack gap="md">
-          {current.id === "populate" ? (
-            <Box component="header">
-              <Title order={2}>Populate nominees</Title>
-            </Box>
-          ) : null}
-          {content}
-
-          <Box className="wizard-nav" component="section">
-            <Group justify="space-between" align="center" wrap="wrap">
-              <Box>
-                <Button type="button" variant="subtle" disabled={!canGoBack} onClick={() => setActive(prevIndex)}>
-                  Back
-                </Button>
+        <Box className="wizard-content">
+          <Stack gap="md">
+            {current.id === "populate" ? (
+              <Box component="header">
+                <Title order={2}>Populate nominees</Title>
               </Box>
-              <Box>
-                <Group gap="xs" align="center" wrap="wrap">
-                  {nextDisabledReason && !canGoNext ? (
-                    <Text className="muted" size="sm">
-                      {nextDisabledReason}
-                    </Text>
-                  ) : null}
-                  <Button type="button" disabled={!canGoNext} onClick={() => setActive(nextIndex)}>
-                    Next
+            ) : null}
+            {content}
+
+            <Box className="wizard-nav" component="section">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Box>
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    disabled={!canGoBack}
+                    onClick={() => setActive(prevIndex)}
+                  >
+                    Back
                   </Button>
-                </Group>
-              </Box>
-            </Group>
-          </Box>
-        </Stack>
-      </Box>
+                </Box>
+                <Box>
+                  <Group gap="xs" align="center" wrap="wrap">
+                    {nextDisabledReason && !canGoNext ? (
+                      <Text className="muted" size="sm">
+                        {nextDisabledReason}
+                      </Text>
+                    ) : null}
+                    <Button
+                      type="button"
+                      disabled={!canGoNext}
+                      onClick={() => setActive(nextIndex)}
+                    >
+                      Next
+                    </Button>
+                  </Group>
+                </Box>
+              </Group>
+            </Box>
+          </Stack>
+        </Box>
       </Group>
     </CeremonyWizardProvider>
   );

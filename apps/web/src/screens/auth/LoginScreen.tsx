@@ -20,7 +20,9 @@ export function LoginScreen(props: {
             <Title order={2} className="baseline-textHeroTitle">
               Sign in
             </Title>
-            <Text className="baseline-textBody">Sign in with your username and password.</Text>
+            <Text className="baseline-textBody">
+              Sign in with your username and password.
+            </Text>
           </Box>
           <Box component="form" onSubmit={onSubmit} mt="md">
             <Stack gap="sm">
@@ -45,7 +47,9 @@ export function LoginScreen(props: {
             <Title order={3} className="baseline-textCardTitle">
               New here?
             </Title>
-            <Text className="baseline-textBody">Create an account to join or run drafts.</Text>
+            <Text className="baseline-textBody">
+              Create an account to join or run drafts.
+            </Text>
           </Box>
           <Button component={Link} to="/register" variant="outline">
             Go to registration

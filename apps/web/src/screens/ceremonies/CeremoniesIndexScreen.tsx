@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { CeremonyIndexRow } from "../../orchestration/ceremonies";
 
-function CeremonyCard(props: { ceremony: CeremonyIndexRow; tone: "active" | "archived" }) {
+function CeremonyCard(props: {
+  ceremony: CeremonyIndexRow;
+  tone: "active" | "archived";
+}) {
   const c = props.ceremony;
   const label = c.name?.trim() || c.code?.trim() || `Ceremony #${c.id}`;
   return (
@@ -13,7 +16,9 @@ function CeremonyCard(props: { ceremony: CeremonyIndexRow; tone: "active" | "arc
       padding="md"
       component={Link}
       to={`/ceremonies/${c.id}`}
-      className={props.tone === "archived" ? "ceremony-card is-archived" : "ceremony-card"}
+      className={
+        props.tone === "archived" ? "ceremony-card is-archived" : "ceremony-card"
+      }
     >
       <Group justify="space-between" wrap="nowrap" gap="md">
         <Text fw={700} lineClamp={1}>
@@ -31,7 +36,8 @@ export function CeremoniesIndexScreen(props: {
   archived: CeremonyIndexRow[];
 }) {
   if (props.state === "loading") return <PageLoader label="Loading ceremonies..." />;
-  if (props.state === "error") return <PageError message={props.error ?? "Failed to load"} />;
+  if (props.state === "error")
+    return <PageError message={props.error ?? "Failed to load"} />;
 
   return (
     <Card className="card" component="section">

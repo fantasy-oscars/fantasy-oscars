@@ -75,7 +75,11 @@ export function AdminStaticContentEditorScreen(props: {
             {loadError} (You can still edit and save.)
           </Box>
         ) : null}
-        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
+        <TextInput
+          label="Title"
+          value={title}
+          onChange={(e) => setTitle(e.currentTarget.value)}
+        />
         <Textarea
           label="Body (Markdown)"
           value={body}

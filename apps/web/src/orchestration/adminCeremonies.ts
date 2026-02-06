@@ -503,7 +503,9 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     message: string;
   } | null>(null);
   const [pendingSaveAll, setPendingSaveAll] = useState<{ message: string } | null>(null);
-  const [pendingFinalize, setPendingFinalize] = useState<{ message: string } | null>(null);
+  const [pendingFinalize, setPendingFinalize] = useState<{ message: string } | null>(
+    null
+  );
   const [finalizeStatus, setFinalizeStatus] = useState<ApiResult | null>(null);
 
   const load = useCallback(async () => {
@@ -515,13 +517,15 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     setLoading(true);
     setLoadState({ ok: true, message: "Loading" });
     const [categoriesRes, nomsRes, winnersRes, lockRes] = await Promise.all([
-      fetchJson<{ categories: Array<{
-        id: number;
-        unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-        family_name?: string | null;
-        family_icon_code?: string | null;
-        family_icon_variant?: "default" | "inverted" | null;
-      }> }>(`/admin/ceremonies/${ceremonyId}/categories`, { method: "GET" }),
+      fetchJson<{
+        categories: Array<{
+          id: number;
+          unit_kind: "FILM" | "SONG" | "PERFORMANCE";
+          family_name?: string | null;
+          family_icon_code?: string | null;
+          family_icon_variant?: "default" | "inverted" | null;
+        }>;
+      }>(`/admin/ceremonies/${ceremonyId}/categories`, { method: "GET" }),
       fetchJson<{ nominations: WinnersNominationRow[] }>(
         `/admin/ceremonies/${ceremonyId}/nominations`,
         { method: "GET" }
@@ -729,14 +733,20 @@ export function useAdminCeremonyWinnersOrchestration(args: {
         message: "Winners saved"
       });
     }
-  }, [categories, ceremonyId, nominations, saveWinners, selectedWinner, winnerByCategory]);
+  }, [
+    categories,
+    ceremonyId,
+    nominations,
+    saveWinners,
+    selectedWinner,
+    winnerByCategory
+  ]);
 
   const requestSaveAll = useCallback(() => {
     if (!isDirty) return;
     if (!draftLock.draft_locked && !hasAnyWinners) {
       setPendingSaveAll({
-        message:
-          "Saving the first winner will lock this ceremony for users. Proceed?"
+        message: "Saving the first winner will lock this ceremony for users. Proceed?"
       });
       return;
     }
@@ -764,7 +774,10 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       { method: "POST" }
     );
     if (!res.ok) {
-      setFinalizeStatus({ ok: false, message: res.error ?? "Failed to finalize winners" });
+      setFinalizeStatus({
+        ok: false,
+        message: res.error ?? "Failed to finalize winners"
+      });
       notify({
         id: "admin.ceremony.winners.finalize.error",
         severity: "error",

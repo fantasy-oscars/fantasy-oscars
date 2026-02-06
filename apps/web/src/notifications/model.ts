@@ -28,4 +28,3 @@ export type NotificationEvent = {
   // Optional app-specific metadata for future routing/analytics.
   context?: Record<string, unknown>;
 };
-

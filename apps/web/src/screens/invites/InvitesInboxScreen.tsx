@@ -6,7 +6,11 @@ import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 
 function inviteContext(invite: InboxInvite) {
-  const left = invite.league_name ? invite.league_name : invite.league_id ? `League ${invite.league_id}` : "League";
+  const left = invite.league_name
+    ? invite.league_name
+    : invite.league_id
+      ? `League ${invite.league_id}`
+      : "League";
   const right = invite.season_id ? `Season ${invite.season_id}` : "Season";
   return `${left} · ${right}`;
 }
@@ -43,17 +47,33 @@ export function InvitesInboxScreen(props: {
                 {view.invites.map((invite, idx) => (
                   <Box key={invite.id}>
                     {idx !== 0 ? <Divider /> : null}
-                    <Group justify="space-between" align="flex-start" wrap="nowrap" py="sm">
+                    <Group
+                      justify="space-between"
+                      align="flex-start"
+                      wrap="nowrap"
+                      py="sm"
+                    >
                       <Stack gap={4} style={{ minWidth: 0 }}>
-                        <Text className="baseline-textCardTitle" style={{ lineHeight: 1.2 }}>
+                        <Text
+                          className="baseline-textCardTitle"
+                          style={{ lineHeight: 1.2 }}
+                        >
                           {inviteContext(invite)}
                         </Text>
                       </Stack>
                       <Group gap="sm" wrap="nowrap">
-                        <Button type="button" variant="filled" onClick={() => void onAccept(invite)}>
+                        <Button
+                          type="button"
+                          variant="filled"
+                          onClick={() => void onAccept(invite)}
+                        >
                           Accept
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => void onDecline(invite)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void onDecline(invite)}
+                        >
                           Decline
                         </Button>
                       </Group>

@@ -40,9 +40,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     ? true
     : Boolean(
         props.o.myRoster.seatNumber !== null &&
-          props.o.header.participants.some(
-            (p) => p.active && p.seatNumber === props.o.myRoster.seatNumber
-          )
+        props.o.header.participants.some(
+          (p) => p.active && p.seatNumber === props.o.myRoster.seatNumber
+        )
       );
   const isMyTurnStyling = isPreview ? true : Boolean(isMyTurn && !isPaused && !isPre);
   const previewUser = isPreview
@@ -86,9 +86,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   // to work *before* a nomination is selected.
   const canDraftAction = Boolean(
     !isPaused &&
-      !isPre &&
-      !isCompleted &&
-      (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
+    !isPre &&
+    !isCompleted &&
+    (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
 
   const draftedNominationIds = useMemo(() => {
@@ -126,21 +126,24 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   }));
 
   const nomineeById = useMemo(() => {
-    const m = new Map<number, {
-      unitKind: string;
-      categoryName: string;
-      filmTitle: string | null;
-      filmYear: number | null;
-      filmPosterUrl: string | null;
-      contributors: string[];
-      performerName: string | null;
-      performerCharacter: string | null;
-      performerProfileUrl: string | null;
-      performerProfilePath: string | null;
-      songTitle: string | null;
-      categoryIcon: string;
-      categoryIconVariant: "default" | "inverted";
-    }>();
+    const m = new Map<
+      number,
+      {
+        unitKind: string;
+        categoryName: string;
+        filmTitle: string | null;
+        filmYear: number | null;
+        filmPosterUrl: string | null;
+        contributors: string[];
+        performerName: string | null;
+        performerCharacter: string | null;
+        performerProfileUrl: string | null;
+        performerProfilePath: string | null;
+        songTitle: string | null;
+        categoryIcon: string;
+        categoryIconVariant: "default" | "inverted";
+      }
+    >();
 
     for (const c of categories) {
       for (const n of c.nominees) {
@@ -207,7 +210,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         onToggleShowDrafted={(next) =>
           props.o.header.setPoolMode(next ? "ALL_MUTED" : "UNDRAFTED_ONLY")
         }
-        showDraftedVisible={!isCompleted && (isPre ? true : props.o.header.view === "draft")}
+        showDraftedVisible={
+          !isCompleted && (isPre ? true : props.o.header.view === "draft")
+        }
         themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
         onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
         showDraftControls={!isCompleted}
@@ -355,7 +360,11 @@ function DraftBoardHeader(props: {
                   else props.onPauseDraft();
                 }}
               >
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   {isPre || isPaused ? "play_arrow" : "pause"}
                 </Text>
               </UnstyledButton>
@@ -363,37 +372,39 @@ function DraftBoardHeader(props: {
           )}
           {props.showDraftControls ? (
             <Box className="drh-controls">
-            <Box className="drh-controlsGrid">
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                <Text className="drh-label">View</Text>
-                <SegmentedControl
-                  size="xs"
-                  value={props.view}
-                  onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-                  data={[
-                    { value: "draft", label: "Draft" },
-                    { value: "roster", label: "Roster" }
-                  ]}
-                  disabled={!props.canToggleView}
-                />
-              </Group>
+              <Box className="drh-controlsGrid">
+                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                  <Text className="drh-label">View</Text>
+                  <SegmentedControl
+                    size="xs"
+                    value={props.view}
+                    onChange={(v) => props.onViewChange(v as "draft" | "roster")}
+                    data={[
+                      { value: "draft", label: "Draft" },
+                      { value: "roster", label: "Roster" }
+                    ]}
+                    disabled={!props.canToggleView}
+                  />
+                </Group>
 
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                <Text className="drh-label">Show drafted</Text>
-                <Box className="drh-toggleSlot">
-                  {props.showDraftedVisible ? (
-                    <Switch
-                      size="sm"
-                      checked={props.showDrafted}
-                      onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                    />
-                  ) : (
-                    <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                  )}
-                </Box>
-              </Group>
+                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                  <Text className="drh-label">Show drafted</Text>
+                  <Box className="drh-toggleSlot">
+                    {props.showDraftedVisible ? (
+                      <Switch
+                        size="sm"
+                        checked={props.showDrafted}
+                        onChange={(e) =>
+                          props.onToggleShowDrafted(e.currentTarget.checked)
+                        }
+                      />
+                    ) : (
+                      <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                    )}
+                  </Box>
+                </Group>
+              </Box>
             </Box>
-          </Box>
           ) : null}
 
           <Group className="drh-stowaways" gap="xs" wrap="nowrap">
@@ -422,9 +433,10 @@ function DraftBoardHeader(props: {
           measureText={
             props.isTimerDraft
               ? null
-              : props.participants.reduce((longest, p) =>
-                  p.label.length > longest.length ? p.label : longest,
-                "")
+              : props.participants.reduce(
+                  (longest, p) => (p.label.length > longest.length ? p.label : longest),
+                  ""
+                )
           }
           isTimerDraft={props.isTimerDraft}
           maxHandleLengthPx={buckleMaxPx}
@@ -454,7 +466,10 @@ function ParticipantStrip(props: {
     : Math.min(Math.max(0, props.activeIndex), Math.max(0, n - 1));
 
   const [capacity, setCapacity] = useState(() => Math.max(1, Math.min(n, 8)));
-  const windowRef = useRef<{ start: number; end: number }>({ start: 0, end: Math.min(n, capacity) });
+  const windowRef = useRef<{ start: number; end: number }>({
+    start: 0,
+    end: Math.min(n, capacity)
+  });
 
   useEffect(() => {
     const el = ref.current;
@@ -481,7 +496,10 @@ function ParticipantStrip(props: {
       const nextCap = n <= minTokens ? n : Math.max(1, Math.min(fit, n));
 
       const debugEnabled =
-        typeof window !== "undefined" && Boolean((window as unknown as { __FO_DEBUG_STRIP__?: boolean }).__FO_DEBUG_STRIP__);
+        typeof window !== "undefined" &&
+        Boolean(
+          (window as unknown as { __FO_DEBUG_STRIP__?: boolean }).__FO_DEBUG_STRIP__
+        );
       if (debugEnabled) {
         const payload = JSON.stringify({
           n,
@@ -547,7 +565,8 @@ function ParticipantStrip(props: {
   // reasonably show. If there are fewer than `minTokens` total, show them all.
   if (windowSize < Math.min(minTokens, n) && n > 0) {
     const debugEnabled =
-      typeof window !== "undefined" && Boolean((window as unknown as { __FO_DEBUG_STRIP__?: boolean }).__FO_DEBUG_STRIP__);
+      typeof window !== "undefined" &&
+      Boolean((window as unknown as { __FO_DEBUG_STRIP__?: boolean }).__FO_DEBUG_STRIP__);
     if (debugEnabled) {
       // eslint-disable-next-line no-console
       console.log("[ParticipantStrip] super-collapsed", {
@@ -609,11 +628,7 @@ function ParticipantStrip(props: {
         return (
           <Tooltip key={p.seatNumber} label={p.label} withArrow>
             <Box className="drh-tokenWrap">
-              <AvatarToken
-                label={p.label}
-                avatarKey={p.avatarKey}
-                active={isActive}
-              />
+              <AvatarToken label={p.label} avatarKey={p.avatarKey} active={isActive} />
               {isActive && <DirectionChevron direction={props.direction} />}
             </Box>
           </Tooltip>
@@ -642,7 +657,11 @@ function ParticipantStrip(props: {
   );
 }
 
-function AvatarToken(props: { label: string; avatarKey: string | null; active: boolean }) {
+function AvatarToken(props: {
+  label: string;
+  avatarKey: string | null;
+  active: boolean;
+}) {
   const avatarKey = props.avatarKey ?? pickDeterministicAvatarKey(props.label);
   return (
     <Box className={["drh-token", props.active ? "is-active" : ""].join(" ")}>
@@ -663,7 +682,11 @@ function pickDeterministicAvatarKey(label: string): string {
 function DirectionChevron(props: { direction: "FORWARD" | "REVERSE" | null }) {
   const glyph = props.direction === "REVERSE" ? "chevron_left" : "chevron_right";
   return (
-    <Text component="span" className="drh-chevron mi-icon mi-icon-tiny" aria-hidden="true">
+    <Text
+      component="span"
+      className="drh-chevron mi-icon mi-icon-tiny"
+      aria-hidden="true"
+    >
       {glyph}
     </Text>
   );
@@ -782,7 +805,8 @@ function DraftRoomScaffold(props: {
     }
   }, [isLiveOrPaused, isPre]);
 
-  const expandedCount = (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
+  const expandedCount =
+    (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
   const midCols = Math.max(1, 7 - expandedCount);
 
   const boxes = props.categories.map((c) => ({
@@ -825,7 +849,11 @@ function DraftRoomScaffold(props: {
                 aria-label="Collapse draft history"
                 onClick={() => setLedgerOpen(false)}
               >
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   chevron_left
                 </Text>
               </UnstyledButton>
@@ -833,10 +861,13 @@ function DraftRoomScaffold(props: {
             <Box className="dr-railPaneBody">
               <Box className="dr-railList">
                 {props.ledgerRows.map((r) => {
-                  const nominee = r.nominationId ? props.nomineeById.get(r.nominationId) ?? null : null;
+                  const nominee = r.nominationId
+                    ? (props.nomineeById.get(r.nominationId) ?? null)
+                    : null;
                   const avatarKey =
                     r.seatNumber !== null
-                      ? (props.avatarKeyBySeat.get(r.seatNumber) ?? pickDeterministicAvatarKey(r.seatLabel))
+                      ? (props.avatarKeyBySeat.get(r.seatNumber) ??
+                        pickDeterministicAvatarKey(r.seatLabel))
                       : null;
                   const pill = (
                     <Box
@@ -856,7 +887,11 @@ function DraftRoomScaffold(props: {
                           className="dr-pill-icon"
                         />
                       ) : r.icon ? (
-                        <DraftCategoryIcon icon={r.icon} variant="default" className="dr-pill-icon" />
+                        <DraftCategoryIcon
+                          icon={r.icon}
+                          variant="default"
+                          className="dr-pill-icon"
+                        />
                       ) : null}
                       <Text component="span" className="dr-pill-text" lineClamp={1}>
                         {r.label}
@@ -865,7 +900,11 @@ function DraftRoomScaffold(props: {
                   );
 
                   return (
-                    <Box key={r.pickNumber} className="dr-railRow dr-ledgerRow" data-active={r.active ? "true" : "false"}>
+                    <Box
+                      key={r.pickNumber}
+                      className="dr-railRow dr-ledgerRow"
+                      data-active={r.active ? "true" : "false"}
+                    >
                       <Text className="dr-railMeta">{r.roundPick}</Text>
                       <Box className="dr-railAvatar">
                         <AnimalAvatarIcon avatarKey={avatarKey} size={22} />
@@ -964,7 +1003,11 @@ function DraftRoomScaffold(props: {
                 aria-label="Collapse my roster"
                 onClick={() => setMyRosterOpen(false)}
               >
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   chevron_right
                 </Text>
               </UnstyledButton>
@@ -978,7 +1021,11 @@ function DraftRoomScaffold(props: {
                     const nominee = props.nomineeById.get(p.nominationId) ?? null;
                     const pill = (
                       <Box
-                        className={["dr-pill", "dr-pill-static", p.winner ? "is-winner" : ""]
+                        className={[
+                          "dr-pill",
+                          "dr-pill-static",
+                          p.winner ? "is-winner" : ""
+                        ]
                           .filter(Boolean)
                           .join(" ")}
                       >
@@ -989,7 +1036,11 @@ function DraftRoomScaffold(props: {
                             className="dr-pill-icon"
                           />
                         ) : p.icon ? (
-                          <DraftCategoryIcon icon={p.icon} variant="default" className="dr-pill-icon" />
+                          <DraftCategoryIcon
+                            icon={p.icon}
+                            variant="default"
+                            className="dr-pill-icon"
+                          />
                         ) : null}
                         <Text component="span" className="dr-pill-text" lineClamp={1}>
                           {p.label}
@@ -1066,7 +1117,11 @@ function DraftRoomScaffold(props: {
                 aria-label="Collapse auto-draft"
                 onClick={() => setAutoDraftOpen(false)}
               >
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   chevron_right
                 </Text>
               </UnstyledButton>
@@ -1101,7 +1156,9 @@ function DraftRoomScaffold(props: {
                     <Select
                       label="Plan"
                       placeholder={
-                        props.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+                        props.autodraft.plans.length === 0
+                          ? "No plans available"
+                          : "Choose…"
                       }
                       value={
                         props.autodraft.selectedPlanId
@@ -1128,7 +1185,9 @@ function DraftRoomScaffold(props: {
                           <Stack gap={6}>
                             {props.autodraft.list.map((item) => {
                               const nominee = props.nomineeById.get(item.nominationId);
-                              const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                              const isDrafted = props.draftedNominationIds.has(
+                                item.nominationId
+                              );
                               const pill = (
                                 <Box
                                   className={[
@@ -1152,7 +1211,11 @@ function DraftRoomScaffold(props: {
                                       className="dr-pill-icon"
                                     />
                                   ) : null}
-                                  <Text component="span" className="dr-pill-text" lineClamp={1}>
+                                  <Text
+                                    component="span"
+                                    className="dr-pill-text"
+                                    lineClamp={1}
+                                  >
                                     {item.label}
                                   </Text>
                                 </Box>
@@ -1211,12 +1274,18 @@ function DraftRoomScaffold(props: {
   );
 }
 
-function DraftCategoryIcon(props: { icon: string; variant: "default" | "inverted"; className?: string }) {
+function DraftCategoryIcon(props: {
+  icon: string;
+  variant: "default" | "inverted";
+  className?: string;
+}) {
   if (props.variant === "inverted") {
     return (
       <Box
         component="span"
-        className={["mi-icon mi-icon-tiny dr-icon-punchout", props.className ?? ""].join(" ")}
+        className={["mi-icon mi-icon-tiny dr-icon-punchout", props.className ?? ""].join(
+          " "
+        )}
         aria-hidden="true"
       >
         {props.icon}
@@ -1279,7 +1348,12 @@ function RosterBoardScaffold(props: {
         const p = participantsBySeat.get(s.seatNumber);
         const label = s.username ?? p?.label ?? `Seat ${s.seatNumber}`;
         const avatarKey = p?.avatarKey ?? pickDeterministicAvatarKey(label);
-        return { seatNumber: s.seatNumber, label, avatarKey, winnerCount: s.winnerCount ?? 0 };
+        return {
+          seatNumber: s.seatNumber,
+          label,
+          avatarKey,
+          winnerCount: s.winnerCount ?? 0
+        };
       });
   }, [o.header.participants, o.rosterBoard.seats, participantsBySeat]);
 
@@ -1303,7 +1377,9 @@ function RosterBoardScaffold(props: {
         <>
           <UnstyledButton
             type="button"
-            className={["dr-rosterNav", "is-left", canPrev ? "" : "is-disabled"].join(" ")}
+            className={["dr-rosterNav", "is-left", canPrev ? "" : "is-disabled"].join(
+              " "
+            )}
             aria-label="Previous players"
             onClick={() => canPrev && setStartIdx((v) => Math.max(0, v - 1))}
           >
@@ -1313,7 +1389,9 @@ function RosterBoardScaffold(props: {
           </UnstyledButton>
           <UnstyledButton
             type="button"
-            className={["dr-rosterNav", "is-right", canNext ? "" : "is-disabled"].join(" ")}
+            className={["dr-rosterNav", "is-right", canNext ? "" : "is-disabled"].join(
+              " "
+            )}
             aria-label="Next players"
             onClick={() =>
               canNext && setStartIdx((v) => Math.min(players.length - maxVisible, v + 1))
@@ -1339,21 +1417,28 @@ function RosterBoardScaffold(props: {
           const picks = o.rosterBoard.rowsBySeat.get(p.seatNumber) ?? [];
           return (
             <Box key={p.seatNumber} className="dr-rosterCol">
-                <Box className="dr-card dr-rosterCard">
-                  <Box className="dr-card-titleRow">
-                    <AnimalAvatarIcon avatarKey={p.avatarKey} size={24} />
-                    <Text className="dr-card-title" lineClamp={1} style={{ flex: "1 1 auto" }}>
-                      {p.label}
-                    </Text>
-                    <Text className="dr-rosterWinCount" aria-label={`${p.winnerCount} winners`}>
-                      {p.winnerCount}
-                    </Text>
-                  </Box>
+              <Box className="dr-card dr-rosterCard">
+                <Box className="dr-card-titleRow">
+                  <AnimalAvatarIcon avatarKey={p.avatarKey} size={24} />
+                  <Text
+                    className="dr-card-title"
+                    lineClamp={1}
+                    style={{ flex: "1 1 auto" }}
+                  >
+                    {p.label}
+                  </Text>
+                  <Text
+                    className="dr-rosterWinCount"
+                    aria-label={`${p.winnerCount} winners`}
+                  >
+                    {p.winnerCount}
+                  </Text>
+                </Box>
                 <Stack gap={6} className="dr-card-pills">
                   {picks.map((pick) => {
                     const nominee =
                       pick.nominationId != null
-                        ? props.nomineeById.get(pick.nominationId) ?? null
+                        ? (props.nomineeById.get(pick.nominationId) ?? null)
                         : null;
 
                     const pill = (

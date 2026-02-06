@@ -26,7 +26,10 @@ export function clearCeremonyEventEmitter() {
   draftNamespace = null;
 }
 
-async function listDraftIdsByCeremony(db: DbClient, ceremonyId: number): Promise<number[]> {
+async function listDraftIdsByCeremony(
+  db: DbClient,
+  ceremonyId: number
+): Promise<number[]> {
   const { rows } = await query<{ id: number }>(
     db,
     `
@@ -71,4 +74,3 @@ export async function emitCeremonyFinalized(args: { db: DbClient; ceremonyId: nu
     emitToDraft(draftNamespace, draftId, "ceremony:finalized", payload);
   }
 }
-

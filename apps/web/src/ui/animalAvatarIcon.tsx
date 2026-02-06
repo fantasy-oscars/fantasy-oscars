@@ -19,4 +19,3 @@ export function AnimalAvatarIcon(props: { avatarKey?: string | null; size?: numb
     />
   );
 }
-

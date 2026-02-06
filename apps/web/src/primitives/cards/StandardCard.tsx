@@ -13,7 +13,12 @@ export function StandardCard(props: StandardCardProps) {
   return (
     <Box
       {...rest}
-      className={["baseline-card", "baseline-standardCard", interactive ? "isInteractive" : "", className]
+      className={[
+        "baseline-card",
+        "baseline-standardCard",
+        interactive ? "isInteractive" : "",
+        className
+      ]
         .filter(Boolean)
         .join(" ")}
     />

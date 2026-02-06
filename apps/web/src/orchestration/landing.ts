@@ -40,15 +40,21 @@ export type LandingView = {
 };
 
 async function loadStaticContent(key: string) {
-  return fetchJson<{ content: StaticContent }>(`/content/static/${encodeURIComponent(key)}`, {
-    method: "GET"
-  });
+  return fetchJson<{ content: StaticContent }>(
+    `/content/static/${encodeURIComponent(key)}`,
+    {
+      method: "GET"
+    }
+  );
 }
 
 async function loadDynamicContent(key: string) {
-  return fetchJson<{ content: DynamicContent | null }>(`/content/dynamic/${encodeURIComponent(key)}`, {
-    method: "GET"
-  });
+  return fetchJson<{ content: DynamicContent | null }>(
+    `/content/dynamic/${encodeURIComponent(key)}`,
+    {
+      method: "GET"
+    }
+  );
 }
 
 async function loadCeremonies(): Promise<CeremonySummary[]> {
@@ -59,25 +65,30 @@ async function loadCeremonies(): Promise<CeremonySummary[]> {
   return res.data?.ceremonies ?? [];
 }
 
-async function loadSeasonPreview(ceremonyNameById: Map<number, string>): Promise<LandingSeasonPreview[]> {
+async function loadSeasonPreview(
+  ceremonyNameById: Map<number, string>
+): Promise<LandingSeasonPreview[]> {
   const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
   if (!leaguesRes.ok) throw new Error(leaguesRes.error ?? "Failed to load leagues");
   const leagues = leaguesRes.data?.leagues ?? [];
 
   const seasonResults = await Promise.all(
     leagues.map(async (league) => {
-      const res = await fetchJson<{ seasons: SeasonSummary[] }>(`/leagues/${league.id}/seasons`);
+      const res = await fetchJson<{ seasons: SeasonSummary[] }>(
+        `/leagues/${league.id}/seasons`
+      );
       return { league, seasons: res.ok ? (res.data?.seasons ?? []) : [] };
     })
   );
 
-  const allSeasons: LandingSeasonPreview[] = seasonResults.flatMap(({ league, seasons }) =>
-    seasons.map((s) => ({
-      ...s,
-      league_name: league.name,
-      league_code: league.code,
-      ceremony_name: ceremonyNameById.get(s.ceremony_id) ?? null
-    }))
+  const allSeasons: LandingSeasonPreview[] = seasonResults.flatMap(
+    ({ league, seasons }) =>
+      seasons.map((s) => ({
+        ...s,
+        league_name: league.name,
+        league_code: league.code,
+        ceremony_name: ceremonyNameById.get(s.ceremony_id) ?? null
+      }))
   );
 
   const activeSeasons = allSeasons
@@ -145,7 +156,12 @@ export function useLandingOrchestration(opts: { seasonsEnabled: boolean }) {
   useEffect(() => void refreshUpdates(), [refreshUpdates]);
   useEffect(() => void refreshSeasons(), [refreshSeasons]);
 
-  const view: LandingView = useMemo(() => ({ blurb, updates, seasons }), [blurb, updates, seasons]);
-  return { view, refresh: { blurb: refreshBlurb, updates: refreshUpdates, seasons: refreshSeasons } };
+  const view: LandingView = useMemo(
+    () => ({ blurb, updates, seasons }),
+    [blurb, updates, seasons]
+  );
+  return {
+    view,
+    refresh: { blurb: refreshBlurb, updates: refreshUpdates, seasons: refreshSeasons }
+  };
 }
-

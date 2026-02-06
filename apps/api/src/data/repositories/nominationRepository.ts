@@ -126,7 +126,9 @@ export async function listNominationsForCeremony(
   const perfRows = rows.filter(
     (r) => String(r.unit_kind ?? "").toUpperCase() === "PERFORMANCE" && r.film_id
   );
-  const filmIds = Array.from(new Set(perfRows.map((r) => Number(r.film_id)).filter(Boolean)));
+  const filmIds = Array.from(
+    new Set(perfRows.map((r) => Number(r.film_id)).filter(Boolean))
+  );
   if (filmIds.length === 0) return rows;
 
   const creditsByFilmId = new Map<number, unknown>();
@@ -158,10 +160,9 @@ export async function listNominationsForCeremony(
       if (c.role_label) continue;
       const tmdbId = typeof c.tmdb_id === "number" ? c.tmdb_id : null;
       if (!tmdbId) continue;
-      const match = cast.find(
-        (p) => Number(p?.tmdb_id ?? p?.id) === Number(tmdbId)
-      );
-      const character = typeof match?.character === "string" ? match.character.trim() : "";
+      const match = cast.find((p) => Number(p?.tmdb_id ?? p?.id) === Number(tmdbId));
+      const character =
+        typeof match?.character === "string" ? match.character.trim() : "";
       if (!character) continue;
       c.role_label = character;
       if (!primaryCharacter) primaryCharacter = character;

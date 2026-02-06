@@ -334,13 +334,17 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
 
         // Ceremony status drives small bits of UI copy (e.g. "View results" once COMPLETE).
         // We intentionally keep this lightweight (no draft board payload).
-        const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>("/ceremonies", {
-          method: "GET"
-        });
+        const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>(
+          "/ceremonies",
+          {
+            method: "GET"
+          }
+        );
         const status =
           ceremoniesRes.ok && ceremoniesRes.data?.ceremonies
-            ? ceremoniesRes.data.ceremonies.find((c) => c.id === found!.season.ceremony_id)
-                ?.status ?? null
+            ? (ceremoniesRes.data.ceremonies.find(
+                (c) => c.id === found!.season.ceremony_id
+              )?.status ?? null)
             : null;
         if (!cancelled) setCeremonyStatus(status);
       }
@@ -516,7 +520,11 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     setTimerState(null);
     setWorking(true);
     const res = await fetchJson<{
-      draft: { id: number; pick_timer_seconds: number | null; auto_pick_strategy: string | null };
+      draft: {
+        id: number;
+        pick_timer_seconds: number | null;
+        auto_pick_strategy: string | null;
+      };
     }>(`/seasons/${seasonId}/timer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

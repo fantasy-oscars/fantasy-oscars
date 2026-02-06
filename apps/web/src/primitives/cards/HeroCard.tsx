@@ -11,7 +11,9 @@ export function HeroCard(props: HeroCardProps) {
   return (
     <Box
       {...rest}
-      className={["baseline-card", "baseline-heroCard", className].filter(Boolean).join(" ")}
+      className={["baseline-card", "baseline-heroCard", className]
+        .filter(Boolean)
+        .join(" ")}
     />
   );
 }

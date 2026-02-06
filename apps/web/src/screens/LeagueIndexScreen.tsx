@@ -41,7 +41,9 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                     >
                       <Stack gap={10}>
                         <Text className="baseline-textCardTitle">{l.name}</Text>
-                        <Text className="baseline-textMeta">{l.commissioner_name ?? ""}</Text>
+                        <Text className="baseline-textMeta">
+                          {l.commissioner_name ?? ""}
+                        </Text>
                       </Stack>
                     </StandardCard>
                   ))}
@@ -56,7 +58,12 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                   <Text className="baseline-textBody">
                     Start a season with friends and draft nominees together.
                   </Text>
-                  <Button component={Link} to="/leagues/new" variant="filled" color="blue">
+                  <Button
+                    component={Link}
+                    to="/leagues/new"
+                    variant="filled"
+                    color="blue"
+                  >
                     New league
                   </Button>
                 </Stack>

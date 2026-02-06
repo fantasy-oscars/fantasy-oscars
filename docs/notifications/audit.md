@@ -7,6 +7,7 @@ This audit enforces the canonical taxonomy and decision tree defined in `docs/no
 ## Notification Surfaces Inventory
 
 ### A) Broadcast Banner
+
 - **CMS banners (admin-managed announcements):** `apps/web/src/layout/ShellLayout.tsx` (renders `BannerStack`)
 - **Runtime broadcast banners (system/async feedback):**
   - Provider: `apps/web/src/notifications/runtimeBanners.tsx` (`RuntimeBannerProvider`)
@@ -15,10 +16,12 @@ This audit enforces the canonical taxonomy and decision tree defined in `docs/no
     - Draft chrome: `apps/web/src/screens/draft/DraftRoomScreen.tsx` (`RuntimeBannerStack`)
 
 ### B) Toast
+
 - **Mantine notifications container:** `apps/web/src/main.tsx` (`<Notifications />`)
 - **Dispatcher:** `apps/web/src/notifications/notify.ts` (routes user-action outcomes to toast)
 
 ### C) Inline Alert (Anchored)
+
 - **Form-level inline alerts:** `apps/web/src/ui/forms.tsx` (`FormStatus`)
 - **Page-level error surface:** `apps/web/src/ui/page-state.tsx` (`PageError`)
 - **Screen-local alerts:** various screens use Mantine `<Alert>` for anchored errors:
@@ -27,6 +30,7 @@ This audit enforces the canonical taxonomy and decision tree defined in `docs/no
   - `apps/web/src/screens/HomeScreen.tsx` (season load errors)
 
 ### D) Confirmation Modal
+
 - **Provider / canonical modal:** `apps/web/src/notifications/confirm.tsx` (`ConfirmProvider`)
 - **Usage sites (intent only; outcomes routed to Toast):**
   - `apps/web/src/orchestration/leagues.ts`
@@ -39,12 +43,14 @@ This audit enforces the canonical taxonomy and decision tree defined in `docs/no
   - `apps/web/src/screens/draft/DraftRoomScreen.tsx` (single-click draft pick confirmation)
 
 ### E) Inbox Notification (Durable)
+
 - **Invites inbox (durable, reviewable async events):**
   - Page: `apps/web/src/pages/InvitesInboxPage.tsx`
   - Screen: `apps/web/src/screens/invites/InvitesInboxScreen.tsx`
   - Orchestration: `apps/web/src/orchestration/invites.ts` (`/seasons/invites/inbox`)
 
 ### F) Blocking System Alert (Rare)
+
 - **Routing exists:** `apps/web/src/notifications/decisionTree.ts` + `apps/web/src/notifications/notify.ts`
 - **Surface:** runtime banner with `expires_at: null` (persistent until dismissed)
 - **Current usage:** reserved for `severity: "critical"` events; should remain rare.
@@ -57,43 +63,44 @@ This table covers **dynamic** user messaging routed through the canonical policy
 
 Source of truth: `apps/web/src/notifications/notify.ts` routes these by decision tree.
 
-| Location | Trigger | Current Surface | Canonical Type | Event ID | Copy (representative) | Compliance |
+|Location|Trigger|Current Surface|Canonical Type|Event ID|Copy (representative)|Compliance|
 |---|---|---|---|---|---|---|
-| `apps/web/src/pages/InvitesInboxPage.tsx` | user action | Toast | B Toast | `invites.inbox.accepted` | Invite accepted | COMPLIANT |
-| `apps/web/src/pages/InvitesInboxPage.tsx` | user action | Toast | B Toast | `invites.inbox.declined` | Invite declined | COMPLIANT |
-| `apps/web/src/pages/InvitesInboxPage.tsx` | user action | Toast | B Toast | `invites.inbox.accept.failed` / `invites.inbox.decline.failed` | (API error mapped) | COMPLIANT |
-| `apps/web/src/pages/InviteClaimPage.tsx` | user action | Toast | B Toast | `invites.claim.accepted` / `invites.claim.declined` | Invite accepted/declined | COMPLIANT |
-| `apps/web/src/pages/InviteClaimPage.tsx` | user action | Toast | B Toast | `invites.claim.accept.failed` / `invites.claim.decline.failed` | (invite error mapped) | COMPLIANT |
-| `apps/web/src/orchestration/seasons.ts` | user action | Toast | B Toast | `season.invite.create.success` | Invite created (user must accept in app) | COMPLIANT |
-| `apps/web/src/orchestration/seasons.ts` | user action | Toast | B Toast | `season.*.update.success` | Scoring/Allocation/Timer updated | COMPLIANT |
-| `apps/web/src/orchestration/adminCeremonies.ts` | user action | Toast | B Toast | `admin.ceremony.publish.success` | Ceremony published. | COMPLIANT |
-| `apps/web/src/orchestration/adminCeremonies.ts` | user action | Toast | B Toast | `admin.ceremony.lock.success` | Ceremony locked | COMPLIANT |
-| `apps/web/src/orchestration/adminCeremonies.ts` | user action | Toast | B Toast | `admin.ceremony.archive.success` | Ceremony archived | COMPLIANT |
-| `apps/web/src/orchestration/draft.ts` | user action | Toast | B Toast | `draft.pick.submitted` | Pick submitted | COMPLIANT |
-| `apps/web/src/orchestration/draft.ts` | user action | Toast | B Toast | `draft.start.ok` / `draft.pause.ok` / `draft.resume.ok` | Draft started/paused/resumed | COMPLIANT |
-| `apps/web/src/orchestration/draft.ts` | async system event | Broadcast Banner | A Banner | `draft.autopick.expired` | Auto-picked … | COMPLIANT |
-| `apps/web/src/orchestration/draft.ts` | async system event | Broadcast Banner | A Banner | `draft.completed.transition` | Draft complete! Moving to roster view. | COMPLIANT |
-| `apps/web/src/orchestration/draft.ts` | async system event | Broadcast Banner | A Banner | `ceremony.winner.updated` | (category + winner) | COMPLIANT |
+|`apps/web/src/pages/InvitesInboxPage.tsx`|user action|Toast|B Toast|`invites.inbox.accepted`|Invite accepted|COMPLIANT|
+|`apps/web/src/pages/InvitesInboxPage.tsx`|user action|Toast|B Toast|`invites.inbox.declined`|Invite declined|COMPLIANT|
+|`apps/web/src/pages/InvitesInboxPage.tsx`|user action|Toast|B Toast|`invites.inbox.accept.failed` / `invites.inbox.decline.failed`|(API error mapped)|COMPLIANT|
+|`apps/web/src/pages/InviteClaimPage.tsx`|user action|Toast|B Toast|`invites.claim.accepted` / `invites.claim.declined`|Invite accepted/declined|COMPLIANT|
+|`apps/web/src/pages/InviteClaimPage.tsx`|user action|Toast|B Toast|`invites.claim.accept.failed` / `invites.claim.decline.failed`|(invite error mapped)|COMPLIANT|
+|`apps/web/src/orchestration/seasons.ts`|user action|Toast|B Toast|`season.invite.create.success`|Invite created (user must accept in app)|COMPLIANT|
+|`apps/web/src/orchestration/seasons.ts`|user action|Toast|B Toast|`season.*.update.success`|Scoring/Allocation/Timer updated|COMPLIANT|
+|`apps/web/src/orchestration/adminCeremonies.ts`|user action|Toast|B Toast|`admin.ceremony.publish.success`|Ceremony published.|COMPLIANT|
+|`apps/web/src/orchestration/adminCeremonies.ts`|user action|Toast|B Toast|`admin.ceremony.lock.success`|Ceremony locked|COMPLIANT|
+|`apps/web/src/orchestration/adminCeremonies.ts`|user action|Toast|B Toast|`admin.ceremony.archive.success`|Ceremony archived|COMPLIANT|
+|`apps/web/src/orchestration/draft.ts`|user action|Toast|B Toast|`draft.pick.submitted`|Pick submitted|COMPLIANT|
+|`apps/web/src/orchestration/draft.ts`|user action|Toast|B Toast|`draft.start.ok` / `draft.pause.ok` / `draft.resume.ok`|Draft started/paused/resumed|COMPLIANT|
+|`apps/web/src/orchestration/draft.ts`|async system event|Broadcast Banner|A Banner|`draft.autopick.expired`|Auto-picked …|COMPLIANT|
+|`apps/web/src/orchestration/draft.ts`|async system event|Broadcast Banner|A Banner|`draft.completed.transition`|Draft complete! Moving to roster view.|COMPLIANT|
+|`apps/web/src/orchestration/draft.ts`|async system event|Broadcast Banner|A Banner|`ceremony.winner.updated`|(category + winner)|COMPLIANT|
 
 Notes:
+
 - “Draft autopicked” and “Winners updated” are **async** events and are routed to **Broadcast Banner**, not Toast, to avoid duplicating user-action outcomes.
 - Action outcomes never also appear as a global banner or inbox item.
 
 ### Confirmation Modal Instances (`confirm(req)`)
 
-| Location | Trigger | Current Surface | Canonical Type | Intent Copy (representative) | Outcome Surface | Compliance |
+|Location|Trigger|Current Surface|Canonical Type|Intent Copy (representative)|Outcome Surface|Compliance|
 |---|---|---|---|---|---|---|
-| `apps/web/src/pages/SeasonPage.tsx` | requires decision | Confirmation Modal | D Modal | “Delete this season? … cannot be undone.” | Toast | COMPLIANT |
-| `apps/web/src/orchestration/leagues.ts` | requires decision | Confirmation Modal | D Modal | Transfer commissioner / Remove member | Toast | COMPLIANT |
-| `apps/web/src/pages/admin/ceremonies/AdminCeremoniesLockPage.tsx` | requires decision | Confirmation Modal | D Modal | Lock / Archive ceremony | Toast | COMPLIANT |
-| `apps/web/src/pages/admin/content/*` | requires decision | Confirmation Modal | D Modal | Publish / Unpublish / Delete draft | Toast | COMPLIANT |
-| `apps/web/src/screens/draft/DraftRoomScreen.tsx` | requires decision | Confirmation Modal | D Modal | Confirm draft pick | Toast (pick outcome) | COMPLIANT |
+|`apps/web/src/pages/SeasonPage.tsx`|requires decision|Confirmation Modal|D Modal|“Delete this season? … cannot be undone.”|Toast|COMPLIANT|
+|`apps/web/src/orchestration/leagues.ts`|requires decision|Confirmation Modal|D Modal|Transfer commissioner / Remove member|Toast|COMPLIANT|
+|`apps/web/src/pages/admin/ceremonies/AdminCeremoniesLockPage.tsx`|requires decision|Confirmation Modal|D Modal|Lock / Archive ceremony|Toast|COMPLIANT|
+|`apps/web/src/pages/admin/content/*`|requires decision|Confirmation Modal|D Modal|Publish / Unpublish / Delete draft|Toast|COMPLIANT|
+|`apps/web/src/screens/draft/DraftRoomScreen.tsx`|requires decision|Confirmation Modal|D Modal|Confirm draft pick|Toast (pick outcome)|COMPLIANT|
 
 ### Inbox Notification Instances (Durable)
 
-| Location | Trigger | Current Surface | Canonical Type | Persistence | Compliance |
+|Location|Trigger|Current Surface|Canonical Type|Persistence|Compliance|
 |---|---|---|---|---|---|
-| `apps/web/src/pages/InvitesInboxPage.tsx` + `apps/web/src/screens/invites/InvitesInboxScreen.tsx` | async event (invite received) | Inbox list | E Inbox | stored (server) | COMPLIANT |
+|`apps/web/src/pages/InvitesInboxPage.tsx` + `apps/web/src/screens/invites/InvitesInboxScreen.tsx`|async event (invite received)|Inbox list|E Inbox|stored (server)|COMPLIANT|
 
 ## Noncompliance Fixes Applied (High-Signal)
 

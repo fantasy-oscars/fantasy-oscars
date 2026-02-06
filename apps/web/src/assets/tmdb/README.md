@@ -7,7 +7,7 @@ within the Fantasy Oscars UI.
 - Usage: Attribution only (logo displayed where TMDB data is shown)
 
 Files:
+
 - `tmdb.svg`: original logo as provided
 - `tmdb-black.svg`: black logo variant (for light surfaces)
 - `tmdb-white.svg`: white logo variant (for dark surfaces)
-

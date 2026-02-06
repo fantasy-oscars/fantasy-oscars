@@ -11,4 +11,3 @@ export function DraftCeremonyPreviewPage() {
   const o = useDraftPreviewOrchestration({ ceremonyId });
   return <DraftRoomScreen o={o} />;
 }
-

@@ -11,7 +11,8 @@ export function CeremonyDetailScreen(props: {
   detail: CeremonyDetail | null;
 }) {
   if (props.state === "loading") return <PageLoader label="Loading ceremony..." />;
-  if (props.state === "error") return <PageError message={props.error ?? "Failed to load"} />;
+  if (props.state === "error")
+    return <PageError message={props.error ?? "Failed to load"} />;
   if (!props.detail) return <PageError message="Ceremony not found" />;
 
   const { ceremony, categories, nominations, winners } = props.detail;
@@ -24,19 +25,28 @@ export function CeremonyDetailScreen(props: {
     nominationsByCategory.set(n.category_edition_id, bucket);
   }
 
-  const label = ceremony.name?.trim() || ceremony.code?.trim() || `Ceremony #${ceremony.id}`;
+  const label =
+    ceremony.name?.trim() || ceremony.code?.trim() || `Ceremony #${ceremony.id}`;
 
   return (
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
         <StandardCard component="section">
           <Stack gap="lg">
-            <Group component="header" justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+            <Group
+              component="header"
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="md"
+            >
               <Box>
                 <Title order={2} className="baseline-textHeroTitle">
                   {label}
                 </Title>
-                <Text className="baseline-textBody">Nominees and winners for this ceremony.</Text>
+                <Text className="baseline-textBody">
+                  Nominees and winners for this ceremony.
+                </Text>
               </Box>
               <Button
                 component={Link}
@@ -68,8 +78,17 @@ export function CeremonyDetailScreen(props: {
                           {rows.map((n) => {
                             const isWinner = winnersSet.has(n.id);
                             return (
-                              <Group key={n.id} justify="space-between" wrap="nowrap" gap="md">
-                                <Text fw={isWinner ? 700 : 400} lineClamp={2} className="baseline-textBody">
+                              <Group
+                                key={n.id}
+                                justify="space-between"
+                                wrap="nowrap"
+                                gap="md"
+                              >
+                                <Text
+                                  fw={isWinner ? 700 : 400}
+                                  lineClamp={2}
+                                  className="baseline-textBody"
+                                >
                                   {n.label}
                                 </Text>
                                 {isWinner ? (

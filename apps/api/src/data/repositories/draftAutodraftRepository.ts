@@ -95,4 +95,3 @@ export async function listDraftPlanNominationIdsForUserCeremony(
   );
   return rows.map((r) => r.nomination_id);
 }
-

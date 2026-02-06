@@ -12,4 +12,3 @@ export function LandingLayout(props: { left: React.ReactNode; right: React.React
     </Box>
   );
 }
-

@@ -22,7 +22,11 @@ function deriveSeasonStatus(season: LandingSeasonPreview): {
 } {
   const draftStatus = (season.draft_status ?? "").toUpperCase();
   if (draftStatus === "LIVE" || draftStatus === "IN_PROGRESS") {
-    return { label: "Draft Live", urgent: true, urgencyHelp: "Draft is currently in progress." };
+    return {
+      label: "Draft Live",
+      urgent: true,
+      urgencyHelp: "Draft is currently in progress."
+    };
   }
   if (draftStatus === "PAUSED") {
     return { label: "Draft Paused", urgent: true, urgencyHelp: "Draft is paused." };
@@ -41,7 +45,11 @@ function ceremonyMeta(season: LandingSeasonPreview): string {
 }
 
 function markdownToTagline(markdown: string): string {
-  const block = markdown.split(/\n\s*\n/).map((s) => s.trim()).find(Boolean) ?? "";
+  const block =
+    markdown
+      .split(/\n\s*\n/)
+      .map((s) => s.trim())
+      .find(Boolean) ?? "";
   const noLinks = block.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
   const noStars = noLinks.replace(/[*_`>#]/g, "");
   return noStars.replace(/\s+/g, " ").trim();
@@ -54,9 +62,12 @@ export function LandingScreen(props: {
 }) {
   const { user, authLoading, view } = props;
 
-  const heroTitle = view.blurb.state === "ready" ? view.blurb.content.title : "Fantasy Oscars";
+  const heroTitle =
+    view.blurb.state === "ready" ? view.blurb.content.title : "Fantasy Oscars";
   const tagline =
-    view.blurb.state === "ready" ? markdownToTagline(view.blurb.content.body_markdown) : "";
+    view.blurb.state === "ready"
+      ? markdownToTagline(view.blurb.content.body_markdown)
+      : "";
 
   const updatesDate =
     view.updates.state === "ready" && view.updates.content?.published_at
@@ -70,9 +81,7 @@ export function LandingScreen(props: {
           <Title className="baseline-textHeroTitle" order={1}>
             {heroTitle}
           </Title>
-          <Text className="baseline-textBody baseline-heroTagline">
-            {tagline}
-          </Text>
+          <Text className="baseline-textBody baseline-heroTagline">{tagline}</Text>
         </Stack>
       </HeroCard>
 
@@ -95,9 +104,7 @@ export function LandingScreen(props: {
           <Stack gap={10}>
             <Text className="baseline-textMeta">{new Date().toLocaleDateString()}</Text>
             <Text className="baseline-textCardTitle">It’s quiet… too quiet</Text>
-            <Text className="baseline-textBody">
-              No updates have been published yet.
-            </Text>
+            <Text className="baseline-textBody">No updates have been published yet.</Text>
           </Stack>
         )}
       </StandardCard>
@@ -186,9 +193,7 @@ export function LandingScreen(props: {
         )
       ) : (
         <StandardCard>
-          <Text className="baseline-textBody">
-            Log in to view your active seasons.
-          </Text>
+          <Text className="baseline-textBody">Log in to view your active seasons.</Text>
         </StandardCard>
       )}
     </Stack>

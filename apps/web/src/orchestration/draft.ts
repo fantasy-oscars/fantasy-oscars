@@ -266,63 +266,59 @@ export function useDraftRoomOrchestration(args: {
     void loadSnapshot({ preserveSnapshot: true });
   }, [loadSnapshot]);
 
-  const loadAutodraft = useCallback(
-    async (nextSnapshot?: Snapshot | null) => {
-      const s = nextSnapshot ?? snapshotRef.current;
-      if (!s?.draft?.id) return;
-      const ceremonyId = s.ceremony_id ?? null;
-      if (!ceremonyId) return;
+  const loadAutodraft = useCallback(async (nextSnapshot?: Snapshot | null) => {
+    const s = nextSnapshot ?? snapshotRef.current;
+    if (!s?.draft?.id) return;
+    const ceremonyId = s.ceremony_id ?? null;
+    if (!ceremonyId) return;
 
-      setAutoLoading(true);
-      setAutoError(null);
+    setAutoLoading(true);
+    setAutoError(null);
 
-      const [cfgRes, plansRes] = await Promise.all([
-        fetchJson<{ autodraft: { enabled: boolean; strategy: string; plan_id: number | null } }>(
-          `/drafts/${s.draft.id}/autodraft`,
-          { method: "GET" }
-        ),
-        fetchJson<{ plans: Array<{ id: number; name: string }> }>(
-          `/draft-plans/ceremonies/${ceremonyId}`,
-          { method: "GET" }
-        )
-      ]);
+    const [cfgRes, plansRes] = await Promise.all([
+      fetchJson<{
+        autodraft: { enabled: boolean; strategy: string; plan_id: number | null };
+      }>(`/drafts/${s.draft.id}/autodraft`, { method: "GET" }),
+      fetchJson<{ plans: Array<{ id: number; name: string }> }>(
+        `/draft-plans/ceremonies/${ceremonyId}`,
+        { method: "GET" }
+      )
+    ]);
 
-      if (!plansRes.ok) {
-        setAutoPlans([]);
-      } else {
-        setAutoPlans(plansRes.data?.plans ?? []);
-      }
+    if (!plansRes.ok) {
+      setAutoPlans([]);
+    } else {
+      setAutoPlans(plansRes.data?.plans ?? []);
+    }
 
-      if (!cfgRes.ok) {
-        setAutoError(cfgRes.error ?? "Failed to load auto-draft settings");
-        setAutoLoading(false);
-        return;
-      }
-
-      const cfg = cfgRes.data?.autodraft;
-      const enabled = Boolean(cfg?.enabled);
-      const strategy = String(cfg?.strategy ?? "RANDOM").toUpperCase();
-      const planId = cfg?.plan_id ?? null;
-
-      setAutoEnabled(enabled);
-      setAutoStrategy(strategy === "PLAN" ? "custom" : "random");
-      setAutoPlanId(planId);
-
-      if (enabled && strategy === "PLAN" && planId) {
-        const planRes = await fetchJson<{ nomination_ids: number[] }>(
-          `/draft-plans/${planId}`,
-          { method: "GET" }
-        );
-        if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
-        else setAutoList([]);
-      } else {
-        setAutoList([]);
-      }
-
+    if (!cfgRes.ok) {
+      setAutoError(cfgRes.error ?? "Failed to load auto-draft settings");
       setAutoLoading(false);
-    },
-    []
-  );
+      return;
+    }
+
+    const cfg = cfgRes.data?.autodraft;
+    const enabled = Boolean(cfg?.enabled);
+    const strategy = String(cfg?.strategy ?? "RANDOM").toUpperCase();
+    const planId = cfg?.plan_id ?? null;
+
+    setAutoEnabled(enabled);
+    setAutoStrategy(strategy === "PLAN" ? "custom" : "random");
+    setAutoPlanId(planId);
+
+    if (enabled && strategy === "PLAN" && planId) {
+      const planRes = await fetchJson<{ nomination_ids: number[] }>(
+        `/draft-plans/${planId}`,
+        { method: "GET" }
+      );
+      if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
+      else setAutoList([]);
+    } else {
+      setAutoList([]);
+    }
+
+    setAutoLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!snapshot && !loading) void loadSnapshot();
@@ -358,7 +354,9 @@ export function useDraftRoomOrchestration(args: {
       const d = current.draft;
       if (d.status !== "IN_PROGRESS") return;
       if (!d.pick_timer_seconds) return;
-      const deadlineMs = d.pick_deadline_at ? new Date(d.pick_deadline_at).getTime() : null;
+      const deadlineMs = d.pick_deadline_at
+        ? new Date(d.pick_deadline_at).getTime()
+        : null;
       if (!deadlineMs || !Number.isFinite(deadlineMs)) return;
       if (Date.now() <= deadlineMs) return;
 
@@ -426,7 +424,11 @@ export function useDraftRoomOrchestration(args: {
   const mySeatNumber = snapshot?.my_seat_number ?? null;
 
   const updateAutodraft = useCallback(
-    async (next: { enabled: boolean; strategy: "random" | "custom"; planId: number | null }) => {
+    async (next: {
+      enabled: boolean;
+      strategy: "random" | "custom";
+      planId: number | null;
+    }) => {
       const current = snapshotRef.current;
       if (!current?.draft?.id) return false;
       const hasPlans = autoPlans.length > 0;
@@ -506,7 +508,14 @@ export function useDraftRoomOrchestration(args: {
       icon: nominationIconById.get(id) ?? null,
       label: nominationLabelById.get(id) ?? `#${id}`
     }));
-  }, [autoList, autoPlanId, autoStrategy, nominationIconById, nominationLabelById, snapshot]);
+  }, [
+    autoList,
+    autoPlanId,
+    autoStrategy,
+    nominationIconById,
+    nominationLabelById,
+    snapshot
+  ]);
 
   const pickDisabledReason = useMemo(
     () =>
@@ -647,7 +656,9 @@ export function useDraftRoomOrchestration(args: {
     if (!snapshot) return;
     setResumeLoading(true);
     setResumeState(null);
-    const res = await fetchJson(`/drafts/${snapshot.draft.id}/resume`, { method: "POST" });
+    const res = await fetchJson(`/drafts/${snapshot.draft.id}/resume`, {
+      method: "POST"
+    });
     if (res.ok) {
       setResumeState(null);
       notify({
@@ -723,12 +734,12 @@ export function useDraftRoomOrchestration(args: {
         const labels = buildNominationLabelById(current);
         const nomineeLabel =
           typeof nominationId === "number"
-            ? labels.get(nominationId) ?? `#${nominationId}`
+            ? (labels.get(nominationId) ?? `#${nominationId}`)
             : null;
         const seatLabel =
           typeof seatNumber === "number"
-            ? current.seats.find((s) => s.seat_number === seatNumber)?.username ??
-              `Seat ${seatNumber}`
+            ? (current.seats.find((s) => s.seat_number === seatNumber)?.username ??
+              `Seat ${seatNumber}`)
             : "A player";
 
         notify({
@@ -802,7 +813,9 @@ export function useDraftRoomOrchestration(args: {
       setSnapshot((prev) => {
         if (!prev || prev.draft.id !== current.draft.id) return prev;
         const nextWinners = [
-          ...(prev.winners ?? []).filter((w) => w.category_edition_id !== msg.category_edition_id),
+          ...(prev.winners ?? []).filter(
+            (w) => w.category_edition_id !== msg.category_edition_id
+          ),
           ...msg.nomination_ids.map((id) => ({
             category_edition_id: msg.category_edition_id,
             nomination_id: id
@@ -814,7 +827,7 @@ export function useDraftRoomOrchestration(args: {
       const labels = buildNominationLabelById(current);
       const first = msg.nomination_ids[0];
       const winnerLabelRaw =
-        typeof first === "number" ? labels.get(first) ?? `#${first}` : null;
+        typeof first === "number" ? (labels.get(first) ?? `#${first}`) : null;
       const winnerLabel =
         winnerLabelRaw && msg.nomination_ids.length > 1
           ? `${winnerLabelRaw} +${msg.nomination_ids.length - 1}`
@@ -829,7 +842,9 @@ export function useDraftRoomOrchestration(args: {
         scope: "local",
         durability: "ephemeral",
         requires_decision: false,
-        message: winnerLabel ? `${categoryName}: ${winnerLabel}` : `${categoryName}: updated`
+        message: winnerLabel
+          ? `${categoryName}: ${winnerLabel}`
+          : `${categoryName}: updated`
       });
     };
 
@@ -881,10 +896,20 @@ export function useDraftRoomOrchestration(args: {
     () =>
       computeDraftBoardCols({
         hasSnapshot: Boolean(snapshot),
-        showLedger: rails.showLedger ? (ledgerCollapsed ? "collapsed" : "open") : "hidden",
-        showRoster: rails.showRoster ? (rosterCollapsed ? "collapsed" : "open") : "hidden",
+        showLedger: rails.showLedger
+          ? ledgerCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden",
+        showRoster: rails.showRoster
+          ? rosterCollapsed
+            ? "collapsed"
+            : "open"
+          : "hidden",
         showAutodraft: rails.showAutodraft
-          ? (autodraftCollapsed ? "collapsed" : "open")
+          ? autodraftCollapsed
+            ? "collapsed"
+            : "open"
           : "hidden"
       }),
     [
@@ -1042,7 +1067,12 @@ export function useDraftRoomOrchestration(args: {
     const picksBySeat = buildPicksBySeat(snapshot);
     const out = new Map<
       number,
-      Array<{ pickNumber: number; nominationId: number; icon: string | null; label: string }>
+      Array<{
+        pickNumber: number;
+        nominationId: number;
+        icon: string | null;
+        label: string;
+      }>
     >();
     for (const seat of snapshot.seats) {
       out.set(
@@ -1197,7 +1227,8 @@ export function useDraftRoomOrchestration(args: {
         if (!snapshot || !isFinalResults) return base;
         const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins
         return [...base].sort((a, b) => {
-          if (a.winnerCount !== b.winnerCount) return (a.winnerCount - b.winnerCount) * dir;
+          if (a.winnerCount !== b.winnerCount)
+            return (a.winnerCount - b.winnerCount) * dir;
           return a.seatNumber - b.seatNumber;
         });
       })(),
@@ -1230,7 +1261,11 @@ export function useDraftRoomOrchestration(args: {
         // Allow configuring strategy pre-draft without forcing enablement.
         if (!autoEnabled) return;
         void (async () => {
-          const ok = await updateAutodraft({ enabled: autoEnabled, strategy: v, planId: autoPlanId });
+          const ok = await updateAutodraft({
+            enabled: autoEnabled,
+            strategy: v,
+            planId: autoPlanId
+          });
           if (!ok) setAutoStrategy(prev);
         })();
       },
@@ -1246,16 +1281,23 @@ export function useDraftRoomOrchestration(args: {
             return;
           }
           void (async () => {
-            const planRes = await fetchJson<{ nomination_ids: number[] }>(`/draft-plans/${v}`, {
-              method: "GET"
-            });
+            const planRes = await fetchJson<{ nomination_ids: number[] }>(
+              `/draft-plans/${v}`,
+              {
+                method: "GET"
+              }
+            );
             if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
             else setAutoList([]);
           })();
           return;
         }
         void (async () => {
-          const ok = await updateAutodraft({ enabled: autoEnabled, strategy: autoStrategy, planId: v });
+          const ok = await updateAutodraft({
+            enabled: autoEnabled,
+            strategy: autoStrategy,
+            planId: v
+          });
           if (!ok) setAutoPlanId(prev);
         })();
       },

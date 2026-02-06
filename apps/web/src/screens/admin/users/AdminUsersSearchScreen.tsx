@@ -25,8 +25,16 @@ export function AdminUsersSearchScreen(props: {
   updatingById: Record<number, boolean>;
   onSetAdmin: (user: AdminUserRow, nextIsAdmin: boolean) => void;
 }) {
-  const { query, setQuery, searching, status, results, onSearch, updatingById, onSetAdmin } =
-    props;
+  const {
+    query,
+    setQuery,
+    searching,
+    status,
+    results,
+    onSearch,
+    updatingById,
+    onSetAdmin
+  } = props;
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption()
@@ -84,7 +92,13 @@ export function AdminUsersSearchScreen(props: {
             </Combobox.Options>
           </Combobox.Dropdown>
         </Combobox>
-        <Button type="button" variant="default" color="gray" disabled={searching} onClick={onSearch}>
+        <Button
+          type="button"
+          variant="default"
+          color="gray"
+          disabled={searching}
+          onClick={onSearch}
+        >
           {searching ? "Searching..." : "Search"}
         </Button>
       </Group>
@@ -101,7 +115,11 @@ export function AdminUsersSearchScreen(props: {
           </Text>
         </Stack>
       ) : (
-        <Stack component="ul" gap={0} style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <Stack
+          component="ul"
+          gap={0}
+          style={{ listStyle: "none", margin: 0, padding: 0 }}
+        >
           {results.map((u, idx) => (
             <Box key={u.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">

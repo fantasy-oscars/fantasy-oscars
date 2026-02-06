@@ -17,7 +17,9 @@ export function useInviteClaimOrchestration(input: { token?: string }) {
     const isNumericId = /^\d+$/.test(token);
     setLoading(true);
     const res = await fetchJson<{ invite?: { season_id?: number } }>(
-      isNumericId ? `/seasons/invites/${token}/accept` : `/seasons/invites/token/${token}/accept`,
+      isNumericId
+        ? `/seasons/invites/${token}/accept`
+        : `/seasons/invites/token/${token}/accept`,
       { method: "POST" }
     );
     setLoading(false);
@@ -39,7 +41,9 @@ export function useInviteClaimOrchestration(input: { token?: string }) {
     const isNumericId = /^\d+$/.test(token);
     setLoading(true);
     const res = await fetchJson(
-      isNumericId ? `/seasons/invites/${token}/decline` : `/seasons/invites/token/${token}/decline`,
+      isNumericId
+        ? `/seasons/invites/${token}/decline`
+        : `/seasons/invites/token/${token}/decline`,
       { method: "POST" }
     );
     setLoading(false);

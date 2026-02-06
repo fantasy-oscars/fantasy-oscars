@@ -10,4 +10,3 @@ export function CeremonyPage() {
   const o = useCeremonyDetailOrchestration({ ceremonyId });
   return <CeremonyDetailScreen state={o.state} error={o.error} detail={o.detail} />;
 }
-

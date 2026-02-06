@@ -78,9 +78,9 @@ export function startDraftSweeper(pool: Pool) {
       try {
         if (client) {
           // Best-effort release; lock is connection-scoped and will be released on disconnect.
-          await client.query("SELECT pg_advisory_unlock($1)", [SWEEPER_LOCK_KEY]).catch(
-            () => {}
-          );
+          await client
+            .query("SELECT pg_advisory_unlock($1)", [SWEEPER_LOCK_KEY])
+            .catch(() => {});
           client.release();
         }
       } catch {
@@ -93,4 +93,3 @@ export function startDraftSweeper(pool: Pool) {
     stop: () => clearInterval(intervalId)
   };
 }
-

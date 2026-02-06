@@ -3,7 +3,10 @@ import { Box, Group, SegmentedControl, Stack, Text, Title } from "@mantine/core"
 import { Link } from "react-router-dom";
 import { StandardCard } from "../primitives";
 import "../primitives/baseline.css";
-import type { SeasonIndexCard, SeasonsIndexBaselineView } from "../orchestration/seasonsIndexBaseline";
+import type {
+  SeasonIndexCard,
+  SeasonsIndexBaselineView
+} from "../orchestration/seasonsIndexBaseline";
 
 type GroupMode = "ceremony" | "league";
 
@@ -21,8 +24,10 @@ function groupBy<T, K extends string | number>(items: T[], keyFn: (t: T) => K) {
 function sortByCeremony(seasons: SeasonIndexCard[]) {
   // Newest ceremony first.
   return [...seasons].sort((a, b) => {
-    if (b.ceremony_sort_ts !== a.ceremony_sort_ts) return b.ceremony_sort_ts - a.ceremony_sort_ts;
-    if (a.ceremony_name !== b.ceremony_name) return a.ceremony_name.localeCompare(b.ceremony_name);
+    if (b.ceremony_sort_ts !== a.ceremony_sort_ts)
+      return b.ceremony_sort_ts - a.ceremony_sort_ts;
+    if (a.ceremony_name !== b.ceremony_name)
+      return a.ceremony_name.localeCompare(b.ceremony_name);
     return a.season_id - b.season_id;
   });
 }
@@ -31,7 +36,8 @@ function sortByLeagueName(seasons: SeasonIndexCard[]) {
   return [...seasons].sort((a, b) => {
     const ln = a.league_name.localeCompare(b.league_name);
     if (ln !== 0) return ln;
-    if (a.ceremony_name !== b.ceremony_name) return a.ceremony_name.localeCompare(b.ceremony_name);
+    if (a.ceremony_name !== b.ceremony_name)
+      return a.ceremony_name.localeCompare(b.ceremony_name);
     return a.season_id - b.season_id;
   });
 }
@@ -42,7 +48,9 @@ export function SeasonsIndexBaselineScreen(props: { view: SeasonsIndexBaselineVi
 
   const seasons = useMemo(() => {
     if (view.state !== "ready") return [];
-    return mode === "ceremony" ? sortByCeremony(view.seasons) : sortByLeagueName(view.seasons);
+    return mode === "ceremony"
+      ? sortByCeremony(view.seasons)
+      : sortByLeagueName(view.seasons);
   }, [mode, view]);
 
   const grouped =
@@ -124,7 +132,10 @@ export function SeasonsIndexBaselineScreen(props: { view: SeasonsIndexBaselineVi
                               </Text>
                               <Text
                                 component="span"
-                                className={["baseline-statusPill", "baseline-textMeta"].join(" ")}
+                                className={[
+                                  "baseline-statusPill",
+                                  "baseline-textMeta"
+                                ].join(" ")}
                               >
                                 {s.status_label}
                               </Text>
