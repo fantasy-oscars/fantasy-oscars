@@ -21,6 +21,15 @@ export function AdminHomePage() {
           </Text>
         </StandardCard>
 
+        <StandardCard interactive component={Link} to="/admin/category-templates">
+          <Title order={3} className="baseline-textSectionHeader">
+            Category Templates
+          </Title>
+          <Text className="baseline-textBody">
+            Manage reusable category templates used to build ceremony category sets.
+          </Text>
+        </StandardCard>
+
         <StandardCard interactive component={Link} to="/admin/users">
           <Title order={3} className="baseline-textSectionHeader">
             Users
@@ -34,15 +43,6 @@ export function AdminHomePage() {
           </Title>
           <Text className="baseline-textBody">
             Edit static pages and publish announcements and banners.
-          </Text>
-        </StandardCard>
-
-        <StandardCard interactive component={Link} to="/admin/system">
-          <Title order={3} className="baseline-textSectionHeader">
-            System
-          </Title>
-          <Text className="baseline-textBody">
-            Review audit logs and system-level diagnostics.
           </Text>
         </StandardCard>
       </Stack>

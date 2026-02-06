@@ -38,6 +38,7 @@ import { AdminCeremonyWizardPage } from "./pages/admin/ceremonies/AdminCeremonyW
 import { DraftCeremonyPreviewPage } from "./pages/draft/DraftCeremonyPreviewPage";
 import { AdminUsersLayout } from "./pages/admin/users/AdminUsersLayout";
 import { AdminUsersSearchPage } from "./pages/admin/users/AdminUsersSearchPage";
+import { AdminCategoryTemplatesPage } from "./pages/admin/categoryTemplates/AdminCategoryTemplatesPage";
 import { AdminContentLayout } from "./pages/admin/content/AdminContentLayout";
 import { AdminContentHomePage } from "./pages/admin/content/AdminContentHomePage";
 import { AdminStaticContentEditorPage } from "./pages/admin/content/AdminStaticContentEditorPage";
@@ -199,6 +200,8 @@ function RoutesConfig() {
           <Route path="users" element={<AdminUsersLayout />}>
             <Route index element={<AdminUsersSearchPage />} />
           </Route>
+
+          <Route path="category-templates" element={<AdminCategoryTemplatesPage />} />
 
           <Route path="content" element={<AdminContentLayout />}>
             <Route index element={<AdminContentHomePage />} />

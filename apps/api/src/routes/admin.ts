@@ -1894,6 +1894,44 @@ export function createAdminRouter(client: DbClient): Router {
     }
   );
 
+  router.delete(
+    "/category-families/:id",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid category template id");
+        }
+
+        const { rows } = await query<{ id: number; code: string; name: string }>(
+          client,
+          `DELETE FROM category_family
+           WHERE id = $1
+           RETURNING id::int, code, name`,
+          [id]
+        );
+        const deleted = rows[0];
+        if (!deleted) {
+          throw new AppError("NOT_FOUND", 404, "Category template not found");
+        }
+
+        if (req.auth?.sub) {
+          await insertAdminAudit(client as Pool, {
+            actor_user_id: Number(req.auth.sub),
+            action: "delete_category_family",
+            target_type: "category_family",
+            target_id: deleted.id,
+            meta: { code: deleted.code, name: deleted.name }
+          });
+        }
+
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   router.post(
     "/ceremonies/:id/categories/clone",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
@@ -1954,8 +1992,17 @@ export function createAdminRouter(client: DbClient): Router {
 
           const { rowCount } = await query(
             tx,
-            `INSERT INTO category_edition (ceremony_id, family_id, unit_kind, icon_id, sort_index)
-             SELECT $1, ce.family_id, ce.unit_kind, ce.icon_id, ce.sort_index
+            `INSERT INTO category_edition
+               (ceremony_id, family_id, code, name, unit_kind, icon_id, icon_variant, sort_index)
+             SELECT
+               $1,
+               ce.family_id,
+               ce.code,
+               ce.name,
+               ce.unit_kind,
+               ce.icon_id,
+               ce.icon_variant,
+               ce.sort_index
              FROM category_edition ce
              WHERE ce.ceremony_id = $2
              ORDER BY ce.sort_index ASC, ce.id ASC`,
@@ -2007,20 +2054,19 @@ export function createAdminRouter(client: DbClient): Router {
           `SELECT
              ce.id::int,
              ce.family_id::int,
+             ce.code AS family_code,
+             ce.name AS family_name,
              ce.unit_kind,
              ce.icon_id::int,
+             ce.icon_variant,
              ce.sort_index::int,
-             cf.code AS family_code,
-             cf.name AS family_name,
-             cf.default_unit_kind,
-             cf.icon_id::int AS family_icon_id,
-             cf.icon_variant AS family_icon_variant,
-             COALESCE(i.code, fi.code) AS icon_code,
-             fi.code AS family_icon_code
+             i.code AS icon_code,
+             ce.unit_kind AS family_default_unit_kind,
+             ce.icon_id::int AS family_icon_id,
+             ce.icon_variant AS family_icon_variant,
+             i.code AS family_icon_code
            FROM category_edition ce
-           JOIN category_family cf ON cf.id = ce.family_id
            LEFT JOIN icon i ON i.id = ce.icon_id
-           JOIN icon fi ON fi.id = cf.icon_id
            WHERE ce.ceremony_id = $1
            ORDER BY ce.sort_index ASC, ce.id ASC`,
           [ceremonyId]
@@ -2079,11 +2125,16 @@ export function createAdminRouter(client: DbClient): Router {
             : Number(sortIndexRaw);
 
         const { rows: familyRows } = await query<{
+          code: string;
+          name: string;
+          icon_variant: string;
           default_unit_kind: string;
           icon_id: number;
         }>(
           client,
-          `SELECT default_unit_kind, icon_id::int AS icon_id FROM category_family WHERE id = $1`,
+          `SELECT code, name, icon_variant, default_unit_kind, icon_id::int AS icon_id
+           FROM category_family
+           WHERE id = $1`,
           [familyId]
         );
         const fam = familyRows[0];
@@ -2136,10 +2187,29 @@ export function createAdminRouter(client: DbClient): Router {
 
         const { rows } = await query(
           client,
-          `INSERT INTO category_edition (ceremony_id, family_id, unit_kind, icon_id, sort_index)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id::int, ceremony_id::int, family_id::int, unit_kind, icon_id::int, sort_index::int`,
-          [ceremonyId, familyId, finalUnitKind, resolvedIconId, resolvedSortIndex]
+          `INSERT INTO category_edition
+             (ceremony_id, family_id, code, name, unit_kind, icon_id, icon_variant, sort_index)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING
+             id::int,
+             ceremony_id::int,
+             family_id::int,
+             code,
+             name,
+             unit_kind,
+             icon_id::int,
+             icon_variant,
+             sort_index::int`,
+          [
+            ceremonyId,
+            familyId,
+            fam.code,
+            fam.name,
+            finalUnitKind,
+            resolvedIconId,
+            fam.icon_variant ?? "default",
+            resolvedSortIndex
+          ]
         );
 
         if (req.auth?.sub) {

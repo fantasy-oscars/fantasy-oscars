@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   Divider,
+  Grid,
   Group,
   Select,
   Stack,
@@ -136,62 +137,82 @@ export function AdminDynamicContentEditorScreen(props: {
 
       <Stack className="stack-sm" gap="sm">
         {fields.isBanner ? (
-          <Stack className="stack-sm" gap="sm">
-            <Box className="grid two-col">
-              <Select
-                label="Variant"
-                value={fields.variant}
-                onChange={(v) => fields.setVariant((v ?? "info") as never)}
-                data={[
-                  { value: "info", label: "info" },
-                  { value: "warning", label: "warning" },
-                  { value: "success", label: "success" },
-                  { value: "error", label: "error" }
-                ]}
-                disabled={viewOnly}
-              />
-              <Checkbox
-                label="Dismissible"
-                checked={fields.dismissible}
-                onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
-                disabled={viewOnly}
-              />
-            </Box>
-
-            <Box className="grid two-col">
-              <TextInput
-                label="Starts at (optional)"
-                type="datetime-local"
-                value={fields.startsAtLocal}
-                onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
-                disabled={viewOnly}
-              />
-              <TextInput
-                label="Ends at (optional)"
-                type="datetime-local"
-                value={fields.endsAtLocal}
-                onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
-                disabled={viewOnly}
-              />
-            </Box>
-          </Stack>
-        ) : null}
-
-        <TextInput
-          label="Title"
-          value={fields.title}
-          onChange={(e) => fields.setTitle(e.currentTarget.value)}
-          disabled={viewOnly}
-        />
-        <Textarea
-          label="Body (Markdown)"
-          value={fields.body}
-          onChange={(e) => fields.setBody(e.currentTarget.value)}
-          autosize
-          minRows={12}
-          disabled={viewOnly}
-        />
-        <FormStatus loading={busy} result={status} />
+          <Grid gutter="lg" align="flex-start">
+            <Grid.Col span={{ base: 12, md: 7 }}>
+              <Stack gap="sm">
+                <TextInput
+                  label="Title"
+                  value={fields.title}
+                  onChange={(e) => fields.setTitle(e.currentTarget.value)}
+                  disabled={viewOnly}
+                />
+                <Textarea
+                  label="Body (Markdown)"
+                  value={fields.body}
+                  onChange={(e) => fields.setBody(e.currentTarget.value)}
+                  autosize
+                  minRows={12}
+                  disabled={viewOnly}
+                />
+                <FormStatus loading={busy} result={status} />
+              </Stack>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 5 }}>
+              <Stack gap="sm">
+                <Select
+                  label="Variant"
+                  value={fields.variant}
+                  onChange={(v) => fields.setVariant((v ?? "info") as never)}
+                  data={[
+                    { value: "info", label: "info" },
+                    { value: "warning", label: "warning" },
+                    { value: "success", label: "success" },
+                    { value: "error", label: "error" }
+                  ]}
+                  disabled={viewOnly}
+                />
+                <Checkbox
+                  label="Dismissible"
+                  checked={fields.dismissible}
+                  onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
+                  disabled={viewOnly}
+                />
+                <TextInput
+                  label="Starts at (optional)"
+                  type="datetime-local"
+                  value={fields.startsAtLocal}
+                  onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
+                  disabled={viewOnly}
+                />
+                <TextInput
+                  label="Ends at (optional)"
+                  type="datetime-local"
+                  value={fields.endsAtLocal}
+                  onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
+                  disabled={viewOnly}
+                />
+              </Stack>
+            </Grid.Col>
+          </Grid>
+        ) : (
+          <>
+            <TextInput
+              label="Title"
+              value={fields.title}
+              onChange={(e) => fields.setTitle(e.currentTarget.value)}
+              disabled={viewOnly}
+            />
+            <Textarea
+              label="Body (Markdown)"
+              value={fields.body}
+              onChange={(e) => fields.setBody(e.currentTarget.value)}
+              autosize
+              minRows={12}
+              disabled={viewOnly}
+            />
+            <FormStatus loading={busy} result={status} />
+          </>
+        )}
       </Stack>
     </Stack>
   );

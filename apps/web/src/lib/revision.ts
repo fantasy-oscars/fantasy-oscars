@@ -1,4 +1,5 @@
-const REVISION_KEY = "fantasyoscars_content_revision";
+export const CONTENT_REVISION_STORAGE_KEY = "fantasyoscars_content_revision";
+export const CONTENT_REVISION_EVENT = "fantasyoscars:content-revision";
 
 function safeGetNumber(key: string): number {
   try {
@@ -21,11 +22,17 @@ function safeSetNumber(key: string, value: number) {
 // Used to bust CDN/browser caches for public content endpoints (CMS, banners, etc.)
 // without forcing full page reloads.
 export function getContentRevision(): number {
-  return safeGetNumber(REVISION_KEY);
+  return safeGetNumber(CONTENT_REVISION_STORAGE_KEY);
 }
 
 export function bumpContentRevision(): number {
   const next = getContentRevision() + 1;
-  safeSetNumber(REVISION_KEY, next);
+  safeSetNumber(CONTENT_REVISION_STORAGE_KEY, next);
+  // Let long-lived orchestration (banners, CMS-driven pages, etc.) refresh without a reload.
+  try {
+    window.dispatchEvent(new Event(CONTENT_REVISION_EVENT));
+  } catch {
+    // ignore
+  }
   return next;
 }
