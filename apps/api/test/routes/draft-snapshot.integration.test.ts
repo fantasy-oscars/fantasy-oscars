@@ -9,7 +9,8 @@ import {
   insertDraftSeat,
   insertLeague,
   insertCeremony,
-  insertNomination
+  insertNomination,
+  insertUser
 } from "../factories/db.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -48,6 +49,8 @@ describe("draft snapshot integration", () => {
 
   beforeEach(async () => {
     await truncateAllTables(db.pool);
+    // Most tests here authenticate as user id=1; requireAuth now validates the user exists.
+    await insertUser(db.pool, { id: 1, username: "tester" });
   });
 
   it("requires auth", async () => {

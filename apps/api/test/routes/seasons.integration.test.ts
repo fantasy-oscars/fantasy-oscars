@@ -89,13 +89,22 @@ describe("seasons integration", () => {
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), username: user.username });
 
-    // Create league (creates initial season for ceremony1)
+    // Create league (ceremony-agnostic)
     const leagueRes = await post<{ league: { id: number } }>(
       "/leagues",
       { name: "Seasons League" },
       token
     );
     expect(leagueRes.status).toBe(201);
+
+    // Create a season for ceremony1 (active ceremony)
+    const createSeason1Res = await post<{ season: { id: number; ceremony_id: number } }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      {},
+      token
+    );
+    expect(createSeason1Res.status).toBe(201);
+    expect(createSeason1Res.json.season.ceremony_id).toBe(ceremony1.id);
 
     // Switch active ceremony to ceremony2
     await setActiveCeremony(ceremony2.id);
@@ -121,19 +130,26 @@ describe("seasons integration", () => {
   });
 
   it("cancels a season and hides it from listings", async () => {
-    await createActiveCeremony();
+    const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), username: user.username });
 
-    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+    const leagueRes = await post<{ league: { id: number }; season: null }>(
       "/leagues",
       { code: "cancel-1", name: "Cancel League", max_members: 3 },
       token
     );
     expect(leagueRes.status).toBe(201);
 
+    const seasonRes = await post<{ season: { id: number; ceremony_id: number } }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      { ceremony_id: ceremony.id },
+      token
+    );
+    expect(seasonRes.status).toBe(201);
+
     const cancelRes = await post<{ season: { id: number; status: string } }>(
-      `/seasons/seasons/${leagueRes.json.season.id}/cancel`,
+      `/seasons/seasons/${seasonRes.json.season.id}/cancel`,
       {},
       token
     );
@@ -149,21 +165,28 @@ describe("seasons integration", () => {
   });
 
   it("allows commissioner to set scoring strategy while draft pending", async () => {
-    await createActiveCeremony();
+    const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);
     const token = signToken({ sub: String(user.id), username: user.username });
 
-    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+    const leagueRes = await post<{ league: { id: number }; season: null }>(
       "/leagues",
       { code: "score-1", name: "Score League", max_members: 3 },
       token
     );
     expect(leagueRes.status).toBe(201);
 
-    const seasonId = leagueRes.json.season.id;
+    const seasonRes = await post<{ season: { id: number; ceremony_id: number } }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      { ceremony_id: ceremony.id },
+      token
+    );
+    expect(seasonRes.status).toBe(201);
+
+    const seasonId = seasonRes.json.season.id;
     const draftRes = await post<{ draft: { id: number } }>(
       "/drafts",
-      { league_id: leagueRes.json.league.id },
+      { league_id: leagueRes.json.league.id, season_id: seasonId },
       token
     );
     expect(draftRes.status).toBe(201);
@@ -190,16 +213,23 @@ describe("seasons integration", () => {
     const user2 = await insertUser(db.pool, { id: user.id + 1 });
     const token = signToken({ sub: String(user.id), username: user.username });
 
-    const leagueRes = await post<{ league: { id: number }; season: { id: number } }>(
+    const leagueRes = await post<{ league: { id: number }; season: null }>(
       "/leagues",
       { code: "score-2", name: "Score Lock League", max_members: 3 },
       token
     );
     expect(leagueRes.status).toBe(201);
 
+    const seasonRes = await post<{ season: { id: number; ceremony_id: number } }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      { ceremony_id: ceremony.id },
+      token
+    );
+    expect(seasonRes.status).toBe(201);
+
     const draftRes = await post<{ draft: { id: number } }>(
       "/drafts",
-      { league_id: leagueRes.json.league.id },
+      { league_id: leagueRes.json.league.id, season_id: seasonRes.json.season.id },
       token
     );
     expect(draftRes.status).toBe(201);
@@ -217,12 +247,12 @@ describe("seasons integration", () => {
     await db.pool.query(
       `INSERT INTO season_member (season_id, user_id, league_member_id, role)
        VALUES ($1,$2,$3,'OWNER')`,
-      [leagueRes.json.season.id, user.id, ownerLm.rows[0].id]
+      [seasonRes.json.season.id, user.id, ownerLm.rows[0].id]
     );
     await db.pool.query(
       `INSERT INTO season_member (season_id, user_id, league_member_id, role)
        VALUES ($1,$2,$3,'MEMBER')`,
-      [leagueRes.json.season.id, user2.id, lm.rows[0].id]
+      [seasonRes.json.season.id, user2.id, lm.rows[0].id]
     );
 
     await db.pool.query(
@@ -243,7 +273,7 @@ describe("seasons integration", () => {
     );
 
     const updateRes = await post<{ error: { code: string } }>(
-      `/seasons/seasons/${leagueRes.json.season.id}/scoring`,
+      `/seasons/seasons/${seasonRes.json.season.id}/scoring`,
       { scoring_strategy_name: "negative" },
       token
     );
