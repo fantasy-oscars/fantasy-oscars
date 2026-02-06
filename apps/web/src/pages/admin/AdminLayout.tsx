@@ -35,6 +35,13 @@ export function AdminLayout() {
                 </NavLink>
 
                 <NavLink
+                  to="/admin/films"
+                  className={linkClass(pathname.startsWith("/admin/films"))}
+                >
+                  Films
+                </NavLink>
+
+                <NavLink
                   to="/admin/users"
                   className={linkClass(pathname.startsWith("/admin/users"))}
                 >
