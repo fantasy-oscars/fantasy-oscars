@@ -856,7 +856,7 @@ function NominationEditModal(props: {
     | { ok: true; hydrated: boolean }
     | {
         ok: false;
-        hydrated: false;
+        hydrated: boolean;
         error: string;
         errorCode?: string;
         errorDetails?: Record<string, unknown>;
@@ -869,7 +869,7 @@ function NominationEditModal(props: {
     | { ok: true; hydrated: boolean }
     | {
         ok: false;
-        hydrated: false;
+        hydrated: boolean;
         error: string;
         errorCode?: string;
         errorDetails?: Record<string, unknown>;
