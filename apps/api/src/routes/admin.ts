@@ -3579,29 +3579,65 @@ export function createAdminRouter(client: DbClient): Router {
               }
             : null;
 
-          const { rows } = await query(
-            tx,
-            `UPDATE film
-             SET tmdb_id = $2::int,
-                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
-                 title = $3,
-                 release_year = $4,
-                 poster_path = $5,
-                 poster_url = $6,
-                 tmdb_last_synced_at = now(),
-                 tmdb_credits = $7
-             WHERE id = $1
-             RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
-            [
-              id,
-              Number(tmdbId),
-              movie.title,
-              releaseYear,
-              posterPath,
-              posterUrl,
-              credits ? JSON.stringify(credits) : null
-            ]
-          );
+          let rows: unknown[] = [];
+          try {
+            ({ rows } = await query(
+              tx,
+              `UPDATE film
+               SET tmdb_id = $2::int,
+                   external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                   title = $3,
+                   release_year = $4,
+                   poster_path = $5,
+                   poster_url = $6,
+                   tmdb_last_synced_at = now(),
+                   tmdb_credits = $7
+               WHERE id = $1
+               RETURNING id::int, title, release_year::int, tmdb_id::int, poster_url`,
+              [
+                id,
+                Number(tmdbId),
+                movie.title,
+                releaseYear,
+                posterPath,
+                posterUrl,
+                credits ? JSON.stringify(credits) : null
+              ]
+            ));
+          } catch (err) {
+            // Friendly feedback for a common admin mistake: trying to link the same TMDB id twice.
+            const pg = err as { code?: unknown; constraint?: unknown };
+            if (pg?.code === "23505" && pg?.constraint === "film_tmdb_id_key") {
+              const { rows: dupeRows } = await query<{
+                id: number;
+                title: string;
+              }>(
+                tx,
+                `SELECT id::int, title
+                 FROM film
+                 WHERE tmdb_id = $1::int
+                 ORDER BY id ASC
+                 LIMIT 1`,
+                [Number(tmdbId)]
+              );
+              const dupe = dupeRows[0];
+              throw new AppError(
+                "TMDB_ID_ALREADY_LINKED",
+                409,
+                dupe?.title
+                  ? `That TMDB id is already linked to “${dupe.title}”.`
+                  : "That TMDB id is already linked to another film.",
+                dupe
+                  ? {
+                      tmdb_id: Number(tmdbId),
+                      linked_film_id: dupe.id,
+                      linked_film_title: dupe.title
+                    }
+                  : { tmdb_id: Number(tmdbId) }
+              );
+            }
+            throw err;
+          }
           return { film: rows[0], hydrated: true };
         });
 
@@ -3710,19 +3746,54 @@ export function createAdminRouter(client: DbClient): Router {
           const profilePath = details?.profile_path ?? null;
           const profileUrl = await buildTmdbImageUrl("profile", profilePath, "w185");
 
-          const { rows } = await query(
-            tx,
-            `UPDATE person
-             SET tmdb_id = $2::int,
-                 external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
-                 full_name = COALESCE(NULLIF($3, ''), full_name),
-                 profile_path = $4,
-                 profile_url = $5,
-                 updated_at = now()
-             WHERE id = $1
-             RETURNING id::int, full_name, tmdb_id::int, profile_url`,
-            [id, Number(tmdbId), String(details?.name ?? ""), profilePath, profileUrl]
-          );
+          let rows: unknown[] = [];
+          try {
+            ({ rows } = await query(
+              tx,
+              `UPDATE person
+               SET tmdb_id = $2::int,
+                   external_ids = COALESCE(external_ids, '{}'::jsonb) || jsonb_build_object('tmdb_id', $2::int),
+                   full_name = COALESCE(NULLIF($3, ''), full_name),
+                   profile_path = $4,
+                   profile_url = $5,
+                   updated_at = now()
+               WHERE id = $1
+               RETURNING id::int, full_name, tmdb_id::int, profile_url`,
+              [id, Number(tmdbId), String(details?.name ?? ""), profilePath, profileUrl]
+            ));
+          } catch (err) {
+            const pg = err as { code?: unknown; constraint?: unknown };
+            if (pg?.code === "23505" && pg?.constraint === "person_tmdb_id_key") {
+              const { rows: dupeRows } = await query<{
+                id: number;
+                full_name: string;
+              }>(
+                tx,
+                `SELECT id::int, full_name
+                 FROM person
+                 WHERE tmdb_id = $1::int
+                 ORDER BY id ASC
+                 LIMIT 1`,
+                [Number(tmdbId)]
+              );
+              const dupe = dupeRows[0];
+              throw new AppError(
+                "TMDB_ID_ALREADY_LINKED",
+                409,
+                dupe?.full_name
+                  ? `That TMDB id is already linked to “${dupe.full_name}”.`
+                  : "That TMDB id is already linked to another contributor.",
+                dupe
+                  ? {
+                      tmdb_id: Number(tmdbId),
+                      linked_person_id: dupe.id,
+                      linked_person_name: dupe.full_name
+                    }
+                  : { tmdb_id: Number(tmdbId) }
+              );
+            }
+            throw err;
+          }
           return { person: rows[0], hydrated: true };
         });
 

@@ -707,6 +707,17 @@ export function AdminCeremoniesNomineesScreen(props: {
                     : "Linked."
                   : "Unlinked."
               });
+            } else {
+              notify({
+                id: "admin.nominees.film.link.error",
+                severity: "error",
+                trigger_type: "user_action",
+                scope: "local",
+                durability: "ephemeral",
+                requires_decision: false,
+                title: tmdbId ? "Could not link film" : "Could not unlink film",
+                message: r.error ?? "Failed to update film"
+              });
             }
           }}
           onLinkPerson={async (personId, tmdbId) => {
@@ -725,6 +736,19 @@ export function AdminCeremoniesNomineesScreen(props: {
                     ? "Hydrated details from TMDB."
                     : "Linked."
                   : "Unlinked."
+              });
+            } else {
+              notify({
+                id: "admin.nominees.person.link.error",
+                severity: "error",
+                trigger_type: "user_action",
+                scope: "local",
+                durability: "ephemeral",
+                requires_decision: false,
+                title: tmdbId
+                  ? "Could not link contributor"
+                  : "Could not unlink contributor",
+                message: r.error ?? "Failed to update contributor"
               });
             }
           }}
