@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/api";
 import {
   ceremonyStatusLabel,
@@ -37,9 +37,17 @@ export function useAdminCeremonyWorksheetOrchestration(args: {
   const [ceremony, setCeremony] = useState<CeremonyDetail | null>(null);
   const [stats, setStats] = useState<CeremonyStats | null>(null);
 
+  const hasRenderedRef = useRef(false);
+
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
       const silent = opts?.silent ?? false;
+      const canRefreshInPlace = silent && hasRenderedRef.current;
+
       if (!ceremonyId || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
         setError("Invalid ceremony id");
         setState("error");
@@ -47,9 +55,7 @@ export function useAdminCeremonyWorksheetOrchestration(args: {
       }
       // For background refreshes, avoid flipping the orchestration into "loading"
       // because that unmounts wizard step content and resets local UI state.
-      if (!silent || state !== "ready") {
-        setState("loading");
-      }
+      if (!canRefreshInPlace) setState("loading");
       setError(null);
       const res = await fetchJson<{ ceremony: CeremonyDetail; stats: CeremonyStats }>(
         `/admin/ceremonies/${ceremonyId}`,
@@ -59,16 +65,14 @@ export function useAdminCeremonyWorksheetOrchestration(args: {
         // If we already have data, keep rendering and only record the error.
         // This prevents "flash" reloads after actions like adding nominees.
         setError(res.error ?? "Unable to load ceremony");
-        if (!silent || state !== "ready") {
-          setState("error");
-        }
+        if (!canRefreshInPlace) setState("error");
         return;
       }
       setCeremony(res.data?.ceremony ?? null);
       setStats(res.data?.stats ?? null);
       setState("ready");
     },
-    [ceremonyId, state]
+    [ceremonyId]
   );
 
   useEffect(() => {

@@ -22,6 +22,11 @@ export function InvitesInboxScreen(props: {
 }) {
   const { view, onAccept, onDecline } = props;
 
+  if (view.state === "loading") {
+    // Prevent "heading appears before actions are ready" UX (and avoids brittle tests).
+    return <PageLoader label="Loading invites..." />;
+  }
+
   return (
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
@@ -36,9 +41,7 @@ export function InvitesInboxScreen(props: {
           </Box>
 
           <StandardCard component="section" aria-label="Pending invites">
-            {view.state === "loading" ? (
-              <PageLoader label="Loading invites..." />
-            ) : view.state === "error" ? (
+            {view.state === "error" ? (
               <Alert color="red">{view.message}</Alert>
             ) : view.invites.length === 0 ? (
               <Text className="baseline-textBody">No pending invites.</Text>

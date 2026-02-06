@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
@@ -37,14 +37,20 @@ export function useAdminCeremoniesIndexOrchestration() {
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
 
+  const hasRenderedRef = useRef(false);
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const refresh = useCallback(async () => {
     // Global refresh policy: keep list visible during refresh.
-    if (state !== "ready") setState("loading");
+    const canRefreshInPlace = hasRenderedRef.current;
+    if (!canRefreshInPlace) setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
       setError(res.error ?? "Failed to load ceremonies");
-      if (state !== "ready") {
+      if (!canRefreshInPlace) {
         setRows([]);
         setState("error");
       }
@@ -52,7 +58,7 @@ export function useAdminCeremoniesIndexOrchestration() {
     }
     setRows(res.data?.ceremonies ?? []);
     setState("ready");
-  }, [state]);
+  }, []);
 
   useEffect(() => {
     void refresh();
@@ -126,14 +132,20 @@ export function useAdminCeremoniesLayoutOrchestration(args: { ceremonyIdRaw?: st
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<CeremonyOption[]>([]);
 
+  const hasRenderedRef = useRef(false);
+  useEffect(() => {
+    if (state === "ready") hasRenderedRef.current = true;
+  }, [state]);
+
   const refresh = useCallback(async () => {
     // Global refresh policy: keep list visible during refresh.
-    if (state !== "ready") setState("loading");
+    const canRefreshInPlace = hasRenderedRef.current;
+    if (!canRefreshInPlace) setState("loading");
     setError(null);
     const res = await fetchCeremonies();
     if (!res.ok) {
       setError(res.error ?? "Failed to load ceremonies");
-      if (state !== "ready") {
+      if (!canRefreshInPlace) {
         setRows([]);
         setState("error");
       }
@@ -141,7 +153,7 @@ export function useAdminCeremoniesLayoutOrchestration(args: { ceremonyIdRaw?: st
     }
     setRows(res.data?.ceremonies ?? []);
     setState("ready");
-  }, [state]);
+  }, []);
 
   useEffect(() => {
     void refresh();

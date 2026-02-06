@@ -48,9 +48,7 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
       if (!winnersRes.ok) {
         if (!cancelled) {
           setError(winnersRes.error ?? "Failed to load winners");
-          if (!(snapshot !== null || state === "ready" || state === "unavailable")) {
-            setState("error");
-          }
+          if (!hasContent) setState("error");
         }
         return;
       }
@@ -61,9 +59,7 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
       if (!snapshotRes.ok) {
         if (!cancelled) {
           setError(snapshotRes.error ?? "Failed to load draft results");
-          if (!(snapshot !== null || state === "ready" || state === "unavailable")) {
-            setState("error");
-          }
+          if (!hasContent) setState("error");
         }
         return;
       }
@@ -90,7 +86,7 @@ export function useResultsOrchestration(input?: { initialDraftId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [draftId, reloadKey, snapshot, state]);
+  }, [draftId, reloadKey]);
 
   return {
     draftId,
