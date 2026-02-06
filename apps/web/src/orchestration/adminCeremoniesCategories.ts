@@ -254,7 +254,21 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     );
     setWorking(false);
     if (!res.ok) {
-      setStatus({ ok: false, message: res.error ?? "Add failed" });
+      const msg = res.error ?? "Add failed";
+      if (msg === "Category already exists in ceremony") {
+        notify({
+          id: "admin.categories.add.duplicate",
+          severity: "error",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          message: msg
+        });
+        setStatus(null);
+        return false;
+      }
+      setStatus({ ok: false, message: msg });
       return false;
     }
     notify({

@@ -81,7 +81,9 @@ export function AdminCeremoniesCategoriesScreen(props: {
   if (o.error) return <PageError message={o.error} />;
 
   const hasCategories = o.categories.length > 0;
-  const categoryIds = useMemo(() => o.categories.map((c) => c.id), [o.categories]);
+  // Keep this as a plain derived value (not a hook) to avoid hook-order changes
+  // when the page transitions from loading -> loaded.
+  const categoryIds = o.categories.map((c) => c.id);
 
   const handleAddCategory = async () => {
     const ok = await o.actions.addCategory();
@@ -292,7 +294,11 @@ function SortableCategoryRow(props: {
           aria-grabbed={isDragging}
           disabled={!canEdit}
         >
-          <Text component="span" className="gicon nomination-drag-handle" aria-hidden="true">
+          <Text
+            component="span"
+            className="gicon nomination-drag-handle"
+            aria-hidden="true"
+          >
             drag_indicator
           </Text>
         </Box>
