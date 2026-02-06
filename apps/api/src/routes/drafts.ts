@@ -530,8 +530,7 @@ export function buildCreateDraftHandler(client: DbClient) {
     next: express.NextFunction
   ) {
     try {
-      const { league_id, draft_order_type, pick_timer_seconds, auto_pick_strategy } =
-        req.body ?? {};
+      const { league_id, draft_order_type, pick_timer_seconds } = req.body ?? {};
       const seasonIdRaw = (req.body ?? {}).season_id;
 
       const leagueIdNum = Number(league_id);
