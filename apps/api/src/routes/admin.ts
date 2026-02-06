@@ -50,6 +50,24 @@ import {
 export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
 
+  // Search helpers: case-insensitive + accent-insensitive matching (best-effort).
+  // This must not change rendering, only which results match user queries.
+  const SEARCH_TRANSLATE_FROM = "áàâäãåæçéèêëíìîïñóòôöõøœßúùûüýÿ";
+  const SEARCH_TRANSLATE_TO = "aaaaaaaceeeeiiiinooooooosuuuuyy";
+  function escapeLike(input: string) {
+    return input.replace(/%/g, "\\%").replace(/_/g, "\\_");
+  }
+  function normalizeForSearch(input: string) {
+    return String(input ?? "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+  function sqlNorm(exprSql: string) {
+    return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
+  }
+
   router.get(
     "/users",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
@@ -57,16 +75,19 @@ export function createAdminRouter(client: DbClient): Router {
         const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
         if (!q) return res.status(200).json({ users: [] });
 
-        const like = `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+        const likeRaw = `%${escapeLike(q)}%`;
+        const likeNorm = `%${escapeLike(normalizeForSearch(q))}%`;
         const { rows } = await query(
           client,
           `SELECT id::int, username, email, is_admin, created_at
            FROM app_user
            WHERE username ILIKE $1 ESCAPE '\\'
               OR email ILIKE $1 ESCAPE '\\'
+              OR ${sqlNorm("username")} LIKE $2 ESCAPE '\\'
+              OR ${sqlNorm("coalesce(email, '')")} LIKE $2 ESCAPE '\\'
            ORDER BY created_at DESC
            LIMIT 25`,
-          [like]
+          [likeRaw, likeNorm]
         );
         return res.status(200).json({ users: rows });
       } catch (err) {
@@ -1643,8 +1664,9 @@ export function createAdminRouter(client: DbClient): Router {
     "/category-families",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : "";
-        const like = q ? `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%` : null;
+        const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const q = normalizeForSearch(qRaw);
+        const like = q ? `%${escapeLike(q)}%` : null;
         const { rows } = await query(
           client,
           `SELECT
@@ -1657,7 +1679,7 @@ export function createAdminRouter(client: DbClient): Router {
              i.code AS icon_code
            FROM category_family cf
            JOIN icon i ON i.id = cf.icon_id
-           WHERE ${like ? "(LOWER(cf.code) LIKE $1 ESCAPE '\\\\' OR LOWER(cf.name) LIKE $1 ESCAPE '\\\\')" : "TRUE"}
+           WHERE ${like ? `(${sqlNorm("cf.code")} LIKE $1 ESCAPE '\\\\' OR ${sqlNorm("cf.name")} LIKE $1 ESCAPE '\\\\')` : "TRUE"}
            ORDER BY cf.code ASC
            LIMIT 200`,
           like ? [like] : []

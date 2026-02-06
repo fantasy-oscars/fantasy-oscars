@@ -38,6 +38,7 @@ import { notify } from "../../../notifications";
 import { useCombobox } from "@mantine/core";
 import { fetchJson } from "../../../lib/api";
 import { StandardCard } from "../../../primitives";
+import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import "../../../primitives/baseline.css";
 
 function materialGlyph(code: string | null | undefined) {
@@ -777,22 +778,23 @@ function FilmCombobox(props: {
   });
 
   const data = useMemo(() => {
-    const q = value.trim().toLowerCase();
+    const q = value;
     const list = films
       .map((f) => ({
         id: f.id,
         label: formatFilmTitleWithYear(f.title, f.release_year ?? null)
       }))
-      .filter((f) => (q ? f.label.toLowerCase().includes(q) : true))
+      .filter((f) => includesNormalized(f.label, q))
       .slice(0, 50);
     return list;
   }, [films, value]);
 
   const hasExactMatch = useMemo(() => {
-    const t = value.trim().toLowerCase();
+    const t = normalizeForSearch(value);
     if (!t) return true;
     return films.some(
-      (f) => formatFilmTitleWithYear(f.title, f.release_year ?? null).toLowerCase() === t
+      (f) =>
+        normalizeForSearch(formatFilmTitleWithYear(f.title, f.release_year ?? null)) === t
     );
   }, [films, value]);
 
@@ -1021,14 +1023,14 @@ function NominationEditModal(props: {
         tmdb_id: tmdbId,
         name: info.name,
         label,
-        search: `${info.name} ${jobs.join(" ")}`.toLowerCase()
+        search: normalizeForSearch(`${info.name} ${jobs.join(" ")}`)
       });
     }
     return opts.sort((a, b) => a.name.localeCompare(b.name));
   }, [creditByPersonId]);
 
   const contributorComboboxOptions = useMemo(() => {
-    const q = pendingContributorInput.trim().toLowerCase();
+    const q = normalizeForSearch(pendingContributorInput);
     const fromCredits =
       creditOptions.length > 0
         ? creditOptions
@@ -1045,7 +1047,7 @@ function NominationEditModal(props: {
     const fromPeople =
       creditOptions.length === 0
         ? people
-            .filter((p) => (q ? p.full_name.toLowerCase().includes(q) : true))
+            .filter((p) => (q ? normalizeForSearch(p.full_name).includes(q) : true))
             .slice(0, 50)
             .map((p) => ({
               kind: "person" as const,
@@ -1056,7 +1058,7 @@ function NominationEditModal(props: {
             }))
         : [];
     const base = [...fromCredits, ...fromPeople];
-    const exact = q ? base.some((o) => o.name.toLowerCase() === q) : true;
+    const exact = q ? base.some((o) => normalizeForSearch(o.name) === q) : true;
     const create =
       q && !exact
         ? [
