@@ -1523,13 +1523,13 @@ function RosterBoardScaffold(props: {
 
                     return (
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
-                        {nominee ? (
-                          <Tooltip
-                            withArrow
-                            position="bottom-start"
-                            multiline
-                            offset={10}
-                            label={
+                        <Tooltip
+                          withArrow
+                          position="bottom-start"
+                          multiline
+                          offset={10}
+                          label={
+                            nominee ? (
                               <NomineeTooltipCard
                                 unitKind={nominee.unitKind}
                                 categoryName={nominee.categoryName}
@@ -1543,13 +1543,13 @@ function RosterBoardScaffold(props: {
                                 performerProfilePath={nominee.performerProfilePath}
                                 songTitle={nominee.songTitle}
                               />
-                            }
-                          >
-                            {pill}
-                          </Tooltip>
-                        ) : (
-                          pill
-                        )}
+                            ) : (
+                              <Text className="baseline-textBody">{pick.label}</Text>
+                            )
+                          }
+                        >
+                          {pill}
+                        </Tooltip>
                       </Box>
                     );
                   })}

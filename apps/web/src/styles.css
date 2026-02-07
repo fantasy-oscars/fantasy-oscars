@@ -808,6 +808,7 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden; /* prevent scroll chaining via the pane wrapper */
 }
 
 .dr-railPaneHeader {
@@ -846,6 +847,7 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain; /* keep each rail's scroll independent */
   padding: 10px 10px 12px;
 }
 
@@ -907,6 +909,7 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   /* The draft area scrolls; header/footer/rails stay fixed in-frame. */
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain; /* prevent scroll from propagating into other panes */
   min-height: 0;
 }
 
