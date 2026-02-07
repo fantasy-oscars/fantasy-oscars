@@ -952,7 +952,8 @@ function MobileRosterBoard(props: {
     seat != null ? (players.find((p) => p.seatNumber === seat) ?? null) : null;
   const picks = seat != null ? (o.rosterBoard.rowsBySeat.get(seat) ?? []) : [];
   const showWeightedPoints =
-    Boolean(o.header.isFinalResults) && o.header.scoringStrategyName === "category_weighted";
+    Boolean(o.header.isFinalResults) &&
+    o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Stack gap="sm">
@@ -1289,12 +1290,8 @@ function MobileRail(props: {
           value={o.autodraft.strategy}
           onChange={(v) =>
             o.autodraft.setStrategy(
-              (v as
-                | "random"
-                | "by_category"
-                | "alphabetical"
-                | "wisdom"
-                | "custom") ?? "random"
+              (v as "random" | "by_category" | "alphabetical" | "wisdom" | "custom") ??
+                "random"
             )
           }
           data={[
@@ -1310,7 +1307,9 @@ function MobileRail(props: {
         {o.autodraft.strategy === "custom" ? (
           <Select
             label="Plan"
-            placeholder={o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"}
+            placeholder={
+              o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+            }
             value={o.autodraft.selectedPlanId ? String(o.autodraft.selectedPlanId) : null}
             onChange={(v) => o.autodraft.setSelectedPlanId(v ? Number(v) : null)}
             data={o.autodraft.plans.map((p) => ({
@@ -1338,7 +1337,9 @@ function MobileRail(props: {
                       .join(" ")}
                     tabIndex={nominee ? 0 : undefined}
                     role={nominee ? "group" : undefined}
-                    aria-label={nominee ? `${nominee.categoryName}: ${item.label}` : undefined}
+                    aria-label={
+                      nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                    }
                   >
                     {nominee ? (
                       <DraftCategoryIcon
@@ -2781,14 +2782,18 @@ function DraftRoomScaffold(props: {
                   <Select
                     label="Plan"
                     placeholder={
-                      props.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+                      props.autodraft.plans.length === 0
+                        ? "No plans available"
+                        : "Choose…"
                     }
                     value={
                       props.autodraft.selectedPlanId
                         ? String(props.autodraft.selectedPlanId)
                         : null
                     }
-                    onChange={(v) => props.autodraft.setSelectedPlanId(v ? Number(v) : null)}
+                    onChange={(v) =>
+                      props.autodraft.setSelectedPlanId(v ? Number(v) : null)
+                    }
                     data={props.autodraft.plans.map((p) => ({
                       value: String(p.id),
                       label: p.name
@@ -2806,7 +2811,9 @@ function DraftRoomScaffold(props: {
                     <Stack gap={6}>
                       {props.autodraft.list.map((item) => {
                         const nominee = props.nomineeById.get(item.nominationId);
-                        const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                        const isDrafted = props.draftedNominationIds.has(
+                          item.nominationId
+                        );
                         const pill = (
                           <Box
                             className={[
@@ -2819,7 +2826,9 @@ function DraftRoomScaffold(props: {
                             tabIndex={nominee ? 0 : undefined}
                             role={nominee ? "group" : undefined}
                             aria-label={
-                              nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                              nominee
+                                ? `${nominee.categoryName}: ${item.label}`
+                                : undefined
                             }
                           >
                             {nominee ? (
@@ -2994,7 +3003,8 @@ function RosterBoardScaffold(props: {
   const canNext = startIdx + maxVisible < players.length;
   const visible = players.slice(startIdx, startIdx + maxVisible);
   const showWeightedPoints =
-    Boolean(o.header.isFinalResults) && o.header.scoringStrategyName === "category_weighted";
+    Boolean(o.header.isFinalResults) &&
+    o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Box className="dr-middle dr-roster">

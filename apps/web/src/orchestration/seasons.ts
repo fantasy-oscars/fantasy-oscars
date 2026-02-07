@@ -518,7 +518,10 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
         season: {
           ...leagueContext.season,
           scoring_strategy_name: res.data.season.scoring_strategy_name,
-          category_weights: res.data.season.category_weights ?? leagueContext.season.category_weights ?? null
+          category_weights:
+            res.data.season.category_weights ??
+            leagueContext.season.category_weights ??
+            null
         }
       });
       notify({

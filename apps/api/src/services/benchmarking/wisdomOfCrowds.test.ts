@@ -21,7 +21,11 @@ describe("fitWisdomOfCrowds", () => {
       }
     ];
 
-    const { scoresByNominationId } = fitWisdomOfCrowds({ nominations, seasons, iters: 200 });
+    const { scoresByNominationId } = fitWisdomOfCrowds({
+      nominations,
+      seasons,
+      iters: 200
+    });
     const s1 = scoresByNominationId.get(1) ?? 0;
     const s2 = scoresByNominationId.get(2) ?? 0;
     const s3 = scoresByNominationId.get(3) ?? 0;
@@ -45,7 +49,11 @@ describe("fitWisdomOfCrowds", () => {
       }
     ];
 
-    const { scoresByNominationId } = fitWisdomOfCrowds({ nominations, seasons, iters: 200 });
+    const { scoresByNominationId } = fitWisdomOfCrowds({
+      nominations,
+      seasons,
+      iters: 200
+    });
     const sFirst = scoresByNominationId.get(3) ?? 0;
     const sLast = scoresByNominationId.get(1) ?? 0;
     expect(sFirst).toBeLessThan(sLast);
@@ -72,7 +80,11 @@ describe("fitWisdomOfCrowds", () => {
       }
     ];
 
-    const { scoresByNominationId } = fitWisdomOfCrowds({ nominations, seasons, iters: 250 });
+    const { scoresByNominationId } = fitWisdomOfCrowds({
+      nominations,
+      seasons,
+      iters: 250
+    });
     const sPosA = scoresByNominationId.get(1) ?? 0;
     const sPosB = scoresByNominationId.get(2) ?? 0;
     const sNegHigh = scoresByNominationId.get(3) ?? 0;
@@ -100,9 +112,12 @@ describe("fitWisdomOfCrowds", () => {
       }
     ];
 
-    const { sampleSizeByNominationId } = fitWisdomOfCrowds({ nominations, seasons, iters: 50 });
+    const { sampleSizeByNominationId } = fitWisdomOfCrowds({
+      nominations,
+      seasons,
+      iters: 50
+    });
     expect(sampleSizeByNominationId.get(2)).toBe(0);
     expect(sampleSizeByNominationId.get(1)).toBeGreaterThan(0);
   });
 });
-

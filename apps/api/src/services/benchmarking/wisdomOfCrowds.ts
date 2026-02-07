@@ -63,13 +63,19 @@ export function fitWisdomOfCrowds(args: {
   temperature?: number;
   iters?: number;
   learningRate?: number;
-}): { scoresByNominationId: Map<number, number>; sampleSizeByNominationId: Map<number, number> } {
+}): {
+  scoresByNominationId: Map<number, number>;
+  sampleSizeByNominationId: Map<number, number>;
+} {
   const lambda = args.lambda ?? 1e-3;
   const temperature = args.temperature ?? 0.1;
   const iters = args.iters ?? 250;
   const lr = args.learningRate ?? 0.05;
 
-  const ids = args.nominations.map((n) => n.id).slice().sort((a, b) => a - b);
+  const ids = args.nominations
+    .map((n) => n.id)
+    .slice()
+    .sort((a, b) => a - b);
   const idxById = new Map<number, number>();
   ids.forEach((id, idx) => idxById.set(id, idx));
 
@@ -92,7 +98,11 @@ export function fitWisdomOfCrowds(args: {
       const orderIdxs = s.draft_order
         .map((id) => idxById.get(id))
         .filter((x): x is number => typeof x === "number");
-      return { season_id: s.season_id, weights_by_category_id: s.weights_by_category_id, orderIdxs };
+      return {
+        season_id: s.season_id,
+        weights_by_category_id: s.weights_by_category_id,
+        orderIdxs
+      };
     })
     .filter((s) => s.orderIdxs.length === N);
 

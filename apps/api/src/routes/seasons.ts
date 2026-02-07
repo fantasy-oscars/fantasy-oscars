@@ -508,7 +508,9 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
             throw validationError("Invalid category_weights", ["category_weights"]);
           }
           const next: Record<string, number> = {};
-          for (const [k, v] of Object.entries(category_weights as Record<string, unknown>)) {
+          for (const [k, v] of Object.entries(
+            category_weights as Record<string, unknown>
+          )) {
             const id = Number(k);
             const n = Number(v);
             if (!Number.isFinite(id) || id <= 0) {

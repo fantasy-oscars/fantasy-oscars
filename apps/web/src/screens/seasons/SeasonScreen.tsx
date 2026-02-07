@@ -45,9 +45,7 @@ export function SeasonScreen(props: {
   const [weightsOpen, setWeightsOpen] = useState(false);
   const [weightsLoading, setWeightsLoading] = useState(false);
   const [weightsError, setWeightsError] = useState<string | null>(null);
-  const [weightsCats, setWeightsCats] = useState<Array<{ id: number; name: string }>>(
-    []
-  );
+  const [weightsCats, setWeightsCats] = useState<Array<{ id: number; name: string }>>([]);
   const [weightsDraft, setWeightsDraft] = useState<Record<string, number>>({});
 
   const leagueName = s.leagueContext?.league?.name ?? null;
@@ -482,7 +480,11 @@ export function SeasonScreen(props: {
                       setWeightsOpen(true);
                     }}
                   >
-                    <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
                       settings
                     </Text>
                   </ActionIcon>

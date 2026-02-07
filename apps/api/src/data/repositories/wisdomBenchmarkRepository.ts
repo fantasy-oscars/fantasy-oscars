@@ -17,7 +17,11 @@ export async function getWisdomBenchmarkForCeremony(
   computed_at: Date;
   items: WisdomBenchmarkRow[];
 } | null> {
-  const head = await query<{ ceremony_id: number; version: string | number; computed_at: Date }>(
+  const head = await query<{
+    ceremony_id: number;
+    version: string | number;
+    computed_at: Date;
+  }>(
     db,
     `SELECT ceremony_id::int, version, computed_at
      FROM ceremony_wisdom_benchmark
@@ -55,7 +59,12 @@ export async function getWisdomBenchmarkForCeremony(
 
 export async function upsertWisdomBenchmarkForCeremony(
   db: DbClient,
-  input: { ceremony_id: number; version: number; computed_at: Date; items: WisdomBenchmarkRow[] }
+  input: {
+    ceremony_id: number;
+    version: number;
+    computed_at: Date;
+    items: WisdomBenchmarkRow[];
+  }
 ): Promise<void> {
   await query(
     db,
@@ -86,4 +95,3 @@ export async function upsertWisdomBenchmarkForCeremony(
     params
   );
 }
-

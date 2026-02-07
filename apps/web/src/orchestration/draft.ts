@@ -202,7 +202,9 @@ export type DraftRoomOrchestration = {
     enabled: boolean;
     setEnabled: (v: boolean) => void;
     strategy: "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
-    setStrategy: (v: "random" | "by_category" | "alphabetical" | "wisdom" | "custom") => void;
+    setStrategy: (
+      v: "random" | "by_category" | "alphabetical" | "wisdom" | "custom"
+    ) => void;
     plans: Array<{ id: number; name: string }>;
     selectedPlanId: number | null;
     setSelectedPlanId: (v: number | null) => void;
@@ -516,7 +518,13 @@ export function useDraftRoomOrchestration(args: {
     if (!winners.length) return null;
     if (winners.length === 1) return winners[0].username;
     return `Tie: ${winners.map((w) => w.username).join(", ")}`;
-  }, [isFinalResults, scoringStrategyName, seatScoreBySeatNumber, snapshot, winnerCountBySeat]);
+  }, [
+    isFinalResults,
+    scoringStrategyName,
+    seatScoreBySeatNumber,
+    snapshot,
+    winnerCountBySeat
+  ]);
 
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;
@@ -532,7 +540,8 @@ export function useDraftRoomOrchestration(args: {
       if (!current?.draft?.id) return false;
       const hasPlans = autoPlans.length > 0;
       const resolvedStrategy = (() => {
-        if (next.strategy === "custom") return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+        if (next.strategy === "custom")
+          return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
         if (next.strategy === "by_category") return "BY_CATEGORY" as const;
         if (next.strategy === "alphabetical") return "ALPHABETICAL" as const;
         if (next.strategy === "wisdom") return "WISDOM" as const;
@@ -1436,10 +1445,7 @@ export function useDraftRoomOrchestration(args: {
             score: seatScoreBySeatNumber.get(s.seat_number) ?? 0
           })) ?? [];
         if (!snapshot || !isFinalResults) return base;
-        const dir =
-          scoringStrategyName === "negative"
-            ? 1
-            : -1; // negative: fewer winners wins; others: higher score wins
+        const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins; others: higher score wins
         return [...base].sort((a, b) => {
           const aScore =
             scoringStrategyName === "category_weighted" ? a.score : a.winnerCount;

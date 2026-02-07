@@ -442,7 +442,8 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
           ceremony_code: s.ceremony_code ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
-          category_weights: (s as { category_weights?: unknown }).category_weights ?? null,
+          category_weights:
+            (s as { category_weights?: unknown }).category_weights ?? null,
           remainder_strategy: s.remainder_strategy,
           pick_timer_seconds: s.pick_timer_seconds ?? null,
           auto_pick_strategy: s.auto_pick_strategy ?? null,

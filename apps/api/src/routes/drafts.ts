@@ -361,13 +361,16 @@ async function autoPickOne(options: {
     const seasonRow = await tx.query<{
       scoring_strategy_name: string | null;
       category_weights: unknown;
-    }>(`SELECT scoring_strategy_name, category_weights FROM season WHERE id = $1 LIMIT 1`, [
-      season.id
-    ]);
+    }>(
+      `SELECT scoring_strategy_name, category_weights FROM season WHERE id = $1 LIMIT 1`,
+      [season.id]
+    );
     const scoring = String(seasonRow.rows[0]?.scoring_strategy_name ?? "fixed");
     const weightsRaw = seasonRow.rows[0]?.category_weights ?? null;
     const weightsMap =
-      typeof weightsRaw === "object" && weightsRaw ? (weightsRaw as Record<string, unknown>) : {};
+      typeof weightsRaw === "object" && weightsRaw
+        ? (weightsRaw as Record<string, unknown>)
+        : {};
     const weightsByCategory: Record<number, number> = {};
     for (const [k, v] of Object.entries(weightsMap)) {
       const keyNum = Number(k);
@@ -1284,7 +1287,12 @@ export function buildSnapshotDraftHandler(pool: Pool) {
             completed_at: updated?.completed_at ?? completed.completed_at,
             current_pick_number: null
           };
-          return { draft: nextDraft, seats: freshSeats, picks: freshPicks, completed: true };
+          return {
+            draft: nextDraft,
+            seats: freshSeats,
+            picks: freshPicks,
+            completed: true
+          };
         });
 
         draft = result.draft;
@@ -1727,7 +1735,13 @@ export function buildSubmitPickHandler(pool: Pool) {
             }
           }
         });
-        return { pick, reused: false, event, completed: draft.status === "COMPLETED", ceremonyId: season.ceremony_id };
+        return {
+          pick,
+          reused: false,
+          event,
+          completed: draft.status === "COMPLETED",
+          ceremonyId: season.ceremony_id
+        };
       });
 
       const status = result?.reused ? 200 : 201;
@@ -1903,7 +1917,10 @@ export function buildDraftStandingsHandler(pool: Pool) {
       // For weighted scoring we attach a `points` value per nomination based on its category.
       // Other scoring strategies can ignore this field.
       let pointsByNominationId: Map<number, number> | null = null;
-      if ((season as { scoring_strategy_name?: string | null })?.scoring_strategy_name === "category_weighted") {
+      if (
+        (season as { scoring_strategy_name?: string | null })?.scoring_strategy_name ===
+        "category_weighted"
+      ) {
         const weightsRaw = (season as { category_weights?: unknown })?.category_weights;
         const weightsObj =
           weightsRaw && typeof weightsRaw === "object"
