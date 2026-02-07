@@ -438,6 +438,8 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
         const response = seasons.map((s) => ({
           id: s.id,
           ceremony_id: s.ceremony_id,
+          ceremony_name: s.ceremony_name ?? null,
+          ceremony_code: s.ceremony_code ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
           remainder_strategy: s.remainder_strategy,

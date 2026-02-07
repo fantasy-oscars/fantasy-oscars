@@ -44,6 +44,7 @@ export function SeasonScreen(props: {
   const ceremonyId = s.leagueContext?.season?.ceremony_id ?? null;
   const ceremonyName =
     s.leagueContext?.season?.ceremony_name ??
+    s.leagueContext?.season?.ceremony_code ??
     (ceremonyId ? `Ceremony ${ceremonyId}` : `Ceremony`);
 
   const progression = useMemo(() => {
