@@ -308,8 +308,7 @@ export function SeasonScreen(props: {
                   searching={Boolean(s.userInviteSearching)}
                   options={s.userInviteMatches.map((u) => ({
                     id: u.id,
-                    username: u.username,
-                    email: u.email ?? null
+                    username: u.username
                   }))}
                   onChange={(next) => s.setUserInviteQuery(next)}
                   onPick={(id, username) => {
@@ -602,7 +601,7 @@ function InviteUserCombobox(props: {
   value: string;
   disabled: boolean;
   searching: boolean;
-  options: Array<{ id: number; username: string; email: string | null }>;
+  options: Array<{ id: number; username: string }>;
   onChange: (next: string) => void;
   onPick: (id: number, username: string) => void;
 }) {
@@ -659,14 +658,7 @@ function InviteUserCombobox(props: {
           ) : (
             options.map((o) => (
               <Combobox.Option key={o.id} value={String(o.id)}>
-                <Stack gap={0}>
-                  <Text className="baseline-textBody">{o.username}</Text>
-                  {o.email ? (
-                    <Text className="baseline-textMeta" c="dimmed" size="sm">
-                      {o.email}
-                    </Text>
-                  ) : null}
-                </Stack>
+                <Text className="baseline-textBody">{o.username}</Text>
               </Combobox.Option>
             ))
           )}

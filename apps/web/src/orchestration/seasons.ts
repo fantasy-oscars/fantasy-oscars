@@ -261,7 +261,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     null
   );
   const [userInviteMatches, setUserInviteMatches] = useState<
-    Array<{ id: number; username: string; email: string | null }>
+    Array<{ id: number; username: string }>
   >([]);
   const [userInviteSearching, setUserInviteSearching] = useState(false);
   const [placeholderLabel, setPlaceholderLabel] = useState("");
@@ -309,7 +309,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       void (async () => {
         setUserInviteSearching(true);
         const res = await fetchJson<{
-          users: Array<{ id: number; username: string; email: string | null }>;
+          users: Array<{ id: number; username: string }>;
         }>(`/seasons/${seasonId}/invitees?q=${encodeURIComponent(q)}`, { method: "GET" });
         if (cancelled) return;
         setUserInviteSearching(false);
