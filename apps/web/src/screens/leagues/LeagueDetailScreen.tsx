@@ -117,14 +117,7 @@ export function LeagueDetailScreen(props: {
             </Title>
           </Group>
 
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
-              gap: 18,
-              alignItems: "start"
-            }}
-          >
+          <Box className="baseline-grid2Wide">
             {/* LEFT: Seasons */}
             <Stack gap="sm">
               <Group justify="space-between" align="flex-end" wrap="wrap">
@@ -174,7 +167,7 @@ export function LeagueDetailScreen(props: {
                           <Group
                             justify="space-between"
                             align="flex-start"
-                            wrap="nowrap"
+                            wrap="wrap"
                             gap="md"
                           >
                             <Box style={{ minWidth: 0 }}>

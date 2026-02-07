@@ -37,7 +37,7 @@ export function CeremonyDetailScreen(props: {
               component="header"
               justify="space-between"
               align="flex-start"
-              wrap="nowrap"
+              wrap="wrap"
               gap="md"
             >
               <Box>
@@ -65,7 +65,7 @@ export function CeremonyDetailScreen(props: {
                   const rows = nominationsByCategory.get(cat.id) ?? [];
                   return (
                     <Box key={cat.id}>
-                      <Group justify="space-between" align="baseline" wrap="nowrap">
+                      <Group justify="space-between" align="baseline" wrap="wrap">
                         <Title order={4} className="baseline-textSectionHeader">
                           {cat.family_name}
                         </Title>
@@ -81,7 +81,7 @@ export function CeremonyDetailScreen(props: {
                               <Group
                                 key={n.id}
                                 justify="space-between"
-                                wrap="nowrap"
+                                wrap="wrap"
                                 gap="md"
                               >
                                 <Text
