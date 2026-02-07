@@ -349,6 +349,33 @@ body {
   padding: 0 14px;
 }
 
+.drh-measure {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.drh-measureWing {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drh-measureWing {
+  left: 0;
+}
+
+.drh-measureWingRight {
+  right: 0;
+  left: auto;
+  justify-content: flex-end;
+}
+
 /* Local contrast behind the centered buckle (same mechanism in both themes). */
 .drh-row::before {
   content: "";

@@ -30,7 +30,9 @@ import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
 
-const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
+// Tooltips are primarily a desktop affordance (hover/focus). On touch devices the
+// positioning can end up off-screen; mobile uses the tap-to-open nominee card instead.
+const TOOLTIP_EVENTS = { hover: true, focus: true, touch: false } as const;
 const CARD_TOOLTIP_STYLES = {
   tooltip: {
     padding: 0,
@@ -559,6 +561,7 @@ function MobileDraftRoom(props: {
                   icon={c.icon}
                   iconVariant={c.iconVariant}
                   unitKind={c.unitKind}
+                  tooltipsEnabled={false}
                   nominees={c.nominees}
                   isKeyboardMode={false}
                   setKeyboardMode={() => {}}
@@ -1428,6 +1431,8 @@ function DraftBoardHeader(props: {
   const rightRef = useRef<HTMLDivElement | null>(null);
   const leftWingRef = useRef<HTMLDivElement | null>(null);
   const rightWingRef = useRef<HTMLDivElement | null>(null);
+  const leftMeasureRef = useRef<HTMLDivElement | null>(null);
+  const rightMeasureRef = useRef<HTMLDivElement | null>(null);
   const buckleRef = useRef<HTMLDivElement | null>(null);
   const [compactHeader, setCompactHeader] = useState(false);
   const [compactMenuOpen, setCompactMenuOpen] = useState(false);
@@ -1460,29 +1465,32 @@ function DraftBoardHeader(props: {
 
     const compute = () => {
       const headerRect = headerEl.getBoundingClientRect();
-      const l = leftWingRef.current?.getBoundingClientRect();
-      const r = rightWingRef.current?.getBoundingClientRect();
+      const l = leftMeasureRef.current?.getBoundingClientRect();
+      const r = rightMeasureRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
 
-      const pad = 8;
-      const overlapsLeft = b.left < l.right + pad;
-      const overlapsRight = b.right > r.left - pad;
-      const hasOverlap = overlapsLeft || overlapsRight;
+      // Use a width-based model instead of bounding-box overlap. The buckle is centered,
+      // so each "wing" must fit inside its half of the header.
+      const headerPad = 28; // .drh-row has padding: 0 14px
+      const available = Math.max(0, headerRect.width - headerPad);
+      const half = available / 2;
+      const buckleHalf = b.width / 2;
+      const leftW = l.width;
+      const rightW = r.width;
 
       setCompactHeader((prev) => {
+        const enterPad = 10;
+        const exitPad = 22; // hysteresis to prevent flip-flop near the threshold
+        const limit = half - buckleHalf - (prev ? exitPad : enterPad);
+        const needsCompact = leftW > limit || rightW > limit;
         if (!prev) {
-          // While non-compact is rendered, store an estimate of how much width we need
-          // to avoid overlap. This is used to switch back from compact without flip-flop.
-          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
+          nonCompactNeededWidthRef.current = Math.ceil(leftW + rightW + b.width + 72);
+          return needsCompact;
         }
-        if (prev) {
-          const needed = nonCompactNeededWidthRef.current || 0;
-          const hasRoom = headerRect.width >= needed + 40;
-          return hasRoom ? false : true;
-        }
-        // Enter compact mode only when we actually overlap in the non-compact layout.
-        return hasOverlap;
+        // When compact, require more headroom before switching back.
+        const hasRoom = !needsCompact;
+        return hasRoom ? false : true;
       });
     };
 
@@ -1498,24 +1506,24 @@ function DraftBoardHeader(props: {
       const headerEl = headerRef.current;
       if (!headerEl) return;
       const headerRect = headerEl.getBoundingClientRect();
-      const l = leftWingRef.current?.getBoundingClientRect();
-      const r = rightWingRef.current?.getBoundingClientRect();
+      const l = leftMeasureRef.current?.getBoundingClientRect();
+      const r = rightMeasureRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
-      const pad = 8;
-      const overlapsLeft = b.left < l.right + pad;
-      const overlapsRight = b.right > r.left - pad;
-      const hasOverlap = overlapsLeft || overlapsRight;
       setCompactHeader((prev) => {
+        const headerPad = 28;
+        const available = Math.max(0, headerRect.width - headerPad);
+        const half = available / 2;
+        const buckleHalf = b.width / 2;
+        const enterPad = 10;
+        const exitPad = 22;
+        const limit = half - buckleHalf - (prev ? exitPad : enterPad);
+        const needsCompact = l.width > limit || r.width > limit;
         if (!prev) {
           nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
+          return needsCompact;
         }
-        if (prev) {
-          const needed = nonCompactNeededWidthRef.current || 0;
-          const hasRoom = headerRect.width >= needed + 40;
-          return hasRoom ? false : true;
-        }
-        return hasOverlap;
+        return needsCompact ? true : false;
       });
     });
   }, [
@@ -1814,6 +1822,100 @@ function DraftBoardHeader(props: {
             isTimerDraft={props.isTimerDraft}
             maxHandleLengthPx={buckleMaxPx}
           />
+        </Box>
+
+        {/* Hidden measurement row: keeps compact/non-compact switching stable by
+            measuring the real non-compact wing widths even when compact is active. */}
+        <Box className="drh-measure" aria-hidden="true">
+          <Box className="drh-measureWing" ref={leftMeasureRef}>
+            <Box className="drh-backWrap">
+              <UnstyledButton className="drh-back" type="button" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
+                  arrow_back
+                </Text>
+              </UnstyledButton>
+            </Box>
+            {!isCompleted ? (
+              <ParticipantStrip
+                participants={props.participants}
+                activeIndex={activeIndex}
+                direction={props.direction}
+                suppressActive={isPre || isPaused || isCompleted}
+              />
+            ) : null}
+          </Box>
+
+          <Box className="drh-measureWing drh-measureWingRight" ref={rightMeasureRef}>
+            {props.showDraftControls && props.canManageDraft ? (
+              <Box className="drh-pauseWrap">
+                <UnstyledButton type="button" className="drh-pause" aria-hidden="true">
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny"
+                    aria-hidden="true"
+                  >
+                    {isPre || isPaused ? "play_arrow" : "pause"}
+                  </Text>
+                </UnstyledButton>
+              </Box>
+            ) : null}
+
+            {props.showDraftControls ? (
+              <Box className="drh-controls">
+                <Box className="drh-controlsGrid">
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">View</Text>
+                    <SegmentedControl
+                      size="xs"
+                      value={props.view}
+                      onChange={() => {}}
+                      data={[
+                        { value: "draft", label: "Draft" },
+                        { value: "roster", label: "Roster" }
+                      ]}
+                      disabled={!props.canToggleView}
+                    />
+                  </Group>
+
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">Show drafted</Text>
+                    <Box className="drh-toggleSlot">
+                      {props.showDraftedVisible ? (
+                        <Switch
+                          size="sm"
+                          checked={props.showDrafted}
+                          onChange={() => {}}
+                        />
+                      ) : (
+                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                      )}
+                    </Box>
+                  </Group>
+                </Box>
+              </Box>
+            ) : null}
+
+            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+              <Button
+                type="button"
+                variant="subtle"
+                className="theme-toggle"
+                aria-hidden="true"
+              >
+                <Text component="span" className="gicon" aria-hidden="true">
+                  {props.themeIcon}
+                </Text>
+              </Button>
+              <Box className="drh-userBadge">
+                <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+                <Text className="drh-userText">{props.userLabel}</Text>
+              </Box>
+            </Group>
+          </Box>
         </Box>
       </Box>
     </Box>
@@ -3071,6 +3173,7 @@ function CategoryCard(props: {
   icon: string;
   iconVariant: "default" | "inverted";
   unitKind: string;
+  tooltipsEnabled?: boolean;
   nominees: Array<{
     id: string;
     label: string;
@@ -3093,6 +3196,7 @@ function CategoryCard(props: {
   onNomineeDoubleClick: (nominationId: number) => void;
 }) {
   const firstPillRef = useRef<HTMLButtonElement | null>(null);
+  const tooltipsEnabled = props.tooltipsEnabled ?? true;
 
   return (
     <Box
@@ -3128,31 +3232,8 @@ function CategoryCard(props: {
             </Text>
           </Box>
         ) : (
-          props.nominees.map((n, idx) => (
-            <Tooltip
-              key={n.id}
-              events={TOOLTIP_EVENTS}
-              withArrow={false}
-              position="bottom-start"
-              multiline
-              offset={10}
-              styles={CARD_TOOLTIP_STYLES}
-              label={
-                <NomineeTooltipCard
-                  unitKind={props.unitKind}
-                  categoryName={props.title}
-                  filmTitle={n.filmTitle}
-                  filmYear={n.filmYear}
-                  filmPosterUrl={n.posterUrl}
-                  contributors={n.contributors}
-                  performerName={n.performerName}
-                  performerCharacter={n.performerCharacter}
-                  performerProfileUrl={n.performerProfileUrl}
-                  performerProfilePath={n.performerProfilePath}
-                  songTitle={n.songTitle}
-                />
-              }
-            >
+          props.nominees.map((n, idx) => {
+            const button = (
               <UnstyledButton
                 type="button"
                 className={[
@@ -3200,8 +3281,39 @@ function CategoryCard(props: {
                   {n.label}
                 </Text>
               </UnstyledButton>
-            </Tooltip>
-          ))
+            );
+
+            if (!tooltipsEnabled) return <Box key={n.id}>{button}</Box>;
+
+            return (
+              <Tooltip
+                key={n.id}
+                events={TOOLTIP_EVENTS}
+                withArrow={false}
+                position="bottom-start"
+                multiline
+                offset={10}
+                styles={CARD_TOOLTIP_STYLES}
+                label={
+                  <NomineeTooltipCard
+                    unitKind={props.unitKind}
+                    categoryName={props.title}
+                    filmTitle={n.filmTitle}
+                    filmYear={n.filmYear}
+                    filmPosterUrl={n.posterUrl}
+                    contributors={n.contributors}
+                    performerName={n.performerName}
+                    performerCharacter={n.performerCharacter}
+                    performerProfileUrl={n.performerProfileUrl}
+                    performerProfilePath={n.performerProfilePath}
+                    songTitle={n.songTitle}
+                  />
+                }
+              >
+                {button}
+              </Tooltip>
+            );
+          })
         )}
       </Box>
     </Box>
