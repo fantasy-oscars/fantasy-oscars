@@ -91,6 +91,8 @@ export type DraftRoomOrchestration = {
     ceremonyStatus: string | null;
     isFinalResults: boolean;
     resultsWinnerLabel: string | null;
+    scoringStrategyName: string;
+    getNominationPoints: (nominationId: number) => number;
   };
   layout: {
     phase: "PRE" | "LIVE" | "POST";
@@ -140,6 +142,7 @@ export type DraftRoomOrchestration = {
       icon: string;
       iconVariant?: "default" | "inverted";
       unitKind?: string;
+      weight?: number | null;
       nominations: Array<{
         id: number;
         label: string;
@@ -439,12 +442,58 @@ export function useDraftRoomOrchestration(args: {
   const isFinalResults =
     (snapshot?.draft.status ?? null) === "COMPLETED" && ceremonyStatus === "COMPLETE";
 
+  const categoryWeightByCategoryId = useMemo(() => {
+    const m = new Map<number, number>();
+    const raw = snapshot?.category_weights;
+    if (!raw || typeof raw !== "object") return m;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const id = Number(k);
+      const n = Number(v);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (!Number.isInteger(n) || n < -99 || n > 99) continue;
+      m.set(id, n);
+    }
+    return m;
+  }, [snapshot?.category_weights]);
+
+  const pointsForNominationId = useMemo(() => {
+    const m = new Map<number, number>();
+    if (!snapshot) return m;
+    const nominations = snapshot.nominations ?? [];
+    for (const n of nominations) {
+      const nominationId = Number(n.id);
+      const categoryId = Number(n.category_edition_id);
+      if (!Number.isFinite(nominationId) || !Number.isFinite(categoryId)) continue;
+      if (scoringStrategyName === "category_weighted") {
+        m.set(nominationId, categoryWeightByCategoryId.get(categoryId) ?? 1);
+      } else {
+        m.set(nominationId, 1);
+      }
+    }
+    return m;
+  }, [categoryWeightByCategoryId, scoringStrategyName, snapshot]);
+
+  const seatScoreBySeatNumber = useMemo(() => {
+    const m = new Map<number, number>();
+    if (!snapshot) return m;
+    for (const s of snapshot.seats) m.set(s.seat_number, 0);
+    for (const p of snapshot.picks) {
+      if (!winnerSet.has(p.nomination_id)) continue;
+      const delta = pointsForNominationId.get(p.nomination_id) ?? 1;
+      m.set(p.seat_number, (m.get(p.seat_number) ?? 0) + delta);
+    }
+    return m;
+  }, [pointsForNominationId, snapshot, winnerSet]);
+
   const resultsWinnerLabel = useMemo(() => {
     if (!snapshot || !isFinalResults) return null;
     const scores = snapshot.seats.map((s) => ({
       seatNumber: s.seat_number,
       username: s.username ?? `Seat ${s.seat_number}`,
-      score: winnerCountBySeat.get(s.seat_number) ?? 0
+      score:
+        scoringStrategyName === "category_weighted"
+          ? (seatScoreBySeatNumber.get(s.seat_number) ?? 0)
+          : (winnerCountBySeat.get(s.seat_number) ?? 0)
     }));
     if (!scores.length) return null;
     const bestScore =
@@ -455,7 +504,7 @@ export function useDraftRoomOrchestration(args: {
     if (!winners.length) return null;
     if (winners.length === 1) return winners[0].username;
     return `Tie: ${winners.map((w) => w.username).join(", ")}`;
-  }, [isFinalResults, scoringStrategyName, snapshot, winnerCountBySeat]);
+  }, [isFinalResults, scoringStrategyName, seatScoreBySeatNumber, snapshot, winnerCountBySeat]);
 
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;
@@ -1088,16 +1137,22 @@ export function useDraftRoomOrchestration(args: {
         icon,
         iconVariant: (c.icon_variant ?? "default") as "default" | "inverted",
         unitKind: String(c.unit_kind ?? ""),
+        weight:
+          scoringStrategyName === "category_weighted"
+            ? (categoryWeightByCategoryId.get(c.id) ?? 1)
+            : null,
         nominations,
         emptyText: nominations.length ? null : "No nominees."
       };
     });
   }, [
     drafted,
+    categoryWeightByCategoryId,
     iconByCategoryId,
     nominationsByCategoryId,
     poolMode,
     selectedNominationId,
+    scoringStrategyName,
     snapshot,
     winnerSet
   ]);
@@ -1237,7 +1292,10 @@ export function useDraftRoomOrchestration(args: {
       onResumeDraft: () => void resumeDraft(),
       ceremonyStatus,
       isFinalResults,
-      resultsWinnerLabel
+      resultsWinnerLabel,
+      scoringStrategyName,
+      getNominationPoints: (nominationId: number) =>
+        pointsForNominationId.get(nominationId) ?? 1
     },
     layout: {
       phase,
@@ -1287,13 +1345,20 @@ export function useDraftRoomOrchestration(args: {
           snapshot?.seats.map((s) => ({
             seatNumber: s.seat_number,
             username: s.username ?? null,
-            winnerCount: winnerCountBySeat.get(s.seat_number) ?? 0
+            winnerCount: winnerCountBySeat.get(s.seat_number) ?? 0,
+            score: seatScoreBySeatNumber.get(s.seat_number) ?? 0
           })) ?? [];
         if (!snapshot || !isFinalResults) return base;
-        const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins
+        const dir =
+          scoringStrategyName === "negative"
+            ? 1
+            : -1; // negative: fewer winners wins; others: higher score wins
         return [...base].sort((a, b) => {
-          if (a.winnerCount !== b.winnerCount)
-            return (a.winnerCount - b.winnerCount) * dir;
+          const aScore =
+            scoringStrategyName === "category_weighted" ? a.score : a.winnerCount;
+          const bScore =
+            scoringStrategyName === "category_weighted" ? b.score : b.winnerCount;
+          if (aScore !== bScore) return (aScore - bScore) * dir;
           return a.seatNumber - b.seatNumber;
         });
       })(),

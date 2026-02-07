@@ -1322,6 +1322,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         scoring_strategy_name:
           (season as { scoring_strategy_name?: string | null } | null)
             ?.scoring_strategy_name ?? null,
+        category_weights:
+          (season as { category_weights?: unknown } | null)?.category_weights ?? null,
         my_seat_number: mySeatNumber,
         can_manage_draft: canManageDraft,
         categories,
@@ -1781,10 +1783,42 @@ export function buildDraftStandingsHandler(pool: Pool) {
       const uniqueNominationIds = [
         ...new Set(picks.map((pick) => Number(pick.nomination_id)))
       ].sort((a, b) => a - b);
+      // For weighted scoring we attach a `points` value per nomination based on its category.
+      // Other scoring strategies can ignore this field.
+      let pointsByNominationId: Map<number, number> | null = null;
+      if ((season as { scoring_strategy_name?: string | null })?.scoring_strategy_name === "category_weighted") {
+        const weightsRaw = (season as { category_weights?: unknown })?.category_weights;
+        const weightsObj =
+          weightsRaw && typeof weightsRaw === "object"
+            ? (weightsRaw as Record<string, unknown>)
+            : {};
+        const weightByCategoryId = new Map<number, number>();
+        for (const [k, v] of Object.entries(weightsObj)) {
+          const id = Number(k);
+          const w = Number(v);
+          if (!Number.isFinite(id) || id <= 0) continue;
+          if (!Number.isInteger(w) || w < -99 || w > 99) continue;
+          weightByCategoryId.set(id, w);
+        }
+
+        const { rows } = await query<{ id: number; category_edition_id: number }>(
+          pool,
+          `SELECT id::int, category_edition_id::int
+           FROM nomination
+           WHERE id = ANY($1::int[])`,
+          [uniqueNominationIds]
+        );
+        pointsByNominationId = new Map<number, number>();
+        for (const r of rows) {
+          const w = weightByCategoryId.get(r.category_edition_id) ?? 1;
+          pointsByNominationId.set(r.id, w);
+        }
+      }
+
       const results = uniqueNominationIds.map((nominationId) => ({
         nomination_id: nominationId,
         won: winnerIds.has(String(nominationId)),
-        points: null as number | null
+        points: pointsByNominationId?.get(nominationId) ?? null
       }));
 
       const scores = scoreDraft({

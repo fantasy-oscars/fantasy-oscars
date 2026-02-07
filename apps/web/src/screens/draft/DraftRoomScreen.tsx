@@ -207,6 +207,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     icon: c.icon,
     iconVariant: c.iconVariant ?? "default",
     unitKind: c.unitKind ?? "",
+    weight: c.weight ?? null,
     nominees: c.nominations.map((n) => ({
       id: String(n.id),
       label: n.label,
@@ -420,6 +421,7 @@ function MobileDraftRoom(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
+    weight: number | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -562,6 +564,7 @@ function MobileDraftRoom(props: {
                   iconVariant={c.iconVariant}
                   unitKind={c.unitKind}
                   tooltipsEnabled={false}
+                  weight={c.weight}
                   nominees={c.nominees}
                   isKeyboardMode={false}
                   setKeyboardMode={() => {}}
@@ -948,6 +951,8 @@ function MobileRosterBoard(props: {
   const current =
     seat != null ? (players.find((p) => p.seatNumber === seat) ?? null) : null;
   const picks = seat != null ? (o.rosterBoard.rowsBySeat.get(seat) ?? []) : [];
+  const showWeightedPoints =
+    Boolean(o.header.isFinalResults) && o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Stack gap="sm">
@@ -1012,9 +1017,16 @@ function MobileRosterBoard(props: {
                       className="dr-pill-icon"
                     />
                   ) : null}
-                  <Text className="dr-pill-text dr-rosterPickText" lineClamp={1}>
+                  <Text component="span" className="dr-pill-text dr-rosterPickText">
                     {pick.label}
                   </Text>
+                  {showWeightedPoints ? (
+                    <Text component="span" className="dr-pill-points">
+                      {pick.winner && pick.nominationId != null
+                        ? formatSignedInt(o.header.getNominationPoints(pick.nominationId))
+                        : "0"}
+                    </Text>
+                  ) : null}
                 </Box>
               );
 
@@ -2227,6 +2239,7 @@ function DraftRoomScaffold(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
+    weight: number | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -2356,6 +2369,7 @@ function DraftRoomScaffold(props: {
     icon: c.icon,
     iconVariant: c.iconVariant,
     unitKind: c.unitKind,
+    weight: c.weight,
     nominees: c.nominees,
     // Use a deterministic estimate for masonry placement; the actual card height
     // is content-driven and hugs the pills.
@@ -2541,6 +2555,7 @@ function DraftRoomScaffold(props: {
                   icon={b.icon}
                   iconVariant={b.iconVariant}
                   unitKind={b.unitKind}
+                  weight={b.weight}
                   nominees={b.nominees}
                   isKeyboardMode={keyboardCategoryId === b.id}
                   setKeyboardMode={setKeyboardCategoryId}
@@ -2988,6 +3003,8 @@ function RosterBoardScaffold(props: {
   const canPrev = startIdx > 0;
   const canNext = startIdx + maxVisible < players.length;
   const visible = players.slice(startIdx, startIdx + maxVisible);
+  const showWeightedPoints =
+    Boolean(o.header.isFinalResults) && o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Box className="dr-middle dr-roster">
@@ -3089,9 +3106,18 @@ function RosterBoardScaffold(props: {
                             className="dr-pill-icon"
                           />
                         ) : null}
-                        <Text className="dr-pill-text dr-rosterPickText" lineClamp={1}>
+                        <Text component="span" className="dr-pill-text dr-rosterPickText">
                           {pick.label}
                         </Text>
+                        {showWeightedPoints ? (
+                          <Text component="span" className="dr-pill-points">
+                            {pick.winner && pick.nominationId != null
+                              ? formatSignedInt(
+                                  o.header.getNominationPoints(pick.nominationId)
+                                )
+                              : "0"}
+                          </Text>
+                        ) : null}
                       </Box>
                     );
 
@@ -3174,6 +3200,7 @@ function CategoryCard(props: {
   iconVariant: "default" | "inverted";
   unitKind: string;
   tooltipsEnabled?: boolean;
+  weight: number | null;
   nominees: Array<{
     id: string;
     label: string;
@@ -3223,6 +3250,11 @@ function CategoryCard(props: {
       >
         <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
         <Text className="dr-card-title">{props.title}</Text>
+        {typeof props.weight === "number" ? (
+          <Text component="span" className="dr-card-weight">
+            {formatSignedInt(props.weight)}
+          </Text>
+        ) : null}
       </UnstyledButton>
       <Box className="dr-card-pills">
         {props.nominees.length === 0 ? (
@@ -3318,4 +3350,10 @@ function CategoryCard(props: {
       </Box>
     </Box>
   );
+}
+
+function formatSignedInt(n: number) {
+  if (!Number.isFinite(n)) return "";
+  if (n > 0) return `+${Math.trunc(n)}`;
+  return String(Math.trunc(n));
 }

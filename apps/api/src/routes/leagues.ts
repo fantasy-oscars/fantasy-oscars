@@ -442,6 +442,7 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
           ceremony_code: s.ceremony_code ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
+          category_weights: (s as { category_weights?: unknown }).category_weights ?? null,
           remainder_strategy: s.remainder_strategy,
           pick_timer_seconds: s.pick_timer_seconds ?? null,
           auto_pick_strategy: s.auto_pick_strategy ?? null,
@@ -484,7 +485,7 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
         const scoringRaw = req.body?.scoring_strategy_name;
         const scoringStrategy =
           scoringRaw === undefined || scoringRaw === null ? "fixed" : String(scoringRaw);
-        if (!["fixed", "negative"].includes(scoringStrategy)) {
+        if (!["fixed", "negative", "category_weighted"].includes(scoringStrategy)) {
           throw validationError("Invalid scoring_strategy_name", [
             "scoring_strategy_name"
           ]);
@@ -572,7 +573,10 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
             `UPDATE season SET scoring_strategy_name = $2, remainder_strategy = $3 WHERE id = $1`,
             [season.id, scoringStrategy, remainderStrategy]
           );
-          season.scoring_strategy_name = scoringStrategy as "fixed" | "negative";
+          season.scoring_strategy_name = scoringStrategy as
+            | "fixed"
+            | "negative"
+            | "category_weighted";
           season.remainder_strategy = remainderStrategy as "UNDRAFTED" | "FULL_POOL";
 
           // Seed season membership from current league roster so the season is immediately usable.

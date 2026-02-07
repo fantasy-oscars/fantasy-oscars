@@ -21,7 +21,7 @@ export function LeagueSeasonCreateScreen(props: {
   view: LeagueSeasonCreateView;
   actions: {
     setCeremonyId: (v: number | null) => void;
-    setScoringStrategy: (v: "fixed" | "negative") => void;
+    setScoringStrategy: (v: "fixed" | "negative" | "category_weighted") => void;
     setRemainderStrategy: (v: "UNDRAFTED" | "FULL_POOL") => void;
     setTimerEnabled: (v: boolean) => void;
     setPickTimerSeconds: (v: number) => void;
@@ -119,12 +119,15 @@ export function LeagueSeasonCreateScreen(props: {
                 label="Scoring strategy"
                 value={view.scoringStrategy}
                 onChange={(v) =>
-                  actions.setScoringStrategy((v ?? "fixed") as "fixed" | "negative")
+                  actions.setScoringStrategy(
+                    (v ?? "fixed") as "fixed" | "negative" | "category_weighted"
+                  )
                 }
                 disabled={view.working}
                 data={[
                   { value: "fixed", label: "Standard" },
-                  { value: "negative", label: "Negative" }
+                  { value: "negative", label: "Negative" },
+                  { value: "category_weighted", label: "Category-weighted" }
                 ]}
               />
 
