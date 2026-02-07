@@ -31,6 +31,14 @@ import { notifications } from "@mantine/notifications";
 type MasonryItem = { estimatePx: number };
 
 const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
+const CARD_TOOLTIP_STYLES = {
+  tooltip: {
+    padding: 0,
+    background: "transparent",
+    border: "none",
+    boxShadow: "none"
+  }
+} as const;
 
 const DRAFT_UNIT_MIN_PX = 140;
 const DRAFT_UNIT_MAX_PX = 200;
@@ -508,6 +516,11 @@ function MobileDraftRoom(props: {
         isTimerDraft={o.header.hasTimer}
         clockText={o.header.clockText}
         draftStatus={draftStatus}
+        showDraftControls={!isCompleted}
+        canManageDraft={props.isPreview ? true : o.header.canManageDraft}
+        onStartDraft={o.header.onStartDraft}
+        onPauseDraft={o.header.onPauseDraft}
+        onResumeDraft={o.header.onResumeDraft}
         isFinalResults={props.isFinalResults}
         resultsWinnerLabel={o.header.resultsWinnerLabel}
         view={props.isPre ? "draft" : isCompleted ? "roster" : o.header.view}
@@ -695,6 +708,11 @@ function MobileDraftHeader(props: {
   isTimerDraft: boolean;
   clockText: string;
   draftStatus: string | null;
+  showDraftControls: boolean;
+  canManageDraft: boolean;
+  onStartDraft: () => void;
+  onPauseDraft: () => void;
+  onResumeDraft: () => void;
   isFinalResults: boolean;
   resultsWinnerLabel: string | null;
   view: "draft" | "roster";
@@ -729,7 +747,7 @@ function MobileDraftHeader(props: {
 
   return (
     <Box className="dr-header dr-mobileHeader">
-      <Box className="dr-mobileHeaderRow">
+      <Box className="dr-mobileBar" role="banner">
         <ActionIcon
           variant="subtle"
           onClick={props.onOpen}
@@ -741,27 +759,24 @@ function MobileDraftHeader(props: {
           </Text>
         </ActionIcon>
 
-        <Box className="drm-buckleWrap">
-          <Box
-            className="drh-buckle drm-buckle"
-            data-mode={props.isTimerDraft ? "timer" : "non-timer"}
-          >
-            {isCompleted ? null : (
-              <Box className="drm-buckleTop">
-                <Box className="drm-buckleMini">
-                  <Text className="drm-buckleMiniLabel">Round</Text>
-                  <Text className="drm-buckleMiniNumber">{props.roundNumber ?? "—"}</Text>
-                </Box>
-                <Box className="drm-buckleMini">
-                  <Text className="drm-buckleMiniLabel">Pick</Text>
-                  <Text className="drm-buckleMiniNumber">{props.pickNumber ?? "—"}</Text>
-                </Box>
-              </Box>
-            )}
-            <Text className="drm-buckleCenter" lineClamp={2}>
-              {centerText}
-            </Text>
-          </Box>
+        <Box className="drm-miniStat" aria-label="Round">
+          <Text className="drm-miniLabel">Round</Text>
+          <Text className="drm-miniNumber">
+            {isCompleted ? "—" : (props.roundNumber ?? "—")}
+          </Text>
+        </Box>
+
+        <Box className="drm-clock" aria-label="Timer">
+          <Text className="drm-clockText" lineClamp={1}>
+            {centerText}
+          </Text>
+        </Box>
+
+        <Box className="drm-miniStat" aria-label="Pick">
+          <Text className="drm-miniLabel">Pick</Text>
+          <Text className="drm-miniNumber">
+            {isCompleted ? "—" : (props.pickNumber ?? "—")}
+          </Text>
         </Box>
 
         <Menu position="bottom-end" withinPortal>
@@ -798,6 +813,16 @@ function MobileDraftHeader(props: {
                   />
                 </Group>
               </Menu.Item>
+            ) : null}
+
+            {props.showDraftControls && props.canManageDraft ? (
+              isPre ? (
+                <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+              ) : isPaused ? (
+                <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+              ) : !isCompleted ? (
+                <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+              ) : null
             ) : null}
           </Menu.Dropdown>
         </Menu>
@@ -994,10 +1019,11 @@ function MobileRosterBoard(props: {
                 <Box key={`${pick.pickNumber}`}>
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={!nominee}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
                     label={
                       nominee ? (
                         <NomineeTooltipCard
@@ -1116,10 +1142,11 @@ function MobileRail(props: {
                 {nominee ? (
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1199,10 +1226,11 @@ function MobileRail(props: {
                 {nominee ? (
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1321,10 +1349,11 @@ function MobileRail(props: {
                         <Tooltip
                           key={item.nominationId}
                           events={TOOLTIP_EVENTS}
-                          withArrow
+                          withArrow={false}
                           position="bottom-start"
                           multiline
                           offset={10}
+                          styles={CARD_TOOLTIP_STYLES}
                           label={
                             <NomineeTooltipCard
                               unitKind={nominee.unitKind}
@@ -1397,9 +1426,12 @@ function DraftBoardHeader(props: {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const leftRef = useRef<HTMLDivElement | null>(null);
   const rightRef = useRef<HTMLDivElement | null>(null);
+  const leftWingRef = useRef<HTMLDivElement | null>(null);
+  const rightWingRef = useRef<HTMLDivElement | null>(null);
   const buckleRef = useRef<HTMLDivElement | null>(null);
   const [compactHeader, setCompactHeader] = useState(false);
   const [compactMenuOpen, setCompactMenuOpen] = useState(false);
+  const nonCompactNeededWidthRef = useRef<number>(0);
 
   const activeIndexRaw = props.participants.findIndex((p) => p.active);
   const activeIndex = activeIndexRaw >= 0 ? activeIndexRaw : 0;
@@ -1427,21 +1459,29 @@ function DraftBoardHeader(props: {
     if (!headerEl) return;
 
     const compute = () => {
-      const l = leftRef.current?.getBoundingClientRect();
-      const r = rightRef.current?.getBoundingClientRect();
+      const headerRect = headerEl.getBoundingClientRect();
+      const l = leftWingRef.current?.getBoundingClientRect();
+      const r = rightWingRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
 
       const pad = 8;
-      const safePad = 24; // hysteresis to prevent flip-flop near the threshold
       const overlapsLeft = b.left < l.right + pad;
       const overlapsRight = b.right > r.left - pad;
       const hasOverlap = overlapsLeft || overlapsRight;
+
       setCompactHeader((prev) => {
-        if (prev) {
-          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
-          return hasComfort ? false : true;
+        if (!prev) {
+          // While non-compact is rendered, store an estimate of how much width we need
+          // to avoid overlap. This is used to switch back from compact without flip-flop.
+          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
         }
+        if (prev) {
+          const needed = nonCompactNeededWidthRef.current || 0;
+          const hasRoom = headerRect.width >= needed + 40;
+          return hasRoom ? false : true;
+        }
+        // Enter compact mode only when we actually overlap in the non-compact layout.
         return hasOverlap;
       });
     };
@@ -1455,19 +1495,25 @@ function DraftBoardHeader(props: {
   useEffect(() => {
     // Recompute when content changes even if the header size doesn't (e.g. split-screen).
     requestAnimationFrame(() => {
-      const l = leftRef.current?.getBoundingClientRect();
-      const r = rightRef.current?.getBoundingClientRect();
+      const headerEl = headerRef.current;
+      if (!headerEl) return;
+      const headerRect = headerEl.getBoundingClientRect();
+      const l = leftWingRef.current?.getBoundingClientRect();
+      const r = rightWingRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
       const pad = 8;
-      const safePad = 24;
       const overlapsLeft = b.left < l.right + pad;
       const overlapsRight = b.right > r.left - pad;
       const hasOverlap = overlapsLeft || overlapsRight;
       setCompactHeader((prev) => {
+        if (!prev) {
+          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
+        }
         if (prev) {
-          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
-          return hasComfort ? false : true;
+          const needed = nonCompactNeededWidthRef.current || 0;
+          const hasRoom = headerRect.width >= needed + 40;
+          return hasRoom ? false : true;
         }
         return hasOverlap;
       });
@@ -1486,97 +1532,142 @@ function DraftBoardHeader(props: {
     <Box className="dr-header">
       <Box className="drh-row" ref={headerRef}>
         <Box className="drh-left" ref={leftRef}>
-          {compactHeader ? (
-            <>
-              <Box className="drh-backWrap" aria-hidden={false}>
-                <UnstyledButton
-                  type="button"
-                  className="drh-back"
-                  aria-label="Menu"
-                  onClick={() => setCompactMenuOpen(true)}
-                >
-                  <Text
-                    component="span"
-                    className="mi-icon mi-icon-tiny"
-                    aria-hidden="true"
+          <Box className="drh-wing" ref={leftWingRef}>
+            {compactHeader ? (
+              <>
+                <Box className="drh-backWrap" aria-hidden={false}>
+                  <UnstyledButton
+                    type="button"
+                    className="drh-back"
+                    aria-label="Menu"
+                    onClick={() => setCompactMenuOpen(true)}
                   >
-                    menu
-                  </Text>
-                </UnstyledButton>
-              </Box>
-              <Drawer
-                opened={compactMenuOpen}
-                onClose={() => setCompactMenuOpen(false)}
-                position="left"
-                title=" "
-              >
-                <Stack gap="md">
-                  <Button
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      menu
+                    </Text>
+                  </UnstyledButton>
+                </Box>
+                <Drawer
+                  opened={compactMenuOpen}
+                  onClose={() => setCompactMenuOpen(false)}
+                  position="left"
+                  title=" "
+                >
+                  <Stack gap="md">
+                    <Button
+                      component={Link}
+                      to={props.backHref ?? "/seasons"}
+                      variant="outline"
+                      fullWidth
+                      onClick={(e) => {
+                        if (!props.backHref) e.preventDefault();
+                        setCompactMenuOpen(false);
+                      }}
+                    >
+                      Back to seasons
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      fullWidth
+                      disabled={!props.canToggleView}
+                      onClick={() => {
+                        if (!props.canToggleView) return;
+                        props.onViewChange(props.view === "draft" ? "roster" : "draft");
+                        setCompactMenuOpen(false);
+                      }}
+                    >
+                      {props.view === "draft" ? "Roster view" : "Draft view"}
+                    </Button>
+
+                    {!isCompleted ? (
+                      <Box>
+                        <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+                          Draft order
+                        </Text>
+                        <Stack gap="xs">
+                          {props.participants.map((p) => (
+                            <Group
+                              key={p.seatNumber}
+                              justify="space-between"
+                              wrap="nowrap"
+                            >
+                              <Group gap="sm" wrap="nowrap">
+                                <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                                <Text>{p.label}</Text>
+                              </Group>
+                              {p.active ? (
+                                <Text
+                                  component="span"
+                                  className="mi-icon mi-icon-tiny"
+                                  aria-hidden="true"
+                                >
+                                  play_arrow
+                                </Text>
+                              ) : null}
+                            </Group>
+                          ))}
+                        </Stack>
+                      </Box>
+                    ) : null}
+                  </Stack>
+                </Drawer>
+              </>
+            ) : (
+              <>
+                <Box className="drh-backWrap" aria-hidden={false}>
+                  <UnstyledButton
                     component={Link}
-                    to={props.backHref ?? "/seasons"}
-                    variant="outline"
-                    fullWidth
+                    to={props.backHref ?? "#"}
+                    className={["drh-back", props.backHref ? "" : "is-disabled"].join(
+                      " "
+                    )}
+                    aria-label="Back to season"
                     onClick={(e) => {
                       if (!props.backHref) e.preventDefault();
-                      setCompactMenuOpen(false);
                     }}
                   >
-                    Back to seasons
-                  </Button>
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      arrow_back
+                    </Text>
+                  </UnstyledButton>
+                </Box>
+                {!isCompleted && (
+                  <ParticipantStrip
+                    participants={props.participants}
+                    activeIndex={activeIndex}
+                    direction={props.direction}
+                    suppressActive={isPre || isPaused || isCompleted}
+                  />
+                )}
+              </>
+            )}
+          </Box>
+        </Box>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    disabled={!props.canToggleView}
-                    onClick={() => {
-                      if (!props.canToggleView) return;
-                      props.onViewChange(props.view === "draft" ? "roster" : "draft");
-                      setCompactMenuOpen(false);
-                    }}
-                  >
-                    {props.view === "draft" ? "Roster view" : "Draft view"}
-                  </Button>
-
-                  {!isCompleted ? (
-                    <Box>
-                      <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
-                        Draft order
-                      </Text>
-                      <Stack gap="xs">
-                        {props.participants.map((p) => (
-                          <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
-                            <Group gap="sm" wrap="nowrap">
-                              <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
-                              <Text>{p.label}</Text>
-                            </Group>
-                            {p.active ? (
-                              <Text
-                                component="span"
-                                className="mi-icon mi-icon-tiny"
-                                aria-hidden="true"
-                              >
-                                play_arrow
-                              </Text>
-                            ) : null}
-                          </Group>
-                        ))}
-                      </Stack>
-                    </Box>
-                  ) : null}
-                </Stack>
-              </Drawer>
-            </>
-          ) : (
-            <>
-              <Box className="drh-backWrap" aria-hidden={false}>
+        <Box className="drh-right" ref={rightRef}>
+          <Box className="drh-wing drh-wingRight" ref={rightWingRef}>
+            {!compactHeader && props.showDraftControls && props.canManageDraft ? (
+              <Box className="drh-pauseWrap">
                 <UnstyledButton
-                  component={Link}
-                  to={props.backHref ?? "#"}
-                  className={["drh-back", props.backHref ? "" : "is-disabled"].join(" ")}
-                  aria-label="Back to season"
-                  onClick={(e) => {
-                    if (!props.backHref) e.preventDefault();
+                  type="button"
+                  className="drh-pause"
+                  aria-label={
+                    isPre ? "Start draft" : isPaused ? "Resume draft" : "Pause draft"
+                  }
+                  onClick={() => {
+                    if (isPre) props.onStartDraft();
+                    else if (isPaused) props.onResumeDraft();
+                    else props.onPauseDraft();
                   }}
                 >
                   <Text
@@ -1584,120 +1675,33 @@ function DraftBoardHeader(props: {
                     className="mi-icon mi-icon-tiny"
                     aria-hidden="true"
                   >
-                    arrow_back
+                    {isPre || isPaused ? "play_arrow" : "pause"}
                   </Text>
                 </UnstyledButton>
               </Box>
-              {!isCompleted && (
-                <ParticipantStrip
-                  participants={props.participants}
-                  activeIndex={activeIndex}
-                  direction={props.direction}
-                  suppressActive={isPre || isPaused || isCompleted}
-                />
-              )}
-            </>
-          )}
-        </Box>
+            ) : null}
 
-        <Box className="drh-right" ref={rightRef}>
-          {!compactHeader && props.showDraftControls && props.canManageDraft ? (
-            <Box className="drh-pauseWrap">
-              <UnstyledButton
-                type="button"
-                className="drh-pause"
-                aria-label={
-                  isPre ? "Start draft" : isPaused ? "Resume draft" : "Pause draft"
-                }
-                onClick={() => {
-                  if (isPre) props.onStartDraft();
-                  else if (isPaused) props.onResumeDraft();
-                  else props.onPauseDraft();
-                }}
-              >
-                <Text
-                  component="span"
-                  className="mi-icon mi-icon-tiny"
-                  aria-hidden="true"
-                >
-                  {isPre || isPaused ? "play_arrow" : "pause"}
-                </Text>
-              </UnstyledButton>
-            </Box>
-          ) : null}
+            {!compactHeader && props.showDraftControls ? (
+              <Box className="drh-controls">
+                <Box className="drh-controlsGrid">
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">View</Text>
+                    <SegmentedControl
+                      size="xs"
+                      value={props.view}
+                      onChange={(v) => props.onViewChange(v as "draft" | "roster")}
+                      data={[
+                        { value: "draft", label: "Draft" },
+                        { value: "roster", label: "Roster" }
+                      ]}
+                      disabled={!props.canToggleView}
+                    />
+                  </Group>
 
-          {!compactHeader && props.showDraftControls ? (
-            <Box className="drh-controls">
-              <Box className="drh-controlsGrid">
-                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                  <Text className="drh-label">View</Text>
-                  <SegmentedControl
-                    size="xs"
-                    value={props.view}
-                    onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-                    data={[
-                      { value: "draft", label: "Draft" },
-                      { value: "roster", label: "Roster" }
-                    ]}
-                    disabled={!props.canToggleView}
-                  />
-                </Group>
-
-                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                  <Text className="drh-label">Show drafted</Text>
-                  <Box className="drh-toggleSlot">
-                    {props.showDraftedVisible ? (
-                      <Switch
-                        size="sm"
-                        checked={props.showDrafted}
-                        onChange={(e) =>
-                          props.onToggleShowDrafted(e.currentTarget.checked)
-                        }
-                      />
-                    ) : (
-                      <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                    )}
-                  </Box>
-                </Group>
-              </Box>
-            </Box>
-          ) : null}
-
-          {compactHeader ? (
-            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    className="theme-toggle"
-                    aria-label="Open settings"
-                  >
-                    <Text
-                      component="span"
-                      className="mi-icon mi-icon-tiny"
-                      aria-hidden="true"
-                    >
-                      settings
-                    </Text>
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={
-                      <Text component="span" className="gicon" aria-hidden="true">
-                        {props.themeIcon}
-                      </Text>
-                    }
-                    onClick={props.onToggleTheme}
-                  >
-                    Toggle theme
-                  </Menu.Item>
-
-                  {props.showDraftedVisible ? (
-                    <Menu.Item closeMenuOnClick={false}>
-                      <Group justify="space-between" wrap="nowrap" gap="md">
-                        <Text>Show drafted</Text>
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">Show drafted</Text>
+                    <Box className="drh-toggleSlot">
+                      {props.showDraftedVisible ? (
                         <Switch
                           size="sm"
                           checked={props.showDrafted}
@@ -1705,41 +1709,93 @@ function DraftBoardHeader(props: {
                             props.onToggleShowDrafted(e.currentTarget.checked)
                           }
                         />
-                      </Group>
-                    </Menu.Item>
-                  ) : null}
-
-                  {props.showDraftControls && props.canManageDraft ? (
-                    isPre ? (
-                      <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
-                    ) : isPaused ? (
-                      <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
-                    ) : !isCompleted ? (
-                      <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
-                    ) : null
-                  ) : null}
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
-          ) : (
-            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-              <Button
-                type="button"
-                variant="subtle"
-                className="theme-toggle"
-                onClick={props.onToggleTheme}
-                aria-label="Toggle theme"
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.themeIcon}
-                </Text>
-              </Button>
-              <Box className="drh-userBadge">
-                <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
-                <Text className="drh-userText">{props.userLabel}</Text>
+                      ) : (
+                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                      )}
+                    </Box>
+                  </Group>
+                </Box>
               </Box>
-            </Group>
-          )}
+            ) : null}
+
+            {compactHeader ? (
+              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      className="theme-toggle"
+                      aria-label="Open settings"
+                    >
+                      <Text
+                        component="span"
+                        className="mi-icon mi-icon-tiny"
+                        aria-hidden="true"
+                      >
+                        settings
+                      </Text>
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={
+                        <Text component="span" className="gicon" aria-hidden="true">
+                          {props.themeIcon}
+                        </Text>
+                      }
+                      onClick={props.onToggleTheme}
+                    >
+                      Toggle theme
+                    </Menu.Item>
+
+                    {props.showDraftedVisible ? (
+                      <Menu.Item closeMenuOnClick={false}>
+                        <Group justify="space-between" wrap="nowrap" gap="md">
+                          <Text>Show drafted</Text>
+                          <Switch
+                            size="sm"
+                            checked={props.showDrafted}
+                            onChange={(e) =>
+                              props.onToggleShowDrafted(e.currentTarget.checked)
+                            }
+                          />
+                        </Group>
+                      </Menu.Item>
+                    ) : null}
+
+                    {props.showDraftControls && props.canManageDraft ? (
+                      isPre ? (
+                        <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+                      ) : isPaused ? (
+                        <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+                      ) : !isCompleted ? (
+                        <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+                      ) : null
+                    ) : null}
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            ) : (
+              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+                <Button
+                  type="button"
+                  variant="subtle"
+                  className="theme-toggle"
+                  onClick={props.onToggleTheme}
+                  aria-label="Toggle theme"
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    {props.themeIcon}
+                  </Text>
+                </Button>
+                <Box className="drh-userBadge">
+                  <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+                  <Text className="drh-userText">{props.userLabel}</Text>
+                </Box>
+              </Group>
+            )}
+          </Box>
         </Box>
 
         <Box ref={buckleRef}>
@@ -2315,10 +2371,11 @@ function DraftRoomScaffold(props: {
                       {nominee ? (
                         <Tooltip
                           events={TOOLTIP_EVENTS}
-                          withArrow
+                          withArrow={false}
                           position="bottom-start"
                           multiline
                           offset={10}
+                          styles={CARD_TOOLTIP_STYLES}
                           label={
                             <NomineeTooltipCard
                               unitKind={nominee.unitKind}
@@ -2481,10 +2538,11 @@ function DraftRoomScaffold(props: {
                         {nominee ? (
                           <Tooltip
                             events={TOOLTIP_EVENTS}
-                            withArrow
+                            withArrow={false}
                             position="bottom-start"
                             multiline
                             offset={10}
+                            styles={CARD_TOOLTIP_STYLES}
                             label={
                               <NomineeTooltipCard
                                 unitKind={nominee.unitKind}
@@ -2676,10 +2734,11 @@ function DraftRoomScaffold(props: {
                                 <Tooltip
                                   key={item.nominationId}
                                   events={TOOLTIP_EVENTS}
-                                  withArrow
+                                  withArrow={false}
                                   position="bottom-start"
                                   multiline
                                   offset={10}
+                                  styles={CARD_TOOLTIP_STYLES}
                                   label={
                                     <NomineeTooltipCard
                                       unitKind={nominee.unitKind}
@@ -2938,10 +2997,11 @@ function RosterBoardScaffold(props: {
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
                         <Tooltip
                           events={TOOLTIP_EVENTS}
-                          withArrow
+                          withArrow={!nominee}
                           position="bottom-start"
                           multiline
                           offset={10}
+                          styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
                           label={
                             nominee ? (
                               <NomineeTooltipCard
@@ -3072,10 +3132,11 @@ function CategoryCard(props: {
             <Tooltip
               key={n.id}
               events={TOOLTIP_EVENTS}
-              withArrow
+              withArrow={false}
               position="bottom-start"
               multiline
               offset={10}
+              styles={CARD_TOOLTIP_STYLES}
               label={
                 <NomineeTooltipCard
                   unitKind={props.unitKind}

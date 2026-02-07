@@ -267,13 +267,19 @@ body {
 }
 
 .dr-mobileHeader {
-  flex: 0 0 84px;
+  /* Mobile header is a flat bar, not a buckle. */
+  flex: 0 0 64px;
+  background: var(--fo-surface-card-primary);
 }
 
-.dr-mobileHeaderRow {
+.dr-frame[data-turn="mine"] .dr-mobileHeader {
+  background: var(--fo-gold);
+}
+
+.dr-mobileBar {
   height: 100%;
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 44px auto 1fr auto 44px;
   align-items: center;
   gap: 10px;
   padding: 0 12px;
@@ -285,42 +291,16 @@ body {
   border-radius: 999px;
 }
 
-.drm-buckleWrap {
-  display: flex;
-  justify-content: center;
-}
-
-.drm-buckle {
-  position: relative;
-  left: auto;
-  top: auto;
-  transform: none;
-  width: 84px;
-  height: 84px;
-  border-radius: 18px;
-  padding: 10px;
+.drm-miniStat {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  gap: 6px;
-}
-
-.drm-buckleTop {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.drm-buckleMini {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: center;
+  min-width: 54px;
   line-height: 1;
 }
 
-.drm-buckleMiniLabel {
+.drm-miniLabel {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -328,27 +308,34 @@ body {
   color: var(--fo-text-deemphasized);
 }
 
-.drm-buckleMiniNumber {
-  font-size: 11px;
+.drm-miniNumber {
+  font-size: 12px;
   font-weight: 800;
   color: var(--fo-text-primary);
 }
 
-.drm-buckleCenter {
-  font-size: 12px;
+.drm-clock {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.drm-clockText {
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: 0.01em;
   color: var(--fo-text-primary);
   text-align: center;
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
-.dr-frame[data-turn="mine"] .drm-buckleCenter,
-.dr-frame[data-turn="mine"] .drm-buckleMiniNumber {
+.dr-frame[data-turn="mine"] .drm-clockText,
+.dr-frame[data-turn="mine"] .drm-miniNumber {
   color: var(--fo-charcoal-9);
 }
 
-.dr-frame[data-turn="mine"] .drm-buckleMiniLabel {
+.dr-frame[data-turn="mine"] .drm-miniLabel {
   color: rgba(var(--fo-charcoal-rgb), 0.72);
 }
 
@@ -413,6 +400,17 @@ body[data-mantine-color-scheme="dark"] .drh-backWrap::after {
   flex: 1 1 0;
   position: relative;
   z-index: 2;
+}
+
+.drh-wing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drh-wingRight {
+  justify-content: flex-end;
 }
 
 .drh-left {
