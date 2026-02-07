@@ -402,6 +402,17 @@ body[data-mantine-color-scheme="dark"] .drh-backWrap::after {
   z-index: 2;
 }
 
+.drh-wing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drh-wingRight {
+  justify-content: flex-end;
+}
+
 .drh-left {
   flex: 1 1 auto;
 }

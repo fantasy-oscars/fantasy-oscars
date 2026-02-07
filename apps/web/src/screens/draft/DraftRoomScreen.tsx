@@ -1426,9 +1426,12 @@ function DraftBoardHeader(props: {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const leftRef = useRef<HTMLDivElement | null>(null);
   const rightRef = useRef<HTMLDivElement | null>(null);
+  const leftWingRef = useRef<HTMLDivElement | null>(null);
+  const rightWingRef = useRef<HTMLDivElement | null>(null);
   const buckleRef = useRef<HTMLDivElement | null>(null);
   const [compactHeader, setCompactHeader] = useState(false);
   const [compactMenuOpen, setCompactMenuOpen] = useState(false);
+  const nonCompactNeededWidthRef = useRef<number>(0);
 
   const activeIndexRaw = props.participants.findIndex((p) => p.active);
   const activeIndex = activeIndexRaw >= 0 ? activeIndexRaw : 0;
@@ -1456,21 +1459,29 @@ function DraftBoardHeader(props: {
     if (!headerEl) return;
 
     const compute = () => {
-      const l = leftRef.current?.getBoundingClientRect();
-      const r = rightRef.current?.getBoundingClientRect();
+      const headerRect = headerEl.getBoundingClientRect();
+      const l = leftWingRef.current?.getBoundingClientRect();
+      const r = rightWingRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
 
       const pad = 8;
-      const safePad = 24; // hysteresis to prevent flip-flop near the threshold
       const overlapsLeft = b.left < l.right + pad;
       const overlapsRight = b.right > r.left - pad;
       const hasOverlap = overlapsLeft || overlapsRight;
+
       setCompactHeader((prev) => {
-        if (prev) {
-          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
-          return hasComfort ? false : true;
+        if (!prev) {
+          // While non-compact is rendered, store an estimate of how much width we need
+          // to avoid overlap. This is used to switch back from compact without flip-flop.
+          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
         }
+        if (prev) {
+          const needed = nonCompactNeededWidthRef.current || 0;
+          const hasRoom = headerRect.width >= needed + 40;
+          return hasRoom ? false : true;
+        }
+        // Enter compact mode only when we actually overlap in the non-compact layout.
         return hasOverlap;
       });
     };
@@ -1484,19 +1495,25 @@ function DraftBoardHeader(props: {
   useEffect(() => {
     // Recompute when content changes even if the header size doesn't (e.g. split-screen).
     requestAnimationFrame(() => {
-      const l = leftRef.current?.getBoundingClientRect();
-      const r = rightRef.current?.getBoundingClientRect();
+      const headerEl = headerRef.current;
+      if (!headerEl) return;
+      const headerRect = headerEl.getBoundingClientRect();
+      const l = leftWingRef.current?.getBoundingClientRect();
+      const r = rightWingRef.current?.getBoundingClientRect();
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
       const pad = 8;
-      const safePad = 24;
       const overlapsLeft = b.left < l.right + pad;
       const overlapsRight = b.right > r.left - pad;
       const hasOverlap = overlapsLeft || overlapsRight;
       setCompactHeader((prev) => {
+        if (!prev) {
+          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
+        }
         if (prev) {
-          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
-          return hasComfort ? false : true;
+          const needed = nonCompactNeededWidthRef.current || 0;
+          const hasRoom = headerRect.width >= needed + 40;
+          return hasRoom ? false : true;
         }
         return hasOverlap;
       });
@@ -1515,97 +1532,142 @@ function DraftBoardHeader(props: {
     <Box className="dr-header">
       <Box className="drh-row" ref={headerRef}>
         <Box className="drh-left" ref={leftRef}>
-          {compactHeader ? (
-            <>
-              <Box className="drh-backWrap" aria-hidden={false}>
-                <UnstyledButton
-                  type="button"
-                  className="drh-back"
-                  aria-label="Menu"
-                  onClick={() => setCompactMenuOpen(true)}
-                >
-                  <Text
-                    component="span"
-                    className="mi-icon mi-icon-tiny"
-                    aria-hidden="true"
+          <Box className="drh-wing" ref={leftWingRef}>
+            {compactHeader ? (
+              <>
+                <Box className="drh-backWrap" aria-hidden={false}>
+                  <UnstyledButton
+                    type="button"
+                    className="drh-back"
+                    aria-label="Menu"
+                    onClick={() => setCompactMenuOpen(true)}
                   >
-                    menu
-                  </Text>
-                </UnstyledButton>
-              </Box>
-              <Drawer
-                opened={compactMenuOpen}
-                onClose={() => setCompactMenuOpen(false)}
-                position="left"
-                title=" "
-              >
-                <Stack gap="md">
-                  <Button
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      menu
+                    </Text>
+                  </UnstyledButton>
+                </Box>
+                <Drawer
+                  opened={compactMenuOpen}
+                  onClose={() => setCompactMenuOpen(false)}
+                  position="left"
+                  title=" "
+                >
+                  <Stack gap="md">
+                    <Button
+                      component={Link}
+                      to={props.backHref ?? "/seasons"}
+                      variant="outline"
+                      fullWidth
+                      onClick={(e) => {
+                        if (!props.backHref) e.preventDefault();
+                        setCompactMenuOpen(false);
+                      }}
+                    >
+                      Back to seasons
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      fullWidth
+                      disabled={!props.canToggleView}
+                      onClick={() => {
+                        if (!props.canToggleView) return;
+                        props.onViewChange(props.view === "draft" ? "roster" : "draft");
+                        setCompactMenuOpen(false);
+                      }}
+                    >
+                      {props.view === "draft" ? "Roster view" : "Draft view"}
+                    </Button>
+
+                    {!isCompleted ? (
+                      <Box>
+                        <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+                          Draft order
+                        </Text>
+                        <Stack gap="xs">
+                          {props.participants.map((p) => (
+                            <Group
+                              key={p.seatNumber}
+                              justify="space-between"
+                              wrap="nowrap"
+                            >
+                              <Group gap="sm" wrap="nowrap">
+                                <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                                <Text>{p.label}</Text>
+                              </Group>
+                              {p.active ? (
+                                <Text
+                                  component="span"
+                                  className="mi-icon mi-icon-tiny"
+                                  aria-hidden="true"
+                                >
+                                  play_arrow
+                                </Text>
+                              ) : null}
+                            </Group>
+                          ))}
+                        </Stack>
+                      </Box>
+                    ) : null}
+                  </Stack>
+                </Drawer>
+              </>
+            ) : (
+              <>
+                <Box className="drh-backWrap" aria-hidden={false}>
+                  <UnstyledButton
                     component={Link}
-                    to={props.backHref ?? "/seasons"}
-                    variant="outline"
-                    fullWidth
+                    to={props.backHref ?? "#"}
+                    className={["drh-back", props.backHref ? "" : "is-disabled"].join(
+                      " "
+                    )}
+                    aria-label="Back to season"
                     onClick={(e) => {
                       if (!props.backHref) e.preventDefault();
-                      setCompactMenuOpen(false);
                     }}
                   >
-                    Back to seasons
-                  </Button>
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      arrow_back
+                    </Text>
+                  </UnstyledButton>
+                </Box>
+                {!isCompleted && (
+                  <ParticipantStrip
+                    participants={props.participants}
+                    activeIndex={activeIndex}
+                    direction={props.direction}
+                    suppressActive={isPre || isPaused || isCompleted}
+                  />
+                )}
+              </>
+            )}
+          </Box>
+        </Box>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    fullWidth
-                    disabled={!props.canToggleView}
-                    onClick={() => {
-                      if (!props.canToggleView) return;
-                      props.onViewChange(props.view === "draft" ? "roster" : "draft");
-                      setCompactMenuOpen(false);
-                    }}
-                  >
-                    {props.view === "draft" ? "Roster view" : "Draft view"}
-                  </Button>
-
-                  {!isCompleted ? (
-                    <Box>
-                      <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
-                        Draft order
-                      </Text>
-                      <Stack gap="xs">
-                        {props.participants.map((p) => (
-                          <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
-                            <Group gap="sm" wrap="nowrap">
-                              <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
-                              <Text>{p.label}</Text>
-                            </Group>
-                            {p.active ? (
-                              <Text
-                                component="span"
-                                className="mi-icon mi-icon-tiny"
-                                aria-hidden="true"
-                              >
-                                play_arrow
-                              </Text>
-                            ) : null}
-                          </Group>
-                        ))}
-                      </Stack>
-                    </Box>
-                  ) : null}
-                </Stack>
-              </Drawer>
-            </>
-          ) : (
-            <>
-              <Box className="drh-backWrap" aria-hidden={false}>
+        <Box className="drh-right" ref={rightRef}>
+          <Box className="drh-wing drh-wingRight" ref={rightWingRef}>
+            {!compactHeader && props.showDraftControls && props.canManageDraft ? (
+              <Box className="drh-pauseWrap">
                 <UnstyledButton
-                  component={Link}
-                  to={props.backHref ?? "#"}
-                  className={["drh-back", props.backHref ? "" : "is-disabled"].join(" ")}
-                  aria-label="Back to season"
-                  onClick={(e) => {
-                    if (!props.backHref) e.preventDefault();
+                  type="button"
+                  className="drh-pause"
+                  aria-label={
+                    isPre ? "Start draft" : isPaused ? "Resume draft" : "Pause draft"
+                  }
+                  onClick={() => {
+                    if (isPre) props.onStartDraft();
+                    else if (isPaused) props.onResumeDraft();
+                    else props.onPauseDraft();
                   }}
                 >
                   <Text
@@ -1613,120 +1675,33 @@ function DraftBoardHeader(props: {
                     className="mi-icon mi-icon-tiny"
                     aria-hidden="true"
                   >
-                    arrow_back
+                    {isPre || isPaused ? "play_arrow" : "pause"}
                   </Text>
                 </UnstyledButton>
               </Box>
-              {!isCompleted && (
-                <ParticipantStrip
-                  participants={props.participants}
-                  activeIndex={activeIndex}
-                  direction={props.direction}
-                  suppressActive={isPre || isPaused || isCompleted}
-                />
-              )}
-            </>
-          )}
-        </Box>
+            ) : null}
 
-        <Box className="drh-right" ref={rightRef}>
-          {!compactHeader && props.showDraftControls && props.canManageDraft ? (
-            <Box className="drh-pauseWrap">
-              <UnstyledButton
-                type="button"
-                className="drh-pause"
-                aria-label={
-                  isPre ? "Start draft" : isPaused ? "Resume draft" : "Pause draft"
-                }
-                onClick={() => {
-                  if (isPre) props.onStartDraft();
-                  else if (isPaused) props.onResumeDraft();
-                  else props.onPauseDraft();
-                }}
-              >
-                <Text
-                  component="span"
-                  className="mi-icon mi-icon-tiny"
-                  aria-hidden="true"
-                >
-                  {isPre || isPaused ? "play_arrow" : "pause"}
-                </Text>
-              </UnstyledButton>
-            </Box>
-          ) : null}
+            {!compactHeader && props.showDraftControls ? (
+              <Box className="drh-controls">
+                <Box className="drh-controlsGrid">
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">View</Text>
+                    <SegmentedControl
+                      size="xs"
+                      value={props.view}
+                      onChange={(v) => props.onViewChange(v as "draft" | "roster")}
+                      data={[
+                        { value: "draft", label: "Draft" },
+                        { value: "roster", label: "Roster" }
+                      ]}
+                      disabled={!props.canToggleView}
+                    />
+                  </Group>
 
-          {!compactHeader && props.showDraftControls ? (
-            <Box className="drh-controls">
-              <Box className="drh-controlsGrid">
-                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                  <Text className="drh-label">View</Text>
-                  <SegmentedControl
-                    size="xs"
-                    value={props.view}
-                    onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-                    data={[
-                      { value: "draft", label: "Draft" },
-                      { value: "roster", label: "Roster" }
-                    ]}
-                    disabled={!props.canToggleView}
-                  />
-                </Group>
-
-                <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                  <Text className="drh-label">Show drafted</Text>
-                  <Box className="drh-toggleSlot">
-                    {props.showDraftedVisible ? (
-                      <Switch
-                        size="sm"
-                        checked={props.showDrafted}
-                        onChange={(e) =>
-                          props.onToggleShowDrafted(e.currentTarget.checked)
-                        }
-                      />
-                    ) : (
-                      <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                    )}
-                  </Box>
-                </Group>
-              </Box>
-            </Box>
-          ) : null}
-
-          {compactHeader ? (
-            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-              <Menu position="bottom-end" withinPortal>
-                <Menu.Target>
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    className="theme-toggle"
-                    aria-label="Open settings"
-                  >
-                    <Text
-                      component="span"
-                      className="mi-icon mi-icon-tiny"
-                      aria-hidden="true"
-                    >
-                      settings
-                    </Text>
-                  </Button>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={
-                      <Text component="span" className="gicon" aria-hidden="true">
-                        {props.themeIcon}
-                      </Text>
-                    }
-                    onClick={props.onToggleTheme}
-                  >
-                    Toggle theme
-                  </Menu.Item>
-
-                  {props.showDraftedVisible ? (
-                    <Menu.Item closeMenuOnClick={false}>
-                      <Group justify="space-between" wrap="nowrap" gap="md">
-                        <Text>Show drafted</Text>
+                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+                    <Text className="drh-label">Show drafted</Text>
+                    <Box className="drh-toggleSlot">
+                      {props.showDraftedVisible ? (
                         <Switch
                           size="sm"
                           checked={props.showDrafted}
@@ -1734,41 +1709,93 @@ function DraftBoardHeader(props: {
                             props.onToggleShowDrafted(e.currentTarget.checked)
                           }
                         />
-                      </Group>
-                    </Menu.Item>
-                  ) : null}
-
-                  {props.showDraftControls && props.canManageDraft ? (
-                    isPre ? (
-                      <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
-                    ) : isPaused ? (
-                      <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
-                    ) : !isCompleted ? (
-                      <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
-                    ) : null
-                  ) : null}
-                </Menu.Dropdown>
-              </Menu>
-            </Group>
-          ) : (
-            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-              <Button
-                type="button"
-                variant="subtle"
-                className="theme-toggle"
-                onClick={props.onToggleTheme}
-                aria-label="Toggle theme"
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.themeIcon}
-                </Text>
-              </Button>
-              <Box className="drh-userBadge">
-                <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
-                <Text className="drh-userText">{props.userLabel}</Text>
+                      ) : (
+                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                      )}
+                    </Box>
+                  </Group>
+                </Box>
               </Box>
-            </Group>
-          )}
+            ) : null}
+
+            {compactHeader ? (
+              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+                <Menu position="bottom-end" withinPortal>
+                  <Menu.Target>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      className="theme-toggle"
+                      aria-label="Open settings"
+                    >
+                      <Text
+                        component="span"
+                        className="mi-icon mi-icon-tiny"
+                        aria-hidden="true"
+                      >
+                        settings
+                      </Text>
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={
+                        <Text component="span" className="gicon" aria-hidden="true">
+                          {props.themeIcon}
+                        </Text>
+                      }
+                      onClick={props.onToggleTheme}
+                    >
+                      Toggle theme
+                    </Menu.Item>
+
+                    {props.showDraftedVisible ? (
+                      <Menu.Item closeMenuOnClick={false}>
+                        <Group justify="space-between" wrap="nowrap" gap="md">
+                          <Text>Show drafted</Text>
+                          <Switch
+                            size="sm"
+                            checked={props.showDrafted}
+                            onChange={(e) =>
+                              props.onToggleShowDrafted(e.currentTarget.checked)
+                            }
+                          />
+                        </Group>
+                      </Menu.Item>
+                    ) : null}
+
+                    {props.showDraftControls && props.canManageDraft ? (
+                      isPre ? (
+                        <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+                      ) : isPaused ? (
+                        <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+                      ) : !isCompleted ? (
+                        <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+                      ) : null
+                    ) : null}
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            ) : (
+              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+                <Button
+                  type="button"
+                  variant="subtle"
+                  className="theme-toggle"
+                  onClick={props.onToggleTheme}
+                  aria-label="Toggle theme"
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    {props.themeIcon}
+                  </Text>
+                </Button>
+                <Box className="drh-userBadge">
+                  <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+                  <Text className="drh-userText">{props.userLabel}</Text>
+                </Box>
+              </Group>
+            )}
+          </Box>
         </Box>
 
         <Box ref={buckleRef}>
