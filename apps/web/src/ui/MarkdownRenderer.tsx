@@ -11,6 +11,23 @@ type Props = {
   markdown: string;
 };
 
+function applyTypographicReplacements(input: string) {
+  // Treat Markdown as content, not layout, but still allow common authoring shortcuts.
+  // Apply only to plain text nodes (never code spans/blocks).
+  return (
+    input
+      // Ellipsis
+      .replace(/\.\.\./g, "…")
+      // Em dash / en dash
+      .replace(/---/g, "—")
+      .replace(/--/g, "–")
+      // Common trademark symbols
+      .replace(/\(tm\)/gi, "™")
+      .replace(/\(r\)/gi, "®")
+      .replace(/\(c\)/gi, "©")
+  );
+}
+
 function isExternalUrl(url: string) {
   return /^https?:\/\//i.test(url);
 }
@@ -27,7 +44,7 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
     const key = `${keyPrefix}-inl-${i}`;
     switch (node.type) {
       case "text":
-        return node.value;
+        return applyTypographicReplacements(node.value);
       case "strong":
         return (
           <Text key={key} span fw={700} inherit>
