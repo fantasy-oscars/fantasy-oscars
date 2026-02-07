@@ -1334,6 +1334,13 @@ body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
   text-align: left;
 }
 
+.dr-card-weight {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fo-text-deemphasized);
+}
+
 .dr-card-pills {
   display: flex;
   flex-direction: column;
@@ -1395,9 +1402,20 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   font-weight: 400;
   color: var(--fo-text-deemphasized);
   user-select: none;
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.dr-pill-points {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fo-text-deemphasized);
+  margin-left: 8px;
+  flex: 0 0 auto;
+  user-select: none;
 }
 
 .dr-pill.is-muted {

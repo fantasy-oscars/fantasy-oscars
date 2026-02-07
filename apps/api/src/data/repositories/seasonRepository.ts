@@ -7,7 +7,8 @@ export type SeasonRecord = {
   ceremony_name?: string | null;
   ceremony_code?: string | null;
   status: "EXTANT" | "CANCELLED";
-  scoring_strategy_name: "fixed" | "negative";
+  scoring_strategy_name: "fixed" | "negative" | "category_weighted";
+  category_weights?: Record<string, number> | null;
   remainder_strategy?: "UNDRAFTED" | "FULL_POOL";
   pick_timer_seconds?: number | null;
   auto_pick_strategy?: string | null;
@@ -32,6 +33,7 @@ export async function getExtantSeasonForLeague(
          c.code AS ceremony_code,
 	       s.status,
 	       s.scoring_strategy_name,
+         s.category_weights,
 	       s.remainder_strategy,
 	       d.pick_timer_seconds::int,
 	       d.auto_pick_strategy,
@@ -66,6 +68,7 @@ export async function getExtantSeasonForLeagueCeremony(
        c.code AS ceremony_code,
        s.status,
        s.scoring_strategy_name,
+       s.category_weights,
        s.remainder_strategy,
        d.pick_timer_seconds::int,
        d.auto_pick_strategy,
@@ -102,6 +105,7 @@ export async function createExtantSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       category_weights,
        remainder_strategy,
        created_at`,
     [input.league_id, input.ceremony_id]
@@ -123,6 +127,7 @@ export async function getSeasonById(
          c.code AS ceremony_code,
 	       s.status,
 	       s.scoring_strategy_name,
+         s.category_weights,
 	       s.remainder_strategy,
 	       d.pick_timer_seconds::int,
 	       d.auto_pick_strategy,
@@ -154,6 +159,7 @@ export async function createSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       category_weights,
        remainder_strategy,
        created_at`,
     [input.league_id, input.ceremony_id, input.status ?? "EXTANT"]
@@ -177,6 +183,7 @@ export async function listSeasonsForLeague(
          c.code AS ceremony_code,
 	       s.status,
 	       s.scoring_strategy_name,
+         s.category_weights,
 	       s.remainder_strategy,
 	       d.pick_timer_seconds::int,
 	       d.auto_pick_strategy,
@@ -210,6 +217,7 @@ export async function getMostRecentSeason(
          c.code AS ceremony_code,
 	       s.status,
 	       s.scoring_strategy_name,
+         s.category_weights,
 	       s.remainder_strategy,
 	       d.pick_timer_seconds::int,
 	       d.auto_pick_strategy,
@@ -244,6 +252,7 @@ export async function cancelSeason(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       category_weights,
        remainder_strategy,
        created_at`,
     [seasonId]
@@ -267,9 +276,34 @@ export async function updateSeasonScoringStrategy(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       category_weights,
        remainder_strategy,
        created_at`,
     [seasonId, strategy]
+  );
+  return rows[0] ?? null;
+}
+
+export async function updateSeasonCategoryWeights(
+  client: DbClient,
+  seasonId: number,
+  weights: Record<string, number>
+): Promise<SeasonRecord | null> {
+  const { rows } = await query<SeasonRecord>(
+    client,
+    `UPDATE season
+     SET category_weights = $2::jsonb
+     WHERE id = $1
+     RETURNING
+       id::int,
+       league_id::int,
+       ceremony_id::int,
+       status,
+       scoring_strategy_name,
+       category_weights,
+       remainder_strategy,
+       created_at`,
+    [seasonId, JSON.stringify(weights ?? {})]
   );
   return rows[0] ?? null;
 }
@@ -290,6 +324,7 @@ export async function updateSeasonRemainderStrategy(
        ceremony_id::int,
        status,
        scoring_strategy_name,
+       category_weights,
        remainder_strategy,
        created_at`,
     [seasonId, strategy]

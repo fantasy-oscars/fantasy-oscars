@@ -10,6 +10,8 @@ export function allocationLabel(strategy?: string | null) {
 
 export function scoringLabel(strategy?: string | null) {
   switch (strategy) {
+    case "category_weighted":
+      return "Category-weighted";
     case "negative":
       return "Negative";
     case "fixed":

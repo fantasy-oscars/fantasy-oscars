@@ -38,6 +38,7 @@ export type SeasonSummary = {
   draft_id?: number | null;
   draft_status?: string | null;
   scoring_strategy_name?: string;
+  category_weights?: Record<string, number> | null;
   is_active_ceremony?: boolean;
   remainder_strategy?: string;
 };
@@ -76,6 +77,7 @@ export type SeasonMeta = {
   ceremony_code?: string | null;
   status: string;
   scoring_strategy_name?: string;
+  category_weights?: Record<string, number> | null;
   is_active_ceremony?: boolean;
   created_at?: string;
   ceremony_starts_at?: string | null;
@@ -131,6 +133,7 @@ export type Snapshot = {
   ceremony_starts_at?: string | null;
   ceremony_status?: string | null;
   scoring_strategy_name?: string | null;
+  category_weights?: Record<string, number> | null;
   my_seat_number?: number | null;
   categories?: Array<{
     id: number;
@@ -164,6 +167,17 @@ export type Snapshot = {
     category_edition_id: number;
     nomination_id: number;
   }>;
+  wisdom_benchmark?: {
+    ceremony_id: number;
+    version: number;
+    computed_at: string;
+    items: Array<{
+      nomination_id: number;
+      score: number;
+      rank: number;
+      sample_size: number;
+    }>;
+  } | null;
 };
 
 export type PublicLeague = {

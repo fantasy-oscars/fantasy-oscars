@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  ActionIcon,
   Box,
   Button,
   Combobox,
@@ -17,6 +18,7 @@ import {
   useCombobox
 } from "@mantine/core";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
+import { fetchJson } from "../../lib/api";
 import { PageLoader } from "../../ui/page-state";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
 import "../../primitives/baseline.css";
@@ -34,11 +36,17 @@ export function SeasonScreen(props: {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [settingsDraft, setSettingsDraft] = useState<{
-    scoringStrategy: "fixed" | "negative";
+    scoringStrategy: "fixed" | "negative" | "category_weighted";
     allocationStrategy: "UNDRAFTED" | "FULL_POOL";
     timerEnabled: boolean;
     pickTimerSeconds: number;
   } | null>(null);
+
+  const [weightsOpen, setWeightsOpen] = useState(false);
+  const [weightsLoading, setWeightsLoading] = useState(false);
+  const [weightsError, setWeightsError] = useState<string | null>(null);
+  const [weightsCats, setWeightsCats] = useState<Array<{ id: number; name: string }>>([]);
+  const [weightsDraft, setWeightsDraft] = useState<Record<string, number>>({});
 
   const leagueName = s.leagueContext?.league?.name ?? null;
   const ceremonyId = s.leagueContext?.season?.ceremony_id ?? null;
@@ -74,7 +82,10 @@ export function SeasonScreen(props: {
   }, [s.ceremonyStatus, s.draftStatus]);
 
   const draftDefaults = useMemo(() => {
-    const scoring = (s.scoringStrategy ?? "fixed") as "fixed" | "negative";
+    const scoring = (s.scoringStrategy ?? "fixed") as
+      | "fixed"
+      | "negative"
+      | "category_weighted";
     const allocation = (s.allocationStrategy ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL";
     const timerEnabled = Boolean(s.leagueContext?.season?.pick_timer_seconds);
     const pickTimerSeconds = s.leagueContext?.season?.pick_timer_seconds
@@ -399,7 +410,10 @@ export function SeasonScreen(props: {
                   (settingsDraft?.scoringStrategy ?? draftDefaults.scoring) as string
                 }
                 onChange={(v) => {
-                  const next = (v ?? "fixed") as "fixed" | "negative";
+                  const next = (v ?? "fixed") as
+                    | "fixed"
+                    | "negative"
+                    | "category_weighted";
                   setSettingsDraft((p) => ({
                     scoringStrategy: next,
                     allocationStrategy: (p?.allocationStrategy ??
@@ -412,9 +426,78 @@ export function SeasonScreen(props: {
                 disabled={!s.canEdit || s.working || isLocked}
                 data={[
                   { value: "fixed", label: "Standard" },
-                  { value: "negative", label: "Negative" }
+                  { value: "negative", label: "Negative" },
+                  { value: "category_weighted", label: "Category-weighted" }
                 ]}
               />
+
+              {(settingsDraft?.scoringStrategy ?? draftDefaults.scoring) ===
+              "category_weighted" ? (
+                <Group gap="xs" align="center">
+                  <ActionIcon
+                    type="button"
+                    variant="subtle"
+                    aria-label="Edit category weights"
+                    disabled={!s.canEdit || s.working || isLocked || !ceremonyId}
+                    onClick={async () => {
+                      if (!ceremonyId) return;
+                      setWeightsError(null);
+                      setWeightsLoading(true);
+                      const res = await fetchJson<{
+                        categories: Array<{
+                          id: number;
+                          sort_index: number;
+                          family_name: string;
+                        }>;
+                      }>(`/ceremonies/${ceremonyId}`, { method: "GET" });
+                      setWeightsLoading(false);
+                      if (!res.ok) {
+                        setWeightsError(res.error ?? "Unable to load categories");
+                        setWeightsCats([]);
+                        setWeightsDraft({});
+                        setWeightsOpen(true);
+                        return;
+                      }
+
+                      const cats = (res.data?.categories ?? [])
+                        .slice()
+                        .sort((a, b) => (a.sort_index ?? 0) - (b.sort_index ?? 0))
+                        .map((c) => ({ id: c.id, name: c.family_name }));
+                      const existing =
+                        (s.leagueContext?.season?.category_weights &&
+                        typeof s.leagueContext.season.category_weights === "object"
+                          ? s.leagueContext.season.category_weights
+                          : null) ?? null;
+                      const nextWeights: Record<string, number> = {};
+                      for (const c of cats) {
+                        const v = existing?.[String(c.id)];
+                        nextWeights[String(c.id)] =
+                          typeof v === "number" && Number.isInteger(v) ? v : 1;
+                      }
+
+                      setWeightsCats(cats);
+                      setWeightsDraft(nextWeights);
+                      setWeightsOpen(true);
+                    }}
+                  >
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      settings
+                    </Text>
+                  </ActionIcon>
+                  <Text className="baseline-textMeta" c="dimmed">
+                    Category weights
+                  </Text>
+                  {weightsLoading ? (
+                    <Text className="baseline-textMeta" c="dimmed">
+                      Loading…
+                    </Text>
+                  ) : null}
+                </Group>
+              ) : null}
 
               <Select
                 label="Allocation"
@@ -427,7 +510,8 @@ export function SeasonScreen(props: {
                   setSettingsDraft((p) => ({
                     scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
                       | "fixed"
-                      | "negative",
+                      | "negative"
+                      | "category_weighted",
                     allocationStrategy: next,
                     timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
                     pickTimerSeconds:
@@ -450,7 +534,8 @@ export function SeasonScreen(props: {
                     setSettingsDraft((p) => ({
                       scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
                         | "fixed"
-                        | "negative",
+                        | "negative"
+                        | "category_weighted",
                       allocationStrategy: (p?.allocationStrategy ??
                         draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
                       timerEnabled: next,
@@ -470,7 +555,8 @@ export function SeasonScreen(props: {
                     setSettingsDraft((p) => ({
                       scoringStrategy: (p?.scoringStrategy ?? draftDefaults.scoring) as
                         | "fixed"
-                        | "negative",
+                        | "negative"
+                        | "category_weighted",
                       allocationStrategy: (p?.allocationStrategy ??
                         draftDefaults.allocation) as "UNDRAFTED" | "FULL_POOL",
                       timerEnabled: p?.timerEnabled ?? draftDefaults.timerEnabled,
@@ -536,6 +622,67 @@ export function SeasonScreen(props: {
 
                     setSettingsOpen(false);
                     setSettingsDraft(null);
+                  }}
+                  disabled={!s.canEdit || s.working || isLocked}
+                >
+                  Save
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={weightsOpen}
+            onClose={() => setWeightsOpen(false)}
+            title="Category weights"
+            centered
+          >
+            <Stack gap="md">
+              {weightsError ? (
+                <Text className="baseline-textBody" c="red">
+                  {weightsError}
+                </Text>
+              ) : null}
+
+              {weightsCats.length === 0 ? (
+                <Text className="baseline-textBody" c="dimmed">
+                  No categories.
+                </Text>
+              ) : (
+                <Stack gap="sm">
+                  {weightsCats.map((c) => (
+                    <Group key={c.id} justify="space-between" wrap="nowrap" gap="md">
+                      <Text className="baseline-textBody">{c.name}</Text>
+                      <NumberInput
+                        value={weightsDraft[String(c.id)] ?? 1}
+                        onChange={(v) => {
+                          const n = Math.trunc(Number(v) || 0);
+                          setWeightsDraft((prev) => ({
+                            ...prev,
+                            [String(c.id)]: Math.max(-99, Math.min(99, n))
+                          }));
+                        }}
+                        min={-99}
+                        max={99}
+                        step={1}
+                        w={120}
+                      />
+                    </Group>
+                  ))}
+                </Stack>
+              )}
+
+              <Group justify="flex-end" wrap="wrap">
+                <Button variant="subtle" onClick={() => setWeightsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    await s.updateScoring("category_weighted", {
+                      categoryWeights: weightsDraft
+                    });
+                    setWeightsOpen(false);
                   }}
                   disabled={!s.canEdit || s.working || isLocked}
                 >

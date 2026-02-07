@@ -96,11 +96,38 @@ export const negativeScoringStrategy: ScoringStrategy = {
   }
 };
 
-export type ScoringStrategyName = "fixed" | "negative";
+/**
+ * Category-weighted strategy: points are awarded only for winning picks. The points
+ * magnitude comes from `result.points` (default 1). Points may be negative.
+ */
+export const categoryWeightedScoringStrategy: ScoringStrategy = {
+  score: ({ picks, results }) => {
+    const resultByNomination = new Map(
+      results.map((r) => [r.nomination_id, { won: r.won, points: r.points ?? 1 }])
+    );
+    const pointsBySeat = new Map<number, number>();
+
+    for (const pick of picks) {
+      const result = resultByNomination.get(pick.nomination_id);
+      const delta = result?.won ? (result.points ?? 1) : 0;
+      pointsBySeat.set(
+        pick.seat_number,
+        (pointsBySeat.get(pick.seat_number) ?? 0) + delta
+      );
+    }
+
+    return [...pointsBySeat.entries()]
+      .map(([seat_number, points]) => ({ seat_number, points }))
+      .sort((a, b) => a.seat_number - b.seat_number);
+  }
+};
+
+export type ScoringStrategyName = "fixed" | "negative" | "category_weighted";
 
 export const scoringStrategies: Record<ScoringStrategyName, ScoringStrategy> = {
   fixed: defaultScoringStrategy,
-  negative: negativeScoringStrategy
+  negative: negativeScoringStrategy,
+  category_weighted: categoryWeightedScoringStrategy
 };
 
 export function resolveScoringStrategy(name?: ScoringStrategyName): ScoringStrategy {

@@ -91,6 +91,8 @@ export type DraftRoomOrchestration = {
     ceremonyStatus: string | null;
     isFinalResults: boolean;
     resultsWinnerLabel: string | null;
+    scoringStrategyName: string;
+    getNominationPoints: (nominationId: number) => number;
   };
   layout: {
     phase: "PRE" | "LIVE" | "POST";
@@ -140,6 +142,7 @@ export type DraftRoomOrchestration = {
       icon: string;
       iconVariant?: "default" | "inverted";
       unitKind?: string;
+      weight?: number | null;
       nominations: Array<{
         id: number;
         label: string;
@@ -198,8 +201,10 @@ export type DraftRoomOrchestration = {
   autodraft: {
     enabled: boolean;
     setEnabled: (v: boolean) => void;
-    strategy: "random" | "custom";
-    setStrategy: (v: "random" | "custom") => void;
+    strategy: "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
+    setStrategy: (
+      v: "random" | "by_category" | "alphabetical" | "wisdom" | "custom"
+    ) => void;
     plans: Array<{ id: number; name: string }>;
     selectedPlanId: number | null;
     setSelectedPlanId: (v: number | null) => void;
@@ -247,7 +252,9 @@ export function useDraftRoomOrchestration(args: {
 
   // Per-user auto-draft
   const [autoEnabled, setAutoEnabled] = useState(false);
-  const [autoStrategy, setAutoStrategy] = useState<"random" | "custom">("random");
+  const [autoStrategy, setAutoStrategy] = useState<
+    "random" | "by_category" | "alphabetical" | "wisdom" | "custom"
+  >("random");
   const [autoPlanId, setAutoPlanId] = useState<number | null>(null);
   const [autoPlans, setAutoPlans] = useState<Array<{ id: number; name: string }>>([]);
   const [autoList, setAutoList] = useState<number[]>([]);
@@ -320,7 +327,17 @@ export function useDraftRoomOrchestration(args: {
     const planId = cfg?.plan_id ?? null;
 
     setAutoEnabled(enabled);
-    setAutoStrategy(strategy === "PLAN" ? "custom" : "random");
+    setAutoStrategy(
+      strategy === "PLAN"
+        ? "custom"
+        : strategy === "BY_CATEGORY"
+          ? "by_category"
+          : strategy === "ALPHABETICAL"
+            ? "alphabetical"
+            : strategy === "WISDOM"
+              ? "wisdom"
+              : "random"
+    );
     setAutoPlanId(planId);
 
     if (enabled && strategy === "PLAN" && planId) {
@@ -439,12 +456,58 @@ export function useDraftRoomOrchestration(args: {
   const isFinalResults =
     (snapshot?.draft.status ?? null) === "COMPLETED" && ceremonyStatus === "COMPLETE";
 
+  const categoryWeightByCategoryId = useMemo(() => {
+    const m = new Map<number, number>();
+    const raw = snapshot?.category_weights;
+    if (!raw || typeof raw !== "object") return m;
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const id = Number(k);
+      const n = Number(v);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      if (!Number.isInteger(n) || n < -99 || n > 99) continue;
+      m.set(id, n);
+    }
+    return m;
+  }, [snapshot?.category_weights]);
+
+  const pointsForNominationId = useMemo(() => {
+    const m = new Map<number, number>();
+    if (!snapshot) return m;
+    const nominations = snapshot.nominations ?? [];
+    for (const n of nominations) {
+      const nominationId = Number(n.id);
+      const categoryId = Number(n.category_edition_id);
+      if (!Number.isFinite(nominationId) || !Number.isFinite(categoryId)) continue;
+      if (scoringStrategyName === "category_weighted") {
+        m.set(nominationId, categoryWeightByCategoryId.get(categoryId) ?? 1);
+      } else {
+        m.set(nominationId, 1);
+      }
+    }
+    return m;
+  }, [categoryWeightByCategoryId, scoringStrategyName, snapshot]);
+
+  const seatScoreBySeatNumber = useMemo(() => {
+    const m = new Map<number, number>();
+    if (!snapshot) return m;
+    for (const s of snapshot.seats) m.set(s.seat_number, 0);
+    for (const p of snapshot.picks) {
+      if (!winnerSet.has(p.nomination_id)) continue;
+      const delta = pointsForNominationId.get(p.nomination_id) ?? 1;
+      m.set(p.seat_number, (m.get(p.seat_number) ?? 0) + delta);
+    }
+    return m;
+  }, [pointsForNominationId, snapshot, winnerSet]);
+
   const resultsWinnerLabel = useMemo(() => {
     if (!snapshot || !isFinalResults) return null;
     const scores = snapshot.seats.map((s) => ({
       seatNumber: s.seat_number,
       username: s.username ?? `Seat ${s.seat_number}`,
-      score: winnerCountBySeat.get(s.seat_number) ?? 0
+      score:
+        scoringStrategyName === "category_weighted"
+          ? (seatScoreBySeatNumber.get(s.seat_number) ?? 0)
+          : (winnerCountBySeat.get(s.seat_number) ?? 0)
     }));
     if (!scores.length) return null;
     const bestScore =
@@ -455,7 +518,13 @@ export function useDraftRoomOrchestration(args: {
     if (!winners.length) return null;
     if (winners.length === 1) return winners[0].username;
     return `Tie: ${winners.map((w) => w.username).join(", ")}`;
-  }, [isFinalResults, scoringStrategyName, snapshot, winnerCountBySeat]);
+  }, [
+    isFinalResults,
+    scoringStrategyName,
+    seatScoreBySeatNumber,
+    snapshot,
+    winnerCountBySeat
+  ]);
 
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;
@@ -464,14 +533,20 @@ export function useDraftRoomOrchestration(args: {
   const updateAutodraft = useCallback(
     async (next: {
       enabled: boolean;
-      strategy: "random" | "custom";
+      strategy: "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
       planId: number | null;
     }) => {
       const current = snapshotRef.current;
       if (!current?.draft?.id) return false;
       const hasPlans = autoPlans.length > 0;
-      const resolvedStrategy =
-        next.strategy === "custom" && hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+      const resolvedStrategy = (() => {
+        if (next.strategy === "custom")
+          return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+        if (next.strategy === "by_category") return "BY_CATEGORY" as const;
+        if (next.strategy === "alphabetical") return "ALPHABETICAL" as const;
+        if (next.strategy === "wisdom") return "WISDOM" as const;
+        return "RANDOM" as const;
+      })();
       const resolvedPlanId =
         next.enabled && resolvedStrategy === "PLAN" ? next.planId : null;
 
@@ -496,7 +571,17 @@ export function useDraftRoomOrchestration(args: {
 
       setAutoEnabled(Boolean(res.data?.autodraft?.enabled));
       const s = String(res.data?.autodraft?.strategy ?? "RANDOM").toUpperCase();
-      setAutoStrategy(s === "PLAN" ? "custom" : "random");
+      setAutoStrategy(
+        s === "PLAN"
+          ? "custom"
+          : s === "BY_CATEGORY"
+            ? "by_category"
+            : s === "ALPHABETICAL"
+              ? "alphabetical"
+              : s === "WISDOM"
+                ? "wisdom"
+                : "random"
+      );
       setAutoPlanId(res.data?.autodraft?.plan_id ?? null);
 
       // Refresh the selected list if a plan was chosen.
@@ -517,28 +602,86 @@ export function useDraftRoomOrchestration(args: {
   );
 
   const autodraftList = useMemo(() => {
-    // Primary source of truth is the saved plan order. If it's empty (e.g. plan created before
-    // nominees existed), fall back to the ceremony's default ordering so the rail is still useful.
+    const rows = snapshot?.nominations ?? [];
+    if (rows.length === 0) return [];
+
+    const active = rows.filter((n) => n.status === "ACTIVE");
+    const catIndex = new Map<number, number>();
+    for (const c of snapshot?.categories ?? []) {
+      catIndex.set(c.id, c.sort_index ?? 0);
+    }
+
+    const canonicalIds = active
+      .slice()
+      .sort((a, b) => {
+        const ai = catIndex.get(a.category_edition_id) ?? 0;
+        const bi = catIndex.get(b.category_edition_id) ?? 0;
+        if (ai !== bi) return ai - bi;
+        return a.id - b.id;
+      })
+      .map((n) => n.id);
+
     const ids: number[] = (() => {
-      if (autoList.length > 0) return autoList;
-      if (autoStrategy !== "custom") return [];
-      if (!autoPlanId) return [];
-      const rows = snapshot?.nominations ?? [];
-      if (rows.length === 0) return [];
-      const catIndex = new Map<number, number>();
-      for (const c of snapshot?.categories ?? []) {
-        catIndex.set(c.id, c.sort_index ?? 0);
+      if (autoStrategy === "custom") {
+        if (autoList.length > 0) return autoList;
+        if (!autoPlanId) return [];
+        return canonicalIds;
       }
-      return rows
-        .filter((n) => n.status === "ACTIVE")
-        .slice()
-        .sort((a, b) => {
-          const ai = catIndex.get(a.category_edition_id) ?? 0;
-          const bi = catIndex.get(b.category_edition_id) ?? 0;
-          if (ai !== bi) return ai - bi;
-          return a.id - b.id;
-        })
-        .map((n) => n.id);
+      if (autoStrategy === "by_category") return canonicalIds;
+      if (autoStrategy === "alphabetical") {
+        const normalize = (raw: string) =>
+          raw
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+            .replace(/^(the|a|an)\s+/i, "")
+            .trim();
+        return active
+          .slice()
+          .sort((a, b) => {
+            const labelA = a.film_title ?? a.performer_name ?? a.song_title ?? "";
+            const labelB = b.film_title ?? b.performer_name ?? b.song_title ?? "";
+            const na = normalize(labelA);
+            const nb = normalize(labelB);
+            if (na !== nb) return na.localeCompare(nb);
+            const ai = catIndex.get(a.category_edition_id) ?? 0;
+            const bi = catIndex.get(b.category_edition_id) ?? 0;
+            if (ai !== bi) return ai - bi;
+            return a.id - b.id;
+          })
+          .map((n) => n.id);
+      }
+      if (autoStrategy === "wisdom") {
+        const bm = snapshot?.wisdom_benchmark?.items ?? [];
+        const sById = new Map<number, number>();
+        for (const it of bm) sById.set(it.nomination_id, it.score);
+
+        const fallbackW = scoringStrategyName === "negative" ? -1 : 1;
+        return active
+          .slice()
+          .sort((a, b) => {
+            const sa = sById.get(a.id) ?? 0;
+            const sb = sById.get(b.id) ?? 0;
+            const wa =
+              scoringStrategyName === "category_weighted"
+                ? (categoryWeightByCategoryId.get(a.category_edition_id) ?? 1)
+                : fallbackW;
+            const wb =
+              scoringStrategyName === "category_weighted"
+                ? (categoryWeightByCategoryId.get(b.category_edition_id) ?? 1)
+                : fallbackW;
+            const ua = sa * wa;
+            const ub = sb * wb;
+            if (ua !== ub) return ub - ua;
+            const ai = catIndex.get(a.category_edition_id) ?? 0;
+            const bi = catIndex.get(b.category_edition_id) ?? 0;
+            if (ai !== bi) return ai - bi;
+            return a.id - b.id;
+          })
+          .map((n) => n.id);
+      }
+      return canonicalIds;
     })();
 
     return ids.map((id) => ({
@@ -550,8 +693,10 @@ export function useDraftRoomOrchestration(args: {
     autoList,
     autoPlanId,
     autoStrategy,
+    categoryWeightByCategoryId,
     nominationIconById,
     nominationLabelById,
+    scoringStrategyName,
     snapshot
   ]);
 
@@ -1088,16 +1233,22 @@ export function useDraftRoomOrchestration(args: {
         icon,
         iconVariant: (c.icon_variant ?? "default") as "default" | "inverted",
         unitKind: String(c.unit_kind ?? ""),
+        weight:
+          scoringStrategyName === "category_weighted"
+            ? (categoryWeightByCategoryId.get(c.id) ?? 1)
+            : null,
         nominations,
         emptyText: nominations.length ? null : "No nominees."
       };
     });
   }, [
     drafted,
+    categoryWeightByCategoryId,
     iconByCategoryId,
     nominationsByCategoryId,
     poolMode,
     selectedNominationId,
+    scoringStrategyName,
     snapshot,
     winnerSet
   ]);
@@ -1237,7 +1388,10 @@ export function useDraftRoomOrchestration(args: {
       onResumeDraft: () => void resumeDraft(),
       ceremonyStatus,
       isFinalResults,
-      resultsWinnerLabel
+      resultsWinnerLabel,
+      scoringStrategyName,
+      getNominationPoints: (nominationId: number) =>
+        pointsForNominationId.get(nominationId) ?? 1
     },
     layout: {
       phase,
@@ -1287,13 +1441,17 @@ export function useDraftRoomOrchestration(args: {
           snapshot?.seats.map((s) => ({
             seatNumber: s.seat_number,
             username: s.username ?? null,
-            winnerCount: winnerCountBySeat.get(s.seat_number) ?? 0
+            winnerCount: winnerCountBySeat.get(s.seat_number) ?? 0,
+            score: seatScoreBySeatNumber.get(s.seat_number) ?? 0
           })) ?? [];
         if (!snapshot || !isFinalResults) return base;
-        const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins
+        const dir = scoringStrategyName === "negative" ? 1 : -1; // negative: fewer winners wins; others: higher score wins
         return [...base].sort((a, b) => {
-          if (a.winnerCount !== b.winnerCount)
-            return (a.winnerCount - b.winnerCount) * dir;
+          const aScore =
+            scoringStrategyName === "category_weighted" ? a.score : a.winnerCount;
+          const bScore =
+            scoringStrategyName === "category_weighted" ? b.score : b.winnerCount;
+          if (aScore !== bScore) return (aScore - bScore) * dir;
           return a.seatNumber - b.seatNumber;
         });
       })(),

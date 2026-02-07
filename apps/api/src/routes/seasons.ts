@@ -20,6 +20,7 @@ import {
   cancelSeason,
   getSeasonById,
   updateSeasonScoringStrategy,
+  updateSeasonCategoryWeights,
   updateSeasonRemainderStrategy
 } from "../data/repositories/seasonRepository.js";
 import { runInTransaction, query } from "../data/db.js";
@@ -475,12 +476,12 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
   ) => {
     try {
       const seasonId = Number(req.params.id);
-      const { scoring_strategy_name } = req.body ?? {};
+      const { scoring_strategy_name, category_weights } = req.body ?? {};
       const actorId = Number(req.auth?.sub);
       if (Number.isNaN(seasonId) || !actorId) {
         throw validationError("Invalid season id", ["id"]);
       }
-      if (!["fixed", "negative"].includes(scoring_strategy_name)) {
+      if (!["fixed", "negative", "category_weighted"].includes(scoring_strategy_name)) {
         throw validationError("Invalid scoring_strategy_name", ["scoring_strategy_name"]);
       }
 
@@ -501,12 +502,55 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
           );
         }
 
-        const updated =
+        let weightsToWrite: Record<string, number> | null = null;
+        if (category_weights !== undefined) {
+          if (category_weights === null || typeof category_weights !== "object") {
+            throw validationError("Invalid category_weights", ["category_weights"]);
+          }
+          const next: Record<string, number> = {};
+          for (const [k, v] of Object.entries(
+            category_weights as Record<string, unknown>
+          )) {
+            const id = Number(k);
+            const n = Number(v);
+            if (!Number.isFinite(id) || id <= 0) {
+              throw validationError("Invalid category_weights key", ["category_weights"]);
+            }
+            if (!Number.isInteger(n) || n < -99 || n > 99) {
+              throw validationError(
+                "Category weight must be an integer between -99 and 99",
+                ["category_weights"]
+              );
+            }
+            next[String(id)] = n;
+          }
+          weightsToWrite = next;
+        }
+
+        // If switching into weighted scoring without an explicit weights payload, seed a safe default (1).
+        if (scoring_strategy_name === "category_weighted" && weightsToWrite === null) {
+          const { rows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int FROM category_edition WHERE ceremony_id = $1 ORDER BY sort_index ASC, id ASC`,
+            [season.ceremony_id]
+          );
+          const seeded: Record<string, number> = {};
+          for (const r of rows) seeded[String(r.id)] = 1;
+          weightsToWrite = seeded;
+        }
+
+        const updatedSeason =
           (await updateSeasonScoringStrategy(
             tx,
             season.id,
-            scoring_strategy_name as "fixed" | "negative"
+            scoring_strategy_name as "fixed" | "negative" | "category_weighted"
           )) ?? season;
+
+        const updated =
+          weightsToWrite !== null
+            ? ((await updateSeasonCategoryWeights(tx, season.id, weightsToWrite)) ??
+              updatedSeason)
+            : updatedSeason;
 
         return { season: updated };
       });

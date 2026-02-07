@@ -25,7 +25,7 @@ export type LeagueSeasonCreateView =
       working: boolean;
       status: ApiResult | null;
       ceremonyId: number | null;
-      scoringStrategy: "fixed" | "negative";
+      scoringStrategy: "fixed" | "negative" | "category_weighted";
       remainderStrategy: "UNDRAFTED" | "FULL_POOL";
       timerEnabled: boolean;
       pickTimerSeconds: number;
@@ -45,7 +45,9 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
   const [status, setStatus] = useState<ApiResult | null>(null);
 
   const [ceremonyId, setCeremonyId] = useState<number | null>(null);
-  const [scoringStrategy, setScoringStrategy] = useState<"fixed" | "negative">("fixed");
+  const [scoringStrategy, setScoringStrategy] = useState<
+    "fixed" | "negative" | "category_weighted"
+  >("fixed");
   const [remainderStrategy, setRemainderStrategy] = useState<"UNDRAFTED" | "FULL_POOL">(
     "UNDRAFTED"
   );
@@ -495,13 +497,19 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     });
   }
 
-  async function updateScoring(strategy: string) {
+  async function updateScoring(
+    strategy: string,
+    opts?: { categoryWeights?: Record<string, number> | null }
+  ) {
     setScoringState(null);
     setWorking(true);
     const res = await fetchJson<{ season: SeasonMeta }>(`/seasons/${seasonId}/scoring`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scoring_strategy_name: strategy })
+      body: JSON.stringify({
+        scoring_strategy_name: strategy,
+        category_weights: opts?.categoryWeights ?? undefined
+      })
     });
     setWorking(false);
     if (res.ok && res.data?.season && leagueContext) {
@@ -509,7 +517,11 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
         ...leagueContext,
         season: {
           ...leagueContext.season,
-          scoring_strategy_name: res.data.season.scoring_strategy_name
+          scoring_strategy_name: res.data.season.scoring_strategy_name,
+          category_weights:
+            res.data.season.category_weights ??
+            leagueContext.season.category_weights ??
+            null
         }
       });
       notify({

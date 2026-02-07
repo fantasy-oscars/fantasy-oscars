@@ -207,6 +207,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     icon: c.icon,
     iconVariant: c.iconVariant ?? "default",
     unitKind: c.unitKind ?? "",
+    weight: c.weight ?? null,
     nominees: c.nominations.map((n) => ({
       id: String(n.id),
       label: n.label,
@@ -420,6 +421,7 @@ function MobileDraftRoom(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
+    weight: number | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -562,6 +564,7 @@ function MobileDraftRoom(props: {
                   iconVariant={c.iconVariant}
                   unitKind={c.unitKind}
                   tooltipsEnabled={false}
+                  weight={c.weight}
                   nominees={c.nominees}
                   isKeyboardMode={false}
                   setKeyboardMode={() => {}}
@@ -948,6 +951,9 @@ function MobileRosterBoard(props: {
   const current =
     seat != null ? (players.find((p) => p.seatNumber === seat) ?? null) : null;
   const picks = seat != null ? (o.rosterBoard.rowsBySeat.get(seat) ?? []) : [];
+  const showWeightedPoints =
+    Boolean(o.header.isFinalResults) &&
+    o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Stack gap="sm">
@@ -1012,9 +1018,16 @@ function MobileRosterBoard(props: {
                       className="dr-pill-icon"
                     />
                   ) : null}
-                  <Text className="dr-pill-text dr-rosterPickText" lineClamp={1}>
+                  <Text component="span" className="dr-pill-text dr-rosterPickText">
                     {pick.label}
                   </Text>
+                  {showWeightedPoints ? (
+                    <Text component="span" className="dr-pill-points">
+                      {pick.winner && pick.nominationId != null
+                        ? formatSignedInt(o.header.getNominationPoints(pick.nominationId))
+                        : "0"}
+                    </Text>
+                  ) : null}
                 </Box>
               );
 
@@ -1276,115 +1289,111 @@ function MobileRail(props: {
           label="Strategy"
           value={o.autodraft.strategy}
           onChange={(v) =>
-            o.autodraft.setStrategy((v as "random" | "custom") ?? "random")
+            o.autodraft.setStrategy(
+              (v as "random" | "by_category" | "alphabetical" | "wisdom" | "custom") ??
+                "random"
+            )
           }
           data={[
             { value: "random", label: "Random" },
+            { value: "by_category", label: "By category" },
+            { value: "alphabetical", label: "Alphabetical" },
+            { value: "wisdom", label: "Wisdom of crowds" },
             { value: "custom", label: "Custom", disabled: o.autodraft.plans.length === 0 }
           ]}
           allowDeselect={false}
         />
 
         {o.autodraft.strategy === "custom" ? (
-          <>
-            <Select
-              label="Plan"
-              placeholder={
-                o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
-              }
-              value={
-                o.autodraft.selectedPlanId ? String(o.autodraft.selectedPlanId) : null
-              }
-              onChange={(v) => o.autodraft.setSelectedPlanId(v ? Number(v) : null)}
-              data={o.autodraft.plans.map((p) => ({
-                value: String(p.id),
-                label: p.name
-              }))}
-              disabled={o.autodraft.plans.length === 0}
-              searchable
-              clearable
-            />
-
-            {o.autodraft.selectedPlanId ? (
-              <Box>
-                {o.autodraft.list.length === 0 ? (
-                  <Text className="baseline-textBody">No nominees.</Text>
-                ) : (
-                  <Stack gap={6}>
-                    {o.autodraft.list.map((item) => {
-                      const nominee = props.nomineeById.get(item.nominationId) ?? null;
-                      const isDrafted = props.draftedNominationIds.has(item.nominationId);
-                      const pill = (
-                        <Box
-                          className={[
-                            "dr-pill",
-                            "dr-pill-static",
-                            isDrafted ? "is-muted" : ""
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          tabIndex={nominee ? 0 : undefined}
-                          role={nominee ? "group" : undefined}
-                          aria-label={
-                            nominee ? `${nominee.categoryName}: ${item.label}` : undefined
-                          }
-                        >
-                          {nominee ? (
-                            <DraftCategoryIcon
-                              icon={nominee.categoryIcon}
-                              variant={nominee.categoryIconVariant}
-                              className="dr-pill-icon"
-                            />
-                          ) : item.icon ? (
-                            <DraftCategoryIcon
-                              icon={item.icon}
-                              variant="default"
-                              className="dr-pill-icon"
-                            />
-                          ) : null}
-                          <Text component="span" className="dr-pill-text" lineClamp={1}>
-                            {item.label}
-                          </Text>
-                        </Box>
-                      );
-
-                      return nominee ? (
-                        <Tooltip
-                          key={item.nominationId}
-                          events={TOOLTIP_EVENTS}
-                          withArrow={false}
-                          position="bottom-start"
-                          multiline
-                          offset={10}
-                          styles={CARD_TOOLTIP_STYLES}
-                          label={
-                            <NomineeTooltipCard
-                              unitKind={nominee.unitKind}
-                              categoryName={nominee.categoryName}
-                              filmTitle={nominee.filmTitle}
-                              filmYear={nominee.filmYear}
-                              filmPosterUrl={nominee.filmPosterUrl}
-                              contributors={nominee.contributors}
-                              performerName={nominee.performerName}
-                              performerCharacter={nominee.performerCharacter}
-                              performerProfileUrl={nominee.performerProfileUrl}
-                              performerProfilePath={nominee.performerProfilePath}
-                              songTitle={nominee.songTitle}
-                            />
-                          }
-                        >
-                          {pill}
-                        </Tooltip>
-                      ) : (
-                        <Box key={item.nominationId}>{pill}</Box>
-                      );
-                    })}
-                  </Stack>
-                )}
-              </Box>
-            ) : null}
-          </>
+          <Select
+            label="Plan"
+            placeholder={
+              o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+            }
+            value={o.autodraft.selectedPlanId ? String(o.autodraft.selectedPlanId) : null}
+            onChange={(v) => o.autodraft.setSelectedPlanId(v ? Number(v) : null)}
+            data={o.autodraft.plans.map((p) => ({
+              value: String(p.id),
+              label: p.name
+            }))}
+            disabled={o.autodraft.plans.length === 0}
+            searchable
+            clearable
+          />
         ) : null}
+
+        <Box>
+          {o.autodraft.list.length === 0 ? (
+            <Text className="baseline-textBody">No nominees.</Text>
+          ) : (
+            <Stack gap={6}>
+              {o.autodraft.list.map((item) => {
+                const nominee = props.nomineeById.get(item.nominationId) ?? null;
+                const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                const pill = (
+                  <Box
+                    className={["dr-pill", "dr-pill-static", isDrafted ? "is-muted" : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    tabIndex={nominee ? 0 : undefined}
+                    role={nominee ? "group" : undefined}
+                    aria-label={
+                      nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                    }
+                  >
+                    {nominee ? (
+                      <DraftCategoryIcon
+                        icon={nominee.categoryIcon}
+                        variant={nominee.categoryIconVariant}
+                        className="dr-pill-icon"
+                      />
+                    ) : item.icon ? (
+                      <DraftCategoryIcon
+                        icon={item.icon}
+                        variant="default"
+                        className="dr-pill-icon"
+                      />
+                    ) : null}
+                    <Text component="span" className="dr-pill-text" lineClamp={1}>
+                      {item.label}
+                    </Text>
+                  </Box>
+                );
+
+                return nominee ? (
+                  <Tooltip
+                    key={item.nominationId}
+                    events={TOOLTIP_EVENTS}
+                    withArrow={false}
+                    position="bottom-start"
+                    multiline
+                    offset={10}
+                    styles={CARD_TOOLTIP_STYLES}
+                    label={
+                      <NomineeTooltipCard
+                        unitKind={nominee.unitKind}
+                        categoryName={nominee.categoryName}
+                        filmTitle={nominee.filmTitle}
+                        filmYear={nominee.filmYear}
+                        filmPosterUrl={nominee.filmPosterUrl}
+                        contributors={nominee.contributors}
+                        performerName={nominee.performerName}
+                        performerCharacter={nominee.performerCharacter}
+                        performerProfileUrl={nominee.performerProfileUrl}
+                        performerProfilePath={nominee.performerProfilePath}
+                        songTitle={nominee.songTitle}
+                      />
+                    }
+                  >
+                    {pill}
+                  </Tooltip>
+                ) : (
+                  <Box key={item.nominationId}>{pill}</Box>
+                );
+              })}
+            </Stack>
+          )}
+        </Box>
       </Stack>
     </Box>
   );
@@ -2227,6 +2236,7 @@ function DraftRoomScaffold(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
+    weight: number | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -2356,6 +2366,7 @@ function DraftRoomScaffold(props: {
     icon: c.icon,
     iconVariant: c.iconVariant,
     unitKind: c.unitKind,
+    weight: c.weight,
     nominees: c.nominees,
     // Use a deterministic estimate for masonry placement; the actual card height
     // is content-driven and hugs the pills.
@@ -2541,6 +2552,7 @@ function DraftRoomScaffold(props: {
                   icon={b.icon}
                   iconVariant={b.iconVariant}
                   unitKind={b.unitKind}
+                  weight={b.weight}
                   nominees={b.nominees}
                   isKeyboardMode={keyboardCategoryId === b.id}
                   setKeyboardMode={setKeyboardCategoryId}
@@ -2743,10 +2755,20 @@ function DraftRoomScaffold(props: {
                   label="Strategy"
                   value={props.autodraft.strategy}
                   onChange={(v) =>
-                    props.autodraft.setStrategy((v as "random" | "custom") ?? "random")
+                    props.autodraft.setStrategy(
+                      (v as
+                        | "random"
+                        | "by_category"
+                        | "alphabetical"
+                        | "wisdom"
+                        | "custom") ?? "random"
+                    )
                   }
                   data={[
                     { value: "random", label: "Random" },
+                    { value: "by_category", label: "By category" },
+                    { value: "alphabetical", label: "Alphabetical" },
+                    { value: "wisdom", label: "Wisdom of crowds" },
                     {
                       value: "custom",
                       label: "Custom",
@@ -2757,118 +2779,110 @@ function DraftRoomScaffold(props: {
                 />
 
                 {props.autodraft.strategy === "custom" ? (
-                  <>
-                    <Select
-                      label="Plan"
-                      placeholder={
-                        props.autodraft.plans.length === 0
-                          ? "No plans available"
-                          : "Choose…"
-                      }
-                      value={
-                        props.autodraft.selectedPlanId
-                          ? String(props.autodraft.selectedPlanId)
-                          : null
-                      }
-                      onChange={(v) =>
-                        props.autodraft.setSelectedPlanId(v ? Number(v) : null)
-                      }
-                      data={props.autodraft.plans.map((p) => ({
-                        value: String(p.id),
-                        label: p.name
-                      }))}
-                      disabled={props.autodraft.plans.length === 0}
-                      searchable
-                      clearable
-                    />
-
-                    {props.autodraft.selectedPlanId ? (
-                      <Box>
-                        {props.autodraft.list.length === 0 ? (
-                          <Text className="muted">No nominees.</Text>
-                        ) : (
-                          <Stack gap={6}>
-                            {props.autodraft.list.map((item) => {
-                              const nominee = props.nomineeById.get(item.nominationId);
-                              const isDrafted = props.draftedNominationIds.has(
-                                item.nominationId
-                              );
-                              const pill = (
-                                <Box
-                                  className={[
-                                    "dr-pill",
-                                    "dr-pill-static",
-                                    isDrafted ? "is-muted" : ""
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" ")}
-                                  tabIndex={nominee ? 0 : undefined}
-                                  role={nominee ? "group" : undefined}
-                                  aria-label={
-                                    nominee
-                                      ? `${nominee.categoryName}: ${item.label}`
-                                      : undefined
-                                  }
-                                >
-                                  {nominee ? (
-                                    <DraftCategoryIcon
-                                      icon={nominee.categoryIcon}
-                                      variant={nominee.categoryIconVariant}
-                                      className="dr-pill-icon"
-                                    />
-                                  ) : item.icon ? (
-                                    <DraftCategoryIcon
-                                      icon={item.icon}
-                                      variant="default"
-                                      className="dr-pill-icon"
-                                    />
-                                  ) : null}
-                                  <Text
-                                    component="span"
-                                    className="dr-pill-text"
-                                    lineClamp={1}
-                                  >
-                                    {item.label}
-                                  </Text>
-                                </Box>
-                              );
-                              return nominee ? (
-                                <Tooltip
-                                  key={item.nominationId}
-                                  events={TOOLTIP_EVENTS}
-                                  withArrow={false}
-                                  position="bottom-start"
-                                  multiline
-                                  offset={10}
-                                  styles={CARD_TOOLTIP_STYLES}
-                                  label={
-                                    <NomineeTooltipCard
-                                      unitKind={nominee.unitKind}
-                                      categoryName={nominee.categoryName}
-                                      filmTitle={nominee.filmTitle}
-                                      filmYear={nominee.filmYear}
-                                      filmPosterUrl={nominee.filmPosterUrl}
-                                      contributors={nominee.contributors}
-                                      performerName={nominee.performerName}
-                                      performerCharacter={nominee.performerCharacter}
-                                      performerProfileUrl={nominee.performerProfileUrl}
-                                      performerProfilePath={nominee.performerProfilePath}
-                                      songTitle={nominee.songTitle}
-                                    />
-                                  }
-                                >
-                                  {pill}
-                                </Tooltip>
-                              ) : (
-                                <Box key={item.nominationId}>{pill}</Box>
-                              );
-                            })}
-                          </Stack>
-                        )}
-                      </Box>
-                    ) : null}
-                  </>
+                  <Select
+                    label="Plan"
+                    placeholder={
+                      props.autodraft.plans.length === 0
+                        ? "No plans available"
+                        : "Choose…"
+                    }
+                    value={
+                      props.autodraft.selectedPlanId
+                        ? String(props.autodraft.selectedPlanId)
+                        : null
+                    }
+                    onChange={(v) =>
+                      props.autodraft.setSelectedPlanId(v ? Number(v) : null)
+                    }
+                    data={props.autodraft.plans.map((p) => ({
+                      value: String(p.id),
+                      label: p.name
+                    }))}
+                    disabled={props.autodraft.plans.length === 0}
+                    searchable
+                    clearable
+                  />
                 ) : null}
+
+                <Box>
+                  {props.autodraft.list.length === 0 ? (
+                    <Text className="muted">No nominees.</Text>
+                  ) : (
+                    <Stack gap={6}>
+                      {props.autodraft.list.map((item) => {
+                        const nominee = props.nomineeById.get(item.nominationId);
+                        const isDrafted = props.draftedNominationIds.has(
+                          item.nominationId
+                        );
+                        const pill = (
+                          <Box
+                            className={[
+                              "dr-pill",
+                              "dr-pill-static",
+                              isDrafted ? "is-muted" : ""
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            tabIndex={nominee ? 0 : undefined}
+                            role={nominee ? "group" : undefined}
+                            aria-label={
+                              nominee
+                                ? `${nominee.categoryName}: ${item.label}`
+                                : undefined
+                            }
+                          >
+                            {nominee ? (
+                              <DraftCategoryIcon
+                                icon={nominee.categoryIcon}
+                                variant={nominee.categoryIconVariant}
+                                className="dr-pill-icon"
+                              />
+                            ) : item.icon ? (
+                              <DraftCategoryIcon
+                                icon={item.icon}
+                                variant="default"
+                                className="dr-pill-icon"
+                              />
+                            ) : null}
+                            <Text component="span" className="dr-pill-text" lineClamp={1}>
+                              {item.label}
+                            </Text>
+                          </Box>
+                        );
+                        return nominee ? (
+                          <Tooltip
+                            key={item.nominationId}
+                            events={TOOLTIP_EVENTS}
+                            withArrow={false}
+                            position="bottom-start"
+                            multiline
+                            offset={10}
+                            styles={CARD_TOOLTIP_STYLES}
+                            label={
+                              <NomineeTooltipCard
+                                unitKind={nominee.unitKind}
+                                categoryName={nominee.categoryName}
+                                filmTitle={nominee.filmTitle}
+                                filmYear={nominee.filmYear}
+                                filmPosterUrl={nominee.filmPosterUrl}
+                                contributors={nominee.contributors}
+                                performerName={nominee.performerName}
+                                performerCharacter={nominee.performerCharacter}
+                                performerProfileUrl={nominee.performerProfileUrl}
+                                performerProfilePath={nominee.performerProfilePath}
+                                songTitle={nominee.songTitle}
+                              />
+                            }
+                          >
+                            {pill}
+                          </Tooltip>
+                        ) : (
+                          <Box key={item.nominationId}>{pill}</Box>
+                        );
+                      })}
+                    </Stack>
+                  )}
+                </Box>
               </Stack>
             </Box>
           </Box>
@@ -2988,6 +3002,9 @@ function RosterBoardScaffold(props: {
   const canPrev = startIdx > 0;
   const canNext = startIdx + maxVisible < players.length;
   const visible = players.slice(startIdx, startIdx + maxVisible);
+  const showWeightedPoints =
+    Boolean(o.header.isFinalResults) &&
+    o.header.scoringStrategyName === "category_weighted";
 
   return (
     <Box className="dr-middle dr-roster">
@@ -3089,9 +3106,18 @@ function RosterBoardScaffold(props: {
                             className="dr-pill-icon"
                           />
                         ) : null}
-                        <Text className="dr-pill-text dr-rosterPickText" lineClamp={1}>
+                        <Text component="span" className="dr-pill-text dr-rosterPickText">
                           {pick.label}
                         </Text>
+                        {showWeightedPoints ? (
+                          <Text component="span" className="dr-pill-points">
+                            {pick.winner && pick.nominationId != null
+                              ? formatSignedInt(
+                                  o.header.getNominationPoints(pick.nominationId)
+                                )
+                              : "0"}
+                          </Text>
+                        ) : null}
                       </Box>
                     );
 
@@ -3174,6 +3200,7 @@ function CategoryCard(props: {
   iconVariant: "default" | "inverted";
   unitKind: string;
   tooltipsEnabled?: boolean;
+  weight: number | null;
   nominees: Array<{
     id: string;
     label: string;
@@ -3223,6 +3250,11 @@ function CategoryCard(props: {
       >
         <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
         <Text className="dr-card-title">{props.title}</Text>
+        {typeof props.weight === "number" ? (
+          <Text component="span" className="dr-card-weight">
+            {formatSignedInt(props.weight)}
+          </Text>
+        ) : null}
       </UnstyledButton>
       <Box className="dr-card-pills">
         {props.nominees.length === 0 ? (
@@ -3318,4 +3350,10 @@ function CategoryCard(props: {
       </Box>
     </Box>
   );
+}
+
+function formatSignedInt(n: number) {
+  if (!Number.isFinite(n)) return "";
+  if (n > 0) return `+${Math.trunc(n)}`;
+  return String(Math.trunc(n));
 }

@@ -145,6 +145,7 @@ export function useDraftPreviewOrchestration(args: {
         icon,
         iconVariant,
         unitKind: String(c.unit_kind ?? ""),
+        weight: null,
         nominations,
         emptyText: nominations.length ? null : "No nominees."
       };
@@ -195,7 +196,9 @@ export function useDraftPreviewOrchestration(args: {
       onResumeDraft: () => {},
       ceremonyStatus: null,
       isFinalResults: false,
-      resultsWinnerLabel: null
+      resultsWinnerLabel: null,
+      scoringStrategyName: "fixed",
+      getNominationPoints: () => 1
     },
     layout: {
       phase: "LIVE",
