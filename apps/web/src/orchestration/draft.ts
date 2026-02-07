@@ -35,6 +35,20 @@ function makeRequestId(): string {
   );
 }
 
+function describeNomination(snapshot: Snapshot, nominationId: number) {
+  const labels = buildNominationLabelById(snapshot);
+  const nomineeLabel = labels.get(nominationId) ?? `#${nominationId}`;
+
+  const nomination =
+    (snapshot.nominations ?? []).find((n) => n.id === nominationId) ?? null;
+  const categoryId = nomination?.category_edition_id ?? null;
+  const categoryName =
+    (snapshot.categories ?? []).find((c) => c.id === categoryId)?.family_name ??
+    (categoryId ? `Category ${categoryId}` : "Category");
+
+  return { categoryName, nomineeLabel };
+}
+
 export type DraftRoomOrchestration = {
   state: {
     loadingInitial: boolean;
@@ -245,7 +259,10 @@ export function useDraftRoomOrchestration(args: {
     async (options?: { preserveSnapshot?: boolean }) => {
       setLoading(true);
       setError(null);
-      if (!options?.preserveSnapshot) setSnapshot(null);
+      // Avoid UI "flashes" during in-place refreshes (e.g. after submitting a pick).
+      // We only clear the snapshot when explicitly requested (or when there isn't one yet).
+      const shouldClear = !options?.preserveSnapshot && !snapshotRef.current;
+      if (shouldClear) setSnapshot(null);
 
       const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
         method: "GET"
@@ -571,16 +588,8 @@ export function useDraftRoomOrchestration(args: {
       if (res.ok) {
         setPickState(null);
         setSelectedNominationId(null);
-        notify({
-          id: "draft.pick.submitted",
-          severity: "success",
-          trigger_type: "user_action",
-          scope: "local",
-          durability: "ephemeral",
-          requires_decision: false,
-          message: "Pick submitted"
-        });
-        await loadSnapshot();
+        // Do not toast here; the websocket "pick made" event is the single source of truth
+        // and will toast for all clients (including the picker).
       } else {
         const message = res.error ?? "Pick failed";
         setPickState({ ok: false, message });
@@ -596,7 +605,7 @@ export function useDraftRoomOrchestration(args: {
       }
       setPickLoading(false);
     },
-    [loadSnapshot, snapshot]
+    [snapshot]
   );
 
   const submitPick = useCallback(async () => {
@@ -623,7 +632,7 @@ export function useDraftRoomOrchestration(args: {
         requires_decision: false,
         message: "Draft started"
       });
-      await loadSnapshot();
+      await loadSnapshot({ preserveSnapshot: true });
     } else {
       const message = res.error ?? "Failed to start draft";
       setStartState({ ok: false, message });
@@ -656,7 +665,7 @@ export function useDraftRoomOrchestration(args: {
         requires_decision: false,
         message: "Draft paused"
       });
-      await loadSnapshot();
+      await loadSnapshot({ preserveSnapshot: true });
     } else {
       const message = res.error ?? "Failed to pause draft";
       setPauseState({ ok: false, message });
@@ -691,7 +700,7 @@ export function useDraftRoomOrchestration(args: {
         requires_decision: false,
         message: "Draft resumed"
       });
-      await loadSnapshot();
+      await loadSnapshot({ preserveSnapshot: true });
     } else {
       const message = res.error ?? "Failed to resume draft";
       setResumeState({ ok: false, message });
@@ -764,31 +773,27 @@ export function useDraftRoomOrchestration(args: {
         return;
       }
 
-      if (event.event_type === "draft.pick.autopicked") {
-        const nominationId = event.payload?.pick?.nomination_id;
-        const seatNumber = event.payload?.pick?.seat_number;
-
-        const labels = buildNominationLabelById(current);
-        const nomineeLabel =
-          typeof nominationId === "number"
-            ? (labels.get(nominationId) ?? `#${nominationId}`)
-            : null;
+      const maybePick = event.payload?.pick ?? null;
+      const isNewPick = Boolean(
+        maybePick && !current.picks.some((p) => p.pick_number === maybePick.pick_number)
+      );
+      if (isNewPick && maybePick) {
         const seatLabel =
-          typeof seatNumber === "number"
-            ? (current.seats.find((s) => s.seat_number === seatNumber)?.username ??
-              `Seat ${seatNumber}`)
-            : "A player";
-
+          current.seats.find((s) => s.seat_number === maybePick.seat_number)?.username ??
+          `Seat ${maybePick.seat_number}`;
+        const { categoryName, nomineeLabel } = describeNomination(
+          current,
+          maybePick.nomination_id
+        );
         notify({
-          id: "draft.autopick.expired",
+          id: `draft.pick.made.${maybePick.pick_number}`,
           severity: "info",
           trigger_type: "async",
           scope: "local",
           durability: "ephemeral",
           requires_decision: false,
-          message: nomineeLabel
-            ? `Auto-picked ${nomineeLabel} for ${seatLabel}.`
-            : `Auto-picked for ${seatLabel}.`
+          title: seatLabel,
+          message: `${categoryName}: ${nomineeLabel}`
         });
       }
 

@@ -25,6 +25,57 @@ import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
 
+const DRAFT_UNIT_MIN_PX = 140;
+const DRAFT_UNIT_MAX_PX = 200;
+const DRAFT_UNIT_TARGET_PX = 170;
+const DRAFT_DIVISOR_MIN = 4.75; // three open rails (3.75) + one category column (1.0)
+const DRAFT_DIVISOR_DEFAULT = 7.75;
+
+function buildAllowedDraftDivisors(args: { viewportWidthPx: number }) {
+  // Ensure we include a divisor large enough to bring the unit under the max.
+  const neededMax = args.viewportWidthPx / DRAFT_UNIT_MAX_PX;
+  const maxDivisor = Math.max(
+    DRAFT_DIVISOR_DEFAULT,
+    DRAFT_DIVISOR_MIN + Math.ceil(Math.max(0, neededMax - DRAFT_DIVISOR_MIN))
+  );
+
+  const ds: number[] = [];
+  for (let d = DRAFT_DIVISOR_MIN; d <= maxDivisor + 1e-6; d += 1) {
+    ds.push(Number(d.toFixed(2)));
+  }
+  return ds;
+}
+
+function pickDraftDivisor(viewportWidthPx: number) {
+  if (!Number.isFinite(viewportWidthPx) || viewportWidthPx <= 0)
+    return DRAFT_DIVISOR_DEFAULT;
+
+  const candidates = buildAllowedDraftDivisors({ viewportWidthPx });
+  const valid = candidates.filter((d) => {
+    const u = viewportWidthPx / d;
+    return u >= DRAFT_UNIT_MIN_PX && u <= DRAFT_UNIT_MAX_PX;
+  });
+
+  // If nothing fits, clamp toward the closest supported end. (Mobile layout is handled later.)
+  if (valid.length === 0) {
+    const uAtMin = viewportWidthPx / DRAFT_DIVISOR_MIN;
+    if (uAtMin < DRAFT_UNIT_MIN_PX) return DRAFT_DIVISOR_MIN;
+    return candidates[candidates.length - 1] ?? DRAFT_DIVISOR_DEFAULT;
+  }
+
+  // Choose the unit size closest to our target for visual stability.
+  let best = valid[0]!;
+  let bestDelta = Math.abs(viewportWidthPx / best - DRAFT_UNIT_TARGET_PX);
+  for (const d of valid.slice(1)) {
+    const delta = Math.abs(viewportWidthPx / d - DRAFT_UNIT_TARGET_PX);
+    if (delta < bestDelta) {
+      best = d;
+      bestDelta = delta;
+    }
+  }
+  return best;
+}
+
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -129,7 +180,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
 
   // Phase 0: blank composition scaffold only.
   // Header/body/footer are separated by minimal rules.
-  // The body is divided into 7.75 "units".
+  // The body is divided into "units" (frame width / divisor), with rails consuming
+  // 1.25 units open / 0.25 units collapsed. The divisor is snapped to keep units
+  // within a readable pixel range.
   const categories = props.o.pool.categories.map((c) => ({
     id: String(c.id),
     title: c.title,
@@ -835,6 +888,28 @@ function DraftRoomScaffold(props: {
   const isLiveOrPaused =
     props.draftStatus === "IN_PROGRESS" || props.draftStatus === "PAUSED";
 
+  const [viewportWidthPx, setViewportWidthPx] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 0
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf: number | null = null;
+    const onResize = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        setViewportWidthPx(window.innerWidth);
+        raf = null;
+      });
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  const unitDivisor = useMemo(() => pickDraftDivisor(viewportWidthPx), [viewportWidthPx]);
+
   const [ledgerOpen, setLedgerOpen] = useState(!isPre);
   const [myRosterOpen, setMyRosterOpen] = useState(!isPre);
   const [autoDraftOpen, setAutoDraftOpen] = useState(true);
@@ -854,7 +929,8 @@ function DraftRoomScaffold(props: {
 
   const expandedCount =
     (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
-  const midCols = Math.max(1, 7 - expandedCount);
+  const midColsMax = Math.max(1, Math.round(unitDivisor - 0.75)); // 0.75 = 3 collapsed rails
+  const midCols = Math.max(1, midColsMax - expandedCount);
 
   const categoriesForBoxes = props.hideEmptyCategories
     ? props.categories.filter((c) => c.nominees.length > 0)
@@ -877,6 +953,7 @@ function DraftRoomScaffold(props: {
     <Box
       className="dr-layout"
       style={{
+        ["--d" as never]: unitDivisor,
         ["--rail-ledger" as never]: ledgerOpen ? 1.25 : 0.25,
         ["--rail-roster" as never]: myRosterOpen ? 1.25 : 0.25,
         ["--rail-auto" as never]: autoDraftOpen ? 1.25 : 0.25,
@@ -1523,13 +1600,13 @@ function RosterBoardScaffold(props: {
 
                     return (
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
-                        {nominee ? (
-                          <Tooltip
-                            withArrow
-                            position="bottom-start"
-                            multiline
-                            offset={10}
-                            label={
+                        <Tooltip
+                          withArrow
+                          position="bottom-start"
+                          multiline
+                          offset={10}
+                          label={
+                            nominee ? (
                               <NomineeTooltipCard
                                 unitKind={nominee.unitKind}
                                 categoryName={nominee.categoryName}
@@ -1543,13 +1620,13 @@ function RosterBoardScaffold(props: {
                                 performerProfilePath={nominee.performerProfilePath}
                                 songTitle={nominee.songTitle}
                               />
-                            }
-                          >
-                            {pill}
-                          </Tooltip>
-                        ) : (
-                          pill
-                        )}
+                            ) : (
+                              <Text className="baseline-textBody">{pick.label}</Text>
+                            )
+                          }
+                        >
+                          {pill}
+                        </Tooltip>
                       </Box>
                     );
                   })}
