@@ -561,6 +561,7 @@ function MobileDraftRoom(props: {
                   icon={c.icon}
                   iconVariant={c.iconVariant}
                   unitKind={c.unitKind}
+                  tooltipsEnabled={false}
                   nominees={c.nominees}
                   isKeyboardMode={false}
                   setKeyboardMode={() => {}}
@@ -3172,6 +3173,7 @@ function CategoryCard(props: {
   icon: string;
   iconVariant: "default" | "inverted";
   unitKind: string;
+  tooltipsEnabled?: boolean;
   nominees: Array<{
     id: string;
     label: string;
@@ -3194,6 +3196,7 @@ function CategoryCard(props: {
   onNomineeDoubleClick: (nominationId: number) => void;
 }) {
   const firstPillRef = useRef<HTMLButtonElement | null>(null);
+  const tooltipsEnabled = props.tooltipsEnabled ?? true;
 
   return (
     <Box
@@ -3229,31 +3232,8 @@ function CategoryCard(props: {
             </Text>
           </Box>
         ) : (
-          props.nominees.map((n, idx) => (
-            <Tooltip
-              key={n.id}
-              events={TOOLTIP_EVENTS}
-              withArrow={false}
-              position="bottom-start"
-              multiline
-              offset={10}
-              styles={CARD_TOOLTIP_STYLES}
-              label={
-                <NomineeTooltipCard
-                  unitKind={props.unitKind}
-                  categoryName={props.title}
-                  filmTitle={n.filmTitle}
-                  filmYear={n.filmYear}
-                  filmPosterUrl={n.posterUrl}
-                  contributors={n.contributors}
-                  performerName={n.performerName}
-                  performerCharacter={n.performerCharacter}
-                  performerProfileUrl={n.performerProfileUrl}
-                  performerProfilePath={n.performerProfilePath}
-                  songTitle={n.songTitle}
-                />
-              }
-            >
+          props.nominees.map((n, idx) => {
+            const button = (
               <UnstyledButton
                 type="button"
                 className={[
@@ -3301,8 +3281,39 @@ function CategoryCard(props: {
                   {n.label}
                 </Text>
               </UnstyledButton>
-            </Tooltip>
-          ))
+            );
+
+            if (!tooltipsEnabled) return <Box key={n.id}>{button}</Box>;
+
+            return (
+              <Tooltip
+                key={n.id}
+                events={TOOLTIP_EVENTS}
+                withArrow={false}
+                position="bottom-start"
+                multiline
+                offset={10}
+                styles={CARD_TOOLTIP_STYLES}
+                label={
+                  <NomineeTooltipCard
+                    unitKind={props.unitKind}
+                    categoryName={props.title}
+                    filmTitle={n.filmTitle}
+                    filmYear={n.filmYear}
+                    filmPosterUrl={n.posterUrl}
+                    contributors={n.contributors}
+                    performerName={n.performerName}
+                    performerCharacter={n.performerCharacter}
+                    performerProfileUrl={n.performerProfileUrl}
+                    performerProfilePath={n.performerProfilePath}
+                    songTitle={n.songTitle}
+                  />
+                }
+              >
+                {button}
+              </Tooltip>
+            );
+          })
         )}
       </Box>
     </Box>
