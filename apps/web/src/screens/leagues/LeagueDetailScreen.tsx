@@ -22,14 +22,11 @@ import "../../primitives/baseline.css";
 function ceremonyLabelForSeason(season: {
   ceremony_starts_at?: string | null;
   ceremony_name?: string | null;
+  ceremony_code?: string | null;
   ceremony_id: number;
 }) {
   if (season.ceremony_name) return season.ceremony_name;
-  const iso = season.ceremony_starts_at;
-  if (iso) {
-    const d = new Date(iso);
-    if (!Number.isNaN(d.getTime())) return `Ceremony ${d.getFullYear()}`;
-  }
+  if (season.ceremony_code) return season.ceremony_code;
   return `Ceremony ${season.ceremony_id}`;
 }
 

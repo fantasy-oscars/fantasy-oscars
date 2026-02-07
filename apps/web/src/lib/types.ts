@@ -31,6 +31,7 @@ export type SeasonSummary = {
   league_id: number;
   ceremony_id: number;
   ceremony_name?: string | null;
+  ceremony_code?: string | null;
   status: string;
   created_at: string;
   ceremony_starts_at?: string | null;
@@ -72,6 +73,7 @@ export type SeasonMeta = {
   id: number;
   ceremony_id: number;
   ceremony_name?: string | null;
+  ceremony_code?: string | null;
   status: string;
   scoring_strategy_name?: string;
   is_active_ceremony?: boolean;
