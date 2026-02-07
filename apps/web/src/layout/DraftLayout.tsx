@@ -1,11 +1,13 @@
 import { Outlet } from "react-router-dom";
-import { Box, MantineProvider } from "@mantine/core";
+import { Box, HeadlessMantineProvider } from "@mantine/core";
 import { fantasyOscarsTheme } from "../theme/theme";
 import "../primitives/draftLayout.css";
 
 export function DraftLayout() {
   return (
-    <MantineProvider
+    // Use HeadlessMantineProvider to avoid creating a second color-scheme manager/context.
+    // Draft board only needs a theme override (headings font), not a new color scheme source.
+    <HeadlessMantineProvider
       theme={{
         ...fantasyOscarsTheme,
         // Draft Board rule: sans only (override global serif headings).
@@ -30,6 +32,6 @@ export function DraftLayout() {
           </Box>
         </Box>
       </Box>
-    </MantineProvider>
+    </HeadlessMantineProvider>
   );
 }

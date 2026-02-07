@@ -31,6 +31,14 @@ import { notifications } from "@mantine/notifications";
 type MasonryItem = { estimatePx: number };
 
 const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
+const CARD_TOOLTIP_STYLES = {
+  tooltip: {
+    padding: 0,
+    background: "transparent",
+    border: "none",
+    boxShadow: "none"
+  }
+} as const;
 
 const DRAFT_UNIT_MIN_PX = 140;
 const DRAFT_UNIT_MAX_PX = 200;
@@ -508,6 +516,11 @@ function MobileDraftRoom(props: {
         isTimerDraft={o.header.hasTimer}
         clockText={o.header.clockText}
         draftStatus={draftStatus}
+        showDraftControls={!isCompleted}
+        canManageDraft={props.isPreview ? true : o.header.canManageDraft}
+        onStartDraft={o.header.onStartDraft}
+        onPauseDraft={o.header.onPauseDraft}
+        onResumeDraft={o.header.onResumeDraft}
         isFinalResults={props.isFinalResults}
         resultsWinnerLabel={o.header.resultsWinnerLabel}
         view={props.isPre ? "draft" : isCompleted ? "roster" : o.header.view}
@@ -695,6 +708,11 @@ function MobileDraftHeader(props: {
   isTimerDraft: boolean;
   clockText: string;
   draftStatus: string | null;
+  showDraftControls: boolean;
+  canManageDraft: boolean;
+  onStartDraft: () => void;
+  onPauseDraft: () => void;
+  onResumeDraft: () => void;
   isFinalResults: boolean;
   resultsWinnerLabel: string | null;
   view: "draft" | "roster";
@@ -729,7 +747,7 @@ function MobileDraftHeader(props: {
 
   return (
     <Box className="dr-header dr-mobileHeader">
-      <Box className="dr-mobileHeaderRow">
+      <Box className="dr-mobileBar" role="banner">
         <ActionIcon
           variant="subtle"
           onClick={props.onOpen}
@@ -741,27 +759,20 @@ function MobileDraftHeader(props: {
           </Text>
         </ActionIcon>
 
-        <Box className="drm-buckleWrap">
-          <Box
-            className="drh-buckle drm-buckle"
-            data-mode={props.isTimerDraft ? "timer" : "non-timer"}
-          >
-            {isCompleted ? null : (
-              <Box className="drm-buckleTop">
-                <Box className="drm-buckleMini">
-                  <Text className="drm-buckleMiniLabel">Round</Text>
-                  <Text className="drm-buckleMiniNumber">{props.roundNumber ?? "—"}</Text>
-                </Box>
-                <Box className="drm-buckleMini">
-                  <Text className="drm-buckleMiniLabel">Pick</Text>
-                  <Text className="drm-buckleMiniNumber">{props.pickNumber ?? "—"}</Text>
-                </Box>
-              </Box>
-            )}
-            <Text className="drm-buckleCenter" lineClamp={2}>
-              {centerText}
-            </Text>
-          </Box>
+        <Box className="drm-miniStat" aria-label="Round">
+          <Text className="drm-miniLabel">Round</Text>
+          <Text className="drm-miniNumber">{isCompleted ? "—" : props.roundNumber ?? "—"}</Text>
+        </Box>
+
+        <Box className="drm-clock" aria-label="Timer">
+          <Text className="drm-clockText" lineClamp={1}>
+            {centerText}
+          </Text>
+        </Box>
+
+        <Box className="drm-miniStat" aria-label="Pick">
+          <Text className="drm-miniLabel">Pick</Text>
+          <Text className="drm-miniNumber">{isCompleted ? "—" : props.pickNumber ?? "—"}</Text>
         </Box>
 
         <Menu position="bottom-end" withinPortal>
@@ -798,6 +809,16 @@ function MobileDraftHeader(props: {
                   />
                 </Group>
               </Menu.Item>
+            ) : null}
+
+            {props.showDraftControls && props.canManageDraft ? (
+              isPre ? (
+                <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+              ) : isPaused ? (
+                <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+              ) : !isCompleted ? (
+                <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+              ) : null
             ) : null}
           </Menu.Dropdown>
         </Menu>
@@ -994,10 +1015,11 @@ function MobileRosterBoard(props: {
                 <Box key={`${pick.pickNumber}`}>
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={!nominee}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
                     label={
                       nominee ? (
                         <NomineeTooltipCard
@@ -1116,10 +1138,11 @@ function MobileRail(props: {
                 {nominee ? (
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1199,10 +1222,11 @@ function MobileRail(props: {
                 {nominee ? (
                   <Tooltip
                     events={TOOLTIP_EVENTS}
-                    withArrow
+                    withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
+                    styles={CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1321,10 +1345,11 @@ function MobileRail(props: {
                         <Tooltip
                           key={item.nominationId}
                           events={TOOLTIP_EVENTS}
-                          withArrow
+                          withArrow={false}
                           position="bottom-start"
                           multiline
                           offset={10}
+                          styles={CARD_TOOLTIP_STYLES}
                           label={
                             <NomineeTooltipCard
                               unitKind={nominee.unitKind}
@@ -2313,16 +2338,17 @@ function DraftRoomScaffold(props: {
                         <AnimalAvatarIcon avatarKey={avatarKey} size={22} />
                       </Box>
                       {nominee ? (
-                        <Tooltip
-                          events={TOOLTIP_EVENTS}
-                          withArrow
-                          position="bottom-start"
-                          multiline
-                          offset={10}
-                          label={
-                            <NomineeTooltipCard
-                              unitKind={nominee.unitKind}
-                              categoryName={nominee.categoryName}
+                <Tooltip
+                  events={TOOLTIP_EVENTS}
+                  withArrow={false}
+                  position="bottom-start"
+                  multiline
+                  offset={10}
+                  styles={CARD_TOOLTIP_STYLES}
+                  label={
+                    <NomineeTooltipCard
+                      unitKind={nominee.unitKind}
+                      categoryName={nominee.categoryName}
                               filmTitle={nominee.filmTitle}
                               filmYear={nominee.filmYear}
                               filmPosterUrl={nominee.filmPosterUrl}
@@ -2479,16 +2505,17 @@ function DraftRoomScaffold(props: {
                       <Box key={p.pickNumber} className="dr-railRow dr-rosterRow">
                         <Text className="dr-railMeta">{p.roundPick}</Text>
                         {nominee ? (
-                          <Tooltip
-                            events={TOOLTIP_EVENTS}
-                            withArrow
-                            position="bottom-start"
-                            multiline
-                            offset={10}
-                            label={
-                              <NomineeTooltipCard
-                                unitKind={nominee.unitKind}
-                                categoryName={nominee.categoryName}
+                        <Tooltip
+                          events={TOOLTIP_EVENTS}
+                          withArrow={false}
+                          position="bottom-start"
+                          multiline
+                          offset={10}
+                          styles={CARD_TOOLTIP_STYLES}
+                          label={
+                            <NomineeTooltipCard
+                              unitKind={nominee.unitKind}
+                              categoryName={nominee.categoryName}
                                 filmTitle={nominee.filmTitle}
                                 filmYear={nominee.filmYear}
                                 filmPosterUrl={nominee.filmPosterUrl}
@@ -2676,10 +2703,11 @@ function DraftRoomScaffold(props: {
                                 <Tooltip
                                   key={item.nominationId}
                                   events={TOOLTIP_EVENTS}
-                                  withArrow
+                                  withArrow={false}
                                   position="bottom-start"
                                   multiline
                                   offset={10}
+                                  styles={CARD_TOOLTIP_STYLES}
                                   label={
                                     <NomineeTooltipCard
                                       unitKind={nominee.unitKind}
@@ -2938,10 +2966,11 @@ function RosterBoardScaffold(props: {
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
                         <Tooltip
                           events={TOOLTIP_EVENTS}
-                          withArrow
+                          withArrow={!nominee}
                           position="bottom-start"
                           multiline
                           offset={10}
+                          styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
                           label={
                             nominee ? (
                               <NomineeTooltipCard
@@ -3072,10 +3101,11 @@ function CategoryCard(props: {
             <Tooltip
               key={n.id}
               events={TOOLTIP_EVENTS}
-              withArrow
+              withArrow={false}
               position="bottom-start"
               multiline
               offset={10}
+              styles={CARD_TOOLTIP_STYLES}
               label={
                 <NomineeTooltipCard
                   unitKind={props.unitKind}
