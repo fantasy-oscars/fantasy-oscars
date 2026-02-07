@@ -1339,11 +1339,10 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
         const { rows } = await query<{
           id: number;
           username: string;
-          email: string | null;
         }>(
           client,
           `
-            SELECT u.id::int, u.username, u.email
+            SELECT u.id::int, u.username
             FROM app_user u
             WHERE (
                 u.username ILIKE $1 ESCAPE '\\'
