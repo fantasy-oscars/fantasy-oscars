@@ -81,6 +81,15 @@
     0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
+.baseline-card.isInteractive:focus-visible {
+  outline: none;
+  /* Keyboard focus ring: visible but consistent with the baseline palette. */
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
 .baseline-card.isInteractive:active {
   transform: translateY(0.5px);
 }

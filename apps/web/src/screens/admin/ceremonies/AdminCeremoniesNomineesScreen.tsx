@@ -105,6 +105,7 @@ function SortableNominationRow(props: {
       ]
         .filter(Boolean)
         .join(" ")}
+      role="listitem"
       justify="space-between"
       align="center"
       wrap="nowrap"
@@ -295,7 +296,7 @@ function CategoryNominationSection(props: {
           onDragEnd={onDragEnd}
         >
           <SortableContext items={nominationIds} strategy={verticalListSortingStrategy}>
-            <Stack gap={0} className="nomination-list">
+            <Stack gap={0} className="nomination-list" role="list" aria-label={label}>
               {items.map((n) => (
                 <SortableNominationRow
                   key={n.id}

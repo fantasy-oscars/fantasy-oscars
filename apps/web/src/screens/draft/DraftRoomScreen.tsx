@@ -25,6 +25,8 @@ import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
 
+const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
+
 const DRAFT_UNIT_MIN_PX = 140;
 const DRAFT_UNIT_MAX_PX = 200;
 const DRAFT_UNIT_TARGET_PX = 170;
@@ -680,6 +682,7 @@ function ParticipantStrip(props: {
     const current = props.participants[active];
     return (
       <Tooltip
+        events={TOOLTIP_EVENTS}
         label={
           <Box className="drh-stripTip">
             {props.participants.map((p) => (
@@ -705,6 +708,7 @@ function ParticipantStrip(props: {
     <Group className="drh-strip" gap={8} wrap="nowrap" ref={ref}>
       {headHidden > 0 && (
         <Tooltip
+          events={TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(0, start).map((p) => (
@@ -716,7 +720,11 @@ function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" aria-label={`${headHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${headHidden} more`}
+          >
             <Text className="drh-overflowText">+{headHidden}</Text>
           </Box>
         </Tooltip>
@@ -725,8 +733,8 @@ function ParticipantStrip(props: {
       {visible.map((p, idx) => {
         const isActive = !props.suppressActive && start + idx === active;
         return (
-          <Tooltip key={p.seatNumber} label={p.label} withArrow>
-            <Box className="drh-tokenWrap">
+          <Tooltip key={p.seatNumber} events={TOOLTIP_EVENTS} label={p.label} withArrow>
+            <Box className="drh-tokenWrap" tabIndex={0} aria-label={p.label}>
               <AvatarToken label={p.label} avatarKey={p.avatarKey} active={isActive} />
               {isActive && <DirectionChevron direction={props.direction} />}
             </Box>
@@ -736,6 +744,7 @@ function ParticipantStrip(props: {
 
       {tailHidden > 0 && (
         <Tooltip
+          events={TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(end).map((p) => (
@@ -747,7 +756,11 @@ function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" aria-label={`${tailHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${tailHidden} more`}
+          >
             <Text className="drh-overflowText">+{tailHidden}</Text>
           </Box>
         </Tooltip>
@@ -888,6 +901,9 @@ function DraftRoomScaffold(props: {
   const isLiveOrPaused =
     props.draftStatus === "IN_PROGRESS" || props.draftStatus === "PAUSED";
 
+  // A11y: tab order defaults to category headers; entering a category makes its pills tabbable.
+  const [keyboardCategoryId, setKeyboardCategoryId] = useState<string | null>(null);
+
   const [viewportWidthPx, setViewportWidthPx] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 0
   );
@@ -971,7 +987,11 @@ function DraftRoomScaffold(props: {
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
               <Box className="dr-railPaneTitleRow">
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   history
                 </Text>
                 <Text className="dr-railPaneTitle">Draft History</Text>
@@ -991,7 +1011,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="Draft history"
+              tabIndex={0}
+            >
               <Box className="dr-railList">
                 {props.ledgerRows.map((r) => {
                   const nominee = r.nominationId
@@ -1012,6 +1037,11 @@ function DraftRoomScaffold(props: {
                       ]
                         .filter(Boolean)
                         .join(" ")}
+                      tabIndex={nominee ? 0 : undefined}
+                      role={nominee ? "group" : undefined}
+                      aria-label={
+                        nominee ? `${nominee.categoryName}: ${r.label}` : undefined
+                      }
                     >
                       {nominee ? (
                         <DraftCategoryIcon
@@ -1044,6 +1074,7 @@ function DraftRoomScaffold(props: {
                       </Box>
                       {nominee ? (
                         <Tooltip
+                          events={TOOLTIP_EVENTS}
                           withArrow
                           position="bottom-start"
                           multiline
@@ -1092,7 +1123,7 @@ function DraftRoomScaffold(props: {
         )}
       </Box>
 
-      <Box className="dr-middle">
+      <Box className="dr-middle" role="region" aria-label="Draft board" tabIndex={0}>
         <Box className="dr-middle-columns" aria-hidden="true">
           {Array.from({ length: midCols }, (_, idx) => (
             <Box key={`mid-col-${idx}`} className="dr-mid-col" />
@@ -1105,11 +1136,14 @@ function DraftRoomScaffold(props: {
               {col.map((b) => (
                 <CategoryCard
                   key={b.id}
+                  categoryId={b.id}
                   title={b.title}
                   icon={b.icon}
                   iconVariant={b.iconVariant}
                   unitKind={b.unitKind}
                   nominees={b.nominees}
+                  isKeyboardMode={keyboardCategoryId === b.id}
+                  setKeyboardMode={setKeyboardCategoryId}
                   canDraftAction={props.canDraftAction}
                   onNomineeClick={props.onNomineeClick}
                   onNomineeDoubleClick={props.onNomineeDoubleClick}
@@ -1131,7 +1165,11 @@ function DraftRoomScaffold(props: {
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
               <Box className="dr-railPaneTitleRow">
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   patient_list
                 </Text>
                 <Text className="dr-railPaneTitle">My roster</Text>
@@ -1151,7 +1189,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="My roster"
+              tabIndex={0}
+            >
               <Box className="dr-railList">
                 {props.myPicks.length === 0 ? (
                   <Text className="dr-railEmpty">No picks yet</Text>
@@ -1167,6 +1210,11 @@ function DraftRoomScaffold(props: {
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        tabIndex={nominee ? 0 : undefined}
+                        role={nominee ? "group" : undefined}
+                        aria-label={
+                          nominee ? `${nominee.categoryName}: ${p.label}` : undefined
+                        }
                       >
                         {nominee ? (
                           <DraftCategoryIcon
@@ -1191,6 +1239,7 @@ function DraftRoomScaffold(props: {
                         <Text className="dr-railMeta">{p.roundPick}</Text>
                         {nominee ? (
                           <Tooltip
+                            events={TOOLTIP_EVENTS}
                             withArrow
                             position="bottom-start"
                             multiline
@@ -1251,7 +1300,11 @@ function DraftRoomScaffold(props: {
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
               <Box className="dr-railPaneTitleRow">
-                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
                   smart_toy
                 </Text>
                 <Text className="dr-railPaneTitle">Auto-draft</Text>
@@ -1271,7 +1324,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="Auto-draft"
+              tabIndex={0}
+            >
               <Stack gap="sm">
                 <Checkbox
                   checked={props.autodraft.enabled}
@@ -1342,6 +1400,13 @@ function DraftRoomScaffold(props: {
                                   ]
                                     .filter(Boolean)
                                     .join(" ")}
+                                  tabIndex={nominee ? 0 : undefined}
+                                  role={nominee ? "group" : undefined}
+                                  aria-label={
+                                    nominee
+                                      ? `${nominee.categoryName}: ${item.label}`
+                                      : undefined
+                                  }
                                 >
                                   {nominee ? (
                                     <DraftCategoryIcon
@@ -1368,6 +1433,7 @@ function DraftRoomScaffold(props: {
                               return nominee ? (
                                 <Tooltip
                                   key={item.nominationId}
+                                  events={TOOLTIP_EVENTS}
                                   withArrow
                                   position="bottom-start"
                                   multiline
@@ -1596,6 +1662,13 @@ function RosterBoardScaffold(props: {
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        tabIndex={0}
+                        role="group"
+                        aria-label={
+                          nominee
+                            ? `${nominee.categoryName}: ${pick.label}`
+                            : `Nomination: ${pick.label}`
+                        }
                       >
                         {nominee ? (
                           <DraftCategoryIcon
@@ -1619,6 +1692,7 @@ function RosterBoardScaffold(props: {
                     return (
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
                         <Tooltip
+                          events={TOOLTIP_EVENTS}
                           withArrow
                           position="bottom-start"
                           multiline
@@ -1687,6 +1761,7 @@ function computeMasonry<T extends MasonryItem>(colCount: number, items: T[]) {
 }
 
 function CategoryCard(props: {
+  categoryId: string;
   title: string;
   icon: string;
   iconVariant: "default" | "inverted";
@@ -1707,15 +1782,39 @@ function CategoryCard(props: {
     performerProfilePath: string | null;
   }>;
   canDraftAction: boolean;
+  isKeyboardMode: boolean;
+  setKeyboardMode: (categoryId: string | null) => void;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
 }) {
+  const firstPillRef = useRef<HTMLButtonElement | null>(null);
+
   return (
-    <Box className="dr-card">
-      <Box className="dr-card-titleRow">
+    <Box
+      className="dr-card"
+      onFocusCapture={() => props.setKeyboardMode(props.categoryId)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          props.setKeyboardMode(null);
+        }
+      }}
+    >
+      <UnstyledButton
+        type="button"
+        className="dr-card-titleRow"
+        aria-label={`Category: ${props.title}`}
+        onClick={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          props.setKeyboardMode(props.categoryId);
+          // Focus the first pill (if present) to enter "pills" mode.
+          firstPillRef.current?.focus();
+        }}
+      >
         <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
         <Text className="dr-card-title">{props.title}</Text>
-      </Box>
+      </UnstyledButton>
       <Box className="dr-card-pills">
         {props.nominees.length === 0 ? (
           <Box className="dr-pill is-muted">
@@ -1724,9 +1823,10 @@ function CategoryCard(props: {
             </Text>
           </Box>
         ) : (
-          props.nominees.map((n) => (
+          props.nominees.map((n, idx) => (
             <Tooltip
               key={n.id}
+              events={TOOLTIP_EVENTS}
               withArrow
               position="bottom-start"
               multiline
@@ -1757,17 +1857,37 @@ function CategoryCard(props: {
                 ]
                   .filter(Boolean)
                   .join(" ")}
+                ref={idx === 0 ? firstPillRef : undefined}
+                aria-disabled={!props.canDraftAction}
+                aria-label={`${props.title}: ${n.label}`}
+                aria-keyshortcuts="Shift+Enter"
+                tabIndex={props.isKeyboardMode ? 0 : -1}
                 onClick={(e) => {
                   if (!props.canDraftAction) return;
                   e.preventDefault();
                   e.stopPropagation();
+                  props.setKeyboardMode(props.categoryId);
                   props.onNomineeClick(Number(n.id), n.label);
                 }}
                 onDoubleClick={(e) => {
                   if (!props.canDraftAction) return;
                   e.preventDefault();
                   e.stopPropagation();
+                  props.setKeyboardMode(props.categoryId);
                   props.onNomineeDoubleClick(Number(n.id));
+                }}
+                onKeyDown={(e) => {
+                  if (!props.canDraftAction) return;
+                  if (e.shiftKey && e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    props.onNomineeDoubleClick(Number(n.id));
+                    return;
+                  }
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  props.onNomineeClick(Number(n.id), n.label);
                 }}
               >
                 <Text component="span" className="dr-pill-text">

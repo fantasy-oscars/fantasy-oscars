@@ -196,6 +196,34 @@ body {
   color: var(--fo-text-primary);
 }
 
+/* A11y: keyboard-only "Skip to content" link. Visible only on focus. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--fo-surface-card-primary);
+  color: var(--fo-text-primary);
+  border: var(--fo-border-width) solid var(--fo-border);
+  box-shadow: 0 10px 22px rgba(var(--fo-charcoal-rgb), 0.14);
+  transform: translateY(-160%);
+  transition: transform 120ms ease;
+  z-index: 10000;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: none;
+}
+
+.skip-link:focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(212, 175, 55, 0.4),
+    0 10px 22px rgba(var(--fo-charcoal-rgb), 0.14);
+}
+
 .fo-animalAvatar {
   width: var(--fo-animalAvatar-size, 22px);
   height: var(--fo-animalAvatar-size, 22px);
@@ -1109,6 +1137,17 @@ body[data-mantine-color-scheme="dark"] .dr-card {
   margin: 0 0 10px 0;
 }
 
+.dr-card-titleRow:focus-visible {
+  outline: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(var(--fo-charcoal-rgb), 0.22);
+}
+
+:root[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--fo-ivory-rgb), 0.2);
+}
+
 .dr-icon-dot {
   width: 14px;
   height: 14px;
@@ -1158,6 +1197,39 @@ body[data-mantine-color-scheme="dark"] .dr-card {
 .dr-pill-btn {
   width: 100%;
   text-align: left;
+}
+
+.dr-pill-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--fo-charcoal-rgb), 0.22);
+}
+
+:root[data-mantine-color-scheme="dark"] .dr-pill-btn:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-pill-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--fo-ivory-rgb), 0.2);
+}
+
+.dr-pill-static:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--fo-charcoal-rgb), 0.22);
+}
+
+:root[data-mantine-color-scheme="dark"] .dr-pill-static:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-pill-static:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--fo-ivory-rgb), 0.2);
+}
+
+.dr-railPaneBody:focus-visible,
+.dr-middle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--fo-charcoal-rgb), 0.18);
+}
+
+:root[data-mantine-color-scheme="dark"] .dr-railPaneBody:focus-visible,
+:root[data-mantine-color-scheme="dark"] .dr-middle:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-railPaneBody:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--fo-ivory-rgb), 0.16);
 }
 
 .dr-pill-text {

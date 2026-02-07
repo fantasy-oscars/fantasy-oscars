@@ -183,15 +183,12 @@ export function SeasonScreen(props: {
                   style={{ listStyle: "none", margin: 0, padding: 0 }}
                 >
                   {s.members.map((m) => (
-                    <Group
-                      key={m.id}
-                      justify="space-between"
-                      align="center"
-                      wrap="nowrap"
-                    >
-                      <Text>{m.username ?? `User ${m.user_id}`}</Text>
-                      {m.role === "OWNER" ? <CommissionerPill /> : null}
-                    </Group>
+                    <Box key={m.id} component="li">
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Text>{m.username ?? `User ${m.user_id}`}</Text>
+                        {m.role === "OWNER" ? <CommissionerPill /> : null}
+                      </Group>
+                    </Box>
                   ))}
                 </Stack>
               )}

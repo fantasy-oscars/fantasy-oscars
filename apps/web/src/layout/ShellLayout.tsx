@@ -83,6 +83,9 @@ export function ShellLayout() {
   return (
     <Box className="page">
       <Box className="page-inner">
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
         <Box component="header" className="site-header">
           <Group
             className="site-header-row"
@@ -251,7 +254,7 @@ export function ShellLayout() {
           </Box>
         )}
 
-        <Box component="main" className="site-content">
+        <Box component="main" id="main-content" tabIndex={-1} className="site-content">
           <Outlet />
         </Box>
 

@@ -165,26 +165,27 @@ export function LeagueDetailScreen(props: {
                     })();
 
                     return (
-                      <StandardCard
-                        key={s.id}
-                        component={Link}
-                        to={`/seasons/${s.id}`}
-                        interactive
-                      >
-                        <Group
-                          justify="space-between"
-                          align="flex-start"
-                          wrap="nowrap"
-                          gap="md"
+                      <Box key={s.id} component="li">
+                        <StandardCard
+                          component={Link}
+                          to={`/seasons/${s.id}`}
+                          interactive
                         >
-                          <Box style={{ minWidth: 0 }}>
-                            <Text className="baseline-textCardTitle">
-                              {ceremonyLabel}
-                            </Text>
-                          </Box>
-                          <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
-                        </Group>
-                      </StandardCard>
+                          <Group
+                            justify="space-between"
+                            align="flex-start"
+                            wrap="nowrap"
+                            gap="md"
+                          >
+                            <Box style={{ minWidth: 0 }}>
+                              <Text className="baseline-textCardTitle">
+                                {ceremonyLabel}
+                              </Text>
+                            </Box>
+                            <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
+                          </Group>
+                        </StandardCard>
+                      </Box>
                     );
                   })}
                 </Stack>

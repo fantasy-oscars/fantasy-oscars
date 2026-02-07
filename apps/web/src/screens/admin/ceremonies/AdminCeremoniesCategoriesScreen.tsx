@@ -172,7 +172,12 @@ export function AdminCeremoniesCategoriesScreen(props: {
             }}
           >
             <SortableContext items={categoryIds}>
-              <Box className="admin-category-list" mt="md">
+              <Box
+                className="admin-category-list"
+                mt="md"
+                role="list"
+                aria-label="Ceremony categories"
+              >
                 {o.categories.map((c) => (
                   <SortableCategoryRow
                     key={c.id}
@@ -277,6 +282,7 @@ function SortableCategoryRow(props: {
     <Box
       ref={setNodeRef}
       className={["admin-category-row", isDragging ? "is-dragging" : ""].join(" ")}
+      role="listitem"
       style={{
         transform: CSS.Transform.toString(transform),
         transition

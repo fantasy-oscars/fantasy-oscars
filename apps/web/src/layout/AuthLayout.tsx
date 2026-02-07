@@ -16,6 +16,9 @@ export function AuthLayout() {
   return (
     <Box className="auth-page">
       <Box className="auth-inner">
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
         <Box component="header" className="auth-header">
           <Group justify="space-between" align="center" wrap="nowrap">
             <Anchor component={Link} to="/" className="brand" underline="never">
@@ -38,7 +41,13 @@ export function AuthLayout() {
           </Group>
         </Box>
 
-        <Box component="main" className="auth-content" mt="xl">
+        <Box
+          component="main"
+          id="main-content"
+          tabIndex={-1}
+          className="auth-content"
+          mt="xl"
+        >
           <Outlet />
         </Box>
       </Box>
