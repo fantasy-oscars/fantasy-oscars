@@ -775,8 +775,7 @@ export function useDraftRoomOrchestration(args: {
 
       const maybePick = event.payload?.pick ?? null;
       const isNewPick = Boolean(
-        maybePick &&
-          !current.picks.some((p) => p.pick_number === maybePick.pick_number)
+        maybePick && !current.picks.some((p) => p.pick_number === maybePick.pick_number)
       );
       if (isNewPick && maybePick) {
         const seatLabel =
