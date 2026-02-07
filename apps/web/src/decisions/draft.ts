@@ -35,7 +35,16 @@ export function computeRoundPickLabel(args: { pickNumber: number; seatCount: num
 }
 
 export function computeTurn(snapshot: Snapshot): DraftTurn | null {
-  if (snapshot.turn) return snapshot.turn as DraftTurn;
+  // Some server snapshots/events may include a `turn` object that can lag behind
+  // `draft.current_pick_number` (e.g. when only the pick is emitted). Prefer the
+  // computed turn unless the provided turn is coherent with the draft state.
+  if (
+    snapshot.turn &&
+    typeof snapshot.turn.current_pick_number === "number" &&
+    snapshot.turn.current_pick_number === snapshot.draft.current_pick_number
+  ) {
+    return snapshot.turn as DraftTurn;
+  }
   const pickNumber = snapshot.draft.current_pick_number ?? null;
   if (!pickNumber || snapshot.seats.length === 0) return null;
 
