@@ -366,6 +366,27 @@ export function useDraftRoomOrchestration(args: {
     return () => window.clearInterval(intervalId);
   }, [disabled, snapshot?.draft.id]);
 
+  // Safety resync: if the websocket is disconnected during a live/paused draft,
+  // periodically refresh the snapshot so the UI doesn't get stuck on stale turns.
+  useEffect(() => {
+    if (disabled) return;
+    if (!snapshot?.draft.id) return;
+
+    const intervalId = window.setInterval(() => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      const status = current.draft.status ?? null;
+      if (status !== "IN_PROGRESS" && status !== "PAUSED") return;
+
+      const sock = socketRef.current;
+      if (sock && sock.connected) return;
+
+      void loadSnapshot({ preserveSnapshot: true });
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [disabled, loadSnapshot, snapshot?.draft.id]);
+
   const drafted = useMemo(
     () => buildDraftedSet(snapshot?.picks ?? []),
     [snapshot?.picks]
@@ -697,6 +718,10 @@ export function useDraftRoomOrchestration(args: {
       return;
     }
 
+    // Guard against missing the "draft.started" event (e.g. reconnect timing).
+    // If we see any live activity while still on a PENDING snapshot, force a resync once.
+    const resyncAfterStartRef = { current: false };
+
     const socketBase = API_BASE
       ? new URL(API_BASE, window.location.origin).origin
       : window.location.origin;
@@ -719,6 +744,18 @@ export function useDraftRoomOrchestration(args: {
       const currentVersion = lastVersionRef.current;
       if (!current || currentVersion === null) return;
       if (event.draft_id !== current.draft.id) return;
+
+      // If the draft has started server-side but this client is still on a PENDING snapshot,
+      // resync to get the authoritative seat assignment (seat order is hidden pre-start).
+      if (
+        current.draft.status === "PENDING" &&
+        event.event_type !== "draft.started" &&
+        !resyncAfterStartRef.current
+      ) {
+        resyncAfterStartRef.current = true;
+        void loadSnapshot({ preserveSnapshot: true });
+        return;
+      }
 
       if (event.event_type === "season.cancelled") {
         setError("Season cancelled.");
@@ -774,6 +811,10 @@ export function useDraftRoomOrchestration(args: {
         if (!prev || prev.draft.id !== event.draft_id) return prev;
 
         const nextDraft = { ...prev.draft, version: event.version };
+        const hadCurrentPick =
+          typeof prev.draft.current_pick_number === "number"
+            ? prev.draft.current_pick_number
+            : null;
         if (event.payload?.draft) {
           if (event.payload.draft.status) nextDraft.status = event.payload.draft.status;
           if ("current_pick_number" in event.payload.draft) {
@@ -792,11 +833,25 @@ export function useDraftRoomOrchestration(args: {
         }
 
         const nextPick = event.payload?.pick;
+        const isNewPick = Boolean(
+          nextPick && !prev.picks.some((p) => p.pick_number === nextPick.pick_number)
+        );
         const nextPicks = nextPick
-          ? prev.picks.some((p) => p.pick_number === nextPick.pick_number)
+          ? !isNewPick
             ? prev.picks
             : [...prev.picks, nextPick].sort((a, b) => a.pick_number - b.pick_number)
           : prev.picks;
+
+        // Some draft events only include the new pick (and version) but omit the updated
+        // `current_pick_number`. Infer it so "my turn" and seat highlighting stays in sync
+        // even for short timers (e.g. 1s).
+        if (isNewPick && nextPick) {
+          const inferred = nextPick.pick_number + 1;
+          const current = nextDraft.current_pick_number ?? hadCurrentPick;
+          if (typeof current !== "number" || inferred > current) {
+            nextDraft.current_pick_number = inferred;
+          }
+        }
 
         return { ...prev, draft: nextDraft, picks: nextPicks, version: event.version };
       });
@@ -861,12 +916,17 @@ export function useDraftRoomOrchestration(args: {
     socket.on("draft:event", onDraftEvent);
     socket.on("ceremony:winners.updated", onWinnersUpdated);
     socket.on("ceremony:finalized", onCeremonyFinalized);
+    socket.on("connect", () => {
+      // Always resync on (re)connect to avoid drift if we missed events while disconnected.
+      void loadSnapshot({ preserveSnapshot: true });
+    });
     socket.connect();
 
     return () => {
       socket.off("draft:event", onDraftEvent);
       socket.off("ceremony:winners.updated", onWinnersUpdated);
       socket.off("ceremony:finalized", onCeremonyFinalized);
+      socket.off("connect");
       socket.disconnect();
       socketRef.current = null;
     };

@@ -1346,9 +1346,7 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
             FROM app_user u
             WHERE (
                 u.username ILIKE $1 ESCAPE '\\'
-                OR u.email ILIKE $1 ESCAPE '\\'
                 OR ${sqlNorm("u.username")} LIKE $2 ESCAPE '\\'
-                OR ${sqlNorm("coalesce(u.email, '')")} LIKE $2 ESCAPE '\\'
               )
               AND NOT EXISTS (
                 SELECT 1
