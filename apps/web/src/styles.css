@@ -823,12 +823,30 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   border-bottom: var(--fo-border-width) solid var(--fo-border);
 }
 
+.dr-railPaneTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .dr-railPaneTitle {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--fo-text-primary);
+}
+
+.dr-railStubIcon {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--fo-text-deemphasized);
+  user-select: none;
 }
 
 .dr-railClose {

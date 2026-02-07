@@ -970,7 +970,12 @@ function DraftRoomScaffold(props: {
         {ledgerOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">Draft History</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                  history
+                </Text>
+                <Text className="dr-railPaneTitle">Draft History</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -1074,13 +1079,14 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
+            aria-label="Expand draft history"
             onClick={() => {
               if (isPre) return;
               setLedgerOpen(true);
             }}
           >
-            <Text component="span" className="dr-rail-label">
-              Draft history
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              history
             </Text>
           </UnstyledButton>
         )}
@@ -1124,7 +1130,12 @@ function DraftRoomScaffold(props: {
         {myRosterOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">My roster</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                  patient_list
+                </Text>
+                <Text className="dr-railPaneTitle">My roster</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -1216,13 +1227,14 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
+            aria-label="Expand my roster"
             onClick={() => {
               if (isPre) return;
               setMyRosterOpen(true);
             }}
           >
-            <Text component="span" className="dr-rail-label dr-rail-label-right">
-              My roster
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              patient_list
             </Text>
           </UnstyledButton>
         )}
@@ -1238,7 +1250,12 @@ function DraftRoomScaffold(props: {
         {autoDraftOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">Auto-draft</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                  smart_toy
+                </Text>
+                <Text className="dr-railPaneTitle">Auto-draft</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -1390,10 +1407,11 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
+            aria-label="Expand auto-draft"
             onClick={() => setAutoDraftOpen(true)}
           >
-            <Text component="span" className="dr-rail-label dr-rail-label-right">
-              Auto-draft
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              smart_toy
             </Text>
           </UnstyledButton>
         )}
