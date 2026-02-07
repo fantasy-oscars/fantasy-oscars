@@ -17,7 +17,15 @@ export function DraftLayout() {
     >
       <Box className="draftLayoutRoot">
         <Box className="draftLayoutInner">
-          <Box component="main" className="draftLayoutMain">
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <Box
+            component="main"
+            id="main-content"
+            tabIndex={-1}
+            className="draftLayoutMain"
+          >
             <Outlet />
           </Box>
         </Box>

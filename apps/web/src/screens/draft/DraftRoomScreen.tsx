@@ -1,9 +1,13 @@
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import {
+  ActionIcon,
   Box,
   Button,
   Checkbox,
+  Drawer,
   Group,
+  Menu,
+  Modal,
   SegmentedControl,
   Select,
   Stack,
@@ -14,6 +18,7 @@ import {
   useMantineColorScheme
 } from "@mantine/core";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMediaQuery } from "@mantine/hooks";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { SiteFooterFineprintOnly } from "../../layout/SiteFooter";
 import { Link } from "react-router-dom";
@@ -24,6 +29,8 @@ import { RuntimeBannerStack } from "../../notifications";
 import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
+
+const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
 
 const DRAFT_UNIT_MIN_PX = 140;
 const DRAFT_UNIT_MAX_PX = 200;
@@ -79,6 +86,7 @@ function pickDraftDivisor(viewportWidthPx: number) {
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const isMobile = useMediaQuery("(max-width: 500px)");
   const isPreview = props.o.myRoster.pickDisabledReason === "Preview mode";
   const draftStatus = props.o.header.status ?? null;
   const isPre = draftStatus === "PENDING";
@@ -282,6 +290,35 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (isMobile) {
+    return (
+      <MobileDraftRoom
+        o={props.o}
+        isPreview={isPreview}
+        isPre={isPre}
+        isPaused={isPaused}
+        isCompleted={isCompleted}
+        isFinalResults={isFinalResults}
+        isMyTurnStyling={isMyTurnStyling}
+        previewUser={previewUser}
+        categories={categories}
+        nomineeById={nomineeById}
+        draftedNominationIds={draftedNominationIds}
+        avatarKeyBySeat={avatarKeyBySeat}
+        canDraftAction={canDraftAction}
+        showDrafted={props.o.header.poolMode === "ALL_MUTED"}
+        onToggleShowDrafted={(next) =>
+          props.o.header.setPoolMode(next ? "ALL_MUTED" : "UNDRAFTED_ONLY")
+        }
+        showDraftedVisible={
+          !isCompleted && (isPre ? true : props.o.header.view === "draft")
+        }
+        themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
+        onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
+      />
+    );
+  }
+
   return (
     <Box
       className="dr-frame"
@@ -358,6 +395,969 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   );
 }
 
+function MobileDraftRoom(props: {
+  o: DraftRoomOrchestration;
+  isPreview: boolean;
+  isPre: boolean;
+  isPaused: boolean;
+  isCompleted: boolean;
+  isFinalResults: boolean;
+  isMyTurnStyling: boolean;
+  previewUser: { label: string; avatarKey: string | null };
+  categories: Array<{
+    id: string;
+    title: string;
+    icon: string;
+    iconVariant: "default" | "inverted";
+    unitKind: string;
+    nominees: Array<{
+      id: string;
+      label: string;
+      muted: boolean;
+      winner: boolean;
+      posterUrl: string | null;
+      filmTitle: string | null;
+      filmYear: number | null;
+      contributors: string[];
+      songTitle: string | null;
+      performerName: string | null;
+      performerCharacter: string | null;
+      performerProfileUrl: string | null;
+      performerProfilePath: string | null;
+    }>;
+  }>;
+  nomineeById: Map<
+    number,
+    {
+      unitKind: string;
+      categoryName: string;
+      filmTitle: string | null;
+      filmYear: number | null;
+      filmPosterUrl: string | null;
+      contributors: string[];
+      performerName: string | null;
+      performerCharacter: string | null;
+      performerProfileUrl: string | null;
+      performerProfilePath: string | null;
+      songTitle: string | null;
+      categoryIcon: string;
+      categoryIconVariant: "default" | "inverted";
+    }
+  >;
+  draftedNominationIds: Set<number>;
+  avatarKeyBySeat: Map<number, string | null>;
+  canDraftAction: boolean;
+  showDrafted: boolean;
+  onToggleShowDrafted: (next: boolean) => void;
+  showDraftedVisible: boolean;
+  themeIcon: string;
+  onToggleTheme: () => void;
+}) {
+  const { o } = props;
+  const draftStatus = o.header.status ?? null;
+  const isCompleted = props.isCompleted;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeRail, setActiveRail] = useState<"ledger" | "roster" | "autodraft" | null>(
+    null
+  );
+
+  const [mobileNominationId, setMobileNominationId] = useState<number | null>(null);
+
+  const hideEmptyCategories = o.header.poolMode === "UNDRAFTED_ONLY";
+  const categoriesForList = hideEmptyCategories
+    ? props.categories.filter((c) => c.nominees.length > 0)
+    : props.categories;
+
+  const mobileNominee =
+    mobileNominationId != null
+      ? (props.nomineeById.get(mobileNominationId) ?? null)
+      : null;
+
+  const closeNomineeCard = () => {
+    setMobileNominationId(null);
+    o.myRoster.clearSelection();
+  };
+
+  const openNomineeCard = (id: number) => {
+    o.pool.onSelectNomination(id);
+    setMobileNominationId(id);
+  };
+
+  const canOpenLedger = !props.isPre && !isCompleted;
+  const canOpenRosterRail = !props.isPre && !isCompleted;
+  const canOpenAutodraft = !isCompleted;
+
+  return (
+    <Box
+      className="dr-frame"
+      data-screen="draft-room"
+      data-turn={props.isMyTurnStyling ? "mine" : "theirs"}
+      data-results={props.isFinalResults ? "final" : "live"}
+      data-mobile="true"
+    >
+      <MobileDraftHeader
+        open={menuOpen}
+        onOpen={() => setMenuOpen(true)}
+        onClose={() => setMenuOpen(false)}
+        backHref="/seasons"
+        participants={o.header.participants}
+        direction={o.header.direction}
+        roundNumber={o.header.roundNumber}
+        pickNumber={o.header.pickNumber}
+        isTimerDraft={o.header.hasTimer}
+        clockText={o.header.clockText}
+        draftStatus={draftStatus}
+        isFinalResults={props.isFinalResults}
+        resultsWinnerLabel={o.header.resultsWinnerLabel}
+        view={props.isPre ? "draft" : isCompleted ? "roster" : o.header.view}
+        onViewChange={(v) => o.header.setView(v)}
+        canToggleView={o.header.canToggleView && !props.isPre && !isCompleted}
+        showDrafted={props.showDrafted}
+        onToggleShowDrafted={props.onToggleShowDrafted}
+        showDraftedVisible={props.showDraftedVisible}
+        themeIcon={props.themeIcon}
+        onToggleTheme={props.onToggleTheme}
+        userLabel={props.previewUser.label}
+        userAvatarKey={props.previewUser.avatarKey}
+      />
+
+      <RuntimeBannerStack />
+
+      <Box className="dr-body">
+        <Box className="dr-mobileScroll">
+          {isCompleted || o.header.view === "roster" ? (
+            <MobileRosterBoard o={o} nomineeById={props.nomineeById} />
+          ) : activeRail ? (
+            <MobileRail
+              rail={activeRail}
+              o={o}
+              avatarKeyBySeat={props.avatarKeyBySeat}
+              nomineeById={props.nomineeById}
+              draftedNominationIds={props.draftedNominationIds}
+            />
+          ) : (
+            <Stack gap="sm" className="dr-mobileCategories">
+              {categoriesForList.map((c) => (
+                <CategoryCard
+                  key={c.id}
+                  categoryId={c.id}
+                  title={c.title}
+                  icon={c.icon}
+                  iconVariant={c.iconVariant}
+                  unitKind={c.unitKind}
+                  nominees={c.nominees}
+                  isKeyboardMode={false}
+                  setKeyboardMode={() => {}}
+                  canDraftAction={props.canDraftAction}
+                  onNomineeClick={(id) => openNomineeCard(id)}
+                  onNomineeDoubleClick={() => {}}
+                />
+              ))}
+            </Stack>
+          )}
+        </Box>
+      </Box>
+
+      {!isCompleted && o.header.view !== "roster" ? (
+        <Box className="dr-mobileBottomBar" role="navigation" aria-label="Draft rails">
+          <Group justify="space-between" gap={0} wrap="nowrap">
+            <UnstyledButton
+              type="button"
+              className={[
+                "dr-mobileRailBtn",
+                activeRail === "ledger" ? "is-active" : "",
+                canOpenLedger ? "" : "is-disabled"
+              ].join(" ")}
+              aria-label="Draft history"
+              onClick={() => {
+                if (!canOpenLedger) return;
+                setActiveRail((r) => (r === "ledger" ? null : "ledger"));
+              }}
+            >
+              <Text component="span" className="mi-icon" aria-hidden="true">
+                history
+              </Text>
+            </UnstyledButton>
+            <UnstyledButton
+              type="button"
+              className={[
+                "dr-mobileRailBtn",
+                activeRail === "roster" ? "is-active" : "",
+                canOpenRosterRail ? "" : "is-disabled"
+              ].join(" ")}
+              aria-label="My roster"
+              onClick={() => {
+                if (!canOpenRosterRail) return;
+                setActiveRail((r) => (r === "roster" ? null : "roster"));
+              }}
+            >
+              <Text component="span" className="mi-icon" aria-hidden="true">
+                patient_list
+              </Text>
+            </UnstyledButton>
+            <UnstyledButton
+              type="button"
+              className={[
+                "dr-mobileRailBtn",
+                activeRail === "autodraft" ? "is-active" : "",
+                canOpenAutodraft ? "" : "is-disabled"
+              ].join(" ")}
+              aria-label="Auto-draft"
+              onClick={() => {
+                if (!canOpenAutodraft) return;
+                setActiveRail((r) => (r === "autodraft" ? null : "autodraft"));
+              }}
+            >
+              <Text component="span" className="mi-icon" aria-hidden="true">
+                smart_toy
+              </Text>
+            </UnstyledButton>
+          </Group>
+        </Box>
+      ) : null}
+
+      <Box className="dr-footer">
+        <SiteFooterFineprintOnly />
+      </Box>
+
+      <Modal
+        opened={mobileNominationId != null}
+        onClose={closeNomineeCard}
+        centered
+        withCloseButton={false}
+        overlayProps={{ opacity: 0.3, blur: 2 }}
+      >
+        <Box style={{ position: "relative" }}>
+          <ActionIcon
+            variant="subtle"
+            onClick={closeNomineeCard}
+            aria-label="Close"
+            style={{ position: "absolute", right: 4, top: 4, zIndex: 2 }}
+          >
+            <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+              close
+            </Text>
+          </ActionIcon>
+
+          {mobileNominee ? (
+            <NomineeTooltipCard
+              unitKind={mobileNominee.unitKind}
+              categoryName={mobileNominee.categoryName}
+              filmTitle={mobileNominee.filmTitle}
+              filmYear={mobileNominee.filmYear}
+              filmPosterUrl={mobileNominee.filmPosterUrl}
+              contributors={mobileNominee.contributors}
+              performerName={mobileNominee.performerName}
+              performerCharacter={mobileNominee.performerCharacter}
+              performerProfileUrl={mobileNominee.performerProfileUrl}
+              performerProfilePath={mobileNominee.performerProfilePath}
+              songTitle={mobileNominee.songTitle}
+              action={
+                props.canDraftAction ? (
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      const id = mobileNominationId;
+                      if (id == null) return;
+                      closeNomineeCard();
+                      o.myRoster.submitPickNomination(id);
+                    }}
+                  >
+                    Draft
+                  </Button>
+                ) : null
+              }
+            />
+          ) : (
+            <Text className="baseline-textBody">—</Text>
+          )}
+        </Box>
+      </Modal>
+    </Box>
+  );
+}
+
+function MobileDraftHeader(props: {
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  backHref: string;
+  participants: Array<{
+    seatNumber: number;
+    label: string;
+    active: boolean;
+    avatarKey: string | null;
+  }>;
+  direction: "FORWARD" | "REVERSE" | null;
+  roundNumber: number | null;
+  pickNumber: number | null;
+  isTimerDraft: boolean;
+  clockText: string;
+  draftStatus: string | null;
+  isFinalResults: boolean;
+  resultsWinnerLabel: string | null;
+  view: "draft" | "roster";
+  onViewChange: (v: "draft" | "roster") => void;
+  canToggleView: boolean;
+  showDrafted: boolean;
+  onToggleShowDrafted: (next: boolean) => void;
+  showDraftedVisible: boolean;
+  themeIcon: string;
+  onToggleTheme: () => void;
+  userLabel: string;
+  userAvatarKey: string | null;
+}) {
+  const isPre = props.draftStatus === "PENDING";
+  const isPaused = props.draftStatus === "PAUSED";
+  const isCompleted = props.draftStatus === "COMPLETED";
+
+  const centerText =
+    props.isFinalResults && props.resultsWinnerLabel
+      ? props.resultsWinnerLabel
+      : isCompleted
+        ? "Draft complete"
+        : isPaused
+          ? "Paused"
+          : isPre
+            ? "Not started"
+            : props.isTimerDraft
+              ? props.clockText
+              : (props.participants.find((p) => p.active)?.label ?? "—");
+
+  const canShowRosterLink = props.canToggleView;
+
+  return (
+    <Box className="dr-header dr-mobileHeader">
+      <Box className="dr-mobileHeaderRow">
+        <ActionIcon
+          variant="subtle"
+          onClick={props.onOpen}
+          aria-label="Menu"
+          className="dr-mobileIconBtn"
+        >
+          <Text component="span" className="mi-icon" aria-hidden="true">
+            menu
+          </Text>
+        </ActionIcon>
+
+        <Box className="drm-buckleWrap">
+          <Box
+            className="drh-buckle drm-buckle"
+            data-mode={props.isTimerDraft ? "timer" : "non-timer"}
+          >
+            {isCompleted ? null : (
+              <Box className="drm-buckleTop">
+                <Box className="drm-buckleMini">
+                  <Text className="drm-buckleMiniLabel">Round</Text>
+                  <Text className="drm-buckleMiniNumber">{props.roundNumber ?? "—"}</Text>
+                </Box>
+                <Box className="drm-buckleMini">
+                  <Text className="drm-buckleMiniLabel">Pick</Text>
+                  <Text className="drm-buckleMiniNumber">{props.pickNumber ?? "—"}</Text>
+                </Box>
+              </Box>
+            )}
+            <Text className="drm-buckleCenter" lineClamp={2}>
+              {centerText}
+            </Text>
+          </Box>
+        </Box>
+
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <ActionIcon
+              variant="subtle"
+              aria-label="Settings"
+              className="dr-mobileIconBtn"
+            >
+              <Text component="span" className="mi-icon" aria-hidden="true">
+                settings
+              </Text>
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={
+                <Text component="span" className="gicon" aria-hidden="true">
+                  {props.themeIcon}
+                </Text>
+              }
+              onClick={props.onToggleTheme}
+            >
+              Toggle theme
+            </Menu.Item>
+            {props.showDraftedVisible ? (
+              <Menu.Item closeMenuOnClick={false}>
+                <Group justify="space-between" wrap="nowrap" gap="md">
+                  <Text>Show drafted</Text>
+                  <Switch
+                    size="sm"
+                    checked={props.showDrafted}
+                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                  />
+                </Group>
+              </Menu.Item>
+            ) : null}
+          </Menu.Dropdown>
+        </Menu>
+      </Box>
+
+      <Drawer opened={props.open} onClose={props.onClose} title=" " position="left">
+        <Stack gap="md">
+          <Group justify="space-between" wrap="nowrap">
+            <Button component={Link} to={props.backHref} variant="outline" fullWidth>
+              Back to seasons
+            </Button>
+          </Group>
+          <Button
+            type="button"
+            variant="outline"
+            fullWidth
+            disabled={!canShowRosterLink}
+            onClick={() => {
+              if (!canShowRosterLink) return;
+              props.onViewChange(props.view === "draft" ? "roster" : "draft");
+              props.onClose();
+            }}
+          >
+            {props.view === "draft" ? "Roster view" : "Draft view"}
+          </Button>
+
+          <Box>
+            <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+              Draft order
+            </Text>
+            <Stack gap="xs">
+              {props.participants.map((p) => (
+                <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
+                  <Group gap="sm" wrap="nowrap">
+                    <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                    <Text>{p.label}</Text>
+                  </Group>
+                  {p.active ? (
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      play_arrow
+                    </Text>
+                  ) : null}
+                </Group>
+              ))}
+            </Stack>
+          </Box>
+        </Stack>
+      </Drawer>
+    </Box>
+  );
+}
+
+function MobileRosterBoard(props: {
+  o: DraftRoomOrchestration;
+  nomineeById: Map<
+    number,
+    {
+      unitKind: string;
+      categoryName: string;
+      filmTitle: string | null;
+      filmYear: number | null;
+      filmPosterUrl: string | null;
+      contributors: string[];
+      performerName: string | null;
+      performerCharacter: string | null;
+      performerProfileUrl: string | null;
+      performerProfilePath: string | null;
+      songTitle: string | null;
+      categoryIcon: string;
+      categoryIconVariant: "default" | "inverted";
+    }
+  >;
+}) {
+  const { o } = props;
+
+  const participantsBySeat = useMemo(() => {
+    const m = new Map<number, { label: string; avatarKey: string | null }>();
+    for (const p of o.header.participants) {
+      m.set(p.seatNumber, { label: p.label, avatarKey: p.avatarKey ?? null });
+    }
+    return m;
+  }, [o.header.participants]);
+
+  const players = useMemo(() => {
+    const seats = o.rosterBoard.seats.length
+      ? o.rosterBoard.seats
+      : o.header.participants.map((p) => ({
+          seatNumber: p.seatNumber,
+          username: p.label,
+          winnerCount: 0
+        }));
+    return [...seats]
+      .sort((a, b) => a.seatNumber - b.seatNumber)
+      .map((s) => {
+        const p = participantsBySeat.get(s.seatNumber);
+        const label = s.username ?? p?.label ?? `Seat ${s.seatNumber}`;
+        const avatarKey = p?.avatarKey ?? pickDeterministicAvatarKey(label);
+        return {
+          seatNumber: s.seatNumber,
+          label,
+          avatarKey,
+          winnerCount: s.winnerCount ?? 0
+        };
+      });
+  }, [o.header.participants, o.rosterBoard.seats, participantsBySeat]);
+
+  const [seat, setSeat] = useState<number | null>(() => players[0]?.seatNumber ?? null);
+  useEffect(() => {
+    setSeat((prev) => {
+      if (prev == null) return players[0]?.seatNumber ?? null;
+      if (players.some((p) => p.seatNumber === prev)) return prev;
+      return players[0]?.seatNumber ?? null;
+    });
+  }, [players]);
+
+  const current =
+    seat != null ? (players.find((p) => p.seatNumber === seat) ?? null) : null;
+  const picks = seat != null ? (o.rosterBoard.rowsBySeat.get(seat) ?? []) : [];
+
+  return (
+    <Stack gap="sm">
+      <Select
+        label="Roster"
+        value={seat != null ? String(seat) : null}
+        onChange={(v) => setSeat(v ? Number(v) : null)}
+        data={players.map((p) => ({
+          value: String(p.seatNumber),
+          label:
+            o.header.status === "COMPLETED" ? `${p.label} (${p.winnerCount})` : p.label
+        }))}
+      />
+
+      {current ? (
+        <Box className="dr-card dr-rosterCard">
+          <Box className="dr-card-titleRow">
+            <AnimalAvatarIcon avatarKey={current.avatarKey} size={24} />
+            <Text className="dr-card-title" lineClamp={1} style={{ flex: "1 1 auto" }}>
+              {current.label}
+            </Text>
+            {o.header.status === "COMPLETED" ? (
+              <Text
+                className="dr-rosterWinCount"
+                aria-label={`${current.winnerCount} winners`}
+              >
+                {current.winnerCount}
+              </Text>
+            ) : null}
+          </Box>
+
+          <Stack gap={6} className="dr-card-pills">
+            {picks.map((pick) => {
+              const nominee =
+                pick.nominationId != null
+                  ? (props.nomineeById.get(pick.nominationId) ?? null)
+                  : null;
+
+              const pill = (
+                <Box
+                  className={["dr-pill", "dr-pill-static", pick.winner ? "is-winner" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
+                  tabIndex={0}
+                  role="group"
+                  aria-label={
+                    nominee
+                      ? `${nominee.categoryName}: ${pick.label}`
+                      : `Nomination: ${pick.label}`
+                  }
+                >
+                  {nominee ? (
+                    <DraftCategoryIcon
+                      icon={nominee.categoryIcon}
+                      variant={nominee.categoryIconVariant}
+                      className="dr-pill-icon"
+                    />
+                  ) : pick.icon ? (
+                    <DraftCategoryIcon
+                      icon={pick.icon}
+                      variant="default"
+                      className="dr-pill-icon"
+                    />
+                  ) : null}
+                  <Text className="dr-pill-text dr-rosterPickText" lineClamp={1}>
+                    {pick.label}
+                  </Text>
+                </Box>
+              );
+
+              return (
+                <Box key={`${pick.pickNumber}`}>
+                  <Tooltip
+                    events={TOOLTIP_EVENTS}
+                    withArrow
+                    position="bottom-start"
+                    multiline
+                    offset={10}
+                    label={
+                      nominee ? (
+                        <NomineeTooltipCard
+                          unitKind={nominee.unitKind}
+                          categoryName={nominee.categoryName}
+                          filmTitle={nominee.filmTitle}
+                          filmYear={nominee.filmYear}
+                          filmPosterUrl={nominee.filmPosterUrl}
+                          contributors={nominee.contributors}
+                          performerName={nominee.performerName}
+                          performerCharacter={nominee.performerCharacter}
+                          performerProfileUrl={nominee.performerProfileUrl}
+                          performerProfilePath={nominee.performerProfilePath}
+                          songTitle={nominee.songTitle}
+                        />
+                      ) : (
+                        <Text className="baseline-textBody">{pick.label}</Text>
+                      )
+                    }
+                  >
+                    {pill}
+                  </Tooltip>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      ) : (
+        <Text className="baseline-textBody">No roster.</Text>
+      )}
+    </Stack>
+  );
+}
+
+function MobileRail(props: {
+  rail: "ledger" | "roster" | "autodraft";
+  o: DraftRoomOrchestration;
+  avatarKeyBySeat: Map<number, string | null>;
+  nomineeById: Map<
+    number,
+    {
+      unitKind: string;
+      categoryName: string;
+      filmTitle: string | null;
+      filmYear: number | null;
+      filmPosterUrl: string | null;
+      contributors: string[];
+      performerName: string | null;
+      performerCharacter: string | null;
+      performerProfileUrl: string | null;
+      performerProfilePath: string | null;
+      songTitle: string | null;
+      categoryIcon: string;
+      categoryIconVariant: "default" | "inverted";
+    }
+  >;
+  draftedNominationIds: Set<number>;
+}) {
+  const { o } = props;
+
+  if (props.rail === "ledger") {
+    return (
+      <Box className="dr-mobileRailPane">
+        <Text className="dr-railPaneTitle">Draft History</Text>
+        <Box className="dr-railRows">
+          {o.ledger.rows.map((r) => {
+            const seatNumber = r.seatNumber;
+            const avatarKey =
+              typeof seatNumber === "number"
+                ? (props.avatarKeyBySeat.get(seatNumber) ?? null)
+                : null;
+            const nominee =
+              typeof r.nominationId === "number"
+                ? (props.nomineeById.get(r.nominationId) ?? null)
+                : null;
+
+            const pill = (
+              <Box
+                className={[
+                  "dr-pill",
+                  "dr-pill-static",
+                  r.label === "—" ? "is-muted" : "",
+                  r.winner ? "is-winner" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                tabIndex={nominee ? 0 : undefined}
+                role={nominee ? "group" : undefined}
+                aria-label={nominee ? `${nominee.categoryName}: ${r.label}` : undefined}
+              >
+                {nominee ? (
+                  <DraftCategoryIcon
+                    icon={nominee.categoryIcon}
+                    variant={nominee.categoryIconVariant}
+                    className="dr-pill-icon"
+                  />
+                ) : r.icon ? (
+                  <DraftCategoryIcon
+                    icon={r.icon}
+                    variant="default"
+                    className="dr-pill-icon"
+                  />
+                ) : null}
+                <Text component="span" className="dr-pill-text" lineClamp={1}>
+                  {r.label}
+                </Text>
+              </Box>
+            );
+
+            return (
+              <Box key={r.pickNumber} className="dr-railRow dr-ledgerRow">
+                <Text className="dr-railMeta">{r.roundPick}</Text>
+                <Box className="dr-railAvatar">
+                  <AnimalAvatarIcon avatarKey={avatarKey} size={22} />
+                </Box>
+                {nominee ? (
+                  <Tooltip
+                    events={TOOLTIP_EVENTS}
+                    withArrow
+                    position="bottom-start"
+                    multiline
+                    offset={10}
+                    label={
+                      <NomineeTooltipCard
+                        unitKind={nominee.unitKind}
+                        categoryName={nominee.categoryName}
+                        filmTitle={nominee.filmTitle}
+                        filmYear={nominee.filmYear}
+                        filmPosterUrl={nominee.filmPosterUrl}
+                        contributors={nominee.contributors}
+                        performerName={nominee.performerName}
+                        performerCharacter={nominee.performerCharacter}
+                        performerProfileUrl={nominee.performerProfileUrl}
+                        performerProfilePath={nominee.performerProfilePath}
+                        songTitle={nominee.songTitle}
+                      />
+                    }
+                  >
+                    {pill}
+                  </Tooltip>
+                ) : (
+                  pill
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  }
+
+  if (props.rail === "roster") {
+    return (
+      <Box className="dr-mobileRailPane">
+        <Text className="dr-railPaneTitle">My Roster</Text>
+        <Box className="dr-railRows">
+          {o.myRoster.picks.map((r) => {
+            const nominee =
+              typeof r.nominationId === "number"
+                ? (props.nomineeById.get(r.nominationId) ?? null)
+                : null;
+
+            const pill = (
+              <Box
+                className={[
+                  "dr-pill",
+                  "dr-pill-static",
+                  r.label === "—" ? "is-muted" : "",
+                  r.winner ? "is-winner" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                tabIndex={nominee ? 0 : undefined}
+                role={nominee ? "group" : undefined}
+                aria-label={nominee ? `${nominee.categoryName}: ${r.label}` : undefined}
+              >
+                {nominee ? (
+                  <DraftCategoryIcon
+                    icon={nominee.categoryIcon}
+                    variant={nominee.categoryIconVariant}
+                    className="dr-pill-icon"
+                  />
+                ) : r.icon ? (
+                  <DraftCategoryIcon
+                    icon={r.icon}
+                    variant="default"
+                    className="dr-pill-icon"
+                  />
+                ) : null}
+                <Text component="span" className="dr-pill-text" lineClamp={1}>
+                  {r.label}
+                </Text>
+              </Box>
+            );
+
+            return (
+              <Box key={r.pickNumber} className="dr-railRow">
+                <Text className="dr-railMeta">{r.roundPick}</Text>
+                {nominee ? (
+                  <Tooltip
+                    events={TOOLTIP_EVENTS}
+                    withArrow
+                    position="bottom-start"
+                    multiline
+                    offset={10}
+                    label={
+                      <NomineeTooltipCard
+                        unitKind={nominee.unitKind}
+                        categoryName={nominee.categoryName}
+                        filmTitle={nominee.filmTitle}
+                        filmYear={nominee.filmYear}
+                        filmPosterUrl={nominee.filmPosterUrl}
+                        contributors={nominee.contributors}
+                        performerName={nominee.performerName}
+                        performerCharacter={nominee.performerCharacter}
+                        performerProfileUrl={nominee.performerProfileUrl}
+                        performerProfilePath={nominee.performerProfilePath}
+                        songTitle={nominee.songTitle}
+                      />
+                    }
+                  >
+                    {pill}
+                  </Tooltip>
+                ) : (
+                  pill
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
+    );
+  }
+
+  return (
+    <Box className="dr-mobileRailPane">
+      <Text className="dr-railPaneTitle">Auto-Draft</Text>
+      <Stack gap="sm">
+        <Checkbox
+          checked={o.autodraft.enabled}
+          onChange={(e) => o.autodraft.setEnabled(e.currentTarget.checked)}
+          label="Enable auto-drafting"
+        />
+        <Select
+          label="Strategy"
+          value={o.autodraft.strategy}
+          onChange={(v) =>
+            o.autodraft.setStrategy((v as "random" | "custom") ?? "random")
+          }
+          data={[
+            { value: "random", label: "Random" },
+            { value: "custom", label: "Custom", disabled: o.autodraft.plans.length === 0 }
+          ]}
+          allowDeselect={false}
+        />
+
+        {o.autodraft.strategy === "custom" ? (
+          <>
+            <Select
+              label="Plan"
+              placeholder={
+                o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+              }
+              value={
+                o.autodraft.selectedPlanId ? String(o.autodraft.selectedPlanId) : null
+              }
+              onChange={(v) => o.autodraft.setSelectedPlanId(v ? Number(v) : null)}
+              data={o.autodraft.plans.map((p) => ({
+                value: String(p.id),
+                label: p.name
+              }))}
+              disabled={o.autodraft.plans.length === 0}
+              searchable
+              clearable
+            />
+
+            {o.autodraft.selectedPlanId ? (
+              <Box>
+                {o.autodraft.list.length === 0 ? (
+                  <Text className="baseline-textBody">No nominees.</Text>
+                ) : (
+                  <Stack gap={6}>
+                    {o.autodraft.list.map((item) => {
+                      const nominee = props.nomineeById.get(item.nominationId) ?? null;
+                      const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                      const pill = (
+                        <Box
+                          className={[
+                            "dr-pill",
+                            "dr-pill-static",
+                            isDrafted ? "is-muted" : ""
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          tabIndex={nominee ? 0 : undefined}
+                          role={nominee ? "group" : undefined}
+                          aria-label={
+                            nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                          }
+                        >
+                          {nominee ? (
+                            <DraftCategoryIcon
+                              icon={nominee.categoryIcon}
+                              variant={nominee.categoryIconVariant}
+                              className="dr-pill-icon"
+                            />
+                          ) : item.icon ? (
+                            <DraftCategoryIcon
+                              icon={item.icon}
+                              variant="default"
+                              className="dr-pill-icon"
+                            />
+                          ) : null}
+                          <Text component="span" className="dr-pill-text" lineClamp={1}>
+                            {item.label}
+                          </Text>
+                        </Box>
+                      );
+
+                      return nominee ? (
+                        <Tooltip
+                          key={item.nominationId}
+                          events={TOOLTIP_EVENTS}
+                          withArrow
+                          position="bottom-start"
+                          multiline
+                          offset={10}
+                          label={
+                            <NomineeTooltipCard
+                              unitKind={nominee.unitKind}
+                              categoryName={nominee.categoryName}
+                              filmTitle={nominee.filmTitle}
+                              filmYear={nominee.filmYear}
+                              filmPosterUrl={nominee.filmPosterUrl}
+                              contributors={nominee.contributors}
+                              performerName={nominee.performerName}
+                              performerCharacter={nominee.performerCharacter}
+                              performerProfileUrl={nominee.performerProfileUrl}
+                              performerProfilePath={nominee.performerProfilePath}
+                              songTitle={nominee.songTitle}
+                            />
+                          }
+                        >
+                          {pill}
+                        </Tooltip>
+                      ) : (
+                        <Box key={item.nominationId}>{pill}</Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            ) : null}
+          </>
+        ) : null}
+      </Stack>
+    </Box>
+  );
+}
+
 function DraftBoardHeader(props: {
   backHref: string | null;
   participants: Array<{
@@ -394,6 +1394,13 @@ function DraftBoardHeader(props: {
   const isPaused = props.draftStatus === "PAUSED";
   const isCompleted = props.draftStatus === "COMPLETED";
 
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const leftRef = useRef<HTMLDivElement | null>(null);
+  const rightRef = useRef<HTMLDivElement | null>(null);
+  const buckleRef = useRef<HTMLDivElement | null>(null);
+  const [compactHeader, setCompactHeader] = useState(false);
+  const [compactMenuOpen, setCompactMenuOpen] = useState(false);
+
   const activeIndexRaw = props.participants.findIndex((p) => p.active);
   const activeIndex = activeIndexRaw >= 0 ? activeIndexRaw : 0;
   const activeLabel = props.participants[activeIndex]?.label ?? "—";
@@ -415,37 +1422,186 @@ function DraftBoardHeader(props: {
     return Math.min(360, Math.max(200, Math.floor(vw * 0.25)));
   }, []);
 
+  useEffect(() => {
+    const headerEl = headerRef.current;
+    if (!headerEl) return;
+
+    const compute = () => {
+      const l = leftRef.current?.getBoundingClientRect();
+      const r = rightRef.current?.getBoundingClientRect();
+      const b = buckleRef.current?.getBoundingClientRect();
+      if (!l || !r || !b) return;
+
+      const pad = 8;
+      const safePad = 24; // hysteresis to prevent flip-flop near the threshold
+      const overlapsLeft = b.left < l.right + pad;
+      const overlapsRight = b.right > r.left - pad;
+      const hasOverlap = overlapsLeft || overlapsRight;
+      setCompactHeader((prev) => {
+        if (prev) {
+          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
+          return hasComfort ? false : true;
+        }
+        return hasOverlap;
+      });
+    };
+
+    compute();
+    const ro = new ResizeObserver(() => requestAnimationFrame(compute));
+    ro.observe(headerEl);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Recompute when content changes even if the header size doesn't (e.g. split-screen).
+    requestAnimationFrame(() => {
+      const l = leftRef.current?.getBoundingClientRect();
+      const r = rightRef.current?.getBoundingClientRect();
+      const b = buckleRef.current?.getBoundingClientRect();
+      if (!l || !r || !b) return;
+      const pad = 8;
+      const safePad = 24;
+      const overlapsLeft = b.left < l.right + pad;
+      const overlapsRight = b.right > r.left - pad;
+      const hasOverlap = overlapsLeft || overlapsRight;
+      setCompactHeader((prev) => {
+        if (prev) {
+          const hasComfort = b.left > l.right + safePad && b.right < r.left - safePad;
+          return hasComfort ? false : true;
+        }
+        return hasOverlap;
+      });
+    });
+  }, [
+    centerText,
+    props.participants,
+    props.userLabel,
+    props.showDraftControls,
+    props.showDraftedVisible,
+    props.view,
+    props.canToggleView
+  ]);
+
   return (
     <Box className="dr-header">
-      <Box className="drh-row">
-        <Box className="drh-left">
-          <Box className="drh-backWrap" aria-hidden={false}>
-            <UnstyledButton
-              component={Link}
-              to={props.backHref ?? "#"}
-              className={["drh-back", props.backHref ? "" : "is-disabled"].join(" ")}
-              aria-label="Back to season"
-              onClick={(e) => {
-                if (!props.backHref) e.preventDefault();
-              }}
-            >
-              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-                arrow_back
-              </Text>
-            </UnstyledButton>
-          </Box>
-          {!isCompleted && (
-            <ParticipantStrip
-              participants={props.participants}
-              activeIndex={activeIndex}
-              direction={props.direction}
-              suppressActive={isPre || isPaused || isCompleted}
-            />
+      <Box className="drh-row" ref={headerRef}>
+        <Box className="drh-left" ref={leftRef}>
+          {compactHeader ? (
+            <>
+              <Box className="drh-backWrap" aria-hidden={false}>
+                <UnstyledButton
+                  type="button"
+                  className="drh-back"
+                  aria-label="Menu"
+                  onClick={() => setCompactMenuOpen(true)}
+                >
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny"
+                    aria-hidden="true"
+                  >
+                    menu
+                  </Text>
+                </UnstyledButton>
+              </Box>
+              <Drawer
+                opened={compactMenuOpen}
+                onClose={() => setCompactMenuOpen(false)}
+                position="left"
+                title=" "
+              >
+                <Stack gap="md">
+                  <Button
+                    component={Link}
+                    to={props.backHref ?? "/seasons"}
+                    variant="outline"
+                    fullWidth
+                    onClick={(e) => {
+                      if (!props.backHref) e.preventDefault();
+                      setCompactMenuOpen(false);
+                    }}
+                  >
+                    Back to seasons
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    fullWidth
+                    disabled={!props.canToggleView}
+                    onClick={() => {
+                      if (!props.canToggleView) return;
+                      props.onViewChange(props.view === "draft" ? "roster" : "draft");
+                      setCompactMenuOpen(false);
+                    }}
+                  >
+                    {props.view === "draft" ? "Roster view" : "Draft view"}
+                  </Button>
+
+                  {!isCompleted ? (
+                    <Box>
+                      <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+                        Draft order
+                      </Text>
+                      <Stack gap="xs">
+                        {props.participants.map((p) => (
+                          <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
+                            <Group gap="sm" wrap="nowrap">
+                              <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                              <Text>{p.label}</Text>
+                            </Group>
+                            {p.active ? (
+                              <Text
+                                component="span"
+                                className="mi-icon mi-icon-tiny"
+                                aria-hidden="true"
+                              >
+                                play_arrow
+                              </Text>
+                            ) : null}
+                          </Group>
+                        ))}
+                      </Stack>
+                    </Box>
+                  ) : null}
+                </Stack>
+              </Drawer>
+            </>
+          ) : (
+            <>
+              <Box className="drh-backWrap" aria-hidden={false}>
+                <UnstyledButton
+                  component={Link}
+                  to={props.backHref ?? "#"}
+                  className={["drh-back", props.backHref ? "" : "is-disabled"].join(" ")}
+                  aria-label="Back to season"
+                  onClick={(e) => {
+                    if (!props.backHref) e.preventDefault();
+                  }}
+                >
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny"
+                    aria-hidden="true"
+                  >
+                    arrow_back
+                  </Text>
+                </UnstyledButton>
+              </Box>
+              {!isCompleted && (
+                <ParticipantStrip
+                  participants={props.participants}
+                  activeIndex={activeIndex}
+                  direction={props.direction}
+                  suppressActive={isPre || isPaused || isCompleted}
+                />
+              )}
+            </>
           )}
         </Box>
 
-        <Box className="drh-right">
-          {props.showDraftControls && props.canManageDraft && (
+        <Box className="drh-right" ref={rightRef}>
+          {!compactHeader && props.showDraftControls && props.canManageDraft ? (
             <Box className="drh-pauseWrap">
               <UnstyledButton
                 type="button"
@@ -468,8 +1624,9 @@ function DraftBoardHeader(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-          )}
-          {props.showDraftControls ? (
+          ) : null}
+
+          {!compactHeader && props.showDraftControls ? (
             <Box className="drh-controls">
               <Box className="drh-controlsGrid">
                 <Group className="drh-controlRow" gap="sm" wrap="nowrap">
@@ -506,40 +1663,102 @@ function DraftBoardHeader(props: {
             </Box>
           ) : null}
 
-          <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-            <Button
-              type="button"
-              variant="subtle"
-              className="theme-toggle"
-              onClick={props.onToggleTheme}
-              aria-label="Toggle theme"
-            >
-              <Text component="span" className="gicon" aria-hidden="true">
-                {props.themeIcon}
-              </Text>
-            </Button>
-            <Box className="drh-userBadge">
-              <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
-              <Text className="drh-userText">{props.userLabel}</Text>
-            </Box>
-          </Group>
+          {compactHeader ? (
+            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    className="theme-toggle"
+                    aria-label="Open settings"
+                  >
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
+                      settings
+                    </Text>
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        {props.themeIcon}
+                      </Text>
+                    }
+                    onClick={props.onToggleTheme}
+                  >
+                    Toggle theme
+                  </Menu.Item>
+
+                  {props.showDraftedVisible ? (
+                    <Menu.Item closeMenuOnClick={false}>
+                      <Group justify="space-between" wrap="nowrap" gap="md">
+                        <Text>Show drafted</Text>
+                        <Switch
+                          size="sm"
+                          checked={props.showDrafted}
+                          onChange={(e) =>
+                            props.onToggleShowDrafted(e.currentTarget.checked)
+                          }
+                        />
+                      </Group>
+                    </Menu.Item>
+                  ) : null}
+
+                  {props.showDraftControls && props.canManageDraft ? (
+                    isPre ? (
+                      <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+                    ) : isPaused ? (
+                      <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+                    ) : !isCompleted ? (
+                      <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+                    ) : null
+                  ) : null}
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+          ) : (
+            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+              <Button
+                type="button"
+                variant="subtle"
+                className="theme-toggle"
+                onClick={props.onToggleTheme}
+                aria-label="Toggle theme"
+              >
+                <Text component="span" className="gicon" aria-hidden="true">
+                  {props.themeIcon}
+                </Text>
+              </Button>
+              <Box className="drh-userBadge">
+                <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+                <Text className="drh-userText">{props.userLabel}</Text>
+              </Box>
+            </Group>
+          )}
         </Box>
 
-        <CenterBuckle
-          roundNumber={isCompleted ? null : props.roundNumber}
-          pickNumber={isCompleted ? null : props.pickNumber}
-          centerText={centerText}
-          measureText={
-            props.isTimerDraft
-              ? null
-              : props.participants.reduce(
-                  (longest, p) => (p.label.length > longest.length ? p.label : longest),
-                  ""
-                )
-          }
-          isTimerDraft={props.isTimerDraft}
-          maxHandleLengthPx={buckleMaxPx}
-        />
+        <Box ref={buckleRef}>
+          <CenterBuckle
+            roundNumber={isCompleted ? null : props.roundNumber}
+            pickNumber={isCompleted ? null : props.pickNumber}
+            centerText={centerText}
+            measureText={
+              props.isTimerDraft
+                ? null
+                : props.participants.reduce(
+                    (longest, p) => (p.label.length > longest.length ? p.label : longest),
+                    ""
+                  )
+            }
+            isTimerDraft={props.isTimerDraft}
+            maxHandleLengthPx={buckleMaxPx}
+          />
+        </Box>
       </Box>
     </Box>
   );
@@ -680,6 +1899,7 @@ function ParticipantStrip(props: {
     const current = props.participants[active];
     return (
       <Tooltip
+        events={TOOLTIP_EVENTS}
         label={
           <Box className="drh-stripTip">
             {props.participants.map((p) => (
@@ -705,6 +1925,7 @@ function ParticipantStrip(props: {
     <Group className="drh-strip" gap={8} wrap="nowrap" ref={ref}>
       {headHidden > 0 && (
         <Tooltip
+          events={TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(0, start).map((p) => (
@@ -716,7 +1937,11 @@ function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" aria-label={`${headHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${headHidden} more`}
+          >
             <Text className="drh-overflowText">+{headHidden}</Text>
           </Box>
         </Tooltip>
@@ -725,8 +1950,8 @@ function ParticipantStrip(props: {
       {visible.map((p, idx) => {
         const isActive = !props.suppressActive && start + idx === active;
         return (
-          <Tooltip key={p.seatNumber} label={p.label} withArrow>
-            <Box className="drh-tokenWrap">
+          <Tooltip key={p.seatNumber} events={TOOLTIP_EVENTS} label={p.label} withArrow>
+            <Box className="drh-tokenWrap" tabIndex={0} aria-label={p.label}>
               <AvatarToken label={p.label} avatarKey={p.avatarKey} active={isActive} />
               {isActive && <DirectionChevron direction={props.direction} />}
             </Box>
@@ -736,6 +1961,7 @@ function ParticipantStrip(props: {
 
       {tailHidden > 0 && (
         <Tooltip
+          events={TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(end).map((p) => (
@@ -747,7 +1973,11 @@ function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" aria-label={`${tailHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${tailHidden} more`}
+          >
             <Text className="drh-overflowText">+{tailHidden}</Text>
           </Box>
         </Tooltip>
@@ -888,6 +2118,9 @@ function DraftRoomScaffold(props: {
   const isLiveOrPaused =
     props.draftStatus === "IN_PROGRESS" || props.draftStatus === "PAUSED";
 
+  // A11y: tab order defaults to category headers; entering a category makes its pills tabbable.
+  const [keyboardCategoryId, setKeyboardCategoryId] = useState<string | null>(null);
+
   const [viewportWidthPx, setViewportWidthPx] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 0
   );
@@ -914,6 +2147,17 @@ function DraftRoomScaffold(props: {
   const [myRosterOpen, setMyRosterOpen] = useState(!isPre);
   const [autoDraftOpen, setAutoDraftOpen] = useState(true);
 
+  // Stopgap: narrow desktop keeps board visible but prevents "all rails open" squeeze.
+  // (Mobile uses a separate layout path.)
+  const compactRails = viewportWidthPx > 0 && viewportWidthPx < 665;
+
+  const openRailExclusive = (rail: "ledger" | "roster" | "auto") => {
+    if (!compactRails) return;
+    setLedgerOpen(rail === "ledger");
+    setMyRosterOpen(rail === "roster");
+    setAutoDraftOpen(rail === "auto");
+  };
+
   useEffect(() => {
     if (isPre) {
       setLedgerOpen(false);
@@ -926,6 +2170,18 @@ function DraftRoomScaffold(props: {
       return;
     }
   }, [isLiveOrPaused, isPre]);
+
+  useEffect(() => {
+    if (!compactRails) return;
+    // Enforce mutual exclusivity if we enter compact mode with multiple rails open.
+    const openCount =
+      (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
+    if (openCount <= 1) return;
+    // Prefer the most recently-relevant rail: auto-draft pre-draft, otherwise roster.
+    if (isPre) openRailExclusive("auto");
+    else openRailExclusive(myRosterOpen ? "roster" : ledgerOpen ? "ledger" : "auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compactRails]);
 
   const expandedCount =
     (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
@@ -970,7 +2226,16 @@ function DraftRoomScaffold(props: {
         {ledgerOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">Draft History</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
+                  history
+                </Text>
+                <Text className="dr-railPaneTitle">Draft History</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -986,7 +2251,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="Draft history"
+              tabIndex={0}
+            >
               <Box className="dr-railList">
                 {props.ledgerRows.map((r) => {
                   const nominee = r.nominationId
@@ -1007,6 +2277,11 @@ function DraftRoomScaffold(props: {
                       ]
                         .filter(Boolean)
                         .join(" ")}
+                      tabIndex={nominee ? 0 : undefined}
+                      role={nominee ? "group" : undefined}
+                      aria-label={
+                        nominee ? `${nominee.categoryName}: ${r.label}` : undefined
+                      }
                     >
                       {nominee ? (
                         <DraftCategoryIcon
@@ -1039,6 +2314,7 @@ function DraftRoomScaffold(props: {
                       </Box>
                       {nominee ? (
                         <Tooltip
+                          events={TOOLTIP_EVENTS}
                           withArrow
                           position="bottom-start"
                           multiline
@@ -1074,19 +2350,21 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
+            aria-label="Expand draft history"
             onClick={() => {
               if (isPre) return;
-              setLedgerOpen(true);
+              if (compactRails) openRailExclusive("ledger");
+              else setLedgerOpen(true);
             }}
           >
-            <Text component="span" className="dr-rail-label">
-              Draft history
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              history
             </Text>
           </UnstyledButton>
         )}
       </Box>
 
-      <Box className="dr-middle">
+      <Box className="dr-middle" role="region" aria-label="Draft board" tabIndex={0}>
         <Box className="dr-middle-columns" aria-hidden="true">
           {Array.from({ length: midCols }, (_, idx) => (
             <Box key={`mid-col-${idx}`} className="dr-mid-col" />
@@ -1099,11 +2377,14 @@ function DraftRoomScaffold(props: {
               {col.map((b) => (
                 <CategoryCard
                   key={b.id}
+                  categoryId={b.id}
                   title={b.title}
                   icon={b.icon}
                   iconVariant={b.iconVariant}
                   unitKind={b.unitKind}
                   nominees={b.nominees}
+                  isKeyboardMode={keyboardCategoryId === b.id}
+                  setKeyboardMode={setKeyboardCategoryId}
                   canDraftAction={props.canDraftAction}
                   onNomineeClick={props.onNomineeClick}
                   onNomineeDoubleClick={props.onNomineeDoubleClick}
@@ -1124,7 +2405,16 @@ function DraftRoomScaffold(props: {
         {myRosterOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">My roster</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
+                  patient_list
+                </Text>
+                <Text className="dr-railPaneTitle">My roster</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -1140,7 +2430,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="My roster"
+              tabIndex={0}
+            >
               <Box className="dr-railList">
                 {props.myPicks.length === 0 ? (
                   <Text className="dr-railEmpty">No picks yet</Text>
@@ -1156,6 +2451,11 @@ function DraftRoomScaffold(props: {
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        tabIndex={nominee ? 0 : undefined}
+                        role={nominee ? "group" : undefined}
+                        aria-label={
+                          nominee ? `${nominee.categoryName}: ${p.label}` : undefined
+                        }
                       >
                         {nominee ? (
                           <DraftCategoryIcon
@@ -1180,6 +2480,7 @@ function DraftRoomScaffold(props: {
                         <Text className="dr-railMeta">{p.roundPick}</Text>
                         {nominee ? (
                           <Tooltip
+                            events={TOOLTIP_EVENTS}
                             withArrow
                             position="bottom-start"
                             multiline
@@ -1216,13 +2517,15 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
+            aria-label="Expand my roster"
             onClick={() => {
               if (isPre) return;
-              setMyRosterOpen(true);
+              if (compactRails) openRailExclusive("roster");
+              else setMyRosterOpen(true);
             }}
           >
-            <Text component="span" className="dr-rail-label dr-rail-label-right">
-              My roster
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              patient_list
             </Text>
           </UnstyledButton>
         )}
@@ -1238,7 +2541,16 @@ function DraftRoomScaffold(props: {
         {autoDraftOpen ? (
           <Box className="dr-railPane">
             <Box className="dr-railPaneHeader">
-              <Text className="dr-railPaneTitle">Auto-draft</Text>
+              <Box className="dr-railPaneTitleRow">
+                <Text
+                  component="span"
+                  className="mi-icon mi-icon-tiny"
+                  aria-hidden="true"
+                >
+                  smart_toy
+                </Text>
+                <Text className="dr-railPaneTitle">Auto-draft</Text>
+              </Box>
               <UnstyledButton
                 type="button"
                 className="dr-railClose"
@@ -1254,7 +2566,12 @@ function DraftRoomScaffold(props: {
                 </Text>
               </UnstyledButton>
             </Box>
-            <Box className="dr-railPaneBody">
+            <Box
+              className="dr-railPaneBody"
+              role="region"
+              aria-label="Auto-draft"
+              tabIndex={0}
+            >
               <Stack gap="sm">
                 <Checkbox
                   checked={props.autodraft.enabled}
@@ -1325,6 +2642,13 @@ function DraftRoomScaffold(props: {
                                   ]
                                     .filter(Boolean)
                                     .join(" ")}
+                                  tabIndex={nominee ? 0 : undefined}
+                                  role={nominee ? "group" : undefined}
+                                  aria-label={
+                                    nominee
+                                      ? `${nominee.categoryName}: ${item.label}`
+                                      : undefined
+                                  }
                                 >
                                   {nominee ? (
                                     <DraftCategoryIcon
@@ -1351,6 +2675,7 @@ function DraftRoomScaffold(props: {
                               return nominee ? (
                                 <Tooltip
                                   key={item.nominationId}
+                                  events={TOOLTIP_EVENTS}
                                   withArrow
                                   position="bottom-start"
                                   multiline
@@ -1390,10 +2715,14 @@ function DraftRoomScaffold(props: {
           <UnstyledButton
             type="button"
             className="dr-railToggle"
-            onClick={() => setAutoDraftOpen(true)}
+            aria-label="Expand auto-draft"
+            onClick={() => {
+              if (compactRails) openRailExclusive("auto");
+              else setAutoDraftOpen(true);
+            }}
           >
-            <Text component="span" className="dr-rail-label dr-rail-label-right">
-              Auto-draft
+            <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
+              smart_toy
             </Text>
           </UnstyledButton>
         )}
@@ -1578,6 +2907,13 @@ function RosterBoardScaffold(props: {
                         ]
                           .filter(Boolean)
                           .join(" ")}
+                        tabIndex={0}
+                        role="group"
+                        aria-label={
+                          nominee
+                            ? `${nominee.categoryName}: ${pick.label}`
+                            : `Nomination: ${pick.label}`
+                        }
                       >
                         {nominee ? (
                           <DraftCategoryIcon
@@ -1601,6 +2937,7 @@ function RosterBoardScaffold(props: {
                     return (
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
                         <Tooltip
+                          events={TOOLTIP_EVENTS}
                           withArrow
                           position="bottom-start"
                           multiline
@@ -1669,6 +3006,7 @@ function computeMasonry<T extends MasonryItem>(colCount: number, items: T[]) {
 }
 
 function CategoryCard(props: {
+  categoryId: string;
   title: string;
   icon: string;
   iconVariant: "default" | "inverted";
@@ -1689,15 +3027,39 @@ function CategoryCard(props: {
     performerProfilePath: string | null;
   }>;
   canDraftAction: boolean;
+  isKeyboardMode: boolean;
+  setKeyboardMode: (categoryId: string | null) => void;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
 }) {
+  const firstPillRef = useRef<HTMLButtonElement | null>(null);
+
   return (
-    <Box className="dr-card">
-      <Box className="dr-card-titleRow">
+    <Box
+      className="dr-card"
+      onFocusCapture={() => props.setKeyboardMode(props.categoryId)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          props.setKeyboardMode(null);
+        }
+      }}
+    >
+      <UnstyledButton
+        type="button"
+        className="dr-card-titleRow"
+        aria-label={`Category: ${props.title}`}
+        onClick={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          props.setKeyboardMode(props.categoryId);
+          // Focus the first pill (if present) to enter "pills" mode.
+          firstPillRef.current?.focus();
+        }}
+      >
         <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
         <Text className="dr-card-title">{props.title}</Text>
-      </Box>
+      </UnstyledButton>
       <Box className="dr-card-pills">
         {props.nominees.length === 0 ? (
           <Box className="dr-pill is-muted">
@@ -1706,9 +3068,10 @@ function CategoryCard(props: {
             </Text>
           </Box>
         ) : (
-          props.nominees.map((n) => (
+          props.nominees.map((n, idx) => (
             <Tooltip
               key={n.id}
+              events={TOOLTIP_EVENTS}
               withArrow
               position="bottom-start"
               multiline
@@ -1739,17 +3102,37 @@ function CategoryCard(props: {
                 ]
                   .filter(Boolean)
                   .join(" ")}
+                ref={idx === 0 ? firstPillRef : undefined}
+                aria-disabled={!props.canDraftAction}
+                aria-label={`${props.title}: ${n.label}`}
+                aria-keyshortcuts="Shift+Enter"
+                tabIndex={props.isKeyboardMode ? 0 : -1}
                 onClick={(e) => {
                   if (!props.canDraftAction) return;
                   e.preventDefault();
                   e.stopPropagation();
+                  props.setKeyboardMode(props.categoryId);
                   props.onNomineeClick(Number(n.id), n.label);
                 }}
                 onDoubleClick={(e) => {
                   if (!props.canDraftAction) return;
                   e.preventDefault();
                   e.stopPropagation();
+                  props.setKeyboardMode(props.categoryId);
                   props.onNomineeDoubleClick(Number(n.id));
+                }}
+                onKeyDown={(e) => {
+                  if (!props.canDraftAction) return;
+                  if (e.shiftKey && e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    props.onNomineeDoubleClick(Number(n.id));
+                    return;
+                  }
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  props.onNomineeClick(Number(n.id), n.label);
                 }}
               >
                 <Text component="span" className="dr-pill-text">

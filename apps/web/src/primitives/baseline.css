@@ -17,12 +17,6 @@
   }
 }
 
-@media (max-width: 600px) {
-  .baseline-landing-inner {
-    padding: 0;
-  }
-}
-
 .baseline-landing-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -32,6 +26,12 @@
 }
 
 @media (max-width: 900px) {
+  .baseline-landing-grid {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 500px) {
   .baseline-landing-grid {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -79,6 +79,15 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+.baseline-card.isInteractive:focus-visible {
+  outline: none;
+  /* Keyboard focus ring: visible but consistent with the baseline palette. */
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .baseline-card.isInteractive:active {
@@ -249,7 +258,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 500px) {
   .baseline-pageInner {
     padding: 14px 0 0;
   }
@@ -262,13 +271,13 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
   align-items: stretch;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
   .baseline-leagueGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 500px) {
   .baseline-leagueGrid {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -288,6 +297,13 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 @media (max-width: 900px) {
   .baseline-twoCol {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 500px) {
+  .baseline-twoCol {
     grid-template-columns: 1fr;
   }
 }
@@ -296,4 +312,43 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
   position: sticky;
   top: 16px;
   align-self: start;
+}
+
+@media (max-width: 500px) {
+  .baseline-stickyCol {
+    position: static;
+  }
+}
+
+.baseline-grid2Wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .baseline-grid2Wide {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 500px) {
+  .baseline-grid2Wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+.baseline-grid3Equal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .baseline-grid3Equal {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
 }

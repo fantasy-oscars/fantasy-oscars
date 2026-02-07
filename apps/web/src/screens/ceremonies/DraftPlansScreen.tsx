@@ -69,38 +69,59 @@ function SortableNomineeRow(props: {
         }
       }}
     >
-      <Group
+      <Box
         ref={setNodeRef}
-        className={["draft-plan-row", isDragging ? "is-dragging" : ""].join(" ")}
-        justify="space-between"
-        align="center"
-        wrap="nowrap"
         style={{
           transform: CSS.Transform.toString(transform),
           transition
         }}
       >
-        <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
-          <Box
-            component="button"
-            type="button"
-            className="draft-plan-drag"
-            {...attributes}
-            {...listeners}
-            aria-label="Reorder nominee"
-            aria-roledescription="draggable"
-            aria-grabbed={isDragging}
+        <Tooltip
+          events={{ hover: false, focus: true, touch: false }}
+          label={props.tooltip}
+          offset={14}
+          position="right"
+          styles={{
+            tooltip: {
+              padding: 0,
+              background: "transparent",
+              border: "none",
+              boxShadow: "none"
+            }
+          }}
+        >
+          <Group
+            className={["draft-plan-row", isDragging ? "is-dragging" : ""].join(" ")}
+            justify="space-between"
+            align="center"
+            wrap="nowrap"
+            tabIndex={0}
+            role="listitem"
+            aria-label={props.label}
           >
-            <Text component="span" className="gicon" aria-hidden="true">
-              drag_indicator
-            </Text>
-          </Box>
-          <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
-          <Text className="draft-plan-rowText" lineClamp={1}>
-            {props.label}
-          </Text>
-        </Group>
-      </Group>
+            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+              <Box
+                component="button"
+                type="button"
+                className="draft-plan-drag"
+                {...attributes}
+                {...listeners}
+                aria-label="Reorder nominee"
+                aria-roledescription="draggable"
+                aria-grabbed={isDragging}
+              >
+                <Text component="span" className="gicon" aria-hidden="true">
+                  drag_indicator
+                </Text>
+              </Box>
+              <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
+              <Text className="draft-plan-rowText" lineClamp={1}>
+                {props.label}
+              </Text>
+            </Group>
+          </Group>
+        </Tooltip>
+      </Box>
     </Tooltip.Floating>
   );
 }
@@ -351,7 +372,7 @@ export function DraftPlansScreen(props: {
                         items={effectiveOrder}
                         strategy={verticalListSortingStrategy}
                       >
-                        <Stack gap={0}>
+                        <Stack gap={0} role="list" aria-label="Nominee order">
                           {effectiveOrder.map((id) => {
                             const n = nominationById.get(id);
                             if (!n) return null;

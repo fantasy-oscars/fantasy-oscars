@@ -117,14 +117,7 @@ export function LeagueDetailScreen(props: {
             </Title>
           </Group>
 
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)",
-              gap: 18,
-              alignItems: "start"
-            }}
-          >
+          <Box className="baseline-grid2Wide">
             {/* LEFT: Seasons */}
             <Stack gap="sm">
               <Group justify="space-between" align="flex-end" wrap="wrap">
@@ -165,26 +158,27 @@ export function LeagueDetailScreen(props: {
                     })();
 
                     return (
-                      <StandardCard
-                        key={s.id}
-                        component={Link}
-                        to={`/seasons/${s.id}`}
-                        interactive
-                      >
-                        <Group
-                          justify="space-between"
-                          align="flex-start"
-                          wrap="nowrap"
-                          gap="md"
+                      <Box key={s.id} component="li">
+                        <StandardCard
+                          component={Link}
+                          to={`/seasons/${s.id}`}
+                          interactive
                         >
-                          <Box style={{ minWidth: 0 }}>
-                            <Text className="baseline-textCardTitle">
-                              {ceremonyLabel}
-                            </Text>
-                          </Box>
-                          <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
-                        </Group>
-                      </StandardCard>
+                          <Group
+                            justify="space-between"
+                            align="flex-start"
+                            wrap="wrap"
+                            gap="md"
+                          >
+                            <Box style={{ minWidth: 0 }}>
+                              <Text className="baseline-textCardTitle">
+                                {ceremonyLabel}
+                              </Text>
+                            </Box>
+                            <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
+                          </Group>
+                        </StandardCard>
+                      </Box>
                     );
                   })}
                 </Stack>

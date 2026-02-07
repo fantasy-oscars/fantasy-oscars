@@ -15,6 +15,7 @@ export function NomineeTooltipCard(props: {
   performerProfileUrl?: string | null;
   performerProfilePath?: string | null;
   songTitle?: string | null;
+  action?: React.ReactNode;
 }) {
   const {
     unitKind,
@@ -27,7 +28,8 @@ export function NomineeTooltipCard(props: {
     performerCharacter,
     performerProfileUrl,
     performerProfilePath,
-    songTitle
+    songTitle,
+    action
   } = props;
 
   const { colorScheme } = useMantineColorScheme();
@@ -135,6 +137,8 @@ export function NomineeTooltipCard(props: {
           </Box>
         </Box>
       </Box>
+
+      {action ? <Box className="fo-tip-action">{action}</Box> : null}
 
       <Box className="fo-tip-bar fo-tip-footer">
         <Text component="span" className="fo-tip-attribution">

@@ -50,12 +50,7 @@ export function InvitesInboxScreen(props: {
                 {view.invites.map((invite, idx) => (
                   <Box key={invite.id}>
                     {idx !== 0 ? <Divider /> : null}
-                    <Group
-                      justify="space-between"
-                      align="flex-start"
-                      wrap="nowrap"
-                      py="sm"
-                    >
+                    <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
                       <Stack gap={4} style={{ minWidth: 0 }}>
                         <Text
                           className="baseline-textCardTitle"
@@ -64,7 +59,7 @@ export function InvitesInboxScreen(props: {
                           {inviteContext(invite)}
                         </Text>
                       </Stack>
-                      <Group gap="sm" wrap="nowrap">
+                      <Group gap="sm" wrap="wrap">
                         <Button
                           type="button"
                           variant="filled"

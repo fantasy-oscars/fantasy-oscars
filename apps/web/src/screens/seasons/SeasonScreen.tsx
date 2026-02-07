@@ -128,14 +128,7 @@ export function SeasonScreen(props: {
           </Group>
 
           {/* Three-column functional layout */}
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
-              gap: 18,
-              alignItems: "start"
-            }}
-          >
+          <Box className="baseline-grid3Equal">
             {/* Column 1: Rules */}
             <Stack gap="sm">
               <Title order={3}>Rules</Title>
@@ -183,15 +176,12 @@ export function SeasonScreen(props: {
                   style={{ listStyle: "none", margin: 0, padding: 0 }}
                 >
                   {s.members.map((m) => (
-                    <Group
-                      key={m.id}
-                      justify="space-between"
-                      align="center"
-                      wrap="nowrap"
-                    >
-                      <Text>{m.username ?? `User ${m.user_id}`}</Text>
-                      {m.role === "OWNER" ? <CommissionerPill /> : null}
-                    </Group>
+                    <Box key={m.id} component="li">
+                      <Group justify="space-between" align="center" wrap="wrap">
+                        <Text>{m.username ?? `User ${m.user_id}`}</Text>
+                        {m.role === "OWNER" ? <CommissionerPill /> : null}
+                      </Group>
+                    </Box>
                   ))}
                 </Stack>
               )}
@@ -230,14 +220,7 @@ export function SeasonScreen(props: {
 
           {/* Season management aligned under the Draft room column */}
           {s.canEdit ? (
-            <Box
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
-                gap: 18,
-                alignItems: "start"
-              }}
-            >
+            <Box className="baseline-grid3Equal">
               <Box />
               <Box />
               <Stack gap="sm">
