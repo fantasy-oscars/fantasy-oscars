@@ -980,6 +980,8 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   transform: translateY(-50%);
   width: 34px;
   height: 34px;
+  padding: 0;
+  box-sizing: border-box;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;

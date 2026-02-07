@@ -20,7 +20,8 @@ import { Link } from "react-router-dom";
 import { useAuthContext } from "../../auth/context";
 import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
 import { ANIMAL_AVATAR_KEYS } from "@fantasy-oscars/shared";
-import { RuntimeBannerStack, useConfirm } from "../../notifications";
+import { RuntimeBannerStack } from "../../notifications";
+import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
 
@@ -49,10 +50,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     ? { label: "Alice", avatarKey: "gorilla" }
     : { label: user?.username ?? user?.sub ?? "—", avatarKey: user?.avatar_key ?? null };
 
-  const { confirm } = useConfirm();
-
   const confirmTimerRef = useRef<number | null>(null);
   const confirmNominationRef = useRef<number | null>(null);
+  const confirmToastIdRef = useRef<string | null>(null);
 
   const clearConfirmTimer = () => {
     if (confirmTimerRef.current) {
@@ -61,7 +61,16 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     }
   };
 
-  const scheduleDraftConfirm = (args: { nominationId: number; label: string }) => {
+  const cancelDraftConfirmToast = () => {
+    const id = confirmToastIdRef.current;
+    if (id) notifications.hide(id);
+    confirmToastIdRef.current = null;
+    confirmNominationRef.current = null;
+    clearConfirmTimer();
+  };
+
+  const scheduleDraftConfirmToast = (args: { nominationId: number; label: string }) => {
+    cancelDraftConfirmToast();
     clearConfirmTimer();
     confirmNominationRef.current = args.nominationId;
 
@@ -69,14 +78,33 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       const nominationId = confirmNominationRef.current;
       if (!nominationId) return;
 
-      void confirm({
-        title: "Confirm draft pick",
-        message: `Draft “${args.label}”?`,
-        confirmLabel: "Draft",
-        cancelLabel: "Undo"
-      }).then((ok) => {
-        if (ok) props.o.myRoster.submitPickNomination(nominationId);
-        else props.o.myRoster.clearSelection();
+      const toastId = `draft.confirm.${nominationId}.${Date.now()}`;
+      confirmToastIdRef.current = toastId;
+      notifications.show({
+        id: toastId,
+        autoClose: false,
+        withCloseButton: true,
+        onClose: () => {
+          confirmToastIdRef.current = null;
+          confirmNominationRef.current = null;
+          props.o.myRoster.clearSelection();
+        },
+        message: (
+          <Box
+            data-fo-draft-confirm-toast="true"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              cancelDraftConfirmToast();
+              props.o.myRoster.submitPickNomination(nominationId);
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            <Text fw={700}>Confirm draft pick</Text>
+            <Text c="dimmed" size="sm">
+              Draft “{args.label}”
+            </Text>
+          </Box>
+        )
       });
     }, 220);
   };
@@ -180,10 +208,26 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     if (!canDraftAction) {
       clearConfirmTimer();
       confirmNominationRef.current = null;
+      cancelDraftConfirmToast();
     }
-    return () => clearConfirmTimer();
+    return () => {
+      cancelDraftConfirmToast();
+      clearConfirmTimer();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canDraftAction]);
+
+  useEffect(() => {
+    // Clicking anywhere outside the toast cancels the pending draft confirmation.
+    const onPointerDown = () => {
+      if (!confirmToastIdRef.current) return;
+      cancelDraftConfirmToast();
+      props.o.myRoster.clearSelection();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Box
@@ -231,6 +275,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
           <DraftRoomScaffold
             categories={categories}
             draftStatus={draftStatus}
+            hideEmptyCategories={props.o.header.poolMode === "UNDRAFTED_ONLY"}
             ledgerRows={props.o.ledger.rows}
             myPicks={props.o.myRoster.picks}
             avatarKeyBySeat={avatarKeyBySeat}
@@ -241,11 +286,12 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
             onNomineeClick={(id, label) => {
               if (!canDraftAction) return;
               props.o.pool.onSelectNomination(id);
-              scheduleDraftConfirm({ nominationId: id, label });
+              scheduleDraftConfirmToast({ nominationId: id, label });
             }}
             onNomineeDoubleClick={(id) => {
               if (!canDraftAction) return;
               clearConfirmTimer();
+              cancelDraftConfirmToast();
               props.o.myRoster.clearSelection();
               props.o.myRoster.submitPickNomination(id);
             }}
@@ -757,6 +803,7 @@ function DraftRoomScaffold(props: {
     }>;
   }>;
   draftStatus: string | null;
+  hideEmptyCategories: boolean;
   ledgerRows: DraftRoomOrchestration["ledger"]["rows"];
   myPicks: DraftRoomOrchestration["myRoster"]["picks"];
   avatarKeyBySeat: Map<number, string | null>;
@@ -809,7 +856,11 @@ function DraftRoomScaffold(props: {
     (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
   const midCols = Math.max(1, 7 - expandedCount);
 
-  const boxes = props.categories.map((c) => ({
+  const categoriesForBoxes = props.hideEmptyCategories
+    ? props.categories.filter((c) => c.nominees.length > 0)
+    : props.categories;
+
+  const boxes = categoriesForBoxes.map((c) => ({
     id: c.id,
     title: c.title,
     icon: c.icon,
@@ -952,7 +1003,7 @@ function DraftRoomScaffold(props: {
             }}
           >
             <Text component="span" className="dr-rail-label">
-              Ledger
+              Draft history
             </Text>
           </UnstyledButton>
         )}

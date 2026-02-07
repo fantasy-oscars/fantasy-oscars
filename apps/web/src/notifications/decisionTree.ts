@@ -11,6 +11,17 @@ export function canonicalTypeFor(event: NotificationEvent): CanonicalNotificatio
   // Step 2: immediate feedback for a user action that just happened?
   if (event.trigger_type === "user_action") return "toast";
 
+  // Draft pick events are time-sensitive and should surface as toasts even when
+  // delivered via websocket/async events. (Draft pages still render a banner stack
+  // for true broadcast banners like announcements.)
+  if (
+    event.durability === "ephemeral" &&
+    event.scope === "local" &&
+    (event.id.startsWith("draft.pick.") || event.id.startsWith("draft.autopick."))
+  ) {
+    return "toast";
+  }
+
   // Step 3: tied to a specific screen/constraint/validation that persists?
   if (event.trigger_type === "validation") return "inline_alert";
 

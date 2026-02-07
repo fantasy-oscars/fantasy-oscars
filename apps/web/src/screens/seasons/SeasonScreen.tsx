@@ -302,7 +302,7 @@ export function SeasonScreen(props: {
             <Stack gap="md">
               <Group className="inline-form" wrap="wrap" align="flex-end">
                 <InviteUserCombobox
-                  label="Username or email"
+                  label="Username"
                   value={s.userInviteQuery}
                   disabled={!s.canEdit || s.working || isLocked}
                   searching={Boolean(s.userInviteSearching)}
@@ -637,7 +637,7 @@ function InviteUserCombobox(props: {
             if (!disabled) combobox.openDropdown();
           }}
           onBlur={() => combobox.closeDropdown()}
-          placeholder="Username or email"
+          placeholder="Username"
           rightSection={
             searching ? (
               <Text component="span" className="baseline-textMeta" c="dimmed">
