@@ -30,7 +30,9 @@ import { notifications } from "@mantine/notifications";
 
 type MasonryItem = { estimatePx: number };
 
-const TOOLTIP_EVENTS = { hover: true, focus: true, touch: true } as const;
+// Tooltips are primarily a desktop affordance (hover/focus). On touch devices the
+// positioning can end up off-screen; mobile uses the tap-to-open nominee card instead.
+const TOOLTIP_EVENTS = { hover: true, focus: true, touch: false } as const;
 const CARD_TOOLTIP_STYLES = {
   tooltip: {
     padding: 0,
