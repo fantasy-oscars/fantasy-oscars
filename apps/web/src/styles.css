@@ -712,7 +712,10 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
 }
 
 .dr-layout {
-  --u: calc(100vw / 7.75);
+  /* "Unit" = full draft frame width divided by the chosen divisor.
+     The divisor is set at runtime to keep units within a readable pixel range. */
+  --d: 7.75;
+  --u: calc(100vw / var(--d));
   --rail-ledger: 1.25;
   --rail-roster: 1.25;
   --rail-auto: 1.25;
@@ -723,7 +726,7 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   display: grid;
   grid-template-columns:
     calc(var(--u) * var(--rail-ledger))
-    1fr
+    calc(var(--u) * var(--mid-cols))
     calc(var(--u) * var(--rail-roster))
     calc(var(--u) * var(--rail-auto));
 }
