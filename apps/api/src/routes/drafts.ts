@@ -64,6 +64,11 @@ import {
 import { emitDraftEvent } from "../realtime/draftEvents.js";
 import { scoreDraft } from "../domain/scoring.js";
 import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
+import { getWisdomBenchmarkForCeremony } from "../data/repositories/wisdomBenchmarkRepository.js";
+import {
+  recomputeWisdomBenchmarkForCeremony,
+  recomputeWisdomBenchmarkForCeremonyTx
+} from "../services/benchmarking/wisdomOfCrowds.js";
 
 const pickRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 2000,
@@ -176,6 +181,47 @@ function chooseAlphabetical(
     .map((n) => n.id)[0];
 }
 
+function chooseByCategoryOrder(args: {
+  available: Awaited<ReturnType<typeof listNominationsForCeremony>>;
+  categorySortIndexById: Map<number, number>;
+}) {
+  const { available, categorySortIndexById } = args;
+  return [...available]
+    .sort((a, b) => {
+      const ai = categorySortIndexById.get(a.category_edition_id) ?? 0;
+      const bi = categorySortIndexById.get(b.category_edition_id) ?? 0;
+      if (ai !== bi) return ai - bi;
+      const ao = a.sort_order ?? 0;
+      const bo = b.sort_order ?? 0;
+      if (ao !== bo) return ao - bo;
+      return a.id - b.id;
+    })
+    .map((n) => n.id)[0];
+}
+
+function chooseAlphabeticalThenCategory(args: {
+  available: Awaited<ReturnType<typeof listNominationsForCeremony>>;
+  categorySortIndexById: Map<number, number>;
+}) {
+  const { available, categorySortIndexById } = args;
+  return [...available]
+    .sort((a, b) => {
+      const labelA = a.film_title ?? a.performer_name ?? a.song_title ?? "";
+      const labelB = b.film_title ?? b.performer_name ?? b.song_title ?? "";
+      const nameA = normalizeTitle(labelA);
+      const nameB = normalizeTitle(labelB);
+      if (nameA !== nameB) return nameA.localeCompare(nameB);
+      const ai = categorySortIndexById.get(a.category_edition_id) ?? 0;
+      const bi = categorySortIndexById.get(b.category_edition_id) ?? 0;
+      if (ai !== bi) return ai - bi;
+      const ao = a.sort_order ?? 0;
+      const bo = b.sort_order ?? 0;
+      if (ao !== bo) return ao - bo;
+      return a.id - b.id;
+    })
+    .map((n) => n.id)[0];
+}
+
 function chooseRandomized(
   availableIds: number[],
   seed: string | null | undefined
@@ -262,6 +308,18 @@ async function autoPickOne(options: {
     return draft;
   }
 
+  const categorySortIndexById = new Map<number, number>();
+  const categoryRes = await tx.query<{ id: number; sort_index: number }>(
+    `SELECT id::int, sort_index::int
+     FROM category_edition
+     WHERE ceremony_id = $1
+     ORDER BY sort_index ASC, id ASC`,
+    [season.ceremony_id]
+  );
+  for (const r of categoryRes.rows ?? []) {
+    categorySortIndexById.set(Number(r.id), Number(r.sort_index) || 0);
+  }
+
   const strategy = resolveStrategy(draft.auto_pick_strategy);
   const availableIds = available.map((n) => n.id);
 
@@ -283,6 +341,56 @@ async function autoPickOne(options: {
       ceremony_id: season.ceremony_id
     });
     chosen = planIds.find((id) => availableIds.includes(id));
+  }
+
+  if (userEnabled && userStrategy === "BY_CATEGORY" && !chosen) {
+    chosen = chooseByCategoryOrder({ available, categorySortIndexById });
+  }
+
+  if (userEnabled && userStrategy === "ALPHABETICAL" && !chosen) {
+    chosen = chooseAlphabeticalThenCategory({ available, categorySortIndexById });
+  }
+
+  if (userEnabled && userStrategy === "WISDOM" && !chosen) {
+    const benchmark = await getWisdomBenchmarkForCeremony(tx, season.ceremony_id);
+    const scoreByNominationId = new Map<number, number>();
+    for (const row of benchmark?.items ?? []) {
+      scoreByNominationId.set(Number(row.nomination_id), Number(row.score));
+    }
+
+    const seasonRow = await tx.query<{
+      scoring_strategy_name: string | null;
+      category_weights: unknown;
+    }>(`SELECT scoring_strategy_name, category_weights FROM season WHERE id = $1 LIMIT 1`, [
+      season.id
+    ]);
+    const scoring = String(seasonRow.rows[0]?.scoring_strategy_name ?? "fixed");
+    const weightsRaw = seasonRow.rows[0]?.category_weights ?? null;
+    const weightsMap =
+      typeof weightsRaw === "object" && weightsRaw ? (weightsRaw as Record<string, unknown>) : {};
+    const weightsByCategory: Record<number, number> = {};
+    for (const [k, v] of Object.entries(weightsMap)) {
+      const keyNum = Number(k);
+      const valNum = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(keyNum) || !Number.isFinite(valNum)) continue;
+      weightsByCategory[keyNum] = Math.trunc(valNum);
+    }
+    const fallbackW = scoring === "negative" ? -1 : 1;
+
+    let best: { id: number; u: number } | null = null;
+    for (const n of available) {
+      const sVal = scoreByNominationId.get(n.id);
+      if (!sVal) continue;
+      const w =
+        scoring === "category_weighted"
+          ? (weightsByCategory[n.category_edition_id] ?? 1)
+          : fallbackW;
+      const u = sVal * w;
+      if (!best || u > best.u || (u === best.u && n.id < best.id)) {
+        best = { id: n.id, u };
+      }
+    }
+    chosen = best?.id;
   }
 
   if (userEnabled && userStrategy === "RANDOM" && !chosen) {
@@ -419,6 +527,15 @@ async function autoPickOne(options: {
     }
   });
   emitDraftEvent(event);
+
+  if (nextDraft.status === "COMPLETED") {
+    // Best-effort: recompute ceremony benchmark for wisdom-of-crowds.
+    try {
+      await recomputeWisdomBenchmarkForCeremonyTx({ tx, ceremonyId: season.ceremony_id });
+    } catch {
+      // best-effort; ignore
+    }
+  }
 
   return nextDraft;
 }
@@ -1098,6 +1215,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
 
       let seats = await listDraftSeats(pool, draftId);
       let picks = await listDraftPicks(pool, draftId);
+      let completedEventEmitted = false;
 
       // If all required picks are made but status not updated, complete draft lazily.
       const league = await getLeagueById(pool, draft.league_id);
@@ -1166,22 +1284,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
             completed_at: updated?.completed_at ?? completed.completed_at,
             current_pick_number: null
           };
-          const event = await createDraftEvent(tx, {
-            draft_id: lockedDraft.id,
-            event_type: "draft.completed",
-            payload: {
-              draft: {
-                id: nextDraft.id,
-                status: nextDraft.status,
-                current_pick_number: nextDraft.current_pick_number,
-                picks_per_seat: picksPerSeat,
-                started_at: nextDraft.started_at,
-                completed_at: nextDraft.completed_at
-              }
-            }
-          });
-
-          return { draft: nextDraft, seats: freshSeats, picks: freshPicks, event };
+          return { draft: nextDraft, seats: freshSeats, picks: freshPicks, completed: true };
         });
 
         draft = result.draft;
@@ -1190,9 +1293,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         }
         seats = result.seats;
         picks = result.picks;
-        if (result.event) {
-          draft.version = result.event.version;
-          emitDraftEvent(result.event);
+        if (result.completed) {
+          completedEventEmitted = true;
         }
       }
 
@@ -1203,6 +1305,12 @@ export function buildSnapshotDraftHandler(pool: Pool) {
       }
       if (season) {
         nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
+      }
+      if (completedEventEmitted && season) {
+        void recomputeWisdomBenchmarkForCeremony({
+          pool,
+          ceremonyId: season.ceremony_id
+        }).catch(() => {});
       }
 
       // Pre-draft: seats don't exist yet (and seat order is intentionally secret). For display,
@@ -1243,6 +1351,9 @@ export function buildSnapshotDraftHandler(pool: Pool) {
       const categories = board.categories;
       const nominations = board.nominations;
       const winners = season ? await listWinnersByCeremony(pool, season.ceremony_id) : [];
+      const wisdomBenchmark = season
+        ? await getWisdomBenchmarkForCeremony(pool, season.ceremony_id)
+        : null;
 
       let turn: {
         current_pick_number: number;
@@ -1324,6 +1435,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
             ?.scoring_strategy_name ?? null,
         category_weights:
           (season as { category_weights?: unknown } | null)?.category_weights ?? null,
+        wisdom_benchmark: wisdomBenchmark,
         my_seat_number: mySeatNumber,
         can_manage_draft: canManageDraft,
         categories,
@@ -1615,13 +1727,18 @@ export function buildSubmitPickHandler(pool: Pool) {
             }
           }
         });
-
-        return { pick, reused: false, event };
+        return { pick, reused: false, event, completed: draft.status === "COMPLETED", ceremonyId: season.ceremony_id };
       });
 
       const status = result?.reused ? 200 : 201;
       if (result?.event) {
         emitDraftEvent(result.event);
+      }
+      if (result?.completed) {
+        void recomputeWisdomBenchmarkForCeremony({
+          pool,
+          ceremonyId: result.ceremonyId
+        }).catch(() => {});
       }
       // If the next (or subsequent) seat has user-enabled auto-draft, pick immediately.
       await runImmediateAutodraftIfEnabled({ pool, draftId: draftIdNum });
@@ -2004,10 +2121,21 @@ export function createDraftsRouter(client: DbClient, authSecret: string): Router
 
       const enabled = Boolean(req.body?.enabled);
       const strategyRaw = String(req.body?.strategy ?? "RANDOM").toUpperCase();
-      if (strategyRaw !== "RANDOM" && strategyRaw !== "PLAN") {
+      if (
+        strategyRaw !== "RANDOM" &&
+        strategyRaw !== "PLAN" &&
+        strategyRaw !== "BY_CATEGORY" &&
+        strategyRaw !== "ALPHABETICAL" &&
+        strategyRaw !== "WISDOM"
+      ) {
         throw validationError("Invalid strategy", ["strategy"]);
       }
-      const strategy = strategyRaw as "RANDOM" | "PLAN";
+      const strategy = strategyRaw as
+        | "RANDOM"
+        | "PLAN"
+        | "BY_CATEGORY"
+        | "ALPHABETICAL"
+        | "WISDOM";
       const planIdRaw = req.body?.plan_id;
       const planId =
         planIdRaw === null || planIdRaw === undefined || planIdRaw === ""

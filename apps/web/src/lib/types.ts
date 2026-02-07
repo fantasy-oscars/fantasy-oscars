@@ -167,6 +167,17 @@ export type Snapshot = {
     category_edition_id: number;
     nomination_id: number;
   }>;
+  wisdom_benchmark?: {
+    ceremony_id: number;
+    version: number;
+    computed_at: string;
+    items: Array<{
+      nomination_id: number;
+      score: number;
+      rank: number;
+      sample_size: number;
+    }>;
+  } | null;
 };
 
 export type PublicLeague = {

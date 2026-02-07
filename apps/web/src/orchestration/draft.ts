@@ -201,8 +201,8 @@ export type DraftRoomOrchestration = {
   autodraft: {
     enabled: boolean;
     setEnabled: (v: boolean) => void;
-    strategy: "random" | "custom";
-    setStrategy: (v: "random" | "custom") => void;
+    strategy: "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
+    setStrategy: (v: "random" | "by_category" | "alphabetical" | "wisdom" | "custom") => void;
     plans: Array<{ id: number; name: string }>;
     selectedPlanId: number | null;
     setSelectedPlanId: (v: number | null) => void;
@@ -250,7 +250,9 @@ export function useDraftRoomOrchestration(args: {
 
   // Per-user auto-draft
   const [autoEnabled, setAutoEnabled] = useState(false);
-  const [autoStrategy, setAutoStrategy] = useState<"random" | "custom">("random");
+  const [autoStrategy, setAutoStrategy] = useState<
+    "random" | "by_category" | "alphabetical" | "wisdom" | "custom"
+  >("random");
   const [autoPlanId, setAutoPlanId] = useState<number | null>(null);
   const [autoPlans, setAutoPlans] = useState<Array<{ id: number; name: string }>>([]);
   const [autoList, setAutoList] = useState<number[]>([]);
@@ -323,7 +325,17 @@ export function useDraftRoomOrchestration(args: {
     const planId = cfg?.plan_id ?? null;
 
     setAutoEnabled(enabled);
-    setAutoStrategy(strategy === "PLAN" ? "custom" : "random");
+    setAutoStrategy(
+      strategy === "PLAN"
+        ? "custom"
+        : strategy === "BY_CATEGORY"
+          ? "by_category"
+          : strategy === "ALPHABETICAL"
+            ? "alphabetical"
+            : strategy === "WISDOM"
+              ? "wisdom"
+              : "random"
+    );
     setAutoPlanId(planId);
 
     if (enabled && strategy === "PLAN" && planId) {
@@ -513,14 +525,19 @@ export function useDraftRoomOrchestration(args: {
   const updateAutodraft = useCallback(
     async (next: {
       enabled: boolean;
-      strategy: "random" | "custom";
+      strategy: "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
       planId: number | null;
     }) => {
       const current = snapshotRef.current;
       if (!current?.draft?.id) return false;
       const hasPlans = autoPlans.length > 0;
-      const resolvedStrategy =
-        next.strategy === "custom" && hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+      const resolvedStrategy = (() => {
+        if (next.strategy === "custom") return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+        if (next.strategy === "by_category") return "BY_CATEGORY" as const;
+        if (next.strategy === "alphabetical") return "ALPHABETICAL" as const;
+        if (next.strategy === "wisdom") return "WISDOM" as const;
+        return "RANDOM" as const;
+      })();
       const resolvedPlanId =
         next.enabled && resolvedStrategy === "PLAN" ? next.planId : null;
 
@@ -545,7 +562,17 @@ export function useDraftRoomOrchestration(args: {
 
       setAutoEnabled(Boolean(res.data?.autodraft?.enabled));
       const s = String(res.data?.autodraft?.strategy ?? "RANDOM").toUpperCase();
-      setAutoStrategy(s === "PLAN" ? "custom" : "random");
+      setAutoStrategy(
+        s === "PLAN"
+          ? "custom"
+          : s === "BY_CATEGORY"
+            ? "by_category"
+            : s === "ALPHABETICAL"
+              ? "alphabetical"
+              : s === "WISDOM"
+                ? "wisdom"
+                : "random"
+      );
       setAutoPlanId(res.data?.autodraft?.plan_id ?? null);
 
       // Refresh the selected list if a plan was chosen.
@@ -566,28 +593,86 @@ export function useDraftRoomOrchestration(args: {
   );
 
   const autodraftList = useMemo(() => {
-    // Primary source of truth is the saved plan order. If it's empty (e.g. plan created before
-    // nominees existed), fall back to the ceremony's default ordering so the rail is still useful.
+    const rows = snapshot?.nominations ?? [];
+    if (rows.length === 0) return [];
+
+    const active = rows.filter((n) => n.status === "ACTIVE");
+    const catIndex = new Map<number, number>();
+    for (const c of snapshot?.categories ?? []) {
+      catIndex.set(c.id, c.sort_index ?? 0);
+    }
+
+    const canonicalIds = active
+      .slice()
+      .sort((a, b) => {
+        const ai = catIndex.get(a.category_edition_id) ?? 0;
+        const bi = catIndex.get(b.category_edition_id) ?? 0;
+        if (ai !== bi) return ai - bi;
+        return a.id - b.id;
+      })
+      .map((n) => n.id);
+
     const ids: number[] = (() => {
-      if (autoList.length > 0) return autoList;
-      if (autoStrategy !== "custom") return [];
-      if (!autoPlanId) return [];
-      const rows = snapshot?.nominations ?? [];
-      if (rows.length === 0) return [];
-      const catIndex = new Map<number, number>();
-      for (const c of snapshot?.categories ?? []) {
-        catIndex.set(c.id, c.sort_index ?? 0);
+      if (autoStrategy === "custom") {
+        if (autoList.length > 0) return autoList;
+        if (!autoPlanId) return [];
+        return canonicalIds;
       }
-      return rows
-        .filter((n) => n.status === "ACTIVE")
-        .slice()
-        .sort((a, b) => {
-          const ai = catIndex.get(a.category_edition_id) ?? 0;
-          const bi = catIndex.get(b.category_edition_id) ?? 0;
-          if (ai !== bi) return ai - bi;
-          return a.id - b.id;
-        })
-        .map((n) => n.id);
+      if (autoStrategy === "by_category") return canonicalIds;
+      if (autoStrategy === "alphabetical") {
+        const normalize = (raw: string) =>
+          raw
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+            .replace(/^(the|a|an)\s+/i, "")
+            .trim();
+        return active
+          .slice()
+          .sort((a, b) => {
+            const labelA = a.film_title ?? a.performer_name ?? a.song_title ?? "";
+            const labelB = b.film_title ?? b.performer_name ?? b.song_title ?? "";
+            const na = normalize(labelA);
+            const nb = normalize(labelB);
+            if (na !== nb) return na.localeCompare(nb);
+            const ai = catIndex.get(a.category_edition_id) ?? 0;
+            const bi = catIndex.get(b.category_edition_id) ?? 0;
+            if (ai !== bi) return ai - bi;
+            return a.id - b.id;
+          })
+          .map((n) => n.id);
+      }
+      if (autoStrategy === "wisdom") {
+        const bm = snapshot?.wisdom_benchmark?.items ?? [];
+        const sById = new Map<number, number>();
+        for (const it of bm) sById.set(it.nomination_id, it.score);
+
+        const fallbackW = scoringStrategyName === "negative" ? -1 : 1;
+        return active
+          .slice()
+          .sort((a, b) => {
+            const sa = sById.get(a.id) ?? 0;
+            const sb = sById.get(b.id) ?? 0;
+            const wa =
+              scoringStrategyName === "category_weighted"
+                ? (categoryWeightByCategoryId.get(a.category_edition_id) ?? 1)
+                : fallbackW;
+            const wb =
+              scoringStrategyName === "category_weighted"
+                ? (categoryWeightByCategoryId.get(b.category_edition_id) ?? 1)
+                : fallbackW;
+            const ua = sa * wa;
+            const ub = sb * wb;
+            if (ua !== ub) return ub - ua;
+            const ai = catIndex.get(a.category_edition_id) ?? 0;
+            const bi = catIndex.get(b.category_edition_id) ?? 0;
+            if (ai !== bi) return ai - bi;
+            return a.id - b.id;
+          })
+          .map((n) => n.id);
+      }
+      return canonicalIds;
     })();
 
     return ids.map((id) => ({
@@ -599,8 +684,10 @@ export function useDraftRoomOrchestration(args: {
     autoList,
     autoPlanId,
     autoStrategy,
+    categoryWeightByCategoryId,
     nominationIconById,
     nominationLabelById,
+    scoringStrategyName,
     snapshot
   ]);
 

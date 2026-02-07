@@ -1,7 +1,12 @@
 import type { DbClient } from "../db.js";
 import { query } from "../db.js";
 
-export type DraftAutodraftStrategy = "RANDOM" | "PLAN";
+export type DraftAutodraftStrategy =
+  | "RANDOM"
+  | "PLAN"
+  | "BY_CATEGORY"
+  | "ALPHABETICAL"
+  | "WISDOM";
 
 export type DraftAutodraftConfig = {
   enabled: boolean;
