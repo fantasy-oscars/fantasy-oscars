@@ -12,8 +12,11 @@ import {
 import { DbClient, query } from "../data/db.js";
 import { AppError, validationError } from "../errors.js";
 import { signToken } from "../auth/token.js";
-import { requireAuth, AuthedRequest } from "../auth/middleware.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
+import { registerAuthMeRoute } from "./auth/me.js";
+import { registerAuthLogoutRoute } from "./auth/logout.js";
+import type { AuthCookieConfig } from "./auth/logout.js";
+import { isMissingColumnError, isNotNullViolation } from "./auth/pgErrors.js";
 
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
 
@@ -81,25 +84,6 @@ async function verifyPassword(
     p: Number(pRaw)
   });
   return crypto.timingSafeEqual(derived, Buffer.from(hashB64, "base64"));
-}
-
-function isMissingColumnError(err: unknown, column: string): boolean {
-  const pgErr = err as { code?: string; message?: string };
-  if (pgErr?.code !== "42703") return false; // undefined_column
-  const msg = String(pgErr?.message ?? "");
-  return (
-    msg.includes(`"${column}"`) || msg.includes(`'${column}'`) || msg.includes(column)
-  );
-}
-
-function isNotNullViolation(err: unknown, column: string): boolean {
-  const pgErr = err as { code?: string; message?: string; column?: string };
-  if (pgErr?.code !== "23502") return false; // not_null_violation
-  if (pgErr?.column === column) return true;
-  const msg = String(pgErr?.message ?? "");
-  return (
-    msg.includes(`"${column}"`) || msg.includes(`'${column}'`) || msg.includes(column)
-  );
 }
 
 async function insertUserWithFallback(
@@ -300,14 +284,16 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
   // so the auth cookie must be SameSite=None; Secure=true to be sent on fetch/XHR.
   const cookieSameSite = isProd ? ("none" as const) : ("lax" as const);
   const cookieSecure = isProd ? true : false;
-  const cookieConfig = {
+  const cookieConfig: AuthCookieConfig = {
     name: "auth_token",
-    maxAgeMs: authCookieMaxAgeMs,
     sameSite: cookieSameSite,
     httpOnly: true,
     secure: cookieSecure,
     path: "/" as const
   };
+
+  registerAuthMeRoute({ router, client, authSecret });
+  registerAuthLogoutRoute({ router, cookieConfig });
 
   router.post("/register", authLimiter.middleware, async (req, res, next) => {
     try {
@@ -535,13 +521,13 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
           avatar_key: avatarKey
         },
         authSecret,
-        Math.floor(cookieConfig.maxAgeMs / 1000)
+        Math.floor(authCookieMaxAgeMs / 1000)
       );
       res.cookie(cookieConfig.name, token, {
         httpOnly: cookieConfig.httpOnly,
         sameSite: cookieConfig.sameSite,
         secure: cookieConfig.secure,
-        maxAge: cookieConfig.maxAgeMs,
+        maxAge: authCookieMaxAgeMs,
         path: cookieConfig.path
       });
       return res.json({
@@ -557,102 +543,6 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
     } catch (err) {
       next(err);
     }
-  });
-
-  router.get("/me", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
-    try {
-      const userId = req.auth?.sub;
-      if (!userId) return res.json({ user: req.auth });
-
-      const tryQueries: Array<() => Promise<unknown[]>> = [
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT id::text AS sub, username, email, is_admin, avatar_key
-               FROM app_user
-               WHERE id = $1`,
-              [userId]
-            )
-          ).rows as unknown[],
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT id::text AS sub, username, email, is_admin
-               FROM app_user
-               WHERE id = $1`,
-              [userId]
-            )
-          ).rows as unknown[],
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT id::text AS sub, handle AS username, email, is_admin
-               FROM app_user
-               WHERE id = $1`,
-              [userId]
-            )
-          ).rows as unknown[]
-      ];
-
-      let rows: unknown[] | undefined;
-      let lastErr: unknown = undefined;
-      for (const run of tryQueries) {
-        try {
-          rows = await run();
-          break;
-        } catch (err) {
-          lastErr = err;
-          if (
-            !isMissingColumnError(err, "avatar_key") &&
-            !isMissingColumnError(err, "username") &&
-            !isMissingColumnError(err, "handle") &&
-            !isMissingColumnError(err, "is_admin")
-          ) {
-            break;
-          }
-        }
-      }
-
-      if (!rows) throw lastErr;
-      const user = rows[0] as
-        | undefined
-        | {
-            sub: string;
-            username?: string;
-            email?: string;
-            is_admin?: boolean;
-            avatar_key?: string | null;
-          };
-
-      if (!user) return res.json({ user: req.auth });
-
-      return res.json({
-        user: {
-          sub: user.sub,
-          username: user.username ?? req.auth?.username,
-          email: user.email,
-          is_admin: user.is_admin ?? req.auth?.is_admin,
-          avatar_key: user.avatar_key ?? req.auth?.avatar_key ?? "monkey"
-        }
-      });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  router.post("/logout", (_req, res) => {
-    res
-      .clearCookie(cookieConfig.name, {
-        httpOnly: cookieConfig.httpOnly,
-        sameSite: cookieConfig.sameSite,
-        secure: cookieConfig.secure,
-        path: cookieConfig.path
-      })
-      .status(204)
-      .end();
   });
 
   return router;
