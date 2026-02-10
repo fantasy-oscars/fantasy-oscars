@@ -3,27 +3,19 @@ import type { Router } from "express";
 import type { DbClient } from "../data/db.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { Pool } from "pg";
-import {
-  buildDraftResultsHandler,
-  buildDraftStandingsHandler,
-  buildExportDraftHandler
-} from "./drafts/read.js";
-import { buildCreateDraftHandler } from "./drafts/create.js";
-import { buildStartDraftHandler } from "./drafts/start.js";
-import { buildSubmitPickHandler } from "./drafts/picks.js";
-import {
-  buildPauseDraftHandler,
-  buildResumeDraftHandler
-} from "./drafts/lifecycle.js";
-import {
-  buildOverrideDraftLockHandler,
-  buildSnapshotDraftHandler,
-  buildTickDraftHandler
-} from "./drafts/runtime.js";
-import {
-  buildGetDraftAutodraftHandler,
-  buildUpsertDraftAutodraftHandler
-} from "./drafts/autodraft.js";
+import { registerDraftAutodraftGetRoute } from "./drafts/autodraftGetRoute.js";
+import { registerDraftAutodraftUpsertRoute } from "./drafts/autodraftUpsertRoute.js";
+import { registerDraftCreateRoute } from "./drafts/createRoute.js";
+import { registerDraftExportRoute } from "./drafts/exportRoute.js";
+import { registerDraftOverrideLockRoute } from "./drafts/overrideLockRoute.js";
+import { registerDraftPauseRoute } from "./drafts/pauseRoute.js";
+import { registerDraftPicksRoute } from "./drafts/picksRoute.js";
+import { registerDraftResultsRoute } from "./drafts/resultsRoute.js";
+import { registerDraftResumeRoute } from "./drafts/resumeRoute.js";
+import { registerDraftSnapshotRoute } from "./drafts/snapshotRoute.js";
+import { registerDraftStandingsRoute } from "./drafts/standingsRoute.js";
+import { registerDraftStartRoute } from "./drafts/startRoute.js";
+import { registerDraftTickRoute } from "./drafts/tickRoute.js";
 
 // Test helpers; keep these re-exports stable.
 export { buildCreateDraftHandler } from "./drafts/create.js";
@@ -40,21 +32,20 @@ export function createDraftsRouter(client: DbClient, authSecret: string): Router
   const router = express.Router();
 
   router.use(requireAuth(authSecret));
-  router.post("/", buildCreateDraftHandler(client));
-  router.post("/:id/start", buildStartDraftHandler(client as Pool));
-  router.post("/:id/override-lock", buildOverrideDraftLockHandler(client as Pool));
-  router.post("/:id/pause", buildPauseDraftHandler(client as Pool));
-  router.post("/:id/resume", buildResumeDraftHandler(client as Pool));
-  router.post("/:id/tick", buildTickDraftHandler(client as Pool));
-  router.get("/:id/snapshot", buildSnapshotDraftHandler(client as Pool));
-  router.get("/:id/export", buildExportDraftHandler(client as Pool));
-  router.post("/:id/results", buildDraftResultsHandler(client as Pool));
-  router.get("/:id/standings", buildDraftStandingsHandler(client as Pool));
-  router.post("/:id/picks", buildSubmitPickHandler(client as unknown as Pool));
-
-  // Per-user auto-draft preferences for this draft.
-  router.get("/:id/autodraft", buildGetDraftAutodraftHandler(client));
-  router.post("/:id/autodraft", buildUpsertDraftAutodraftHandler(client as Pool));
+  const pool = client as unknown as Pool;
+  registerDraftCreateRoute({ router, client });
+  registerDraftStartRoute({ router, pool });
+  registerDraftOverrideLockRoute({ router, pool });
+  registerDraftPauseRoute({ router, pool });
+  registerDraftResumeRoute({ router, pool });
+  registerDraftTickRoute({ router, pool });
+  registerDraftSnapshotRoute({ router, pool });
+  registerDraftExportRoute({ router, pool });
+  registerDraftResultsRoute({ router, pool });
+  registerDraftStandingsRoute({ router, pool });
+  registerDraftPicksRoute({ router, pool });
+  registerDraftAutodraftGetRoute({ router, client });
+  registerDraftAutodraftUpsertRoute({ router, pool });
 
   return router;
 }
