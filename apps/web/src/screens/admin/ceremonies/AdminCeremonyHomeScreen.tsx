@@ -15,42 +15,16 @@ import type {
   CeremonyWorkflowStepMeta
 } from "../../../decisions/ceremonyWorkflow";
 import { getCeremonyWorkflowStepMeta } from "../../../decisions/ceremonyWorkflow";
+import { isCeremonyWorkflowStepAllowed } from "../../../decisions/admin/ceremonyWorkflowNav";
 import { FormStatus } from "../../../ui/forms";
 import type { ApiResult } from "../../../lib/types";
+import { workflowRowStatusLabel } from "../../../ui/admin/ceremonies/workflowRowStatusLabel";
 
 type WorkflowRow = {
   id: CeremonyWorkflowStepId;
   label: string;
   status: CeremonyWorkflowStepStatus;
 };
-
-function statusLabelForRow(args: {
-  rowStatus: CeremonyWorkflowStepStatus;
-  current: boolean;
-}): string {
-  const { rowStatus, current } = args;
-  if (current) return "Current";
-  if (rowStatus === "COMPLETE") return "Complete";
-  if (rowStatus === "IN_PROGRESS") return "In progress";
-  if (rowStatus === "LOCKED") return "Locked";
-  return "Not started";
-}
-
-function isStepAllowed(args: {
-  stepId: CeremonyWorkflowStepId;
-  ceremony: CeremonyDetail;
-}) {
-  const { stepId, ceremony } = args;
-  if (stepId === "archive") return false; // archive is intentionally demoted below
-
-  if (stepId === "results") return ceremony.status !== "DRAFT";
-
-  if (stepId === "structure") return ceremony.status === "DRAFT";
-
-  if (stepId === "publish") return ceremony.status === "DRAFT";
-
-  return true;
-}
 
 export function AdminCeremonyHomeScreen(props: {
   ceremony: CeremonyDetail;
@@ -79,7 +53,12 @@ export function AdminCeremonyHomeScreen(props: {
 
   const next = nextStep ?? getCeremonyWorkflowStepMeta("initialize");
   const nextAllowed =
-    next.id === "archive" ? false : isStepAllowed({ stepId: next.id, ceremony });
+    next.id === "archive"
+      ? false
+      : isCeremonyWorkflowStepAllowed({
+          stepId: next.id,
+          ceremonyStatus: ceremony.status
+        });
 
   return (
     <Stack className="stack-lg" gap="lg">
@@ -115,8 +94,11 @@ export function AdminCeremonyHomeScreen(props: {
         <Stack gap="xs">
           {steps.map((s) => {
             const current = next.id === s.id;
-            const status = statusLabelForRow({ rowStatus: s.status, current });
-            const allowed = isStepAllowed({ stepId: s.id, ceremony });
+            const status = workflowRowStatusLabel({ rowStatus: s.status, current });
+            const allowed = isCeremonyWorkflowStepAllowed({
+              stepId: s.id,
+              ceremonyStatus: ceremony.status
+            });
             return (
               <UnstyledButton
                 key={s.id}
