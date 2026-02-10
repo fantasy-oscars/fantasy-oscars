@@ -4,76 +4,22 @@ import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 import type { SeasonIndexCard, SeasonsIndexView } from "../../orchestration/seasonsIndex";
-
-type GroupMode = "ceremony" | "league";
-
-function groupBy<T, K extends string | number>(items: T[], keyFn: (t: T) => K) {
-  const m = new Map<K, T[]>();
-  for (const it of items) {
-    const k = keyFn(it);
-    const prev = m.get(k);
-    if (prev) prev.push(it);
-    else m.set(k, [it]);
-  }
-  return m;
-}
-
-function sortByCeremony(seasons: SeasonIndexCard[]) {
-  // Newest ceremony first.
-  return [...seasons].sort((a, b) => {
-    if (b.ceremony_sort_ts !== a.ceremony_sort_ts)
-      return b.ceremony_sort_ts - a.ceremony_sort_ts;
-    if (a.ceremony_name !== b.ceremony_name)
-      return a.ceremony_name.localeCompare(b.ceremony_name);
-    return a.season_id - b.season_id;
-  });
-}
-
-function sortByLeagueName(seasons: SeasonIndexCard[]) {
-  return [...seasons].sort((a, b) => {
-    const ln = a.league_name.localeCompare(b.league_name);
-    if (ln !== 0) return ln;
-    if (a.ceremony_name !== b.ceremony_name)
-      return a.ceremony_name.localeCompare(b.ceremony_name);
-    return a.season_id - b.season_id;
-  });
-}
+import { computeSeasonsIndexGrouping, type SeasonsIndexGroupMode } from "../../decisions/seasonsIndex";
 
 export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
   const { view } = props;
-  const [mode, setMode] = useState<GroupMode>("ceremony");
+  const [mode, setMode] = useState<SeasonsIndexGroupMode>("ceremony");
 
-  const seasons = useMemo(() => {
-    if (view.state !== "ready") return [];
-    return mode === "ceremony"
-      ? sortByCeremony(view.seasons)
-      : sortByLeagueName(view.seasons);
+  const { seasons, grouped, groupOrder } = useMemo(() => {
+    if (view.state !== "ready") {
+      return {
+        seasons: [] as SeasonIndexCard[],
+        grouped: new Map<number, SeasonIndexCard[]>(),
+        groupOrder: [] as Array<{ id: number; label: string; sort: number }>
+      };
+    }
+    return computeSeasonsIndexGrouping({ mode, seasons: view.seasons });
   }, [mode, view]);
-
-  const grouped =
-    mode === "ceremony"
-      ? groupBy(seasons, (s) => s.ceremony_id)
-      : groupBy(seasons, (s) => s.league_id);
-
-  const groupOrder: Array<{ id: number; label: string; sort: number }> =
-    view.state !== "ready"
-      ? []
-      : mode === "ceremony"
-        ? Array.from(grouped.entries()).map(([id, list]) => ({
-            id: Number(id),
-            label: list[0]?.ceremony_name ?? `Ceremony ${id}`,
-            sort: list[0]?.ceremony_sort_ts ?? 0
-          }))
-        : Array.from(grouped.entries()).map(([id, list]) => ({
-            id: Number(id),
-            label: list[0]?.league_name ?? `League ${id}`,
-            sort: 0
-          }));
-
-  groupOrder.sort((a, b) => {
-    if (mode === "ceremony") return b.sort - a.sort;
-    return a.label.localeCompare(b.label);
-  });
 
   return (
     <Box className="baseline-page">
@@ -85,7 +31,7 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
 
           <SegmentedControl
             value={mode}
-            onChange={(v) => setMode(v as GroupMode)}
+            onChange={(v) => setMode(v as SeasonsIndexGroupMode)}
             data={[
               { value: "ceremony", label: "By Ceremony" },
               { value: "league", label: "By League" }
