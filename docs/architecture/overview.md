@@ -44,7 +44,11 @@ flowchart LR
 
 - Runtime flow: [architecture/runtime.md](runtime.md)
 - Data and migrations: [architecture/data.md](data.md)
-- Realtime drafting surface: `apps/api/src/routes/drafts.ts` (Socket.IO gateway) and `apps/web/src/App.tsx` (client)
-- Admin surfaces & lock rule: `apps/api/src/routes/admin.ts`, `apps/api/src/routes/ceremony.ts`
+- Realtime drafting surface:
+  - API: `apps/api/src/routes/drafts/**` (HTTP + Socket.IO entrypoints)
+  - Web: `apps/web/src/**` (screens + client socket wiring)
+- Seasons:
+  - API: `apps/api/src/routes/seasons.ts` and `apps/api/src/routes/seasons/**`
+- Admin surfaces & lock rule: `apps/api/src/routes/admin/**`, `apps/api/src/routes/ceremony.ts`
 - Operational runbook (includes rollover + lock behavior): [../runbooks/operational-runbook.md](../runbooks/operational-runbook.md)
 - Layering / atomization rules (Decision / Orchestration / Glue / UI): [atomization.md](atomization.md)
