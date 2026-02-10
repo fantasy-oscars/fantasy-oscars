@@ -5,7 +5,6 @@ import {
   Button,
   Divider,
   Group,
-  Modal,
   Stack,
   Text,
   Title
@@ -20,6 +19,7 @@ import {
   computeAdminCeremonyDeletePolicy,
   computeAdminCeremonyIndexStatus
 } from "../../../decisions/admin/ceremonyIndex";
+import { ConfirmDeleteCeremonyModal } from "../../../ui/admin/ceremonies/modals/ConfirmDeleteCeremonyModal";
 import "../../../primitives/baseline.css";
 
 const ICON_VISIBILITY = "visibility";
@@ -175,33 +175,15 @@ export function AdminCeremoniesIndexScreen(props: {
         </Stack>
       )}
 
-      <Modal
+      <ConfirmDeleteCeremonyModal
         opened={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        title="Delete ceremony?"
-        centered
-      >
-        <Stack gap="md">
-          <Text className="baseline-textBody" c="dimmed">
-            This ceremony is published. Deleting it will remove it for everyone.
-          </Text>
-          <Group justify="flex-end" gap="sm">
-            <Button variant="subtle" onClick={() => setConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              onClick={() => {
-                if (confirmId) onDelete(confirmId);
-                setConfirmOpen(false);
-                setConfirmId(null);
-              }}
-            >
-              Delete
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          if (confirmId) onDelete(confirmId);
+          setConfirmOpen(false);
+          setConfirmId(null);
+        }}
+      />
     </Stack>
   );
 }
