@@ -28,18 +28,8 @@ import type {
 } from "../../../orchestration/adminCeremoniesCategories";
 import { StandardCard } from "../../../primitives";
 import { materialGlyph } from "../../../decisions/admin/materialGlyph";
+import { unitKindLabel } from "../../../ui/labels/unitKindLabel";
 import "../../../primitives/baseline.css";
-
-function unitKindLabel(kind: "FILM" | "SONG" | "PERFORMANCE") {
-  switch (kind) {
-    case "FILM":
-      return "Film";
-    case "SONG":
-      return "Song + Film";
-    case "PERFORMANCE":
-      return "Person + Film";
-  }
-}
 
 const TRASH_ICON = String.fromCharCode(0xe872);
 

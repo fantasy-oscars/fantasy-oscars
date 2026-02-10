@@ -13,7 +13,7 @@ export type CategoryTemplate = {
   icon_variant?: "default" | "inverted";
 };
 
-type TemplateDraft = {
+export type CategoryTemplateDraft = {
   id?: number;
   code: string;
   name: string;
@@ -32,7 +32,7 @@ export function useAdminCategoryTemplatesOrchestration() {
   const [templates, setTemplates] = useState<CategoryTemplate[]>([]);
 
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorValue, setEditorValue] = useState<TemplateDraft | null>(null);
+  const [editorValue, setEditorValue] = useState<CategoryTemplateDraft | null>(null);
   const isEditing = Boolean(editorValue?.id);
 
   const load = useCallback(async () => {
