@@ -20,8 +20,12 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { StandardCard } from "../../primitives";
-import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import { SortableNomineeRow } from "../../ui/ceremonies/draftPlans/SortableNomineeRow";
+import {
+  computeDefaultNominationIdsForDraftPlan,
+  computeEffectiveNomineeOrderForDraftPlan,
+  filterDraftPlansByName
+} from "../../decisions/draftPlans";
 import "../../primitives/baseline.css";
 
 const EMPTY_CATEGORIES: CeremonyDetail["categories"] = [];
@@ -51,8 +55,7 @@ export function DraftPlansScreen(props: {
     (ceremony ? `Ceremony #${ceremony.id}` : "Ceremony");
 
   const filteredPlans = useMemo(() => {
-    const q = normalizeForSearch(planQuery);
-    return o.plans.filter((p) => includesNormalized(p.name, q));
+    return filterDraftPlansByName(o.plans, planQuery);
   }, [o.plans, planQuery]);
 
   const categoryById = useMemo(
@@ -73,39 +76,16 @@ export function DraftPlansScreen(props: {
   );
 
   const defaultNominationIds = useMemo(() => {
-    const categoryIndex = new Map<number, number>();
-    categories
-      .slice()
-      .sort((a, b) => a.sort_index - b.sort_index || a.id - b.id)
-      .forEach((c, idx) => categoryIndex.set(c.id, idx));
-
-    return nominations
-      .map((n, idx) => ({ n, idx }))
-      .sort((a, b) => {
-        const ca = categoryIndex.get(a.n.category_edition_id) ?? 9999;
-        const cb = categoryIndex.get(b.n.category_edition_id) ?? 9999;
-        if (ca !== cb) return ca - cb;
-        return a.idx - b.idx;
-      })
-      .map((x) => x.n.id);
+    return computeDefaultNominationIdsForDraftPlan({ categories, nominations });
   }, [categories, nominations]);
 
   const effectiveOrder = useMemo(() => {
-    if (!o.selectedPlanId) return [];
-    const fromPlan = o.order.length > 0 ? o.order : defaultNominationIds;
-    const all = new Set(nominations.map((n) => n.id));
-    const seen = new Set<number>();
-    const ordered = fromPlan.filter((id) => {
-      if (!all.has(id)) return false;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
+    return computeEffectiveNomineeOrderForDraftPlan({
+      selectedPlanId: o.selectedPlanId,
+      planOrder: o.order,
+      defaultOrder: defaultNominationIds,
+      nominations
     });
-    // Append any new nominations not yet in the plan, in default order.
-    for (const id of defaultNominationIds) {
-      if (!seen.has(id)) ordered.push(id);
-    }
-    return ordered;
   }, [defaultNominationIds, nominations, o.order, o.selectedPlanId]);
 
   const nominationById = useMemo(
