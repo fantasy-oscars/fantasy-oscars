@@ -20,6 +20,11 @@ import {
 import { allocationLabel, scoringLabel } from "../../lib/labels";
 import { PageLoader } from "../../ui/page-state";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
+import {
+  computeSeasonDraftRoomCtaLabel,
+  computeSeasonLocked,
+  computeSeasonProgression
+} from "../../decisions/season";
 import "../../primitives/baseline.css";
 
 export function SeasonScreen(props: {
@@ -54,31 +59,24 @@ export function SeasonScreen(props: {
     s.leagueContext?.season?.ceremony_code ??
     (ceremonyId ? `Ceremony ${ceremonyId}` : `Ceremony`);
 
-  const progression = useMemo(() => {
-    if (s.isArchived) return "Archived";
-    const ds = String(s.draftStatus ?? "").toUpperCase();
-    if (ds === "COMPLETED") return "Draft complete";
-    if (ds === "IN_PROGRESS" || ds === "LIVE") return "Drafting";
-    if (ds === "PAUSED") return "Paused";
-    return "Pre-draft";
-  }, [s.draftStatus, s.isArchived]);
+  const progression = useMemo(
+    () => computeSeasonProgression({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
+    [s.draftStatus, s.isArchived]
+  );
 
-  const isLocked = useMemo(() => {
-    if (s.isArchived) return true;
-    const ds = String(s.draftStatus ?? "").toUpperCase();
-    return Boolean(ds && ds !== "PENDING");
-  }, [s.draftStatus, s.isArchived]);
+  const isLocked = useMemo(
+    () => computeSeasonLocked({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
+    [s.draftStatus, s.isArchived]
+  );
 
-  const draftRoomCtaLabel = useMemo(() => {
-    const cs = String(s.ceremonyStatus ?? "").toUpperCase();
-    if (cs === "COMPLETE" || cs === "ARCHIVED") return "View results";
-
-    const ds = String(s.draftStatus ?? "").toUpperCase();
-    if (ds === "COMPLETED") return "View draft results";
-
-    // PENDING / IN_PROGRESS / LIVE / PAUSED (and other pre-complete states)
-    return "Enter draft room";
-  }, [s.ceremonyStatus, s.draftStatus]);
+  const draftRoomCtaLabel = useMemo(
+    () =>
+      computeSeasonDraftRoomCtaLabel({
+        ceremonyStatus: s.ceremonyStatus,
+        draftStatus: s.draftStatus
+      }),
+    [s.ceremonyStatus, s.draftStatus]
+  );
 
   const draftDefaults = useMemo(() => {
     const scoring = (s.scoringStrategy ?? "fixed") as
