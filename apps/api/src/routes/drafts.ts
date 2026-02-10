@@ -618,18 +618,121 @@ async function autoPickImmediateChain(options: {
   return draft;
 }
 
+const USER_AUTODRAFT_DELAY_MS = 1000;
+const pendingUserAutodraft = new Map<
+  number,
+  { timeout: ReturnType<typeof setTimeout>; pickNumber: number }
+>();
+
+function scheduleUserAutodraft(args: {
+  pool: Pool;
+  draftId: number;
+  pickNumber: number;
+}) {
+  const prior = pendingUserAutodraft.get(args.draftId);
+  if (prior) clearTimeout(prior.timeout);
+
+  const timeout = setTimeout(() => {
+    // This timer is single-shot; if we schedule again it will set a new entry.
+    pendingUserAutodraft.delete(args.draftId);
+    void runInTransaction(args.pool, async (tx) => {
+      const lockedDraft = await getDraftByIdForUpdate(tx, args.draftId);
+      if (!lockedDraft) return;
+      if (lockedDraft.status !== "IN_PROGRESS") return;
+      // If the pick has advanced (manual pick or earlier auto-pick), do nothing.
+      if ((lockedDraft.current_pick_number ?? null) !== args.pickNumber) return;
+
+      const season = await getSeasonById(tx, lockedDraft.season_id);
+      if (!season) return;
+      const league = await getLeagueById(tx, season.league_id);
+      if (!league) return;
+
+      const seats = await listDraftSeats(tx, lockedDraft.id);
+      const seatCount = seats.length;
+      if (seatCount === 0) return;
+      const currentPickNumber = lockedDraft.current_pick_number ?? null;
+      if (!currentPickNumber) return;
+      const assignment = computePickAssignment({
+        draft_order_type: "SNAKE",
+        seat_count: seatCount,
+        pick_number: currentPickNumber,
+        status: lockedDraft.status
+      });
+      const seat = seats.find((s) => s.seat_number === assignment.seat_number);
+      if (!seat?.user_id) return;
+
+      const userAuto = await getDraftAutodraftConfig(tx, {
+        draft_id: lockedDraft.id,
+        user_id: seat.user_id
+      });
+      if (!userAuto?.enabled) return;
+
+      const next = await autoPickOne({
+        tx,
+        draft: lockedDraft,
+        season,
+        league,
+        reason: "USER_AUTODRAFT",
+        force: true
+      });
+
+      // If the draft is still live, schedule again for the next seat (if enabled).
+      if (
+        next.status === "IN_PROGRESS" &&
+        next.current_pick_number &&
+        next.current_pick_number !== args.pickNumber
+      ) {
+        scheduleUserAutodraft({
+          pool: args.pool,
+          draftId: args.draftId,
+          pickNumber: next.current_pick_number
+        });
+      }
+    }).catch(() => {});
+  }, USER_AUTODRAFT_DELAY_MS);
+
+  pendingUserAutodraft.set(args.draftId, { timeout, pickNumber: args.pickNumber });
+}
+
 async function runImmediateAutodraftIfEnabled(args: { pool: Pool; draftId: number }) {
   const { pool, draftId } = args;
-  await runInTransaction(pool, async (tx) => {
+
+  // Fast read in a transaction to determine whether we should schedule a delayed auto-pick.
+  // We do *not* hold a transaction open for the delay.
+  const pickNumber = await runInTransaction(pool, async (tx) => {
     const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
-    if (!lockedDraft) return;
-    if (lockedDraft.status !== "IN_PROGRESS") return;
+    if (!lockedDraft) return null;
+    if (lockedDraft.status !== "IN_PROGRESS") return null;
     const season = await getSeasonById(tx, lockedDraft.season_id);
-    if (!season) return;
+    if (!season) return null;
     const league = await getLeagueById(tx, season.league_id);
-    if (!league) return;
-    await autoPickImmediateChain({ tx, draft: lockedDraft, season, league });
+    if (!league) return null;
+
+    const seats = await listDraftSeats(tx, lockedDraft.id);
+    const seatCount = seats.length;
+    if (seatCount === 0) return null;
+    const currentPickNumber = lockedDraft.current_pick_number ?? null;
+    if (!currentPickNumber) return null;
+    const assignment = computePickAssignment({
+      draft_order_type: "SNAKE",
+      seat_count: seatCount,
+      pick_number: currentPickNumber,
+      status: lockedDraft.status
+    });
+    const seat = seats.find((s) => s.seat_number === assignment.seat_number);
+    if (!seat?.user_id) return null;
+
+    const userAuto = await getDraftAutodraftConfig(tx, {
+      draft_id: lockedDraft.id,
+      user_id: seat.user_id
+    });
+    if (!userAuto?.enabled) return null;
+
+    return currentPickNumber;
   });
+
+  if (!pickNumber) return;
+  scheduleUserAutodraft({ pool, draftId, pickNumber });
 }
 
 function computeDeadline(
@@ -918,7 +1021,7 @@ export function buildStartDraftHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
-      // If the next (or subsequent) seat has user-enabled auto-draft, pick immediately.
+      // If the next (or subsequent) seat has user-enabled auto-draft, schedule it.
       await runImmediateAutodraftIfEnabled({ pool, draftId: result.draft.id });
       return res.status(200).json({ draft: result.draft });
     } catch (err) {
@@ -991,7 +1094,7 @@ export function buildOverrideDraftLockHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
-      // If the current seat has user-enabled auto-draft, pick immediately upon resume.
+      // If the current seat has user-enabled auto-draft, schedule it upon resume.
       await runImmediateAutodraftIfEnabled({ pool, draftId: result.draft.id });
       return res.status(200).json({ draft: result.draft });
     } catch (err) {
@@ -1754,7 +1857,7 @@ export function buildSubmitPickHandler(pool: Pool) {
           ceremonyId: result.ceremonyId
         }).catch(() => {});
       }
-      // If the next (or subsequent) seat has user-enabled auto-draft, pick immediately.
+      // If the next (or subsequent) seat has user-enabled auto-draft, schedule it.
       await runImmediateAutodraftIfEnabled({ pool, draftId: draftIdNum });
       return res.status(status).json({ pick: result.pick });
     } catch (err) {
@@ -2203,7 +2306,7 @@ export function createDraftsRouter(client: DbClient, authSecret: string): Router
       });
 
       if (result.enabled) {
-        // If the current seat user enables auto-draft, pick immediately (no timer wait).
+        // If the current seat user enables auto-draft, schedule it (no timer wait).
         await runImmediateAutodraftIfEnabled({ pool: client as Pool, draftId });
       }
       return res.status(200).json({ autodraft: result });

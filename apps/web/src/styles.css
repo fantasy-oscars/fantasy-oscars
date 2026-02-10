@@ -650,6 +650,35 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   --drh-buckle-contact: rgba(0, 0, 0, 0.18);
 }
 
+/* Countdown pulse (5s window): toggled via class in sync with beeps. */
+.drh-buckle.is-countdown {
+  /* Default to gold for the countdown surface; JS toggles to pulse-red as needed. */
+  --drh-buckle-base: var(--fo-gold);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease,
+    color 120ms ease;
+}
+
+.drh-buckle.is-countdown.pulse-gold {
+  --drh-buckle-base: var(--fo-gold);
+}
+
+.drh-buckle.is-countdown.pulse-red {
+  /* Restrained red that still reads as urgency against our neutral palette. */
+  --drh-buckle-base: #b34b42;
+  --drh-buckle-contact: rgba(0, 0, 0, 0.26);
+}
+
+.drh-buckle.is-countdown.pulse-red .drh-buckleCenter,
+.drh-buckle.is-countdown.pulse-red .drh-buckleNumber {
+  color: var(--fo-ivory);
+}
+
+.drh-buckle.is-countdown.pulse-red .drh-buckleLabel {
+  color: rgba(var(--fo-ivory-rgb), 0.78);
+}
+
 .drh-buckleStack {
   display: flex;
   flex-direction: column;
@@ -917,6 +946,11 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
     calc(var(--u) * var(--rail-auto));
 }
 
+.dr-layout > * {
+  /* Critical for scrollable children inside grid items. */
+  min-height: 0;
+}
+
 .dr-rail {
   position: relative;
   display: flex;
@@ -924,6 +958,7 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   justify-content: stretch;
   height: 100%;
   width: 100%;
+  min-height: 0;
   padding: 0;
   border: 0;
   background: var(--fo-surface-card-primary);
@@ -951,10 +986,12 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
 
 .dr-rail.is-open {
   border: var(--fo-border-width) solid var(--fo-border);
+  z-index: 1;
 }
 
 .dr-rail.is-collapsed {
   border: var(--fo-border-width) solid var(--fo-border);
+  z-index: 2; /* keep stub icons visible when adjacent rails are open */
 }
 
 .dr-rail-ledger {
@@ -1293,6 +1330,7 @@ body[data-mantine-color-scheme="dark"] .dr-card {
   align-items: center;
   gap: 6px;
   margin: 0 0 10px 0;
+  cursor: default;
 }
 
 .dr-card-titleRow:focus-visible {

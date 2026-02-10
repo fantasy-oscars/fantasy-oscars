@@ -27,6 +27,14 @@ import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
 import { ANIMAL_AVATAR_KEYS } from "@fantasy-oscars/shared";
 import { RuntimeBannerStack } from "../../notifications";
 import { notifications } from "@mantine/notifications";
+import {
+  closeDraftAudio,
+  createDraftAudioController,
+  playCountdownBeep,
+  playTurnStartChime,
+  unlockDraftAudio
+} from "../../lib/draftAudio";
+import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../lib/draftCountdown";
 
 type MasonryItem = { estimatePx: number };
 
@@ -118,6 +126,53 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const previewUser = isPreview
     ? { label: "Alice", avatarKey: "gorilla" }
     : { label: user?.username ?? user?.sub ?? "—", avatarKey: user?.avatar_key ?? null };
+
+  // Audio must be unlocked by a user gesture (browser autoplay policy).
+  // Note: some browsers (notably iOS Safari) are pickier if the AudioContext is
+  // constructed before a gesture. So we create it lazily on the first gesture.
+  const audioControllerRef = useRef<ReturnType<typeof createDraftAudioController>>(null);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  useEffect(() => {
+    let didUnlock = false;
+    const unlock = async () => {
+      if (didUnlock) return;
+      didUnlock = true;
+      if (!audioControllerRef.current) {
+        audioControllerRef.current = createDraftAudioController();
+      }
+      await unlockDraftAudio(audioControllerRef.current);
+      setAudioUnlocked(Boolean(audioControllerRef.current));
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+
+    document.addEventListener("pointerdown", unlock, { passive: true });
+    document.addEventListener("keydown", unlock);
+
+    return () => {
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+      closeDraftAudio(audioControllerRef.current);
+    };
+  }, []);
+
+  // Turn-start chime: invoke on "turn ownership" transitions (active seat flips to me),
+  // not on click/draft actions. This naturally suppresses snake double-picks because
+  // `isMyTurn` stays true across the back-to-back pick.
+  const prevIsMyTurnRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (isPreview) return;
+    if (draftStatus !== "IN_PROGRESS") {
+      prevIsMyTurnRef.current = isMyTurn;
+      return;
+    }
+    const prev = prevIsMyTurnRef.current;
+    if (audioUnlocked && prev !== null && !prev && isMyTurn) {
+      playTurnStartChime(audioControllerRef.current);
+    }
+    prevIsMyTurnRef.current = isMyTurn;
+  }, [audioUnlocked, draftStatus, isMyTurn, isPreview]);
 
   const confirmTimerRef = useRef<number | null>(null);
   const confirmNominationRef = useRef<number | null>(null);
@@ -344,6 +399,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         roundNumber={props.o.header.roundNumber}
         pickNumber={props.o.header.pickNumber}
         isTimerDraft={props.o.header.hasTimer}
+        timerRemainingMs={props.o.header.timerRemainingMs}
         clockText={props.o.header.clockText}
         draftStatus={draftStatus}
         isFinalResults={isFinalResults}
@@ -365,6 +421,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         onStartDraft={props.o.header.onStartDraft}
         onPauseDraft={props.o.header.onPauseDraft}
         onResumeDraft={props.o.header.onResumeDraft}
+        audioController={audioControllerRef.current}
+        audioUnlocked={audioUnlocked}
+        isMyTurn={isMyTurn}
         userLabel={previewUser.label}
         userAvatarKey={previewUser.avatarKey}
       />
@@ -1322,78 +1381,84 @@ function MobileRail(props: {
           />
         ) : null}
 
-        <Box>
-          {o.autodraft.list.length === 0 ? (
-            <Text className="baseline-textBody">No nominees.</Text>
-          ) : (
-            <Stack gap={6}>
-              {o.autodraft.list.map((item) => {
-                const nominee = props.nomineeById.get(item.nominationId) ?? null;
-                const isDrafted = props.draftedNominationIds.has(item.nominationId);
-                const pill = (
-                  <Box
-                    className={["dr-pill", "dr-pill-static", isDrafted ? "is-muted" : ""]
-                      .filter(Boolean)
-                      .join(" ")}
-                    tabIndex={nominee ? 0 : undefined}
-                    role={nominee ? "group" : undefined}
-                    aria-label={
-                      nominee ? `${nominee.categoryName}: ${item.label}` : undefined
-                    }
-                  >
-                    {nominee ? (
-                      <DraftCategoryIcon
-                        icon={nominee.categoryIcon}
-                        variant={nominee.categoryIconVariant}
-                        className="dr-pill-icon"
-                      />
-                    ) : item.icon ? (
-                      <DraftCategoryIcon
-                        icon={item.icon}
-                        variant="default"
-                        className="dr-pill-icon"
-                      />
-                    ) : null}
-                    <Text component="span" className="dr-pill-text" lineClamp={1}>
-                      {item.label}
-                    </Text>
-                  </Box>
-                );
+        {o.autodraft.strategy === "custom" ? (
+          <Box>
+            {o.autodraft.list.length === 0 ? (
+              <Text className="baseline-textBody">No nominees.</Text>
+            ) : (
+              <Stack gap={6}>
+                {o.autodraft.list.map((item) => {
+                  const nominee = props.nomineeById.get(item.nominationId) ?? null;
+                  const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                  const pill = (
+                    <Box
+                      className={[
+                        "dr-pill",
+                        "dr-pill-static",
+                        isDrafted ? "is-muted" : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      tabIndex={nominee ? 0 : undefined}
+                      role={nominee ? "group" : undefined}
+                      aria-label={
+                        nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                      }
+                    >
+                      {nominee ? (
+                        <DraftCategoryIcon
+                          icon={nominee.categoryIcon}
+                          variant={nominee.categoryIconVariant}
+                          className="dr-pill-icon"
+                        />
+                      ) : item.icon ? (
+                        <DraftCategoryIcon
+                          icon={item.icon}
+                          variant="default"
+                          className="dr-pill-icon"
+                        />
+                      ) : null}
+                      <Text component="span" className="dr-pill-text" lineClamp={1}>
+                        {item.label}
+                      </Text>
+                    </Box>
+                  );
 
-                return nominee ? (
-                  <Tooltip
-                    key={item.nominationId}
-                    events={TOOLTIP_EVENTS}
-                    withArrow={false}
-                    position="bottom-start"
-                    multiline
-                    offset={10}
-                    styles={CARD_TOOLTIP_STYLES}
-                    label={
-                      <NomineeTooltipCard
-                        unitKind={nominee.unitKind}
-                        categoryName={nominee.categoryName}
-                        filmTitle={nominee.filmTitle}
-                        filmYear={nominee.filmYear}
-                        filmPosterUrl={nominee.filmPosterUrl}
-                        contributors={nominee.contributors}
-                        performerName={nominee.performerName}
-                        performerCharacter={nominee.performerCharacter}
-                        performerProfileUrl={nominee.performerProfileUrl}
-                        performerProfilePath={nominee.performerProfilePath}
-                        songTitle={nominee.songTitle}
-                      />
-                    }
-                  >
-                    {pill}
-                  </Tooltip>
-                ) : (
-                  <Box key={item.nominationId}>{pill}</Box>
-                );
-              })}
-            </Stack>
-          )}
-        </Box>
+                  return nominee ? (
+                    <Tooltip
+                      key={item.nominationId}
+                      events={TOOLTIP_EVENTS}
+                      withArrow={false}
+                      position="bottom-start"
+                      multiline
+                      offset={10}
+                      styles={CARD_TOOLTIP_STYLES}
+                      label={
+                        <NomineeTooltipCard
+                          unitKind={nominee.unitKind}
+                          categoryName={nominee.categoryName}
+                          filmTitle={nominee.filmTitle}
+                          filmYear={nominee.filmYear}
+                          filmPosterUrl={nominee.filmPosterUrl}
+                          contributors={nominee.contributors}
+                          performerName={nominee.performerName}
+                          performerCharacter={nominee.performerCharacter}
+                          performerProfileUrl={nominee.performerProfileUrl}
+                          performerProfilePath={nominee.performerProfilePath}
+                          songTitle={nominee.songTitle}
+                        />
+                      }
+                    >
+                      {pill}
+                    </Tooltip>
+                  ) : (
+                    <Box key={item.nominationId}>{pill}</Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        ) : null}
       </Stack>
     </Box>
   );
@@ -1411,6 +1476,7 @@ function DraftBoardHeader(props: {
   roundNumber: number | null;
   pickNumber: number | null;
   isTimerDraft: boolean;
+  timerRemainingMs: number | null;
   clockText: string;
   draftStatus: string | null;
   isFinalResults: boolean;
@@ -1428,6 +1494,9 @@ function DraftBoardHeader(props: {
   onStartDraft: () => void;
   onPauseDraft: () => void;
   onResumeDraft: () => void;
+  audioController: ReturnType<typeof createDraftAudioController>;
+  audioUnlocked: boolean;
+  isMyTurn: boolean;
   userLabel: string;
   userAvatarKey: string | null;
 }) {
@@ -1461,6 +1530,51 @@ function DraftBoardHeader(props: {
     if (isCompleted) return "Draft complete";
     return props.isTimerDraft ? props.clockText : activeLabel;
   })();
+
+  const countdownActive = Boolean(
+    props.isTimerDraft &&
+    props.draftStatus === "IN_PROGRESS" &&
+    !props.isFinalResults &&
+    isCountdownActive(props.timerRemainingMs) &&
+    // Only the active drafter gets urgency feedback (audio + flashing).
+    props.isMyTurn
+  );
+
+  const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
+  const canBeepRef = useRef(false);
+
+  useEffect(() => {
+    canBeepRef.current = Boolean(props.audioUnlocked && props.isMyTurn);
+  }, [props.audioUnlocked, props.isMyTurn]);
+
+  useEffect(() => {
+    if (!countdownActive) {
+      if (countdownIntervalRef.current) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setCountdownPhase(null);
+      return;
+    }
+
+    // Start immediately when countdown begins.
+    const tick = () => {
+      setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
+      if (canBeepRef.current) playCountdownBeep(props.audioController);
+    };
+
+    tick();
+    countdownIntervalRef.current = window.setInterval(tick, COUNTDOWN_BEEP_INTERVAL_MS);
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdownActive]);
 
   const buckleMaxPx = useMemo(() => {
     // Defensive default: ~25% of viewport, clamped.
@@ -1820,6 +1934,14 @@ function DraftBoardHeader(props: {
             roundNumber={isCompleted ? null : props.roundNumber}
             pickNumber={isCompleted ? null : props.pickNumber}
             centerText={centerText}
+            className={
+              countdownActive
+                ? [
+                    "is-countdown",
+                    countdownPhase === "red" ? "pulse-red" : "pulse-gold"
+                  ].join(" ")
+                : ""
+            }
             measureText={
               props.isTimerDraft
                 ? null
@@ -2192,6 +2314,7 @@ function CenterBuckle(props: {
   roundNumber: number | null;
   pickNumber: number | null;
   centerText: string;
+  className?: string;
   measureText: string | null;
   isTimerDraft: boolean;
   maxHandleLengthPx: number;
@@ -2202,7 +2325,7 @@ function CenterBuckle(props: {
 
   return (
     <Box
-      className="drh-buckle"
+      className={["drh-buckle", props.className ?? ""].join(" ")}
       data-mode={props.isTimerDraft ? "timer" : "non-timer"}
       style={
         {
@@ -2804,85 +2927,91 @@ function DraftRoomScaffold(props: {
                   />
                 ) : null}
 
-                <Box>
-                  {props.autodraft.list.length === 0 ? (
-                    <Text className="muted">No nominees.</Text>
-                  ) : (
-                    <Stack gap={6}>
-                      {props.autodraft.list.map((item) => {
-                        const nominee = props.nomineeById.get(item.nominationId);
-                        const isDrafted = props.draftedNominationIds.has(
-                          item.nominationId
-                        );
-                        const pill = (
-                          <Box
-                            className={[
-                              "dr-pill",
-                              "dr-pill-static",
-                              isDrafted ? "is-muted" : ""
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                            tabIndex={nominee ? 0 : undefined}
-                            role={nominee ? "group" : undefined}
-                            aria-label={
-                              nominee
-                                ? `${nominee.categoryName}: ${item.label}`
-                                : undefined
-                            }
-                          >
-                            {nominee ? (
-                              <DraftCategoryIcon
-                                icon={nominee.categoryIcon}
-                                variant={nominee.categoryIconVariant}
-                                className="dr-pill-icon"
-                              />
-                            ) : item.icon ? (
-                              <DraftCategoryIcon
-                                icon={item.icon}
-                                variant="default"
-                                className="dr-pill-icon"
-                              />
-                            ) : null}
-                            <Text component="span" className="dr-pill-text" lineClamp={1}>
-                              {item.label}
-                            </Text>
-                          </Box>
-                        );
-                        return nominee ? (
-                          <Tooltip
-                            key={item.nominationId}
-                            events={TOOLTIP_EVENTS}
-                            withArrow={false}
-                            position="bottom-start"
-                            multiline
-                            offset={10}
-                            styles={CARD_TOOLTIP_STYLES}
-                            label={
-                              <NomineeTooltipCard
-                                unitKind={nominee.unitKind}
-                                categoryName={nominee.categoryName}
-                                filmTitle={nominee.filmTitle}
-                                filmYear={nominee.filmYear}
-                                filmPosterUrl={nominee.filmPosterUrl}
-                                contributors={nominee.contributors}
-                                performerName={nominee.performerName}
-                                performerCharacter={nominee.performerCharacter}
-                                performerProfileUrl={nominee.performerProfileUrl}
-                                performerProfilePath={nominee.performerProfilePath}
-                                songTitle={nominee.songTitle}
-                              />
-                            }
-                          >
-                            {pill}
-                          </Tooltip>
-                        ) : (
-                          <Box key={item.nominationId}>{pill}</Box>
-                        );
-                      })}
-                    </Stack>
-                  )}
-                </Box>
+                {props.autodraft.strategy === "custom" ? (
+                  <Box>
+                    {props.autodraft.list.length === 0 ? (
+                      <Text className="muted">No nominees.</Text>
+                    ) : (
+                      <Stack gap={6}>
+                        {props.autodraft.list.map((item) => {
+                          const nominee = props.nomineeById.get(item.nominationId);
+                          const isDrafted = props.draftedNominationIds.has(
+                            item.nominationId
+                          );
+                          const pill = (
+                            <Box
+                              className={[
+                                "dr-pill",
+                                "dr-pill-static",
+                                isDrafted ? "is-muted" : ""
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              tabIndex={nominee ? 0 : undefined}
+                              role={nominee ? "group" : undefined}
+                              aria-label={
+                                nominee
+                                  ? `${nominee.categoryName}: ${item.label}`
+                                  : undefined
+                              }
+                            >
+                              {nominee ? (
+                                <DraftCategoryIcon
+                                  icon={nominee.categoryIcon}
+                                  variant={nominee.categoryIconVariant}
+                                  className="dr-pill-icon"
+                                />
+                              ) : item.icon ? (
+                                <DraftCategoryIcon
+                                  icon={item.icon}
+                                  variant="default"
+                                  className="dr-pill-icon"
+                                />
+                              ) : null}
+                              <Text
+                                component="span"
+                                className="dr-pill-text"
+                                lineClamp={1}
+                              >
+                                {item.label}
+                              </Text>
+                            </Box>
+                          );
+                          return nominee ? (
+                            <Tooltip
+                              key={item.nominationId}
+                              events={TOOLTIP_EVENTS}
+                              withArrow={false}
+                              position="bottom-start"
+                              multiline
+                              offset={10}
+                              styles={CARD_TOOLTIP_STYLES}
+                              label={
+                                <NomineeTooltipCard
+                                  unitKind={nominee.unitKind}
+                                  categoryName={nominee.categoryName}
+                                  filmTitle={nominee.filmTitle}
+                                  filmYear={nominee.filmYear}
+                                  filmPosterUrl={nominee.filmPosterUrl}
+                                  contributors={nominee.contributors}
+                                  performerName={nominee.performerName}
+                                  performerCharacter={nominee.performerCharacter}
+                                  performerProfileUrl={nominee.performerProfileUrl}
+                                  performerProfilePath={nominee.performerProfilePath}
+                                  songTitle={nominee.songTitle}
+                                />
+                              }
+                            >
+                              {pill}
+                            </Tooltip>
+                          ) : (
+                            <Box key={item.nominationId}>{pill}</Box>
+                          );
+                        })}
+                      </Stack>
+                    )}
+                  </Box>
+                ) : null}
               </Stack>
             </Box>
           </Box>
@@ -3282,7 +3411,6 @@ function CategoryCard(props: {
                 aria-keyshortcuts="Shift+Enter"
                 tabIndex={props.isKeyboardMode ? 0 : -1}
                 onClick={(e) => {
-                  if (!props.canDraftAction) return;
                   e.preventDefault();
                   e.stopPropagation();
                   props.setKeyboardMode(props.categoryId);
@@ -3296,8 +3424,8 @@ function CategoryCard(props: {
                   props.onNomineeDoubleClick(Number(n.id));
                 }}
                 onKeyDown={(e) => {
-                  if (!props.canDraftAction) return;
                   if (e.shiftKey && e.key === "Enter") {
+                    if (!props.canDraftAction) return;
                     e.preventDefault();
                     e.stopPropagation();
                     props.onNomineeDoubleClick(Number(n.id));

@@ -71,6 +71,7 @@ export type DraftRoomOrchestration = {
     direction: "FORWARD" | "REVERSE" | null;
     hasTimer: boolean;
     clockText: string;
+    timerRemainingMs: number | null;
     poolMode: PoolMode;
     setPoolMode: (m: PoolMode) => void;
     view: DraftRoomView;
@@ -1312,6 +1313,18 @@ export function useDraftRoomOrchestration(args: {
   }, [snapshot]);
 
   const clockText = snapshot ? computeDraftClockText(snapshot, nowTs) : "—";
+  const timerRemainingMs = useMemo(() => {
+    if (!snapshot) return null;
+    const d = snapshot.draft;
+    if (d.status !== "IN_PROGRESS") return null;
+    if (!d.pick_timer_seconds) return null;
+    if (!d.pick_deadline_at) return null;
+    const deadlineMs = new Date(d.pick_deadline_at).getTime();
+    if (!Number.isFinite(deadlineMs)) return null;
+    const remaining = deadlineMs - nowTs;
+    if (!Number.isFinite(remaining)) return null;
+    return remaining > 0 ? remaining : 0;
+  }, [nowTs, snapshot]);
 
   const participants = useMemo(() => {
     if (!snapshot) return [];
@@ -1370,6 +1383,7 @@ export function useDraftRoomOrchestration(args: {
       direction: turn?.direction ?? null,
       hasTimer: Boolean(snapshot?.draft.pick_timer_seconds),
       clockText,
+      timerRemainingMs,
       poolMode,
       setPoolMode,
       view,
