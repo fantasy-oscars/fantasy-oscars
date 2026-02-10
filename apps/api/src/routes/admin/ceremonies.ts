@@ -11,12 +11,14 @@ import {
 } from "../../data/repositories/ceremonyRepository.js";
 import { AppError } from "../../errors.js";
 import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
+import { registerAdminCeremonyDraftLockStatusRoute } from "./ceremonyDraftLockStatus.js";
 import { registerAdminCeremonyGetRoute } from "./ceremoniesGet.js";
 import { registerAdminCeremoniesListRoute } from "./ceremoniesList.js";
 
 export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
   registerAdminCeremoniesListRoute({ router, client });
   registerAdminCeremonyGetRoute({ router, client });
+  registerAdminCeremonyDraftLockStatusRoute({ router, client });
 
   router.post(
     "/ceremonies",
@@ -103,32 +105,6 @@ export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
         }
 
         return res.status(201).json({ ceremony });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.get(
-    "/ceremonies/:id/lock",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        const { rows } = await query<{ status: string; draft_locked_at: Date | null }>(
-          client,
-          `SELECT status, draft_locked_at FROM ceremony WHERE id = $1`,
-          [ceremonyId]
-        );
-        const row = rows[0];
-        if (!row) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        return res.status(200).json({
-          status: row.status,
-          draft_locked: Boolean(row.draft_locked_at) || row.status === "LOCKED",
-          draft_locked_at: row.draft_locked_at ?? null
-        });
       } catch (err) {
         next(err);
       }
