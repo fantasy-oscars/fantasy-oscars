@@ -177,6 +177,7 @@ export function useDraftPreviewOrchestration(args: {
       direction: "FORWARD",
       hasTimer: true,
       clockText: "1:23",
+      timerRemainingMs: null,
       poolMode,
       setPoolMode,
       view,
