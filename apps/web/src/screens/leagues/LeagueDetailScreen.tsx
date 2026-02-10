@@ -18,20 +18,10 @@ import type { LeagueDetailView } from "../../orchestration/leagues";
 import { useMemo, useState } from "react";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
 import { StandardCard } from "../../primitives";
+import { computeSeasonCeremonyLabel } from "../../decisions/league";
 import "../../primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
-
-function ceremonyLabelForSeason(season: {
-  ceremony_starts_at?: string | null;
-  ceremony_name?: string | null;
-  ceremony_code?: string | null;
-  ceremony_id: number;
-}) {
-  if (season.ceremony_name) return season.ceremony_name;
-  if (season.ceremony_code) return season.ceremony_code;
-  return `Ceremony ${season.ceremony_id}`;
-}
 
 export function LeagueDetailScreen(props: {
   user: AuthUser | null;
@@ -147,7 +137,7 @@ export function LeagueDetailScreen(props: {
                   style={{ listStyle: "none", margin: 0, padding: 0 }}
                 >
                   {view.seasons.map((s) => {
-                    const ceremonyLabel = ceremonyLabelForSeason(s);
+                    const ceremonyLabel = computeSeasonCeremonyLabel(s);
                     const statusLabel = (() => {
                       const seasonStatus = String(s.status ?? "").toUpperCase();
                       if (s.is_active_ceremony === false || seasonStatus === "ARCHIVED")
