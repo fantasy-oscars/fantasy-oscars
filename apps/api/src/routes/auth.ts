@@ -23,11 +23,6 @@ const authLimiter = createRateLimitGuard({
   max: 8
 });
 
-const resetLimiter = createRateLimitGuard({
-  windowMs: 60_000,
-  max: 5
-});
-
 function scryptAsync(
   password: string,
   salt: crypto.BinaryLike,
@@ -87,10 +82,6 @@ async function verifyPassword(
     p: Number(pRaw)
   });
   return crypto.timingSafeEqual(derived, Buffer.from(hashB64, "base64"));
-}
-
-function hashResetToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 function isMissingColumnError(err: unknown, column: string): boolean {
@@ -663,107 +654,6 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
       })
       .status(204)
       .end();
-  });
-
-  router.post("/reset-request", resetLimiter.middleware, async (req, res, next) => {
-    try {
-      const { email } = req.body ?? {};
-      if (!email) {
-        throw validationError("Missing required fields", ["email"]);
-      }
-      if (typeof email !== "string") {
-        throw validationError("Invalid field types", ["email"]);
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        throw validationError("Invalid field values", ["email"]);
-      }
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const { rows } = await query(
-        client,
-        `SELECT id, username FROM app_user WHERE email = $1`,
-        [normalizedEmail]
-      );
-      const user = rows[0];
-
-      // Always return 200 to avoid email enumeration
-      if (!user) {
-        return res.status(200).json({ ok: true, delivery: "suppressed" });
-      }
-
-      const rawToken = crypto.randomBytes(24).toString("base64url");
-      const tokenHash = hashResetToken(rawToken);
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-      await query(
-        client,
-        `INSERT INTO auth_password_reset (user_id, token_hash, expires_at)
-         VALUES ($1, $2, $3)`,
-        [user.id, tokenHash, expiresAt]
-      );
-
-      if (isProd) {
-        return res.status(200).json({ ok: true, delivery: "email" });
-      }
-
-      // Dev/test: return token directly
-      return res.status(200).json({ ok: true, delivery: "inline", token: rawToken });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  router.post("/reset-confirm", resetLimiter.middleware, async (req, res, next) => {
-    try {
-      const { token, password } = req.body ?? {};
-      if (!token || !password) {
-        throw validationError("Missing required fields", ["token", "password"]);
-      }
-      if (typeof token !== "string" || typeof password !== "string") {
-        throw validationError("Invalid field types", ["token", "password"]);
-      }
-      if (password.length < PASSWORD_MIN_LENGTH) {
-        throw validationError("Invalid field values", ["password"]);
-      }
-      const tokenHash = hashResetToken(token);
-
-      const { rows } = await query(
-        client,
-        `SELECT pr.id, pr.user_id, pr.expires_at, pr.consumed_at
-         FROM auth_password_reset pr
-         WHERE pr.token_hash = $1`,
-        [tokenHash]
-      );
-      const reset = rows[0];
-      if (!reset) {
-        throw new AppError("INVALID_RESET_TOKEN", 400, "Invalid or expired reset token");
-      }
-      if (reset.consumed_at) {
-        throw new AppError("RESET_TOKEN_USED", 400, "Reset token already used");
-      }
-      if (new Date(reset.expires_at) < new Date()) {
-        throw new AppError("RESET_TOKEN_EXPIRED", 400, "Reset token expired");
-      }
-
-      const newHash = await hashPassword(password);
-      await query(
-        client,
-        `UPDATE auth_password
-         SET password_hash = $2, password_algo = 'scrypt', password_set_at = now()
-         WHERE user_id = $1`,
-        [reset.user_id, newHash]
-      );
-
-      await query(
-        client,
-        `UPDATE auth_password_reset SET consumed_at = now() WHERE id = $1`,
-        [reset.id]
-      );
-
-      return res.status(200).json({ ok: true });
-    } catch (err) {
-      next(err);
-    }
   });
 
   return router;
