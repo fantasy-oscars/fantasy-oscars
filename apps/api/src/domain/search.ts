@@ -19,4 +19,3 @@ export function normalizeForSearch(input: string): string {
 export function sqlNorm(exprSql: string): string {
   return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
 }
-
