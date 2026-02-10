@@ -10,7 +10,7 @@ import {
   lockCeremonyDraft
 } from "../../data/repositories/ceremonyRepository.js";
 import { AppError } from "../../errors.js";
-import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
+import { registerAdminCeremonyDraftBoardRoute } from "./ceremonyDraftBoard.js";
 import { registerAdminCeremonyDraftLockStatusRoute } from "./ceremonyDraftLockStatus.js";
 import { registerAdminCeremonyGetRoute } from "./ceremoniesGet.js";
 import { registerAdminCeremoniesListRoute } from "./ceremoniesList.js";
@@ -18,6 +18,7 @@ import { registerAdminCeremoniesListRoute } from "./ceremoniesList.js";
 export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
   registerAdminCeremoniesListRoute({ router, client });
   registerAdminCeremonyGetRoute({ router, client });
+  registerAdminCeremonyDraftBoardRoute({ router, client });
   registerAdminCeremonyDraftLockStatusRoute({ router, client });
 
   router.post(
@@ -202,31 +203,6 @@ export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
         }
 
         return res.status(204).end();
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.get(
-    "/ceremonies/:id/draft-board",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-
-        // Ensure ceremony exists (and avoid leaking row-level information).
-        const { rows } = await query<{ id: number }>(
-          client,
-          `SELECT id::int FROM ceremony WHERE id = $1`,
-          [id]
-        );
-        if (!rows[0]) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-
-        const board = await getDraftBoardForCeremony(client, id);
-        return res.status(200).json(board);
       } catch (err) {
         next(err);
       }
