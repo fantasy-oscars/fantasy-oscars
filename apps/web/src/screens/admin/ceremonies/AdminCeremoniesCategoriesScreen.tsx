@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -6,26 +5,20 @@ import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import {
   Box,
   Button,
-  Checkbox,
-  Combobox,
   Group,
-  InputBase,
-  Select,
   Stack,
   Text,
-  TextInput,
   Title,
-  UnstyledButton,
-  useCombobox
+  UnstyledButton
 } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
-import type {
-  AdminCeremonyCategoriesOrchestration,
-  FamilyRow
-} from "../../../orchestration/adminCeremoniesCategories";
+import type { AdminCeremonyCategoriesOrchestration } from "../../../orchestration/adminCeremoniesCategories";
 import { StandardCard } from "../../../primitives";
 import { materialGlyph } from "../../../decisions/admin/materialGlyph";
+import { CategoryTemplateCombobox } from "../../../ui/admin/ceremonies/categories/CategoryTemplateCombobox";
+import { CloneCategoriesModal } from "../../../ui/admin/ceremonies/categories/CloneCategoriesModal";
+import { NewTemplateModal } from "../../../ui/admin/ceremonies/categories/NewTemplateModal";
 import { SortableCategoryRow } from "../../../ui/admin/ceremonies/categories/SortableCategoryRow";
 import { unitKindLabel } from "../../../ui/labels/unitKindLabel";
 import "../../../primitives/baseline.css";
@@ -243,254 +236,5 @@ export function AdminCeremoniesCategoriesScreen(props: {
         />
       ) : null}
     </Stack>
-  );
-}
-
-function CategoryTemplateCombobox(props: {
-  disabled: boolean;
-  value: string | null;
-  onChange: (v: string | null) => void;
-  query: string;
-  onQueryChange: (q: string) => void;
-  options: Array<{ value: string; name: string; code: string }>;
-}) {
-  const { disabled, value, onChange, query, onQueryChange, options } = props;
-
-  const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption()
-  });
-
-  const selectedLabel = useMemo(() => {
-    if (!value) return "";
-    const found = options.find((o) => o.value === value);
-    return found?.name ?? "";
-  }, [options, value]);
-
-  return (
-    <Box className="admin-add-select">
-      <Combobox
-        store={combobox}
-        onOptionSubmit={(val) => {
-          onChange(val);
-          combobox.closeDropdown();
-        }}
-      >
-        <Combobox.Target>
-          <InputBase
-            component="button"
-            type="button"
-            disabled={disabled}
-            onClick={() => combobox.toggleDropdown()}
-            rightSectionPointerEvents="none"
-            rightSection="▾"
-            aria-label="Add category from template"
-          >
-            {selectedLabel || "Add category from template..."}
-          </InputBase>
-        </Combobox.Target>
-
-        <Combobox.Dropdown>
-          <Combobox.Search
-            value={query}
-            onChange={(e) => onQueryChange(e.currentTarget.value)}
-            placeholder="Search templates..."
-          />
-          <Combobox.Options>
-            {options.length === 0 ? (
-              <Combobox.Empty>
-                <Text size="sm">No matching templates</Text>
-              </Combobox.Empty>
-            ) : (
-              options.map((o) => (
-                <Combobox.Option value={o.value} key={o.value}>
-                  <Stack gap={2}>
-                    <Text fw={700} size="sm">
-                      {o.name}
-                    </Text>
-                    <Text className="muted" size="xs">
-                      {o.code}
-                    </Text>
-                  </Stack>
-                </Combobox.Option>
-              ))
-            )}
-          </Combobox.Options>
-        </Combobox.Dropdown>
-      </Combobox>
-    </Box>
-  );
-}
-
-function CloneCategoriesModal(props: {
-  working: boolean;
-  canEdit: boolean;
-  options: Array<{ value: string; label: string }>;
-  value: string;
-  onChange: Dispatch<SetStateAction<string>>;
-  onCancel: () => void;
-  onSubmit: () => void;
-}) {
-  const { working, canEdit, options, value, onChange, onCancel, onSubmit } = props;
-
-  return (
-    <Box className="modal-backdrop" role="presentation">
-      <StandardCard
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Clone from ceremony"
-      >
-        <Title order={4}>Clone from ceremony</Title>
-        <Text className="muted">Copy the category structure (no linkage).</Text>
-        <Box className="status status-warning" role="status" mt="sm">
-          This will replace all categories for the current ceremony.
-        </Box>
-
-        <Stack className="stack-sm" gap="sm" mt="sm">
-          <Select
-            label="Select a ceremony to clone categories from"
-            placeholder="Search ceremonies..."
-            searchable
-            clearable
-            value={value || null}
-            onChange={(v) => onChange(v ?? "")}
-            disabled={working || !canEdit}
-            data={options}
-          />
-        </Stack>
-
-        <Group className="inline-actions" mt="sm" wrap="wrap">
-          <Button type="button" onClick={onCancel} disabled={working}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={onSubmit} disabled={working || !canEdit}>
-            Clone categories
-          </Button>
-        </Group>
-      </StandardCard>
-    </Box>
-  );
-}
-
-function NewTemplateModal(props: {
-  working: boolean;
-  canAddToCeremony: boolean;
-  value: {
-    code: string;
-    name: string;
-    default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-    icon_id: string;
-    icon_variant: "default" | "inverted";
-    add_to_ceremony: boolean;
-  };
-  onChange: Dispatch<
-    SetStateAction<{
-      code: string;
-      name: string;
-      default_unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-      icon_id: string;
-      icon_variant: "default" | "inverted";
-      add_to_ceremony: boolean;
-    }>
-  >;
-  onCancel: () => void;
-  onSubmit: () => void;
-}) {
-  const { working, canAddToCeremony, value, onChange, onCancel, onSubmit } = props;
-  return (
-    <Box className="modal-backdrop" role="presentation">
-      <StandardCard
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="New template"
-      >
-        <Title order={4}>New template</Title>
-        <Text className="muted">
-          Create a category template, then add it to ceremonies as needed.
-        </Text>
-
-        <Stack className="stack-sm" gap="sm" mt="sm">
-          <TextInput
-            label="Code"
-            value={value.code}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              onChange((p) => ({ ...p, code: v }));
-            }}
-            placeholder="oscar-best-picture"
-            disabled={working}
-          />
-          <TextInput
-            label="Name"
-            value={value.name}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              onChange((p) => ({ ...p, name: v }));
-            }}
-            placeholder="Best Picture"
-            disabled={working}
-          />
-          <Select
-            label="Default nominee type"
-            value={value.default_unit_kind}
-            onChange={(v) =>
-              onChange((p) => ({
-                ...p,
-                default_unit_kind: (v ?? "FILM") as FamilyRow["default_unit_kind"]
-              }))
-            }
-            disabled={working}
-            data={[
-              { value: "FILM", label: "Film" },
-              { value: "SONG", label: "Song" },
-              { value: "PERFORMANCE", label: "Performance" }
-            ]}
-          />
-          <TextInput
-            label="Icon"
-            value={value.icon_id}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              onChange((p) => ({ ...p, icon_id: v }));
-            }}
-            placeholder="trophy"
-            disabled={working}
-          />
-          <Select
-            label="Icon variant"
-            value={value.icon_variant}
-            onChange={(v) =>
-              onChange((p) => ({
-                ...p,
-                icon_variant: (v ?? "default") as "default" | "inverted"
-              }))
-            }
-            disabled={working}
-            data={[
-              { value: "default", label: "Default" },
-              { value: "inverted", label: "Inverted" }
-            ]}
-          />
-          <Checkbox
-            label="Add to this ceremony"
-            checked={value.add_to_ceremony}
-            onChange={(e) =>
-              onChange((p) => ({ ...p, add_to_ceremony: e.currentTarget.checked }))
-            }
-            disabled={working || !canAddToCeremony}
-          />
-        </Stack>
-
-        <Group className="inline-actions" mt="sm" wrap="wrap">
-          <Button type="button" onClick={onCancel} disabled={working}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={onSubmit} disabled={working}>
-            Create template
-          </Button>
-        </Group>
-      </StandardCard>
-    </Box>
   );
 }
