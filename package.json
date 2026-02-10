@@ -73,5 +73,8 @@
     "test:scripts": "node --test .github/scripts/lib/*.test.mjs .github/scripts/migration-order.test.mjs",
     "lint:scripts": "pnpm exec eslint .github/scripts",
     "format:check": "pnpm -r --if-present format:check"
+  },
+  "dependencies": {
+    "remark-gfm": "^4.0.1"
   }
 }
