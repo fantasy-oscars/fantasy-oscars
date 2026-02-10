@@ -144,14 +144,21 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       await unlockDraftAudio(audioControllerRef.current);
       setAudioUnlocked(Boolean(audioControllerRef.current));
       document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("mousedown", unlock);
+      document.removeEventListener("touchstart", unlock);
       document.removeEventListener("keydown", unlock);
     };
 
     document.addEventListener("pointerdown", unlock, { passive: true });
+    // iOS Safari can run without Pointer Events; listen for touchstart/mousedown too.
+    document.addEventListener("touchstart", unlock, { passive: true });
+    document.addEventListener("mousedown", unlock);
     document.addEventListener("keydown", unlock);
 
     return () => {
       document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("mousedown", unlock);
+      document.removeEventListener("touchstart", unlock);
       document.removeEventListener("keydown", unlock);
       closeDraftAudio(audioControllerRef.current);
     };
