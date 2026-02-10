@@ -19,6 +19,7 @@ import { useMemo, useState } from "react";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
 import { StandardCard } from "../../primitives";
 import { computeSeasonCeremonyLabel } from "../../decisions/league";
+import { computeSeasonLifecycleLabelFromRow } from "../../decisions/season";
 import "../../primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
@@ -138,18 +139,11 @@ export function LeagueDetailScreen(props: {
                 >
                   {view.seasons.map((s) => {
                     const ceremonyLabel = computeSeasonCeremonyLabel(s);
-                    const statusLabel = (() => {
-                      const seasonStatus = String(s.status ?? "").toUpperCase();
-                      if (s.is_active_ceremony === false || seasonStatus === "ARCHIVED")
-                        return "Archived";
-                      if (seasonStatus === "COMPLETE") return "Complete";
-                      if (seasonStatus === "IN_PROGRESS") return "In progress";
-                      const ds = String(s.draft_status ?? "").toUpperCase();
-                      if (ds === "COMPLETED") return "Draft complete";
-                      if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED")
-                        return "Drafting";
-                      return "Pre-draft";
-                    })();
+                    const statusLabel = computeSeasonLifecycleLabelFromRow({
+                      seasonStatus: s.status,
+                      draftStatus: s.draft_status,
+                      isActiveCeremony: s.is_active_ceremony
+                    });
 
                     return (
                       <Box key={s.id} component="li">
