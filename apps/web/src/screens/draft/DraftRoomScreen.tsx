@@ -42,18 +42,10 @@ import {
   formatSignedInt
 } from "../../decisions/draftRoomLayout";
 import { pickDraftDivisor } from "../../decisions/draftRoomUnits";
-
-// Tooltips are primarily a desktop affordance (hover/focus). On touch devices the
-// positioning can end up off-screen; mobile uses the tap-to-open nominee card instead.
-const TOOLTIP_EVENTS = { hover: true, focus: true, touch: false } as const;
-const CARD_TOOLTIP_STYLES = {
-  tooltip: {
-    padding: 0,
-    background: "transparent",
-    border: "none",
-    boxShadow: "none"
-  }
-} as const;
+import {
+  NOMINEE_CARD_TOOLTIP_STYLES,
+  NOMINEE_TOOLTIP_EVENTS
+} from "../../ui/draft/nomineeTooltip";
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
@@ -1111,12 +1103,12 @@ function MobileRosterBoard(props: {
               return (
                 <Box key={`${pick.pickNumber}`}>
                   <Tooltip
-                    events={TOOLTIP_EVENTS}
+                    events={NOMINEE_TOOLTIP_EVENTS}
                     withArrow={!nominee}
                     position="bottom-start"
                     multiline
                     offset={10}
-                    styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
+                    styles={nominee ? NOMINEE_CARD_TOOLTIP_STYLES : undefined}
                     label={
                       nominee ? (
                         <NomineeTooltipCard
@@ -1234,12 +1226,12 @@ function MobileRail(props: {
                 </Box>
                 {nominee ? (
                   <Tooltip
-                    events={TOOLTIP_EVENTS}
+                    events={NOMINEE_TOOLTIP_EVENTS}
                     withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
-                    styles={CARD_TOOLTIP_STYLES}
+                    styles={NOMINEE_CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1318,12 +1310,12 @@ function MobileRail(props: {
                 <Text className="dr-railMeta">{r.roundPick}</Text>
                 {nominee ? (
                   <Tooltip
-                    events={TOOLTIP_EVENTS}
+                    events={NOMINEE_TOOLTIP_EVENTS}
                     withArrow={false}
                     position="bottom-start"
                     multiline
                     offset={10}
-                    styles={CARD_TOOLTIP_STYLES}
+                    styles={NOMINEE_CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
                         unitKind={nominee.unitKind}
@@ -1445,12 +1437,12 @@ function MobileRail(props: {
                   return nominee ? (
                     <Tooltip
                       key={item.nominationId}
-                      events={TOOLTIP_EVENTS}
+                      events={NOMINEE_TOOLTIP_EVENTS}
                       withArrow={false}
                       position="bottom-start"
                       multiline
                       offset={10}
-                      styles={CARD_TOOLTIP_STYLES}
+                      styles={NOMINEE_CARD_TOOLTIP_STYLES}
                       label={
                         <NomineeTooltipCard
                           unitKind={nominee.unitKind}
@@ -2179,7 +2171,7 @@ function ParticipantStrip(props: {
     const current = props.participants[active];
     return (
       <Tooltip
-        events={TOOLTIP_EVENTS}
+        events={NOMINEE_TOOLTIP_EVENTS}
         label={
           <Box className="drh-stripTip">
             {props.participants.map((p) => (
@@ -2205,7 +2197,7 @@ function ParticipantStrip(props: {
     <Group className="drh-strip" gap={8} wrap="nowrap" ref={ref}>
       {headHidden > 0 && (
         <Tooltip
-          events={TOOLTIP_EVENTS}
+          events={NOMINEE_TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(0, start).map((p) => (
@@ -2230,7 +2222,7 @@ function ParticipantStrip(props: {
       {visible.map((p, idx) => {
         const isActive = !props.suppressActive && start + idx === active;
         return (
-          <Tooltip key={p.seatNumber} events={TOOLTIP_EVENTS} label={p.label} withArrow>
+          <Tooltip key={p.seatNumber} events={NOMINEE_TOOLTIP_EVENTS} label={p.label} withArrow>
             <Box className="drh-tokenWrap" tabIndex={0} aria-label={p.label}>
               <AvatarToken label={p.label} avatarKey={p.avatarKey} active={isActive} />
               {isActive && <DirectionChevron direction={props.direction} />}
@@ -2241,7 +2233,7 @@ function ParticipantStrip(props: {
 
       {tailHidden > 0 && (
         <Tooltip
-          events={TOOLTIP_EVENTS}
+          events={NOMINEE_TOOLTIP_EVENTS}
           label={
             <Box className="drh-stripTip">
               {props.participants.slice(end).map((p) => (
@@ -2597,12 +2589,12 @@ function DraftRoomScaffold(props: {
                       </Box>
                       {nominee ? (
                         <Tooltip
-                          events={TOOLTIP_EVENTS}
+                          events={NOMINEE_TOOLTIP_EVENTS}
                           withArrow={false}
                           position="bottom-start"
                           multiline
                           offset={10}
-                          styles={CARD_TOOLTIP_STYLES}
+                          styles={NOMINEE_CARD_TOOLTIP_STYLES}
                           label={
                             <NomineeTooltipCard
                               unitKind={nominee.unitKind}
@@ -2765,12 +2757,12 @@ function DraftRoomScaffold(props: {
                         <Text className="dr-railMeta">{p.roundPick}</Text>
                         {nominee ? (
                           <Tooltip
-                            events={TOOLTIP_EVENTS}
+                            events={NOMINEE_TOOLTIP_EVENTS}
                             withArrow={false}
                             position="bottom-start"
                             multiline
                             offset={10}
-                            styles={CARD_TOOLTIP_STYLES}
+                            styles={NOMINEE_CARD_TOOLTIP_STYLES}
                             label={
                               <NomineeTooltipCard
                                 unitKind={nominee.unitKind}
@@ -2971,12 +2963,12 @@ function DraftRoomScaffold(props: {
                           return nominee ? (
                             <Tooltip
                               key={item.nominationId}
-                              events={TOOLTIP_EVENTS}
+                              events={NOMINEE_TOOLTIP_EVENTS}
                               withArrow={false}
                               position="bottom-start"
                               multiline
                               offset={10}
-                              styles={CARD_TOOLTIP_STYLES}
+                              styles={NOMINEE_CARD_TOOLTIP_STYLES}
                               label={
                                 <NomineeTooltipCard
                                   unitKind={nominee.unitKind}
@@ -3215,12 +3207,12 @@ function RosterBoardScaffold(props: {
                     return (
                       <Box key={`${p.seatNumber}-${pick.pickNumber}`}>
                         <Tooltip
-                          events={TOOLTIP_EVENTS}
+                          events={NOMINEE_TOOLTIP_EVENTS}
                           withArrow={!nominee}
                           position="bottom-start"
                           multiline
                           offset={10}
-                          styles={nominee ? CARD_TOOLTIP_STYLES : undefined}
+                          styles={nominee ? NOMINEE_CARD_TOOLTIP_STYLES : undefined}
                           label={
                             nominee ? (
                               <NomineeTooltipCard
@@ -3383,12 +3375,12 @@ function CategoryCard(props: {
             return (
               <Tooltip
                 key={n.id}
-                events={TOOLTIP_EVENTS}
+                events={NOMINEE_TOOLTIP_EVENTS}
                 withArrow={false}
                 position="bottom-start"
                 multiline
                 offset={10}
-                styles={CARD_TOOLTIP_STYLES}
+                styles={NOMINEE_CARD_TOOLTIP_STYLES}
                 label={
                   <NomineeTooltipCard
                     unitKind={props.unitKind}
