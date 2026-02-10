@@ -28,6 +28,7 @@ import { pickDeterministicAvatarKey } from "../../decisions/avatars";
 import { RuntimeBannerStack } from "../../notifications";
 import { notifications } from "@mantine/notifications";
 import { DraftCategoryIcon } from "../../ui/draft/DraftCategoryIcon";
+import { AvatarToken } from "../../ui/draft/AvatarToken";
 import {
   closeDraftAudio,
   createDraftAudioController,
@@ -2256,19 +2257,6 @@ function ParticipantStrip(props: {
         </Tooltip>
       )}
     </Group>
-  );
-}
-
-function AvatarToken(props: {
-  label: string;
-  avatarKey: string | null;
-  active: boolean;
-}) {
-  const avatarKey = props.avatarKey ?? pickDeterministicAvatarKey(props.label);
-  return (
-    <Box className={["drh-token", props.active ? "is-active" : ""].join(" ")}>
-      <AnimalAvatarIcon avatarKey={avatarKey} size={33} />
-    </Box>
   );
 }
 
