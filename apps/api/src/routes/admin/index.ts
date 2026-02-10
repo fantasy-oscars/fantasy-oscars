@@ -46,119 +46,13 @@ import {
   updateDynamicDraft,
   upsertStaticContent
 } from "../../data/repositories/cmsRepository.js";
+import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
+import { registerAdminUserRoutes } from "./users.js";
 
 export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
 
-  // Search helpers: case-insensitive + accent-insensitive matching (best-effort).
-  // This must not change rendering, only which results match user queries.
-  const SEARCH_TRANSLATE_FROM = "áàâäãåæçéèêëíìîïñóòôöõøœßúùûüýÿ";
-  const SEARCH_TRANSLATE_TO = "aaaaaaaceeeeiiiinooooooosuuuuyy";
-  function escapeLike(input: string) {
-    return input.replace(/%/g, "\\%").replace(/_/g, "\\_");
-  }
-  function normalizeForSearch(input: string) {
-    return String(input ?? "")
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-  }
-  function sqlNorm(exprSql: string) {
-    return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
-  }
-
-  router.get(
-    "/users",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-        if (!q) return res.status(200).json({ users: [] });
-
-        const likeRaw = `%${escapeLike(q)}%`;
-        const likeNorm = `%${escapeLike(normalizeForSearch(q))}%`;
-        const { rows } = await query(
-          client,
-          `SELECT id::int, username, email, is_admin, created_at
-           FROM app_user
-           WHERE username ILIKE $1 ESCAPE '\\'
-              OR email ILIKE $1 ESCAPE '\\'
-              OR ${sqlNorm("username")} LIKE $2 ESCAPE '\\'
-              OR ${sqlNorm("coalesce(email, '')")} LIKE $2 ESCAPE '\\'
-           ORDER BY created_at DESC
-           LIMIT 25`,
-          [likeRaw, likeNorm]
-        );
-        return res.status(200).json({ users: rows });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.get(
-    "/users/:id",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-        }
-        const { rows } = await query(
-          client,
-          `SELECT id::int, username, email, is_admin, created_at
-           FROM app_user
-           WHERE id = $1`,
-          [id]
-        );
-        const user = rows[0];
-        if (!user) throw new AppError("NOT_FOUND", 404, "User not found");
-        return res.status(200).json({ user });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.patch(
-    "/users/:id",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-        }
-        if (typeof req.body?.is_admin !== "boolean") {
-          throw new AppError("VALIDATION_FAILED", 400, "is_admin must be boolean");
-        }
-        const isAdmin = Boolean(req.body.is_admin);
-
-        const { rows } = await query(
-          client,
-          `UPDATE app_user
-           SET is_admin = $1
-           WHERE id = $2
-           RETURNING id::int, username, email, is_admin, created_at`,
-          [isAdmin, id]
-        );
-        const user = rows[0];
-        if (!user) throw new AppError("NOT_FOUND", 404, "User not found");
-
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: isAdmin ? "promote_admin" : "demote_admin",
-            target_type: "user",
-            target_id: user.id,
-            meta: { username: user.username }
-          });
-        }
-        return res.status(200).json({ user });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
+  registerAdminUserRoutes(router, client);
 
   router.get(
     "/content/static/:key",
