@@ -8,7 +8,6 @@ import {
   createLeagueMember,
   getLeagueById,
   listLeaguesForUser,
-  listPublicLeagues,
   listLeagueRoster,
   getLeagueMember,
   deleteLeague,
@@ -24,11 +23,11 @@ import type { DbClient } from "../data/db.js";
 import { query, runInTransaction } from "../data/db.js";
 import type { Pool } from "pg";
 import {
-  listSeasonMembers,
   addSeasonMember
 } from "../data/repositories/seasonMemberRepository.js";
 import { createDraft, getDraftBySeasonId } from "../data/repositories/draftRepository.js";
 import { SlidingWindowRateLimiter } from "../utils/rateLimiter.js";
+import { registerLeaguePublicRoutes } from "./leagues/public.js";
 
 const joinRateLimiter = new SlidingWindowRateLimiter({
   windowMs: 5 * 60 * 1000,
@@ -64,6 +63,8 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
   const router = express.Router();
 
   // League membership is invite-only for MVP; open joins are disabled.
+  registerLeaguePublicRoutes({ router, client, authSecret });
+
   router.post("/", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
     try {
       const { name } = req.body ?? {};
@@ -124,52 +125,6 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
       next(err);
     }
   });
-
-  router.get(
-    "/public",
-    requireAuth(authSecret),
-    async (req: AuthedRequest, res, next) => {
-      try {
-        const search = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
-        const leagues = await listPublicLeagues(client, { search });
-        return res.json({ leagues });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.get(
-    "/public/:id",
-    requireAuth(authSecret),
-    async (req: AuthedRequest, res, next) => {
-      try {
-        const id = Number(req.params.id);
-        if (Number.isNaN(id)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
-        const league = await getLeagueById(client, id);
-        if (!league || !league.is_public) {
-          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-        }
-        const seasons = await listSeasonsForLeague(client, id, {
-          includeCancelled: false
-        });
-        if (seasons.length === 0) {
-          throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
-        }
-        const activeSeason = seasons[0];
-        const members = await listSeasonMembers(client, activeSeason.id);
-        return res.json({
-          league,
-          season: activeSeason,
-          member_count: members.length
-        });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
 
   router.post(
     "/:id/join",
