@@ -8,126 +8,24 @@ import {
   Title,
   useCombobox
 } from "@mantine/core";
-import { Tooltip } from "@mantine/core";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { CeremonyDetail } from "../../orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "../../orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { StandardCard } from "../../primitives";
 import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
+import { SortableNomineeRow } from "../../ui/ceremonies/draftPlans/SortableNomineeRow";
 import "../../primitives/baseline.css";
 
 const EMPTY_CATEGORIES: CeremonyDetail["categories"] = [];
 const EMPTY_NOMINATIONS: CeremonyDetail["nominations"] = [];
-
-function DraftCategoryIcon(props: { icon: string; variant: "default" | "inverted" }) {
-  if (props.variant === "inverted") {
-    return (
-      <Box
-        component="span"
-        className="mi-icon mi-icon-tiny dr-icon-punchout"
-        aria-hidden="true"
-      >
-        {props.icon}
-      </Box>
-    );
-  }
-  return (
-    <Box component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-      {props.icon}
-    </Box>
-  );
-}
-
-function SortableNomineeRow(props: {
-  id: number;
-  icon: string;
-  iconVariant: "default" | "inverted";
-  label: string;
-  tooltip: React.ReactNode;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: props.id });
-
-  return (
-    <Tooltip.Floating
-      label={props.tooltip}
-      offset={14}
-      position="right"
-      styles={{
-        tooltip: {
-          padding: 0,
-          background: "transparent",
-          border: "none",
-          boxShadow: "none"
-        }
-      }}
-    >
-      <Box
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition
-        }}
-      >
-        <Tooltip
-          events={{ hover: false, focus: true, touch: false }}
-          label={props.tooltip}
-          offset={14}
-          position="right"
-          styles={{
-            tooltip: {
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              boxShadow: "none"
-            }
-          }}
-        >
-          <Group
-            className={["draft-plan-row", isDragging ? "is-dragging" : ""].join(" ")}
-            justify="space-between"
-            align="center"
-            wrap="nowrap"
-            tabIndex={0}
-            role="listitem"
-            aria-label={props.label}
-          >
-            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
-              <Box
-                component="button"
-                type="button"
-                className="draft-plan-drag"
-                {...attributes}
-                {...listeners}
-                aria-label="Reorder nominee"
-                aria-roledescription="draggable"
-                aria-grabbed={isDragging}
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  drag_indicator
-                </Text>
-              </Box>
-              <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
-              <Text className="draft-plan-rowText" lineClamp={1}>
-                {props.label}
-              </Text>
-            </Group>
-          </Group>
-        </Tooltip>
-      </Box>
-    </Tooltip.Floating>
-  );
-}
 
 export function DraftPlansScreen(props: {
   ceremonyState: "loading" | "error" | "ready";
