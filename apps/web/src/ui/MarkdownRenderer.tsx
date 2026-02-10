@@ -1,8 +1,19 @@
-import { Anchor, Blockquote, Box, Code, List, Stack, Text, Title } from "@mantine/core";
+import {
+  Anchor,
+  Blockquote,
+  Box,
+  Code,
+  Divider,
+  List,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
 import { Link as RouterLink } from "react-router-dom";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
-import type { Root, Content, PhrasingContent, ListItem } from "mdast";
+import remarkGfm from "remark-gfm";
+import type { Root, Content, PhrasingContent, ListItem, Definition } from "mdast";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { CodeBlock } from "./CodeBlock";
@@ -11,17 +22,91 @@ type Props = {
   markdown: string;
 };
 
-function isExternalUrl(url: string) {
+function applyTypographyReplacementsToText(value: string): string {
+  // Minimal, explicit typography normalization.
+  // - We intentionally do NOT change how characters are rendered elsewhere in the app.
+  // - We only rewrite the Markdown author's ASCII punctuation into typographic glyphs.
+  // - This runs only on Markdown "text" nodes (never code/inlineCode).
+  return (
+    value
+      // Em dash: users often type `---`.
+      .replaceAll("---", "\u2014")
+      // Ellipsis: `...`.
+      .replaceAll("...", "\u2026")
+  );
+}
+
+function applyTypographyReplacements(tree: Root): Root {
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const n = node as { type?: string; value?: unknown; children?: unknown[] };
+
+    if (n.type === "text" && typeof n.value === "string") {
+      n.value = applyTypographyReplacementsToText(n.value);
+    }
+
+    // Never touch code surfaces.
+    if (n.type === "code" || n.type === "inlineCode") return;
+
+    if (Array.isArray(n.children)) {
+      for (const child of n.children) visit(child);
+    }
+  };
+
+  visit(tree);
+  return tree;
+}
+
+function isExternalUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-function isSafeUrl(url: string) {
+function isSafeUrl(url: string): boolean {
   // Basic guardrail: never allow `javascript:`/`data:` links through.
   return !/^(javascript|data):/i.test(url.trim());
 }
 
-function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
-  if (!nodes || nodes.length === 0) return null;
+type DefinitionsMap = Map<string, Definition>;
+
+function normalizeDefinitionId(id: string): string {
+  return id.trim().toLowerCase();
+}
+
+function collectDefinitions(tree: Root): DefinitionsMap {
+  const defs: DefinitionsMap = new Map();
+
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const n = node as {
+      type?: string;
+      children?: unknown[];
+      identifier?: unknown;
+      url?: unknown;
+      title?: unknown;
+    };
+
+    if (n.type === "definition" && typeof n.identifier === "string") {
+      const id = normalizeDefinitionId(n.identifier);
+      // mdast Definition also includes `url` and optional `title`.
+      defs.set(id, n as unknown as Definition);
+      return;
+    }
+
+    if (Array.isArray(n.children)) {
+      for (const child of n.children) visit(child);
+    }
+  };
+
+  visit(tree);
+  return defs;
+}
+
+function renderInline(
+  nodes: PhrasingContent[] | undefined,
+  keyPrefix: string,
+  definitions: DefinitionsMap
+): ReactNode[] {
+  if (!nodes || nodes.length === 0) return [];
 
   return nodes.map((node, i) => {
     const key = `${keyPrefix}-inl-${i}`;
@@ -31,19 +116,19 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
       case "strong":
         return (
           <Text key={key} span fw={700} inherit>
-            {renderInline(node.children, key)}
+            {renderInline(node.children, key, definitions)}
           </Text>
         );
       case "emphasis":
         return (
           <Text key={key} span fs="italic" inherit>
-            {renderInline(node.children, key)}
+            {renderInline(node.children, key, definitions)}
           </Text>
         );
       case "delete":
         return (
           <Text key={key} span td="line-through" inherit>
-            {renderInline(node.children, key)}
+            {renderInline(node.children, key, definitions)}
           </Text>
         );
       case "inlineCode":
@@ -54,7 +139,7 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
         );
       case "link": {
         if (!isSafeUrl(node.url)) return null;
-        const content = renderInline(node.children, key);
+        const content = renderInline(node.children, key, definitions);
         if (isExternalUrl(node.url)) {
           return (
             <Anchor key={key} href={node.url} target="_blank" rel="noopener noreferrer">
@@ -64,6 +149,27 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
         }
         return (
           <Anchor key={key} component={RouterLink} to={node.url}>
+            {content}
+          </Anchor>
+        );
+      }
+      case "linkReference": {
+        const def = definitions.get(normalizeDefinitionId(node.identifier));
+        if (!def) {
+          // If the definition is missing, render the visible text as plain text.
+          return renderInline(node.children, key, definitions);
+        }
+        if (!isSafeUrl(def.url)) return null;
+        const content = renderInline(node.children, key, definitions);
+        if (isExternalUrl(def.url)) {
+          return (
+            <Anchor key={key} href={def.url} target="_blank" rel="noopener noreferrer">
+              {content}
+            </Anchor>
+          );
+        }
+        return (
+          <Anchor key={key} component={RouterLink} to={def.url}>
             {content}
           </Anchor>
         );
@@ -78,7 +184,11 @@ function renderInline(nodes: PhrasingContent[] | undefined, keyPrefix: string) {
   });
 }
 
-function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
+function renderBlocks(
+  nodes: Content[] | undefined,
+  keyPrefix: string,
+  definitions: DefinitionsMap
+): ReactNode[] {
   if (!nodes || nodes.length === 0) return [];
 
   const out: ReactNode[] = [];
@@ -93,7 +203,7 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
         if (depth >= 5) {
           out.push(
             <Text key={key} fw={500} style={{ margin: 0 }} mb="xs">
-              {renderInline(node.children as PhrasingContent[], key)}
+              {renderInline(node.children as PhrasingContent[], key, definitions)}
             </Text>
           );
           return;
@@ -101,7 +211,7 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
 
         out.push(
           <Title key={key} order={depth} style={{ marginTop: 0 }} mb="xs">
-            {renderInline(node.children as PhrasingContent[], key)}
+            {renderInline(node.children as PhrasingContent[], key, definitions)}
           </Title>
         );
         return;
@@ -109,7 +219,7 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
       case "paragraph": {
         out.push(
           <Text key={key} component="p" style={{ margin: 0 }} mb="sm">
-            {renderInline(node.children as PhrasingContent[], key)}
+            {renderInline(node.children as PhrasingContent[], key, definitions)}
           </Text>
         );
         return;
@@ -125,7 +235,11 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
           >
             {node.children.map((li: ListItem, liIndex: number) => (
               <List.Item key={`${key}-li-${liIndex}`}>
-                {renderBlocks(li.children as Content[], `${key}-li-${liIndex}`)}
+                {renderBlocks(
+                  li.children as Content[],
+                  `${key}-li-${liIndex}`,
+                  definitions
+                )}
               </List.Item>
             ))}
           </List>
@@ -135,7 +249,7 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
       case "blockquote": {
         out.push(
           <Blockquote key={key} mb="sm">
-            <Stack gap={0}>{renderBlocks(node.children, key)}</Stack>
+            <Stack gap={0}>{renderBlocks(node.children, key, definitions)}</Stack>
           </Blockquote>
         );
         return;
@@ -149,7 +263,10 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
         return;
       }
       case "thematicBreak":
-        // Keep this minimal and typographic-first: drop horizontal rules from Markdown.
+        out.push(<Divider key={key} my="sm" />);
+        return;
+      case "definition":
+        // Definitions exist only to support reference-style links; never render them.
         return;
       case "html":
         // Explicitly ignore raw HTML for safety.
@@ -166,10 +283,16 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string) {
 }
 
 export function MarkdownRenderer(props: Props) {
-  const tree = useMemo(
-    () => unified().use(remarkParse).parse(props.markdown) as Root,
-    [props.markdown]
-  );
+  const { tree, definitions } = useMemo(() => {
+    const parsed = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .parse(props.markdown) as Root;
+    return {
+      tree: applyTypographyReplacements(parsed),
+      definitions: collectDefinitions(parsed)
+    };
+  }, [props.markdown]);
 
-  return <Stack gap={0}>{renderBlocks(tree.children, "md")}</Stack>;
+  return <Stack gap={0}>{renderBlocks(tree.children, "md", definitions)}</Stack>;
 }
