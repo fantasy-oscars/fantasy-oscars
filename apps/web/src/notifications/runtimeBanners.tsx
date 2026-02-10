@@ -1,17 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { Alert, Box } from "@mantine/core";
-
-function bannerColor(variant: RuntimeBanner["variant"]): string {
-  switch (variant) {
-    case "warning":
-      return "yellow";
-    case "error":
-      return "red";
-    case "info":
-    default:
-      return "gray";
-  }
-}
+import { bannerColor } from "../decisions/chrome/bannerColor";
 
 export type RuntimeBanner = {
   id: string;

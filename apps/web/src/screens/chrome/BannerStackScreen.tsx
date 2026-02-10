@@ -1,21 +1,7 @@
 import type { BannerRow } from "../../orchestration/chrome";
 import { Alert, Box } from "@mantine/core";
 import { Markdown } from "../../ui/Markdown";
-
-function bannerColor(variant: BannerRow["variant"]): string {
-  switch (variant) {
-    case "warning":
-      // Closest to our brand gold without being visually loud.
-      return "yellow";
-    case "success":
-      return "teal";
-    case "error":
-      return "red";
-    case "info":
-    default:
-      return "gray";
-  }
-}
+import { bannerColor } from "../../decisions/chrome/bannerColor";
 
 export function BannerStackScreen(props: {
   banners: BannerRow[];
