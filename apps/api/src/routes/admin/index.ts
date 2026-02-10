@@ -2,7 +2,6 @@ import express from "express";
 import { AppError } from "../../errors.js";
 import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { AuthedRequest } from "../../auth/middleware.js";
-import { setActiveCeremonyId } from "../../data/repositories/appConfigRepository.js";
 import {
   lockCeremonyDraft,
   getCeremonyDraftLockedAt
@@ -38,6 +37,7 @@ import type { Pool } from "pg";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import type { Router } from "express";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
+import { registerAdminActiveCeremonyRoutes } from "./activeCeremony.js";
 import { registerAdminCategoryFamilyRoutes } from "./categoryFamilies.js";
 import { registerAdminContentRoutes } from "./content.js";
 import { registerAdminIconRoutes } from "./icons.js";
@@ -50,6 +50,7 @@ export function createAdminRouter(client: DbClient): Router {
   registerAdminContentRoutes(router, client);
   registerAdminIconRoutes(router, client);
   registerAdminCategoryFamilyRoutes(router, client);
+  registerAdminActiveCeremonyRoutes(router, client);
 
   router.get(
     "/ceremonies",
@@ -1747,83 +1748,6 @@ export function createAdminRouter(client: DbClient): Router {
           next(new AppError("VALIDATION_FAILED", 400, "Ceremony code already exists"));
           return;
         }
-        next(err);
-      }
-    }
-  );
-
-  router.post(
-    "/ceremonies/:id/name",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const id = Number(req.params.id);
-        const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        if (!name) {
-          throw new AppError("VALIDATION_FAILED", 400, "Name is required");
-        }
-
-        const { rows } = await query(
-          client,
-          `UPDATE ceremony SET name = $1
-           WHERE id = $2
-           RETURNING id, code, name, year`,
-          [name, id]
-        );
-        const ceremony = rows[0];
-        if (!ceremony) {
-          throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        }
-
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "ceremony_name_update",
-            target_type: "ceremony",
-            target_id: ceremony.id,
-            meta: { name }
-          });
-        }
-        return res.status(200).json({ ceremony });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.post(
-    "/ceremony/active",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const ceremonyIdRaw = req.body?.ceremony_id;
-        const ceremonyId = Number(ceremonyIdRaw);
-        if (!ceremonyIdRaw || Number.isNaN(ceremonyId)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-
-        const { rows } = await query(
-          client,
-          `SELECT id::int, code, name, year FROM ceremony WHERE id = $1`,
-          [ceremonyId]
-        );
-        const ceremony = rows[0];
-        if (!ceremony) {
-          throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        }
-
-        await setActiveCeremonyId(client, ceremonyId);
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "set_active_ceremony",
-            target_type: "ceremony",
-            target_id: ceremony.id
-          });
-        }
-        return res.status(200).json({ ceremony });
-      } catch (err) {
         next(err);
       }
     }
