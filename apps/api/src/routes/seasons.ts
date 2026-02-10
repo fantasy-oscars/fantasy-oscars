@@ -52,24 +52,7 @@ import {
   type SeasonInviteRecord
 } from "../data/repositories/seasonInviteRepository.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
-
-// Search helpers: case-insensitive + accent-insensitive matching (best-effort).
-// This must not change rendering, only which results match user queries.
-const SEARCH_TRANSLATE_FROM = "áàâäãåæçéèêëíìîïñóòôöõøœßúùûüýÿ";
-const SEARCH_TRANSLATE_TO = "aaaaaaaceeeeiiiinooooooosuuuuyy";
-function escapeLike(input: string) {
-  return input.replace(/%/g, "\\%").replace(/_/g, "\\_");
-}
-function normalizeForSearch(input: string) {
-  return String(input ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-function sqlNorm(exprSql: string) {
-  return `translate(lower(${exprSql}), '${SEARCH_TRANSLATE_FROM}', '${SEARCH_TRANSLATE_TO}')`;
-}
+import { escapeLike, normalizeForSearch, sqlNorm } from "../domain/search.js";
 
 export function createSeasonsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
