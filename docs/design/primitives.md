@@ -8,6 +8,7 @@ These primitives are implemented in `apps/web/src/primitives/**`.
 ## Cards
 
 All cards share:
+
 - consistent radius
 - consistent padding
 - shadow-based elevation (no decorative borders)
@@ -37,9 +38,11 @@ Primitives:
 ## CSS
 
 Baseline layout + typography classes live in:
+
 - `apps/web/src/primitives/baseline.css`
 
 Theme tokens and Mantine skinning live in:
+
 - `apps/web/src/styles.css`
 - `apps/web/src/theme/theme.ts`
 
@@ -48,4 +51,3 @@ Theme tokens and Mantine skinning live in:
 - Pages (`apps/web/src/pages/**`) are glue only: call orchestration hooks and render screens.
 - Screens/components render UI and consume primitives; they do not fetch data.
 - If a page needs a new visual pattern, create a new primitive intentionally (do not ad-hoc style per page).
-

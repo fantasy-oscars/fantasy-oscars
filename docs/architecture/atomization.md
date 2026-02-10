@@ -16,6 +16,7 @@ Terminology is the same for frontend and backend:
 - When FE and BE could disagree, the decision logic belongs in `packages/shared`.
 
 Where it lives:
+
 - Shared: `packages/shared/src/**` (preferred for cross-boundary rules)
 - Web-only: `apps/web/src/decisions/**`
 - API-only: `apps/api/src/domain/**` (pure rule modules only)
@@ -30,6 +31,7 @@ Where it lives:
 - No nested orchestration: a workflow should not "delegate" to another orchestration as an internal helper.
 
 Where it lives:
+
 - Web: `apps/web/src/orchestration/**`
 - API: `apps/api/src/services/**` and `apps/api/src/data/**` (repositories)
 
@@ -42,6 +44,7 @@ Where it lives:
 - Router integration is allowed here (reading params, navigating), but the truth/rules still live in Decisions/Orchestration.
 
 Where it lives:
+
 - Web routes: `apps/web/src/pages/**` (and some route layouts)
 
 ## UI (rendering only)
@@ -54,6 +57,7 @@ Where it lives:
 - Mantine components and styling live here.
 
 Where it lives:
+
 - Web: `apps/web/src/screens/**`, `apps/web/src/primitives/**`, `apps/web/src/ui/**`, `apps/web/src/components/**`
 
 ## Litmus tests
@@ -61,4 +65,3 @@ Where it lives:
 - Does this file decide something? -> Decision or Orchestration.
 - Does this file know why? -> It should not be UI.
 - Could we rewrite the UI with no other changes? -> Should be yes.
-

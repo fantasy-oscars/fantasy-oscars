@@ -98,7 +98,7 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
    - Confirm old seasons remain visible.
    - Confirm new ceremony is visible in the Ceremonies index and can be selected when creating a season.
 
-7) **Post-rollover checklist**
+6) **Post-rollover checklist**
 
 - Admin UI: upload nominees success message logged; categories render with radio buttons.
 - Admin UI: Winners page shows empty winners and unlocked state.
