@@ -1,17 +1,12 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Box, Stack, Text, Title } from "@mantine/core";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
 import { PageLoader } from "../../ui/page-state";
-import { CommissionerPill, StatusPill } from "../../ui/pills";
+import { SeasonDashboardHeader } from "../../ui/seasons/SeasonDashboardHeader";
+import { SeasonDraftRoomColumn } from "../../ui/seasons/SeasonDraftRoomColumn";
+import { SeasonManagementColumn } from "../../ui/seasons/SeasonManagementColumn";
+import { SeasonParticipantsColumn } from "../../ui/seasons/SeasonParticipantsColumn";
+import { SeasonRulesColumn } from "../../ui/seasons/SeasonRulesColumn";
 import {
   computeSeasonDraftRoomCtaLabel,
   computeSeasonLocked,
@@ -177,110 +172,35 @@ export function SeasonScreen(props: {
       <Box className="baseline-pageInner">
         <Stack component="section" gap="md">
           {/* Full-width header */}
-          <Group
-            component="header"
-            justify="space-between"
-            align="flex-start"
-            wrap="wrap"
-          >
-            <Box>
-              <Title order={2} className="baseline-textHeroTitle">
-                {ceremonyName}
-              </Title>
-              <Text className="baseline-textBody">{leagueName ?? "—"}</Text>
-            </Box>
-            <StatusPill>{progression.toUpperCase()}</StatusPill>
-          </Group>
+          <SeasonDashboardHeader
+            title={ceremonyName}
+            subtitle={leagueName ?? "—"}
+            statusLabel={progression.toUpperCase()}
+          />
 
           {/* Three-column functional layout */}
           <Box className="baseline-grid3Equal">
             {/* Column 1: Rules */}
-            <Stack gap="sm">
-              <Title order={3}>Rules</Title>
-              <Divider />
-              <Stack gap={6}>
-                <Text>
-                  <Text component="span" className="muted">
-                    Scoring:
-                  </Text>{" "}
-                  {scoringLabel(s.scoringStrategy)}
-                </Text>
-                <Text>
-                  <Text component="span" className="muted">
-                    Allocation:
-                  </Text>{" "}
-                  {allocationLabel(s.allocationStrategy)}
-                </Text>
-                <Text>
-                  <Text component="span" className="muted">
-                    Draft timer:
-                  </Text>{" "}
-                  {s.leagueContext?.season?.pick_timer_seconds
-                    ? `${s.leagueContext.season.pick_timer_seconds}s`
-                    : "Off"}
-                </Text>
-                <Text>
-                  <Text component="span" className="muted">
-                    Ceremony time:
-                  </Text>{" "}
-                  {s.formatDate(s.ceremonyStartsAt)}
-                </Text>
-              </Stack>
-            </Stack>
+            <SeasonRulesColumn
+              scoringLabel={scoringLabel(s.scoringStrategy)}
+              allocationLabel={allocationLabel(s.allocationStrategy)}
+              draftTimerLabel={
+                s.leagueContext?.season?.pick_timer_seconds
+                  ? `${s.leagueContext.season.pick_timer_seconds}s`
+                  : "Off"
+              }
+              ceremonyTimeLabel={s.formatDate(s.ceremonyStartsAt)}
+            />
 
             {/* Column 2: Participants */}
-            <Stack gap="sm">
-              <Title order={3}>Participants</Title>
-              <Divider />
-              {s.members.length === 0 ? (
-                <Text className="muted">No participants.</Text>
-              ) : (
-                <Stack
-                  component="ul"
-                  gap="xs"
-                  style={{ listStyle: "none", margin: 0, padding: 0 }}
-                >
-                  {s.members.map((m) => (
-                    <Box key={m.id} component="li">
-                      <Group justify="space-between" align="center" wrap="wrap">
-                        <Text>{m.username ?? `User ${m.user_id}`}</Text>
-                        {m.role === "OWNER" ? <CommissionerPill /> : null}
-                      </Group>
-                    </Box>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
+            <SeasonParticipantsColumn members={s.members} />
 
             {/* Column 3: Draft room */}
-            <Stack gap="sm">
-              <Title order={3}>Draft room</Title>
-              <Divider />
-              <Group wrap="wrap">
-                {s.draftId ? (
-                  <Button component={Link} to={`/drafts/${s.draftId}`} variant="filled">
-                    {draftRoomCtaLabel}
-                  </Button>
-                ) : (
-                  <Button disabled variant="filled">
-                    {draftRoomCtaLabel}
-                  </Button>
-                )}
-                {ceremonyId ? (
-                  <Button
-                    component={Link}
-                    to={`/ceremonies/${ceremonyId}/draft-plans`}
-                    variant="subtle"
-                  >
-                    Draft plans
-                  </Button>
-                ) : (
-                  <Button disabled variant="subtle">
-                    Draft plans
-                  </Button>
-                )}
-              </Group>
-            </Stack>
+            <SeasonDraftRoomColumn
+              draftId={s.draftId ?? null}
+              ceremonyId={ceremonyId}
+              draftRoomCtaLabel={draftRoomCtaLabel}
+            />
           </Box>
 
           {/* Season management aligned under the Draft room column */}
@@ -288,55 +208,21 @@ export function SeasonScreen(props: {
             <Box className="baseline-grid3Equal">
               <Box />
               <Box />
-              <Stack gap="sm">
-                <Title order={3} className="baseline-textSectionHeader">
-                  Season management
-                </Title>
-                <Stack gap="xs">
-                  <Button
-                    variant="outline"
-                    onClick={() => setInvitesOpen(true)}
-                    disabled={isLocked}
-                    title={
-                      isLocked ? "Invites are locked once drafting starts" : undefined
-                    }
-                  >
-                    Manage invites
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSettingsDraft({
-                        scoringStrategy: draftDefaults.scoring,
-                        allocationStrategy: draftDefaults.allocation,
-                        timerEnabled: draftDefaults.timerEnabled,
-                        pickTimerSeconds: draftDefaults.pickTimerSeconds
-                      });
-                      setSettingsOpen(true);
-                    }}
-                    disabled={isLocked}
-                    title={
-                      isLocked
-                        ? "Draft settings are locked once drafting starts"
-                        : undefined
-                    }
-                  >
-                    Adjust draft settings
-                  </Button>
-                </Stack>
-                <Divider my="sm" />
-                <Title order={4} className="baseline-textSectionHeader">
-                  Danger zone
-                </Title>
-                <Button
-                  color="red"
-                  variant="outline"
-                  onClick={() => setDeleteOpen(true)}
-                  disabled={s.working}
-                >
-                  Delete season
-                </Button>
-              </Stack>
+              <SeasonManagementColumn
+                isLocked={isLocked}
+                working={Boolean(s.working)}
+                onOpenInvites={() => setInvitesOpen(true)}
+                onOpenDraftSettings={() => {
+                  setSettingsDraft({
+                    scoringStrategy: draftDefaults.scoring,
+                    allocationStrategy: draftDefaults.allocation,
+                    timerEnabled: draftDefaults.timerEnabled,
+                    pickTimerSeconds: draftDefaults.pickTimerSeconds
+                  });
+                  setSettingsOpen(true);
+                }}
+                onOpenDelete={() => setDeleteOpen(true)}
+              />
             </Box>
           ) : null}
 
