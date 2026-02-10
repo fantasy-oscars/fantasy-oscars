@@ -4,8 +4,6 @@ import {
   Button,
   Divider,
   Group,
-  Modal,
-  Select,
   Stack,
   Text,
   Title
@@ -20,6 +18,8 @@ import { CommissionerPill, StatusPill } from "../../ui/pills";
 import { StandardCard } from "../../primitives";
 import { computeSeasonCeremonyLabel } from "../../decisions/league";
 import { computeSeasonLifecycleLabelFromRow } from "../../decisions/season";
+import { DeleteLeagueModal } from "../../ui/leagues/modals/DeleteLeagueModal";
+import { TransferLeagueOwnershipModal } from "../../ui/leagues/modals/TransferLeagueOwnershipModal";
 import "../../primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
@@ -200,7 +200,7 @@ export function LeagueDetailScreen(props: {
                 )}
               </Stack>
 
-              {view.isOwner ? (
+          {view.isOwner ? (
                 <Stack gap="sm">
                   <Title order={4}>Management</Title>
                   <Divider />
@@ -228,72 +228,30 @@ export function LeagueDetailScreen(props: {
             </Stack>
           </Box>
 
-          <Modal
+          <TransferLeagueOwnershipModal
             opened={transferOpen}
             onClose={() => setTransferOpen(false)}
-            title="Transfer ownership"
-            centered
-          >
-            <Stack gap="sm">
-              <Text className="baseline-textBody">
-                Transfer league ownership to another member. The new commissioner will
-                manage seasons and winners.
-              </Text>
-              <Select
-                label="Member"
-                placeholder="Select member"
-                value={transferTarget}
-                onChange={setTransferTarget}
-                data={transferOptions}
-              />
-              <Group justify="flex-end">
-                <Button variant="subtle" onClick={() => setTransferOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    const id = transferTarget ? Number(transferTarget) : NaN;
-                    if (!Number.isFinite(id)) return;
-                    void onTransferOwnershipTo(id);
-                    setTransferOpen(false);
-                    setTransferTarget(null);
-                  }}
-                  disabled={!transferTarget || working}
-                >
-                  Transfer ownership
-                </Button>
-              </Group>
-            </Stack>
-          </Modal>
+            working={working}
+            value={transferTarget}
+            onChange={setTransferTarget}
+            options={transferOptions}
+            onConfirm={() => {
+              const id = transferTarget ? Number(transferTarget) : NaN;
+              if (!Number.isFinite(id)) return;
+              void onTransferOwnershipTo(id);
+              setTransferOpen(false);
+              setTransferTarget(null);
+            }}
+          />
 
-          <Modal
+          <DeleteLeagueModal
             opened={deleteOpen}
             onClose={() => setDeleteOpen(false)}
-            title="Delete league?"
-            centered
-          >
-            <Stack gap="sm">
-              <Text className="baseline-textBody">
-                Delete this league and all of its seasons. This cannot be undone.
-              </Text>
-              <Group justify="flex-end">
-                <Button variant="subtle" onClick={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  color="red"
-                  onClick={() => {
-                    void Promise.resolve(onDeleteLeague()).then(() =>
-                      setDeleteOpen(false)
-                    );
-                  }}
-                  disabled={working}
-                >
-                  Delete
-                </Button>
-              </Group>
-            </Stack>
-          </Modal>
+            working={working}
+            onConfirm={() => {
+              void Promise.resolve(onDeleteLeague()).then(() => setDeleteOpen(false));
+            }}
+          />
         </Stack>
       </Box>
     </Box>
