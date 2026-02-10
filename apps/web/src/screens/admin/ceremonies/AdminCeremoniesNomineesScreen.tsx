@@ -1,4 +1,9 @@
 import { formatFilmTitleWithYear } from "../../../lib/films";
+import { materialGlyph } from "../../../decisions/admin/materialGlyph";
+import {
+  nominationPrimaryLabel,
+  nominationSecondaryLabel
+} from "../../../decisions/admin/nominationLabels";
 import {
   ActionIcon,
   Box,
@@ -36,50 +41,9 @@ import type { AdminCeremonyNomineesOrchestration } from "../../../orchestration/
 import { FormStatus } from "../../../ui/forms";
 import { notify } from "../../../notifications";
 import { useCombobox } from "@mantine/core";
-import { fetchJson } from "../../../lib/api";
 import { StandardCard } from "../../../primitives";
 import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import "../../../primitives/baseline.css";
-
-function materialGlyph(code: string | null | undefined) {
-  const raw = (code ?? "").trim();
-  if (!raw) return "";
-  if (/^[0-9a-f]{4}$/i.test(raw)) return String.fromCharCode(Number.parseInt(raw, 16));
-  return raw;
-}
-
-function nominationPrimaryLabel(input: {
-  unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  film_title?: string | null;
-  song_title?: string | null;
-  performer_name?: string | null;
-  contributors?: Array<{ full_name: string; sort_order: number }>;
-  fallbackId: number;
-}) {
-  if (input.unit_kind === "SONG")
-    return input.song_title ?? `Nomination #${input.fallbackId}`;
-  if (input.unit_kind === "PERFORMANCE") {
-    const names =
-      input.contributors && input.contributors.length > 0
-        ? [...input.contributors]
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((c) => c.full_name)
-            .filter(Boolean)
-        : [];
-    if (names.length > 0) return names.join(", ");
-    return input.performer_name ?? `Nomination #${input.fallbackId}`;
-  }
-  return input.film_title ?? `Nomination #${input.fallbackId}`;
-}
-
-function nominationSecondaryLabel(input: {
-  unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  film_title?: string | null;
-}) {
-  if (input.unit_kind === "PERFORMANCE" && input.film_title)
-    return `from ${input.film_title}`;
-  return null;
-}
 
 function SortableNominationRow(props: {
   id: number;
@@ -693,6 +657,7 @@ export function AdminCeremoniesNomineesScreen(props: {
           onClose={() => setEditingNominationId(null)}
           onLinkFilm={linkFilmTmdb}
           onLinkPerson={linkPersonTmdb}
+          getFilmCredits={(filmId) => o.actions.getFilmCredits(filmId)}
           onAddContributor={async (nominationId, input) => {
             const ok = await addNominationContributor(nominationId, input);
             if (ok) {
@@ -884,6 +849,7 @@ function NominationEditModal(props: {
     nominationId: number,
     nominationContributorId: number
   ) => Promise<void>;
+  getFilmCredits: (filmId: number) => Promise<unknown | null>;
 }) {
   const {
     nomination,
@@ -894,7 +860,8 @@ function NominationEditModal(props: {
     onLinkFilm,
     onLinkPerson,
     onAddContributor,
-    onRemoveContributor
+    onRemoveContributor,
+    getFilmCredits
   } = props;
 
   type CreditPerson = {
@@ -1074,18 +1041,8 @@ function NominationEditModal(props: {
       return;
     }
     void (async () => {
-      const res = await fetchJson<{ credits: unknown | null }>(
-        `/admin/films/${filmId}/credits`,
-        {
-          method: "GET"
-        }
-      );
-      if (!res.ok) {
-        setFilmCredits(null);
-        return;
-      }
-      const creditsUnknown = res.data?.credits;
-      if (!creditsUnknown || typeof creditsUnknown !== "object") {
+      const creditsUnknown = await getFilmCredits(filmId);
+      if (!creditsUnknown) {
         setFilmCredits(null);
         return;
       }
@@ -1098,7 +1055,7 @@ function NominationEditModal(props: {
         : undefined;
       setFilmCredits({ cast, crew });
     })();
-  }, [filmId, filmLinked]);
+  }, [filmId, filmLinked, getFilmCredits]);
 
   if (!nomination) return null;
 

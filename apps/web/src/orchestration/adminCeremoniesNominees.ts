@@ -797,6 +797,19 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [loadNominations]
   );
 
+  const getFilmCredits = useCallback(async (filmId: number) => {
+    if (!Number.isFinite(filmId) || filmId <= 0) return null;
+    const res = await fetchJson<{ credits: unknown | null }>(
+      `/admin/films/${filmId}/credits`,
+      {
+        method: "GET"
+      }
+    );
+    if (!res.ok) return null;
+    const creditsUnknown = res.data?.credits ?? null;
+    return creditsUnknown && typeof creditsUnknown === "object" ? creditsUnknown : null;
+  }, []);
+
   return {
     ceremonyId,
     tab,
@@ -854,6 +867,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     filteredCreditOptions,
 
     actions: {
+      getFilmCredits,
       loadManualContext,
       searchPeople,
       resolveFilmSelection,

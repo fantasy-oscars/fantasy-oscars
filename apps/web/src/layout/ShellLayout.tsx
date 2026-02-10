@@ -19,8 +19,8 @@ import { BannerStack } from "./BannerStack";
 import { PageError } from "../ui/page-state";
 import { SiteFooter } from "./SiteFooter";
 import { AnimalAvatarIcon } from "../ui/animalAvatarIcon";
-import { fetchJson } from "../lib/api";
 import { RuntimeBannerStack } from "../notifications";
+import { useInviteCountOrchestration } from "../orchestration/chrome";
 
 export function ShellLayout() {
   const { user, loading, sessionError, logout } = useAuthContext();
@@ -32,7 +32,7 @@ export function ShellLayout() {
   const [navMode, setNavMode] = useState<"inline" | "drawer">("inline");
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const themeToggleIcon = colorScheme === "dark" ? "\ue518" : "\ue51c";
-  const [inviteCount, setInviteCount] = useState<number>(0);
+  const { inviteCount } = useInviteCountOrchestration(user?.sub);
 
   useEffect(() => {
     setUserMenuOpen(false);
@@ -75,54 +75,6 @@ export function ShellLayout() {
       }
     };
   }, [user?.is_admin]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInvites() {
-      if (!user) {
-        setInviteCount(0);
-        return;
-      }
-      const res = await fetchJson<{ invites: Array<{ id: number }> }>(
-        "/seasons/invites/inbox",
-        {
-          method: "GET"
-        }
-      );
-      if (cancelled) return;
-      if (!res.ok) {
-        setInviteCount(0);
-        return;
-      }
-      setInviteCount(Array.isArray(res.data?.invites) ? res.data!.invites.length : 0);
-    }
-
-    void loadInvites();
-
-    // Keep the chrome bell in sync:
-    // - immediately on local invite actions (accept/decline)
-    // - periodically, so invites sent from other users appear without a full refresh
-    const onInvitesChanged = () => void loadInvites();
-    const onFocus = () => void loadInvites();
-    const interval =
-      typeof window !== "undefined" ? window.setInterval(loadInvites, 15_000) : null;
-    if (typeof window !== "undefined") {
-      window.addEventListener("fo:invites-changed", onInvitesChanged as EventListener);
-      window.addEventListener("focus", onFocus);
-    }
-    return () => {
-      cancelled = true;
-      if (typeof window !== "undefined") {
-        window.removeEventListener(
-          "fo:invites-changed",
-          onInvitesChanged as EventListener
-        );
-        window.removeEventListener("focus", onFocus);
-        if (interval) window.clearInterval(interval);
-      }
-    };
-  }, [user?.sub]);
 
   const primaryLinks = useMemo(() => {
     const links: Array<{ to: string; label: string; adminOnly?: boolean }> = [

@@ -18,7 +18,6 @@ import {
   useCombobox
 } from "@mantine/core";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
-import { fetchJson } from "../../lib/api";
 import { PageLoader } from "../../ui/page-state";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
 import "../../primitives/baseline.css";
@@ -443,13 +442,7 @@ export function SeasonScreen(props: {
                       if (!ceremonyId) return;
                       setWeightsError(null);
                       setWeightsLoading(true);
-                      const res = await fetchJson<{
-                        categories: Array<{
-                          id: number;
-                          sort_index: number;
-                          family_name: string;
-                        }>;
-                      }>(`/ceremonies/${ceremonyId}`, { method: "GET" });
+                      const res = await s.getCeremonyCategoriesForWeights(ceremonyId);
                       setWeightsLoading(false);
                       if (!res.ok) {
                         setWeightsError(res.error ?? "Unable to load categories");
@@ -459,7 +452,7 @@ export function SeasonScreen(props: {
                         return;
                       }
 
-                      const cats = (res.data?.categories ?? [])
+                      const cats = (res.categories ?? [])
                         .slice()
                         .sort((a, b) => (a.sort_index ?? 0) - (b.sort_index ?? 0))
                         .map((c) => ({ id: c.id, name: c.family_name }));

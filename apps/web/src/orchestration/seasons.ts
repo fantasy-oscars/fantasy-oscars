@@ -954,6 +954,20 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   const integrityWarningActive =
     draftWarningEligible && isIntegrityWarningWindow(ceremonyStartsAt, nowTs);
 
+  const getCeremonyCategoriesForWeights = useCallback(async (ceremonyId: number) => {
+    if (!Number.isFinite(ceremonyId) || ceremonyId <= 0) {
+      return { ok: false as const, error: "Invalid ceremony id" };
+    }
+    const res = await fetchJson<{
+      categories: Array<{ id: number; sort_index: number; family_name: string }>;
+    }>(`/ceremonies/${ceremonyId}`, { method: "GET" });
+    if (!res.ok) {
+      return { ok: false as const, error: res.error ?? "Unable to load categories" };
+    }
+    const cats = Array.isArray(res.data?.categories) ? res.data!.categories : [];
+    return { ok: true as const, categories: cats };
+  }, []);
+
   return {
     loading,
     error,
@@ -1020,6 +1034,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     saveInviteLabel,
     formatDate,
     buildInviteLink,
-    copyLink
+    copyLink,
+    getCeremonyCategoriesForWeights
   };
 }
