@@ -51,3 +51,10 @@ Theme tokens and Mantine skinning live in:
 - Pages (`apps/web/src/pages/**`) are glue only: call orchestration hooks and render screens.
 - Screens/components render UI and consume primitives; they do not fetch data.
 - If a page needs a new visual pattern, create a new primitive intentionally (do not ad-hoc style per page).
+
+## Typography rules (baseline)
+
+Only two font families are used:
+
+- Serif (Cinzel): page titles, section headers, card titles, update headlines, and brand text.
+- Sans: everything else (taglines, body, meta, pills, buttons, navigation, footers).
