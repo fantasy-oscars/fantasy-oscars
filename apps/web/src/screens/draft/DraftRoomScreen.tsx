@@ -144,14 +144,21 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       await unlockDraftAudio(audioControllerRef.current);
       setAudioUnlocked(Boolean(audioControllerRef.current));
       document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("mousedown", unlock);
+      document.removeEventListener("touchstart", unlock);
       document.removeEventListener("keydown", unlock);
     };
 
     document.addEventListener("pointerdown", unlock, { passive: true });
+    // iOS Safari can run without Pointer Events; listen for touchstart/mousedown too.
+    document.addEventListener("touchstart", unlock, { passive: true });
+    document.addEventListener("mousedown", unlock);
     document.addEventListener("keydown", unlock);
 
     return () => {
       document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("mousedown", unlock);
+      document.removeEventListener("touchstart", unlock);
       document.removeEventListener("keydown", unlock);
       closeDraftAudio(audioControllerRef.current);
     };
@@ -366,12 +373,15 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         isCompleted={isCompleted}
         isFinalResults={isFinalResults}
         isMyTurnStyling={isMyTurnStyling}
+        isMyTurn={isMyTurn}
         previewUser={previewUser}
         categories={categories}
         nomineeById={nomineeById}
         draftedNominationIds={draftedNominationIds}
         avatarKeyBySeat={avatarKeyBySeat}
         canDraftAction={canDraftAction}
+        audioController={audioControllerRef.current}
+        audioUnlocked={audioUnlocked}
         showDrafted={props.o.header.poolMode === "ALL_MUTED"}
         onToggleShowDrafted={(next) =>
           props.o.header.setPoolMode(next ? "ALL_MUTED" : "UNDRAFTED_ONLY")
@@ -473,7 +483,10 @@ function MobileDraftRoom(props: {
   isCompleted: boolean;
   isFinalResults: boolean;
   isMyTurnStyling: boolean;
+  isMyTurn: boolean;
   previewUser: { label: string; avatarKey: string | null };
+  audioController: ReturnType<typeof createDraftAudioController>;
+  audioUnlocked: boolean;
   categories: Array<{
     id: string;
     title: string;
@@ -577,8 +590,12 @@ function MobileDraftRoom(props: {
         roundNumber={o.header.roundNumber}
         pickNumber={o.header.pickNumber}
         isTimerDraft={o.header.hasTimer}
+        timerRemainingMs={o.header.timerRemainingMs}
         clockText={o.header.clockText}
         draftStatus={draftStatus}
+        isMyTurn={props.isMyTurn}
+        audioController={props.audioController}
+        audioUnlocked={props.audioUnlocked}
         showDraftControls={!isCompleted}
         canManageDraft={props.isPreview ? true : o.header.canManageDraft}
         onStartDraft={o.header.onStartDraft}
@@ -771,8 +788,12 @@ function MobileDraftHeader(props: {
   roundNumber: number | null;
   pickNumber: number | null;
   isTimerDraft: boolean;
+  timerRemainingMs: number | null;
   clockText: string;
   draftStatus: string | null;
+  isMyTurn: boolean;
+  audioController: ReturnType<typeof createDraftAudioController>;
+  audioUnlocked: boolean;
   showDraftControls: boolean;
   canManageDraft: boolean;
   onStartDraft: () => void;
@@ -795,6 +816,42 @@ function MobileDraftHeader(props: {
   const isPaused = props.draftStatus === "PAUSED";
   const isCompleted = props.draftStatus === "COMPLETED";
 
+  const countdownActive = Boolean(
+    props.isTimerDraft &&
+    props.draftStatus === "IN_PROGRESS" &&
+    !props.isFinalResults &&
+    props.isMyTurn &&
+    isCountdownActive(props.timerRemainingMs)
+  );
+  const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
+  const countdownIntervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!countdownActive) {
+      if (countdownIntervalRef.current) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setCountdownPhase(null);
+      return;
+    }
+
+    const tick = () => {
+      setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
+      if (props.audioUnlocked) playCountdownBeep(props.audioController);
+    };
+
+    tick();
+    countdownIntervalRef.current = window.setInterval(tick, COUNTDOWN_BEEP_INTERVAL_MS);
+    return () => {
+      if (countdownIntervalRef.current) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdownActive]);
+
   const centerText =
     props.isFinalResults && props.resultsWinnerLabel
       ? props.resultsWinnerLabel
@@ -812,7 +869,14 @@ function MobileDraftHeader(props: {
 
   return (
     <Box className="dr-header dr-mobileHeader">
-      <Box className="dr-mobileBar" role="banner">
+      <Box
+        className={[
+          "dr-mobileBar",
+          countdownActive ? "is-countdown" : "",
+          countdownActive ? (countdownPhase === "red" ? "pulse-red" : "pulse-gold") : ""
+        ].join(" ")}
+        role="banner"
+      >
         <ActionIcon
           variant="subtle"
           onClick={props.onOpen}
