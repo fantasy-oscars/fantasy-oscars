@@ -57,7 +57,8 @@ export function LeagueDetailScreen(props: {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState<string | null>(null);
 
-  const rosterList = view.state === "ready" ? (view.roster ?? EMPTY_ROSTER) : EMPTY_ROSTER;
+  const rosterList =
+    view.state === "ready" ? (view.roster ?? EMPTY_ROSTER) : EMPTY_ROSTER;
   const transferOptions = useMemo(() => {
     const me = Number(user?.sub);
     return rosterList
