@@ -1,14 +1,12 @@
 import {
   Box,
   Button,
-  FileInput,
   Group,
   Select,
   Stack,
   Text,
   TextInput
 } from "@mantine/core";
-import { Accordion } from "@mantine/core";
 import {
   PointerSensor,
   useSensor,
@@ -20,6 +18,7 @@ import { FormStatus } from "../../../ui/forms";
 import { notify } from "../../../notifications";
 import { StandardCard } from "../../../primitives";
 import { CategoryNominationSection } from "../../../ui/admin/ceremonies/nominees/CategoryNominationSection";
+import { CandidatePoolAccordion } from "../../../ui/admin/ceremonies/nominees/CandidatePoolAccordion";
 import { FilmCombobox } from "../../../ui/admin/ceremonies/nominees/FilmCombobox";
 import { NominationEditModal } from "../../../ui/admin/ceremonies/nominees/NominationEditModal";
 import "../../../primitives/baseline.css";
@@ -109,66 +108,16 @@ export function AdminCeremoniesNomineesScreen(props: {
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <Accordion
-        value={candidateOpen}
-        onChange={setCandidateOpen}
-        className="wizard-accordion"
-        variant="contained"
-      >
-        <Accordion.Item
-          value="candidate-pool"
-          className="wizard-accordion-item is-optional"
-        >
-          <Accordion.Control>
-            <Group justify="space-between" wrap="nowrap" w="100%">
-              <Text fw={700}>Candidate pool (optional)</Text>
-              {candidateLoaded ? (
-                <Text
-                  component="span"
-                  className="gicon wizard-inline-check"
-                  aria-hidden="true"
-                >
-                  {giconCheck}
-                </Text>
-              ) : null}
-            </Group>
-          </Accordion.Control>
-          <Accordion.Panel>
-            <Stack className="stack-sm" gap="sm">
-              <FileInput
-                label="Candidate pool JSON"
-                accept="application/json"
-                onChange={(file) => o.actions.onCandidateFile(file)}
-                fileInputProps={{ name: "candidate-pool-file" }}
-                disabled={candidateUploading}
-                placeholder="Choose file…"
-              />
-
-              <Group className="inline-actions" wrap="wrap">
-                <Button
-                  type="button"
-                  onClick={() => void uploadCandidateFilms()}
-                  disabled={candidateUploading}
-                >
-                  {candidateUploading ? "Loading..." : "Load candidate pool"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="subtle"
-                  onClick={resetCandidates}
-                  disabled={candidateUploading}
-                >
-                  Reset
-                </Button>
-              </Group>
-
-              {candidateUploadState?.ok === false ? (
-                <FormStatus loading={candidateUploading} result={candidateUploadState} />
-              ) : null}
-            </Stack>
-          </Accordion.Panel>
-        </Accordion.Item>
-      </Accordion>
+      <CandidatePoolAccordion
+        open={candidateOpen}
+        setOpen={setCandidateOpen}
+        candidateLoaded={candidateLoaded}
+        candidateUploading={candidateUploading}
+        candidateUploadState={candidateUploadState}
+        onPickFile={(file) => o.actions.onCandidateFile(file)}
+        onUpload={() => void uploadCandidateFilms()}
+        onReset={resetCandidates}
+      />
 
       <StandardCard className="wizard-panel is-primary">
         <Stack className="stack-sm" gap="sm">
