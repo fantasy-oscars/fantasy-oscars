@@ -24,7 +24,7 @@ import { SiteFooterFineprintOnly } from "../../layout/SiteFooter";
 import { Link } from "react-router-dom";
 import { useAuthContext } from "../../auth/context";
 import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
-import { ANIMAL_AVATAR_KEYS } from "@fantasy-oscars/shared";
+import { pickDeterministicAvatarKey } from "../../decisions/avatars";
 import { RuntimeBannerStack } from "../../notifications";
 import { notifications } from "@mantine/notifications";
 import { DraftCategoryIcon } from "../../ui/draft/DraftCategoryIcon";
@@ -2269,15 +2269,6 @@ function AvatarToken(props: {
       <AnimalAvatarIcon avatarKey={avatarKey} size={33} />
     </Box>
   );
-}
-
-function pickDeterministicAvatarKey(label: string): string {
-  // Stable, non-color-dependent identity: map the handle to an animal key.
-  let hash = 0;
-  for (let i = 0; i < label.length; i += 1) {
-    hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
-  }
-  return ANIMAL_AVATAR_KEYS[hash % ANIMAL_AVATAR_KEYS.length] ?? "monkey";
 }
 
 function DirectionChevron(props: { direction: "FORWARD" | "REVERSE" | null }) {
