@@ -1,15 +1,16 @@
 import { Box, Button, Divider, Group, Stack, Text, Title, Tooltip } from "@mantine/core";
 import { Link } from "react-router-dom";
 import type { AuthUser } from "../auth/context";
-import type { LandingSeasonPreview, LandingView } from "../orchestration/landing";
+import type { LandingView } from "../orchestration/landing";
 import { Markdown } from "../ui/Markdown";
 import { ActionCard, HeroCard, LandingLayout, StandardCard } from "../primitives";
-import { computeLandingSeasonStatus, markdownToTagline, titleCase } from "../decisions/landing";
+import {
+  computeLandingSeasonCeremonyLabel,
+  computeLandingSeasonStatus,
+  markdownToTagline,
+  titleCase
+} from "../decisions/landing";
 import "../primitives/baseline.css";
-
-function ceremonyMeta(season: LandingSeasonPreview): string {
-  return season.ceremony_name ?? `Ceremony ${season.ceremony_id}`;
-}
 
 export function LandingScreen(props: {
   user: AuthUser | null;
@@ -123,7 +124,12 @@ export function LandingScreen(props: {
                   <Stack gap={10}>
                     <Text className="baseline-textCardTitle">{s.league_name}</Text>
                     <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
-                      <Text className="baseline-textMeta">{ceremonyMeta(s)}</Text>
+                      <Text className="baseline-textMeta">
+                        {computeLandingSeasonCeremonyLabel({
+                          ceremonyName: s.ceremony_name,
+                          ceremonyId: s.ceremony_id
+                        })}
+                      </Text>
                       <Tooltip
                         label={status.urgencyHelp ?? ""}
                         disabled={!status.urgencyHelp}

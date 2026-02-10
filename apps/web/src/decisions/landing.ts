@@ -45,3 +45,10 @@ export function markdownToTagline(markdown: string): string {
   const noStars = noLinks.replace(/[*_`>#]/g, "");
   return noStars.replace(/\s+/g, " ").trim();
 }
+
+export function computeLandingSeasonCeremonyLabel(args: {
+  ceremonyName: string | null | undefined;
+  ceremonyId: number;
+}): string {
+  return args.ceremonyName ?? `Ceremony ${args.ceremonyId}`;
+}
