@@ -3,16 +3,13 @@ import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import {
+  cmsDynamicEntryStatusLabel,
   formatDateTimeForHumans,
   type DynamicKey
 } from "../../../decisions/adminContent";
 import type { ApiResult } from "../../../lib/types";
 import type { CmsDynamicRow } from "../../../orchestration/adminContent";
 import "../../../primitives/baseline.css";
-
-function statusLabel(entry: CmsDynamicRow) {
-  return entry.status === "PUBLISHED" ? "Active" : "Inactive";
-}
 
 export function AdminDynamicContentLedgerScreen(props: {
   contentKey: DynamicKey | null;
@@ -87,7 +84,7 @@ export function AdminDynamicContentLedgerScreen(props: {
                     {e.title || "(untitled)"}
                   </Text>
                   <Text className="baseline-textMeta" c="dimmed">
-                    {statusLabel(e)}
+                    {cmsDynamicEntryStatusLabel(e.status)}
                     {isSequential
                       ? ` • updated ${formatDateTimeForHumans(e.updated_at)}`
                       : ""}
