@@ -1,12 +1,4 @@
-import {
-  Box,
-  Button,
-  Group,
-  Select,
-  Stack,
-  Text,
-  TextInput
-} from "@mantine/core";
+import { Box, Group, Stack, Text } from "@mantine/core";
 import {
   PointerSensor,
   useSensor,
@@ -19,7 +11,7 @@ import { notify } from "../../../notifications";
 import { StandardCard } from "../../../primitives";
 import { CategoryNominationSection } from "../../../ui/admin/ceremonies/nominees/CategoryNominationSection";
 import { CandidatePoolAccordion } from "../../../ui/admin/ceremonies/nominees/CandidatePoolAccordion";
-import { FilmCombobox } from "../../../ui/admin/ceremonies/nominees/FilmCombobox";
+import { CreateNominationPanel } from "../../../ui/admin/ceremonies/nominees/CreateNominationPanel";
 import { NominationEditModal } from "../../../ui/admin/ceremonies/nominees/NominationEditModal";
 import "../../../primitives/baseline.css";
 
@@ -79,6 +71,17 @@ export function AdminCeremoniesNomineesScreen(props: {
   );
   const requiresContributor = selectedCategory?.unit_kind === "PERFORMANCE";
 
+  const addPendingContributor = () => {
+    const id = Number(pendingContributorId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setSelectedContributorIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setPendingContributorId("");
+  };
+
+  const removeSelectedContributor = (tmdbId: number) => {
+    setSelectedContributorIds((prev) => prev.filter((id) => id !== tmdbId));
+  };
+
   const candidateLoaded = useMemo(() => {
     const msg = candidateUploadState?.message ?? "";
     return Boolean(candidateUploadState?.ok && /^Loaded candidates/i.test(msg));
@@ -119,150 +122,35 @@ export function AdminCeremoniesNomineesScreen(props: {
         onReset={resetCandidates}
       />
 
-      <StandardCard className="wizard-panel is-primary">
-        <Stack className="stack-sm" gap="sm">
-          <Text fw={700}>Create nominations</Text>
-
-          <Group className="admin-add-row" align="flex-end" wrap="wrap">
-            <Box style={{ flex: "1 1 260px", minWidth: 220 }}>
-              <Select
-                label="Category"
-                placeholder="Select…"
-                searchable
-                value={selectedCategoryId ? String(selectedCategoryId) : null}
-                onChange={(v) => setSelectedCategoryId(v ? Number(v) : null)}
-                data={categories.map((c) => ({
-                  value: String(c.id),
-                  label: c.family_name ?? `Category ${c.id}`
-                }))}
-              />
-            </Box>
-            <Box style={{ flex: "2 1 420px", minWidth: 260 }}>
-              <FilmCombobox
-                label="Film"
-                value={filmInput}
-                onChange={(v) => void resolveFilmSelection(v)}
-                films={films}
-              />
-            </Box>
-          </Group>
-
-          {selectedCategory?.unit_kind === "SONG" ? (
-            <TextInput
-              label="Song title"
-              value={songTitle}
-              onChange={(e) => setSongTitle(e.currentTarget.value)}
-            />
-          ) : null}
-
-          {requiresContributor ? (
-            <Stack gap="sm" mt="xs">
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap="xs" align="center" wrap="nowrap">
-                  <Text fw={700}>Contributor</Text>
-                  {hasTmdbCredits ? (
-                    <Text
-                      component="span"
-                      className="gicon wizard-inline-check"
-                      aria-hidden="true"
-                    >
-                      {giconCheck}
-                    </Text>
-                  ) : null}
-                </Group>
-              </Group>
-
-              {creditsState?.ok === false ? (
-                <FormStatus loading={creditsLoading} result={creditsState} />
-              ) : null}
-
-              <Group className="admin-add-row" align="flex-end" wrap="wrap">
-                <Box style={{ flex: "1 1 360px", minWidth: 240 }}>
-                  <Select
-                    label="Select a person"
-                    placeholder="Select…"
-                    searchable
-                    value={pendingContributorId || null}
-                    onChange={(v) => setPendingContributorId(v ?? "")}
-                    data={creditOptions.map((o) => ({
-                      value: String(o.tmdb_id),
-                      label: o.label
-                    }))}
-                    disabled={!hasTmdbCredits}
-                  />
-                </Box>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    const id = Number(pendingContributorId);
-                    if (!Number.isFinite(id) || id <= 0) return;
-                    setSelectedContributorIds((prev) =>
-                      prev.includes(id) ? prev : [...prev, id]
-                    );
-                    setPendingContributorId("");
-                  }}
-                  disabled={!pendingContributorId || manualLoading || !hasTmdbCredits}
-                >
-                  Add
-                </Button>
-              </Group>
-
-              {selectedCredits.length > 0 ? (
-                <Stack className="stack-sm" gap="xs">
-                  {selectedCredits.map((c) => (
-                    <Box key={c.tmdb_id} className="list-row">
-                      <Box>
-                        <Text fw={700} span>
-                          {c.name}
-                        </Text>
-                        <Text className="muted" span>
-                          {" "}
-                          — {c.jobs.join(", ")}
-                        </Text>
-                      </Box>
-                      <Group className="inline-actions" wrap="wrap">
-                        <Button
-                          type="button"
-                          variant="subtle"
-                          onClick={() =>
-                            setSelectedContributorIds((prev) =>
-                              prev.filter((id) => id !== c.tmdb_id)
-                            )
-                          }
-                        >
-                          Remove
-                        </Button>
-                      </Group>
-                    </Box>
-                  ))}
-                </Stack>
-              ) : null}
-            </Stack>
-          ) : null}
-
-          <Group className="inline-actions" wrap="wrap">
-            <Button
-              type="button"
-              onClick={() => void createNomination()}
-              disabled={manualLoading}
-            >
-              {manualLoading ? "Saving..." : "Add nomination"}
-            </Button>
-            <Button
-              type="button"
-              variant="subtle"
-              onClick={resetManual}
-              disabled={manualLoading}
-            >
-              Reset
-            </Button>
-          </Group>
-
-          {manualState?.ok === false ? (
-            <FormStatus loading={manualLoading} result={manualState} />
-          ) : null}
-        </Stack>
-      </StandardCard>
+      <CreateNominationPanel
+        categories={categories.map((c) => ({
+          id: c.id,
+          label: c.family_name ?? `Category ${c.id}`
+        }))}
+        selectedCategoryId={selectedCategoryId}
+        setSelectedCategoryId={setSelectedCategoryId}
+        films={films}
+        filmInput={filmInput}
+        onFilmChange={(v) => void resolveFilmSelection(v)}
+        unitKind={selectedCategory?.unit_kind ?? null}
+        songTitle={songTitle}
+        setSongTitle={setSongTitle}
+        requiresContributor={Boolean(requiresContributor)}
+        hasTmdbCredits={hasTmdbCredits}
+        creditsLoading={creditsLoading}
+        creditsState={creditsState}
+        creditOptions={creditOptions}
+        pendingContributorId={pendingContributorId}
+        setPendingContributorId={setPendingContributorId}
+        onAddPendingContributor={addPendingContributor}
+        selectedCredits={selectedCredits}
+        onRemoveSelectedContributor={removeSelectedContributor}
+        manualLoading={manualLoading}
+        manualState={manualState}
+        onCreateNomination={() => void createNomination()}
+        onReset={resetManual}
+        checkIconChar={giconCheck}
+      />
 
       <StandardCard className="wizard-panel">
         <Stack className="stack-sm" gap="sm">
