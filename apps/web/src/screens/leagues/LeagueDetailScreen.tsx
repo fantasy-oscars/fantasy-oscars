@@ -13,13 +13,14 @@ import {
 import type { AuthUser } from "../../auth/context";
 import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";
+import type { LeagueMember } from "../../lib/types";
 import type { LeagueDetailView } from "../../orchestration/leagues";
 import { useMemo, useState } from "react";
 import { CommissionerPill, StatusPill } from "../../ui/pills";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 
-const EMPTY_ROSTER: Array<{ user_id: number; username: string }> = [];
+const EMPTY_ROSTER: LeagueMember[] = [];
 
 function ceremonyLabelForSeason(season: {
   ceremony_starts_at?: string | null;
