@@ -85,17 +85,29 @@ export function AdminCeremonyWizardScreen(props: {
                 .filter(Boolean)
                 .join(" ")}
               icon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="gicon wizard-step-icon"
+                  aria-hidden="true"
+                >
                   {stepIconFor(s.state)}
                 </Text>
               }
               progressIcon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="gicon wizard-step-icon"
+                  aria-hidden="true"
+                >
                   {stepIconFor(s.state)}
                 </Text>
               }
               completedIcon={
-                <Text component="span" className="gicon wizard-step-icon" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="gicon wizard-step-icon"
+                  aria-hidden="true"
+                >
                   {stepIconFor(s.state)}
                 </Text>
               }

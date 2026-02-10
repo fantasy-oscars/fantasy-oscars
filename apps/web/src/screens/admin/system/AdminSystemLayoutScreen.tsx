@@ -18,7 +18,12 @@ export function AdminSystemLayoutScreen(props: { children: ReactNode }) {
 
       <Divider my="md" />
 
-      <Group component="nav" className="admin-subnav" aria-label="System admin" wrap="wrap">
+      <Group
+        component="nav"
+        className="admin-subnav"
+        aria-label="System admin"
+        wrap="wrap"
+      >
         <NavLink to="/admin/system/audit" className={sublinkClass}>
           Audit Log
         </NavLink>
@@ -30,4 +35,3 @@ export function AdminSystemLayoutScreen(props: { children: ReactNode }) {
     </Box>
   );
 }
-

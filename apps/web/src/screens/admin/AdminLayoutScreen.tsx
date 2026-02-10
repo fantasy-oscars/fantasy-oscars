@@ -18,7 +18,11 @@ export function AdminLayoutScreen(props: { children: ReactNode }) {
             </Title>
             <Box component="nav" className="site-nav" aria-label="Admin sections">
               <Group className="nav-links" gap="md" wrap="wrap">
-                <NavLink end to="/admin" className={({ isActive }) => navLinkClass(isActive)}>
+                <NavLink
+                  end
+                  to="/admin"
+                  className={({ isActive }) => navLinkClass(isActive)}
+                >
                   Home
                 </NavLink>
 

@@ -137,4 +137,3 @@ export function stepIconFor(state: StepState): string {
   if (state === "GATED") return LOCK_ICON;
   return DOT_ICON;
 }
-

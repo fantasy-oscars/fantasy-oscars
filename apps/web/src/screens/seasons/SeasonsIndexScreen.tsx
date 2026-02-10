@@ -3,10 +3,7 @@ import { Box, Group, SegmentedControl, Stack, Text, Title } from "@mantine/core"
 import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
-import type {
-  SeasonIndexCard,
-  SeasonsIndexView
-} from "../../orchestration/seasonsIndex";
+import type { SeasonIndexCard, SeasonsIndexView } from "../../orchestration/seasonsIndex";
 
 type GroupMode = "ceremony" | "league";
 

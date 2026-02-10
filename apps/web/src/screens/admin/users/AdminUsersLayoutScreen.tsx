@@ -18,4 +18,3 @@ export function AdminUsersLayoutScreen(props: { children: ReactNode }) {
     </Box>
   );
 }
-
