@@ -4,55 +4,11 @@ import type { AuthUser } from "../auth/context";
 import type { LandingSeasonPreview, LandingView } from "../orchestration/landing";
 import { Markdown } from "../ui/Markdown";
 import { ActionCard, HeroCard, LandingLayout, StandardCard } from "../primitives";
+import { computeLandingSeasonStatus, markdownToTagline, titleCase } from "../decisions/landing";
 import "../primitives/baseline.css";
-
-function titleCase(input: string) {
-  return input
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function deriveSeasonStatus(season: LandingSeasonPreview): {
-  label: string;
-  urgent: boolean;
-  urgencyHelp: string | null;
-} {
-  const draftStatus = (season.draft_status ?? "").toUpperCase();
-  if (draftStatus === "LIVE" || draftStatus === "IN_PROGRESS") {
-    return {
-      label: "Draft Live",
-      urgent: true,
-      urgencyHelp: "Draft is currently in progress."
-    };
-  }
-  if (draftStatus === "PAUSED") {
-    return { label: "Draft Paused", urgent: true, urgencyHelp: "Draft is paused." };
-  }
-  if (draftStatus === "COMPLETED") {
-    return { label: "Draft Complete", urgent: false, urgencyHelp: null };
-  }
-  if (!season.draft_id) {
-    return { label: "Draft Not Started", urgent: false, urgencyHelp: null };
-  }
-  return { label: "Draft Not Started", urgent: false, urgencyHelp: null };
-}
 
 function ceremonyMeta(season: LandingSeasonPreview): string {
   return season.ceremony_name ?? `Ceremony ${season.ceremony_id}`;
-}
-
-function markdownToTagline(markdown: string): string {
-  const block =
-    markdown
-      .split(/\n\s*\n/)
-      .map((s) => s.trim())
-      .find(Boolean) ?? "";
-  const noLinks = block.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
-  const noStars = noLinks.replace(/[*_`>#]/g, "");
-  return noStars.replace(/\s+/g, " ").trim();
 }
 
 export function LandingScreen(props: {
@@ -153,7 +109,10 @@ export function LandingScreen(props: {
         ) : (
           <Stack gap="sm">
             {view.seasons.seasons.map((s) => {
-              const status = deriveSeasonStatus(s);
+              const status = computeLandingSeasonStatus({
+                draftStatus: s.draft_status,
+                draftId: s.draft_id
+              });
               return (
                 <StandardCard
                   key={s.id}
