@@ -1,26 +1,26 @@
 import express from "express";
-import { AppError } from "../errors.js";
-import { type DbClient, query, runInTransaction } from "../data/db.js";
-import { AuthedRequest } from "../auth/middleware.js";
-import { setActiveCeremonyId } from "../data/repositories/appConfigRepository.js";
+import { AppError } from "../../errors.js";
+import { type DbClient, query, runInTransaction } from "../../data/db.js";
+import { AuthedRequest } from "../../auth/middleware.js";
+import { setActiveCeremonyId } from "../../data/repositories/appConfigRepository.js";
 import {
   lockCeremonyDraft,
   getCeremonyDraftLockedAt
-} from "../data/repositories/ceremonyRepository.js";
+} from "../../data/repositories/ceremonyRepository.js";
 import {
   listWinnersByCeremony,
   setWinnersForCategoryEdition
-} from "../data/repositories/winnerRepository.js";
+} from "../../data/repositories/winnerRepository.js";
 import {
   updateNominationStatus,
   insertNominationChangeAudit,
   listNominationsForCeremony
-} from "../data/repositories/nominationRepository.js";
+} from "../../data/repositories/nominationRepository.js";
 import {
   cancelDraftsForCeremony,
   hasDraftsStartedForCeremony
-} from "../data/repositories/draftRepository.js";
-import { loadNominees } from "../scripts/load-nominees.js";
+} from "../../data/repositories/draftRepository.js";
+import { loadNominees } from "../../scripts/load-nominees.js";
 import {
   buildTmdbImageUrlFromConfig,
   buildTmdbImageUrl,
@@ -28,14 +28,14 @@ import {
   fetchTmdbPersonDetails,
   getTmdbImageConfig,
   parseReleaseYear
-} from "../lib/tmdb.js";
-import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
+} from "../../lib/tmdb.js";
+import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
 import {
   emitCeremonyFinalized,
   emitCeremonyWinnersUpdated
-} from "../realtime/ceremonyEvents.js";
+} from "../../realtime/ceremonyEvents.js";
 import type { Pool } from "pg";
-import { insertAdminAudit } from "../data/repositories/adminAuditRepository.js";
+import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import type { Router } from "express";
 import {
   createDynamicDraft,
@@ -45,7 +45,7 @@ import {
   unpublishDynamicContent,
   updateDynamicDraft,
   upsertStaticContent
-} from "../data/repositories/cmsRepository.js";
+} from "../../data/repositories/cmsRepository.js";
 
 export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
