@@ -2,7 +2,6 @@ import express from "express";
 import type { Router } from "express";
 import crypto from "crypto";
 import {
-  PASSWORD_MIN_LENGTH,
   ANIMAL_AVATAR_KEYS,
   normalizeEmail,
   normalizeUsername,
