@@ -1,9 +1,9 @@
-import { Box, Button, Drawer, Group, Menu, SegmentedControl, Stack, Switch, Text, UnstyledButton } from "@mantine/core";
+import { Box } from "@mantine/core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { AnimalAvatarIcon } from "../animalAvatarIcon";
 import { CenterBuckle } from "./CenterBuckle";
-import { ParticipantStrip } from "./ParticipantStrip";
+import { DraftHeaderLeftWing } from "./DraftHeaderLeftWing";
+import { DraftHeaderMeasureRow } from "./DraftHeaderMeasureRow";
+import { DraftHeaderRightWing } from "./DraftHeaderRightWing";
 import { createDraftAudioController, playCountdownBeep } from "../../lib/draftAudio";
 import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../lib/draftCountdown";
 
@@ -207,268 +207,47 @@ export function DraftBoardHeader(props: {
       <Box className="drh-row" ref={headerRef}>
         <Box className="drh-left" ref={leftRef}>
           <Box className="drh-wing" ref={leftWingRef}>
-            {compactHeader ? (
-              <>
-                <Box className="drh-backWrap" aria-hidden={false}>
-                  <UnstyledButton
-                    type="button"
-                    className="drh-back"
-                    aria-label="Menu"
-                    onClick={() => setCompactMenuOpen(true)}
-                  >
-                    <Text
-                      component="span"
-                      className="mi-icon mi-icon-tiny"
-                      aria-hidden="true"
-                    >
-                      menu
-                    </Text>
-                  </UnstyledButton>
-                </Box>
-                <Drawer
-                  opened={compactMenuOpen}
-                  onClose={() => setCompactMenuOpen(false)}
-                  position="left"
-                  title=" "
-                >
-                  <Stack gap="md">
-                    <Button
-                      component={Link}
-                      to={props.backHref ?? "/seasons"}
-                      variant="outline"
-                      fullWidth
-                      onClick={(e) => {
-                        if (!props.backHref) e.preventDefault();
-                        setCompactMenuOpen(false);
-                      }}
-                    >
-                      Back to seasons
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      fullWidth
-                      disabled={!props.canToggleView}
-                      onClick={() => {
-                        if (!props.canToggleView) return;
-                        props.onViewChange(props.view === "draft" ? "roster" : "draft");
-                        setCompactMenuOpen(false);
-                      }}
-                    >
-                      {props.view === "draft" ? "Roster view" : "Draft view"}
-                    </Button>
-
-                    {!isCompleted ? (
-                      <Box>
-                        <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
-                          Draft order
-                        </Text>
-                        <Stack gap="xs">
-                          {props.participants.map((p) => (
-                            <Group
-                              key={p.seatNumber}
-                              justify="space-between"
-                              wrap="nowrap"
-                            >
-                              <Group gap="sm" wrap="nowrap">
-                                <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
-                                <Text>{p.label}</Text>
-                              </Group>
-                              {p.active ? (
-                                <Text
-                                  component="span"
-                                  className="mi-icon mi-icon-tiny"
-                                  aria-hidden="true"
-                                >
-                                  play_arrow
-                                </Text>
-                              ) : null}
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Box>
-                    ) : null}
-                  </Stack>
-                </Drawer>
-              </>
-            ) : (
-              <>
-                <Box className="drh-backWrap" aria-hidden={false}>
-                  <UnstyledButton
-                    component={Link}
-                    to={props.backHref ?? "#"}
-                    className={["drh-back", props.backHref ? "" : "is-disabled"].join(
-                      " "
-                    )}
-                    aria-label="Back to season"
-                    onClick={(e) => {
-                      if (!props.backHref) e.preventDefault();
-                    }}
-                  >
-                    <Text
-                      component="span"
-                      className="mi-icon mi-icon-tiny"
-                      aria-hidden="true"
-                    >
-                      arrow_back
-                    </Text>
-                  </UnstyledButton>
-                </Box>
-                {!isCompleted && (
-                  <ParticipantStrip
-                    participants={props.participants}
-                    activeIndex={activeIndex}
-                    direction={props.direction}
-                    suppressActive={isPre || isPaused || isCompleted}
-                  />
-                )}
-              </>
-            )}
+            <DraftHeaderLeftWing
+              compactHeader={compactHeader}
+              compactMenuOpen={compactMenuOpen}
+              setCompactMenuOpen={setCompactMenuOpen}
+              backHref={props.backHref}
+              isCompleted={isCompleted}
+              isPre={isPre}
+              isPaused={isPaused}
+              participants={props.participants}
+              activeIndex={activeIndex}
+              direction={props.direction}
+              view={props.view}
+              onViewChange={props.onViewChange}
+              canToggleView={props.canToggleView}
+            />
           </Box>
         </Box>
 
         <Box className="drh-right" ref={rightRef}>
           <Box className="drh-wing drh-wingRight" ref={rightWingRef}>
-            {!compactHeader && props.showDraftControls && props.canManageDraft ? (
-              <Box className="drh-pauseWrap">
-                <UnstyledButton
-                  type="button"
-                  className="drh-pause"
-                  aria-label={
-                    isPre ? "Start draft" : isPaused ? "Resume draft" : "Pause draft"
-                  }
-                  onClick={() => {
-                    if (isPre) props.onStartDraft();
-                    else if (isPaused) props.onResumeDraft();
-                    else props.onPauseDraft();
-                  }}
-                >
-                  <Text
-                    component="span"
-                    className="mi-icon mi-icon-tiny"
-                    aria-hidden="true"
-                  >
-                    {isPre || isPaused ? "play_arrow" : "pause"}
-                  </Text>
-                </UnstyledButton>
-              </Box>
-            ) : null}
-
-            {!compactHeader && props.showDraftControls ? (
-              <Box className="drh-controls">
-                <Box className="drh-controlsGrid">
-                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                    <Text className="drh-label">View</Text>
-                    <SegmentedControl
-                      size="xs"
-                      value={props.view}
-                      onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-                      data={[
-                        { value: "draft", label: "Draft" },
-                        { value: "roster", label: "Roster" }
-                      ]}
-                      disabled={!props.canToggleView}
-                    />
-                  </Group>
-
-                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                    <Text className="drh-label">Show drafted</Text>
-                    <Box className="drh-toggleSlot">
-                      {props.showDraftedVisible ? (
-                        <Switch
-                          size="sm"
-                          checked={props.showDrafted}
-                          onChange={(e) =>
-                            props.onToggleShowDrafted(e.currentTarget.checked)
-                          }
-                        />
-                      ) : (
-                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                      )}
-                    </Box>
-                  </Group>
-                </Box>
-              </Box>
-            ) : null}
-
-            {compactHeader ? (
-              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-                <Menu position="bottom-end" withinPortal>
-                  <Menu.Target>
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      className="theme-toggle"
-                      aria-label="Open settings"
-                    >
-                      <Text
-                        component="span"
-                        className="mi-icon mi-icon-tiny"
-                        aria-hidden="true"
-                      >
-                        settings
-                      </Text>
-                    </Button>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={
-                        <Text component="span" className="gicon" aria-hidden="true">
-                          {props.themeIcon}
-                        </Text>
-                      }
-                      onClick={props.onToggleTheme}
-                    >
-                      Toggle theme
-                    </Menu.Item>
-
-                    {props.showDraftedVisible ? (
-                      <Menu.Item closeMenuOnClick={false}>
-                        <Group justify="space-between" wrap="nowrap" gap="md">
-                          <Text>Show drafted</Text>
-                          <Switch
-                            size="sm"
-                            checked={props.showDrafted}
-                            onChange={(e) =>
-                              props.onToggleShowDrafted(e.currentTarget.checked)
-                            }
-                          />
-                        </Group>
-                      </Menu.Item>
-                    ) : null}
-
-                    {props.showDraftControls && props.canManageDraft ? (
-                      isPre ? (
-                        <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
-                      ) : isPaused ? (
-                        <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
-                      ) : !isCompleted ? (
-                        <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
-                      ) : null
-                    ) : null}
-                  </Menu.Dropdown>
-                </Menu>
-              </Group>
-            ) : (
-              <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-                <Button
-                  type="button"
-                  variant="subtle"
-                  className="theme-toggle"
-                  onClick={props.onToggleTheme}
-                  aria-label="Toggle theme"
-                >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    {props.themeIcon}
-                  </Text>
-                </Button>
-                <Box className="drh-userBadge">
-                  <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
-                  <Text className="drh-userText">{props.userLabel}</Text>
-                </Box>
-              </Group>
-            )}
+            <DraftHeaderRightWing
+              compactHeader={compactHeader}
+              showDraftControls={props.showDraftControls}
+              canManageDraft={props.canManageDraft}
+              isPre={isPre}
+              isPaused={isPaused}
+              isCompleted={isCompleted}
+              view={props.view}
+              onViewChange={props.onViewChange}
+              canToggleView={props.canToggleView}
+              showDrafted={props.showDrafted}
+              onToggleShowDrafted={props.onToggleShowDrafted}
+              showDraftedVisible={props.showDraftedVisible}
+              themeIcon={props.themeIcon}
+              onToggleTheme={props.onToggleTheme}
+              onStartDraft={props.onStartDraft}
+              onPauseDraft={props.onPauseDraft}
+              onResumeDraft={props.onResumeDraft}
+              userLabel={props.userLabel}
+              userAvatarKey={props.userAvatarKey}
+            />
           </Box>
         </Box>
 
@@ -498,99 +277,26 @@ export function DraftBoardHeader(props: {
           />
         </Box>
 
-        {/* Hidden measurement row: keeps compact/non-compact switching stable by
-            measuring the real non-compact wing widths even when compact is active. */}
-        <Box className="drh-measure" aria-hidden="true">
-          <Box className="drh-measureWing" ref={leftMeasureRef}>
-            <Box className="drh-backWrap">
-              <UnstyledButton className="drh-back" type="button" aria-hidden="true">
-                <Text
-                  component="span"
-                  className="mi-icon mi-icon-tiny"
-                  aria-hidden="true"
-                >
-                  arrow_back
-                </Text>
-              </UnstyledButton>
-            </Box>
-            {!isCompleted ? (
-              <ParticipantStrip
-                participants={props.participants}
-                activeIndex={activeIndex}
-                direction={props.direction}
-                suppressActive={isPre || isPaused || isCompleted}
-              />
-            ) : null}
-          </Box>
-
-          <Box className="drh-measureWing drh-measureWingRight" ref={rightMeasureRef}>
-            {props.showDraftControls && props.canManageDraft ? (
-              <Box className="drh-pauseWrap">
-                <UnstyledButton type="button" className="drh-pause" aria-hidden="true">
-                  <Text
-                    component="span"
-                    className="mi-icon mi-icon-tiny"
-                    aria-hidden="true"
-                  >
-                    {isPre || isPaused ? "play_arrow" : "pause"}
-                  </Text>
-                </UnstyledButton>
-              </Box>
-            ) : null}
-
-            {props.showDraftControls ? (
-              <Box className="drh-controls">
-                <Box className="drh-controlsGrid">
-                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                    <Text className="drh-label">View</Text>
-                    <SegmentedControl
-                      size="xs"
-                      value={props.view}
-                      onChange={() => {}}
-                      data={[
-                        { value: "draft", label: "Draft" },
-                        { value: "roster", label: "Roster" }
-                      ]}
-                      disabled={!props.canToggleView}
-                    />
-                  </Group>
-
-                  <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                    <Text className="drh-label">Show drafted</Text>
-                    <Box className="drh-toggleSlot">
-                      {props.showDraftedVisible ? (
-                        <Switch
-                          size="sm"
-                          checked={props.showDrafted}
-                          onChange={() => {}}
-                        />
-                      ) : (
-                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                      )}
-                    </Box>
-                  </Group>
-                </Box>
-              </Box>
-            ) : null}
-
-            <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-              <Button
-                type="button"
-                variant="subtle"
-                className="theme-toggle"
-                aria-hidden="true"
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.themeIcon}
-                </Text>
-              </Button>
-              <Box className="drh-userBadge">
-                <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
-                <Text className="drh-userText">{props.userLabel}</Text>
-              </Box>
-            </Group>
-          </Box>
-        </Box>
+        {/* Hidden measurement row: keeps compact/non-compact switching stable by measuring the real non-compact wings even when compact is active. */}
+        <DraftHeaderMeasureRow
+          leftMeasureRef={leftMeasureRef}
+          rightMeasureRef={rightMeasureRef}
+          isCompleted={isCompleted}
+          isPre={isPre}
+          isPaused={isPaused}
+          showDraftControls={props.showDraftControls}
+          canManageDraft={props.canManageDraft}
+          participants={props.participants}
+          activeIndex={activeIndex}
+          direction={props.direction}
+          view={props.view}
+          canToggleView={props.canToggleView}
+          showDraftedVisible={props.showDraftedVisible}
+          showDrafted={props.showDrafted}
+          themeIcon={props.themeIcon}
+          userLabel={props.userLabel}
+          userAvatarKey={props.userAvatarKey}
+        />
       </Box>
     </Box>
   );
