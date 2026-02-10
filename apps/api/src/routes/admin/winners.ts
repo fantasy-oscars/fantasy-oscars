@@ -10,7 +10,6 @@ import {
 } from "../../data/repositories/ceremonyRepository.js";
 import { cancelDraftsForCeremony } from "../../data/repositories/draftRepository.js";
 import {
-  listWinnersByCeremony,
   setWinnersForCategoryEdition
 } from "../../data/repositories/winnerRepository.js";
 import { AppError } from "../../errors.js";
@@ -18,23 +17,10 @@ import {
   emitCeremonyFinalized,
   emitCeremonyWinnersUpdated
 } from "../../realtime/ceremonyEvents.js";
+import { registerAdminWinnersListRoute } from "./winnersList.js";
 
 export function registerAdminWinnerRoutes(router: Router, client: DbClient) {
-  router.get(
-    "/ceremonies/:id/winners",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        const winners = await listWinnersByCeremony(client, ceremonyId);
-        return res.status(200).json({ winners });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
+  registerAdminWinnersListRoute({ router, client });
 
   router.post(
     "/winners",
