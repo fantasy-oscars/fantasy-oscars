@@ -7,28 +7,14 @@ import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.j
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import {
   insertNominationChangeAudit,
-  listNominationsForCeremony,
   updateNominationStatus
 } from "../../data/repositories/nominationRepository.js";
 import { AppError } from "../../errors.js";
 import { buildTmdbImageUrl, fetchTmdbPersonDetails } from "../../lib/tmdb.js";
+import { registerAdminNominationListRoute } from "./nominationsList.js";
 
 export function registerAdminNominationRoutes(router: Router, client: DbClient) {
-  router.get(
-    "/ceremonies/:id/nominations",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        const nominations = await listNominationsForCeremony(client, ceremonyId);
-        return res.status(200).json({ nominations });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
+  registerAdminNominationListRoute({ router, client });
 
   router.post(
     "/ceremonies/:id/nominations",
