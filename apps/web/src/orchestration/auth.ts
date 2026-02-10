@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import type { ApiResult, FieldErrors } from "../lib/types";
-import { fetchJson } from "../lib/api";
 import { getRequiredFieldErrors } from "../decisions/forms";
 import {
   authFieldErrorMessage,
@@ -138,69 +137,6 @@ export function useRegisterOrchestration(deps: { register: RegisterFn }) {
     },
     [register]
   );
-
-  return { errors, result, loading, onSubmit, setResult };
-}
-
-export function useResetRequestOrchestration() {
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const onSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const fieldErrors = getRequiredFieldErrors(["username"], data);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length) return { ok: false as const };
-
-    setLoading(true);
-    const res = await fetchJson("/auth/reset-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: String(data.get("username")) })
-    });
-    setLoading(false);
-    setResult({
-      ok: res.ok,
-      message: res.ok
-        ? "Reset token generated. Copy it from the server response (MVP)."
-        : (res.error ?? "Reset failed")
-    });
-    return { ok: res.ok as boolean };
-  }, []);
-
-  return { errors, result, loading, onSubmit, setResult };
-}
-
-export function useResetConfirmOrchestration() {
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [result, setResult] = useState<ApiResult | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const onSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const fieldErrors = getRequiredFieldErrors(["token", "password"], data);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length) return { ok: false as const };
-
-    setLoading(true);
-    const res = await fetchJson("/auth/reset-confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: String(data.get("token")),
-        password: String(data.get("password"))
-      })
-    });
-    setLoading(false);
-    setResult({
-      ok: res.ok,
-      message: res.ok ? "Password updated" : (res.error ?? "Update failed")
-    });
-    return { ok: res.ok as boolean };
-  }, []);
 
   return { errors, result, loading, onSubmit, setResult };
 }
