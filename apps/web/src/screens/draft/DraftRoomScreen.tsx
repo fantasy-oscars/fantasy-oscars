@@ -46,6 +46,7 @@ import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS
 } from "../../ui/draft/nomineeTooltip";
+import { DirectionChevron } from "../../ui/draft/DirectionChevron";
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
@@ -2268,19 +2269,6 @@ function AvatarToken(props: {
     <Box className={["drh-token", props.active ? "is-active" : ""].join(" ")}>
       <AnimalAvatarIcon avatarKey={avatarKey} size={33} />
     </Box>
-  );
-}
-
-function DirectionChevron(props: { direction: "FORWARD" | "REVERSE" | null }) {
-  const glyph = props.direction === "REVERSE" ? "chevron_left" : "chevron_right";
-  return (
-    <Text
-      component="span"
-      className="drh-chevron mi-icon mi-icon-tiny"
-      aria-hidden="true"
-    >
-      {glyph}
-    </Text>
   );
 }
 
