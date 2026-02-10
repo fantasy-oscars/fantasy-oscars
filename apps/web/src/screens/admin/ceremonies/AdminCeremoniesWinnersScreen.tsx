@@ -13,6 +13,7 @@ import type { AdminCeremonyWinnersOrchestration } from "../../../orchestration/a
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import { StandardCard } from "../../../primitives";
+import { materialGlyph } from "../../../decisions/admin/materialGlyph";
 import "../../../primitives/baseline.css";
 
 type WinnersNomination = {
@@ -28,13 +29,6 @@ type WinnersNomination = {
     sort_order: number;
   }>;
 };
-
-function materialGlyph(code: string | null | undefined) {
-  const raw = (code ?? "").trim();
-  if (!raw) return "";
-  if (/^[0-9a-f]{4}$/i.test(raw)) return String.fromCharCode(Number.parseInt(raw, 16));
-  return raw;
-}
 
 const CHECK_ICON = String.fromCharCode(0xe5ca);
 

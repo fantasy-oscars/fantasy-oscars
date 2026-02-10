@@ -27,6 +27,7 @@ import type {
   FamilyRow
 } from "../../../orchestration/adminCeremoniesCategories";
 import { StandardCard } from "../../../primitives";
+import { materialGlyph } from "../../../decisions/admin/materialGlyph";
 import "../../../primitives/baseline.css";
 
 function unitKindLabel(kind: "FILM" | "SONG" | "PERFORMANCE") {
@@ -41,13 +42,6 @@ function unitKindLabel(kind: "FILM" | "SONG" | "PERFORMANCE") {
 }
 
 const TRASH_ICON = String.fromCharCode(0xe872);
-
-function materialGlyph(code: string | null | undefined) {
-  const raw = (code ?? "").trim();
-  if (!raw) return "";
-  if (/^[0-9a-f]{4}$/i.test(raw)) return String.fromCharCode(Number.parseInt(raw, 16));
-  return raw;
-}
 
 export function AdminCeremoniesCategoriesScreen(props: {
   ceremonyId: number;
