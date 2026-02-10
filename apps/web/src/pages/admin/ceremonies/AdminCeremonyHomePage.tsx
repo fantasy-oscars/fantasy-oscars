@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box } from "@mantine/core";
-import { PageLoader } from "../../../ui/page-state";
+import { PageError, PageLoader } from "../../../ui/page-state";
 import { AdminCeremonyHomeScreen } from "../../../screens/admin/ceremonies/AdminCeremonyHomeScreen";
 import { useAdminCeremonyWorksheetOrchestration } from "../../../orchestration/adminCeremonyWorksheet";
 import type { CeremonyWorkflowStepId } from "../../../decisions/ceremonyWorkflow";
@@ -33,16 +32,14 @@ export function AdminCeremonyHomePage() {
   const previewHref = `/admin/ceremonies/${ceremonyId}/preview`;
 
   if (!ceremonyId || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
-    return <Box className="status status-error">Invalid ceremony id</Box>;
+    return <PageError message="Invalid ceremony id" />;
   }
 
   if (o.state === "loading") return <PageLoader label="Loading ceremony..." />;
   if (o.state === "error")
-    return (
-      <Box className="status status-error">{o.error ?? "Unable to load ceremony"}</Box>
-    );
+    return <PageError message={o.error ?? "Unable to load ceremony"} />;
   if (!o.ceremony || !o.stats) {
-    return <Box className="status status-error">Ceremony not found</Box>;
+    return <PageError message="Ceremony not found" />;
   }
 
   return (
