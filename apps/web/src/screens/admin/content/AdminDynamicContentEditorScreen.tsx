@@ -1,23 +1,10 @@
-import { Link } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Divider,
-  Grid,
-  Group,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-  Title
-} from "@mantine/core";
+import { Checkbox, Divider, Grid, Select, Stack, TextInput, Textarea } from "@mantine/core";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
 import type { CmsDynamicRow } from "../../../orchestration/adminContent";
 import type { DynamicKey } from "../../../decisions/adminContent";
+import { DynamicContentEditorHeader } from "../../../ui/admin/content/DynamicContentEditorHeader";
 import "../../../primitives/baseline.css";
 
 export function AdminDynamicContentEditorScreen(props: {
@@ -75,63 +62,19 @@ export function AdminDynamicContentEditorScreen(props: {
 
   return (
     <Stack component="section">
-      <Group
-        className="header-with-controls"
-        justify="space-between"
-        align="start"
-        wrap="wrap"
-      >
-        <Box>
-          <Title order={3} className="baseline-textHeroTitle">
-            {meta.label}
-          </Title>
-          <Text className="baseline-textMeta" c="dimmed">
-            Status: {isActive ? "Active" : "Inactive"}
-          </Text>
-        </Box>
-        <Group className="inline-actions" wrap="wrap">
-          <Button
-            component={Link}
-            variant="subtle"
-            to={`/admin/content/dynamic/${contentKey}`}
-          >
-            Back
-          </Button>
-          {viewOnly ? null : (
-            <>
-              <Button type="button" onClick={onSave} disabled={busy}>
-                Save
-              </Button>
-              {isSequential ? (
-                !isActive ? (
-                  <Button type="button" onClick={onActivate} disabled={busy}>
-                    Make active
-                  </Button>
-                ) : null
-              ) : (
-                <Button
-                  type="button"
-                  variant="subtle"
-                  onClick={isActive ? onDeactivate : onActivate}
-                  disabled={busy}
-                >
-                  {isActive ? "Deactivate" : "Activate"}
-                </Button>
-              )}
-              {!isActive ? (
-                <Button
-                  type="button"
-                  className="danger"
-                  onClick={onDelete}
-                  disabled={busy}
-                >
-                  Delete
-                </Button>
-              ) : null}
-            </>
-          )}
-        </Group>
-      </Group>
+      <DynamicContentEditorHeader
+        title={meta.label}
+        statusText={`Status: ${isActive ? "Active" : "Inactive"}`}
+        backHref={`/admin/content/dynamic/${contentKey}`}
+        viewOnly={viewOnly}
+        busy={busy}
+        isSequential={isSequential}
+        isActive={isActive}
+        onSave={onSave}
+        onActivate={onActivate}
+        onDeactivate={onDeactivate}
+        onDelete={onDelete}
+      />
 
       <Divider />
 
