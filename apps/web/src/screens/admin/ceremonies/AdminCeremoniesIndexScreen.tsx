@@ -16,6 +16,10 @@ import type { ApiResult } from "../../../lib/types";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
 import { useState } from "react";
 import { StandardCard } from "../../../primitives";
+import {
+  computeAdminCeremonyDeletePolicy,
+  computeAdminCeremonyIndexStatus
+} from "../../../decisions/admin/ceremonyIndex";
 import "../../../primitives/baseline.css";
 
 const ICON_VISIBILITY = "visibility";
@@ -82,10 +86,10 @@ export function AdminCeremoniesIndexScreen(props: {
       ) : (
         <Stack gap="sm">
           {ceremonies.map((c) => {
-            const statusUpper = String(c.status || "DRAFT").toUpperCase();
-            const isArchived = statusUpper === "ARCHIVED";
-            const isDraft = statusUpper === "DRAFT";
-            const needsConfirm = !isDraft && !isArchived; // e.g. PUBLISHED / LOCKED
+            const { statusUpper, isArchived } = computeAdminCeremonyIndexStatus({
+              status: c.status
+            });
+            const { needsConfirm } = computeAdminCeremonyDeletePolicy({ status: c.status });
             const deleting = workingId === c.id;
 
             return (
