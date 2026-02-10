@@ -22,7 +22,7 @@ type Props = {
   markdown: string;
 };
 
-function applyTypographyReplacementsToText(value: string) {
+function applyTypographyReplacementsToText(value: string): string {
   // Minimal, explicit typography normalization.
   // - We intentionally do NOT change how characters are rendered elsewhere in the app.
   // - We only rewrite the Markdown author's ASCII punctuation into typographic glyphs.
@@ -36,7 +36,7 @@ function applyTypographyReplacementsToText(value: string) {
   );
 }
 
-function applyTypographyReplacements(tree: Root) {
+function applyTypographyReplacements(tree: Root): Root {
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
     const n = node as { type?: string; value?: unknown; children?: unknown[] };
@@ -57,18 +57,18 @@ function applyTypographyReplacements(tree: Root) {
   return tree;
 }
 
-function isExternalUrl(url: string) {
+function isExternalUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-function isSafeUrl(url: string) {
+function isSafeUrl(url: string): boolean {
   // Basic guardrail: never allow `javascript:`/`data:` links through.
   return !/^(javascript|data):/i.test(url.trim());
 }
 
 type DefinitionsMap = Map<string, Definition>;
 
-function normalizeDefinitionId(id: string) {
+function normalizeDefinitionId(id: string): string {
   return id.trim().toLowerCase();
 }
 
@@ -105,8 +105,8 @@ function renderInline(
   nodes: PhrasingContent[] | undefined,
   keyPrefix: string,
   definitions: DefinitionsMap
-) {
-  if (!nodes || nodes.length === 0) return null;
+): ReactNode[] {
+  if (!nodes || nodes.length === 0) return [];
 
   return nodes.map((node, i) => {
     const key = `${keyPrefix}-inl-${i}`;
@@ -188,7 +188,7 @@ function renderBlocks(
   nodes: Content[] | undefined,
   keyPrefix: string,
   definitions: DefinitionsMap
-) {
+): ReactNode[] {
   if (!nodes || nodes.length === 0) return [];
 
   const out: ReactNode[] = [];
