@@ -4,6 +4,7 @@ import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import { getAuthToken } from "../lib/authToken";
 import type { ApiResult, DraftEventMessage, Snapshot } from "../lib/types";
+import { API_BASE, describeNomination, makeRequestId } from "./draft/helpers";
 import {
   buildDraftedSet,
   buildIconByCategoryId,
@@ -22,32 +23,6 @@ import {
   type DraftRoomView,
   type PoolMode
 } from "../decisions/draft";
-
-type Env = { VITE_API_BASE?: string };
-const API_BASE = (
-  (import.meta as unknown as { env: Env }).env.VITE_API_BASE ?? ""
-).trim();
-
-function makeRequestId(): string {
-  return (
-    crypto?.randomUUID?.() ??
-    `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  );
-}
-
-function describeNomination(snapshot: Snapshot, nominationId: number) {
-  const labels = buildNominationLabelById(snapshot);
-  const nomineeLabel = labels.get(nominationId) ?? `#${nominationId}`;
-
-  const nomination =
-    (snapshot.nominations ?? []).find((n) => n.id === nominationId) ?? null;
-  const categoryId = nomination?.category_edition_id ?? null;
-  const categoryName =
-    (snapshot.categories ?? []).find((c) => c.id === categoryId)?.family_name ??
-    (categoryId ? `Category ${categoryId}` : "Category");
-
-  return { categoryName, nomineeLabel };
-}
 
 export type DraftRoomOrchestration = {
   state: {
