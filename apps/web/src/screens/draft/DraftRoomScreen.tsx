@@ -2131,7 +2131,6 @@ function ParticipantStrip(props: {
   const ref = useRef<HTMLDivElement | null>(null);
   const minTokens = 4;
   const n = props.participants.length;
-  const debugRef = useRef<string>("");
   const active = props.suppressActive
     ? 0
     : Math.min(Math.max(0, props.activeIndex), Math.max(0, n - 1));
@@ -2165,32 +2164,6 @@ function ParticipantStrip(props: {
       // estimate is briefly wrong during layout), to avoid the confusing 1-token collapse.
       const fit = Math.floor(usable / stride);
       const nextCap = n <= minTokens ? n : Math.max(1, Math.min(fit, n));
-
-      const debugEnabled =
-        typeof window !== "undefined" &&
-        Boolean(
-          (window as unknown as { __FO_DEBUG_STRIP__?: boolean }).__FO_DEBUG_STRIP__
-        );
-      if (debugEnabled) {
-        const payload = JSON.stringify({
-          n,
-          minTokens,
-          w,
-          usable,
-          gapRaw,
-          gapPx,
-          tokenW,
-          stride,
-          fit,
-          nextCap,
-          capacity
-        });
-        if (payload !== debugRef.current) {
-          // eslint-disable-next-line no-console
-          console.log("[ParticipantStrip]", JSON.parse(payload));
-          debugRef.current = payload;
-        }
-      }
       setCapacity((prev) => (prev === nextCap ? prev : nextCap));
     };
 

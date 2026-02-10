@@ -26,6 +26,9 @@ import { StandardCard } from "../../primitives";
 import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import "../../primitives/baseline.css";
 
+const EMPTY_CATEGORIES: CeremonyDetail["categories"] = [];
+const EMPTY_NOMINATIONS: CeremonyDetail["nominations"] = [];
+
 function DraftCategoryIcon(props: { icon: string; variant: "default" | "inverted" }) {
   if (props.variant === "inverted") {
     return (
@@ -141,8 +144,8 @@ export function DraftPlansScreen(props: {
   const [planQuery, setPlanQuery] = useState("");
 
   const ceremony = props.detail?.ceremony ?? null;
-  const categories = props.detail?.categories ?? [];
-  const nominations = props.detail?.nominations ?? [];
+  const categories = props.detail?.categories ?? EMPTY_CATEGORIES;
+  const nominations = props.detail?.nominations ?? EMPTY_NOMINATIONS;
 
   const label =
     ceremony?.name?.trim() ||

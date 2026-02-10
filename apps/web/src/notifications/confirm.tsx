@@ -22,7 +22,6 @@ export async function confirm(req: ConfirmRequest): Promise<boolean> {
   if (globalConfirmImpl) return globalConfirmImpl(req);
   // Fallback keeps behavior working if provider isn't mounted for any reason.
   // This is not the preferred UX, but it avoids silent no-ops.
-  // eslint-disable-next-line no-alert
   return window.confirm(req.message);
 }
 

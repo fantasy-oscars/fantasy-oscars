@@ -724,7 +724,6 @@ export function useAdminCeremonyWinnersOrchestration(args: {
 
     let firstFailure: ApiResult | null = null;
     for (const item of changed) {
-      // eslint-disable-next-line no-await-in-loop
       const res = await saveWinners(item.categoryId, item.nominationIds);
       if (!res.ok && !firstFailure) firstFailure = res;
     }
