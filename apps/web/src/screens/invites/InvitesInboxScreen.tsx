@@ -2,18 +2,9 @@ import type { InboxInvite } from "../../lib/types";
 import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
 import { PageLoader } from "../../ui/page-state";
 import type { InvitesInboxView } from "../../orchestration/invites";
+import { inviteContextLine } from "../../decisions/invites";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
-
-function inviteContext(invite: InboxInvite) {
-  const left = invite.league_name
-    ? invite.league_name
-    : invite.league_id
-      ? `League ${invite.league_id}`
-      : "League";
-  const right = invite.season_id ? `Season ${invite.season_id}` : "Season";
-  return `${left} · ${right}`;
-}
 
 export function InvitesInboxScreen(props: {
   view: InvitesInboxView;
@@ -56,7 +47,11 @@ export function InvitesInboxScreen(props: {
                           className="baseline-textCardTitle"
                           style={{ lineHeight: 1.2 }}
                         >
-                          {inviteContext(invite)}
+                          {inviteContextLine({
+                            leagueName: invite.league_name,
+                            leagueId: invite.league_id,
+                            seasonId: invite.season_id
+                          })}
                         </Text>
                       </Stack>
                       <Group gap="sm" wrap="wrap">
