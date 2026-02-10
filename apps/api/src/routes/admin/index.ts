@@ -39,6 +39,7 @@ import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.j
 import type { Router } from "express";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
 import { registerAdminContentRoutes } from "./content.js";
+import { registerAdminIconRoutes } from "./icons.js";
 import { registerAdminUserRoutes } from "./users.js";
 
 export function createAdminRouter(client: DbClient): Router {
@@ -46,6 +47,7 @@ export function createAdminRouter(client: DbClient): Router {
 
   registerAdminUserRoutes(router, client);
   registerAdminContentRoutes(router, client);
+  registerAdminIconRoutes(router, client);
 
   router.get(
     "/ceremonies",
@@ -1123,81 +1125,6 @@ export function createAdminRouter(client: DbClient): Router {
           draft_locked_at: row.draft_locked_at ?? null
         });
       } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.get(
-    "/icons",
-    async (_req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const { rows } = await query(
-          client,
-          `SELECT id::int, code, name, asset_path
-           FROM icon
-           ORDER BY code ASC`
-        );
-        return res.status(200).json({ icons: rows });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.post(
-    "/icons",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-        if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
-        if (!/^[a-z0-9-]+$/.test(code)) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Icon code must be lowercase letters/numbers/dashes only"
-          );
-        }
-
-        // Find-or-create.
-        const { rows: existingRows } = await query<{ id: number; code: string }>(
-          client,
-          `SELECT id::int, code FROM icon WHERE code = $1`,
-          [code]
-        );
-        if (existingRows[0]) return res.status(200).json({ icon: existingRows[0] });
-
-        const { rows } = await query<{ id: number; code: string }>(
-          client,
-          `INSERT INTO icon (code, name, asset_path)
-           VALUES ($1, NULL, NULL)
-           RETURNING id::int, code`,
-          [code]
-        );
-        const icon = rows[0];
-
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "create_icon",
-            target_type: "icon",
-            target_id: icon.id,
-            meta: { code }
-          });
-        }
-
-        return res.status(201).json({ icon });
-      } catch (err) {
-        // Unique constraint violation on icon.code
-        if ((err as { code?: string })?.code === "23505") {
-          const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-          const { rows } = await query<{ id: number; code: string }>(
-            client,
-            `SELECT id::int, code FROM icon WHERE code = $1`,
-            [code]
-          );
-          if (rows[0]) return res.status(200).json({ icon: rows[0] });
-        }
         next(err);
       }
     }
