@@ -556,7 +556,7 @@ async function autoPickIfExpired(options: {
   if (!Number.isFinite(deadlineMs)) return draft;
   if (Date.now() <= deadlineMs) return draft;
 
-  const after = await autoPickOne({
+  return await autoPickOne({
     tx,
     draft,
     season,
@@ -564,58 +564,6 @@ async function autoPickIfExpired(options: {
     reason: "TIMER_EXPIRED",
     force: true
   });
-  return await autoPickImmediateChain({ tx, draft: after, season, league });
-}
-
-async function autoPickImmediateChain(options: {
-  tx: DbClient;
-  draft: DraftRecord;
-  season: { id: number; ceremony_id: number };
-  league: { roster_size: number | string | null };
-}) {
-  const { tx, season, league } = options;
-  let draft = options.draft;
-  // Bound the loop to prevent runaway behavior if invariants are broken.
-  for (let i = 0; i < 100; i += 1) {
-    if (draft.status !== "IN_PROGRESS") return draft;
-    const seats = await listDraftSeats(tx, draft.id);
-    const seatCount = seats.length;
-    if (seatCount === 0) return draft;
-    const currentPickNumber = draft.current_pick_number ?? null;
-    if (!currentPickNumber) return draft;
-    const assignment = computePickAssignment({
-      draft_order_type: "SNAKE",
-      seat_count: seatCount,
-      pick_number: currentPickNumber,
-      status: draft.status
-    });
-    const seat = seats.find((s) => s.seat_number === assignment.seat_number);
-    if (!seat?.user_id) return draft;
-
-    const userAuto = await getDraftAutodraftConfig(tx, {
-      draft_id: draft.id,
-      user_id: seat.user_id
-    });
-    if (!userAuto?.enabled) return draft;
-
-    const next = await autoPickOne({
-      tx,
-      draft,
-      season,
-      league,
-      reason: "USER_AUTODRAFT",
-      force: true
-    });
-    // If nothing changed, stop.
-    if (
-      next.current_pick_number === draft.current_pick_number &&
-      next.status === draft.status
-    ) {
-      return draft;
-    }
-    draft = next;
-  }
-  return draft;
 }
 
 const USER_AUTODRAFT_DELAY_MS = 1000;
@@ -1315,6 +1263,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
         if (!season || !league) return;
         await autoPickIfExpired({ tx, draft: lockedDraft, season, league });
       });
+      // If the next seat has user-enabled auto-draft, schedule it (delayed) after any timer auto-pick.
+      await runImmediateAutodraftIfEnabled({ pool, draftId });
 
       let draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
@@ -2142,7 +2092,7 @@ export function buildDraftStandingsHandler(pool: Pool) {
 }
 
 export async function tickDraft(pool: Pool, draftId: number) {
-  return await runInTransaction(pool, async (tx) => {
+  const updated = await runInTransaction(pool, async (tx) => {
     const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
     if (!lockedDraft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
 
@@ -2155,6 +2105,10 @@ export async function tickDraft(pool: Pool, draftId: number) {
     // If a pick timer is enabled, this can auto-pick when the deadline has passed.
     return await autoPickIfExpired({ tx, draft: lockedDraft, season, league });
   });
+  // If the next (or subsequent) seat has user-enabled auto-draft, schedule it.
+  // This keeps auto-picks paced even when driven by timer tick endpoints.
+  await runImmediateAutodraftIfEnabled({ pool, draftId });
+  return updated;
 }
 
 export function buildTickDraftHandler(pool: Pool) {

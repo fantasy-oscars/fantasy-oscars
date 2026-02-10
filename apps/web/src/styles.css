@@ -285,6 +285,25 @@ body {
   padding: 0 12px;
 }
 
+.dr-mobileBar.is-countdown {
+  /* Only the active drafter pulses; this is a full-height bar treatment. */
+  background: var(--fo-gold);
+  transition: background 120ms ease;
+}
+
+.dr-mobileBar.is-countdown.pulse-red {
+  background: #b34b42;
+}
+
+.dr-mobileBar.is-countdown.pulse-red .drm-clockText,
+.dr-mobileBar.is-countdown.pulse-red .drm-miniNumber {
+  color: var(--fo-ivory);
+}
+
+.dr-mobileBar.is-countdown.pulse-red .drm-miniLabel {
+  color: rgba(var(--fo-ivory-rgb), 0.78);
+}
+
 .dr-mobileIconBtn {
   width: 44px;
   height: 44px;
