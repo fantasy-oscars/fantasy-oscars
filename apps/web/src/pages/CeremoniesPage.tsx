@@ -1,10 +1,10 @@
 import { useCeremoniesIndexOrchestration } from "../orchestration/ceremonies";
-import { CeremoniesIndexBaselineScreen } from "../screens/CeremoniesIndexBaselineScreen";
+import { CeremoniesIndexScreen } from "../screens/ceremonies/CeremoniesIndexScreen";
 
 export function CeremoniesPage() {
   const o = useCeremoniesIndexOrchestration();
   return (
-    <CeremoniesIndexBaselineScreen
+    <CeremoniesIndexScreen
       state={o.state}
       error={o.error}
       active={o.active}
