@@ -19,7 +19,6 @@ import {
   cancelDraftsForCeremony,
   hasDraftsStartedForCeremony
 } from "../../data/repositories/draftRepository.js";
-import { loadNominees } from "../../scripts/load-nominees.js";
 import {
   buildTmdbImageUrlFromConfig,
   buildTmdbImageUrl,
@@ -41,6 +40,7 @@ import { registerAdminActiveCeremonyRoutes } from "./activeCeremony.js";
 import { registerAdminCategoryFamilyRoutes } from "./categoryFamilies.js";
 import { registerAdminContentRoutes } from "./content.js";
 import { registerAdminIconRoutes } from "./icons.js";
+import { registerAdminNomineeUploadRoutes } from "./nomineesUpload.js";
 import { registerAdminNominationContributorRoutes } from "./nominationContributors.js";
 import { registerAdminPeopleRoutes } from "./people.js";
 import { registerAdminUserRoutes } from "./users.js";
@@ -55,6 +55,7 @@ export function createAdminRouter(client: DbClient): Router {
   registerAdminActiveCeremonyRoutes(router, client);
   registerAdminPeopleRoutes(router, client);
   registerAdminNominationContributorRoutes(router, client);
+  registerAdminNomineeUploadRoutes(router, client);
 
   router.get(
     "/ceremonies",
@@ -2220,88 +2221,6 @@ export function createAdminRouter(client: DbClient): Router {
   );
 
   router.post(
-    "/ceremonies/:id/nominees/upload",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        const dataset = req.body;
-        if (!dataset || typeof dataset !== "object") {
-          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
-            fields: ["body"]
-          });
-        }
-
-        const { rows: ceremonyRows } = await query<{ status: string }>(
-          client,
-          `SELECT status FROM ceremony WHERE id = $1`,
-          [ceremonyId]
-        );
-        const status = ceremonyRows[0]?.status;
-        if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        if (status !== "DRAFT") {
-          throw new AppError(
-            "CEREMONY_NOT_DRAFT",
-            409,
-            "Nominees can only be uploaded while the ceremony is in draft"
-          );
-        }
-
-        const draftsStarted = await hasDraftsStartedForCeremony(client, ceremonyId);
-        if (draftsStarted) {
-          throw new AppError(
-            "DRAFTS_LOCKED",
-            409,
-            "Nominee structural changes are locked after drafts start"
-          );
-        }
-
-        // Basic shape validation: ensure ceremonies array has only this ceremony id.
-        const ceremonies = (dataset as { ceremonies?: unknown[] }).ceremonies;
-        if (!Array.isArray(ceremonies) || ceremonies.length === 0) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Dataset must include ceremonies",
-            {
-              fields: ["ceremonies"]
-            }
-          );
-        }
-        const ceremonyIds = ceremonies
-          .map((c) => (c as { id?: number })?.id)
-          .filter((v) => Number.isFinite(v))
-          .map((v) => Number(v));
-        if (ceremonyIds.length !== 1 || ceremonyIds[0] !== ceremonyId) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Dataset ceremonies must include only the selected ceremony",
-            { fields: ["ceremonies"] }
-          );
-        }
-
-        await loadNominees(client as unknown as Pool, dataset as never);
-
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "nominees_upload",
-            target_type: "ceremony",
-            target_id: ceremonyId
-          });
-        }
-
-        return res.status(200).json({ ok: true });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.post(
     "/films/import",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
@@ -3066,59 +2985,6 @@ export function createAdminRouter(client: DbClient): Router {
         }
 
         return res.status(200).json({ ok: true, ...result });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
-
-  router.post(
-    "/nominees/upload",
-    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const dataset = req.body;
-        if (!dataset || typeof dataset !== "object") {
-          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
-            fields: ["body"]
-          });
-        }
-
-        const activeCeremonyRows = await query<{ active_ceremony_id: number | null }>(
-          client,
-          `SELECT active_ceremony_id FROM app_config WHERE id = TRUE`
-        );
-        const activeCeremonyId = activeCeremonyRows.rows?.[0]?.active_ceremony_id ?? null;
-        if (!activeCeremonyId) {
-          throw new AppError(
-            "ACTIVE_CEREMONY_NOT_SET",
-            409,
-            "Active ceremony is not configured"
-          );
-        }
-        // Legacy endpoint: delegate to ceremony-scoped upload.
-        req.params.id = String(activeCeremonyId);
-        // Re-run through the new route logic by duplicating its checks (keep behavior stable).
-        const draftsStarted = await hasDraftsStartedForCeremony(
-          client,
-          Number(activeCeremonyId)
-        );
-        if (draftsStarted) {
-          throw new AppError(
-            "DRAFTS_LOCKED",
-            409,
-            "Nominee structural changes are locked after drafts start"
-          );
-        }
-        await loadNominees(client as unknown as Pool, dataset as never);
-        if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "nominees_upload",
-            target_type: "ceremony",
-            target_id: Number(activeCeremonyId)
-          });
-        }
-        return res.status(200).json({ ok: true });
       } catch (err) {
         next(err);
       }
