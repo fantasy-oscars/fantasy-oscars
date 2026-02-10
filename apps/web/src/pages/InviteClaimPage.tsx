@@ -2,8 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useInviteClaimOrchestration } from "../orchestration/invites";
 import { notify } from "../notifications";
-import { Box, Text } from "@mantine/core";
-import { PageLoader } from "../ui/page-state";
+import { PageError, PageLoader } from "../ui/page-state";
 
 export function InviteClaimPage() {
   const { token } = useParams();
@@ -52,11 +51,6 @@ export function InviteClaimPage() {
 
   // Minimal fallback UI only (acts as an error boundary while redirecting).
   if (loading) return <PageLoader label="Opening invite..." />;
-  if (result && !result.ok)
-    return (
-      <Box>
-        <Text>{result.message}</Text>
-      </Box>
-    );
+  if (result && !result.ok) return <PageError message={result.message} />;
   return <PageLoader label="Opening invite..." />;
 }
