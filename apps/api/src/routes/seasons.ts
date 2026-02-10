@@ -53,6 +53,12 @@ import {
 } from "../data/repositories/seasonInviteRepository.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../domain/search.js";
+import {
+  ensureCommissioner,
+  getUserById,
+  getUserByUsername,
+  sanitizeInvite
+} from "./seasons/helpers.js";
 
 export function createSeasonsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
@@ -305,12 +311,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
     }
   );
 
-  function ensureCommissioner(member: { role: string } | null) {
-    if (!member || (member.role !== "OWNER" && member.role !== "CO_OWNER")) {
-      throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
-    }
-  }
-
   async function ensureSeasonMember(
     db: DbClient,
     seasonId: number,
@@ -340,50 +340,6 @@ export function createSeasonsRouter(client: DbClient, authSecret: string): Route
       throw new AppError("INTERNAL_ERROR", 500, "Failed to join season");
     }
     return refetched;
-  }
-
-  function sanitizeInvite(invite: {
-    id: number;
-    season_id: number;
-    status: string;
-    label: string | null;
-    created_at: Date;
-    updated_at: Date;
-    claimed_at: Date | null;
-    kind: string;
-  }) {
-    return {
-      id: invite.id,
-      season_id: invite.season_id,
-      kind: invite.kind,
-      status: invite.status,
-      label: invite.label,
-      created_at: invite.created_at,
-      updated_at: invite.updated_at,
-      claimed_at: invite.claimed_at
-    };
-  }
-
-  async function getUserById(client: DbClient, userId: number) {
-    const { rows } = await query<{ id: number }>(
-      client,
-      `SELECT id::int FROM app_user WHERE id = $1`,
-      [userId]
-    );
-    return rows[0] ?? null;
-  }
-
-  async function getUserByUsername(client: DbClient, username: string) {
-    const u = String(username ?? "")
-      .trim()
-      .toLowerCase();
-    if (!u) return null;
-    const { rows } = await query<{ id: number; username: string }>(
-      client,
-      `SELECT id::int, username FROM app_user WHERE lower(username) = $1`,
-      [u]
-    );
-    return rows[0] ?? null;
   }
 
   const handleCancelSeason = async (
