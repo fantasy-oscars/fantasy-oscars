@@ -4,75 +4,37 @@ import type { DbClient } from "../data/db.js";
 import { requireAuth } from "../auth/middleware.js";
 import type { Pool } from "pg";
 import {
-  buildDraftResultsHandler as buildDraftResultsHandlerImpl,
-  buildDraftStandingsHandler as buildDraftStandingsHandlerImpl,
-  buildExportDraftHandler as buildExportDraftHandlerImpl
+  buildDraftResultsHandler,
+  buildDraftStandingsHandler,
+  buildExportDraftHandler
 } from "./drafts/read.js";
-import { buildCreateDraftHandler as buildCreateDraftHandlerImpl } from "./drafts/create.js";
-import { buildStartDraftHandler as buildStartDraftHandlerImpl } from "./drafts/start.js";
-import { buildSubmitPickHandler as buildSubmitPickHandlerImpl } from "./drafts/picks.js";
+import { buildCreateDraftHandler } from "./drafts/create.js";
+import { buildStartDraftHandler } from "./drafts/start.js";
+import { buildSubmitPickHandler } from "./drafts/picks.js";
 import {
-  buildPauseDraftHandler as buildPauseDraftHandlerImpl,
-  buildResumeDraftHandler as buildResumeDraftHandlerImpl
+  buildPauseDraftHandler,
+  buildResumeDraftHandler
 } from "./drafts/lifecycle.js";
 import {
-  buildOverrideDraftLockHandler as buildOverrideDraftLockHandlerImpl,
-  buildSnapshotDraftHandler as buildSnapshotDraftHandlerImpl,
-  buildTickDraftHandler as buildTickDraftHandlerImpl,
-  tickDraft as tickDraftImpl
+  buildOverrideDraftLockHandler,
+  buildSnapshotDraftHandler,
+  buildTickDraftHandler
 } from "./drafts/runtime.js";
 import {
   buildGetDraftAutodraftHandler,
   buildUpsertDraftAutodraftHandler
 } from "./drafts/autodraft.js";
 
-export function buildCreateDraftHandler(client: DbClient) {
-  return buildCreateDraftHandlerImpl(client);
-}
-
-export function buildStartDraftHandler(pool: Pool) {
-  return buildStartDraftHandlerImpl(pool);
-}
-
-export function buildOverrideDraftLockHandler(pool: Pool) {
-  return buildOverrideDraftLockHandlerImpl(pool);
-}
-
-export function buildPauseDraftHandler(pool: Pool) {
-  return buildPauseDraftHandlerImpl(pool);
-}
-
-export function buildResumeDraftHandler(pool: Pool) {
-  return buildResumeDraftHandlerImpl(pool);
-}
-
-export function buildSnapshotDraftHandler(pool: Pool) {
-  return buildSnapshotDraftHandlerImpl(pool);
-}
-
-export function buildSubmitPickHandler(pool: Pool) {
-  return buildSubmitPickHandlerImpl(pool);
-}
-
-export function buildExportDraftHandler(pool: Pool) {
-  return buildExportDraftHandlerImpl(pool);
-}
-
-export function buildDraftResultsHandler(pool: Pool) {
-  return buildDraftResultsHandlerImpl(pool);
-}
-
-export function buildDraftStandingsHandler(pool: Pool) {
-  return buildDraftStandingsHandlerImpl(pool);
-}
-
-export async function tickDraft(pool: Pool, draftId: number) {
-  return await tickDraftImpl(pool, draftId);
-}
-
-export function buildTickDraftHandler(pool: Pool) {
-  return buildTickDraftHandlerImpl(pool);
-}
+// Test helpers; keep these re-exports stable.
+export { buildCreateDraftHandler } from "./drafts/create.js";
+export {
+  buildDraftResultsHandler,
+  buildDraftStandingsHandler,
+  buildExportDraftHandler
+} from "./drafts/read.js";
+export { buildSubmitPickHandler } from "./drafts/picks.js";
+export { buildPauseDraftHandler, buildResumeDraftHandler } from "./drafts/lifecycle.js";
+export { buildSnapshotDraftHandler } from "./drafts/runtime.js";
 
 export function createDraftsRouter(client: DbClient, authSecret: string): Router {
   const router = express.Router();
