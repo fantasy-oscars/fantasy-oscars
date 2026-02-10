@@ -27,6 +27,7 @@ import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
 import { ANIMAL_AVATAR_KEYS } from "@fantasy-oscars/shared";
 import { RuntimeBannerStack } from "../../notifications";
 import { notifications } from "@mantine/notifications";
+import { DraftCategoryIcon } from "../../ui/draft/DraftCategoryIcon";
 import {
   closeDraftAudio,
   createDraftAudioController,
@@ -3021,35 +3022,6 @@ function DraftRoomScaffold(props: {
           </UnstyledButton>
         )}
       </Box>
-    </Box>
-  );
-}
-
-function DraftCategoryIcon(props: {
-  icon: string;
-  variant: "default" | "inverted";
-  className?: string;
-}) {
-  if (props.variant === "inverted") {
-    return (
-      <Box
-        component="span"
-        className={["mi-icon mi-icon-tiny dr-icon-punchout", props.className ?? ""].join(
-          " "
-        )}
-        aria-hidden="true"
-      >
-        {props.icon}
-      </Box>
-    );
-  }
-  return (
-    <Box
-      component="span"
-      className={["mi-icon mi-icon-tiny", props.className ?? ""].join(" ")}
-      aria-hidden="true"
-    >
-      {props.icon}
     </Box>
   );
 }
