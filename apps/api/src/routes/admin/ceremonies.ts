@@ -11,24 +11,10 @@ import {
 } from "../../data/repositories/ceremonyRepository.js";
 import { AppError } from "../../errors.js";
 import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
+import { registerAdminCeremoniesListRoute } from "./ceremoniesList.js";
 
 export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
-  router.get(
-    "/ceremonies",
-    async (_req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
-      try {
-        const { rows } = await query(
-          client,
-          `SELECT id::int, code, name, year, starts_at, status
-           FROM ceremony
-           ORDER BY starts_at DESC NULLS LAST, id DESC`
-        );
-        return res.status(200).json({ ceremonies: rows });
-      } catch (err) {
-        next(err);
-      }
-    }
-  );
+  registerAdminCeremoniesListRoute({ router, client });
 
   router.post(
     "/ceremonies",
