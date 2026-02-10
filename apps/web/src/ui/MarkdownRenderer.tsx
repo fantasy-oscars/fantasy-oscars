@@ -1,4 +1,14 @@
-import { Anchor, Blockquote, Box, Code, Divider, List, Stack, Text, Title } from "@mantine/core";
+import {
+  Anchor,
+  Blockquote,
+  Box,
+  Code,
+  Divider,
+  List,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
 import { Link as RouterLink } from "react-router-dom";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
@@ -67,7 +77,13 @@ function collectDefinitions(tree: Root): DefinitionsMap {
 
   const visit = (node: unknown) => {
     if (!node || typeof node !== "object") return;
-    const n = node as { type?: string; children?: unknown[]; identifier?: unknown; url?: unknown; title?: unknown };
+    const n = node as {
+      type?: string;
+      children?: unknown[];
+      identifier?: unknown;
+      url?: unknown;
+      title?: unknown;
+    };
 
     if (n.type === "definition" && typeof n.identifier === "string") {
       const id = normalizeDefinitionId(n.identifier);
@@ -168,7 +184,11 @@ function renderInline(
   });
 }
 
-function renderBlocks(nodes: Content[] | undefined, keyPrefix: string, definitions: DefinitionsMap) {
+function renderBlocks(
+  nodes: Content[] | undefined,
+  keyPrefix: string,
+  definitions: DefinitionsMap
+) {
   if (!nodes || nodes.length === 0) return [];
 
   const out: ReactNode[] = [];
@@ -215,7 +235,11 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string, definitio
           >
             {node.children.map((li: ListItem, liIndex: number) => (
               <List.Item key={`${key}-li-${liIndex}`}>
-                {renderBlocks(li.children as Content[], `${key}-li-${liIndex}`, definitions)}
+                {renderBlocks(
+                  li.children as Content[],
+                  `${key}-li-${liIndex}`,
+                  definitions
+                )}
               </List.Item>
             ))}
           </List>
@@ -260,10 +284,13 @@ function renderBlocks(nodes: Content[] | undefined, keyPrefix: string, definitio
 
 export function MarkdownRenderer(props: Props) {
   const { tree, definitions } = useMemo(() => {
-    const parsed = unified().use(remarkParse).use(remarkGfm).parse(props.markdown) as Root;
+    const parsed = unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .parse(props.markdown) as Root;
     return {
       tree: applyTypographyReplacements(parsed),
-      definitions: collectDefinitions(parsed),
+      definitions: collectDefinitions(parsed)
     };
   }, [props.markdown]);
 

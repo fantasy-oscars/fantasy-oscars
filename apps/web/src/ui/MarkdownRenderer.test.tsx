@@ -53,7 +53,9 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("supports reference-style links", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"See [TMDB][tmdb].\n\n[tmdb]: https://www.themoviedb.org"} />
+        <MarkdownRenderer
+          markdown={"See [TMDB][tmdb].\n\n[tmdb]: https://www.themoviedb.org"}
+        />
       </MantineProvider>
     );
     const link = screen.getByRole("link", { name: "TMDB" });
