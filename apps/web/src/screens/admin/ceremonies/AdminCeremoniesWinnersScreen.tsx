@@ -14,6 +14,7 @@ import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import { StandardCard } from "../../../primitives";
 import { materialGlyph } from "../../../decisions/admin/materialGlyph";
+import { WinnersConfirmOverlay } from "../../../ui/admin/ceremonies/winners/WinnersConfirmOverlay";
 import "../../../primitives/baseline.css";
 
 type WinnersNomination = {
@@ -254,47 +255,27 @@ export function AdminCeremoniesWinnersScreen(props: {
       )}
 
       {pendingSaveAll ? (
-        <Box className="modal-backdrop" role="presentation">
-          <StandardCard
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm save"
-          >
-            <Title order={4}>Confirm</Title>
-            <Text className="muted">{pendingSaveAll.message}</Text>
-            <Group className="inline-actions" wrap="wrap">
-              <Button type="button" onClick={dismissPendingSaveAll}>
-                Cancel
-              </Button>
-              <Button type="button" variant="subtle" onClick={confirmPendingSaveAll}>
-                Save winners
-              </Button>
-            </Group>
-          </StandardCard>
-        </Box>
+        <WinnersConfirmOverlay
+          ariaLabel="Confirm save"
+          title="Confirm"
+          message={pendingSaveAll.message}
+          cancelLabel="Cancel"
+          confirmLabel="Save winners"
+          onCancel={dismissPendingSaveAll}
+          onConfirm={confirmPendingSaveAll}
+        />
       ) : null}
 
       {pendingFinalize ? (
-        <Box className="modal-backdrop" role="presentation">
-          <StandardCard
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Finalize winners"
-          >
-            <Title order={4}>Finalize winners</Title>
-            <Text className="muted">{pendingFinalize.message}</Text>
-            <Group className="inline-actions" wrap="wrap">
-              <Button type="button" onClick={dismissPendingFinalize}>
-                Cancel
-              </Button>
-              <Button type="button" variant="subtle" onClick={confirmFinalizeWinners}>
-                Finalize
-              </Button>
-            </Group>
-          </StandardCard>
-        </Box>
+        <WinnersConfirmOverlay
+          ariaLabel="Finalize winners"
+          title="Finalize winners"
+          message={pendingFinalize.message}
+          cancelLabel="Cancel"
+          confirmLabel="Finalize"
+          onCancel={dismissPendingFinalize}
+          onConfirm={confirmFinalizeWinners}
+        />
       ) : null}
     </Stack>
   );
