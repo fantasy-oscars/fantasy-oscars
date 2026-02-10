@@ -1,25 +1,16 @@
-import { Link } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  Title
-} from "@mantine/core";
+import { Box, Group, Stack, Text, Title } from "@mantine/core";
 import type { AuthUser } from "../../auth/context";
-import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { LeagueMember } from "../../lib/types";
 import type { LeagueDetailView } from "../../orchestration/leagues";
 import { useMemo, useState } from "react";
-import { CommissionerPill, StatusPill } from "../../ui/pills";
-import { StandardCard } from "../../primitives";
 import { computeSeasonCeremonyLabel } from "../../decisions/league";
 import { computeSeasonLifecycleLabelFromRow } from "../../decisions/season";
 import { DeleteLeagueModal } from "../../ui/leagues/modals/DeleteLeagueModal";
 import { TransferLeagueOwnershipModal } from "../../ui/leagues/modals/TransferLeagueOwnershipModal";
+import { LeagueMembersSection } from "../../ui/leagues/LeagueMembersSection";
+import { LeagueManagementSection } from "../../ui/leagues/LeagueManagementSection";
+import { LeagueSeasonsSection } from "../../ui/leagues/LeagueSeasonsSection";
 import "../../primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
@@ -96,6 +87,15 @@ export function LeagueDetailScreen(props: {
   }
 
   const league = view.league;
+  const seasonCards = view.seasons.map((s) => {
+    const ceremonyLabel = computeSeasonCeremonyLabel(s);
+    const statusLabel = computeSeasonLifecycleLabelFromRow({
+      seasonStatus: s.status,
+      draftStatus: s.draft_status,
+      isActiveCeremony: s.is_active_ceremony
+    });
+    return { id: s.id, ceremonyLabel, statusLabel };
+  });
 
   return (
     <Box className="baseline-page">
@@ -113,117 +113,21 @@ export function LeagueDetailScreen(props: {
           </Group>
 
           <Box className="baseline-grid2Wide">
-            {/* LEFT: Seasons */}
-            <Stack gap="sm">
-              <Group justify="space-between" align="flex-end" wrap="wrap">
-                <Title order={3}>Seasons</Title>
-                <Button
-                  component={Link}
-                  to={`/leagues/${leagueId}/seasons/new`}
-                  disabled={!view.isCommissioner}
-                  title={
-                    view.isCommissioner ? undefined : "Commissioner permission required"
-                  }
-                >
-                  Create season
-                </Button>
-              </Group>
+            <LeagueSeasonsSection
+              leagueId={leagueId}
+              canCreateSeason={view.isCommissioner}
+              seasons={seasonCards}
+            />
 
-              {view.seasons.length === 0 ? (
-                <Text className="baseline-textBody">No seasons yet.</Text>
-              ) : (
-                <Stack
-                  component="ul"
-                  gap="sm"
-                  style={{ listStyle: "none", margin: 0, padding: 0 }}
-                >
-                  {view.seasons.map((s) => {
-                    const ceremonyLabel = computeSeasonCeremonyLabel(s);
-                    const statusLabel = computeSeasonLifecycleLabelFromRow({
-                      seasonStatus: s.status,
-                      draftStatus: s.draft_status,
-                      isActiveCeremony: s.is_active_ceremony
-                    });
-
-                    return (
-                      <Box key={s.id} component="li">
-                        <StandardCard
-                          component={Link}
-                          to={`/seasons/${s.id}`}
-                          interactive
-                        >
-                          <Group
-                            justify="space-between"
-                            align="flex-start"
-                            wrap="wrap"
-                            gap="md"
-                          >
-                            <Box style={{ minWidth: 0 }}>
-                              <Text className="baseline-textCardTitle">
-                                {ceremonyLabel}
-                              </Text>
-                            </Box>
-                            <StatusPill>{statusLabel.toUpperCase()}</StatusPill>
-                          </Group>
-                        </StandardCard>
-                      </Box>
-                    );
-                  })}
-                </Stack>
-              )}
-            </Stack>
-
-            {/* RIGHT: Members + controls */}
             <Stack gap="md">
-              <Stack gap="sm">
-                <Title order={4}>Members</Title>
-                <Divider />
-
-                {rosterList.length === 0 ? (
-                  <Text className="baseline-textBody">No members yet.</Text>
-                ) : (
-                  <Stack
-                    component="ul"
-                    gap={0}
-                    style={{ listStyle: "none", margin: 0, padding: 0 }}
-                  >
-                    {rosterList.map((m, idx) => (
-                      <Box key={m.id} component="li">
-                        <Group justify="space-between" align="center" wrap="wrap" py="sm">
-                          <Text className="baseline-textBody">{m.username}</Text>
-                          {m.role === "OWNER" ? <CommissionerPill /> : null}
-                        </Group>
-                        {idx === rosterList.length - 1 ? null : <Divider />}
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
-              </Stack>
-
-          {view.isOwner ? (
-                <Stack gap="sm">
-                  <Title order={4}>Management</Title>
-                  <Divider />
-
-                  <Group wrap="wrap">
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      onClick={() => setTransferOpen(true)}
-                    >
-                      Transfer ownership
-                    </Button>
-                    <Button
-                      type="button"
-                      color="red"
-                      variant="subtle"
-                      onClick={() => setDeleteOpen(true)}
-                    >
-                      Delete league
-                    </Button>
-                  </Group>
-                  <FormStatus loading={working} result={rosterStatus} />
-                </Stack>
+              <LeagueMembersSection members={rosterList} />
+              {view.isOwner ? (
+                <LeagueManagementSection
+                  working={working}
+                  rosterStatus={rosterStatus}
+                  onOpenTransfer={() => setTransferOpen(true)}
+                  onOpenDelete={() => setDeleteOpen(true)}
+                />
               ) : null}
             </Stack>
           </Box>
