@@ -12,7 +12,7 @@ export type SeasonIndexCard = {
   status_label: "Open" | "Drafting" | "Complete" | "Archived";
 };
 
-export type SeasonsIndexBaselineView =
+export type SeasonsIndexView =
   | { state: "loading" }
   | { state: "error"; message: string }
   | { state: "ready"; seasons: SeasonIndexCard[] };
@@ -37,8 +37,8 @@ function statusLabel(season: SeasonSummary): SeasonIndexCard["status_label"] {
   return "Open";
 }
 
-export function useSeasonsIndexBaselineOrchestration() {
-  const [view, setView] = useState<SeasonsIndexBaselineView>({ state: "loading" });
+export function useSeasonsIndexOrchestration() {
+  const [view, setView] = useState<SeasonsIndexView>({ state: "loading" });
 
   const refresh = useCallback(async () => {
     setView({ state: "loading" });

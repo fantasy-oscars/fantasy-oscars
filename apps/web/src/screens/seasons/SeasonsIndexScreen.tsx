@@ -5,8 +5,8 @@ import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 import type {
   SeasonIndexCard,
-  SeasonsIndexBaselineView
-} from "../../orchestration/seasonsIndexBaseline";
+  SeasonsIndexView
+} from "../../orchestration/seasonsIndex";
 
 type GroupMode = "ceremony" | "league";
 
@@ -42,7 +42,7 @@ function sortByLeagueName(seasons: SeasonIndexCard[]) {
   });
 }
 
-export function SeasonsIndexScreen(props: { view: SeasonsIndexBaselineView }) {
+export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
   const { view } = props;
   const [mode, setMode] = useState<GroupMode>("ceremony");
 
@@ -154,4 +154,3 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexBaselineView }) {
     </Box>
   );
 }
-
