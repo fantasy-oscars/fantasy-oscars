@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { readJsonFile } from "../lib/files";
 import { fetchJson } from "../lib/api";
 import { parseFilmTitleWithYear } from "../lib/films";
 import type { ApiResult } from "../lib/types";
@@ -10,42 +11,13 @@ import {
   type CreditOption,
   type FilmCredits
 } from "../decisions/admin/nomineeCredits";
-
-type CeremonyCategory = {
-  id: number;
-  unit_kind: "FILM" | "SONG" | "PERFORMANCE";
-  family_name?: string;
-  family_code?: string;
-  family_icon_code?: string | null;
-  family_icon_variant?: "default" | "inverted" | null;
-};
-
-type CandidateFilm = {
-  id: number;
-  title: string;
-  release_year?: number | null;
-  tmdb_id?: number | null;
-};
-
-type NominationRow = {
-  id: number;
-  category_edition_id: number;
-  sort_order?: number;
-  display_film_id?: number | null;
-  display_film_tmdb_id?: number | null;
-  film_title?: string | null;
-  song_title?: string | null;
-  performer_name?: string | null;
-  performer_character?: string | null;
-  contributors?: Array<{
-    nomination_contributor_id?: number;
-    person_id: number;
-    full_name: string;
-    tmdb_id?: number | null;
-    role_label: string | null;
-    sort_order: number;
-  }>;
-};
+import { summarizeCandidateDataset } from "../decisions/admin/candidateDatasetSummary";
+import type {
+  CandidateFilm,
+  CeremonyCategory,
+  NominationRow,
+  PersonSearchRow
+} from "./admin/ceremonyNominees/types";
 
 export function useAdminCeremonyNomineesOrchestration(args: {
   ceremonyId: number | null;
@@ -75,12 +47,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const [peopleQuery, setPeopleQuery] = useState("");
   const [peopleResults, setPeopleResults] = useState<
-    Array<{
-      id: number;
-      full_name: string;
-      tmdb_id: number | null;
-      profile_url?: string | null;
-    }>
+    PersonSearchRow[]
   >([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [peopleState, setPeopleState] = useState<ApiResult | null>(null);
@@ -102,20 +69,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [selectedContributorIds, setSelectedContributorIds] = useState<number[]>([]);
   const [pendingContributorId, setPendingContributorId] = useState<string>("");
   const [creditQuery, setCreditQuery] = useState("");
-
-  const readJsonFile = useCallback(async (file: File) => {
-    const text =
-      typeof file.text === "function"
-        ? await file.text()
-        : await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () =>
-              reject(reader.error ?? new Error("Unable to read file as text"));
-            reader.readAsText(file);
-          });
-    return JSON.parse(text) as unknown;
-  }, []);
 
   const loadManualContext = useCallback(async () => {
     if (ceremonyId === null || !Number.isFinite(ceremonyId) || ceremonyId <= 0) return;
@@ -312,17 +265,9 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [films]
   );
 
-  const summarizeCandidates = useCallback(
-    (dataset: unknown) => {
-      const films = Array.isArray((dataset as { films?: unknown[] })?.films)
-        ? ((dataset as { films?: unknown[] }).films?.length ?? 0)
-        : Array.isArray(dataset)
-          ? dataset.length
-          : 0;
-      setCandidateSummary({ films });
-    },
-    [ceremonyId]
-  );
+  const summarizeCandidates = useCallback((dataset: unknown) => {
+    setCandidateSummary(summarizeCandidateDataset(dataset));
+  }, []);
 
   const onCandidateFile = useCallback(
     async (file: File | null) => {
@@ -343,7 +288,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         setCandidateUploadState({ ok: false, message });
       }
     },
-    [readJsonFile, summarizeCandidates]
+    [summarizeCandidates]
   );
 
   const onCandidateFileChange = useCallback(
