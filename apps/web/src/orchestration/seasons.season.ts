@@ -10,6 +10,13 @@ import {
 } from "./seasons/seasonSelectors";
 import { useSeasonInviteeSearch } from "./seasons/useSeasonInviteeSearch";
 import { loadLeagueContextForSeason } from "./seasons/loadLeagueContextForSeason";
+import {
+  patchSeasonInviteLabel,
+  postRegenerateSeasonInvite,
+  postRevokeSeasonInvite,
+  postSeasonInvite,
+  postSeasonUserInvite
+} from "./seasons/inviteActions";
 import type {
   ApiResult,
   LeagueMember,
@@ -476,13 +483,10 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     }
     setWorking(true);
     setUserInviteResult(null);
-    const res = await fetchJson(`/seasons/${seasonId}/user-invites`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        userInviteSelectedUserId ? { user_id: userInviteSelectedUserId } : { username }
-      )
-    });
+    const res = await postSeasonUserInvite(
+      seasonId,
+      userInviteSelectedUserId ? { user_id: userInviteSelectedUserId } : { username }
+    );
     setWorking(false);
     if (res.ok) {
       notify({
@@ -516,15 +520,9 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   async function createPlaceholderInvite() {
     setWorking(true);
     setInviteResult(null);
-    const res = await fetchJson<{ invite: SeasonInvite; token: string }>(
-      `/seasons/${seasonId}/invites`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          placeholderLabel.trim() ? { label: placeholderLabel.trim() } : {}
-        )
-      }
+    const res = await postSeasonInvite(
+      seasonId,
+      placeholderLabel.trim() ? { label: placeholderLabel.trim() } : {}
     );
     setWorking(false);
     const invite = res.data?.invite;
@@ -550,12 +548,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
 
   async function revokeInvite(inviteId: number) {
     setWorking(true);
-    const res = await fetchJson<{ invite: SeasonInvite }>(
-      `/seasons/${seasonId}/invites/${inviteId}/revoke`,
-      {
-        method: "POST"
-      }
-    );
+    const res = await postRevokeSeasonInvite(seasonId, inviteId);
     setWorking(false);
     const invite = res.data?.invite;
     if (res.ok && invite) {
@@ -567,10 +560,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
 
   async function regenerateInvite(inviteId: number) {
     setWorking(true);
-    const res = await fetchJson<{ invite: SeasonInvite; token: string }>(
-      `/seasons/${seasonId}/invites/${inviteId}/regenerate`,
-      { method: "POST" }
-    );
+    const res = await postRegenerateSeasonInvite(seasonId, inviteId);
     setWorking(false);
     const invite = res.data?.invite;
     const token = res.data?.token;
@@ -595,14 +585,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   async function saveInviteLabel(inviteId: number) {
     const nextLabel = labelDrafts[inviteId] ?? "";
     setWorking(true);
-    const res = await fetchJson<{ invite: SeasonInvite }>(
-      `/seasons/${seasonId}/invites/${inviteId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: nextLabel.trim() || null })
-      }
-    );
+    const res = await patchSeasonInviteLabel(seasonId, inviteId, nextLabel);
     setWorking(false);
     const invite = res.data?.invite;
     if (res.ok && invite) {
