@@ -5,6 +5,7 @@ import { fetchJson } from "../lib/api";
 import { getAuthToken } from "../lib/authToken";
 import type { ApiResult, DraftEventMessage, Snapshot } from "../lib/types";
 import { API_BASE, describeNomination, makeRequestId } from "./draft/helpers";
+import { useDraftSnapshot } from "./draft/useDraftSnapshot";
 import {
   buildDraftedSet,
   buildIconByCategoryId,
@@ -199,9 +200,12 @@ export function useDraftRoomOrchestration(args: {
   const { initialDraftId, disabled } = args;
 
   const [draftId] = useState(String(initialDraftId ?? "1"));
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const snapshotState = useDraftSnapshot({ draftId, disabled });
+  const loading = snapshotState.loading;
+  const error = snapshotState.error;
+  const snapshot = snapshotState.snapshot;
+  const setSnapshot = snapshotState.setSnapshot;
+  const setError = snapshotState.setError;
 
   const [view, setView] = useState<DraftRoomView>("draft");
   // Default: show all nominees but mute drafted ones (better situational awareness).
@@ -222,9 +226,9 @@ export function useDraftRoomOrchestration(args: {
   const [nowTs, setNowTs] = useState(() => Date.now());
 
   const socketRef = useRef<Socket | null>(null);
-  const snapshotRef = useRef<Snapshot | null>(null);
-  const lastVersionRef = useRef<number | null>(null);
-  const lastStatusRef = useRef<string | null>(null);
+  const snapshotRef = snapshotState.snapshotRef;
+  const lastVersionRef = snapshotState.lastVersionRef;
+  const lastStatusRef = snapshotState.lastStatusRef;
 
   // Per-user auto-draft
   const [autoEnabled, setAutoEnabled] = useState(false);
@@ -238,33 +242,8 @@ export function useDraftRoomOrchestration(args: {
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoError, setAutoError] = useState<string | null>(null);
 
-  const loadSnapshot = useCallback(
-    async (options?: { preserveSnapshot?: boolean }) => {
-      setLoading(true);
-      setError(null);
-      // Avoid UI "flashes" during in-place refreshes (e.g. after submitting a pick).
-      // We only clear the snapshot when explicitly requested (or when there isn't one yet).
-      const shouldClear = !options?.preserveSnapshot && !snapshotRef.current;
-      if (shouldClear) setSnapshot(null);
-
-      const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
-        method: "GET"
-      });
-      if (res.ok && res.data) {
-        setSnapshot(res.data);
-        setLoading(false);
-        return true;
-      }
-      setError(res.error ?? "Failed to load draft snapshot");
-      setLoading(false);
-      return false;
-    },
-    [draftId]
-  );
-
-  const refresh = useCallback(() => {
-    void loadSnapshot({ preserveSnapshot: true });
-  }, [loadSnapshot]);
+  const loadSnapshot = snapshotState.loadSnapshot;
+  const refresh = snapshotState.refresh;
 
   const loadAutodraft = useCallback(async (nextSnapshot?: Snapshot | null) => {
     const s = nextSnapshot ?? snapshotRef.current;
@@ -329,16 +308,6 @@ export function useDraftRoomOrchestration(args: {
 
     setAutoLoading(false);
   }, []);
-
-  useEffect(() => {
-    if (!snapshot && !loading) void loadSnapshot();
-  }, [loadSnapshot, loading, snapshot]);
-
-  useEffect(() => {
-    snapshotRef.current = snapshot;
-    lastVersionRef.current = snapshot?.version ?? null;
-    lastStatusRef.current = snapshot?.draft.status ?? null;
-  }, [snapshot]);
 
   // Load per-user auto-draft settings once we have the initial snapshot.
   useEffect(() => {
