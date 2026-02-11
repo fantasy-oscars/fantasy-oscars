@@ -18,6 +18,13 @@ import type {
   NominationRow,
   PersonSearchRow
 } from "./admin/ceremonyNominees/types";
+import {
+  deleteNominationContributor as deleteNominationContributorReq,
+  getFilmCreditsRaw,
+  patchFilmTmdbId,
+  patchPersonTmdbId,
+  postNominationContributor as postNominationContributorReq
+} from "./admin/ceremonyNominees/actions";
 
 export function useAdminCeremonyNomineesOrchestration(args: {
   ceremonyId: number | null;
@@ -547,14 +554,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const linkFilmTmdb = useCallback(
     async (filmId: number, tmdbId: number | null) => {
       setManualLoading(true);
-      const res = await fetchJson<{ film: unknown; hydrated?: boolean }>(
-        `/admin/films/${filmId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tmdb_id: tmdbId })
-        }
-      );
+      const res = await patchFilmTmdbId(filmId, tmdbId);
       setManualLoading(false);
       if (!res.ok) {
         return {
@@ -574,14 +574,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const linkPersonTmdb = useCallback(
     async (personId: number, tmdbId: number | null) => {
       setManualLoading(true);
-      const res = await fetchJson<{ person: unknown; hydrated?: boolean }>(
-        `/admin/people/${personId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tmdb_id: tmdbId })
-        }
-      );
+      const res = await patchPersonTmdbId(personId, tmdbId);
       setManualLoading(false);
       if (!res.ok) {
         return {
@@ -605,11 +598,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     ) => {
       setManualLoading(true);
       setManualState(null);
-      const res = await fetchJson(`/admin/nominations/${nominationId}/contributors`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input)
-      });
+      const res = await postNominationContributorReq(nominationId, input);
       setManualLoading(false);
       if (!res.ok) {
         setManualState({ ok: false, message: res.error ?? "Failed to add contributor" });
@@ -626,10 +615,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     async (nominationId: number, nominationContributorId: number) => {
       setManualLoading(true);
       setManualState(null);
-      const res = await fetchJson(
-        `/admin/nominations/${nominationId}/contributors/${nominationContributorId}`,
-        { method: "DELETE" }
-      );
+      const res = await deleteNominationContributorReq(nominationId, nominationContributorId);
       setManualLoading(false);
       if (!res.ok) {
         setManualState({
@@ -647,12 +633,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const getFilmCredits = useCallback(async (filmId: number) => {
     if (!Number.isFinite(filmId) || filmId <= 0) return null;
-    const res = await fetchJson<{ credits: unknown | null }>(
-      `/admin/films/${filmId}/credits`,
-      {
-        method: "GET"
-      }
-    );
+    const res = await getFilmCreditsRaw(filmId);
     if (!res.ok) return null;
     const creditsUnknown = res.data?.credits ?? null;
     return creditsUnknown && typeof creditsUnknown === "object" ? creditsUnknown : null;
