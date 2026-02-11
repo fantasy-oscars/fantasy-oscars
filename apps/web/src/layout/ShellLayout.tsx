@@ -10,7 +10,7 @@ import { useInviteCountOrchestration } from "../orchestration/chrome";
 import { ShellHeader } from "../ui/chrome/ShellHeader";
 import { ShellNavDrawer } from "../ui/chrome/ShellNavDrawer";
 import { ShellPrimaryNav } from "../ui/chrome/ShellPrimaryNav";
-import { useShellNavMode } from "../ui/chrome/useShellNavMode";
+import { useShellNavMode } from "./useShellNavMode";
 
 export function ShellLayout() {
   const { user, loading, sessionError, logout } = useAuthContext();
