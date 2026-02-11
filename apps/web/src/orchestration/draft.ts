@@ -24,6 +24,7 @@ import {
   type DraftRoomView,
   type PoolMode
 } from "../decisions/draft";
+import { computeAutodraftNominationIdOrder } from "../decisions/draft/autodraftOrder";
 
 export type DraftRoomOrchestration = {
   state: {
@@ -547,87 +548,14 @@ export function useDraftRoomOrchestration(args: {
   );
 
   const autodraftList = useMemo(() => {
-    const rows = snapshot?.nominations ?? [];
-    if (rows.length === 0) return [];
-
-    const active = rows.filter((n) => n.status === "ACTIVE");
-    const catIndex = new Map<number, number>();
-    for (const c of snapshot?.categories ?? []) {
-      catIndex.set(c.id, c.sort_index ?? 0);
-    }
-
-    const canonicalIds = active
-      .slice()
-      .sort((a, b) => {
-        const ai = catIndex.get(a.category_edition_id) ?? 0;
-        const bi = catIndex.get(b.category_edition_id) ?? 0;
-        if (ai !== bi) return ai - bi;
-        return a.id - b.id;
-      })
-      .map((n) => n.id);
-
-    const ids: number[] = (() => {
-      if (autoStrategy === "custom") {
-        if (autoList.length > 0) return autoList;
-        if (!autoPlanId) return [];
-        return canonicalIds;
-      }
-      if (autoStrategy === "by_category") return canonicalIds;
-      if (autoStrategy === "alphabetical") {
-        const normalize = (raw: string) =>
-          raw
-            .normalize("NFKD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .trim()
-            .replace(/^(the|a|an)\s+/i, "")
-            .trim();
-        return active
-          .slice()
-          .sort((a, b) => {
-            const labelA = a.film_title ?? a.performer_name ?? a.song_title ?? "";
-            const labelB = b.film_title ?? b.performer_name ?? b.song_title ?? "";
-            const na = normalize(labelA);
-            const nb = normalize(labelB);
-            if (na !== nb) return na.localeCompare(nb);
-            const ai = catIndex.get(a.category_edition_id) ?? 0;
-            const bi = catIndex.get(b.category_edition_id) ?? 0;
-            if (ai !== bi) return ai - bi;
-            return a.id - b.id;
-          })
-          .map((n) => n.id);
-      }
-      if (autoStrategy === "wisdom") {
-        const bm = snapshot?.wisdom_benchmark?.items ?? [];
-        const sById = new Map<number, number>();
-        for (const it of bm) sById.set(it.nomination_id, it.score);
-
-        const fallbackW = scoringStrategyName === "negative" ? -1 : 1;
-        return active
-          .slice()
-          .sort((a, b) => {
-            const sa = sById.get(a.id) ?? 0;
-            const sb = sById.get(b.id) ?? 0;
-            const wa =
-              scoringStrategyName === "category_weighted"
-                ? (categoryWeightByCategoryId.get(a.category_edition_id) ?? 1)
-                : fallbackW;
-            const wb =
-              scoringStrategyName === "category_weighted"
-                ? (categoryWeightByCategoryId.get(b.category_edition_id) ?? 1)
-                : fallbackW;
-            const ua = sa * wa;
-            const ub = sb * wb;
-            if (ua !== ub) return ub - ua;
-            const ai = catIndex.get(a.category_edition_id) ?? 0;
-            const bi = catIndex.get(b.category_edition_id) ?? 0;
-            if (ai !== bi) return ai - bi;
-            return a.id - b.id;
-          })
-          .map((n) => n.id);
-      }
-      return canonicalIds;
-    })();
+    const ids = computeAutodraftNominationIdOrder({
+      snapshot,
+      strategy: autoStrategy,
+      planNominationIds: autoList,
+      selectedPlanId: autoPlanId,
+      scoringStrategyName,
+      categoryWeightByCategoryId
+    });
 
     return ids.map((id) => ({
       nominationId: id,
