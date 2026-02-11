@@ -2,31 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
-
-export type CeremonyOption = {
-  id: number;
-  code: string | null;
-  name: string | null;
-  starts_at: string | null;
-  status?: string;
-};
+import { isoToLocalInput, localInputToIso } from "../decisions/admin/ceremonyDateTime";
+import { winnersNominationLabel } from "../decisions/admin/winnersNominationLabel";
+import type { CeremonyOption } from "./admin/ceremonies/types";
+import {
+  fetchAdminCeremonies,
+  sortCeremonies
+} from "./admin/ceremonies/fetchCeremonies";
+export type { CeremonyOption } from "./admin/ceremonies/types";
 
 type LoadState = "loading" | "error" | "ready";
-
-async function fetchCeremonies() {
-  return fetchJson<{ ceremonies: CeremonyOption[] }>("/admin/ceremonies", {
-    method: "GET"
-  });
-}
-
-function sortCeremonies(rows: CeremonyOption[]) {
-  const toTs = (iso: string | null) => {
-    if (!iso) return -Infinity;
-    const t = new Date(iso).getTime();
-    return Number.isNaN(t) ? -Infinity : t;
-  };
-  return [...rows].sort((a, b) => toTs(b.starts_at) - toTs(a.starts_at) || b.id - a.id);
-}
 
 export function useAdminCeremoniesIndexOrchestration() {
   const [state, setState] = useState<LoadState>("loading");
@@ -47,7 +32,7 @@ export function useAdminCeremoniesIndexOrchestration() {
     const canRefreshInPlace = hasRenderedRef.current;
     if (!canRefreshInPlace) setState("loading");
     setError(null);
-    const res = await fetchCeremonies();
+    const res = await fetchAdminCeremonies();
     if (!res.ok) {
       setError(res.error ?? "Failed to load ceremonies");
       if (!canRefreshInPlace) {
@@ -142,7 +127,7 @@ export function useAdminCeremoniesLayoutOrchestration(args: { ceremonyIdRaw?: st
     const canRefreshInPlace = hasRenderedRef.current;
     if (!canRefreshInPlace) setState("loading");
     setError(null);
-    const res = await fetchCeremonies();
+    const res = await fetchAdminCeremonies();
     if (!res.ok) {
       setError(res.error ?? "Failed to load ceremonies");
       if (!canRefreshInPlace) {
@@ -196,24 +181,6 @@ type CeremonyOverviewFormState = {
   startsAtLocal: string;
   warningHours: string;
 };
-
-function isoToLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-}
-
-function localInputToIso(local: string): string | null {
-  const trimmed = local.trim();
-  if (!trimmed) return null;
-  const d = new Date(trimmed);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
 
 export function useAdminCeremonyOverviewOrchestration(args: {
   ceremonyId: number | null;
@@ -468,23 +435,6 @@ type WinnersNominationRow = {
     sort_order: number;
   }>;
 };
-
-function winnersNominationLabel(n: WinnersNominationRow) {
-  const people =
-    Array.isArray(n.contributors) && n.contributors.length > 0
-      ? n.contributors.map((c) => c.full_name)
-      : n.performer_name
-        ? [n.performer_name]
-        : [];
-  const peopleLabel =
-    people.length > 0
-      ? `${people[0]}${people.length > 1 ? ` +${people.length - 1}` : ""}`
-      : "";
-  if (n.song_title)
-    return peopleLabel ? `${n.song_title} — ${peopleLabel}` : n.song_title;
-  if (peopleLabel) return n.film_title ? `${peopleLabel} — ${n.film_title}` : peopleLabel;
-  return n.film_title ?? `Nomination #${n.id}`;
-}
 
 export function useAdminCeremonyWinnersOrchestration(args: {
   ceremonyId: number | null;
