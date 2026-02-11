@@ -1,5 +1,4 @@
 import { Box, Combobox, InputBase, Stack, Text, useCombobox } from "@mantine/core";
-import { useMemo } from "react";
 
 export function CategoryTemplateCombobox(props: {
   disabled: boolean;
@@ -15,11 +14,7 @@ export function CategoryTemplateCombobox(props: {
     onDropdownClose: () => combobox.resetSelectedOption()
   });
 
-  const selectedLabel = useMemo(() => {
-    if (!value) return "";
-    const found = options.find((o) => o.value === value);
-    return found?.name ?? "";
-  }, [options, value]);
+  const selectedLabel = value ? options.find((o) => o.value === value)?.name ?? "" : "";
 
   return (
     <Box className="admin-add-select">
@@ -75,4 +70,3 @@ export function CategoryTemplateCombobox(props: {
     </Box>
   );
 }
-

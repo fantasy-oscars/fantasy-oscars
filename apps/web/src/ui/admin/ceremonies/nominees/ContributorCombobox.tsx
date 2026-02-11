@@ -1,5 +1,4 @@
 import { Combobox, InputBase, Text, useCombobox } from "@mantine/core";
-import { useMemo } from "react";
 
 export type ContributorOption =
   | { kind: "tmdb"; value: string; label: string; name: string; tmdb_id: number }
@@ -19,18 +18,12 @@ export function ContributorCombobox(props: {
     onDropdownClose: () => combobox.resetSelectedOption()
   });
 
-  const optionByValue = useMemo(() => {
-    const map = new Map<string, (typeof options)[number]>();
-    for (const o of options) map.set(o.value, o);
-    return map;
-  }, [options]);
-
   return (
     <Combobox
       store={combobox}
       withinPortal={false}
       onOptionSubmit={(val) => {
-        const picked = optionByValue.get(val);
+        const picked = options.find((o) => o.value === val);
         if (!picked) return;
         void onSubmit(picked);
         combobox.closeDropdown();
@@ -73,4 +66,3 @@ export function ContributorCombobox(props: {
     </Combobox>
   );
 }
-

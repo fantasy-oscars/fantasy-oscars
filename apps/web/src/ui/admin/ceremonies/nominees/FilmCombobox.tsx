@@ -1,5 +1,4 @@
 import { Combobox, InputBase, Text, useCombobox } from "@mantine/core";
-import { useMemo } from "react";
 import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import { formatFilmTitleWithYear } from "../../../../lib/films";
 
@@ -15,26 +14,22 @@ export function FilmCombobox(props: {
     onDropdownClose: () => combobox.resetSelectedOption()
   });
 
-  const data = useMemo(() => {
-    const q = value;
-    const list = films
-      .map((f) => ({
-        id: f.id,
-        label: formatFilmTitleWithYear(f.title, f.release_year ?? null)
-      }))
-      .filter((f) => includesNormalized(f.label, q))
-      .slice(0, 50);
-    return list;
-  }, [films, value]);
+  const data = films
+    .map((f) => ({
+      id: f.id,
+      label: formatFilmTitleWithYear(f.title, f.release_year ?? null)
+    }))
+    .filter((f) => includesNormalized(f.label, value))
+    .slice(0, 50);
 
-  const hasExactMatch = useMemo(() => {
+  const hasExactMatch = (() => {
     const t = normalizeForSearch(value);
     if (!t) return true;
     return films.some(
       (f) =>
         normalizeForSearch(formatFilmTitleWithYear(f.title, f.release_year ?? null)) === t
     );
-  }, [films, value]);
+  })();
 
   return (
     <Combobox
@@ -99,4 +94,3 @@ export function FilmCombobox(props: {
     </Combobox>
   );
 }
-
