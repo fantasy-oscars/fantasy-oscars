@@ -6,6 +6,8 @@ import type { ApiResult, Snapshot } from "../lib/types";
 import { makeRequestId } from "./draft/helpers";
 import { useDraftSnapshot } from "./draft/useDraftSnapshot";
 import { useDraftSocket } from "./draft/useDraftSocket";
+import { useDraftClock } from "./draft/useDraftClock";
+import { useDraftHeartbeat } from "./draft/useDraftHeartbeat";
 import {
   buildDraftedSet,
   buildIconByCategoryId,
@@ -224,7 +226,7 @@ export function useDraftRoomOrchestration(args: {
   const [pauseLoading, setPauseLoading] = useState(false);
   const [resumeState, setResumeState] = useState<ApiResult | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
-  const [nowTs, setNowTs] = useState(() => Date.now());
+  const nowTs = useDraftClock();
 
   const socketRef = useRef<Socket | null>(null);
   const snapshotRef = snapshotState.snapshotRef;
@@ -317,55 +319,13 @@ export function useDraftRoomOrchestration(args: {
     void loadAutodraft(snapshot);
   }, [disabled, loadAutodraft, snapshot?.draft?.id]);
 
-  useEffect(() => {
-    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  // Heartbeat: if a pick timer expires, trigger an auto-pick on the server.
-  // We only call the endpoint when the local view believes the deadline has passed.
-  useEffect(() => {
-    if (disabled) return;
-    if (!snapshot?.draft.id) return;
-
-    const intervalId = window.setInterval(() => {
-      const current = snapshotRef.current;
-      if (!current) return;
-      const d = current.draft;
-      if (d.status !== "IN_PROGRESS") return;
-      if (!d.pick_timer_seconds) return;
-      const deadlineMs = d.pick_deadline_at
-        ? new Date(d.pick_deadline_at).getTime()
-        : null;
-      if (!deadlineMs || !Number.isFinite(deadlineMs)) return;
-      if (Date.now() <= deadlineMs) return;
-
-      void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [disabled, snapshot?.draft.id]);
-
-  // Safety resync: if the websocket is disconnected during a live/paused draft,
-  // periodically refresh the snapshot so the UI doesn't get stuck on stale turns.
-  useEffect(() => {
-    if (disabled) return;
-    if (!snapshot?.draft.id) return;
-
-    const intervalId = window.setInterval(() => {
-      const current = snapshotRef.current;
-      if (!current) return;
-      const status = current.draft.status ?? null;
-      if (status !== "IN_PROGRESS" && status !== "PAUSED") return;
-
-      const sock = socketRef.current;
-      if (sock && sock.connected) return;
-
-      void loadSnapshot({ preserveSnapshot: true });
-    }, 5000);
-
-    return () => window.clearInterval(intervalId);
-  }, [disabled, loadSnapshot, snapshot?.draft.id]);
+  useDraftHeartbeat({
+    disabled,
+    draftId: snapshot?.draft?.id ?? null,
+    snapshotRef,
+    socketRef,
+    loadSnapshot
+  });
 
   const drafted = useMemo(
     () => buildDraftedSet(snapshot?.picks ?? []),
