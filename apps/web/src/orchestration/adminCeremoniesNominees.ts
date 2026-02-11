@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { parseFilmTitleWithYear } from "../lib/films";
 import type { ApiResult } from "../lib/types";
+import {
+  buildCreditByPersonId,
+  buildCreditOptionById,
+  buildCreditOptions,
+  filterCreditOptions,
+  type CreditOption,
+  type FilmCredits
+} from "../decisions/admin/nomineeCredits";
 
 type CeremonyCategory = {
   id: number;
@@ -17,33 +25,6 @@ type CandidateFilm = {
   title: string;
   release_year?: number | null;
   tmdb_id?: number | null;
-};
-
-type FilmCredits = {
-  cast?: Array<{
-    tmdb_id: number;
-    name: string;
-    character?: string | null;
-    order?: number | null;
-    credit_id?: string | null;
-    profile_path?: string | null;
-  }>;
-  crew?: Array<{
-    tmdb_id: number;
-    name: string;
-    department?: string | null;
-    job?: string | null;
-    credit_id?: string | null;
-    profile_path?: string | null;
-  }>;
-};
-
-type CreditOption = {
-  tmdb_id: number;
-  name: string;
-  jobs: string[];
-  label: string;
-  search: string;
 };
 
 type NominationRow = {
@@ -197,91 +178,15 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   }, [searchPeople]);
 
   const creditByPersonId = useMemo(() => {
-    const map = new Map<
-      number,
-      {
-        name: string;
-        crewJobs: string[];
-        crewJobsSet: Set<string>;
-        characters: string[];
-        characterSet: Set<string>;
-        isCast: boolean;
-      }
-    >();
-    if (!credits) return map;
-
-    for (const c of credits.crew ?? []) {
-      if (!c?.tmdb_id || !c?.name) continue;
-      const job =
-        typeof c.job === "string" && c.job.trim()
-          ? c.job.trim()
-          : typeof c.department === "string" && c.department.trim()
-            ? c.department.trim()
-            : "";
-      if (!job) continue;
-      const existing = map.get(c.tmdb_id) ?? {
-        name: c.name,
-        crewJobs: [],
-        crewJobsSet: new Set<string>(),
-        characters: [],
-        characterSet: new Set<string>(),
-        isCast: false
-      };
-      if (!existing.crewJobsSet.has(job)) {
-        existing.crewJobsSet.add(job);
-        existing.crewJobs.push(job);
-      }
-      map.set(c.tmdb_id, existing);
-    }
-
-    for (const c of credits.cast ?? []) {
-      if (!c?.tmdb_id || !c?.name) continue;
-      const character =
-        typeof c.character === "string" && c.character.trim() ? c.character.trim() : "";
-      const existing = map.get(c.tmdb_id) ?? {
-        name: c.name,
-        crewJobs: [],
-        crewJobsSet: new Set<string>(),
-        characters: [],
-        characterSet: new Set<string>(),
-        isCast: false
-      };
-      existing.isCast = true;
-      if (character && !existing.characterSet.has(character)) {
-        existing.characterSet.add(character);
-        existing.characters.push(character);
-      }
-      map.set(c.tmdb_id, existing);
-    }
-
-    return map;
+    return buildCreditByPersonId(credits);
   }, [credits]);
 
   const creditOptions = useMemo<CreditOption[]>(() => {
-    const opts: CreditOption[] = [];
-    for (const [tmdbId, info] of creditByPersonId.entries()) {
-      const jobs: string[] = [];
-      for (const j of info.crewJobs) jobs.push(j);
-      if (info.isCast) {
-        const role = info.characters.length ? ` (as ${info.characters.join(" / ")})` : "";
-        jobs.push(`Cast${role}`);
-      }
-      const label = `${info.name} -- ${jobs.join(", ")}`;
-      opts.push({
-        tmdb_id: tmdbId,
-        name: info.name,
-        jobs,
-        label,
-        search: `${info.name} ${jobs.join(" ")}`.toLowerCase()
-      });
-    }
-    return opts.sort((a, b) => a.name.localeCompare(b.name));
+    return buildCreditOptions(creditByPersonId);
   }, [creditByPersonId]);
 
   const creditOptionById = useMemo(() => {
-    const map: Record<number, CreditOption> = {};
-    for (const o of creditOptions) map[o.tmdb_id] = o;
-    return map;
+    return buildCreditOptionById(creditOptions);
   }, [creditOptions]);
 
   const selectedCredits = useMemo(() => {
@@ -291,9 +196,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   }, [creditOptionById, selectedContributorIds]);
 
   const filteredCreditOptions = useMemo(() => {
-    const q = creditQuery.trim().toLowerCase();
-    if (!q) return creditOptions;
-    return creditOptions.filter((o) => o.search.includes(q));
+    return filterCreditOptions(creditOptions, creditQuery);
   }, [creditOptions, creditQuery]);
 
   const resolveFilmSelection = useCallback(
