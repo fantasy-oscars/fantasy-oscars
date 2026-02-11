@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
-import { isIntegrityWarningWindow } from "../lib/draft";
 import { notify } from "../notifications";
 import { formatLocalDateTime } from "./seasons/seasonFormat";
 import { copySeasonInviteLink } from "./seasons/seasonInviteLinks";
+import {
+  computeAvailableLeagueMembers,
+  computeIntegrityWarningActive,
+  computeSeasonIsArchived
+} from "./seasons/seasonSelectors";
 import { useSeasonInviteeSearch } from "./seasons/useSeasonInviteeSearch";
 import type {
   ApiResult,
@@ -69,10 +73,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     return seasonRole || leagueRole;
   }, [members, leagueContext?.leagueMembers, userId]);
 
-  const isArchived = leagueContext?.season
-    ? leagueContext.season.is_active_ceremony === false ||
-      leagueContext.season.status !== "EXTANT"
-    : false;
+  const isArchived = computeSeasonIsArchived(leagueContext?.season ?? null);
   const canEdit = !isArchived && isCommissioner;
 
   useSeasonInviteeSearch({
@@ -675,21 +676,17 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   const seasonStatus = leagueContext?.season?.status ?? "UNKNOWN";
   const scoringStrategy = leagueContext?.season?.scoring_strategy_name ?? "fixed";
   const allocationStrategy = leagueContext?.season?.remainder_strategy ?? "UNDRAFTED";
-  const availableLeagueMembers =
-    leagueContext?.leagueMembers?.filter(
-      (m) => !members.some((sm) => sm.user_id === m.user_id)
-    ) ?? [];
+  const availableLeagueMembers = computeAvailableLeagueMembers({
+    leagueMembers: leagueContext?.leagueMembers,
+    seasonMembers: members
+  });
   const ceremonyStartsAt = leagueContext?.season?.ceremony_starts_at ?? null;
   const draftId = leagueContext?.season?.draft_id ?? null;
   const draftStatus = leagueContext?.season?.draft_status ?? null;
-  const draftWarningEligible =
-    (leagueContext?.season?.is_active_ceremony ?? false) &&
-    draftStatus &&
-    (draftStatus === "PENDING" ||
-      draftStatus === "IN_PROGRESS" ||
-      draftStatus === "PAUSED");
-  const integrityWarningActive =
-    draftWarningEligible && isIntegrityWarningWindow(ceremonyStartsAt, nowTs);
+  const integrityWarningActive = computeIntegrityWarningActive({
+    season: leagueContext?.season ?? null,
+    nowTs
+  });
 
   const getCeremonyCategoriesForWeights = useCallback(async (ceremonyId: number) => {
     if (!Number.isFinite(ceremonyId) || ceremonyId <= 0) {
