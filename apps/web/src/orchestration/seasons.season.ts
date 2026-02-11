@@ -9,9 +9,9 @@ import {
   computeSeasonIsArchived
 } from "./seasons/seasonSelectors";
 import { useSeasonInviteeSearch } from "./seasons/useSeasonInviteeSearch";
+import { loadLeagueContextForSeason } from "./seasons/loadLeagueContextForSeason";
 import type {
   ApiResult,
-  CeremonySummary,
   LeagueMember,
   LeagueSummary,
   SeasonInvite,
@@ -104,51 +104,14 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       }
       if (!cancelled) setMembers(memberRes.data?.members ?? []);
 
-      // Discover league + season metadata by walking user leagues.
-      const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues", {
-        method: "GET"
-      });
-      let found: { league: LeagueSummary; season: SeasonMeta } | null = null;
-      let leagueMembers: LeagueMember[] = [];
-      if (leaguesRes.ok && leaguesRes.data?.leagues) {
-        for (const lg of leaguesRes.data.leagues) {
-          const seasonsRes = await fetchJson<{
-            seasons: Array<SeasonMeta & { id: number }>;
-          }>(`/leagues/${lg.id}/seasons`, { method: "GET" });
-          if (seasonsRes.ok) {
-            const match = (seasonsRes.data?.seasons ?? []).find((s) => s.id === seasonId);
-            if (match) {
-              found = { league: lg, season: match };
-              const rosterRes = await fetchJson<{ members: LeagueMember[] }>(
-                `/leagues/${lg.id}/members`,
-                { method: "GET" }
-              );
-              if (rosterRes.ok && rosterRes.data?.members) {
-                leagueMembers = rosterRes.data.members;
-              }
-              break;
-            }
-          }
-        }
-      }
+      const found = await loadLeagueContextForSeason(seasonId);
       if (!cancelled && found) {
-        setLeagueContext({ ...found, leagueMembers });
-
-        // Ceremony status drives small bits of UI copy (e.g. "View results" once COMPLETE).
-        // We intentionally keep this lightweight (no draft board payload).
-        const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>(
-          "/ceremonies",
-          {
-            method: "GET"
-          }
-        );
-        const status =
-          ceremoniesRes.ok && ceremoniesRes.data?.ceremonies
-            ? (ceremoniesRes.data.ceremonies.find(
-                (c) => c.id === found!.season.ceremony_id
-              )?.status ?? null)
-            : null;
-        if (!cancelled) setCeremonyStatus(status);
+        setLeagueContext({
+          league: found.league,
+          season: found.season,
+          leagueMembers: found.leagueMembers
+        });
+        setCeremonyStatus(found.ceremonyStatus);
       }
 
       const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
