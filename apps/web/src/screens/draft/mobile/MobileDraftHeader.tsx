@@ -68,6 +68,11 @@ export function MobileDraftHeader(props: {
   );
   const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
+  const audioControllerRef = useRef(props.audioController);
+
+  useEffect(() => {
+    audioControllerRef.current = props.audioController;
+  }, [props.audioController]);
 
   useEffect(() => {
     if (!countdownActive) {
@@ -81,7 +86,7 @@ export function MobileDraftHeader(props: {
 
     const tick = () => {
       setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
-      if (props.audioUnlocked) playCountdownBeep(props.audioController);
+      if (props.audioUnlocked) playCountdownBeep(audioControllerRef.current);
     };
 
     tick();
@@ -92,8 +97,7 @@ export function MobileDraftHeader(props: {
         countdownIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countdownActive]);
+  }, [countdownActive, props.audioUnlocked]);
 
   const centerText =
     props.isFinalResults && props.resultsWinnerLabel

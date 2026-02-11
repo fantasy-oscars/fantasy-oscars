@@ -22,7 +22,6 @@ function devWarnForbiddenPairing(eventId: string, nextType: CanonicalNotificatio
   }
   if (prior === nextType) return;
   // One message, one surface: warn loudly in dev to prevent regressions.
-  // eslint-disable-next-line no-console
   console.warn(
     `[notifications] Forbidden pairing: event '${eventId}' dispatched as '${prior}' and '${nextType}'.`
   );

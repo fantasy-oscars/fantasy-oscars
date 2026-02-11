@@ -26,7 +26,6 @@ async function main() {
   const ceremonyIdRaw = args.get("ceremony");
 
   if (!movieIdRaw && !ceremonyIdRaw) {
-    // eslint-disable-next-line no-console
     console.error(
       "Usage:\n  tsx src/scripts/sync-tmdb.ts --movie <tmdbMovieId>\n  tsx src/scripts/sync-tmdb.ts --ceremony <ceremonyId>"
     );
@@ -40,7 +39,6 @@ async function main() {
     if (!Number.isFinite(tmdbMovieId) || tmdbMovieId <= 0)
       throw new Error("Invalid --movie");
     const result = await syncTmdbMovieById(pool, tmdbMovieId);
-    // eslint-disable-next-line no-console
     console.log(result);
     await pool.end();
     return;
@@ -63,7 +61,6 @@ async function main() {
     .map((r) => r.tmdb_id)
     .filter((v): v is number => typeof v === "number");
   if (tmdbIds.length === 0) {
-    // eslint-disable-next-line no-console
     console.log({
       ceremonyId,
       synced: 0,
@@ -79,13 +76,11 @@ async function main() {
     synced += 1;
   }
 
-  // eslint-disable-next-line no-console
   console.log({ ceremonyId, synced });
   await pool.end();
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

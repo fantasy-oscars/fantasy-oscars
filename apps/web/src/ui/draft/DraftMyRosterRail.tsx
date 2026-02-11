@@ -1,8 +1,8 @@
 import { Box, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import type { DraftNomineeMeta, DraftRosterPick } from "./types";
 
 export function DraftMyRosterRail(props: {
   open: boolean;
@@ -10,25 +10,8 @@ export function DraftMyRosterRail(props: {
   isPre: boolean;
   compactRails: boolean;
   openRailExclusive: (rail: "ledger" | "roster" | "auto") => void;
-  myPicks: DraftRoomOrchestration["myRoster"]["picks"];
-  nomineeById: Map<
-    number,
-    {
-      unitKind: string;
-      categoryName: string;
-      filmTitle: string | null;
-      filmYear: number | null;
-      filmPosterUrl: string | null;
-      contributors: string[];
-      performerName: string | null;
-      performerCharacter: string | null;
-      performerProfileUrl: string | null;
-      performerProfilePath: string | null;
-      songTitle: string | null;
-      categoryIcon: string;
-      categoryIconVariant: "default" | "inverted";
-    }
-  >;
+  myPicks: DraftRosterPick[];
+  nomineeById: Map<number, DraftNomineeMeta>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
@@ -136,4 +119,3 @@ export function DraftMyRosterRail(props: {
     </Box>
   );
 }
-

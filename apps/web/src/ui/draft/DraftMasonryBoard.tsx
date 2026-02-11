@@ -1,4 +1,5 @@
 import { Box } from "@mantine/core";
+import type { RefObject } from "react";
 import { CategoryCard } from "./CategoryCard";
 
 export function DraftMasonryBoard(props: {
@@ -10,7 +11,7 @@ export function DraftMasonryBoard(props: {
       icon: string;
       iconVariant: "default" | "inverted";
       unitKind: string;
-      weight: number | null;
+      weightText: string | null;
       nominees: Array<{
         id: string;
         label: string;
@@ -30,6 +31,7 @@ export function DraftMasonryBoard(props: {
   >;
   keyboardCategoryId: string | null;
   setKeyboardCategoryId: (categoryId: string | null) => void;
+  firstPillRefByCategoryId?: Record<string, RefObject<HTMLButtonElement | null> | undefined>;
   canDraftAction: boolean;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
@@ -53,8 +55,9 @@ export function DraftMasonryBoard(props: {
                 icon={b.icon}
                 iconVariant={b.iconVariant}
                 unitKind={b.unitKind}
-                weight={b.weight}
+                weightText={b.weightText}
                 nominees={b.nominees}
+                firstPillRef={props.firstPillRefByCategoryId?.[b.id] ?? null}
                 isKeyboardMode={props.keyboardCategoryId === b.id}
                 setKeyboardMode={props.setKeyboardCategoryId}
                 canDraftAction={props.canDraftAction}
@@ -68,4 +71,3 @@ export function DraftMasonryBoard(props: {
     </Box>
   );
 }
-

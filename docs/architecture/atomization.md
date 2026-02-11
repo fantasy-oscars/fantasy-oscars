@@ -45,7 +45,8 @@ Where it lives:
 
 Where it lives:
 
-- Web routes: `apps/web/src/pages/**` (and some route layouts)
+- Web routes: `apps/web/src/pages/**` (route-level glue)
+- Web screens: `apps/web/src/screens/**` (screen-level glue; may be split into sub-glue modules within the same screen domain)
 
 ## UI (rendering only)
 
@@ -56,9 +57,28 @@ Where it lives:
 - Only props + events.
 - Mantine components and styling live here.
 
+Additional repo constraints (enforced in review):
+
+- `apps/web/src/ui/**` must not:
+  - call React hooks (`useState`, `useEffect`, etc.)
+  - export hooks
+  - import from `apps/web/src/screens/**` (no "UI re-exporting Glue")
+  - import orchestration modules or auth context
+- UI may be interactive (buttons, inputs), but state is always owned by Glue and passed via props.
+
 Where it lives:
 
-- Web: `apps/web/src/screens/**`, `apps/web/src/primitives/**`, `apps/web/src/ui/**`, `apps/web/src/components/**`
+- Web UI primitives: `apps/web/src/primitives/**`
+- Web presentational UI: `apps/web/src/ui/**`, `apps/web/src/components/**`
+
+Note: `apps/web/src/screens/**` is not a UI layer; it's Glue (and may contain helper glue modules/components scoped to that screen).
+
+## Practical checks
+
+- No hooks in UI:
+  - `rg -n "\\\\buse(State|Effect|Memo|Callback|Ref|Reducer|Context|Id)\\\\b" apps/web/src/ui`
+- UI must not import Glue:
+  - `rg -n "screens/" apps/web/src/ui`
 
 ## Litmus tests
 

@@ -4,7 +4,7 @@ import type { DraftRoomOrchestration } from "../../../orchestration/draft";
 import { RuntimeBannerStack } from "../../../notifications";
 import { SiteFooterFineprintOnly } from "../../../layout/SiteFooter";
 import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
-import { CategoryCard } from "../CategoryCard";
+import { CategoryCard } from "../../../ui/draft/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "../../../ui/draft/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
@@ -30,7 +30,7 @@ export function MobileDraftRoom(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
-    weight: number | null;
+    weightText: string | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -177,8 +177,9 @@ export function MobileDraftRoom(props: {
                   iconVariant={c.iconVariant}
                   unitKind={c.unitKind}
                   tooltipsEnabled={false}
-                  weight={c.weight}
+                  weightText={c.weightText}
                   nominees={c.nominees}
+                  firstPillRef={null}
                   isKeyboardMode={false}
                   setKeyboardMode={() => {}}
                   canDraftAction={props.canDraftAction}

@@ -1,33 +1,16 @@
 import { Box, Checkbox, Select, Stack, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import type { AutoDraftState, DraftNomineeMeta } from "./types";
 
 export function DraftAutoDraftRail(props: {
   open: boolean;
   setOpen: (open: boolean) => void;
   compactRails: boolean;
   openRailExclusive: (rail: "ledger" | "roster" | "auto") => void;
-  autodraft: DraftRoomOrchestration["autodraft"];
-  nomineeById: Map<
-    number,
-    {
-      unitKind: string;
-      categoryName: string;
-      filmTitle: string | null;
-      filmYear: number | null;
-      filmPosterUrl: string | null;
-      contributors: string[];
-      performerName: string | null;
-      performerCharacter: string | null;
-      performerProfileUrl: string | null;
-      performerProfilePath: string | null;
-      songTitle: string | null;
-      categoryIcon: string;
-      categoryIconVariant: "default" | "inverted";
-    }
-  >;
+  autodraft: AutoDraftState;
+  nomineeById: Map<number, DraftNomineeMeta>;
   draftedNominationIds: Set<number>;
 }) {
   const { open, setOpen, compactRails, openRailExclusive } = props;
@@ -170,4 +153,3 @@ export function DraftAutoDraftRail(props: {
     </Box>
   );
 }
-

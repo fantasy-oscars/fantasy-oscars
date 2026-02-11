@@ -202,7 +202,6 @@ describe("MVP end-to-end flow", () => {
       commishLogin.json.token
     );
     if (inviteRes.status !== 201 && inviteRes.status !== 200) {
-      // eslint-disable-next-line no-console
       console.error("inviteRes", inviteRes.status, inviteRes.json);
     }
     expect([200, 201]).toContain(inviteRes.status);
@@ -260,7 +259,6 @@ describe("MVP end-to-end flow", () => {
       seatOneToken
     );
     if (pickRes.status !== 200) {
-      // eslint-disable-next-line no-console
       console.error("pickRes", pickRes.status, pickRes.json);
     }
     expect([200, 201]).toContain(pickRes.status);

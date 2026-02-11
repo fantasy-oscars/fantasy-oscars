@@ -6,6 +6,7 @@ import { DraftHeaderMeasureRow } from "../../ui/draft/DraftHeaderMeasureRow";
 import { DraftHeaderRightWing } from "../../ui/draft/DraftHeaderRightWing";
 import { createDraftAudioController, playCountdownBeep } from "../../lib/draftAudio";
 import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../lib/draftCountdown";
+import { useParticipantStripLayout } from "./useParticipantStripLayout";
 
 export function DraftBoardHeader(props: {
   backHref: string | null;
@@ -13,7 +14,7 @@ export function DraftBoardHeader(props: {
     seatNumber: number;
     label: string;
     active: boolean;
-    avatarKey: string | null;
+    avatarKey: string;
   }>;
   direction: "FORWARD" | "REVERSE" | null;
   roundNumber: number | null;
@@ -54,6 +55,8 @@ export function DraftBoardHeader(props: {
   const rightWingRef = useRef<HTMLDivElement | null>(null);
   const leftMeasureRef = useRef<HTMLDivElement | null>(null);
   const rightMeasureRef = useRef<HTMLDivElement | null>(null);
+  const participantStripRef = useRef<HTMLDivElement | null>(null);
+  const participantStripMeasureRef = useRef<HTMLDivElement | null>(null);
   const buckleRef = useRef<HTMLDivElement | null>(null);
   const [compactHeader, setCompactHeader] = useState(false);
   const [compactMenuOpen, setCompactMenuOpen] = useState(false);
@@ -62,6 +65,21 @@ export function DraftBoardHeader(props: {
   const activeIndexRaw = props.participants.findIndex((p) => p.active);
   const activeIndex = activeIndexRaw >= 0 ? activeIndexRaw : 0;
   const activeLabel = props.participants[activeIndex]?.label ?? "—";
+  const participantStripBase = useParticipantStripLayout({
+    containerRef: participantStripRef,
+    participants: props.participants,
+    activeIndex,
+    direction: props.direction,
+    suppressActive: isPre || isPaused || isCompleted
+  });
+  const participantStripLayout = {
+    containerRef: participantStripRef,
+    ...participantStripBase
+  };
+  const participantStripMeasureLayout = {
+    containerRef: participantStripMeasureRef,
+    ...participantStripBase
+  };
   const centerText = (() => {
     if (props.isFinalResults) {
       const raw = props.resultsWinnerLabel?.trim();
@@ -86,6 +104,11 @@ export function DraftBoardHeader(props: {
   const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
   const canBeepRef = useRef(false);
+  const audioControllerRef = useRef(props.audioController);
+
+  useEffect(() => {
+    audioControllerRef.current = props.audioController;
+  }, [props.audioController]);
 
   useEffect(() => {
     canBeepRef.current = Boolean(props.audioUnlocked && props.isMyTurn);
@@ -104,7 +127,7 @@ export function DraftBoardHeader(props: {
     // Start immediately when countdown begins.
     const tick = () => {
       setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
-      if (canBeepRef.current) playCountdownBeep(props.audioController);
+      if (canBeepRef.current) playCountdownBeep(audioControllerRef.current);
     };
 
     tick();
@@ -116,7 +139,6 @@ export function DraftBoardHeader(props: {
         countdownIntervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdownActive]);
 
   const buckleMaxPx = useMemo(() => {
@@ -218,6 +240,7 @@ export function DraftBoardHeader(props: {
               participants={props.participants}
               activeIndex={activeIndex}
               direction={props.direction}
+              participantStripLayout={participantStripLayout}
               view={props.view}
               onViewChange={props.onViewChange}
               canToggleView={props.canToggleView}
@@ -281,6 +304,7 @@ export function DraftBoardHeader(props: {
         <DraftHeaderMeasureRow
           leftMeasureRef={leftMeasureRef}
           rightMeasureRef={rightMeasureRef}
+          participantStripLayout={participantStripMeasureLayout}
           isCompleted={isCompleted}
           isPre={isPre}
           isPaused={isPaused}

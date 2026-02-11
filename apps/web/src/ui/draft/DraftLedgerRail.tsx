@@ -1,10 +1,9 @@
 import { Box, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
-import { pickDeterministicAvatarKey } from "../../decisions/avatars";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import type { DraftLedgerRow, DraftNomineeMeta } from "./types";
 
 export function DraftLedgerRail(props: {
   open: boolean;
@@ -12,26 +11,9 @@ export function DraftLedgerRail(props: {
   isPre: boolean;
   compactRails: boolean;
   openRailExclusive: (rail: "ledger" | "roster" | "auto") => void;
-  ledgerRows: DraftRoomOrchestration["ledger"]["rows"];
+  ledgerRows: DraftLedgerRow[];
   avatarKeyBySeat: Map<number, string | null>;
-  nomineeById: Map<
-    number,
-    {
-      unitKind: string;
-      categoryName: string;
-      filmTitle: string | null;
-      filmYear: number | null;
-      filmPosterUrl: string | null;
-      contributors: string[];
-      performerName: string | null;
-      performerCharacter: string | null;
-      performerProfileUrl: string | null;
-      performerProfilePath: string | null;
-      songTitle: string | null;
-      categoryIcon: string;
-      categoryIconVariant: "default" | "inverted";
-    }
-  >;
+  nomineeById: Map<number, DraftNomineeMeta>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
@@ -63,7 +45,7 @@ export function DraftLedgerRail(props: {
                 const nominee = r.nominationId ? (props.nomineeById.get(r.nominationId) ?? null) : null;
                 const avatarKey =
                   r.seatNumber !== null
-                    ? (props.avatarKeyBySeat.get(r.seatNumber) ?? pickDeterministicAvatarKey(r.seatLabel))
+                    ? (props.avatarKeyBySeat.get(r.seatNumber) ?? null)
                     : null;
                 const pill = (
                   <Box
@@ -145,4 +127,3 @@ export function DraftLedgerRail(props: {
     </Box>
   );
 }
-

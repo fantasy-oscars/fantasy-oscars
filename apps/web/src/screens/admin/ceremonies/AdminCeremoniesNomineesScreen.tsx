@@ -9,10 +9,10 @@ import type { AdminCeremonyNomineesOrchestration } from "../../../orchestration/
 import { FormStatus } from "../../../ui/forms";
 import { notify } from "../../../notifications";
 import { StandardCard } from "../../../primitives";
-import { CategoryNominationSection } from "../../../ui/admin/ceremonies/nominees/CategoryNominationSection";
 import { CandidatePoolAccordion } from "../../../ui/admin/ceremonies/nominees/CandidatePoolAccordion";
 import { CreateNominationPanel } from "../../../ui/admin/ceremonies/nominees/CreateNominationPanel";
-import { NominationEditModal } from "../../../ui/admin/ceremonies/nominees/NominationEditModal";
+import { CategoryNominationSection } from "./nominees/CategoryNominationSection";
+import { NominationEditModal } from "./nominees/NominationEditModal";
 import "../../../primitives/baseline.css";
 
 export function AdminCeremoniesNomineesScreen(props: {

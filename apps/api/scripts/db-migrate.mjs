@@ -92,7 +92,6 @@ async function applyMigrations(pool, files, { bootstrapExisting = false } = {}) 
           file
         ]);
         await client.query("COMMIT");
-        // eslint-disable-next-line no-console
         console.log(`Applied migration: ${file}`);
         appliedCount += 1;
       } catch (err) {
@@ -104,7 +103,6 @@ async function applyMigrations(pool, files, { bootstrapExisting = false } = {}) 
             `INSERT INTO migration_history (filename) VALUES ($1) ON CONFLICT DO NOTHING`,
             [file]
           );
-          // eslint-disable-next-line no-console
           console.log(
             `Marked migration as already applied (bootstrap): ${file} (code=${String(err.code)})`
           );
@@ -114,7 +112,6 @@ async function applyMigrations(pool, files, { bootstrapExisting = false } = {}) 
       }
     }
 
-    // eslint-disable-next-line no-console
     console.log(
       appliedCount === 0
         ? "No migrations to apply."
@@ -145,7 +142,6 @@ async function main() {
   try {
     const files = getSortedMigrationFiles();
     if (files.length === 0) {
-      // eslint-disable-next-line no-console
       console.log("No migration files found.");
       return;
     }
@@ -156,7 +152,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

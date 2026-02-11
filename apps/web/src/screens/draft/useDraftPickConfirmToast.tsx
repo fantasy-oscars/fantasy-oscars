@@ -1,32 +1,41 @@
 import { Box, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export function useDraftPickConfirmToast(args: {
   enabled: boolean;
   onConfirmPick: (nominationId: number) => void;
   onClearSelection: () => void;
 }) {
+  const onConfirmPickRef = useRef(args.onConfirmPick);
+  const onClearSelectionRef = useRef(args.onClearSelection);
+  useEffect(() => {
+    onConfirmPickRef.current = args.onConfirmPick;
+  }, [args.onConfirmPick]);
+  useEffect(() => {
+    onClearSelectionRef.current = args.onClearSelection;
+  }, [args.onClearSelection]);
+
   const confirmTimerRef = useRef<number | null>(null);
   const confirmNominationRef = useRef<number | null>(null);
   const confirmToastIdRef = useRef<string | null>(null);
 
-  const clearConfirmTimer = () => {
+  const clearConfirmTimer = useCallback(() => {
     if (confirmTimerRef.current) {
       window.clearTimeout(confirmTimerRef.current);
       confirmTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const cancelDraftConfirmToast = () => {
+  const cancelDraftConfirmToast = useCallback(() => {
     const id = confirmToastIdRef.current;
     if (id) notifications.hide(id);
     confirmToastIdRef.current = null;
     confirmNominationRef.current = null;
     clearConfirmTimer();
-  };
+  }, [clearConfirmTimer]);
 
-  const scheduleDraftConfirmToast = (payload: { nominationId: number; label: string }) => {
+  const scheduleDraftConfirmToast = useCallback((payload: { nominationId: number; label: string }) => {
     cancelDraftConfirmToast();
     clearConfirmTimer();
     confirmNominationRef.current = payload.nominationId;
@@ -44,7 +53,7 @@ export function useDraftPickConfirmToast(args: {
         onClose: () => {
           confirmToastIdRef.current = null;
           confirmNominationRef.current = null;
-          args.onClearSelection();
+          onClearSelectionRef.current();
         },
         message: (
           <Box
@@ -52,7 +61,7 @@ export function useDraftPickConfirmToast(args: {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
               cancelDraftConfirmToast();
-              args.onConfirmPick(nominationId);
+              onConfirmPickRef.current(nominationId);
             }}
             style={{ cursor: "pointer" }}
           >
@@ -64,7 +73,7 @@ export function useDraftPickConfirmToast(args: {
         )
       });
     }, 220);
-  };
+  }, [cancelDraftConfirmToast, clearConfirmTimer]);
 
   useEffect(() => {
     // Cleanup any pending confirm UI if the user loses the ability to draft.
@@ -77,20 +86,18 @@ export function useDraftPickConfirmToast(args: {
       cancelDraftConfirmToast();
       clearConfirmTimer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [args.enabled]);
+  }, [args.enabled, cancelDraftConfirmToast, clearConfirmTimer]);
 
   useEffect(() => {
     // Clicking anywhere outside the toast cancels the pending draft confirmation.
     const onPointerDown = () => {
       if (!confirmToastIdRef.current) return;
       cancelDraftConfirmToast();
-      args.onClearSelection();
+      onClearSelectionRef.current();
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cancelDraftConfirmToast]);
 
   return {
     scheduleDraftConfirmToast,
@@ -98,4 +105,3 @@ export function useDraftPickConfirmToast(args: {
     clearConfirmTimer
   };
 }
-

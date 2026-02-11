@@ -6,6 +6,12 @@ import { ParticipantStrip } from "./ParticipantStrip";
 export function DraftHeaderMeasureRow(props: {
   leftMeasureRef: RefObject<HTMLDivElement | null>;
   rightMeasureRef: RefObject<HTMLDivElement | null>;
+  participantStripLayout: {
+    containerRef: RefObject<HTMLDivElement | null>;
+    capacity: number;
+    start: number;
+    end: number;
+  };
   isCompleted: boolean;
   isPre: boolean;
   isPaused: boolean;
@@ -15,7 +21,7 @@ export function DraftHeaderMeasureRow(props: {
     seatNumber: number;
     label: string;
     active: boolean;
-    avatarKey: string | null;
+    avatarKey: string;
   }>;
   activeIndex: number;
   direction: "FORWARD" | "REVERSE" | null;
@@ -39,6 +45,10 @@ export function DraftHeaderMeasureRow(props: {
         </Box>
         {!props.isCompleted ? (
           <ParticipantStrip
+            containerRef={props.participantStripLayout.containerRef}
+            capacity={props.participantStripLayout.capacity}
+            start={props.participantStripLayout.start}
+            end={props.participantStripLayout.end}
             participants={props.participants}
             activeIndex={props.activeIndex}
             direction={props.direction}

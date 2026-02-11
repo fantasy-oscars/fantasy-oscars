@@ -2,15 +2,15 @@ import "@testing-library/jest-dom/vitest";
 
 // Mantine uses matchMedia for color scheme and reduced motion.
 const noop = () => {};
-const matchMediaStub = (query: string) => ({
+const matchMediaStub = (query: string): MediaQueryList => ({
   matches: false,
   media: query,
   onchange: null,
-  addListener: noop, // deprecated
-  removeListener: noop, // deprecated
-  addEventListener: noop,
-  removeEventListener: noop,
-  dispatchEvent: noop
+  addListener: () => {}, // deprecated
+  removeListener: () => {}, // deprecated
+  addEventListener: (_type: string, _listener: EventListenerOrEventListenerObject) => {},
+  removeEventListener: (_type: string, _listener: EventListenerOrEventListenerObject) => {},
+  dispatchEvent: (_event: Event) => true
 });
 
 Object.defineProperty(window, "matchMedia", {
@@ -26,10 +26,9 @@ Object.defineProperty(globalThis, "matchMedia", {
 
 // Belt-and-suspenders: ensure the function is assigned (some environments keep an
 // existing `matchMedia` key but start it as `undefined`).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).matchMedia = matchMediaStub;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).matchMedia = matchMediaStub;
+type MatchMediaHost = { matchMedia?: (query: string) => MediaQueryList };
+(window as Window & MatchMediaHost).matchMedia = matchMediaStub;
+(globalThis as typeof globalThis & MatchMediaHost).matchMedia = matchMediaStub;
 
 // Mantine's ScrollArea relies on ResizeObserver, which isn't present in jsdom.
 class TestResizeObserver {
@@ -38,8 +37,11 @@ class TestResizeObserver {
   disconnect() {}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).ResizeObserver = TestResizeObserver;
+(
+  globalThis as typeof globalThis & {
+    ResizeObserver: typeof TestResizeObserver;
+  }
+).ResizeObserver = TestResizeObserver;
 
 // Mantine's Combobox keyboard navigation calls scrollIntoView for options.
 if (!Element.prototype.scrollIntoView) {

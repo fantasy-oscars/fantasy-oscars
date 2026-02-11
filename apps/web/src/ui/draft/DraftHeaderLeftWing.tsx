@@ -1,4 +1,5 @@
 import { Box, Button, Drawer, Group, Stack, Text, UnstyledButton } from "@mantine/core";
+import type { RefObject } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 import { ParticipantStrip } from "./ParticipantStrip";
@@ -15,10 +16,16 @@ export function DraftHeaderLeftWing(props: {
     seatNumber: number;
     label: string;
     active: boolean;
-    avatarKey: string | null;
+    avatarKey: string;
   }>;
   activeIndex: number;
   direction: "FORWARD" | "REVERSE" | null;
+  participantStripLayout: {
+    containerRef: RefObject<HTMLDivElement | null>;
+    capacity: number;
+    start: number;
+    end: number;
+  };
   view: "draft" | "roster";
   onViewChange: (v: "draft" | "roster") => void;
   canToggleView: boolean;
@@ -119,6 +126,10 @@ export function DraftHeaderLeftWing(props: {
       </Box>
       {!props.isCompleted ? (
         <ParticipantStrip
+          containerRef={props.participantStripLayout.containerRef}
+          capacity={props.participantStripLayout.capacity}
+          start={props.participantStripLayout.start}
+          end={props.participantStripLayout.end}
           participants={props.participants}
           activeIndex={props.activeIndex}
           direction={props.direction}
@@ -128,4 +139,3 @@ export function DraftHeaderLeftWing(props: {
     </>
   );
 }
-

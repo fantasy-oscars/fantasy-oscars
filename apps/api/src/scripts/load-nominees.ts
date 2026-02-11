@@ -157,7 +157,6 @@ async function main() {
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    // eslint-disable-next-line no-console
     console.error("DATABASE_URL is required");
     process.exit(1);
   }
@@ -166,7 +165,6 @@ async function main() {
   const pool = new Pool({ connectionString });
   try {
     await loadNominees(pool, dataset);
-    // eslint-disable-next-line no-console
     console.log(`Loaded nominees from ${file}`);
   } finally {
     await pool.end();
@@ -175,7 +173,6 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
-    // eslint-disable-next-line no-console
     console.error(err);
     process.exit(1);
   });

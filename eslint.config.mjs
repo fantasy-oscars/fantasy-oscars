@@ -36,6 +36,10 @@ export default [
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      "@typescript-eslint/naming-convention": [
+        "error",
+        { selector: "typeLike", format: ["PascalCase"] }
+      ],
       "no-undef": "off"
     }
   },
@@ -53,6 +57,22 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
       "react/jsx-uses-react": "off"
+    }
+  },
+  {
+    // Scripts/tests commonly use console output intentionally; forbid inline suppressions
+    // but allow console in these contexts to keep lint output clean.
+    files: [
+      "apps/api/scripts/**/*.{js,mjs,ts}",
+      "apps/api/src/scripts/**/*.{ts,tsx}",
+      "apps/api/test/**/*.{ts,tsx}",
+      "apps/api/src/logger.ts",
+      "apps/web/src/notifications/**/*.{ts,tsx}",
+      "apps/web/src/vitest.setup.ts",
+      "e2e/**/*.{ts,tsx}"
+    ],
+    rules: {
+      "no-console": "off"
     }
   },
   {

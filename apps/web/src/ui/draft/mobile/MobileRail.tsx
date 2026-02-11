@@ -1,4 +1,3 @@
-import type { DraftRoomOrchestration } from "../../../orchestration/draft";
 import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@mantine/core";
 import { AnimalAvatarIcon } from "../../animalAvatarIcon";
 import { DraftCategoryIcon } from "../DraftCategoryIcon";
@@ -7,29 +6,19 @@ import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS
 } from "../nomineeTooltip";
+import type { AutoDraftState, DraftLedgerRow, DraftNomineeMeta, DraftRosterPick } from "../types";
+
+type MobileDraftRailOrchestration = {
+  ledger: { rows: DraftLedgerRow[] };
+  myRoster: { picks: DraftRosterPick[] };
+  autodraft: AutoDraftState;
+};
 
 export function MobileRail(props: {
   rail: "ledger" | "roster" | "autodraft";
-  o: DraftRoomOrchestration;
+  o: MobileDraftRailOrchestration;
   avatarKeyBySeat: Map<number, string | null>;
-  nomineeById: Map<
-    number,
-    {
-      unitKind: string;
-      categoryName: string;
-      filmTitle: string | null;
-      filmYear: number | null;
-      filmPosterUrl: string | null;
-      contributors: string[];
-      performerName: string | null;
-      performerCharacter: string | null;
-      performerProfileUrl: string | null;
-      performerProfilePath: string | null;
-      songTitle: string | null;
-      categoryIcon: string;
-      categoryIconVariant: "default" | "inverted";
-    }
-  >;
+  nomineeById: Map<number, DraftNomineeMeta>;
   draftedNominationIds: Set<number>;
 }) {
   const { o } = props;
@@ -330,4 +319,3 @@ export function MobileRail(props: {
     </Box>
   );
 }
-

@@ -6,18 +6,19 @@ import { SiteFooterFineprintOnly } from "../../layout/SiteFooter";
 import { useAuthContext } from "../../auth/context";
 import { RuntimeBannerStack } from "../../notifications";
 import { playTurnStartChime } from "../../lib/draftAudio";
-import { DraftBoardHeader } from "../../ui/draft/DraftBoardHeader";
-import { DraftRoomScaffold } from "../../ui/draft/DraftRoomScaffold";
-import { RosterBoardScaffold } from "../../ui/draft/RosterBoardScaffold";
-import { MobileDraftRoom } from "../../ui/draft/mobile/MobileDraftRoom";
+import { DraftBoardHeader } from "./DraftBoardHeader";
+import { DraftRoomScaffold } from "./DraftRoomScaffold";
+import { RosterBoardScaffold } from "./RosterBoardScaffold";
+import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
 import { useDraftPickConfirmToast } from "./useDraftPickConfirmToast";
 import {
-  buildAvatarKeyBySeat,
   buildDraftedNominationIds,
   buildNomineeMetaById,
   mapDraftScreenCategories
 } from "./draftRoomScreenModel";
+import { pickDeterministicAvatarKey } from "../../decisions/avatars";
+import { formatSignedInt } from "../../decisions/draftRoomLayout";
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
@@ -30,15 +31,29 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const isCompleted = draftStatus === "COMPLETED";
   const isFinalResults = props.o.header.isFinalResults;
 
+  const participants = useMemo(
+    () =>
+      props.o.header.participants.map((p) => ({
+        ...p,
+        // UI tokens require an avatar key; fall back deterministically from the label.
+        avatarKey: p.avatarKey ?? pickDeterministicAvatarKey(p.label)
+      })),
+    [props.o.header.participants]
+  );
+
+  const avatarKeyBySeat = useMemo(() => {
+    const m = new Map<number, string | null>();
+    for (const p of participants) m.set(p.seatNumber, p.avatarKey);
+    return m;
+  }, [participants]);
+
   // "My turn" is based on the active seat, not whether a nomination is selected.
   // `myRoster.canPick` is stricter and includes selection + gating logic.
   const isMyTurn = isPreview
     ? true
     : Boolean(
         props.o.myRoster.seatNumber !== null &&
-        props.o.header.participants.some(
-          (p) => p.active && p.seatNumber === props.o.myRoster.seatNumber
-        )
+        participants.some((p) => p.active && p.seatNumber === props.o.myRoster.seatNumber)
       );
   const isMyTurnStyling = isPreview ? true : Boolean(isMyTurn && !isPaused && !isPre);
   const previewUser = isPreview
@@ -93,15 +108,19 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   // The body is divided into "units" (frame width / divisor), with rails consuming
   // 1.25 units open / 0.25 units collapsed. The divisor is snapped to keep units
   // within a readable pixel range.
-  const categories = useMemo(
+  const categoriesRaw = useMemo(
     () => mapDraftScreenCategories(props.o.pool.categories),
     [props.o.pool.categories]
   );
-  const nomineeById = useMemo(() => buildNomineeMetaById(categories), [categories]);
-  const avatarKeyBySeat = useMemo(
-    () => buildAvatarKeyBySeat(props.o.header.participants),
-    [props.o.header.participants]
+  const categories = useMemo(
+    () =>
+      categoriesRaw.map((c) => ({
+        ...c,
+        weightText: typeof c.weight === "number" ? formatSignedInt(c.weight) : null
+      })),
+    [categoriesRaw]
   );
+  const nomineeById = useMemo(() => buildNomineeMetaById(categoriesRaw), [categoriesRaw]);
 
   if (isMobile) {
     return (
@@ -144,7 +163,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     >
       <DraftBoardHeader
         backHref={props.o.nav.backToSeasonHref}
-        participants={props.o.header.participants}
+        participants={participants}
         direction={props.o.header.direction}
         roundNumber={props.o.header.roundNumber}
         pickNumber={props.o.header.pickNumber}

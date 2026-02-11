@@ -48,10 +48,12 @@ describe("scoreDraft", () => {
   });
 
   it("throws on invalid inputs", () => {
-    // @ts-expect-error - intentional bad input
-    expect(() => scoreDraft({ picks: null, results })).toThrow(ScoringError);
-    // @ts-expect-error - intentional bad input
-    expect(() => scoreDraft({ picks, results: null })).toThrow(ScoringError);
+    expect(() => scoreDraft({ picks: null as unknown as typeof picks, results })).toThrow(
+      ScoringError
+    );
+    expect(() => scoreDraft({ picks, results: null as unknown as typeof results })).toThrow(
+      ScoringError
+    );
   });
 });
 
@@ -94,8 +96,9 @@ describe("negativeScoringStrategy (stub)", () => {
 describe("resolveScoringStrategy", () => {
   it("returns default when name missing or unknown", () => {
     expect(resolveScoringStrategy()).toBe(scoringStrategies.fixed);
-    // @ts-expect-error - intentional bad name
-    expect(resolveScoringStrategy("nope")).toBe(scoringStrategies.fixed);
+    expect(
+      resolveScoringStrategy("nope" as unknown as Parameters<typeof resolveScoringStrategy>[0])
+    ).toBe(scoringStrategies.fixed);
   });
   it("returns named strategy", () => {
     expect(resolveScoringStrategy("negative")).toBe(scoringStrategies.negative);

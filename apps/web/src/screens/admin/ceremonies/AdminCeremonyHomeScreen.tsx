@@ -18,7 +18,7 @@ import { getCeremonyWorkflowStepMeta } from "../../../decisions/ceremonyWorkflow
 import { isCeremonyWorkflowStepAllowed } from "../../../decisions/admin/ceremonyWorkflowNav";
 import { FormStatus } from "../../../ui/forms";
 import type { ApiResult } from "../../../lib/types";
-import { workflowRowStatusLabel } from "../../../ui/admin/ceremonies/workflowRowStatusLabel";
+import { workflowRowStatusLabel } from "./workflowRowStatusLabel";
 
 type WorkflowRow = {
   id: CeremonyWorkflowStepId;

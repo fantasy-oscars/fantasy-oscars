@@ -70,8 +70,7 @@ Mobile uses a different interaction model:
 - Rails are opened via a 3-button bottom bar (one per rail).
 - Only one rail is visible at a time on mobile; a selected rail fills the screen.
 - With rails closed, categories render in a single column.
-- The mobile header becomes a compact top bar:
-  - Left: burger menu
-  - Middle: round/time/pick (time is emphasized)
-  - Right: gear menu
-
+  - The mobile header becomes a compact top bar:
+    - Left: burger menu
+    - Middle: round/time/pick (time is emphasized)
+    - Right: gear menu

@@ -410,7 +410,6 @@ describe("seasons user-targeted invites", () => {
     );
     if (res.status !== 200) {
       // surface helpful failure info
-      // eslint-disable-next-line no-console
       console.error("accept invite failure", res.status, res.json);
     }
     expect(res.status).toBe(200);

@@ -1,5 +1,6 @@
 import { Box } from "@mantine/core";
-import { useEffect, useMemo, useState } from "react";
+import type { RefObject } from "react";
+import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { computeMasonry, estimateCategoryCardHeightPx } from "../../decisions/draftRoomLayout";
 import { pickDraftDivisor } from "../../decisions/draftRoomUnits";
@@ -15,7 +16,7 @@ export function DraftRoomScaffold(props: {
     icon: string;
     iconVariant: "default" | "inverted";
     unitKind: string;
-    weight: number | null;
+    weightText: string | null;
     nominees: Array<{
       id: string;
       label: string;
@@ -98,12 +99,12 @@ export function DraftRoomScaffold(props: {
   // (Mobile uses a separate layout path.)
   const compactRails = viewportWidthPx > 0 && viewportWidthPx < 665;
 
-  const openRailExclusive = (rail: "ledger" | "roster" | "auto") => {
+  const openRailExclusive = useCallback((rail: "ledger" | "roster" | "auto") => {
     if (!compactRails) return;
     setLedgerOpen(rail === "ledger");
     setMyRosterOpen(rail === "roster");
     setAutoDraftOpen(rail === "auto");
-  };
+  }, [compactRails]);
 
   useEffect(() => {
     if (isPre) {
@@ -127,8 +128,7 @@ export function DraftRoomScaffold(props: {
     // Prefer the most recently-relevant rail: auto-draft pre-draft, otherwise roster.
     if (isPre) openRailExclusive("auto");
     else openRailExclusive(myRosterOpen ? "roster" : ledgerOpen ? "ledger" : "auto");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compactRails]);
+  }, [autoDraftOpen, compactRails, isPre, ledgerOpen, myRosterOpen, openRailExclusive]);
 
   const expandedCount =
     (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
@@ -145,13 +145,23 @@ export function DraftRoomScaffold(props: {
     icon: c.icon,
     iconVariant: c.iconVariant,
     unitKind: c.unitKind,
-    weight: c.weight,
+    weightText: c.weightText,
     nominees: c.nominees,
     // Use a deterministic estimate for masonry placement; the actual card height
     // is content-driven and hugs the pills.
     estimatePx: estimateCategoryCardHeightPx(c.nominees.length)
   }));
   const masonry = computeMasonry(midCols, boxes);
+
+  // A11y: "entering" a category focuses its first nomination pill. Refs are owned by glue.
+  const firstPillRefByCategoryId = useRef<
+    Record<string, RefObject<HTMLButtonElement | null> | undefined>
+  >({});
+  for (const c of categoriesForBoxes) {
+    if (!firstPillRefByCategoryId.current[c.id]) {
+      firstPillRefByCategoryId.current[c.id] = createRef<HTMLButtonElement>();
+    }
+  }
 
   return (
     <Box
@@ -180,6 +190,7 @@ export function DraftRoomScaffold(props: {
         masonry={masonry}
         keyboardCategoryId={keyboardCategoryId}
         setKeyboardCategoryId={setKeyboardCategoryId}
+        firstPillRefByCategoryId={firstPillRefByCategoryId.current}
         canDraftAction={props.canDraftAction}
         onNomineeClick={props.onNomineeClick}
         onNomineeDoubleClick={props.onNomineeDoubleClick}

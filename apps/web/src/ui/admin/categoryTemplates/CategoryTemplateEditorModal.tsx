@@ -1,7 +1,14 @@
 import type { ApiResult } from "../../../lib/types";
 import type { Dispatch, SetStateAction } from "react";
 import { Box, Button, Group, Modal, Select, Stack, TextInput } from "@mantine/core";
-import type { CategoryTemplateDraft } from "../../../orchestration/adminCategoryTemplates";
+
+export type CategoryTemplateDraft = {
+  code: string;
+  name: string;
+  default_unit_kind: "FILM" | "PERFORMANCE" | "SONG";
+  icon: string;
+  icon_variant: "default" | "inverted";
+};
 
 export function CategoryTemplateEditorModal(props: {
   opened: boolean;
