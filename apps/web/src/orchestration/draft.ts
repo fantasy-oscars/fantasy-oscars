@@ -4,6 +4,7 @@ import { notify } from "../notifications";
 import { fetchJson } from "../lib/api";
 import type { ApiResult, Snapshot } from "../lib/types";
 import { makeRequestId } from "./draft/helpers";
+import { postDraftPause, postDraftPick, postDraftResume, postDraftStart } from "./draft/actions";
 import { useDraftSnapshot } from "./draft/useDraftSnapshot";
 import { useDraftSocket } from "./draft/useDraftSocket";
 import { useDraftClock } from "./draft/useDraftClock";
@@ -554,13 +555,10 @@ export function useDraftRoomOrchestration(args: {
       setPickLoading(true);
       setPickState(null);
 
-      const res = await fetchJson(`/drafts/${snapshot.draft.id}/picks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nomination_id: nominationId,
-          request_id: makeRequestId()
-        })
+      const res = await postDraftPick({
+        draftId: snapshot.draft.id,
+        nominationId,
+        requestId: makeRequestId()
       });
 
       if (res.ok) {
@@ -595,10 +593,7 @@ export function useDraftRoomOrchestration(args: {
     if (!snapshot) return;
     setStartLoading(true);
     setStartState(null);
-    const res = await fetchJson(`/drafts/${snapshot.draft.id}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    });
+    const res = await postDraftStart(snapshot.draft.id);
     if (res.ok) {
       setStartState(null);
       notify({
@@ -631,7 +626,7 @@ export function useDraftRoomOrchestration(args: {
     if (!snapshot) return;
     setPauseLoading(true);
     setPauseState(null);
-    const res = await fetchJson(`/drafts/${snapshot.draft.id}/pause`, { method: "POST" });
+    const res = await postDraftPause(snapshot.draft.id);
     if (res.ok) {
       setPauseState(null);
       notify({
@@ -664,9 +659,7 @@ export function useDraftRoomOrchestration(args: {
     if (!snapshot) return;
     setResumeLoading(true);
     setResumeState(null);
-    const res = await fetchJson(`/drafts/${snapshot.draft.id}/resume`, {
-      method: "POST"
-    });
+    const res = await postDraftResume(snapshot.draft.id);
     if (res.ok) {
       setResumeState(null);
       notify({
