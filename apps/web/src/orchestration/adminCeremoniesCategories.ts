@@ -2,14 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import type { ApiResult } from "../lib/types";
 import { notify } from "../notifications";
-
-export type CeremonyOption = {
-  id: number;
-  code: string | null;
-  name: string | null;
-  starts_at: string | null;
-  status?: string;
-};
+import type { CeremonyOption } from "./admin/ceremonies/types";
+import { fetchAdminCeremonies, sortCeremonies } from "./admin/ceremonies/fetchCeremonies";
 
 export type IconRow = {
   id: number;
@@ -42,21 +36,6 @@ export type CategoryRow = {
   icon_code: string;
   family_icon_code: string;
 };
-
-async function fetchCeremonyOptions() {
-  return fetchJson<{ ceremonies: CeremonyOption[] }>("/admin/ceremonies", {
-    method: "GET"
-  });
-}
-
-function sortCeremonies(rows: CeremonyOption[]) {
-  const toTs = (iso: string | null) => {
-    if (!iso) return -Infinity;
-    const t = new Date(iso).getTime();
-    return Number.isNaN(t) ? -Infinity : t;
-  };
-  return [...rows].sort((a, b) => toTs(b.starts_at) - toTs(a.starts_at) || b.id - a.id);
-}
 
 export function useAdminCeremonyCategoriesOrchestration(args: {
   ceremonyId: number | null;
@@ -127,7 +106,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
         { method: "GET" }
       ),
       fetchJson<{ icons: IconRow[] }>("/admin/icons", { method: "GET" }),
-      fetchCeremonyOptions()
+      fetchAdminCeremonies()
     ]);
 
     if (!catRes.ok) {
