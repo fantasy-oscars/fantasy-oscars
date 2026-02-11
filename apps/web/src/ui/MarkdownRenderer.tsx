@@ -15,7 +15,6 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { Root, Content, PhrasingContent, ListItem, Definition } from "mdast";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
 import { CodeBlock } from "./CodeBlock";
 
 type Props = {
@@ -282,17 +281,25 @@ function renderBlocks(
   return out;
 }
 
+type ParsedMarkdown = { tree: Root; definitions: DefinitionsMap };
+
+// Avoid hooks inside UI primitives. We still want to avoid re-parsing on every render,
+// so keep a tiny module-level cache keyed by the full markdown string.
+let lastParsed: { markdown: string; parsed: ParsedMarkdown } | null = null;
+function parseMarkdown(markdown: string): ParsedMarkdown {
+  if (lastParsed?.markdown === markdown) return lastParsed.parsed;
+
+  const parsed = unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
+  const next = {
+    tree: applyTypographyReplacements(parsed),
+    definitions: collectDefinitions(parsed)
+  };
+  lastParsed = { markdown, parsed: next };
+  return next;
+}
+
 export function MarkdownRenderer(props: Props) {
-  const { tree, definitions } = useMemo(() => {
-    const parsed = unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .parse(props.markdown) as Root;
-    return {
-      tree: applyTypographyReplacements(parsed),
-      definitions: collectDefinitions(parsed)
-    };
-  }, [props.markdown]);
+  const { tree, definitions } = parseMarkdown(props.markdown);
 
   return <Stack gap={0}>{renderBlocks(tree.children, "md", definitions)}</Stack>;
 }
