@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { isIntegrityWarningWindow } from "../lib/draft";
 import { notify } from "../notifications";
+import { formatLocalDateTime } from "./seasons/seasonFormat";
+import { copySeasonInviteLink } from "./seasons/seasonInviteLinks";
+import { useSeasonInviteeSearch } from "./seasons/useSeasonInviteeSearch";
 import type {
   ApiResult,
   CeremonySummary,
@@ -72,44 +75,13 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     : false;
   const canEdit = !isArchived && isCommissioner;
 
-  // Search for invitees by username/email as the commissioner types.
-  useEffect(() => {
-    if (!canEdit) {
-      setUserInviteMatches([]);
-      setUserInviteSearching(false);
-      return;
-    }
-
-    const q = userInviteQuery.trim();
-    if (!q) {
-      setUserInviteMatches([]);
-      setUserInviteSearching(false);
-      return;
-    }
-
-    let cancelled = false;
-    const handle = window.setTimeout(() => {
-      void (async () => {
-        setUserInviteSearching(true);
-        const res = await fetchJson<{
-          users: Array<{ id: number; username: string }>;
-        }>(`/seasons/${seasonId}/invitees?q=${encodeURIComponent(q)}`, { method: "GET" });
-        if (cancelled) return;
-        setUserInviteSearching(false);
-        if (!res.ok) {
-          // Treat failures as empty results; the create endpoint remains authoritative.
-          setUserInviteMatches([]);
-          return;
-        }
-        setUserInviteMatches(res.data?.users ?? []);
-      })();
-    }, 150);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(handle);
-    };
-  }, [canEdit, seasonId, userInviteQuery]);
+  useSeasonInviteeSearch({
+    canEdit,
+    seasonId,
+    query: userInviteQuery,
+    setSearching: setUserInviteSearching,
+    setMatches: setUserInviteMatches
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -687,32 +659,16 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
   }
 
   function formatDate(value?: string | null) {
-    if (!value) return "—";
-    try {
-      return new Date(value).toLocaleString();
-    } catch {
-      return value;
-    }
+    return formatLocalDateTime(value);
   }
 
   function buildInviteLink(inviteId: number) {
     const token = inviteTokens[inviteId];
-    const pathToken = token ?? String(inviteId);
-    return `${window.location.origin}/invites/${pathToken}`;
+    return `${window.location.origin}/invites/${token ?? String(inviteId)}`;
   }
 
   function copyLink(inviteId: number) {
-    const link = buildInviteLink(inviteId);
-    void navigator.clipboard?.writeText(link);
-    notify({
-      id: "season.invite.link.copy.success",
-      severity: "success",
-      trigger_type: "user_action",
-      scope: "local",
-      durability: "ephemeral",
-      requires_decision: false,
-      message: "Link copied"
-    });
+    copySeasonInviteLink({ inviteId, token: inviteTokens[inviteId] });
     setInviteResult(null);
   }
 
