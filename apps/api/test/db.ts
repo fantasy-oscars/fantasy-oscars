@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.resolve(__dirname, "../../../db/migrations");
+const migrationsDir = path.resolve(__dirname, "../../../database/migrations");
 const postgresImage = "postgres:16";
 
 type MigrationFile = {

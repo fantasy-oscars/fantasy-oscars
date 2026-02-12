@@ -4,7 +4,7 @@
 
 - Monorepo with `web` (React), `api` (Express), and Postgres.
 - API is the single backend entrypoint; frontend calls it over HTTP/JSON.
-- Postgres is the system of record; migrations live in `db/migrations`.
+- Postgres is the system of record; migrations live in `database/migrations`.
 - Realtime drafting is in production via Socket.IO; admin UI drives ceremony/nominee/winner management.
 - Ceremonies are long-lived objects with lifecycle status (Draft → Published → Locked → Complete → Archived).
 - Seasons bind a league to a ceremony; drafts belong to seasons.

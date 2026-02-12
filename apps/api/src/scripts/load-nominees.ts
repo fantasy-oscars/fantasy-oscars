@@ -152,7 +152,7 @@ async function main() {
       ? args[fileArgIndex + 1]
       : path.join(
           path.dirname(fileURLToPath(import.meta.url)),
-          "../../../db/fixtures/golden-nominees.json"
+          "../../../database/fixtures/golden-nominees.json"
         );
 
   const connectionString = process.env.DATABASE_URL;

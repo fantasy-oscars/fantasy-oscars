@@ -45,7 +45,7 @@ function parseOpeningTags(source, tagName) {
 
 function extractAttr(rawAttrs, name) {
   // Supports: name="x" | name={'x'} | name={123} | name={foo}
-  const re = new RegExp(`${name}\\s*=\\s*(\"[^\"]*\"|\\{[^}]*\\})`);
+  const re = new RegExp(`${name}\\s*=\\s*("[^"]*"|\\{[^}]*\\})`);
   const m = rawAttrs.match(re);
   if (!m) return null;
   return m[1];
@@ -135,12 +135,10 @@ async function main() {
     }))
   };
 
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify(report, null, 2));
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
+  process.stderr.write(`${String(err?.stack ?? err)}\n`);
   process.exitCode = 1;
 });

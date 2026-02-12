@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.resolve(__dirname, "../../db/migrations");
+const migrationsDir = path.resolve(__dirname, "../../database/migrations");
 
 function loadMigrations() {
   if (!fs.existsSync(migrationsDir)) return [];
@@ -18,7 +18,7 @@ function loadMigrations() {
 
 test("migration filenames are zero-padded, unique, and strictly increasing", () => {
   const migrations = loadMigrations();
-  assert.ok(migrations.length > 0, "No migrations found in db/migrations");
+  assert.ok(migrations.length > 0, "No migrations found in database/migrations");
 
   const seen = new Set();
   let previous = -1;

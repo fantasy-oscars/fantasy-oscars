@@ -3,7 +3,7 @@
 ## TL;DR
 
 - Postgres is the system of record.
-- Migrations live in `db/migrations` and are ordered by a zero-padded numeric prefix (strictly increasing, no duplicates).
+- Migrations live in `database/migrations` and are ordered by a zero-padded numeric prefix (strictly increasing, no duplicates).
 - Tests apply migrations automatically via Testcontainers.
 - Auth data: `app_user.username` and `app_user.email` are stored as-entered; unique indexes on `lower(...)` enforce case-insensitive uniqueness.
 - Admin role: `app_user.is_admin` (boolean) flags admins; tokens carry `is_admin` and admin routes require it.
@@ -33,7 +33,7 @@
 
 ## Operations
 
-- Add migration: create `db/migrations/NNN_description.sql` with the next unused numeric prefix.
+- Add migration: create `database/migrations/NNN_description.sql` with the next unused numeric prefix.
 - Validate ordering: `pnpm run test:migrations` (part of `pnpm run ci`).
 - Apply in tests: automatic (see `apps/api/test/db.ts`).
 - Local DB (docker-compose): `pnpm run db:up` / `pnpm run db:down`.

@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { Pool } from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.resolve(__dirname, "../../../db/migrations");
+const migrationsDir = path.resolve(__dirname, "../../../database/migrations");
 
 function parseMigrationFile(file) {
   const match = /^(\d{3})_.*\.sql$/.exec(file);

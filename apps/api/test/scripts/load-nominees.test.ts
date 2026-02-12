@@ -6,10 +6,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Move up to repo root, then into db/fixtures
+// Move up to repo root, then into database/fixtures
 const datasetPath = path.resolve(
   __dirname,
-  "../../../../db/fixtures/golden-nominees.json"
+  "../../../../database/fixtures/golden-nominees.json"
 );
 
 function readDataset() {

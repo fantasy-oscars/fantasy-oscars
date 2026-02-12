@@ -14,7 +14,7 @@
  * - Authenticate `gh` CLI (`gh auth login`).
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { requireGitHubToken, inferRepoFullName, splitRepoFullName } from "./lib/github.mjs";
 import { githubRestJson } from "./lib/rest.mjs";
@@ -311,9 +311,8 @@ async function main() {
   const { owner, name } = splitRepoFullName(repoFullName);
   const token = args.apply ? requireGitHubToken() : null;
 
-  const raw = await import(path.resolve(roadmapPath), { with: { type: "json" } }).then(
-    (m) => m.default
-  );
+  const rawText = await readFile(path.resolve(roadmapPath), "utf8");
+  const raw = JSON.parse(rawText);
   const milestones = Array.isArray(raw.milestones) ? raw.milestones : [];
   if (milestones.length === 0) throw new Error("Roadmap has no milestones");
 

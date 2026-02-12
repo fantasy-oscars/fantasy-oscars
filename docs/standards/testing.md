@@ -10,7 +10,7 @@
 ## Test Types
 
 - Unit: pure functions, no IO.
-- Integration (API/DB): use Testcontainers Postgres; apply migrations from `db/migrations`; truncate + restart identities between tests.
+- Integration (API/DB): use Testcontainers Postgres; apply migrations from `database/migrations`; truncate + restart identities between tests.
 - E2E (web smoke): Playwright; runs against `apps/web` via `vite preview` to ensure the web app loads.
 
 ## How to Run

@@ -9,9 +9,12 @@ const __dirname = path.dirname(__filename);
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
-const SCAN_ROOTS = ["apps", "packages", "e2e", ".github/scripts"].map((p) =>
-  path.join(REPO_ROOT, p)
-);
+const SCAN_ROOTS = [
+  "apps",
+  "packages",
+  "tooling/e2e",
+  ".github/scripts"
+].map((p) => path.join(REPO_ROOT, p));
 
 const CODE_EXTS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 

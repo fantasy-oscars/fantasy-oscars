@@ -1,6 +1,13 @@
 # Repo Structure
 
-This repo is a pnpm monorepo with two primary apps:
+This repo is a pnpm monorepo with a small set of predictable top-level
+directories:
+
+- `apps/`: deployable applications
+- `packages/`: shared libraries (used by apps)
+- `database/`: migrations + fixtures (source of truth for schema)
+- `tooling/`: local dev + CI tooling (Docker compose, e2e tests, scripts)
+- `docs/`: documentation
 
 - `apps/web`: React + Vite frontend
 - `apps/api`: Express API service
@@ -59,3 +66,12 @@ API is organized by layer:
 - `domain/`: domain types and invariants
 - `lib/` + `utils/`: shared utilities and third-party adapters
 
+## database/
+
+- `database/migrations/`: ordered SQL migrations (applied in CI/tests and locally)
+- `database/fixtures/`: JSON fixtures used by scripts/tests
+
+## tooling/
+
+- `tooling/infra/`: local Docker compose (e.g. Postgres)
+- `tooling/e2e/`: Playwright smoke tests
