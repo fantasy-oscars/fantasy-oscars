@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Box, Stack, Text, Title } from "@ui";
-import { allocationLabel, scoringLabel } from "../../lib/labels";
+import { allocationLabel, scoringLabel } from "@/lib/labels";
 import { PageLoader } from "@/shared/page-state";
 import { SeasonDashboardHeader } from "@/features/seasons/ui/SeasonDashboardHeader";
 import { SeasonDraftRoomColumn } from "@/features/seasons/ui/SeasonDraftRoomColumn";
@@ -11,19 +11,19 @@ import {
   computeSeasonDraftRoomCtaLabel,
   computeSeasonLocked,
   computeSeasonProgression
-} from "../../decisions/season";
+} from "@/decisions/season";
 import { SeasonInvitesModal } from "@/features/seasons/ui/modals/SeasonInvitesModal";
 import { SeasonDraftSettingsModal } from "@/features/seasons/ui/modals/SeasonDraftSettingsModal";
 import { SeasonCategoryWeightsModal } from "@/features/seasons/ui/modals/SeasonCategoryWeightsModal";
 import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModal";
 import { useSeasonCategoryWeightsModal } from "./useSeasonCategoryWeightsModal";
 import { useSeasonDraftSettingsModal } from "./useSeasonDraftSettingsModal";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function SeasonScreen(props: {
   seasonIdLabel: string;
   leagueIdForBackLink?: number | null;
-  view: ReturnType<typeof import("../../orchestration/seasons").useSeasonOrchestration>;
+  view: ReturnType<typeof import("@/orchestration/seasons").useSeasonOrchestration>;
   onDeleteSeason: () => void | Promise<void>;
 }) {
   const { seasonIdLabel, view: s, onDeleteSeason } = props;

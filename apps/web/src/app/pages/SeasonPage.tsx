@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { useSeasonOrchestration } from "@/orchestration/seasons";
-import { SeasonScreen } from "@/screens/seasons/SeasonScreen";
+import { SeasonScreen } from "@/features/seasons/screens/SeasonScreen";
 
 export function SeasonPage() {
   const { id } = useParams();

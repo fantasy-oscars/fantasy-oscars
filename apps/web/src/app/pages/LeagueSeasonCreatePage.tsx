@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useLeagueSeasonCreateOrchestration } from "@/orchestration/seasons";
-import { LeagueSeasonCreateScreen } from "@/screens/seasons/LeagueSeasonCreateScreen";
+import { LeagueSeasonCreateScreen } from "@/features/seasons/screens/LeagueSeasonCreateScreen";
 
 export function LeagueSeasonCreatePage() {
   const { id } = useParams();

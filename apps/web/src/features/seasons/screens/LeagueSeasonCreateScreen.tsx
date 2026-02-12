@@ -10,11 +10,11 @@ import {
   Text,
   Title
 } from "@ui";
-import type { LeagueSeasonCreateView } from "../../orchestration/seasons";
+import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
 import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";
-import { StandardCard } from "../../primitives";
-import "../../primitives/baseline.css";
+import { StandardCard } from "@/primitives";
+import "@/primitives/baseline.css";
 
 export function LeagueSeasonCreateScreen(props: {
   leagueId: number;
