@@ -8,13 +8,13 @@ import {
   DRAFT_HEADER_HYSTERESIS_EXIT_PX,
   DRAFT_HEADER_NONCOMPACT_EXTRA_PX,
   DRAFT_HEADER_SIDE_PADDING_PX
-} from "../../tokens/draftHeader";
+} from "@/tokens/draftHeader";
 import { CenterBuckle } from "@/features/draft/ui/CenterBuckle";
 import { DraftHeaderLeftWing } from "@/features/draft/ui/DraftHeaderLeftWing";
 import { DraftHeaderMeasureRow } from "@/features/draft/ui/DraftHeaderMeasureRow";
 import { DraftHeaderRightWing } from "@/features/draft/ui/DraftHeaderRightWing";
-import { createDraftAudioController, playCountdownBeep } from "../../lib/draftAudio";
-import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../lib/draftCountdown";
+import { createDraftAudioController, playCountdownBeep } from "@/lib/draftAudio";
+import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "@/lib/draftCountdown";
 import { useParticipantStripLayout } from "./useParticipantStripLayout";
 
 export function DraftBoardHeader(props: {

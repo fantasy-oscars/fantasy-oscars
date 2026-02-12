@@ -12,9 +12,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import type { createDraftAudioController } from "../../../lib/draftAudio";
-import { playCountdownBeep } from "../../../lib/draftAudio";
-import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../../lib/draftCountdown";
+import type { createDraftAudioController } from "@/lib/draftAudio";
+import { playCountdownBeep } from "@/lib/draftAudio";
+import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "@/lib/draftCountdown";
 
 export function MobileDraftHeader(props: {
   open: boolean;

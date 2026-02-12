@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { useDraftRoomOrchestration } from "@/orchestration/draft";
-import { DraftRoomScreen } from "@/screens/draft/DraftRoomScreen";
+import { DraftRoomScreen } from "@/features/draft/screens/DraftRoomScreen";
 
 export function DraftRoomPage() {
   const { id } = useParams();

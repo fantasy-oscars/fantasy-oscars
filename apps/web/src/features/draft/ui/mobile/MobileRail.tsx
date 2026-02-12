@@ -1,7 +1,7 @@
 import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@ui";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "../DraftCategoryIcon";
-import { NomineeTooltipCard } from "@/components/draft/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,

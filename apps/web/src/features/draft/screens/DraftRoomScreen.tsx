@@ -1,25 +1,25 @@
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
+import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { Box, useMantineColorScheme } from "@ui";
 import { useEffect, useMemo, useRef } from "react";
 import { useMediaQuery } from "@ui/hooks";
-import { SiteFooterFineprintOnly } from "../../app/layouts/SiteFooter";
-import { useAuthContext } from "../../auth/context";
-import { RuntimeBannerStack } from "../../notifications";
-import { playTurnStartChime } from "../../lib/draftAudio";
+import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
+import { useAuthContext } from "@/auth/context";
+import { RuntimeBannerStack } from "@/notifications";
+import { playTurnStartChime } from "@/lib/draftAudio";
 import { DraftBoardHeader } from "./DraftBoardHeader";
 import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
 import { useDraftPickConfirmToast } from "./useDraftPickConfirmToast";
-import { FO_BP_MOBILE_MAX_PX } from "../../tokens/breakpoints";
+import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import {
   buildDraftedNominationIds,
   buildNomineeMetaById,
   mapDraftScreenCategories
 } from "./draftRoomScreenModel";
-import { pickDeterministicAvatarKey } from "../../decisions/avatars";
-import { formatSignedInt } from "../../decisions/draftRoomLayout";
+import { pickDeterministicAvatarKey } from "@/decisions/avatars";
+import { formatSignedInt } from "@/decisions/draftRoomLayout";
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();

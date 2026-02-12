@@ -1,6 +1,6 @@
 import { Box, Text, Tooltip, UnstyledButton } from "@ui";
 import type { RefObject } from "react";
-import { NomineeTooltipCard } from "@/components/draft/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,

@@ -3,7 +3,7 @@ import {
   closeDraftAudio,
   createDraftAudioController,
   unlockDraftAudio
-} from "../../lib/draftAudio";
+} from "@/lib/draftAudio";
 
 // Audio must be unlocked by a user gesture (browser autoplay policy).
 // Note: some browsers (notably iOS Safari) are pickier if the AudioContext is

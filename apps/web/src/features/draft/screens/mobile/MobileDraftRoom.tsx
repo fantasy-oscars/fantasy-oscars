@@ -1,9 +1,9 @@
 import { ActionIcon, Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@ui";
 import { useState } from "react";
-import type { DraftRoomOrchestration } from "../../../orchestration/draft";
-import { RuntimeBannerStack } from "../../../notifications";
-import { SiteFooterFineprintOnly } from "../../../app/layouts/SiteFooter";
-import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
+import type { DraftRoomOrchestration } from "@/orchestration/draft";
+import { RuntimeBannerStack } from "@/notifications";
+import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
@@ -11,10 +11,10 @@ import { MobileRosterBoard } from "./MobileRosterBoard";
 import {
   FO_MODAL_OVERLAY_BLUR_PX,
   FO_MODAL_OVERLAY_OPACITY
-} from "../../../tokens/overlays";
+} from "@/tokens/overlays";
 
 type DraftAudioController =
-  ReturnType<typeof import("../../../lib/draftAudio").createDraftAudioController>;
+  ReturnType<typeof import("@/lib/draftAudio").createDraftAudioController>;
 
 export function MobileDraftRoom(props: {
   o: DraftRoomOrchestration;

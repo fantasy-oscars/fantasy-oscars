@@ -1,5 +1,5 @@
 import { Box, Checkbox, Select, Stack, Text, Tooltip, UnstyledButton } from "@ui";
-import { NomineeTooltipCard } from "@/components/draft/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS, NOMINEE_TOOLTIP_OFFSET_PX } from "./nomineeTooltip";
 import type { AutoDraftState, DraftNomineeMeta } from "./types";

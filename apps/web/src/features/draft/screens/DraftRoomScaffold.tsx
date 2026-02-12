@@ -1,9 +1,9 @@
 import { Box } from "@ui";
 import type { RefObject } from "react";
 import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
-import { computeMasonry, estimateCategoryCardHeightPx } from "../../decisions/draftRoomLayout";
-import { pickDraftDivisor } from "../../decisions/draftRoomUnits";
+import type { DraftRoomOrchestration } from "@/orchestration/draft";
+import { computeMasonry, estimateCategoryCardHeightPx } from "@/decisions/draftRoomLayout";
+import { pickDraftDivisor } from "@/decisions/draftRoomUnits";
 import { DraftAutoDraftRail } from "@/features/draft/ui/DraftAutoDraftRail";
 import { DraftLedgerRail } from "@/features/draft/ui/DraftLedgerRail";
 import { DraftMasonryBoard } from "@/features/draft/ui/DraftMasonryBoard";

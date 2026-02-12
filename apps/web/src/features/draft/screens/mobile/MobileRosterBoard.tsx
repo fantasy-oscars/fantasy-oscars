@@ -1,11 +1,11 @@
-import type { DraftRoomOrchestration } from "../../../orchestration/draft";
+import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { Box, Select, Stack, Text, Tooltip } from "@ui";
 import { useEffect, useMemo, useState } from "react";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { pickDeterministicAvatarKey } from "../../../decisions/avatars";
+import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
-import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
-import { formatSignedInt } from "../../../decisions/draftRoomLayout";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { formatSignedInt } from "@/decisions/draftRoomLayout";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,

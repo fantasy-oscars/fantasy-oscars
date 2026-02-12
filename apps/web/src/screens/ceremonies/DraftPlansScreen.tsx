@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
-import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { StandardCard } from "../../primitives";
 import { SortableNomineeRow } from "@/features/ceremonies/ui/draftPlans/SortableNomineeRow";

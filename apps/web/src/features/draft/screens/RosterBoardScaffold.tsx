@@ -1,9 +1,9 @@
 import { Box, Stack, Text, Tooltip, UnstyledButton } from "@ui";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DraftRoomOrchestration } from "../../orchestration/draft";
-import { pickDeterministicAvatarKey } from "../../decisions/avatars";
-import { formatSignedInt } from "../../decisions/draftRoomLayout";
-import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
+import type { DraftRoomOrchestration } from "@/orchestration/draft";
+import { pickDeterministicAvatarKey } from "@/decisions/avatars";
+import { formatSignedInt } from "@/decisions/draftRoomLayout";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
 import { useCssVars } from "@/shared/dom/useCssVars";

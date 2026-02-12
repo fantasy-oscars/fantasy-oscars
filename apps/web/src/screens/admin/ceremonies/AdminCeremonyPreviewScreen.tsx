@@ -1,5 +1,5 @@
 import { Box, Stack, Text, Title } from "@ui";
-import { DraftBoardGrid } from "../../../components/draft/DraftBoardGrid";
+import { DraftBoardGrid } from "@/features/draft/components/DraftBoardGrid";
 
 export function AdminCeremonyPreviewScreen(props: {
   categories: Array<{

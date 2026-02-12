@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { DraftRoomScreen } from "@/screens/draft/DraftRoomScreen";
+import { DraftRoomScreen } from "@/features/draft/screens/DraftRoomScreen";
 import { useDraftPreviewOrchestration } from "@/orchestration/draftPreview";
 
 export function DraftCeremonyPreviewPage() {

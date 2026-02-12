@@ -1,5 +1,5 @@
 import { Box, Text, Tooltip, UnstyledButton } from "@ui";
-import { NomineeTooltipCard } from "@/components/draft/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import {
