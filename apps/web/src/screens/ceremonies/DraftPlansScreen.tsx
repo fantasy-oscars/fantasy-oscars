@@ -8,7 +8,7 @@ import {
   Title,
   useCombobox
 } from "@ui";
-import { PageError, PageLoader } from "../../ui/page-state";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { CeremonyDetail } from "../../orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "../../orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -20,7 +20,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { StandardCard } from "../../primitives";
-import { SortableNomineeRow } from "../../ui/ceremonies/draftPlans/SortableNomineeRow";
+import { SortableNomineeRow } from "@/features/ceremonies/ui/draftPlans/SortableNomineeRow";
 import {
   computeDefaultNominationIdsForDraftPlan,
   computeEffectiveNomineeOrderForDraftPlan,

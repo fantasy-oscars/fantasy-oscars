@@ -2,7 +2,7 @@ import { ActionIcon, Box, Button, Group, Stack, Text, TextInput } from "@ui";
 import { useMemo, useState } from "react";
 import { normalizeForSearch } from "@fantasy-oscars/shared";
 import { notify } from "../../../../notifications";
-import { ContributorCombobox, type ContributorOption } from "../../../../ui/admin/ceremonies/nominees/ContributorCombobox";
+import { ContributorCombobox, type ContributorOption } from "@/features/admin/ui/ceremonies/nominees/ContributorCombobox";
 import type { FilmCredits } from "./useFilmCredits";
 
 type NominationContributorRow = {

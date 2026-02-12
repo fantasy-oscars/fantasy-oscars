@@ -2,7 +2,7 @@ import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { Box, useMantineColorScheme } from "@ui";
 import { useEffect, useMemo, useRef } from "react";
 import { useMediaQuery } from "@ui/hooks";
-import { SiteFooterFineprintOnly } from "../../layout/SiteFooter";
+import { SiteFooterFineprintOnly } from "../../app/layouts/SiteFooter";
 import { useAuthContext } from "../../auth/context";
 import { RuntimeBannerStack } from "../../notifications";
 import { playTurnStartChime } from "../../lib/draftAudio";

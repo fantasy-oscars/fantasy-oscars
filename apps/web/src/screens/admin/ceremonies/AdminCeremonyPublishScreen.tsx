@@ -1,6 +1,6 @@
 import { Box, Button, Group, Stack, Text, Title } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "../../../lib/types";
 
 export function AdminCeremonyPublishScreen(props: {

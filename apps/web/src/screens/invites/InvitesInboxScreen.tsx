@@ -1,6 +1,6 @@
 import type { InboxInvite } from "../../lib/types";
 import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import { PageLoader } from "../../ui/page-state";
+import { PageLoader } from "@/shared/page-state";
 import type { InvitesInboxView } from "../../orchestration/invites";
 import { inviteContextLine } from "../../decisions/invites";
 import { StandardCard } from "../../primitives";

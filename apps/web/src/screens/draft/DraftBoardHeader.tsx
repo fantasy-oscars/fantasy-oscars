@@ -9,10 +9,10 @@ import {
   DRAFT_HEADER_NONCOMPACT_EXTRA_PX,
   DRAFT_HEADER_SIDE_PADDING_PX
 } from "../../tokens/draftHeader";
-import { CenterBuckle } from "../../ui/draft/CenterBuckle";
-import { DraftHeaderLeftWing } from "../../ui/draft/DraftHeaderLeftWing";
-import { DraftHeaderMeasureRow } from "../../ui/draft/DraftHeaderMeasureRow";
-import { DraftHeaderRightWing } from "../../ui/draft/DraftHeaderRightWing";
+import { CenterBuckle } from "@/features/draft/ui/CenterBuckle";
+import { DraftHeaderLeftWing } from "@/features/draft/ui/DraftHeaderLeftWing";
+import { DraftHeaderMeasureRow } from "@/features/draft/ui/DraftHeaderMeasureRow";
+import { DraftHeaderRightWing } from "@/features/draft/ui/DraftHeaderRightWing";
 import { createDraftAudioController, playCountdownBeep } from "../../lib/draftAudio";
 import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../lib/draftCountdown";
 import { useParticipantStripLayout } from "./useParticipantStripLayout";

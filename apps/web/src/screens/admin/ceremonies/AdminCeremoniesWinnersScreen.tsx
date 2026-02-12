@@ -10,11 +10,11 @@ import {
 } from "@ui";
 import * as React from "react";
 import type { AdminCeremonyWinnersOrchestration } from "../../../orchestration/adminCeremonies";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import { StandardCard } from "../../../primitives";
 import { materialGlyph } from "../../../decisions/admin/materialGlyph";
-import { WinnersConfirmOverlay } from "../../../ui/admin/ceremonies/winners/WinnersConfirmOverlay";
+import { WinnersConfirmOverlay } from "@/features/admin/ui/ceremonies/winners/WinnersConfirmOverlay";
 import "../../../primitives/baseline.css";
 
 type WinnersNomination = {

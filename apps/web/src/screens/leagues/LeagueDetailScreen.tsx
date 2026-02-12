@@ -1,16 +1,16 @@
 import { Box, Group, Stack, Text, Title } from "@ui";
 import type { AuthUser } from "../../auth/context";
-import { PageError, PageLoader } from "../../ui/page-state";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { LeagueMember } from "../../lib/types";
 import type { LeagueDetailView } from "../../orchestration/leagues";
 import { useMemo, useState } from "react";
 import { computeSeasonCeremonyLabel } from "../../decisions/league";
 import { computeSeasonLifecycleLabelFromRow } from "../../decisions/season";
-import { DeleteLeagueModal } from "../../ui/leagues/modals/DeleteLeagueModal";
-import { TransferLeagueOwnershipModal } from "../../ui/leagues/modals/TransferLeagueOwnershipModal";
-import { LeagueMembersSection } from "../../ui/leagues/LeagueMembersSection";
-import { LeagueManagementSection } from "../../ui/leagues/LeagueManagementSection";
-import { LeagueSeasonsSection } from "../../ui/leagues/LeagueSeasonsSection";
+import { DeleteLeagueModal } from "@/features/leagues/ui/modals/DeleteLeagueModal";
+import { TransferLeagueOwnershipModal } from "@/features/leagues/ui/modals/TransferLeagueOwnershipModal";
+import { LeagueMembersSection } from "@/features/leagues/ui/LeagueMembersSection";
+import { LeagueManagementSection } from "@/features/leagues/ui/LeagueManagementSection";
+import { LeagueSeasonsSection } from "@/features/leagues/ui/LeagueSeasonsSection";
 import "../../primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];

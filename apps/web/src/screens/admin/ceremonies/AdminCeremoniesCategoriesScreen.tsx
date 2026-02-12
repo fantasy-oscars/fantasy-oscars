@@ -11,16 +11,16 @@ import {
   Title,
   UnstyledButton
 } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { AdminCeremonyCategoriesOrchestration } from "../../../orchestration/adminCeremoniesCategories";
 import { StandardCard } from "../../../primitives";
 import { materialGlyph } from "../../../decisions/admin/materialGlyph";
-import { CategoryTemplateCombobox } from "../../../ui/admin/ceremonies/categories/CategoryTemplateCombobox";
-import { CloneCategoriesModal } from "../../../ui/admin/ceremonies/categories/CloneCategoriesModal";
-import { NewTemplateModal } from "../../../ui/admin/ceremonies/categories/NewTemplateModal";
-import { SortableCategoryRow } from "../../../ui/admin/ceremonies/categories/SortableCategoryRow";
-import { unitKindLabel } from "../../../ui/labels/unitKindLabel";
+import { CategoryTemplateCombobox } from "@/features/admin/ui/ceremonies/categories/CategoryTemplateCombobox";
+import { CloneCategoriesModal } from "@/features/admin/ui/ceremonies/categories/CloneCategoriesModal";
+import { NewTemplateModal } from "@/features/admin/ui/ceremonies/categories/NewTemplateModal";
+import { SortableCategoryRow } from "@/features/admin/ui/ceremonies/categories/SortableCategoryRow";
+import { unitKindLabel } from "@/shared/labels/unitKindLabel";
 import "../../../primitives/baseline.css";
 
 export function AdminCeremoniesCategoriesScreen(props: {

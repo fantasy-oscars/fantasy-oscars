@@ -10,7 +10,7 @@ import {
   TextInput,
   useCombobox
 } from "@ui";
-import { FormStatus } from "../../../ui/forms";
+import { FormStatus } from "@/shared/forms";
 import type { ApiResult } from "../../../lib/types";
 import type { AdminUserRow } from "../../../orchestration/adminUsers";
 import "../../../primitives/baseline.css";

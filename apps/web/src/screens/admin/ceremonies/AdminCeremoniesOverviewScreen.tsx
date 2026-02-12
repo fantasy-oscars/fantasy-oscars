@@ -11,8 +11,8 @@ import {
   Title,
   UnstyledButton
 } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "../../../lib/types";
 import { StandardCard } from "../../../primitives";
 import "../../../primitives/baseline.css";

@@ -1,4 +1,4 @@
-import { FormField } from "../../ui/forms";
+import { FormField } from "@/shared/forms";
 import { Box, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";

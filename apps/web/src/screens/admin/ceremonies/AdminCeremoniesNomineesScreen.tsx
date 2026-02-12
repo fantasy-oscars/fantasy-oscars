@@ -6,11 +6,11 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminCeremonyNomineesOrchestration } from "../../../orchestration/adminCeremoniesNominees";
-import { FormStatus } from "../../../ui/forms";
+import { FormStatus } from "@/shared/forms";
 import { notify } from "../../../notifications";
 import { StandardCard } from "../../../primitives";
-import { CandidatePoolAccordion } from "../../../ui/admin/ceremonies/nominees/CandidatePoolAccordion";
-import { CreateNominationPanel } from "../../../ui/admin/ceremonies/nominees/CreateNominationPanel";
+import { CandidatePoolAccordion } from "@/features/admin/ui/ceremonies/nominees/CandidatePoolAccordion";
+import { CreateNominationPanel } from "@/features/admin/ui/ceremonies/nominees/CreateNominationPanel";
 import { CategoryNominationSection } from "./nominees/CategoryNominationSection";
 import { NominationEditModal } from "./nominees/NominationEditModal";
 import "../../../primitives/baseline.css";

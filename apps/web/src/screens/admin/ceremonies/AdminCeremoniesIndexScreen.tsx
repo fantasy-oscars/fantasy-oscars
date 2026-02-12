@@ -9,8 +9,8 @@ import {
   Text,
   Title
 } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "../../../lib/types";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
 import { useState } from "react";
@@ -19,7 +19,7 @@ import {
   computeAdminCeremonyDeletePolicy,
   computeAdminCeremonyIndexStatus
 } from "../../../decisions/admin/ceremonyIndex";
-import { ConfirmDeleteCeremonyModal } from "../../../ui/admin/ceremonies/modals/ConfirmDeleteCeremonyModal";
+import { ConfirmDeleteCeremonyModal } from "@/features/admin/ui/ceremonies/modals/ConfirmDeleteCeremonyModal";
 import "../../../primitives/baseline.css";
 
 const ICON_VISIBILITY = "visibility";

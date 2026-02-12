@@ -17,7 +17,7 @@ import {
   nominationPrimaryLabel,
   nominationSecondaryLabel
 } from "../../../../decisions/admin/nominationLabels";
-import { SortableNominationRow } from "../../../../ui/admin/ceremonies/nominees/SortableNominationRow";
+import { SortableNominationRow } from "@/features/admin/ui/ceremonies/nominees/SortableNominationRow";
 
 export function CategoryNominationSection(props: {
   category: {

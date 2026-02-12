@@ -1,10 +1,10 @@
 import { Checkbox, Divider, Grid, Select, Stack, TextInput, Textarea } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "../../../lib/types";
 import type { CmsDynamicRow } from "../../../orchestration/adminContent";
 import type { DynamicKey } from "../../../decisions/adminContent";
-import { DynamicContentEditorHeader } from "../../../ui/admin/content/DynamicContentEditorHeader";
+import { DynamicContentEditorHeader } from "@/features/admin/ui/content/DynamicContentEditorHeader";
 import "../../../primitives/baseline.css";
 
 export function AdminDynamicContentEditorScreen(props: {

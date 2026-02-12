@@ -1,5 +1,5 @@
 import { Anchor, Text } from "@ui";
-import { StaticPage } from "../../ui/StaticPage";
+import { StaticPage } from "@/shared/StaticPage";
 
 export function FeedbackScreen() {
   return (

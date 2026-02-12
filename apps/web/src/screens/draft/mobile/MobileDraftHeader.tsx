@@ -11,7 +11,7 @@ import {
 } from "@ui";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AnimalAvatarIcon } from "../../../ui/animalAvatarIcon";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import type { createDraftAudioController } from "../../../lib/draftAudio";
 import { playCountdownBeep } from "../../../lib/draftAudio";
 import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "../../../lib/draftCountdown";

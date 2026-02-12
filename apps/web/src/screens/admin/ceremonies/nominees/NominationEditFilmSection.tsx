@@ -1,7 +1,7 @@
 import { ActionIcon, Box, Button, Group, Text, TextInput } from "@ui";
 import { useState } from "react";
 import { notify } from "../../../../notifications";
-import { NominationFilmLinkConflictModal } from "../../../../ui/admin/ceremonies/nominees/NominationFilmLinkConflictModal";
+import { NominationFilmLinkConflictModal } from "@/features/admin/ui/ceremonies/nominees/NominationFilmLinkConflictModal";
 
 export function NominationEditFilmSection(props: {
   nominationFilmTitle: string;

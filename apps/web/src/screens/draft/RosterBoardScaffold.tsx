@@ -4,14 +4,14 @@ import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { pickDeterministicAvatarKey } from "../../decisions/avatars";
 import { formatSignedInt } from "../../decisions/draftRoomLayout";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
-import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
-import { DraftCategoryIcon } from "../../ui/draft/DraftCategoryIcon";
-import { useCssVars } from "../../ui/dom/useCssVars";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
+import { useCssVars } from "@/shared/dom/useCssVars";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
-} from "../../ui/draft/nomineeTooltip";
+} from "@/features/draft/ui/nomineeTooltip";
 
 export function RosterBoardScaffold(props: {
   o: DraftRoomOrchestration;

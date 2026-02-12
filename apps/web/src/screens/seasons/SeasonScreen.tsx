@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { Box, Stack, Text, Title } from "@ui";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
-import { PageLoader } from "../../ui/page-state";
-import { SeasonDashboardHeader } from "../../ui/seasons/SeasonDashboardHeader";
-import { SeasonDraftRoomColumn } from "../../ui/seasons/SeasonDraftRoomColumn";
-import { SeasonManagementColumn } from "../../ui/seasons/SeasonManagementColumn";
-import { SeasonParticipantsColumn } from "../../ui/seasons/SeasonParticipantsColumn";
-import { SeasonRulesColumn } from "../../ui/seasons/SeasonRulesColumn";
+import { PageLoader } from "@/shared/page-state";
+import { SeasonDashboardHeader } from "@/features/seasons/ui/SeasonDashboardHeader";
+import { SeasonDraftRoomColumn } from "@/features/seasons/ui/SeasonDraftRoomColumn";
+import { SeasonManagementColumn } from "@/features/seasons/ui/SeasonManagementColumn";
+import { SeasonParticipantsColumn } from "@/features/seasons/ui/SeasonParticipantsColumn";
+import { SeasonRulesColumn } from "@/features/seasons/ui/SeasonRulesColumn";
 import {
   computeSeasonDraftRoomCtaLabel,
   computeSeasonLocked,
   computeSeasonProgression
 } from "../../decisions/season";
-import { SeasonInvitesModal } from "../../ui/seasons/modals/SeasonInvitesModal";
-import { SeasonDraftSettingsModal } from "../../ui/seasons/modals/SeasonDraftSettingsModal";
-import { SeasonCategoryWeightsModal } from "../../ui/seasons/modals/SeasonCategoryWeightsModal";
-import { DeleteSeasonModal } from "../../ui/seasons/modals/DeleteSeasonModal";
+import { SeasonInvitesModal } from "@/features/seasons/ui/modals/SeasonInvitesModal";
+import { SeasonDraftSettingsModal } from "@/features/seasons/ui/modals/SeasonDraftSettingsModal";
+import { SeasonCategoryWeightsModal } from "@/features/seasons/ui/modals/SeasonCategoryWeightsModal";
+import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModal";
 import { useSeasonCategoryWeightsModal } from "./useSeasonCategoryWeightsModal";
 import { useSeasonDraftSettingsModal } from "./useSeasonDraftSettingsModal";
 import "../../primitives/baseline.css";

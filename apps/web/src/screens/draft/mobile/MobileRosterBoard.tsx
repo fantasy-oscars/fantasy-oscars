@@ -1,16 +1,16 @@
 import type { DraftRoomOrchestration } from "../../../orchestration/draft";
 import { Box, Select, Stack, Text, Tooltip } from "@ui";
 import { useEffect, useMemo, useState } from "react";
-import { AnimalAvatarIcon } from "../../../ui/animalAvatarIcon";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "../../../decisions/avatars";
-import { DraftCategoryIcon } from "../../../ui/draft/DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
 import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
 import { formatSignedInt } from "../../../decisions/draftRoomLayout";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
-} from "../../../ui/draft/nomineeTooltip";
+} from "@/features/draft/ui/nomineeTooltip";
 
 export function MobileRosterBoard(props: {
   o: DraftRoomOrchestration;

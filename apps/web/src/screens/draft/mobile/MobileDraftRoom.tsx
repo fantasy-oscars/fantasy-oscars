@@ -2,11 +2,11 @@ import { ActionIcon, Box, Button, Group, Modal, Stack, Text, UnstyledButton } fr
 import { useState } from "react";
 import type { DraftRoomOrchestration } from "../../../orchestration/draft";
 import { RuntimeBannerStack } from "../../../notifications";
-import { SiteFooterFineprintOnly } from "../../../layout/SiteFooter";
+import { SiteFooterFineprintOnly } from "../../../app/layouts/SiteFooter";
 import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
-import { CategoryCard } from "../../../ui/draft/CategoryCard";
+import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
-import { MobileRail } from "../../../ui/draft/mobile/MobileRail";
+import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
 import {
   FO_MODAL_OVERLAY_BLUR_PX,

@@ -4,11 +4,11 @@ import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "re
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { computeMasonry, estimateCategoryCardHeightPx } from "../../decisions/draftRoomLayout";
 import { pickDraftDivisor } from "../../decisions/draftRoomUnits";
-import { DraftAutoDraftRail } from "../../ui/draft/DraftAutoDraftRail";
-import { DraftLedgerRail } from "../../ui/draft/DraftLedgerRail";
-import { DraftMasonryBoard } from "../../ui/draft/DraftMasonryBoard";
-import { DraftMyRosterRail } from "../../ui/draft/DraftMyRosterRail";
-import { useCssVars } from "../../ui/dom/useCssVars";
+import { DraftAutoDraftRail } from "@/features/draft/ui/DraftAutoDraftRail";
+import { DraftLedgerRail } from "@/features/draft/ui/DraftLedgerRail";
+import { DraftMasonryBoard } from "@/features/draft/ui/DraftMasonryBoard";
+import { DraftMyRosterRail } from "@/features/draft/ui/DraftMyRosterRail";
+import { useCssVars } from "@/shared/dom/useCssVars";
 
 export function DraftRoomScaffold(props: {
   categories: Array<{

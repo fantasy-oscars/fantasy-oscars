@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import { FormStatus } from "../../../ui/forms";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import {
   cmsDynamicEntryStatusLabel,
   formatDateTimeForHumans,

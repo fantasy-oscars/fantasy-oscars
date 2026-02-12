@@ -10,13 +10,13 @@ import {
   Title
 } from "@ui";
 import { StandardCard } from "../../../primitives";
-import { PageError, PageLoader } from "../../../ui/page-state";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type {
   AdminCategoryTemplatesOrchestration,
   CategoryTemplate
 } from "../../../orchestration/adminCategoryTemplates";
-import { CategoryTemplateEditorModal } from "../../../ui/admin/categoryTemplates/CategoryTemplateEditorModal";
-import { unitKindLabel } from "../../../ui/labels/unitKindLabel";
+import { CategoryTemplateEditorModal } from "@/features/admin/ui/categoryTemplates/CategoryTemplateEditorModal";
+import { unitKindLabel } from "@/shared/labels/unitKindLabel";
 import "../../../primitives/baseline.css";
 
 const EDIT_ICON = String.fromCharCode(0xe3c9);

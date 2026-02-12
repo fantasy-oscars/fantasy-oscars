@@ -11,8 +11,8 @@ import {
   Title
 } from "@ui";
 import type { LeagueSeasonCreateView } from "../../orchestration/seasons";
-import { FormStatus } from "../../ui/forms";
-import { PageError, PageLoader } from "../../ui/page-state";
+import { FormStatus } from "@/shared/forms";
+import { PageError, PageLoader } from "@/shared/page-state";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 

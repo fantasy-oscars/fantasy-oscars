@@ -1,5 +1,5 @@
 import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import { PageError, PageLoader } from "../../ui/page-state";
+import { PageError, PageLoader } from "@/shared/page-state";
 import type { CeremonyDetail } from "../../orchestration/ceremonies";
 import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";

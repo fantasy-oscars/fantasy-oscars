@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { SeasonDraftSettingsDraft } from "../../ui/seasons/modals/SeasonDraftSettingsModal";
+import type { SeasonDraftSettingsDraft } from "@/features/seasons/ui/modals/SeasonDraftSettingsModal";
 
 export function useSeasonDraftSettingsModal(args: {
   scoringStrategy: string | null;
