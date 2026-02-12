@@ -1,5 +1,5 @@
 import { Box, Text, UnstyledButton } from "@ui";
-import { NomineePill } from "@/components/NomineePill";
+import { NomineePill } from "@/features/draft/ui/NomineePill";
 
 export type DraftBoardGridCategory = {
   id: number;
