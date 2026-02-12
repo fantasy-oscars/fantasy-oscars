@@ -1,11 +1,11 @@
 import { Box, Group, Stack, Text, Title } from "@ui";
-import type { AuthUser } from "../../auth/context";
+import type { AuthUser } from "@/auth/context";
 import { PageError, PageLoader } from "@/shared/page-state";
-import type { LeagueMember } from "../../lib/types";
-import type { LeagueDetailView } from "../../orchestration/leagues";
+import type { LeagueMember } from "@/lib/types";
+import type { LeagueDetailView } from "@/orchestration/leagues";
 import { useMemo, useState } from "react";
-import { computeSeasonCeremonyLabel } from "../../decisions/league";
-import { computeSeasonLifecycleLabelFromRow } from "../../decisions/season";
+import { computeSeasonCeremonyLabel } from "@/decisions/league";
+import { computeSeasonLifecycleLabelFromRow } from "@/decisions/season";
 import { DeleteLeagueModal } from "@/features/leagues/ui/modals/DeleteLeagueModal";
 import { TransferLeagueOwnershipModal } from "@/features/leagues/ui/modals/TransferLeagueOwnershipModal";
 import { LeagueMembersSection } from "@/features/leagues/ui/LeagueMembersSection";

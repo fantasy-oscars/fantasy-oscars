@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { useLeagueDetailOrchestration } from "@/orchestration/leagues";
-import { LeagueDetailScreen } from "@/screens/leagues/LeagueDetailScreen";
+import { LeagueDetailScreen } from "@/features/leagues/screens/LeagueDetailScreen";
 
 export function LeagueDetailPage() {
   const { id } = useParams();

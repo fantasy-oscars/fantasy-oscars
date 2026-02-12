@@ -1,7 +1,7 @@
 import { Box, Button, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
-import type { LeagueIndexView } from "../orchestration/leagueIndex";
-import { ActionCard, StandardCard } from "../primitives";
+import type { LeagueIndexView } from "@/orchestration/leagueIndex";
+import { ActionCard, StandardCard } from "@/primitives";
 import "../primitives/baseline.css";
 
 export function LeagueIndexScreen(props: { view: LeagueIndexView }) {

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useLeagueCreateOrchestration } from "@/orchestration/leagues";
-import { LeagueCreateScreen } from "@/screens/leagues/LeagueCreateScreen";
+import { LeagueCreateScreen } from "@/features/leagues/screens/LeagueCreateScreen";
 
 export function LeagueCreatePage() {
   const { creating, error, create } = useLeagueCreateOrchestration();
