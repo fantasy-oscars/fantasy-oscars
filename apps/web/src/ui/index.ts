@@ -32,6 +32,7 @@ export * from "./SimpleGrid";
 export * from "./Stack";
 export * from "./Stepper";
 export * from "./Switch";
+export * from "./Skeleton";
 export * from "./Text";
 export * from "./TextInput";
 export * from "./Textarea";

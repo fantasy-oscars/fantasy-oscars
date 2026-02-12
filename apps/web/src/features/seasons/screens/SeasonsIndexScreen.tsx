@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Group, SegmentedControl, Stack, Text, Title } from "@ui";
+import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
@@ -42,9 +42,26 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
           />
 
           {view.state === "loading" ? (
-            <StandardCard>
-              <Text className="baseline-textBody">Loading…</Text>
-            </StandardCard>
+            <Stack gap="lg" role="status" aria-label="Loading seasons">
+              {Array.from({ length: 2 }).map((_, gIdx) => (
+                <Stack key={gIdx} gap="sm">
+                  <Skeleton height="var(--fo-font-size-sm)" width="38%" />
+                  <Stack gap="sm">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <StandardCard key={idx}>
+                        <Stack gap="var(--fo-space-dense-2)">
+                          <Skeleton height="var(--fo-font-size-sm)" width="55%" />
+                          <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
+                            <Skeleton height="var(--fo-font-size-xs)" width="45%" />
+                            <Skeleton height="var(--fo-font-size-xs)" width="26%" />
+                          </Group>
+                        </Stack>
+                      </StandardCard>
+                    ))}
+                  </Stack>
+                </Stack>
+              ))}
+            </Stack>
           ) : view.state === "error" ? (
             <StandardCard>
               <Text className="baseline-textBody">{view.message}</Text>

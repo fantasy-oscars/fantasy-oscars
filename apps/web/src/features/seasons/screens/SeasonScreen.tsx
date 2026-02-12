@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { Box, Stack, Text, Title } from "@ui";
+import { Box, Skeleton, Stack, Text, Title } from "@ui";
 import { allocationLabel, scoringLabel } from "@/lib/labels";
-import { PageLoader } from "@/shared/page-state";
 import { SeasonDashboardHeader } from "@/features/seasons/ui/SeasonDashboardHeader";
 import { SeasonDraftRoomColumn } from "@/features/seasons/ui/SeasonDraftRoomColumn";
 import { SeasonManagementColumn } from "@/features/seasons/ui/SeasonManagementColumn";
@@ -19,6 +18,54 @@ import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModa
 import { useSeasonCategoryWeightsModal } from "./useSeasonCategoryWeightsModal";
 import { useSeasonDraftSettingsModal } from "./useSeasonDraftSettingsModal";
 import "@/primitives/baseline.css";
+
+function SeasonScreenSkeleton() {
+  return (
+    <Box className="baseline-page" role="status" aria-label="Loading season">
+      <Box className="baseline-pageInner">
+        <Stack component="section" gap="md">
+          <Box component="header">
+            <Skeleton height="var(--fo-font-size-hero-title)" width="42%" />
+            <Box mt="var(--fo-space-dense-2)">
+              <Skeleton height="var(--fo-font-size-sm)" width="26%" />
+            </Box>
+          </Box>
+
+          <Box className="baseline-grid3Equal">
+            <Stack gap="sm">
+              <Skeleton height="var(--fo-font-size-sm)" width="30%" />
+              <Stack gap="var(--fo-space-dense-2)">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <Skeleton key={idx} height="var(--fo-font-size-sm)" width="85%" />
+                ))}
+              </Stack>
+            </Stack>
+
+            <Stack gap="sm">
+              <Skeleton height="var(--fo-font-size-sm)" width="38%" />
+              <Stack gap="var(--fo-space-dense-2)">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <Skeleton key={idx} height="var(--fo-font-size-sm)" width="70%" />
+                ))}
+              </Stack>
+            </Stack>
+
+            <Stack gap="sm">
+              <Skeleton height="var(--fo-font-size-sm)" width="36%" />
+              <Box className="baseline-card baseline-standardCard">
+                <Stack gap="var(--fo-space-dense-2)">
+                  <Skeleton height="var(--fo-font-size-sm)" width="40%" />
+                  <Skeleton height="var(--fo-font-size-sm)" width="55%" />
+                  <Skeleton height="var(--fo-font-size-sm)" width="48%" />
+                </Stack>
+              </Box>
+            </Stack>
+          </Box>
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
 
 export function SeasonScreen(props: {
   seasonIdLabel: string;
@@ -75,7 +122,7 @@ export function SeasonScreen(props: {
     updateTimerWith: s.updateTimerWith
   });
 
-  if (s.loading) return <PageLoader label="Loading season..." />;
+  if (s.loading) return <SeasonScreenSkeleton />;
   if (s.error) {
     return (
       <Box className="baseline-page">

@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Group, Stack, Text, Title, Tooltip } from "@ui";
+import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title, Tooltip } from "@ui";
 import { Link } from "react-router-dom";
 import type { AuthUser } from "@/auth/context";
 import type { LandingView } from "@/orchestration/landing";
@@ -44,7 +44,15 @@ export function LandingScreen(props: {
 
       <StandardCard className="baseline-updatesCard">
         {view.updates.state === "loading" ? (
-          <Text>Loading…</Text>
+          <Stack gap="var(--fo-space-dense-2)" role="status" aria-label="Loading updates">
+            <Skeleton height="var(--fo-font-size-xs)" width="25%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="70%" />
+            <Stack gap="var(--fo-space-dense-1)">
+              <Skeleton height="var(--fo-font-size-sm)" width="90%" />
+              <Skeleton height="var(--fo-font-size-sm)" width="78%" />
+              <Skeleton height="var(--fo-font-size-sm)" width="84%" />
+            </Stack>
+          </Stack>
         ) : view.updates.state === "error" ? (
           <Text>{view.updates.message}</Text>
         ) : view.updates.content ? (
@@ -91,9 +99,19 @@ export function LandingScreen(props: {
 
       {user ? (
         view.seasons.state === "idle" ? null : view.seasons.state === "loading" ? (
-          <StandardCard>
-            <Text>Loading…</Text>
-          </StandardCard>
+          <Stack gap="sm" role="status" aria-label="Loading seasons">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <StandardCard key={idx}>
+                <Stack gap="var(--fo-space-dense-2)">
+                  <Skeleton height="var(--fo-font-size-sm)" width="65%" />
+                  <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
+                    <Skeleton height="var(--fo-font-size-xs)" width="45%" />
+                    <Skeleton height="var(--fo-font-size-xs)" width="28%" />
+                  </Group>
+                </Stack>
+              </StandardCard>
+            ))}
+          </Stack>
         ) : view.seasons.state === "error" ? (
           <StandardCard>
             <Text>{view.seasons.message}</Text>

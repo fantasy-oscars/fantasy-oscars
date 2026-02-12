@@ -1,6 +1,6 @@
-import { Box, Group, Stack, Text, Title } from "@ui";
+import { Box, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { AuthUser } from "@/auth/context";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { LeagueMember } from "@/lib/types";
 import type { LeagueDetailView } from "@/orchestration/leagues";
 import { useMemo, useState } from "react";
@@ -14,6 +14,68 @@ import { LeagueSeasonsSection } from "@/features/leagues/ui/LeagueSeasonsSection
 import "@/primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
+
+function LeagueDetailSkeleton() {
+  return (
+    <Box className="baseline-page" role="status" aria-label="Loading league">
+      <Box className="baseline-pageInner">
+        <Stack component="section" gap="md">
+          <Group
+            component="header"
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+          >
+            <Skeleton height="var(--fo-font-size-hero-title)" width="44%" />
+          </Group>
+
+          <Box className="baseline-grid2Wide">
+            <Stack gap="sm">
+              <Group justify="space-between" align="flex-end" wrap="wrap">
+                <Skeleton height="var(--fo-font-size-sm)" width="22%" />
+                <Skeleton height="var(--fo-font-size-sm)" width="18%" />
+              </Group>
+              <Stack gap="sm">
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <Box key={idx} className="baseline-card baseline-standardCard">
+                    <Group
+                      justify="space-between"
+                      align="flex-start"
+                      wrap="wrap"
+                      gap="md"
+                    >
+                      <Skeleton height="var(--fo-font-size-sm)" width="55%" />
+                      <Skeleton height="var(--fo-font-size-xs)" width="22%" />
+                    </Group>
+                  </Box>
+                ))}
+              </Stack>
+            </Stack>
+
+            <Stack gap="md">
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-sm)" width="30%" />
+                <Stack gap="var(--fo-space-dense-2)">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Skeleton key={idx} height="var(--fo-font-size-sm)" width="72%" />
+                  ))}
+                </Stack>
+              </Stack>
+
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-sm)" width="36%" />
+                <Stack gap="var(--fo-space-dense-2)">
+                  <Skeleton height="var(--fo-font-size-sm)" width="55%" />
+                  <Skeleton height="var(--fo-font-size-sm)" width="48%" />
+                </Stack>
+              </Stack>
+            </Stack>
+          </Box>
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
 
 export function LeagueDetailScreen(props: {
   user: AuthUser | null;
@@ -49,7 +111,7 @@ export function LeagueDetailScreen(props: {
   }, [rosterList, user?.sub]);
 
   if (view.state === "loading") {
-    return <PageLoader label="Loading league..." />;
+    return <LeagueDetailSkeleton />;
   }
   if (view.state === "forbidden") {
     return (

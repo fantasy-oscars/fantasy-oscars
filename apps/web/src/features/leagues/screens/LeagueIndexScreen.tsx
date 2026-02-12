@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Text, Title } from "@ui";
+import { Box, Button, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "@/orchestration/leagueIndex";
 import { ActionCard, StandardCard } from "@/primitives";
@@ -18,9 +18,20 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
           <Box className="baseline-twoCol">
             <Box>
               {view.state === "loading" ? (
-                <StandardCard>
-                  <Text className="baseline-textBody">Loading…</Text>
-                </StandardCard>
+                <Box
+                  className="baseline-leagueGrid"
+                  role="status"
+                  aria-label="Loading leagues"
+                >
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <StandardCard key={idx} className="baseline-leagueTile">
+                      <Stack gap="var(--fo-space-dense-2)">
+                        <Skeleton height="var(--fo-font-size-sm)" width="72%" />
+                        <Skeleton height="var(--fo-font-size-xs)" width="45%" />
+                      </Stack>
+                    </StandardCard>
+                  ))}
+                </Box>
               ) : view.state === "error" ? (
                 <StandardCard>
                   <Text className="baseline-textBody">{view.message}</Text>

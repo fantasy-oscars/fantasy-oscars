@@ -226,7 +226,7 @@ describe("<App /> shell + routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderApp();
-    await screen.findByText(/Loading/i);
+    await screen.findByRole("status", { name: /Loading leagues/i });
     await screen.findByText(/Alpha/);
   });
 
