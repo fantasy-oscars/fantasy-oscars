@@ -9,4 +9,3 @@ export function registerDraftStandingsRoute(args: {
   const { router, pool } = args;
   router.get("/:id/standings", buildDraftStandingsHandler(pool));
 }
-

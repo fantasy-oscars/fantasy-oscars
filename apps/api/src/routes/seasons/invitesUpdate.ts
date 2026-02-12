@@ -44,9 +44,18 @@ export function registerSeasonInvitesUpdateRoute(args: {
         const actorMember = await getSeasonMember(client, seasonId, actorId);
         ensureCommissioner(actorMember);
 
-        const updated = await updatePlaceholderInviteLabel(client, seasonId, inviteId, label ?? null);
+        const updated = await updatePlaceholderInviteLabel(
+          client,
+          seasonId,
+          inviteId,
+          label ?? null
+        );
         if (!updated) {
-          throw new AppError("INVITE_NOT_FOUND", 404, "Pending placeholder invite not found");
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
         }
 
         return res.status(200).json({ invite: sanitizeInvite(updated) });
@@ -56,4 +65,3 @@ export function registerSeasonInvitesUpdateRoute(args: {
     }
   );
 }
-

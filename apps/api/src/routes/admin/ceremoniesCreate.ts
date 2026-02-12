@@ -6,7 +6,10 @@ import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremoniesCreateRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremoniesCreateRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.post(
@@ -70,4 +73,3 @@ export function registerAdminCeremoniesCreateRoute(args: { router: Router; clien
     }
   );
 }
-

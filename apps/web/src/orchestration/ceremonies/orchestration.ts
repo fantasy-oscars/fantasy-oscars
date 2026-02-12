@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../../lib/api";
-import { sortNewestFirst, splitActiveArchived } from "../../decisions/ceremonies/ceremonyIndex";
+import {
+  sortNewestFirst,
+  splitActiveArchived
+} from "../../decisions/ceremonies/ceremonyIndex";
 
 export type CeremonyIndexRow = {
   id: number;

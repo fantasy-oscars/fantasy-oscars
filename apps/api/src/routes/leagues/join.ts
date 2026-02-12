@@ -87,4 +87,3 @@ export function registerLeagueJoinRoutes(args: {
     }
   );
 }
-

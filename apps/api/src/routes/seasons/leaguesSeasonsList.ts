@@ -2,7 +2,10 @@ import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { listSeasonsForLeague } from "../../data/repositories/seasonRepository.js";
 
 export function registerSeasonsLeaguesSeasonsListRoute(args: {
@@ -48,7 +51,9 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status
-            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(String(s.ceremony_status).toUpperCase())
+            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(
+                String(s.ceremony_status).toUpperCase()
+              )
             : false
         }));
         return res.json({ seasons: response });
@@ -58,4 +63,3 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
     }
   );
 }
-

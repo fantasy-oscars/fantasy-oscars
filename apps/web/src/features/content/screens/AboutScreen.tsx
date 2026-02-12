@@ -12,7 +12,9 @@ export function AboutScreen(props: { title: string; view: StaticContentView }) {
       <Box className="baseline-pageInner">
         <StandardCard>
           <Stack gap="sm">
-            <Title variant="page">{view.state === "ready" ? view.content.title : title}</Title>
+            <Title variant="page">
+              {view.state === "ready" ? view.content.title : title}
+            </Title>
             {view.state === "loading" ? (
               <Text>Loading…</Text>
             ) : view.state === "error" ? (

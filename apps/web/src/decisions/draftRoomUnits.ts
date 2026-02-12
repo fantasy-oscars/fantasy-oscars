@@ -48,4 +48,3 @@ export function pickDraftDivisor(viewportWidthPx: number) {
   }
   return best;
 }
-

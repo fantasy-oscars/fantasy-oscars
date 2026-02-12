@@ -29,4 +29,3 @@ export type CategoryRow = {
   icon_code: string;
   family_icon_code: string;
 };
-

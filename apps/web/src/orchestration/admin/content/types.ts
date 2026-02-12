@@ -12,4 +12,3 @@ export type CmsDynamicRow = {
   updated_at: string;
   published_at: string | null;
 };
-

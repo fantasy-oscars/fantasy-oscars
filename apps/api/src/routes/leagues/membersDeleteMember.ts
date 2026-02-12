@@ -26,7 +26,11 @@ export function registerLeagueMembersDeleteMemberRoute(args: {
         const leagueId = Number(req.params.id);
         const targetUserId = Number(req.params.userId);
         const actorId = Number(req.auth?.sub);
-        if (Number.isNaN(leagueId) || Number.isNaN(targetUserId) || Number.isNaN(actorId)) {
+        if (
+          Number.isNaN(leagueId) ||
+          Number.isNaN(targetUserId) ||
+          Number.isNaN(actorId)
+        ) {
           throw validationError("Invalid ids", ["id", "userId"]);
         }
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -62,4 +66,3 @@ export function registerLeagueMembersDeleteMemberRoute(args: {
     }
   );
 }
-

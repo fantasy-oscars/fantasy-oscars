@@ -43,4 +43,3 @@ export async function createDraftEvent(
     payload: input.payload
   });
 }
-

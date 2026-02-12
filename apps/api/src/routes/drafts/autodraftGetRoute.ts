@@ -9,4 +9,3 @@ export function registerDraftAutodraftGetRoute(args: {
   const { router, client } = args;
   router.get("/:id/autodraft", buildGetDraftAutodraftHandler(client));
 }
-

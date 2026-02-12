@@ -22,7 +22,11 @@ export function SeasonDraftRoomColumn(props: {
           </Button>
         )}
         {ceremonyId ? (
-          <Button component={Link} to={`/ceremonies/${ceremonyId}/draft-plans`} variant="subtle">
+          <Button
+            component={Link}
+            to={`/ceremonies/${ceremonyId}/draft-plans`}
+            variant="subtle"
+          >
             Draft plans
           </Button>
         ) : (
@@ -34,4 +38,3 @@ export function SeasonDraftRoomColumn(props: {
     </Stack>
   );
 }
-

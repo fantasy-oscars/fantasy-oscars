@@ -8,7 +8,10 @@ import {
   updateDraftStatus,
   updateDraftTimer
 } from "../../data/repositories/draftRepository.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { mapDraftStateError, transitionDraftState } from "../../domain/draftState.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
@@ -79,7 +82,9 @@ export function buildPauseDraftHandler(pool: Pool) {
 
         let updatedTimer = null;
         if (draft.pick_timer_seconds) {
-          const deadline = draft.pick_deadline_at ? new Date(draft.pick_deadline_at) : null;
+          const deadline = draft.pick_deadline_at
+            ? new Date(draft.pick_deadline_at)
+            : null;
           const remainingMs =
             deadline && deadline.getTime() > Date.now()
               ? deadline.getTime() - Date.now()

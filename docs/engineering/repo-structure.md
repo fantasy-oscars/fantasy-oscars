@@ -6,7 +6,8 @@ directories:
 - `apps/`: deployable applications
 - `packages/`: shared libraries (used by apps)
 - `database/`: migrations + fixtures (source of truth for schema)
-- `tooling/`: local dev + CI tooling (Docker compose, e2e tests, scripts)
+- `tooling/`: local dev + CI tooling (Docker compose, scripts)
+- `tests/`: repository-level test suites (e2e + tooling invariants)
 - `docs/`: documentation
 
 - `apps/web`: React + Vite frontend
@@ -74,4 +75,8 @@ API is organized by layer:
 ## tooling/
 
 - `tooling/infra/`: local Docker compose (e.g. Postgres)
-- `tooling/e2e/`: Playwright smoke tests
+
+## tests/
+
+- `tests/e2e/`: Playwright smoke tests
+- `tests/unit/tooling/`: repo/tooling invariants (lint escape hatches, migration order, etc.)

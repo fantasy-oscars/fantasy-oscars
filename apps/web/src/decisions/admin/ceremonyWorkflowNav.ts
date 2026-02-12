@@ -18,4 +18,3 @@ export function isCeremonyWorkflowStepAllowed(args: {
 
   return true;
 }
-

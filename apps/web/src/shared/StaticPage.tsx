@@ -1,6 +1,6 @@
 import { Box, Stack, Title } from "@ui";
 import { StandardCard } from "../primitives";
-import "../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function StaticPage(props: { title: string; children: React.ReactNode }) {
   return (

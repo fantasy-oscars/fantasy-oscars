@@ -12,7 +12,10 @@ const SIZE_CSS: Record<AnimalAvatarSize, string> = {
   draft: "var(--fo-db-tokenSize)" // 33px
 };
 
-export function AnimalAvatarIcon(props: { avatarKey?: string | null; size?: AnimalAvatarSize }) {
+export function AnimalAvatarIcon(props: {
+  avatarKey?: string | null;
+  size?: AnimalAvatarSize;
+}) {
   // Keep element reference stable for the useCssVars hook.
   const elRef = React.useRef<HTMLSpanElement | null>(null);
   const setRef = (node: HTMLSpanElement | null) => {
@@ -28,11 +31,6 @@ export function AnimalAvatarIcon(props: { avatarKey?: string | null; size?: Anim
   });
 
   return (
-    <Box
-      component="span"
-      className="fo-animalAvatar"
-      aria-hidden="true"
-      ref={setRef}
-    />
+    <Box component="span" className="fo-animalAvatar" aria-hidden="true" ref={setRef} />
   );
 }

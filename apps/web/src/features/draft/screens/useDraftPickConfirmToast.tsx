@@ -35,45 +35,48 @@ export function useDraftPickConfirmToast(args: {
     clearConfirmTimer();
   }, [clearConfirmTimer]);
 
-  const scheduleDraftConfirmToast = useCallback((payload: { nominationId: number; label: string }) => {
-    cancelDraftConfirmToast();
-    clearConfirmTimer();
-    confirmNominationRef.current = payload.nominationId;
+  const scheduleDraftConfirmToast = useCallback(
+    (payload: { nominationId: number; label: string }) => {
+      cancelDraftConfirmToast();
+      clearConfirmTimer();
+      confirmNominationRef.current = payload.nominationId;
 
-    confirmTimerRef.current = window.setTimeout(() => {
-      const nominationId = confirmNominationRef.current;
-      if (!nominationId) return;
+      confirmTimerRef.current = window.setTimeout(() => {
+        const nominationId = confirmNominationRef.current;
+        if (!nominationId) return;
 
-      const toastId = `draft.confirm.${nominationId}.${Date.now()}`;
-      confirmToastIdRef.current = toastId;
-      notifications.show({
-        id: toastId,
-        autoClose: false,
-        withCloseButton: true,
-        onClose: () => {
-          confirmToastIdRef.current = null;
-          confirmNominationRef.current = null;
-          onClearSelectionRef.current();
-        },
-        message: (
-          <Box
-            data-fo-draft-confirm-toast="true"
-            className="fo-clickable"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => {
-              cancelDraftConfirmToast();
-              onConfirmPickRef.current(nominationId);
-            }}
-          >
-            <Text fw="var(--fo-font-weight-bold)">Confirm draft pick</Text>
-            <Text c="dimmed" size="sm">
-              Draft “{payload.label}”
-            </Text>
-          </Box>
-        )
-      });
-    }, 220);
-  }, [cancelDraftConfirmToast, clearConfirmTimer]);
+        const toastId = `draft.confirm.${nominationId}.${Date.now()}`;
+        confirmToastIdRef.current = toastId;
+        notifications.show({
+          id: toastId,
+          autoClose: false,
+          withCloseButton: true,
+          onClose: () => {
+            confirmToastIdRef.current = null;
+            confirmNominationRef.current = null;
+            onClearSelectionRef.current();
+          },
+          message: (
+            <Box
+              data-fo-draft-confirm-toast="true"
+              className="fo-clickable"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                cancelDraftConfirmToast();
+                onConfirmPickRef.current(nominationId);
+              }}
+            >
+              <Text fw="var(--fo-font-weight-bold)">Confirm draft pick</Text>
+              <Text c="dimmed" size="sm">
+                Draft “{payload.label}”
+              </Text>
+            </Box>
+          )
+        });
+      }, 220);
+    },
+    [cancelDraftConfirmToast, clearConfirmTimer]
+  );
 
   useEffect(() => {
     // Cleanup any pending confirm UI if the user loses the ability to draft.

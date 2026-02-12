@@ -4,13 +4,23 @@ import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { cancelSeason, getSeasonById } from "../../data/repositories/seasonRepository.js";
-import { createDraftEvent, getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
+import {
+  createDraftEvent,
+  getDraftBySeasonId
+} from "../../data/repositories/draftRepository.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 
 export function buildSeasonSettingsCancelHandler(client: DbClient) {
-  return async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+  return async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     try {
       const seasonId = Number(req.params.id);
       if (Number.isNaN(seasonId)) {
@@ -70,4 +80,3 @@ export function buildSeasonSettingsCancelHandler(client: DbClient) {
     }
   };
 }
-

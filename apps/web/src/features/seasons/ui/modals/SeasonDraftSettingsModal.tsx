@@ -114,7 +114,8 @@ export function SeasonDraftSettingsModal(props: {
           label="Allocation"
           value={active.allocationStrategy}
           onChange={(v) => {
-            const next = (v ?? "UNDRAFTED") as SeasonDraftSettingsDraft["allocationStrategy"];
+            const next = (v ??
+              "UNDRAFTED") as SeasonDraftSettingsDraft["allocationStrategy"];
             setSettingsDraft({ ...active, allocationStrategy: next });
           }}
           disabled={!canEdit || working || locked}
@@ -128,13 +129,17 @@ export function SeasonDraftSettingsModal(props: {
           <Switch
             label="Pick timer"
             checked={active.timerEnabled}
-            onChange={(e) => setSettingsDraft({ ...active, timerEnabled: e.currentTarget.checked })}
+            onChange={(e) =>
+              setSettingsDraft({ ...active, timerEnabled: e.currentTarget.checked })
+            }
             disabled={!canEdit || working || locked}
           />
           <NumberInput
             label="Seconds per pick"
             value={active.pickTimerSeconds}
-            onChange={(v) => setSettingsDraft({ ...active, pickTimerSeconds: Number(v) || 0 })}
+            onChange={(v) =>
+              setSettingsDraft({ ...active, pickTimerSeconds: Number(v) || 0 })
+            }
             min={0}
             step={5}
             disabled={!canEdit || working || locked || !active.timerEnabled}

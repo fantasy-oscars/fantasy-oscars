@@ -4,7 +4,7 @@ import { PageLoader } from "@/shared/page-state";
 import type { InvitesInboxView } from "@/orchestration/invites";
 import { inviteContextLine } from "@/decisions/invites";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function InvitesInboxScreen(props: {
   view: InvitesInboxView;

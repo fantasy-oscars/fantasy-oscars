@@ -8,13 +8,11 @@ import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
-import {
-  FO_MODAL_OVERLAY_BLUR_PX,
-  FO_MODAL_OVERLAY_OPACITY
-} from "@/tokens/overlays";
+import { FO_MODAL_OVERLAY_BLUR_PX, FO_MODAL_OVERLAY_OPACITY } from "@/tokens/overlays";
 
-type DraftAudioController =
-  ReturnType<typeof import("@/lib/draftAudio").createDraftAudioController>;
+type DraftAudioController = ReturnType<
+  typeof import("@/lib/draftAudio").createDraftAudioController
+>;
 
 export function MobileDraftRoom(props: {
   o: DraftRoomOrchestration;
@@ -263,7 +261,10 @@ export function MobileDraftRoom(props: {
         onClose={closeNomineeCard}
         centered
         withCloseButton={false}
-        overlayProps={{ opacity: FO_MODAL_OVERLAY_OPACITY, blur: FO_MODAL_OVERLAY_BLUR_PX }}
+        overlayProps={{
+          opacity: FO_MODAL_OVERLAY_OPACITY,
+          blur: FO_MODAL_OVERLAY_BLUR_PX
+        }}
       >
         <Box pos="relative">
           <Box

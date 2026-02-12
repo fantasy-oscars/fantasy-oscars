@@ -350,5 +350,4 @@ export function registerAdminNominationCreateRoute(args: {
       }
     }
   );
-
 }

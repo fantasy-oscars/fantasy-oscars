@@ -92,7 +92,11 @@ export function DraftHeaderLeftWing(props: {
                         <Text>{p.label}</Text>
                       </Group>
                       {p.active ? (
-                        <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                        <Text
+                          component="span"
+                          className="mi-icon mi-icon-tiny"
+                          aria-hidden="true"
+                        >
                           play_arrow
                         </Text>
                       ) : null}

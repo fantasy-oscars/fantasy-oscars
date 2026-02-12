@@ -102,4 +102,3 @@ export function NominationFilmLinkConflictModal(props: {
     </Modal>
   );
 }
-

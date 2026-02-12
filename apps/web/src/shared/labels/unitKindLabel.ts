@@ -8,4 +8,3 @@ export function unitKindLabel(kind: "FILM" | "SONG" | "PERFORMANCE") {
       return "Person + Film";
   }
 }
-

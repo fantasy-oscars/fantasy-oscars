@@ -240,7 +240,7 @@ export const foTokens = {
   "--mantine-primary-color-light-color": `var(--fo-text-primary)`,
   "--mantine-primary-color-light-hover": `var(--fo-surface-pill)`,
   "--mantine-primary-color-outline": `var(--fo-border)`,
-  "--mantine-primary-color-outline-hover": `var(--fo-surface-pill)`,
+  "--mantine-primary-color-outline-hover": `var(--fo-surface-pill)`
 } as const;
 
 export type FoTokenName = keyof typeof foTokens;

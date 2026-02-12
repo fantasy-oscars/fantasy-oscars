@@ -90,15 +90,13 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
 
-  const {
-    scheduleDraftConfirmToast,
-    cancelDraftConfirmToast,
-    clearConfirmTimer
-  } = useDraftPickConfirmToast({
-    enabled: canDraftAction,
-    onConfirmPick: (nominationId) => props.o.myRoster.submitPickNomination(nominationId),
-    onClearSelection: () => props.o.myRoster.clearSelection()
-  });
+  const { scheduleDraftConfirmToast, cancelDraftConfirmToast, clearConfirmTimer } =
+    useDraftPickConfirmToast({
+      enabled: canDraftAction,
+      onConfirmPick: (nominationId) =>
+        props.o.myRoster.submitPickNomination(nominationId),
+      onClearSelection: () => props.o.myRoster.clearSelection()
+    });
   const draftedNominationIds = useMemo(
     () => buildDraftedNominationIds(props.o.ledger.rows),
     [props.o.ledger.rows]

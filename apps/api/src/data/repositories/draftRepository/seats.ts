@@ -1,7 +1,10 @@
 import { DbClient, query } from "../../db.js";
 import type { DraftSeatRecord } from "./types.js";
 
-export async function countDraftSeats(client: DbClient, draftId: number): Promise<number> {
+export async function countDraftSeats(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
   const { rows } = await query<{ count: string }>(
     client,
     `SELECT COUNT(*)::int AS count FROM draft_seat WHERE draft_id = $1`,
@@ -10,7 +13,10 @@ export async function countDraftSeats(client: DbClient, draftId: number): Promis
   return rows[0]?.count ? Number(rows[0].count) : 0;
 }
 
-export async function listDraftSeats(client: DbClient, draftId: number): Promise<DraftSeatRecord[]> {
+export async function listDraftSeats(
+  client: DbClient,
+  draftId: number
+): Promise<DraftSeatRecord[]> {
   const { rows } = await query<DraftSeatRecord>(
     client,
     `SELECT
@@ -37,7 +43,9 @@ export async function createDraftSeats(
   input: { draft_id: number; league_member_ids_in_order: number[] }
 ): Promise<DraftSeatRecord[]> {
   if (input.league_member_ids_in_order.length === 0) return [];
-  const values = input.league_member_ids_in_order.map((id, idx) => `($1, ${idx + 1}, ${id})`).join(", ");
+  const values = input.league_member_ids_in_order
+    .map((id, idx) => `($1, ${idx + 1}, ${id})`)
+    .join(", ");
   const { rows } = await query<DraftSeatRecord>(
     client,
     `INSERT INTO draft_seat (draft_id, seat_number, league_member_id)
@@ -53,4 +61,3 @@ export async function createDraftSeats(
   );
   return rows;
 }
-

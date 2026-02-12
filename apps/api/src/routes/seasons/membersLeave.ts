@@ -36,7 +36,8 @@ export function registerSeasonMembersLeaveRoute(args: {
         }
 
         const member = await getSeasonMember(client, seasonId, userId);
-        if (!member) throw new AppError("SEASON_MEMBER_NOT_FOUND", 404, "Season member not found");
+        if (!member)
+          throw new AppError("SEASON_MEMBER_NOT_FOUND", 404, "Season member not found");
         if (member.role === "OWNER") {
           throw new AppError(
             "FORBIDDEN",
@@ -54,4 +55,3 @@ export function registerSeasonMembersLeaveRoute(args: {
     }
   );
 }
-

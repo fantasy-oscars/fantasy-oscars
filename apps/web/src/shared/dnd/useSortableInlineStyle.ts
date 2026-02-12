@@ -20,4 +20,3 @@ export function useSortableInlineStyle<T extends HTMLElement>(
     };
   }, [ref, style.transform, style.transition]);
 }
-

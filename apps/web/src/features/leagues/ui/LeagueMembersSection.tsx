@@ -13,11 +13,7 @@ export function LeagueMembersSection(props: {
       {members.length === 0 ? (
         <Text className="baseline-textBody">No members yet.</Text>
       ) : (
-        <Stack
-          component="ul"
-          gap="var(--fo-space-0)"
-          className="fo-listReset"
-        >
+        <Stack component="ul" gap="var(--fo-space-0)" className="fo-listReset">
           {members.map((m, idx) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap" py="sm">

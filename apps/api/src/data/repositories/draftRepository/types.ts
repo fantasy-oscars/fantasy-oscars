@@ -70,4 +70,3 @@ export type DraftResultRecord = {
   created_at: Date;
   updated_at: Date;
 };
-

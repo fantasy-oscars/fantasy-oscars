@@ -7,4 +7,3 @@ export function computeSeasonCeremonyLabel(season: {
   if (season.ceremony_code) return season.ceremony_code;
   return `Ceremony ${season.ceremony_id}`;
 }
-

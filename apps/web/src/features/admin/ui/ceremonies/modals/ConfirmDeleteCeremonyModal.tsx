@@ -6,7 +6,12 @@ export function ConfirmDeleteCeremonyModal(props: {
   onConfirm: () => void;
 }) {
   return (
-    <Modal opened={props.opened} onClose={props.onCancel} title="Delete ceremony?" centered>
+    <Modal
+      opened={props.opened}
+      onClose={props.onCancel}
+      title="Delete ceremony?"
+      centered
+    >
       <Stack gap="md">
         <Text className="baseline-textBody" c="dimmed">
           This ceremony is published. Deleting it will remove it for everyone.
@@ -23,4 +28,3 @@ export function ConfirmDeleteCeremonyModal(props: {
     </Modal>
   );
 }
-

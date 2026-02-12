@@ -90,7 +90,8 @@ export function MobileRosterBoard(props: {
         onChange={(v) => setSeat(v ? Number(v) : null)}
         data={players.map((p) => ({
           value: String(p.seatNumber),
-          label: o.header.status === "COMPLETED" ? `${p.label} (${p.winnerCount})` : p.label
+          label:
+            o.header.status === "COMPLETED" ? `${p.label} (${p.winnerCount})` : p.label
         }))}
       />
 
@@ -102,7 +103,10 @@ export function MobileRosterBoard(props: {
               {current.label}
             </Text>
             {o.header.status === "COMPLETED" ? (
-              <Text className="dr-rosterWinCount" aria-label={`${current.winnerCount} winners`}>
+              <Text
+                className="dr-rosterWinCount"
+                aria-label={`${current.winnerCount} winners`}
+              >
                 {current.winnerCount}
               </Text>
             ) : null}

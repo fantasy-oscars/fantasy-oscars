@@ -45,4 +45,3 @@ export function useShellNavMode(args: {
 
   return { navMode };
 }
-

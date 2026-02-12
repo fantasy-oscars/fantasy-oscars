@@ -4,7 +4,10 @@ import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import {
   getSeasonById,
   updateSeasonCategoryWeights,
@@ -14,7 +17,11 @@ import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { ensureCommissioner } from "./helpers.js";
 
 export function buildSeasonSettingsScoringHandler(client: DbClient) {
-  return async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+  return async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     try {
       const seasonId = Number(req.params.id);
       const { scoring_strategy_name, category_weights } = req.body ?? {};
@@ -49,7 +56,9 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
             throw validationError("Invalid category_weights", ["category_weights"]);
           }
           const next: Record<string, number> = {};
-          for (const [k, v] of Object.entries(category_weights as Record<string, unknown>)) {
+          for (const [k, v] of Object.entries(
+            category_weights as Record<string, unknown>
+          )) {
             const id = Number(k);
             const n = Number(v);
             if (!Number.isFinite(id) || id <= 0) {
@@ -87,7 +96,8 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
 
         const updated =
           weightsToWrite !== null
-            ? ((await updateSeasonCategoryWeights(tx, season.id, weightsToWrite)) ?? updatedSeason)
+            ? ((await updateSeasonCategoryWeights(tx, season.id, weightsToWrite)) ??
+              updatedSeason)
             : updatedSeason;
 
         return { season: updated };
@@ -99,4 +109,3 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
     }
   };
 }
-

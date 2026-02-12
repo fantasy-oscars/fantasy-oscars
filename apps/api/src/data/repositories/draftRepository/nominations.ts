@@ -50,14 +50,22 @@ export async function getNominationByIdForCeremony(
 }
 
 export async function countNominations(client: DbClient): Promise<number> {
-  const { rows } = await query<{ count: string }>(client, `SELECT COUNT(*)::int AS count FROM nomination`);
+  const { rows } = await query<{ count: string }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM nomination`
+  );
   return rows[0]?.count ? Number(rows[0].count) : 0;
 }
 
-export async function listNominationIds(client: DbClient, nominationIds: number[]): Promise<number[]> {
-  const { rows } = await query<{ id: number }>(client, `SELECT id::int FROM nomination WHERE id = ANY($1)`, [
-    nominationIds
-  ]);
+export async function listNominationIds(
+  client: DbClient,
+  nominationIds: number[]
+): Promise<number[]> {
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT id::int FROM nomination WHERE id = ANY($1)`,
+    [nominationIds]
+  );
   return rows.map((row) => row.id);
 }
 
@@ -81,9 +89,10 @@ export async function getNominationById(
   client: DbClient,
   nominationId: number
 ): Promise<{ id: number } | null> {
-  const { rows } = await query<{ id: number }>(client, `SELECT id::int FROM nomination WHERE id = $1`, [
-    nominationId
-  ]);
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT id::int FROM nomination WHERE id = $1`,
+    [nominationId]
+  );
   return rows[0] ?? null;
 }
-

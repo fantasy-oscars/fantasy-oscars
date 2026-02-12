@@ -90,4 +90,3 @@ export function useAdminCeremonyLockOrchestration(args: { ceremonyId: number | n
 
   return { loading, saving, lockState, status, actions: { lock, archive } };
 }
-

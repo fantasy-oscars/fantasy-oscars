@@ -2,4 +2,3 @@ export type { CeremonyIndexRow, CeremonyDetail } from "./ceremonies/orchestratio
 
 export { useCeremoniesIndexOrchestration } from "./ceremonies/orchestration";
 export { useCeremonyDetailOrchestration } from "./ceremonies/orchestration";
-

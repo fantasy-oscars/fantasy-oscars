@@ -22,7 +22,12 @@ export function NewTemplateModal(props: {
   const { working, canAddToCeremony, value, onChange, onCancel, onSubmit } = props;
   return (
     <Box className="modal-backdrop" role="presentation">
-      <StandardCard className="modal" role="dialog" aria-modal="true" aria-label="New template">
+      <StandardCard
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="New template"
+      >
         <Title order={4}>New template</Title>
         <Text className="muted">
           Create a category template, then add it to ceremonies as needed.
@@ -112,4 +117,3 @@ export function NewTemplateModal(props: {
     </Box>
   );
 }
-

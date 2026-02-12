@@ -28,4 +28,3 @@ export function DraftCategoryIcon(props: {
     </Box>
   );
 }
-

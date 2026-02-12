@@ -53,7 +53,11 @@ export function registerSeasonInvitesRegenerateRoute(args: {
           throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
         }
         if (invite.status !== "PENDING") {
-          throw new AppError("INVITE_NOT_PENDING", 409, "Only pending invites can be regenerated");
+          throw new AppError(
+            "INVITE_NOT_PENDING",
+            409,
+            "Only pending invites can be regenerated"
+          );
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -64,7 +68,10 @@ export function registerSeasonInvitesRegenerateRoute(args: {
           let tokenValue = "";
           for (let attempt = 0; attempt < 5; attempt++) {
             const candidateToken = crypto.randomBytes(24).toString("base64url");
-            const tokenHash = crypto.createHash("sha256").update(candidateToken).digest("hex");
+            const tokenHash = crypto
+              .createHash("sha256")
+              .update(candidateToken)
+              .digest("hex");
             try {
               const created = await createPlaceholderInvite(tx, {
                 season_id: seasonId,
@@ -93,7 +100,11 @@ export function registerSeasonInvitesRegenerateRoute(args: {
         });
 
         if (!result) {
-          throw new AppError("INVITE_NOT_FOUND", 404, "Pending placeholder invite not found");
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
         }
 
         return res

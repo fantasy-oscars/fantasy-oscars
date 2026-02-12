@@ -6,4 +6,3 @@ export function formatLocalDateTime(value?: string | null) {
     return value;
   }
 }
-

@@ -22,10 +22,7 @@ export function AdminCeremoniesLayoutScreen(props: {
         wrap="wrap"
       >
         <Box>
-          <Title
-            order={2}
-            className="baseline-textHeroTitle"
-          >
+          <Title order={2} className="baseline-textHeroTitle">
             Ceremonies
           </Title>
           <Text className="muted">

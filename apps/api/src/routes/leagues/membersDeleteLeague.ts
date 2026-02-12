@@ -4,7 +4,11 @@ import { AppError, validationError } from "../../errors.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
-import { deleteLeague, getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  deleteLeague,
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 
 export function registerLeagueMembersDeleteLeagueRoute(args: {
   router: express.Router;
@@ -43,4 +47,3 @@ export function registerLeagueMembersDeleteLeagueRoute(args: {
     }
   );
 }
-

@@ -3,7 +3,10 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 
-export function registerAdminCeremoniesListRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremoniesListRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.get(
@@ -23,4 +26,3 @@ export function registerAdminCeremoniesListRoute(args: { router: Router; client:
     }
   );
 }
-

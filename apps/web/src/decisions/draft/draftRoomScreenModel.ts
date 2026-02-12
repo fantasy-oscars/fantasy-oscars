@@ -97,7 +97,9 @@ export function buildNomineeMetaById(categories: DraftScreenCategory[]): Nominee
   return m;
 }
 
-export function buildDraftedNominationIds(rows: DraftRoomOrchestration["ledger"]["rows"]) {
+export function buildDraftedNominationIds(
+  rows: DraftRoomOrchestration["ledger"]["rows"]
+) {
   const set = new Set<number>();
   for (const r of rows) {
     if (typeof r.nominationId === "number") set.add(r.nominationId);
@@ -112,4 +114,3 @@ export function buildAvatarKeyBySeat(
   for (const p of participants) m.set(p.seatNumber, p.avatarKey ?? null);
   return m;
 }
-

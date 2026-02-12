@@ -4,7 +4,10 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremonyGetRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremonyGetRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.get(
@@ -75,4 +78,3 @@ export function registerAdminCeremonyGetRoute(args: { router: Router; client: Db
     }
   );
 }
-

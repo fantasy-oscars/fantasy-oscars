@@ -7,7 +7,10 @@ import {
   createDraft,
   getDraftBySeasonId
 } from "../../data/repositories/draftRepository.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 
 export function buildCreateDraftHandler(client: DbClient) {
@@ -125,4 +128,3 @@ export function buildCreateDraftHandler(client: DbClient) {
     }
   };
 }
-

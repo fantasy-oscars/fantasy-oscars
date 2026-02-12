@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../lib/api";
 import type { LeagueSummary, SeasonSummary } from "../../lib/types";
-import { computeActiveSeasonPreviews, type HomeSeasonPreview } from "../../decisions/home/seasonPreviews";
+import {
+  computeActiveSeasonPreviews,
+  type HomeSeasonPreview
+} from "../../decisions/home/seasonPreviews";
 
 type StaticContent = { key: string; title: string; body_markdown: string };
 type DynamicContent = {

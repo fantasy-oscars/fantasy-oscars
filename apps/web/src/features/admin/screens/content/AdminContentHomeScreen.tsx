@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminContentHomeScreen() {
   return (
@@ -119,10 +119,7 @@ export function AdminContentHomeScreen() {
 
       <Divider my="md" />
 
-      <Title
-        order={3}
-        className="baseline-textSectionHeader fo-opacityMuted2"
-      >
+      <Title order={3} className="baseline-textSectionHeader fo-opacityMuted2">
         Legal
       </Title>
       <Stack gap="var(--fo-space-0)" className="fo-opacityMuted1">

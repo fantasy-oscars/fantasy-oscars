@@ -11,7 +11,7 @@ import { TransferLeagueOwnershipModal } from "@/features/leagues/ui/modals/Trans
 import { LeagueMembersSection } from "@/features/leagues/ui/LeagueMembersSection";
 import { LeagueManagementSection } from "@/features/leagues/ui/LeagueManagementSection";
 import { LeagueSeasonsSection } from "@/features/leagues/ui/LeagueSeasonsSection";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 const EMPTY_ROSTER: LeagueMember[] = [];
 

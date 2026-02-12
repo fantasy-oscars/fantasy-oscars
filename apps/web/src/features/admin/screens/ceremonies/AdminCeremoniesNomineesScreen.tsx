@@ -1,9 +1,5 @@
 import { Box, Group, Stack, Text } from "@ui";
-import {
-  PointerSensor,
-  useSensor,
-  useSensors
-} from "@dnd-kit/core";
+import { PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminCeremonyNomineesOrchestration } from "@/orchestration/adminCeremoniesNominees";
 import { FormStatus } from "@/shared/forms";
@@ -13,7 +9,7 @@ import { CandidatePoolAccordion } from "@/features/admin/ui/ceremonies/nominees/
 import { CreateNominationPanel } from "@/features/admin/ui/ceremonies/nominees/CreateNominationPanel";
 import { CategoryNominationSection } from "./nominees/CategoryNominationSection";
 import { NominationEditModal } from "./nominees/NominationEditModal";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminCeremoniesNomineesScreen(props: {
   o: AdminCeremonyNomineesOrchestration;

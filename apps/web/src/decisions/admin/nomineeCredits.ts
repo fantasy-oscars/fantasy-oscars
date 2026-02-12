@@ -117,4 +117,3 @@ export function filterCreditOptions(creditOptions: CreditOption[], query: string
   if (!q) return creditOptions;
   return creditOptions.filter((o) => o.search.includes(q));
 }
-

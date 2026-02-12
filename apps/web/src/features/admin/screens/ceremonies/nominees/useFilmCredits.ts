@@ -16,8 +16,12 @@ export type FilmCredits = { cast?: CreditPerson[]; crew?: CreditPerson[] };
 function coerceFilmCredits(creditsUnknown: unknown): FilmCredits | null {
   if (!creditsUnknown || typeof creditsUnknown !== "object") return null;
   const creditsObj = creditsUnknown as { cast?: unknown; crew?: unknown };
-  const cast = Array.isArray(creditsObj.cast) ? (creditsObj.cast as CreditPerson[]) : undefined;
-  const crew = Array.isArray(creditsObj.crew) ? (creditsObj.crew as CreditPerson[]) : undefined;
+  const cast = Array.isArray(creditsObj.cast)
+    ? (creditsObj.cast as CreditPerson[])
+    : undefined;
+  const crew = Array.isArray(creditsObj.crew)
+    ? (creditsObj.crew as CreditPerson[])
+    : undefined;
   return { cast, crew };
 }
 
@@ -50,4 +54,3 @@ export function useFilmCredits(args: {
 
   return { filmCredits, setFilmCredits };
 }
-

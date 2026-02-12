@@ -16,8 +16,10 @@ function groupBy<T>(items: T[], keyFn: (t: T) => number) {
 function sortByCeremony(seasons: SeasonIndexCard[]) {
   // Newest ceremony first.
   return [...seasons].sort((a, b) => {
-    if (b.ceremony_sort_ts !== a.ceremony_sort_ts) return b.ceremony_sort_ts - a.ceremony_sort_ts;
-    if (a.ceremony_name !== b.ceremony_name) return a.ceremony_name.localeCompare(b.ceremony_name);
+    if (b.ceremony_sort_ts !== a.ceremony_sort_ts)
+      return b.ceremony_sort_ts - a.ceremony_sort_ts;
+    if (a.ceremony_name !== b.ceremony_name)
+      return a.ceremony_name.localeCompare(b.ceremony_name);
     return a.season_id - b.season_id;
   });
 }
@@ -26,7 +28,8 @@ function sortByLeagueName(seasons: SeasonIndexCard[]) {
   return [...seasons].sort((a, b) => {
     const ln = a.league_name.localeCompare(b.league_name);
     if (ln !== 0) return ln;
-    if (a.ceremony_name !== b.ceremony_name) return a.ceremony_name.localeCompare(b.ceremony_name);
+    if (a.ceremony_name !== b.ceremony_name)
+      return a.ceremony_name.localeCompare(b.ceremony_name);
     return a.season_id - b.season_id;
   });
 }
@@ -40,7 +43,9 @@ export function computeSeasonsIndexGrouping(args: {
   groupOrder: Array<{ id: number; label: string; sort: number }>;
 } {
   const seasons =
-    args.mode === "ceremony" ? sortByCeremony(args.seasons) : sortByLeagueName(args.seasons);
+    args.mode === "ceremony"
+      ? sortByCeremony(args.seasons)
+      : sortByLeagueName(args.seasons);
 
   const grouped =
     args.mode === "ceremony"
@@ -67,4 +72,3 @@ export function computeSeasonsIndexGrouping(args: {
 
   return { seasons, grouped, groupOrder };
 }
-

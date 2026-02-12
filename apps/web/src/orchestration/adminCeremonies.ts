@@ -7,4 +7,3 @@ export { useAdminCeremonyLockOrchestration } from "./admin/ceremonies/lockOrches
 export { useAdminCeremonyWinnersOrchestration } from "./admin/ceremonies/winnersOrchestration";
 
 export type { AdminCeremonyWinnersOrchestration } from "./admin/ceremonies/winnersOrchestration";
-

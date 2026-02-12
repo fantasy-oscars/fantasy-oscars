@@ -13,6 +13,14 @@
 - Integration (API/DB): use Testcontainers Postgres; apply migrations from `database/migrations`; truncate + restart identities between tests.
 - E2E (web smoke): Playwright; runs against `apps/web` via `vite preview` to ensure the web app loads.
 
+## Where Tests Live
+
+- Repo-wide invariants (tooling, migration ordering, escape-hatch enforcement): `tests/unit/tooling/`
+- Web unit tests: `apps/web/tests/unit/`
+- API unit + integration tests: `apps/api/tests/unit/` and `apps/api/tests/integration/`
+- Shared package unit tests: `packages/shared/tests/unit/`
+- E2E smoke tests (Playwright): `tests/e2e/`
+
 ## How to Run
 
 - Full suite: `pnpm run ci` (matches CI).

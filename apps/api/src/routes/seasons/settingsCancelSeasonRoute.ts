@@ -9,4 +9,3 @@ export function registerSeasonSettingsCancelSeasonRoute(args: {
   const { router, client } = args;
   router.post("/seasons/:id/cancel", buildSeasonSettingsCancelHandler(client));
 }
-

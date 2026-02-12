@@ -7,7 +7,12 @@ import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
 import { createUserTargetedInvite } from "../../data/repositories/seasonInviteRepository.js";
-import { ensureCommissioner, getUserById, getUserByUsername, sanitizeInvite } from "./helpers.js";
+import {
+  ensureCommissioner,
+  getUserById,
+  getUserByUsername,
+  sanitizeInvite
+} from "./helpers.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 
 export function registerSeasonUserInvitesCreateRoute(args: {
@@ -23,13 +28,16 @@ export function registerSeasonUserInvitesCreateRoute(args: {
         const seasonId = Number(req.params.id);
         const actorId = Number(req.auth?.sub);
         const { user_id, username } = req.body ?? {};
-        const targetUserId = user_id === undefined || user_id === null ? NaN : Number(user_id);
+        const targetUserId =
+          user_id === undefined || user_id === null ? NaN : Number(user_id);
         const usernameStr = typeof username === "string" ? username : null;
         if (Number.isNaN(seasonId) || !actorId) {
           throw validationError("Invalid payload", ["id"]);
         }
 
-        let resolvedUserId: number | null = Number.isFinite(targetUserId) ? targetUserId : null;
+        let resolvedUserId: number | null = Number.isFinite(targetUserId)
+          ? targetUserId
+          : null;
         if (!resolvedUserId && usernameStr) {
           const u = await getUserByUsername(client, usernameStr);
           if (!u) throw new AppError("USER_NOT_FOUND", 404, "User not found");
@@ -63,7 +71,11 @@ export function registerSeasonUserInvitesCreateRoute(args: {
 
         const existingMember = await getSeasonMember(client, seasonId, resolvedUserId);
         if (existingMember) {
-          throw new AppError("USER_ALREADY_MEMBER", 409, "That user is already in this season.");
+          throw new AppError(
+            "USER_ALREADY_MEMBER",
+            409,
+            "That user is already in this season."
+          );
         }
 
         const { invite, created } = await createUserTargetedInvite(client, {
@@ -79,4 +91,3 @@ export function registerSeasonUserInvitesCreateRoute(args: {
     }
   );
 }
-

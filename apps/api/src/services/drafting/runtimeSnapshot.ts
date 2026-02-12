@@ -10,13 +10,19 @@ import {
   listDraftSeats,
   updateDraftOnComplete
 } from "../../data/repositories/draftRepository.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
 import { listWinnersByCeremony } from "../../data/repositories/winnerRepository.js";
 import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
 import { computePickAssignment } from "../../domain/draftOrder.js";
-import { resolvePicksPerSeat, resolveTotalRequiredPicks } from "../../domain/draftPickRules.js";
+import {
+  resolvePicksPerSeat,
+  resolveTotalRequiredPicks
+} from "../../domain/draftPickRules.js";
 import { transitionDraftState } from "../../domain/draftState.js";
 import { getWisdomBenchmarkForCeremony } from "../../data/repositories/wisdomBenchmarkRepository.js";
 import { recomputeWisdomBenchmarkForCeremony } from "../benchmarking/wisdomOfCrowds.js";
@@ -61,7 +67,11 @@ export async function getDraftRuntimeSnapshot(args: {
   if (draft.total_picks === null || draft.total_picks === undefined) {
     draft = { ...draft, total_picks: totalRequired };
   }
-  if (totalRequired > 0 && picks.length >= totalRequired && draft.status !== "COMPLETED") {
+  if (
+    totalRequired > 0 &&
+    picks.length >= totalRequired &&
+    draft.status !== "COMPLETED"
+  ) {
     const result = await runInTransaction(pool, async (tx) => {
       const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
       if (!lockedDraft) {
@@ -103,7 +113,11 @@ export async function getDraftRuntimeSnapshot(args: {
           completed.completed_at ?? new Date(),
           freshTotalRequired
         )) ??
-        (await updateDraftOnComplete(tx, lockedDraft.id, completed.completed_at ?? new Date()));
+        (await updateDraftOnComplete(
+          tx,
+          lockedDraft.id,
+          completed.completed_at ?? new Date()
+        ));
       const nextDraft = {
         ...lockedDraft,
         status: updated?.status ?? completed.status,
@@ -138,9 +152,10 @@ export async function getDraftRuntimeSnapshot(args: {
     nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);
   }
   if (completedEventEmitted && season) {
-    void recomputeWisdomBenchmarkForCeremony({ pool, ceremonyId: season.ceremony_id }).catch(
-      () => {}
-    );
+    void recomputeWisdomBenchmarkForCeremony({
+      pool,
+      ceremonyId: season.ceremony_id
+    }).catch(() => {});
   }
 
   // Pre-draft: seats don't exist yet (and seat order is intentionally secret). For display,
@@ -179,7 +194,9 @@ export async function getDraftRuntimeSnapshot(args: {
     ? await getDraftBoardForCeremony(pool, season.ceremony_id)
     : { categories: [], nominations: [] };
   const winners = season ? await listWinnersByCeremony(pool, season.ceremony_id) : [];
-  const wisdomBenchmark = season ? await getWisdomBenchmarkForCeremony(pool, season.ceremony_id) : null;
+  const wisdomBenchmark = season
+    ? await getWisdomBenchmarkForCeremony(pool, season.ceremony_id)
+    : null;
 
   let turn: {
     current_pick_number: number;
@@ -217,10 +234,10 @@ export async function getDraftRuntimeSnapshot(args: {
     viewerUserId && season ? await getSeasonMember(pool, season.id, viewerUserId) : null;
   const canManageDraft = Boolean(
     viewerUserId &&
-      league &&
-      (league.created_by_user_id === viewerUserId ||
-        ["OWNER", "CO_OWNER"].includes(String(viewerLeagueMember?.role ?? "")) ||
-        ["OWNER", "CO_OWNER"].includes(String(viewerSeasonMember?.role ?? "")))
+    league &&
+    (league.created_by_user_id === viewerUserId ||
+      ["OWNER", "CO_OWNER"].includes(String(viewerLeagueMember?.role ?? "")) ||
+      ["OWNER", "CO_OWNER"].includes(String(viewerSeasonMember?.role ?? "")))
   );
 
   return {
@@ -235,9 +252,11 @@ export async function getDraftRuntimeSnapshot(args: {
     picks,
     version: draft.version,
     picks_per_seat: picksPerSeat,
-    total_picks: draft.total_picks ?? resolveTotalRequiredPicks(draft, seats.length, picksPerSeat),
+    total_picks:
+      draft.total_picks ?? resolveTotalRequiredPicks(draft, seats.length, picksPerSeat),
     remainder_strategy:
-      (draft as { remainder_strategy?: RemainderStrategy }).remainder_strategy ?? "UNDRAFTED",
+      (draft as { remainder_strategy?: RemainderStrategy }).remainder_strategy ??
+      "UNDRAFTED",
     auto_pick_strategy: draft.auto_pick_strategy ?? null,
     pick_timer_seconds: draft.pick_timer_seconds ?? null,
     pick_deadline_at: draft.pick_deadline_at ?? null,
@@ -246,10 +265,13 @@ export async function getDraftRuntimeSnapshot(args: {
     turn,
     ceremony_id: season?.ceremony_id ?? null,
     ceremony_starts_at: season?.ceremony_starts_at ?? null,
-    ceremony_status: (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
+    ceremony_status:
+      (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
     scoring_strategy_name:
-      (season as { scoring_strategy_name?: string | null } | null)?.scoring_strategy_name ?? null,
-    category_weights: (season as { category_weights?: unknown } | null)?.category_weights ?? null,
+      (season as { scoring_strategy_name?: string | null } | null)
+        ?.scoring_strategy_name ?? null,
+    category_weights:
+      (season as { category_weights?: unknown } | null)?.category_weights ?? null,
     wisdom_benchmark: wisdomBenchmark,
     my_seat_number: mySeatNumber,
     can_manage_draft: canManageDraft,

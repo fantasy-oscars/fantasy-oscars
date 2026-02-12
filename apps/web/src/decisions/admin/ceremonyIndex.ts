@@ -16,4 +16,3 @@ export function computeAdminCeremonyDeletePolicy(args: {
   const deleteDisabled = isArchived;
   return { needsConfirm, deleteDisabled };
 }
-

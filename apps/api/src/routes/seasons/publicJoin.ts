@@ -97,4 +97,3 @@ export function registerSeasonPublicJoinRoute(args: {
     }
   );
 }
-

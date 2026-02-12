@@ -5,7 +5,7 @@ import type { ApiResult } from "@/lib/types";
 import type { CmsDynamicRow } from "@/orchestration/adminContent";
 import type { DynamicKey } from "@/decisions/adminContent";
 import { DynamicContentEditorHeader } from "@/features/admin/ui/content/DynamicContentEditorHeader";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminDynamicContentEditorScreen(props: {
   contentKey: DynamicKey | null;

@@ -2,7 +2,10 @@ import { Box } from "@ui";
 import type { RefObject } from "react";
 import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
-import { computeMasonry, estimateCategoryCardHeightPx } from "@/decisions/draftRoomLayout";
+import {
+  computeMasonry,
+  estimateCategoryCardHeightPx
+} from "@/decisions/draftRoomLayout";
 import { pickDraftDivisor } from "@/decisions/draftRoomUnits";
 import { DraftAutoDraftRail } from "@/features/draft/ui/DraftAutoDraftRail";
 import { DraftLedgerRail } from "@/features/draft/ui/DraftLedgerRail";
@@ -100,12 +103,15 @@ export function DraftRoomScaffold(props: {
   // (Mobile uses a separate layout path.)
   const compactRails = viewportWidthPx > 0 && viewportWidthPx < 665;
 
-  const openRailExclusive = useCallback((rail: "ledger" | "roster" | "auto") => {
-    if (!compactRails) return;
-    setLedgerOpen(rail === "ledger");
-    setMyRosterOpen(rail === "roster");
-    setAutoDraftOpen(rail === "auto");
-  }, [compactRails]);
+  const openRailExclusive = useCallback(
+    (rail: "ledger" | "roster" | "auto") => {
+      if (!compactRails) return;
+      setLedgerOpen(rail === "ledger");
+      setMyRosterOpen(rail === "roster");
+      setAutoDraftOpen(rail === "auto");
+    },
+    [compactRails]
+  );
 
   useEffect(() => {
     if (isPre) {
@@ -178,10 +184,7 @@ export function DraftRoomScaffold(props: {
   useCssVars(layoutRef, layoutVars);
 
   return (
-    <Box
-      ref={layoutRef}
-      className="dr-layout"
-    >
+    <Box ref={layoutRef} className="dr-layout">
       <DraftLedgerRail
         open={ledgerOpen}
         setOpen={setLedgerOpen}

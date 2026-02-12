@@ -26,4 +26,3 @@ export function LeagueManagementSection(props: {
     </Stack>
   );
 }
-

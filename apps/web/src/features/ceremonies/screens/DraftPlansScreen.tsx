@@ -1,21 +1,9 @@
-import {
-  Box,
-  Combobox,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-  useCombobox
-} from "@ui";
+import { Box, Combobox, Group, Stack, Text, TextInput, Title, useCombobox } from "@ui";
 import { PageError, PageLoader } from "@/shared/page-state";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "@/orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy
-} from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
@@ -26,7 +14,7 @@ import {
   computeEffectiveNomineeOrderForDraftPlan,
   filterDraftPlansByName
 } from "@/decisions/draftPlans";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 const EMPTY_CATEGORIES: CeremonyDetail["categories"] = [];
 const EMPTY_NOMINATIONS: CeremonyDetail["nominations"] = [];
@@ -253,7 +241,11 @@ export function DraftPlansScreen(props: {
                         items={effectiveOrder}
                         strategy={verticalListSortingStrategy}
                       >
-                        <Stack gap="var(--fo-space-0)" role="list" aria-label="Nominee order">
+                        <Stack
+                          gap="var(--fo-space-0)"
+                          role="list"
+                          aria-label="Nominee order"
+                        >
                           {effectiveOrder.map((id) => {
                             const n = nominationById.get(id);
                             if (!n) return null;

@@ -12,10 +12,7 @@ import {
   parseReleaseYear
 } from "../../lib/tmdb.js";
 
-export function registerAdminFilmImportRoute(args: {
-  router: Router;
-  client: DbClient;
-}) {
+export function registerAdminFilmImportRoute(args: { router: Router; client: DbClient }) {
   const { router, client } = args;
 
   router.post(
@@ -119,7 +116,8 @@ export function registerAdminFilmImportRoute(args: {
                   credits
                 });
               } catch (err) {
-                const message = err instanceof Error ? err.message : "TMDB request failed";
+                const message =
+                  err instanceof Error ? err.message : "TMDB request failed";
                 tmdbErrors.push({ tmdb_id: tmdbId, error: message });
               }
             }
@@ -227,7 +225,9 @@ export function registerAdminFilmImportRoute(args: {
             }
 
             if (!name) continue;
-            await query(tx, `INSERT INTO film (title, country) VALUES ($1, NULL)`, [name]);
+            await query(tx, `INSERT INTO film (title, country) VALUES ($1, NULL)`, [
+              name
+            ]);
             upserted += 1;
           }
 
@@ -251,4 +251,3 @@ export function registerAdminFilmImportRoute(args: {
     }
   );
 }
-

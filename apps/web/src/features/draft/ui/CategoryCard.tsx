@@ -92,7 +92,7 @@ export function CategoryCard(props: {
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                ref={idx === 0 ? props.firstPillRef ?? undefined : undefined}
+                ref={idx === 0 ? (props.firstPillRef ?? undefined) : undefined}
                 aria-disabled={!props.canDraftAction}
                 aria-label={`${props.title}: ${n.label}`}
                 aria-keyshortcuts="Shift+Enter"

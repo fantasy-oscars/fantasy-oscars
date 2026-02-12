@@ -9,4 +9,3 @@ export function registerDraftSnapshotRoute(args: {
   const { router, pool } = args;
   router.get("/:id/snapshot", buildSnapshotDraftHandler(pool));
 }
-

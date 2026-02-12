@@ -3,7 +3,7 @@ import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import { StandardCard } from "@/primitives";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminCeremoniesLockScreen(props: {
   loading: boolean;
@@ -75,7 +75,13 @@ export function AdminCeremoniesLockScreen(props: {
           <Button type="button" onClick={onLock} disabled={saving}>
             Lock ceremony
           </Button>
-          <Button type="button" color="red" variant="outline" onClick={onArchive} disabled={saving}>
+          <Button
+            type="button"
+            color="red"
+            variant="outline"
+            onClick={onArchive}
+            disabled={saving}
+          >
             Archive ceremony
           </Button>
         </Group>

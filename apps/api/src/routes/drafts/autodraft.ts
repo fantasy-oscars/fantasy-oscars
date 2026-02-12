@@ -37,11 +37,10 @@ export function buildGetDraftAutodraftHandler(client: DbClient) {
       const membership = await getSeasonMember(client, season.id, userId);
       if (!membership) throw new AppError("FORBIDDEN", 403, "Not a season member");
 
-      const cfg =
-        (await getDraftAutodraftConfig(client, {
-          draft_id: draftId,
-          user_id: userId
-        })) ?? { enabled: false, strategy: "RANDOM" as const, plan_id: null };
+      const cfg = (await getDraftAutodraftConfig(client, {
+        draft_id: draftId,
+        user_id: userId
+      })) ?? { enabled: false, strategy: "RANDOM" as const, plan_id: null };
 
       return res.status(200).json({ autodraft: cfg });
     } catch (err) {
@@ -140,4 +139,3 @@ export function buildUpsertDraftAutodraftHandler(pool: Pool) {
     }
   };
 }
-

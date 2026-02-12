@@ -43,9 +43,7 @@ export function SortableNomineeRow(props: {
       position="right"
       styles={NOMINEE_CARD_TOOLTIP_STYLES}
     >
-      <Box
-        ref={setRef}
-      >
+      <Box ref={setRef}>
         <Tooltip
           events={{ hover: false, focus: true, touch: false }}
           label={props.tooltip}

@@ -62,4 +62,3 @@ export async function verifyPassword(
   });
   return crypto.timingSafeEqual(derived, Buffer.from(hashB64, "base64"));
 }
-

@@ -5,4 +5,3 @@ export type {
 } from "./admin/categoryTemplates/orchestration";
 
 export { useAdminCategoryTemplatesOrchestration } from "./admin/categoryTemplates/orchestration";
-

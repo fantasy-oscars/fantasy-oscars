@@ -2,10 +2,11 @@ import { useCallback, useState } from "react";
 
 export function useSeasonCategoryWeightsModal(args: {
   ceremonyId: number | null;
-  getCeremonyCategoriesForWeights: (
-    ceremonyId: number
-  ) => Promise<
-    | { ok: true; categories: Array<{ id: number; family_name: string; sort_index: number | null }> }
+  getCeremonyCategoriesForWeights: (ceremonyId: number) => Promise<
+    | {
+        ok: true;
+        categories: Array<{ id: number; family_name: string; sort_index: number | null }>;
+      }
     | { ok: false; error?: string }
   >;
   existingWeights: unknown;
@@ -64,4 +65,3 @@ export function useSeasonCategoryWeightsModal(args: {
     openWeightsModal
   };
 }
-

@@ -1,13 +1,4 @@
-import {
-  Accordion,
-  Box,
-  Button,
-  Checkbox,
-  Group,
-  Stack,
-  Text,
-  Title
-} from "@ui";
+import { Accordion, Box, Button, Checkbox, Group, Stack, Text, Title } from "@ui";
 import * as React from "react";
 import type { AdminCeremonyWinnersOrchestration } from "@/orchestration/adminCeremonies";
 import { FormStatus } from "@/shared/forms";
@@ -15,7 +6,7 @@ import { PageError, PageLoader } from "@/shared/page-state";
 import { StandardCard } from "@/primitives";
 import { materialGlyph } from "@/decisions/admin/materialGlyph";
 import { WinnersConfirmOverlay } from "@/features/admin/ui/ceremonies/winners/WinnersConfirmOverlay";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 type WinnersNomination = {
   id: number;
@@ -142,12 +133,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                 <Accordion.Item key={categoryId} value={String(categoryId)}>
                   <Accordion.Control>
                     <Group justify="space-between" align="center" wrap="nowrap" w="100%">
-                      <Group
-                        gap="sm"
-                        align="center"
-                        wrap="nowrap"
-                        className="fo-minw0"
-                      >
+                      <Group gap="sm" align="center" wrap="nowrap" className="fo-minw0">
                         <Text
                           component="span"
                           className={["mi-icon", isInverted ? "mi-icon-inverted" : ""]
@@ -215,7 +201,11 @@ export function AdminCeremoniesWinnersScreen(props: {
                                   )
                                 }
                               />
-                              <Text fw="var(--fo-font-weight-bold)" lineClamp={1} className="fo-minw0">
+                              <Text
+                                fw="var(--fo-font-weight-bold)"
+                                lineClamp={1}
+                                className="fo-minw0"
+                              >
                                 {nominationLabel(nom)}
                               </Text>
                             </Group>

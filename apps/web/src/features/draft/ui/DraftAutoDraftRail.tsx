@@ -1,7 +1,11 @@
 import { Box, Checkbox, Select, Stack, Text, Tooltip, UnstyledButton } from "@ui";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
-import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS, NOMINEE_TOOLTIP_OFFSET_PX } from "./nomineeTooltip";
+import {
+  NOMINEE_CARD_TOOLTIP_STYLES,
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
+} from "./nomineeTooltip";
 import type { AutoDraftState, DraftNomineeMeta } from "./types";
 
 export function DraftAutoDraftRail(props: {
@@ -16,7 +20,11 @@ export function DraftAutoDraftRail(props: {
   const { open, setOpen, compactRails, openRailExclusive } = props;
 
   return (
-    <Box className={["dr-rail", "dr-rail-autodraft", open ? "is-open" : "is-collapsed"].join(" ")}>
+    <Box
+      className={["dr-rail", "dr-rail-autodraft", open ? "is-open" : "is-collapsed"].join(
+        " "
+      )}
+    >
       {open ? (
         <Box className="dr-railPane">
           <Box className="dr-railPaneHeader">
@@ -26,13 +34,23 @@ export function DraftAutoDraftRail(props: {
               </Text>
               <Text className="dr-railPaneTitle">Auto-draft</Text>
             </Box>
-            <UnstyledButton type="button" className="dr-railClose" aria-label="Collapse auto-draft" onClick={() => setOpen(false)}>
+            <UnstyledButton
+              type="button"
+              className="dr-railClose"
+              aria-label="Collapse auto-draft"
+              onClick={() => setOpen(false)}
+            >
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 chevron_right
               </Text>
             </UnstyledButton>
           </Box>
-          <Box className="dr-railPaneBody" role="region" aria-label="Auto-draft" tabIndex={0}>
+          <Box
+            className="dr-railPaneBody"
+            role="region"
+            aria-label="Auto-draft"
+            tabIndex={0}
+          >
             <Stack gap="sm">
               <Checkbox
                 checked={props.autodraft.enabled}
@@ -45,7 +63,12 @@ export function DraftAutoDraftRail(props: {
                 value={props.autodraft.strategy}
                 onChange={(v) =>
                   props.autodraft.setStrategy(
-                    (v as "random" | "by_category" | "alphabetical" | "wisdom" | "custom") ?? "random"
+                    (v as
+                      | "random"
+                      | "by_category"
+                      | "alphabetical"
+                      | "wisdom"
+                      | "custom") ?? "random"
                   )
                 }
                 data={[
@@ -53,7 +76,11 @@ export function DraftAutoDraftRail(props: {
                   { value: "by_category", label: "By category" },
                   { value: "alphabetical", label: "Alphabetical" },
                   { value: "wisdom", label: "Wisdom of crowds" },
-                  { value: "custom", label: "Custom", disabled: props.autodraft.plans.length === 0 }
+                  {
+                    value: "custom",
+                    label: "Custom",
+                    disabled: props.autodraft.plans.length === 0
+                  }
                 ]}
                 allowDeselect={false}
               />
@@ -61,10 +88,21 @@ export function DraftAutoDraftRail(props: {
               {props.autodraft.strategy === "custom" ? (
                 <Select
                   label="Plan"
-                  placeholder={props.autodraft.plans.length === 0 ? "No plans available" : "Choose…"}
-                  value={props.autodraft.selectedPlanId ? String(props.autodraft.selectedPlanId) : null}
-                  onChange={(v) => props.autodraft.setSelectedPlanId(v ? Number(v) : null)}
-                  data={props.autodraft.plans.map((p) => ({ value: String(p.id), label: p.name }))}
+                  placeholder={
+                    props.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+                  }
+                  value={
+                    props.autodraft.selectedPlanId
+                      ? String(props.autodraft.selectedPlanId)
+                      : null
+                  }
+                  onChange={(v) =>
+                    props.autodraft.setSelectedPlanId(v ? Number(v) : null)
+                  }
+                  data={props.autodraft.plans.map((p) => ({
+                    value: String(p.id),
+                    label: p.name
+                  }))}
                   disabled={props.autodraft.plans.length === 0}
                   searchable
                   clearable
@@ -79,18 +117,38 @@ export function DraftAutoDraftRail(props: {
                     <Stack gap="var(--fo-space-4)">
                       {props.autodraft.list.map((item) => {
                         const nominee = props.nomineeById.get(item.nominationId);
-                        const isDrafted = props.draftedNominationIds.has(item.nominationId);
+                        const isDrafted = props.draftedNominationIds.has(
+                          item.nominationId
+                        );
                         const pill = (
                           <Box
-                            className={["dr-pill", "dr-pill-static", isDrafted ? "is-muted" : ""].filter(Boolean).join(" ")}
+                            className={[
+                              "dr-pill",
+                              "dr-pill-static",
+                              isDrafted ? "is-muted" : ""
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                             tabIndex={nominee ? 0 : undefined}
                             role={nominee ? "group" : undefined}
-                            aria-label={nominee ? `${nominee.categoryName}: ${item.label}` : undefined}
+                            aria-label={
+                              nominee
+                                ? `${nominee.categoryName}: ${item.label}`
+                                : undefined
+                            }
                           >
                             {nominee ? (
-                              <DraftCategoryIcon icon={nominee.categoryIcon} variant={nominee.categoryIconVariant} className="dr-pill-icon" />
+                              <DraftCategoryIcon
+                                icon={nominee.categoryIcon}
+                                variant={nominee.categoryIconVariant}
+                                className="dr-pill-icon"
+                              />
                             ) : item.icon ? (
-                              <DraftCategoryIcon icon={item.icon} variant="default" className="dr-pill-icon" />
+                              <DraftCategoryIcon
+                                icon={item.icon}
+                                variant="default"
+                                className="dr-pill-icon"
+                              />
                             ) : null}
                             <Text component="span" className="dr-pill-text" lineClamp={1}>
                               {item.label}

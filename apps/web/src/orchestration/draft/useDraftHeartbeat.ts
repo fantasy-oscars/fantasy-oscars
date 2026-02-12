@@ -26,7 +26,9 @@ export function useDraftHeartbeat(args: {
       const d = current.draft;
       if (d.status !== "IN_PROGRESS") return;
       if (!d.pick_timer_seconds) return;
-      const deadlineMs = d.pick_deadline_at ? new Date(d.pick_deadline_at).getTime() : null;
+      const deadlineMs = d.pick_deadline_at
+        ? new Date(d.pick_deadline_at).getTime()
+        : null;
       if (!deadlineMs || !Number.isFinite(deadlineMs)) return;
       if (Date.now() <= deadlineMs) return;
 

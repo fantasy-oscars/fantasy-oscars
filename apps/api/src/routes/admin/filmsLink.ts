@@ -35,9 +35,14 @@ export function registerAdminFilmLinkRoutes(args: { router: Router; client: DbCl
                 : NaN;
 
         if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
-            fields: ["tmdb_id"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "tmdb_id must be a positive integer",
+            {
+              fields: ["tmdb_id"]
+            }
+          );
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
@@ -78,7 +83,12 @@ export function registerAdminFilmLinkRoutes(args: { router: Router; client: DbCl
           const movie = await fetchTmdbMovieDetailsWithCredits(Number(tmdbId));
           const releaseYear = parseReleaseYear(movie.release_date ?? null);
           const posterPath = movie.poster_path ?? null;
-          const posterUrl = buildTmdbImageUrlFromConfig(cfg, "poster", posterPath, "w500");
+          const posterUrl = buildTmdbImageUrlFromConfig(
+            cfg,
+            "poster",
+            posterPath,
+            "w500"
+          );
           const credits = movie.credits
             ? {
                 cast: Array.isArray(movie.credits.cast)
@@ -183,4 +193,3 @@ export function registerAdminFilmLinkRoutes(args: { router: Router; client: DbCl
     }
   );
 }
-

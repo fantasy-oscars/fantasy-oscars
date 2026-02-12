@@ -79,7 +79,9 @@ export function registerSeasonInvitesAcceptRoute(args: {
           const draft = await getDraftBySeasonId(tx, season.id);
           const draftsStarted = Boolean(draft && draft.status !== "PENDING");
           if (draftsStarted) {
-            return { error: new AppError("INVITES_LOCKED", 409, "Season invites are locked") };
+            return {
+              error: new AppError("INVITES_LOCKED", 409, "Season invites are locked")
+            };
           }
 
           let leagueMember = await getLeagueMember(tx, season.league_id, userId);
@@ -98,7 +100,13 @@ export function registerSeasonInvitesAcceptRoute(args: {
             role: "MEMBER"
           });
 
-          const updated = await updateUserInviteStatus(tx, inviteId, userId, "CLAIMED", new Date());
+          const updated = await updateUserInviteStatus(
+            tx,
+            inviteId,
+            userId,
+            "CLAIMED",
+            new Date()
+          );
           return { invite: updated, member };
         });
 
@@ -116,4 +124,3 @@ export function registerSeasonInvitesAcceptRoute(args: {
     }
   );
 }
-

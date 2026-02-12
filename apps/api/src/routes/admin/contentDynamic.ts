@@ -8,7 +8,10 @@ import { registerAdminContentDynamicEntryUnpublishRoute } from "./contentDynamic
 import { registerAdminContentDynamicListRoute } from "./contentDynamicList.js";
 import { registerAdminContentDynamicUnpublishKeyRoute } from "./contentDynamicUnpublishKey.js";
 
-export function registerAdminContentDynamicRoutes(args: { router: Router; client: DbClient }) {
+export function registerAdminContentDynamicRoutes(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
   registerAdminContentDynamicListRoute({ router, client });
   registerAdminContentDynamicDraftCreateRoute({ router, client });

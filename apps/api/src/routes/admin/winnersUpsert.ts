@@ -13,7 +13,10 @@ import { setWinnersForCategoryEdition } from "../../data/repositories/winnerRepo
 import { AppError } from "../../errors.js";
 import { emitCeremonyWinnersUpdated } from "../../realtime/ceremonyEvents.js";
 
-export function registerAdminWinnersUpsertRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminWinnersUpsertRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.post(
@@ -162,4 +165,3 @@ export function registerAdminWinnersUpsertRoute(args: { router: Router; client: 
     }
   );
 }
-

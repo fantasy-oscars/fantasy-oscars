@@ -27,4 +27,3 @@ export function describeNomination(snapshot: Snapshot, nominationId: number) {
 
   return { categoryName, nomineeLabel };
 }
-

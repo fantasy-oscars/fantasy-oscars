@@ -5,7 +5,10 @@ export function buildSeasonInviteLink(inviteId: number, token: string | undefine
   return `${window.location.origin}/invites/${pathToken}`;
 }
 
-export function copySeasonInviteLink(args: { inviteId: number; token: string | undefined }) {
+export function copySeasonInviteLink(args: {
+  inviteId: number;
+  token: string | undefined;
+}) {
   const link = buildSeasonInviteLink(args.inviteId, args.token);
   void navigator.clipboard?.writeText(link);
   notify({
@@ -19,4 +22,3 @@ export function copySeasonInviteLink(args: { inviteId: number; token: string | u
   });
   return link;
 }
-

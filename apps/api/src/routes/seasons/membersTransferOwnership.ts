@@ -37,13 +37,20 @@ export function registerSeasonMembersTransferOwnershipRoute(args: {
         }
 
         const actorMember = await getSeasonMember(client, seasonId, actorId);
-        if (!actorMember || (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")) {
+        if (
+          !actorMember ||
+          (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")
+        ) {
           throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
 
         const ok = await transferSeasonOwnership(client, seasonId, targetUserId);
         if (!ok) {
-          throw new AppError("VALIDATION_FAILED", 400, "User is not a season participant");
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "User is not a season participant"
+          );
         }
 
         return res.status(200).json({ ok: true });
@@ -53,4 +60,3 @@ export function registerSeasonMembersTransferOwnershipRoute(args: {
     }
   );
 }
-

@@ -11,4 +11,3 @@ export function workflowRowStatusLabel(args: {
   if (rowStatus === "LOCKED") return "Locked";
   return "Not started";
 }
-

@@ -19,11 +19,7 @@ export function DeleteSeasonModal(props: {
           <Button variant="subtle" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            color="red"
-            onClick={() => void onConfirm()}
-            disabled={working}
-          >
+          <Button color="red" onClick={() => void onConfirm()} disabled={working}>
             Delete season
           </Button>
         </Group>
@@ -31,4 +27,3 @@ export function DeleteSeasonModal(props: {
     </Modal>
   );
 }
-

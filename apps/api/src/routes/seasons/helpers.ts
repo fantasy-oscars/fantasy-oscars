@@ -50,4 +50,3 @@ export async function getUserByUsername(client: DbClient, username: string) {
   );
   return rows[0] ?? null;
 }
-

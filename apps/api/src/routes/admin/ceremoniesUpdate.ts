@@ -6,7 +6,10 @@ import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremoniesUpdateRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremoniesUpdateRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.patch(
@@ -124,4 +127,3 @@ export function registerAdminCeremoniesUpdateRoute(args: { router: Router; clien
     }
   );
 }
-

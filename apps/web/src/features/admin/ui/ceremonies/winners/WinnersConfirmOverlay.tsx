@@ -12,7 +12,12 @@ export function WinnersConfirmOverlay(props: {
 }) {
   return (
     <Box className="modal-backdrop" role="presentation">
-      <StandardCard className="modal" role="dialog" aria-modal="true" aria-label={props.ariaLabel}>
+      <StandardCard
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={props.ariaLabel}
+      >
         <Title order={4}>{props.title}</Title>
         <Text className="muted">{props.message}</Text>
         <Group className="inline-actions" wrap="wrap">
@@ -27,4 +32,3 @@ export function WinnersConfirmOverlay(props: {
     </Box>
   );
 }
-

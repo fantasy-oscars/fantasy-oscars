@@ -12,7 +12,7 @@ import {
 import type { ApiResult } from "@/lib/types";
 import type { StaticKey } from "@/decisions/adminContent";
 import { PageError, PageLoader } from "@/shared/page-state";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminStaticContentEditorScreen(props: {
   contentKey: StaticKey | null;

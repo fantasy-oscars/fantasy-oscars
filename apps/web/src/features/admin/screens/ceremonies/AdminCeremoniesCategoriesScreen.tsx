@@ -2,15 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import {
-  Box,
-  Button,
-  Group,
-  Stack,
-  Text,
-  Title,
-  UnstyledButton
-} from "@ui";
+import { Box, Button, Group, Stack, Text, Title, UnstyledButton } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";
 import type { AdminCeremonyCategoriesOrchestration } from "@/orchestration/adminCeremoniesCategories";
@@ -21,7 +13,7 @@ import { CloneCategoriesModal } from "@/features/admin/ui/ceremonies/categories/
 import { NewTemplateModal } from "@/features/admin/ui/ceremonies/categories/NewTemplateModal";
 import { SortableCategoryRow } from "@/features/admin/ui/ceremonies/categories/SortableCategoryRow";
 import { unitKindLabel } from "@/shared/labels/unitKindLabel";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminCeremoniesCategoriesScreen(props: {
   ceremonyId: number;

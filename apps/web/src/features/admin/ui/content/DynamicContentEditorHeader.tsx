@@ -29,7 +29,12 @@ export function DynamicContentEditorHeader(props: {
   } = props;
 
   return (
-    <Group className="header-with-controls" justify="space-between" align="start" wrap="wrap">
+    <Group
+      className="header-with-controls"
+      justify="space-between"
+      align="start"
+      wrap="wrap"
+    >
       <Box>
         <Title order={3} className="baseline-textHeroTitle">
           {title}
@@ -54,12 +59,23 @@ export function DynamicContentEditorHeader(props: {
                 </Button>
               ) : null
             ) : (
-              <Button type="button" variant="subtle" onClick={isActive ? onDeactivate : onActivate} disabled={busy}>
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={isActive ? onDeactivate : onActivate}
+                disabled={busy}
+              >
                 {isActive ? "Deactivate" : "Activate"}
               </Button>
             )}
             {!isActive ? (
-              <Button type="button" color="red" variant="outline" onClick={onDelete} disabled={busy}>
+              <Button
+                type="button"
+                color="red"
+                variant="outline"
+                onClick={onDelete}
+                disabled={busy}
+              >
                 Delete
               </Button>
             ) : null}

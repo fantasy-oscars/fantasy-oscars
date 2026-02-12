@@ -127,4 +127,3 @@ export function useAuthSessionOrchestration(): AuthSessionOrchestration {
     [user, loading, sessionError, refresh, logout, login, register]
   );
 }
-

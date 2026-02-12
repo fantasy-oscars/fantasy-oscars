@@ -16,4 +16,3 @@ export function createDraftPlansRouter(pool: Pool, authSecret: string): Router {
 
   return router;
 }
-

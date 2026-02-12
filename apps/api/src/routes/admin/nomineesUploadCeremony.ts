@@ -57,9 +57,14 @@ export function registerAdminNomineesUploadCeremonyRoute({
         // Basic shape validation: ensure ceremonies array has only this ceremony id.
         const ceremonies = (dataset as { ceremonies?: unknown[] }).ceremonies;
         if (!Array.isArray(ceremonies) || ceremonies.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Dataset must include ceremonies", {
-            fields: ["ceremonies"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "Dataset must include ceremonies",
+            {
+              fields: ["ceremonies"]
+            }
+          );
         }
         const ceremonyIds = ceremonies
           .map((c) => (c as { id?: number })?.id)
@@ -92,4 +97,3 @@ export function registerAdminNomineesUploadCeremonyRoute({
     }
   );
 }
-

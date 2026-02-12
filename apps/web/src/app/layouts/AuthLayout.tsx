@@ -1,12 +1,4 @@
-import {
-  Anchor,
-  Box,
-  Button,
-  Group,
-  Text,
-  Title,
-  useMantineColorScheme
-} from "@ui";
+import { Anchor, Box, Button, Group, Text, Title, useMantineColorScheme } from "@ui";
 import { Link, Outlet } from "react-router-dom";
 
 export function AuthLayout() {

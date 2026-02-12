@@ -11,7 +11,10 @@ import {
 } from "../../data/repositories/ceremonyRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremonyLockRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremonyLockRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.post(

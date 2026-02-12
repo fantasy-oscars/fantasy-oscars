@@ -29,4 +29,3 @@ export async function postDraftPause(draftId: number) {
 export async function postDraftResume(draftId: number) {
   return fetchJson(`/drafts/${draftId}/resume`, { method: "POST" });
 }
-

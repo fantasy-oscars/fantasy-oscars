@@ -28,4 +28,3 @@ export function winnersNominationLabel(n: WinnersNominationRow) {
   if (peopleLabel) return n.film_title ? `${peopleLabel} — ${n.film_title}` : peopleLabel;
   return n.film_title ?? `Nomination #${n.id}`;
 }
-

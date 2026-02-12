@@ -3,7 +3,7 @@ import { PageError, PageLoader } from "@/shared/page-state";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function CeremonyDetailScreen(props: {
   state: "loading" | "error" | "ready";

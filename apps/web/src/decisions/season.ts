@@ -39,7 +39,13 @@ export function computeSeasonLifecycleLabelFromRow(args: {
   seasonStatus: string | null | undefined;
   draftStatus: string | null | undefined;
   isActiveCeremony: boolean | null | undefined;
-}): "Archived" | "Complete" | "In progress" | "Draft complete" | "Drafting" | "Pre-draft" {
+}):
+  | "Archived"
+  | "Complete"
+  | "In progress"
+  | "Draft complete"
+  | "Drafting"
+  | "Pre-draft" {
   const seasonStatus = String(args.seasonStatus ?? "").toUpperCase();
   if (args.isActiveCeremony === false || seasonStatus === "ARCHIVED") return "Archived";
 

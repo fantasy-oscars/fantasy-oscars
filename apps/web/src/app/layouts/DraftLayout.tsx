@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Box } from "@ui";
-import "../primitives/draftLayout.css";
+import "@/primitives/draftLayout.css";
 
 export function DraftLayout() {
   return (

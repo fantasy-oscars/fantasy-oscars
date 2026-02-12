@@ -9,4 +9,3 @@ export function registerDraftCreateRoute(args: {
   const { router, client } = args;
   router.post("/", buildCreateDraftHandler(client));
 }
-

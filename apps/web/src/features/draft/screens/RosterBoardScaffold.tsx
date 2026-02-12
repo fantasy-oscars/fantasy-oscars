@@ -123,10 +123,7 @@ export function RosterBoardScaffold(props: {
         </>
       ) : null}
 
-      <Box
-        className="dr-rosterGrid"
-        ref={gridRef}
-      >
+      <Box className="dr-rosterGrid" ref={gridRef}>
         {visible.map((p) => {
           const picks = o.rosterBoard.rowsBySeat.get(p.seatNumber) ?? [];
           return (
@@ -134,10 +131,7 @@ export function RosterBoardScaffold(props: {
               <Box className="dr-card dr-rosterCard">
                 <Box className="dr-card-titleRow">
                   <AnimalAvatarIcon avatarKey={p.avatarKey} size="md" />
-                  <Text
-                    className="dr-card-title fo-flex1Minw0"
-                    lineClamp={1}
-                  >
+                  <Text className="dr-card-title fo-flex1Minw0" lineClamp={1}>
                     {p.label}
                   </Text>
                   <Text

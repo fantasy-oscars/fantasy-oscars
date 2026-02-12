@@ -16,14 +16,12 @@ export function ShellHeader(props: {
   navMode: "inline" | "drawer";
   onOpenNavDrawer: () => void;
 
-  user:
-    | null
-    | {
-        sub: string;
-        username: string | null;
-        is_admin: boolean;
-        avatar_key: string | null;
-      };
+  user: null | {
+    sub: string;
+    username: string | null;
+    is_admin: boolean;
+    avatar_key: string | null;
+  };
   loading: boolean;
   logout: () => Promise<void>;
   inviteCount: number;
@@ -40,7 +38,12 @@ export function ShellHeader(props: {
 
   return (
     <Box component="header" className="site-header">
-      <Group className="site-header-row" justify="space-between" align="center" wrap="nowrap">
+      <Group
+        className="site-header-row"
+        justify="space-between"
+        align="center"
+        wrap="nowrap"
+      >
         <Group gap="sm" wrap="nowrap">
           {props.navMode === "drawer" ? (
             <Button
@@ -63,12 +66,19 @@ export function ShellHeader(props: {
           </Anchor>
         </Group>
 
-        <Group className="site-header-actions" justify="flex-end" align="center" wrap="nowrap">
+        <Group
+          className="site-header-actions"
+          justify="flex-end"
+          align="center"
+          wrap="nowrap"
+        >
           <Button
             type="button"
             variant="subtle"
             className="theme-toggle"
-            onClick={() => props.setColorScheme(props.colorScheme === "dark" ? "light" : "dark")}
+            onClick={() =>
+              props.setColorScheme(props.colorScheme === "dark" ? "light" : "dark")
+            }
             aria-label={`Switch to ${props.colorScheme === "dark" ? "light" : "dark"} mode`}
           >
             <Text component="span" className="gicon" aria-hidden="true">
@@ -97,12 +107,18 @@ export function ShellHeader(props: {
           ) : null}
 
           {props.user && props.navMode === "inline" ? (
-            <Menu opened={props.userMenuOpen} onChange={props.setUserMenuOpen} withinPortal={false}>
+            <Menu
+              opened={props.userMenuOpen}
+              onChange={props.setUserMenuOpen}
+              withinPortal={false}
+            >
               <Menu.Target>
                 <Button
                   type="button"
                   variant="subtle"
-                  leftSection={<AnimalAvatarIcon avatarKey={props.user.avatar_key} size="lg" />}
+                  leftSection={
+                    <AnimalAvatarIcon avatarKey={props.user.avatar_key} size="lg" />
+                  }
                   rightSection={
                     <Text component="span" aria-hidden="true">
                       ▾

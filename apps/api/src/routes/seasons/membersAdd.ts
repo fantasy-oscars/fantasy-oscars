@@ -51,7 +51,10 @@ export function registerSeasonMembersAddRoute(args: {
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
         const actorMember = await getSeasonMember(client, seasonId, actorId);
-        if (!actorMember || (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")) {
+        if (
+          !actorMember ||
+          (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")
+        ) {
           throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
 
@@ -72,7 +75,11 @@ export function registerSeasonMembersAddRoute(args: {
 
         // Season membership implies league membership (not the other way around).
         // If the target user isn't yet a league member, create that membership automatically.
-        let leagueMember = await getLeagueMember(client, season.league_id, resolvedUserId);
+        let leagueMember = await getLeagueMember(
+          client,
+          season.league_id,
+          resolvedUserId
+        );
         if (!leagueMember) {
           leagueMember = await createLeagueMember(client, {
             league_id: season.league_id,
@@ -88,7 +95,11 @@ export function registerSeasonMembersAddRoute(args: {
           role: "MEMBER"
         });
         if (!added) {
-          throw new AppError("ALREADY_MEMBER", 409, "User is already a season participant");
+          throw new AppError(
+            "ALREADY_MEMBER",
+            409,
+            "User is already a season participant"
+          );
         }
 
         return res.status(201).json({ member: added });
@@ -98,4 +109,3 @@ export function registerSeasonMembersAddRoute(args: {
     }
   );
 }
-

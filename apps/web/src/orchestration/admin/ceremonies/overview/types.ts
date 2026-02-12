@@ -23,4 +23,3 @@ export type CeremonyOverviewFormState = {
   startsAtLocal: string;
   warningHours: string;
 };
-

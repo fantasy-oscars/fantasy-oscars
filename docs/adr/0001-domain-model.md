@@ -40,7 +40,7 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 ## Sources of truth
 
 - Schema: `database/migrations/001_init.sql` encodes entities/invariants.
-- Test factories: `apps/api/test/factories/*.ts` mirror the schema for fixtures.
+- Test factories: `apps/api/tests/factories/*.ts` mirror the schema for fixtures.
 - Domain docs: this ADR plus a short summary in architecture docs.
 
 ## Usage guidance

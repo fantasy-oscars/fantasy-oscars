@@ -49,4 +49,3 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
   return router;
 }
-

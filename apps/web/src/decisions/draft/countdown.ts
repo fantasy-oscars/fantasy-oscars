@@ -9,4 +9,3 @@ export function isCountdownActive(timerRemainingMs: number | null) {
     timerRemainingMs <= COUNTDOWN_WINDOW_MS
   );
 }
-

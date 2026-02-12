@@ -34,7 +34,8 @@ export function buildLeagueIndexRows(args: {
   const { leagues, leagueSeasons, leagueMembers } = args;
   const rows: LeagueIndexRow[] = leagues.map((l) => {
     const seasons = leagueSeasons[l.id] ?? [];
-    const members = typeof leagueMembers[l.id] === "undefined" ? null : leagueMembers[l.id];
+    const members =
+      typeof leagueMembers[l.id] === "undefined" ? null : leagueMembers[l.id];
     const stats = computeActiveSeasonStats(seasons);
     return {
       id: l.id,
@@ -56,4 +57,3 @@ export function buildLeagueIndexRows(args: {
 
   return rows;
 }
-

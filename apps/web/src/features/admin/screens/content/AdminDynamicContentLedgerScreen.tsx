@@ -9,7 +9,7 @@ import {
 } from "@/decisions/adminContent";
 import type { ApiResult } from "@/lib/types";
 import type { CmsDynamicRow } from "@/orchestration/adminContent";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminDynamicContentLedgerScreen(props: {
   contentKey: DynamicKey | null;
@@ -71,11 +71,7 @@ export function AdminDynamicContentLedgerScreen(props: {
           No entries yet.
         </Text>
       ) : (
-        <Stack
-          component="ul"
-          gap="var(--fo-space-0)"
-          className="fo-listReset"
-        >
+        <Stack component="ul" gap="var(--fo-space-0)" className="fo-listReset">
           {entries.map((e, idx) => (
             <Box key={e.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">

@@ -63,7 +63,11 @@ export function registerAdminNominationChangeRoute(args: {
 
           if (action === "REPLACE") {
             if (!replacement_nomination_id || Number.isNaN(replacement_nomination_id)) {
-              throw new AppError("VALIDATION_FAILED", 400, "replacement_nomination_id required");
+              throw new AppError(
+                "VALIDATION_FAILED",
+                400,
+                "replacement_nomination_id required"
+              );
             }
             const { rows: replRows } = await query<{ id: number }>(
               tx,
@@ -117,4 +121,3 @@ export function registerAdminNominationChangeRoute(args: {
     }
   );
 }
-

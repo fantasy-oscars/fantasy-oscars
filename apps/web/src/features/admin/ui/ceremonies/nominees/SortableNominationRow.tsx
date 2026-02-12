@@ -72,7 +72,11 @@ export function SortableNominationRow(props: {
           </Text>
         </Box>
         <Box className="fo-minw0">
-          <Text className="nomination-title" fw="var(--fo-font-weight-bold)" lineClamp={1}>
+          <Text
+            className="nomination-title"
+            fw="var(--fo-font-weight-bold)"
+            lineClamp={1}
+          >
             {primary}
           </Text>
           {secondary ? (

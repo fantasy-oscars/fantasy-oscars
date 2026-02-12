@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../lib/api";
 import type { LeagueMember, LeagueSummary, SeasonSummary } from "../../lib/types";
-import { buildLeagueIndexRows, type LeagueIndexRow } from "../../decisions/leagues/leagueIndex";
+import {
+  buildLeagueIndexRows,
+  type LeagueIndexRow
+} from "../../decisions/leagues/leagueIndex";
 
 export type LeagueIndexView =
   | { state: "loading" }

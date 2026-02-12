@@ -1,14 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Drawer,
-  Group,
-  Menu,
-  Stack,
-  Switch,
-  Text
-} from "@ui";
+import { ActionIcon, Box, Button, Drawer, Group, Menu, Stack, Switch, Text } from "@ui";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
@@ -61,10 +51,10 @@ export function MobileDraftHeader(props: {
 
   const countdownActive = Boolean(
     props.isTimerDraft &&
-      props.draftStatus === "IN_PROGRESS" &&
-      !props.isFinalResults &&
-      props.isMyTurn &&
-      isCountdownActive(props.timerRemainingMs)
+    props.draftStatus === "IN_PROGRESS" &&
+    !props.isFinalResults &&
+    props.isMyTurn &&
+    isCountdownActive(props.timerRemainingMs)
   );
   const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
@@ -137,7 +127,9 @@ export function MobileDraftHeader(props: {
 
         <Box className="drm-miniStat" aria-label="Round">
           <Text className="drm-miniLabel">Round</Text>
-          <Text className="drm-miniNumber">{isCompleted ? "—" : (props.roundNumber ?? "—")}</Text>
+          <Text className="drm-miniNumber">
+            {isCompleted ? "—" : (props.roundNumber ?? "—")}
+          </Text>
         </Box>
 
         <Box className="drm-clock" aria-label="Timer">
@@ -148,12 +140,18 @@ export function MobileDraftHeader(props: {
 
         <Box className="drm-miniStat" aria-label="Pick">
           <Text className="drm-miniLabel">Pick</Text>
-          <Text className="drm-miniNumber">{isCompleted ? "—" : (props.pickNumber ?? "—")}</Text>
+          <Text className="drm-miniNumber">
+            {isCompleted ? "—" : (props.pickNumber ?? "—")}
+          </Text>
         </Box>
 
         <Menu position="bottom-end" withinPortal>
           <Menu.Target>
-            <ActionIcon variant="subtle" aria-label="Settings" className="dr-mobileIconBtn">
+            <ActionIcon
+              variant="subtle"
+              aria-label="Settings"
+              className="dr-mobileIconBtn"
+            >
               <Text component="span" className="mi-icon" aria-hidden="true">
                 settings
               </Text>
@@ -229,7 +227,11 @@ export function MobileDraftHeader(props: {
                     <Text>{p.label}</Text>
                   </Group>
                   {p.active ? (
-                    <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                    <Text
+                      component="span"
+                      className="mi-icon mi-icon-tiny"
+                      aria-hidden="true"
+                    >
                       play_arrow
                     </Text>
                   ) : null}

@@ -24,7 +24,13 @@ export function registerSeasonInvitesDeclineRoute(args: {
           throw validationError("Invalid invite id", ["inviteId"]);
         }
 
-        const updated = await updateUserInviteStatus(client, inviteId, userId, "DECLINED", new Date());
+        const updated = await updateUserInviteStatus(
+          client,
+          inviteId,
+          userId,
+          "DECLINED",
+          new Date()
+        );
         if (!updated) {
           throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
         }
@@ -36,4 +42,3 @@ export function registerSeasonInvitesDeclineRoute(args: {
     }
   );
 }
-

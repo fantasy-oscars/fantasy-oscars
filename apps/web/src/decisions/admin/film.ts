@@ -7,4 +7,3 @@ export function formatFilmLabel(f: {
   const tmdb = typeof f.tmdb_id === "number" && f.tmdb_id ? ` · TMDB ${f.tmdb_id}` : "";
   return `${f.title}${year}${tmdb}`;
 }
-

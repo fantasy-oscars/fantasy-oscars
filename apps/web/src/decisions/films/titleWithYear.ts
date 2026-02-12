@@ -20,4 +20,3 @@ export function parseFilmTitleWithYear(input: string): {
   if (!title || !Number.isFinite(year)) return { title: trimmed, releaseYear: null };
   return { title, releaseYear: year };
 }
-

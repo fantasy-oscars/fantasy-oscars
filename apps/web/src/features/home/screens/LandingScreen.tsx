@@ -71,9 +71,7 @@ export function LandingScreen(props: {
       <ActionCard>
         <Stack gap="sm">
           <Title variant="card">Create a league</Title>
-          <Text>
-            Start a season with friends and draft nominees together.
-          </Text>
+          <Text>Start a season with friends and draft nominees together.</Text>
           <Button
             component={Link}
             to={user ? "/leagues/new" : "/login"}

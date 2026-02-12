@@ -187,17 +187,14 @@ export function computeDraftBoardCols(args: {
   const cols: string[] = [];
   if (args.showLedger === "open")
     cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
-  if (args.showLedger === "collapsed")
-    cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
+  if (args.showLedger === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
   // Draft pool gets the most space.
   cols.push("minmax(0, 3fr)");
   if (args.showRoster === "open")
     cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
-  if (args.showRoster === "collapsed")
-    cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
+  if (args.showRoster === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
   if (args.showAutodraft === "open")
     cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
-  if (args.showAutodraft === "collapsed")
-    cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
+  if (args.showAutodraft === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
   return cols.join(" ");
 }

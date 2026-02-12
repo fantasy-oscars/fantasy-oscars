@@ -32,7 +32,9 @@ export function registerSeasonInvitesListRoute(args: {
         }
 
         const member = await getSeasonMember(client, seasonId, userId);
-        const leagueMember = member ? null : await getLeagueMember(client, season.league_id, userId);
+        const leagueMember = member
+          ? null
+          : await getLeagueMember(client, season.league_id, userId);
         ensureCommissioner(member ?? leagueMember);
 
         const invites = await listPlaceholderInvites(client, seasonId);
@@ -43,4 +45,3 @@ export function registerSeasonInvitesListRoute(args: {
     }
   );
 }
-

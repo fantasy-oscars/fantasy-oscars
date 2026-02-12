@@ -1,5 +1,10 @@
 import { fetchJson } from "../../lib/api";
-import type { CeremonySummary, LeagueMember, LeagueSummary, SeasonMeta } from "../../lib/types";
+import type {
+  CeremonySummary,
+  LeagueMember,
+  LeagueSummary,
+  SeasonMeta
+} from "../../lib/types";
 
 export type LeagueContextForSeason = {
   league: LeagueSummary;
@@ -16,8 +21,10 @@ export async function loadLeagueContextForSeason(
   });
   if (!leaguesRes.ok || !leaguesRes.data?.leagues) return null;
 
-  let found: { league: LeagueSummary; season: (SeasonMeta & { id: number }) | null } | null =
-    null;
+  let found: {
+    league: LeagueSummary;
+    season: (SeasonMeta & { id: number }) | null;
+  } | null = null;
   let leagueMembers: LeagueMember[] = [];
 
   for (const lg of leaguesRes.data.leagues) {
@@ -41,9 +48,12 @@ export async function loadLeagueContextForSeason(
 
   if (!found?.season) return null;
 
-  const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>("/ceremonies", {
-    method: "GET"
-  });
+  const ceremoniesRes = await fetchJson<{ ceremonies: CeremonySummary[] }>(
+    "/ceremonies",
+    {
+      method: "GET"
+    }
+  );
   const ceremonyStatus =
     ceremoniesRes.ok && ceremoniesRes.data?.ceremonies
       ? (ceremoniesRes.data.ceremonies.find((c) => c.id === found.season!.ceremony_id)
@@ -52,4 +62,3 @@ export async function loadLeagueContextForSeason(
 
   return { league: found.league, season: found.season, leagueMembers, ceremonyStatus };
 }
-

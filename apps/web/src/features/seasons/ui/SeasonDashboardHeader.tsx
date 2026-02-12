@@ -19,4 +19,3 @@ export function SeasonDashboardHeader(props: {
     </Group>
   );
 }
-

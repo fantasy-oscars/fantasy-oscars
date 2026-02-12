@@ -13,17 +13,23 @@ export async function postSeasonUserInvite(
 }
 
 export async function postSeasonInvite(seasonId: number, input: { label?: string } = {}) {
-  return fetchJson<{ invite: SeasonInvite; token: string }>(`/seasons/${seasonId}/invites`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input)
-  });
+  return fetchJson<{ invite: SeasonInvite; token: string }>(
+    `/seasons/${seasonId}/invites`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    }
+  );
 }
 
 export async function postRevokeSeasonInvite(seasonId: number, inviteId: number) {
-  return fetchJson<{ invite: SeasonInvite }>(`/seasons/${seasonId}/invites/${inviteId}/revoke`, {
-    method: "POST"
-  });
+  return fetchJson<{ invite: SeasonInvite }>(
+    `/seasons/${seasonId}/invites/${inviteId}/revoke`,
+    {
+      method: "POST"
+    }
+  );
 }
 
 export async function postRegenerateSeasonInvite(seasonId: number, inviteId: number) {
@@ -33,11 +39,14 @@ export async function postRegenerateSeasonInvite(seasonId: number, inviteId: num
   );
 }
 
-export async function patchSeasonInviteLabel(seasonId: number, inviteId: number, label: string) {
+export async function patchSeasonInviteLabel(
+  seasonId: number,
+  inviteId: number,
+  label: string
+) {
   return fetchJson<{ invite: SeasonInvite }>(`/seasons/${seasonId}/invites/${inviteId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ label: label.trim() || null })
   });
 }
-

@@ -65,4 +65,3 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
     setError
   };
 }
-

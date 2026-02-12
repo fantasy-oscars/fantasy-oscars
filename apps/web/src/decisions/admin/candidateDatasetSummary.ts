@@ -6,4 +6,3 @@ export function summarizeCandidateDataset(dataset: unknown): { films: number } {
       : 0;
   return { films };
 }
-

@@ -14,4 +14,3 @@ export function bannerColor(variant: BannerVariant): string {
       return "gray";
   }
 }
-

@@ -3,7 +3,7 @@ import { Box, Button, Grid, Stack, Text, Title } from "@ui";
 import type { ApiResult, FieldErrors } from "@/lib/types";
 import { FormField, FormStatus } from "@/shared/forms";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function LoginScreen(props: {
   errors: FieldErrors;

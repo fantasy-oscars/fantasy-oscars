@@ -37,7 +37,11 @@ export type DraftRosterPick = {
 
 export type AutoDraftPlan = { id: number; name: string };
 
-export type AutoDraftListItem = { nominationId: number; label: string; icon?: string | null };
+export type AutoDraftListItem = {
+  nominationId: number;
+  label: string;
+  icon?: string | null;
+};
 
 export type AutoDraftStrategy =
   | "random"
@@ -57,4 +61,3 @@ export type AutoDraftState = {
   // The resolved current ordering list (strategy-dependent).
   list: AutoDraftListItem[];
 };
-

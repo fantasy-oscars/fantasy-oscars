@@ -1,7 +1,10 @@
 import { DbClient, query } from "../../db.js";
 import type { DraftPickRecord } from "./types.js";
 
-export async function listDraftPicks(client: DbClient, draftId: number): Promise<DraftPickRecord[]> {
+export async function listDraftPicks(
+  client: DbClient,
+  draftId: number
+): Promise<DraftPickRecord[]> {
   const { rows } = await query<DraftPickRecord>(
     client,
     `SELECT
@@ -22,7 +25,10 @@ export async function listDraftPicks(client: DbClient, draftId: number): Promise
   return rows;
 }
 
-export async function countDraftPicks(client: DbClient, draftId: number): Promise<number> {
+export async function countDraftPicks(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
   const { rows } = await query<{ count: string }>(
     client,
     `SELECT COUNT(*)::int AS count FROM draft_pick WHERE draft_id = $1`,
@@ -126,4 +132,3 @@ export async function getPickByRequestId(
   );
   return rows[0] ?? null;
 }
-

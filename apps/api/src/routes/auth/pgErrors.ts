@@ -16,4 +16,3 @@ export function isNotNullViolation(err: unknown, column: string): boolean {
     msg.includes(`"${column}"`) || msg.includes(`'${column}'`) || msg.includes(column)
   );
 }
-

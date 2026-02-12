@@ -2,7 +2,7 @@ import { Box, Button, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "@/orchestration/leagueIndex";
 import { ActionCard, StandardCard } from "@/primitives";
-import "../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
   const { view } = props;
@@ -58,11 +58,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                   <Text className="baseline-textBody">
                     Start a season with friends and draft nominees together.
                   </Text>
-                  <Button
-                    component={Link}
-                    to="/leagues/new"
-                    variant="primary"
-                  >
+                  <Button component={Link} to="/leagues/new" variant="primary">
                     New league
                   </Button>
                 </Stack>

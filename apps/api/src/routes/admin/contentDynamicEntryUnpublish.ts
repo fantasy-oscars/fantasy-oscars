@@ -38,7 +38,8 @@ export function registerAdminContentDynamicEntryUnpublishRoute({
         );
         const row = rows[0];
         if (!row) throw new AppError("NOT_FOUND", 404, "Entry not found");
-        if (row.key !== key) throw new AppError("VALIDATION_FAILED", 400, "Entry key mismatch");
+        if (row.key !== key)
+          throw new AppError("VALIDATION_FAILED", 400, "Entry key mismatch");
 
         if (actorId) {
           await insertAdminAudit(client as Pool, {
@@ -57,4 +58,3 @@ export function registerAdminContentDynamicEntryUnpublishRoute({
     }
   );
 }
-

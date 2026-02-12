@@ -42,4 +42,3 @@ export type PersonSearchRow = {
   tmdb_id: number | null;
   profile_url?: string | null;
 };
-

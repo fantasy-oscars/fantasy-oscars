@@ -1,4 +1,13 @@
-import { Box, Button, Group, Menu, SegmentedControl, Switch, Text, UnstyledButton } from "@ui";
+import {
+  Box,
+  Button,
+  Group,
+  Menu,
+  SegmentedControl,
+  Switch,
+  Text,
+  UnstyledButton
+} from "@ui";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 
 export function DraftHeaderRightWing(props: {
@@ -31,7 +40,13 @@ export function DraftHeaderRightWing(props: {
           <UnstyledButton
             type="button"
             className="drh-pause"
-            aria-label={props.isPre ? "Start draft" : props.isPaused ? "Resume draft" : "Pause draft"}
+            aria-label={
+              props.isPre
+                ? "Start draft"
+                : props.isPaused
+                  ? "Resume draft"
+                  : "Pause draft"
+            }
             onClick={() => {
               if (props.isPre) props.onStartDraft();
               else if (props.isPaused) props.onResumeDraft();
@@ -84,7 +99,12 @@ export function DraftHeaderRightWing(props: {
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
           <Menu withinPortal position="bottom-end" shadow="md">
             <Menu.Target>
-              <Button type="button" variant="subtle" className="theme-toggle" aria-label="Settings">
+              <Button
+                type="button"
+                variant="subtle"
+                className="theme-toggle"
+                aria-label="Settings"
+              >
                 <Text component="span" className="gicon" aria-hidden="true">
                   settings
                 </Text>

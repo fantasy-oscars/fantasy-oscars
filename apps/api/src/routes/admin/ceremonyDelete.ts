@@ -6,7 +6,10 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremonyDeleteRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremonyDeleteRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.delete(
@@ -106,4 +109,3 @@ export function registerAdminCeremonyDeleteRoute(args: { router: Router; client:
     }
   );
 }
-

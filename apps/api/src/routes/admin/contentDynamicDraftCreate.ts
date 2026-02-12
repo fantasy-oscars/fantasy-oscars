@@ -25,8 +25,10 @@ export function registerAdminContentDynamicDraftCreateRoute({
           : undefined;
       const dismissible =
         typeof req.body?.dismissible === "boolean" ? req.body.dismissible : undefined;
-      const starts_at = typeof req.body?.starts_at === "string" ? req.body.starts_at : undefined;
-      const ends_at = typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
+      const starts_at =
+        typeof req.body?.starts_at === "string" ? req.body.starts_at : undefined;
+      const ends_at =
+        typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
       if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
       const actorId = Number(req.auth?.sub);
 
@@ -59,4 +61,3 @@ export function registerAdminContentDynamicDraftCreateRoute({
     }
   });
 }
-

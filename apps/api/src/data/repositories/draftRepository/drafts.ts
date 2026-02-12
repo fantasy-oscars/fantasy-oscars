@@ -78,7 +78,10 @@ export async function createDraft(
   return rows[0];
 }
 
-export async function getDraftById(client: DbClient, id: number): Promise<DraftRecord | null> {
+export async function getDraftById(
+  client: DbClient,
+  id: number
+): Promise<DraftRecord | null> {
   const { rows } = await query<DraftRecord>(
     client,
     `SELECT
@@ -410,7 +413,10 @@ export async function completeDraftIfReady(
   return rows[0] ?? null;
 }
 
-export async function incrementDraftVersion(client: DbClient, draftId: number): Promise<number> {
+export async function incrementDraftVersion(
+  client: DbClient,
+  draftId: number
+): Promise<number> {
   const { rows } = await query<{ version: number }>(
     client,
     `UPDATE draft
@@ -500,4 +506,3 @@ export async function setDraftLockOverride(
   );
   return rows[0] ?? null;
 }
-

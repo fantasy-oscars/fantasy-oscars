@@ -106,7 +106,11 @@ export function NominationEditModal(props: {
       <Stack gap="sm">
         <NominationEditFilmSection
           nominationFilmTitle={nomination.film_title ?? "—"}
-          film={film ? { id: film.id, title: film.title, tmdb_id: film.tmdb_id ?? null } : null}
+          film={
+            film
+              ? { id: film.id, title: film.title, tmdb_id: film.tmdb_id ?? null }
+              : null
+          }
           onLinkFilm={onLinkFilm}
           onAfterLinkChange={() => {
             // Ensure contributor pickers don't show stale credits after unlinking/relinking.

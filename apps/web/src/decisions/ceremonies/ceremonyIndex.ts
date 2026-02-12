@@ -10,7 +10,9 @@ export function sortNewestFirst<T extends { id: number; starts_at: string | null
   return [...rows].sort((a, b) => toTs(b.starts_at) - toTs(a.starts_at) || b.id - a.id);
 }
 
-export function splitActiveArchived<T extends { status: string }>(rows: T[]): {
+export function splitActiveArchived<T extends { status: string }>(
+  rows: T[]
+): {
   active: T[];
   archived: T[];
 } {
@@ -18,4 +20,3 @@ export function splitActiveArchived<T extends { status: string }>(rows: T[]): {
   const archived = rows.filter((c) => c.status === "ARCHIVED");
   return { active, archived };
 }
-

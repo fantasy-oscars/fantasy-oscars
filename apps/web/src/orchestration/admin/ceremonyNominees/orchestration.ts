@@ -53,9 +53,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [nominationsState, setNominationsState] = useState<ApiResult | null>(null);
 
   const [peopleQuery, setPeopleQuery] = useState("");
-  const [peopleResults, setPeopleResults] = useState<
-    PersonSearchRow[]
-  >([]);
+  const [peopleResults, setPeopleResults] = useState<PersonSearchRow[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [peopleState, setPeopleState] = useState<ApiResult | null>(null);
 
@@ -615,7 +613,10 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     async (nominationId: number, nominationContributorId: number) => {
       setManualLoading(true);
       setManualState(null);
-      const res = await deleteNominationContributorReq(nominationId, nominationContributorId);
+      const res = await deleteNominationContributorReq(
+        nominationId,
+        nominationContributorId
+      );
       setManualLoading(false);
       if (!res.ok) {
         setManualState({

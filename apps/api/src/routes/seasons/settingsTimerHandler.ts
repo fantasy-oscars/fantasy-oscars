@@ -4,22 +4,33 @@ import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { ensureCommissioner } from "./helpers.js";
 
 export function buildSeasonSettingsTimerHandler(client: DbClient) {
-  return async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+  return async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     try {
       const seasonId = Number(req.params.id);
       const actorId = Number(req.auth?.sub);
       const timerRaw = (req.body ?? {}).pick_timer_seconds;
-      const pickTimerSeconds = timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
+      const pickTimerSeconds =
+        timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
       if (Number.isNaN(seasonId) || !actorId) {
         throw validationError("Invalid season id", ["id"]);
       }
-      if (pickTimerSeconds !== null && (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)) {
+      if (
+        pickTimerSeconds !== null &&
+        (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
+      ) {
         throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
       }
 
@@ -36,10 +47,15 @@ export function buildSeasonSettingsTimerHandler(client: DbClient) {
           throw new AppError("DRAFT_NOT_FOUND", 409, "Draft not created yet");
         }
         if (draft.status !== "PENDING") {
-          throw new AppError("TIMER_LOCKED", 409, "Cannot change timer after draft has started");
+          throw new AppError(
+            "TIMER_LOCKED",
+            409,
+            "Cannot change timer after draft has started"
+          );
         }
 
-        const nextSeconds = pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null;
+        const nextSeconds =
+          pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null;
 
         const { rows } = await query<{
           id: number;
@@ -76,4 +92,3 @@ export function buildSeasonSettingsTimerHandler(client: DbClient) {
     }
   };
 }
-

@@ -1,14 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  Title
-} from "@ui";
+import { ActionIcon, Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
@@ -20,7 +11,7 @@ import {
   computeAdminCeremonyIndexStatus
 } from "@/decisions/admin/ceremonyIndex";
 import { ConfirmDeleteCeremonyModal } from "@/features/admin/ui/ceremonies/modals/ConfirmDeleteCeremonyModal";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 const ICON_VISIBILITY = "visibility";
 const ICON_EDIT = "edit";
@@ -89,12 +80,19 @@ export function AdminCeremoniesIndexScreen(props: {
             const { statusUpper, isArchived } = computeAdminCeremonyIndexStatus({
               status: c.status
             });
-            const { needsConfirm } = computeAdminCeremonyDeletePolicy({ status: c.status });
+            const { needsConfirm } = computeAdminCeremonyDeletePolicy({
+              status: c.status
+            });
             const deleting = workingId === c.id;
 
             return (
               <StandardCard key={c.id}>
-                <Group justify="space-between" align="center" wrap="nowrap" gap="var(--fo-space-dense-2)">
+                <Group
+                  justify="space-between"
+                  align="center"
+                  wrap="nowrap"
+                  gap="var(--fo-space-dense-2)"
+                >
                   <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
                     <Box miw="var(--fo-space-0)">
                       <Text

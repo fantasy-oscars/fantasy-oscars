@@ -11,4 +11,3 @@ export type WinnersNominationRow = {
     sort_order: number;
   }>;
 };
-

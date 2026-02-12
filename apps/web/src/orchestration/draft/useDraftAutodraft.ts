@@ -106,13 +106,15 @@ export function useDraftAutodraft(args: {
       if (!current?.draft?.id) return false;
       const hasPlans = autoPlans.length > 0;
       const resolvedStrategy = (() => {
-        if (next.strategy === "custom") return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
+        if (next.strategy === "custom")
+          return hasPlans ? ("PLAN" as const) : ("RANDOM" as const);
         if (next.strategy === "by_category") return "BY_CATEGORY" as const;
         if (next.strategy === "alphabetical") return "ALPHABETICAL" as const;
         if (next.strategy === "wisdom") return "WISDOM" as const;
         return "RANDOM" as const;
       })();
-      const resolvedPlanId = next.enabled && resolvedStrategy === "PLAN" ? next.planId : null;
+      const resolvedPlanId =
+        next.enabled && resolvedStrategy === "PLAN" ? next.planId : null;
 
       setAutoSaving(true);
       setAutoError(null);
@@ -210,9 +212,12 @@ export function useDraftAutodraft(args: {
           return;
         }
         void (async () => {
-          const planRes = await fetchJson<{ nomination_ids: number[] }>(`/draft-plans/${v}`, {
-            method: "GET"
-          });
+          const planRes = await fetchJson<{ nomination_ids: number[] }>(
+            `/draft-plans/${v}`,
+            {
+              method: "GET"
+            }
+          );
           if (planRes.ok) setAutoList(planRes.data?.nomination_ids ?? []);
           else setAutoList([]);
         })();
@@ -249,4 +254,3 @@ export function useDraftAutodraft(args: {
     reload: loadAutodraft
   };
 }
-

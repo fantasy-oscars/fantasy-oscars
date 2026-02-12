@@ -6,7 +6,10 @@ import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminCeremonyArchiveRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCeremonyArchiveRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.post(
@@ -60,4 +63,3 @@ export function registerAdminCeremonyArchiveRoute(args: { router: Router; client
     }
   );
 }
-

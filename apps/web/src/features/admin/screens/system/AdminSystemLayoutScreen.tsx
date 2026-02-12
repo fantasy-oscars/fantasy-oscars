@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { Box, Divider, Group, Text, Title } from "@ui";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminSystemLayoutScreen(props: { children: ReactNode }) {
   const sublinkClass = ({ isActive }: { isActive: boolean }) =>

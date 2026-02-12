@@ -20,4 +20,3 @@ export function scoringLabel(strategy?: string | null) {
       return "Standard";
   }
 }
-

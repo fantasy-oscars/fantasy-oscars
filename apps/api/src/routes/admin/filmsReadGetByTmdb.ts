@@ -16,7 +16,11 @@ export function registerAdminFilmsGetByTmdbRoute(args: {
       try {
         const tmdbId = Number(req.params.tmdbId);
         if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "tmdbId must be a positive integer");
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "tmdbId must be a positive integer"
+          );
         }
         const { rows } = await query<{ id: number; title: string; tmdb_id: number }>(
           client,
@@ -36,4 +40,3 @@ export function registerAdminFilmsGetByTmdbRoute(args: {
     }
   );
 }
-

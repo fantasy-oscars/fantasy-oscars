@@ -31,9 +31,12 @@ export async function deleteNominationContributor(
   nominationId: number,
   nominationContributorId: number
 ) {
-  return fetchJson(`/admin/nominations/${nominationId}/contributors/${nominationContributorId}`, {
-    method: "DELETE"
-  });
+  return fetchJson(
+    `/admin/nominations/${nominationId}/contributors/${nominationContributorId}`,
+    {
+      method: "DELETE"
+    }
+  );
 }
 
 export async function getFilmCreditsRaw(filmId: number) {
@@ -41,4 +44,3 @@ export async function getFilmCreditsRaw(filmId: number) {
     method: "GET"
   });
 }
-

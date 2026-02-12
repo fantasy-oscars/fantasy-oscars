@@ -13,7 +13,7 @@ import {
 import { FormStatus } from "@/shared/forms";
 import type { ApiResult } from "@/lib/types";
 import type { AdminUserRow } from "@/orchestration/adminUsers";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminUsersSearchScreen(props: {
   query: string;
@@ -43,7 +43,11 @@ export function AdminUsersSearchScreen(props: {
   const options = results.slice(0, 8).map((u) => (
     <Combobox.Option key={u.id} value={String(u.id)}>
       <Box miw="var(--fo-space-0)">
-        <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody" truncate="end">
+        <Text
+          fw="var(--fo-font-weight-semibold)"
+          className="baseline-textBody"
+          truncate="end"
+        >
           {u.username}
         </Text>
       </Box>
@@ -104,16 +108,16 @@ export function AdminUsersSearchScreen(props: {
           </Text>
         </Stack>
       ) : (
-        <Stack
-          component="ul"
-          gap="var(--fo-space-0)"
-          className="fo-listReset"
-        >
+        <Stack component="ul" gap="var(--fo-space-0)" className="fo-listReset">
           {results.map((u, idx) => (
             <Box key={u.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
                 <Box miw="var(--fo-space-0)">
-                  <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody" truncate="end">
+                  <Text
+                    fw="var(--fo-font-weight-semibold)"
+                    className="baseline-textBody"
+                    truncate="end"
+                  >
                     {u.username}
                   </Text>
                 </Box>

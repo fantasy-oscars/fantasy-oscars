@@ -4,7 +4,10 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
-import { getSeasonMember, removeSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
+import {
+  getSeasonMember,
+  removeSeasonMember
+} from "../../data/repositories/seasonMemberRepository.js";
 
 export function registerSeasonMembersRemoveRoute(args: {
   router: express.Router;
@@ -35,7 +38,10 @@ export function registerSeasonMembersRemoveRoute(args: {
         }
 
         const actorMember = await getSeasonMember(client, seasonId, actorId);
-        if (!actorMember || (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")) {
+        if (
+          !actorMember ||
+          (actorMember.role !== "OWNER" && actorMember.role !== "CO_OWNER")
+        ) {
           throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
 
@@ -60,4 +66,3 @@ export function registerSeasonMembersRemoveRoute(args: {
     }
   );
 }
-

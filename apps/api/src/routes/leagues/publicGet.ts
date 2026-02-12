@@ -45,4 +45,3 @@ export function registerLeaguePublicGetRoute(args: {
     }
   );
 }
-

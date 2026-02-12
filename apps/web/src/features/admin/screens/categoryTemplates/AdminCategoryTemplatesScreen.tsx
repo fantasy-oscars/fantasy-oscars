@@ -17,7 +17,7 @@ import type {
 } from "@/orchestration/adminCategoryTemplates";
 import { CategoryTemplateEditorModal } from "@/features/admin/ui/categoryTemplates/CategoryTemplateEditorModal";
 import { unitKindLabel } from "@/shared/labels/unitKindLabel";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 const EDIT_ICON = String.fromCharCode(0xe3c9);
 const TRASH_ICON = String.fromCharCode(0xe872);

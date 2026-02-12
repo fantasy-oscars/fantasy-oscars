@@ -1,5 +1,8 @@
 import { Text as MantineText } from "@mantine/core";
-import type { TextProps as MantineTextProps, PolymorphicComponentProps } from "@mantine/core";
+import type {
+  TextProps as MantineTextProps,
+  PolymorphicComponentProps
+} from "@mantine/core";
 
 export type TextVariant =
   | "body"

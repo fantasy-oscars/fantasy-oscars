@@ -58,4 +58,3 @@ export function computeEffectiveNomineeOrderForDraftPlan(args: {
   }
   return ordered;
 }
-

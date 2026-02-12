@@ -22,7 +22,11 @@ export function DraftLedgerRail(props: {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
   return (
-    <Box className={["dr-rail", "dr-rail-ledger", open ? "is-open" : "is-collapsed"].join(" ")}>
+    <Box
+      className={["dr-rail", "dr-rail-ledger", open ? "is-open" : "is-collapsed"].join(
+        " "
+      )}
+    >
       {open ? (
         <Box className="dr-railPane">
           <Box className="dr-railPaneHeader">
@@ -43,27 +47,49 @@ export function DraftLedgerRail(props: {
               </Text>
             </UnstyledButton>
           </Box>
-          <Box className="dr-railPaneBody" role="region" aria-label="Draft history" tabIndex={0}>
+          <Box
+            className="dr-railPaneBody"
+            role="region"
+            aria-label="Draft history"
+            tabIndex={0}
+          >
             <Box className="dr-railList">
               {props.ledgerRows.map((r) => {
-                const nominee = r.nominationId ? (props.nomineeById.get(r.nominationId) ?? null) : null;
+                const nominee = r.nominationId
+                  ? (props.nomineeById.get(r.nominationId) ?? null)
+                  : null;
                 const avatarKey =
                   r.seatNumber !== null
                     ? (props.avatarKeyBySeat.get(r.seatNumber) ?? null)
                     : null;
                 const pill = (
                   <Box
-                    className={["dr-pill", "dr-pill-static", r.label === "—" ? "is-muted" : "", r.winner ? "is-winner" : ""]
+                    className={[
+                      "dr-pill",
+                      "dr-pill-static",
+                      r.label === "—" ? "is-muted" : "",
+                      r.winner ? "is-winner" : ""
+                    ]
                       .filter(Boolean)
                       .join(" ")}
                     tabIndex={nominee ? 0 : undefined}
                     role={nominee ? "group" : undefined}
-                    aria-label={nominee ? `${nominee.categoryName}: ${r.label}` : undefined}
+                    aria-label={
+                      nominee ? `${nominee.categoryName}: ${r.label}` : undefined
+                    }
                   >
                     {nominee ? (
-                      <DraftCategoryIcon icon={nominee.categoryIcon} variant={nominee.categoryIconVariant} className="dr-pill-icon" />
+                      <DraftCategoryIcon
+                        icon={nominee.categoryIcon}
+                        variant={nominee.categoryIconVariant}
+                        className="dr-pill-icon"
+                      />
                     ) : r.icon ? (
-                      <DraftCategoryIcon icon={r.icon} variant="default" className="dr-pill-icon" />
+                      <DraftCategoryIcon
+                        icon={r.icon}
+                        variant="default"
+                        className="dr-pill-icon"
+                      />
                     ) : null}
                     <Text component="span" className="dr-pill-text" lineClamp={1}>
                       {r.label}
@@ -72,7 +98,11 @@ export function DraftLedgerRail(props: {
                 );
 
                 return (
-                  <Box key={r.pickNumber} className="dr-railRow dr-ledgerRow" data-active={r.active ? "true" : "false"}>
+                  <Box
+                    key={r.pickNumber}
+                    className="dr-railRow dr-ledgerRow"
+                    data-active={r.active ? "true" : "false"}
+                  >
                     <Text className="dr-railMeta">{r.roundPick}</Text>
                     <Box className="dr-railAvatar">
                       <AnimalAvatarIcon avatarKey={avatarKey} />

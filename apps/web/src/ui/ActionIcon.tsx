@@ -25,8 +25,10 @@ export function ActionIcon<C = "button">(
   props: PolymorphicComponentProps<C, ActionIconProps>
 ) {
   const { variant = "ghost", ...rest } = props;
-  const forwarded =
-    rest as unknown as PolymorphicComponentProps<"button", MantineActionIconProps>;
+  const forwarded = rest as unknown as PolymorphicComponentProps<
+    "button",
+    MantineActionIconProps
+  >;
 
   switch (variant) {
     case "danger":

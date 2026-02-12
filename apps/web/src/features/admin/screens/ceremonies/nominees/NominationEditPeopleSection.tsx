@@ -2,7 +2,10 @@ import { ActionIcon, Box, Button, Group, Stack, Text, TextInput } from "@ui";
 import { useMemo, useState } from "react";
 import { normalizeForSearch } from "@fantasy-oscars/shared";
 import { notify } from "@/notifications";
-import { ContributorCombobox, type ContributorOption } from "@/features/admin/ui/ceremonies/nominees/ContributorCombobox";
+import {
+  ContributorCombobox,
+  type ContributorOption
+} from "@/features/admin/ui/ceremonies/nominees/ContributorCombobox";
 import type { FilmCredits } from "./useFilmCredits";
 
 type NominationContributorRow = {
@@ -39,10 +42,21 @@ export function NominationEditPeopleSection(props: {
     nominationId: number,
     input: { person_id?: number; name?: string; tmdb_id?: number }
   ) => Promise<void>;
-  onRemoveContributor: (nominationId: number, nominationContributorId: number) => Promise<void>;
+  onRemoveContributor: (
+    nominationId: number,
+    nominationContributorId: number
+  ) => Promise<void>;
 }) {
-  const { nominationId, contributors, people, peopleLoading, filmCredits, onLinkPerson, onAddContributor, onRemoveContributor } =
-    props;
+  const {
+    nominationId,
+    contributors,
+    people,
+    peopleLoading,
+    filmCredits,
+    onLinkPerson,
+    onAddContributor,
+    onRemoveContributor
+  } = props;
 
   const [personLinkOpenId, setPersonLinkOpenId] = useState<number | null>(null);
   const [personTmdbId, setPersonTmdbId] = useState("");
@@ -69,12 +83,17 @@ export function NominationEditPeopleSection(props: {
 
     for (const c of credits.crew ?? []) {
       const tmdbId = Number((c as CreditPerson).tmdb_id ?? (c as CreditPerson).id);
-      const name = typeof (c as CreditPerson).name === "string" ? String((c as CreditPerson).name) : "";
+      const name =
+        typeof (c as CreditPerson).name === "string"
+          ? String((c as CreditPerson).name)
+          : "";
       if (!tmdbId || !name) continue;
       const job =
-        typeof (c as CreditPerson).job === "string" && String((c as CreditPerson).job).trim()
+        typeof (c as CreditPerson).job === "string" &&
+        String((c as CreditPerson).job).trim()
           ? String((c as CreditPerson).job).trim()
-          : typeof (c as CreditPerson).department === "string" && String((c as CreditPerson).department).trim()
+          : typeof (c as CreditPerson).department === "string" &&
+              String((c as CreditPerson).department).trim()
             ? String((c as CreditPerson).department).trim()
             : "";
       if (!job) continue;
@@ -95,10 +114,14 @@ export function NominationEditPeopleSection(props: {
 
     for (const c of credits.cast ?? []) {
       const tmdbId = Number((c as CreditPerson).tmdb_id ?? (c as CreditPerson).id);
-      const name = typeof (c as CreditPerson).name === "string" ? String((c as CreditPerson).name) : "";
+      const name =
+        typeof (c as CreditPerson).name === "string"
+          ? String((c as CreditPerson).name)
+          : "";
       if (!tmdbId || !name) continue;
       const character =
-        typeof (c as CreditPerson).character === "string" && String((c as CreditPerson).character).trim()
+        typeof (c as CreditPerson).character === "string" &&
+        String((c as CreditPerson).character).trim()
           ? String((c as CreditPerson).character).trim()
           : "";
       const existing = map.get(tmdbId) ?? {
@@ -121,7 +144,8 @@ export function NominationEditPeopleSection(props: {
   }, [filmCredits]);
 
   const creditOptions = useMemo(() => {
-    const opts: Array<{ tmdb_id: number; name: string; label: string; search: string }> = [];
+    const opts: Array<{ tmdb_id: number; name: string; label: string; search: string }> =
+      [];
     for (const [tmdbId, info] of creditByPersonId.entries()) {
       const jobs: string[] = [];
       for (const j of info.crewJobs) jobs.push(j);
@@ -209,7 +233,11 @@ export function NominationEditPeopleSection(props: {
                     {c.full_name}
                   </Text>
                   {!c.tmdb_id ? (
-                    <Text component="span" className="gicon muted" aria-label="Contributor not linked to TMDB">
+                    <Text
+                      component="span"
+                      className="gicon muted"
+                      aria-label="Contributor not linked to TMDB"
+                    >
                       link_off
                     </Text>
                   ) : null}
@@ -226,7 +254,9 @@ export function NominationEditPeopleSection(props: {
                   variant="subtle"
                   aria-label="Link contributor to TMDB"
                   onClick={() => {
-                    setPersonLinkOpenId((prev) => (prev === c.person_id ? null : c.person_id));
+                    setPersonLinkOpenId((prev) =>
+                      prev === c.person_id ? null : c.person_id
+                    );
                     setPersonTmdbId(c.tmdb_id ? String(c.tmdb_id) : "");
                   }}
                 >
@@ -260,7 +290,9 @@ export function NominationEditPeopleSection(props: {
             onChange={(e) => setPersonTmdbId(e.currentTarget.value)}
             placeholder="6384"
           />
-          {contributors.some((c) => c.person_id === personLinkOpenId && Boolean(c.tmdb_id)) ? (
+          {contributors.some(
+            (c) => c.person_id === personLinkOpenId && Boolean(c.tmdb_id)
+          ) ? (
             <ActionIcon
               variant="subtle"
               aria-label="Remove TMDB link"
@@ -304,7 +336,9 @@ export function NominationEditPeopleSection(props: {
             type="button"
             onClick={() =>
               void (async () => {
-                const nextTmdbId = personTmdbId.trim() ? Number(personTmdbId.trim()) : null;
+                const nextTmdbId = personTmdbId.trim()
+                  ? Number(personTmdbId.trim())
+                  : null;
                 const r = await onLinkPerson(personLinkOpenId, nextTmdbId);
                 if (r.ok) {
                   notify({
@@ -315,7 +349,11 @@ export function NominationEditPeopleSection(props: {
                     durability: "ephemeral",
                     requires_decision: false,
                     title: nextTmdbId ? "Contributor linked" : "Contributor unlinked",
-                    message: nextTmdbId ? (r.hydrated ? "Hydrated details from TMDB." : "Linked.") : "Unlinked."
+                    message: nextTmdbId
+                      ? r.hydrated
+                        ? "Hydrated details from TMDB."
+                        : "Linked."
+                      : "Unlinked."
                   });
                   setPersonLinkOpenId(null);
                   setPersonTmdbId("");
@@ -328,7 +366,9 @@ export function NominationEditPeopleSection(props: {
                   scope: "local",
                   durability: "ephemeral",
                   requires_decision: false,
-                  title: nextTmdbId ? "Could not link contributor" : "Could not unlink contributor",
+                  title: nextTmdbId
+                    ? "Could not link contributor"
+                    : "Could not unlink contributor",
                   message: r.error
                 });
               })()
@@ -349,7 +389,10 @@ export function NominationEditPeopleSection(props: {
             disabled={peopleLoading}
             onSubmit={async (picked) => {
               if (picked.kind === "tmdb") {
-                await onAddContributor(nominationId, { tmdb_id: picked.tmdb_id, name: picked.name });
+                await onAddContributor(nominationId, {
+                  tmdb_id: picked.tmdb_id,
+                  name: picked.name
+                });
               } else if (picked.kind === "person") {
                 await onAddContributor(nominationId, { person_id: picked.person_id });
               } else if (picked.kind === "create") {
@@ -364,7 +407,9 @@ export function NominationEditPeopleSection(props: {
           variant="subtle"
           onClick={() => {
             if (pendingContributorInput.trim()) {
-              void onAddContributor(nominationId, { name: pendingContributorInput.trim() });
+              void onAddContributor(nominationId, {
+                name: pendingContributorInput.trim()
+              });
               setPendingContributorInput("");
             }
           }}

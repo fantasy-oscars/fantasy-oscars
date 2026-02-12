@@ -9,4 +9,3 @@ export function registerSeasonSettingsScoringLegacyRoute(args: {
   const { router, client } = args;
   router.post("/:id/scoring", buildSeasonSettingsScoringHandler(client));
 }
-

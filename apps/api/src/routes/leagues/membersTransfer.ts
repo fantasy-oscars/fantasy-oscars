@@ -25,7 +25,11 @@ export function registerLeagueMembersTransferRoute(args: {
         const leagueId = Number(req.params.id);
         const actorId = Number(req.auth?.sub);
         const targetUserId = Number(req.body?.user_id);
-        if (Number.isNaN(leagueId) || Number.isNaN(actorId) || Number.isNaN(targetUserId)) {
+        if (
+          Number.isNaN(leagueId) ||
+          Number.isNaN(actorId) ||
+          Number.isNaN(targetUserId)
+        ) {
           throw validationError("Invalid payload", ["id", "user_id"]);
         }
 
@@ -57,4 +61,3 @@ export function registerLeagueMembersTransferRoute(args: {
     }
   );
 }
-

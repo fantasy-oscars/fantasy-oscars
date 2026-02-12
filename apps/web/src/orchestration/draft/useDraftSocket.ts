@@ -212,7 +212,9 @@ export function useDraftSocket(args: {
         scope: "local",
         durability: "ephemeral",
         requires_decision: false,
-        message: winnerLabel ? `${categoryName}: ${winnerLabel}` : `${categoryName}: updated`
+        message: winnerLabel
+          ? `${categoryName}: ${winnerLabel}`
+          : `${categoryName}: updated`
       });
     };
 

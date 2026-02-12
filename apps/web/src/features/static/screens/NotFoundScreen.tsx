@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Box, Button, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function NotFoundScreen() {
   return (

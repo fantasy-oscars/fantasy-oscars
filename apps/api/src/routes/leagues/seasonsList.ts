@@ -2,7 +2,10 @@ import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import { listSeasonsForLeague } from "../../data/repositories/seasonRepository.js";
 
 export function registerLeagueSeasonsListRoute(args: {
@@ -44,7 +47,8 @@ export function registerLeagueSeasonsListRoute(args: {
           ceremony_code: s.ceremony_code ?? null,
           status: s.status,
           scoring_strategy_name: s.scoring_strategy_name,
-          category_weights: (s as { category_weights?: unknown }).category_weights ?? null,
+          category_weights:
+            (s as { category_weights?: unknown }).category_weights ?? null,
           remainder_strategy: s.remainder_strategy,
           pick_timer_seconds: s.pick_timer_seconds ?? null,
           auto_pick_strategy: s.auto_pick_strategy ?? null,
@@ -53,7 +57,9 @@ export function registerLeagueSeasonsListRoute(args: {
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status
-            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(String(s.ceremony_status).toUpperCase())
+            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(
+                String(s.ceremony_status).toUpperCase()
+              )
             : false
         }));
 
@@ -64,4 +70,3 @@ export function registerLeagueSeasonsListRoute(args: {
     }
   );
 }
-

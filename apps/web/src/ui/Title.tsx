@@ -1,5 +1,8 @@
 import { Title as MantineTitle } from "@mantine/core";
-import type { PolymorphicComponentProps, TitleProps as MantineTitleProps } from "@mantine/core";
+import type {
+  PolymorphicComponentProps,
+  TitleProps as MantineTitleProps
+} from "@mantine/core";
 
 export type TitleVariant = "brand" | "hero" | "page" | "section" | "card";
 
@@ -35,4 +38,3 @@ export function Title<C = "h2">(props: PolymorphicComponentProps<C, TitleProps>)
     />
   );
 }
-

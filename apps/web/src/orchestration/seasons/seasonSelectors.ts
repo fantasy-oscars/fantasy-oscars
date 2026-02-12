@@ -11,7 +11,9 @@ export function computeAvailableLeagueMembers(args: {
   seasonMembers: SeasonMember[];
 }) {
   const leagueMembers = args.leagueMembers ?? [];
-  return leagueMembers.filter((m) => !args.seasonMembers.some((sm) => sm.user_id === m.user_id));
+  return leagueMembers.filter(
+    (m) => !args.seasonMembers.some((sm) => sm.user_id === m.user_id)
+  );
 }
 
 export function computeIntegrityWarningActive(args: {
@@ -25,7 +27,8 @@ export function computeIntegrityWarningActive(args: {
   const draftWarningEligible =
     (season.is_active_ceremony ?? false) &&
     draftStatus &&
-    (draftStatus === "PENDING" || draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED");
+    (draftStatus === "PENDING" ||
+      draftStatus === "IN_PROGRESS" ||
+      draftStatus === "PAUSED");
   return draftWarningEligible && isIntegrityWarningWindow(ceremonyStartsAt, args.nowTs);
 }
-

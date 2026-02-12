@@ -8,4 +8,3 @@ export function pickDeterministicAvatarKey(label: string): string {
   }
   return ANIMAL_AVATAR_KEYS[hash % ANIMAL_AVATAR_KEYS.length] ?? "monkey";
 }
-

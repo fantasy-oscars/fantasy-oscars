@@ -5,4 +5,3 @@ export type CeremonyOption = {
   starts_at: string | null;
   status?: string;
 };
-

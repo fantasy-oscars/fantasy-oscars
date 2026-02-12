@@ -33,4 +33,3 @@ export function formatSignedInt(n: number) {
   if (n > 0) return `+${Math.trunc(n)}`;
   return String(Math.trunc(n));
 }
-

@@ -1,14 +1,4 @@
-import {
-  Anchor,
-  Blockquote,
-  Box,
-  Code,
-  Divider,
-  List,
-  Stack,
-  Text,
-  Title
-} from "@ui";
+import { Anchor, Blockquote, Box, Code, Divider, List, Stack, Text, Title } from "@ui";
 import { Link as RouterLink } from "react-router-dom";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
@@ -201,7 +191,12 @@ function renderBlocks(
 
         if (depth >= 5) {
           out.push(
-            <Text key={key} fw="var(--fo-font-weight-medium)" m="var(--fo-space-0)" mb="xs">
+            <Text
+              key={key}
+              fw="var(--fo-font-weight-medium)"
+              m="var(--fo-space-0)"
+              mb="xs"
+            >
               {renderInline(node.children as PhrasingContent[], key, definitions)}
             </Text>
           );
@@ -303,5 +298,9 @@ function parseMarkdown(markdown: string): ParsedMarkdown {
 export function MarkdownRenderer(props: Props) {
   const { tree, definitions } = parseMarkdown(props.markdown);
 
-  return <Stack gap="var(--fo-space-0)">{renderBlocks(tree.children, "md", definitions)}</Stack>;
+  return (
+    <Stack gap="var(--fo-space-0)">
+      {renderBlocks(tree.children, "md", definitions)}
+    </Stack>
+  );
 }

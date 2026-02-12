@@ -41,7 +41,11 @@ export function NominationEditFilmSection(props: {
         {filmId ? (
           <Group gap="xs" wrap="nowrap">
             {!filmLinked ? (
-              <Text component="span" className="gicon muted" aria-label="Film not linked to TMDB">
+              <Text
+                component="span"
+                className="gicon muted"
+                aria-label="Film not linked to TMDB"
+              >
                 link_off
               </Text>
             ) : null}
@@ -132,7 +136,11 @@ export function NominationEditFilmSection(props: {
                     durability: "ephemeral",
                     requires_decision: false,
                     title: nextTmdbId ? "Film linked" : "Film unlinked",
-                    message: nextTmdbId ? (r.hydrated ? "Hydrated details from TMDB." : "Linked.") : "Unlinked."
+                    message: nextTmdbId
+                      ? r.hydrated
+                        ? "Hydrated details from TMDB."
+                        : "Linked."
+                      : "Unlinked."
                   });
                   setFilmLinkOpen(false);
                   setFilmTmdbId("");

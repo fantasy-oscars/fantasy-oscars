@@ -20,7 +20,11 @@ export function DraftMyRosterRail(props: {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
   return (
-    <Box className={["dr-rail", "dr-rail-roster", open ? "is-open" : "is-collapsed"].join(" ")}>
+    <Box
+      className={["dr-rail", "dr-rail-roster", open ? "is-open" : "is-collapsed"].join(
+        " "
+      )}
+    >
       {open ? (
         <Box className="dr-railPane">
           <Box className="dr-railPaneHeader">
@@ -41,7 +45,12 @@ export function DraftMyRosterRail(props: {
               </Text>
             </UnstyledButton>
           </Box>
-          <Box className="dr-railPaneBody" role="region" aria-label="My roster" tabIndex={0}>
+          <Box
+            className="dr-railPaneBody"
+            role="region"
+            aria-label="My roster"
+            tabIndex={0}
+          >
             <Box className="dr-railList">
               {props.myPicks.length === 0 ? (
                 <Text className="dr-railEmpty">No picks yet</Text>
@@ -50,15 +59,31 @@ export function DraftMyRosterRail(props: {
                   const nominee = props.nomineeById.get(p.nominationId) ?? null;
                   const pill = (
                     <Box
-                      className={["dr-pill", "dr-pill-static", p.winner ? "is-winner" : ""].filter(Boolean).join(" ")}
+                      className={[
+                        "dr-pill",
+                        "dr-pill-static",
+                        p.winner ? "is-winner" : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       tabIndex={nominee ? 0 : undefined}
                       role={nominee ? "group" : undefined}
-                      aria-label={nominee ? `${nominee.categoryName}: ${p.label}` : undefined}
+                      aria-label={
+                        nominee ? `${nominee.categoryName}: ${p.label}` : undefined
+                      }
                     >
                       {nominee ? (
-                        <DraftCategoryIcon icon={nominee.categoryIcon} variant={nominee.categoryIconVariant} className="dr-pill-icon" />
+                        <DraftCategoryIcon
+                          icon={nominee.categoryIcon}
+                          variant={nominee.categoryIconVariant}
+                          className="dr-pill-icon"
+                        />
                       ) : p.icon ? (
-                        <DraftCategoryIcon icon={p.icon} variant="default" className="dr-pill-icon" />
+                        <DraftCategoryIcon
+                          icon={p.icon}
+                          variant="default"
+                          className="dr-pill-icon"
+                        />
                       ) : null}
                       <Text component="span" className="dr-pill-text" lineClamp={1}>
                         {p.label}

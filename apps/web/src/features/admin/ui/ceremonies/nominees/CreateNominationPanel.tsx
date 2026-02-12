@@ -146,10 +146,19 @@ export function CreateNominationPanel(props: {
         ) : null}
 
         <Group className="inline-actions" wrap="wrap">
-          <Button type="button" onClick={props.onCreateNomination} disabled={props.manualLoading}>
+          <Button
+            type="button"
+            onClick={props.onCreateNomination}
+            disabled={props.manualLoading}
+          >
             {props.manualLoading ? "Saving..." : "Add nomination"}
           </Button>
-          <Button type="button" variant="subtle" onClick={props.onReset} disabled={props.manualLoading}>
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={props.onReset}
+            disabled={props.manualLoading}
+          >
             Reset
           </Button>
         </Group>

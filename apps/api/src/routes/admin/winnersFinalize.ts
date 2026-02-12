@@ -7,7 +7,10 @@ import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.j
 import { AppError } from "../../errors.js";
 import { emitCeremonyFinalized } from "../../realtime/ceremonyEvents.js";
 
-export function registerAdminWinnersFinalizeRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminWinnersFinalizeRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.post(
@@ -104,4 +107,3 @@ export function registerAdminWinnersFinalizeRoute(args: { router: Router; client
     }
   );
 }
-

@@ -15,7 +15,7 @@ import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import { StandardCard } from "@/primitives";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 const INFO_ICON = String.fromCharCode(0xe88e);
 

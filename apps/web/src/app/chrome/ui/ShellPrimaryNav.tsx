@@ -17,7 +17,13 @@ export function ShellPrimaryNav(props: {
       <Group justify="space-between" wrap="wrap" w="100%">
         <Group ref={props.navLinksRef} className="nav-links" gap="md" wrap="nowrap">
           {props.links.map((l) => (
-            <Anchor key={l.to} component={NavLink} to={l.to} className="nav-link" underline="never">
+            <Anchor
+              key={l.to}
+              component={NavLink}
+              to={l.to}
+              className="nav-link"
+              underline="never"
+            >
               {l.label}
             </Anchor>
           ))}
@@ -26,4 +32,3 @@ export function ShellPrimaryNav(props: {
     </Box>
   );
 }
-

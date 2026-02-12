@@ -94,4 +94,3 @@ export function computeAutodraftNominationIdOrder(args: {
 
   return canonicalIds;
 }
-

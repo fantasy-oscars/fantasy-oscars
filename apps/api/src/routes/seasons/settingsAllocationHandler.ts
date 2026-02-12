@@ -4,13 +4,23 @@ import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
-import { getSeasonById, updateSeasonRemainderStrategy } from "../../data/repositories/seasonRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
+import {
+  getSeasonById,
+  updateSeasonRemainderStrategy
+} from "../../data/repositories/seasonRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { ensureCommissioner } from "./helpers.js";
 
 export function buildSeasonSettingsAllocationHandler(client: DbClient) {
-  return async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+  return async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     try {
       const seasonId = Number(req.params.id);
       const { remainder_strategy } = req.body ?? {};
@@ -32,7 +42,11 @@ export function buildSeasonSettingsAllocationHandler(client: DbClient) {
 
         const draft = await getDraftBySeasonId(tx, season.id);
         if (draft && draft.status !== "PENDING") {
-          throw new AppError("ALLOCATION_LOCKED", 409, "Cannot change allocation after draft has started");
+          throw new AppError(
+            "ALLOCATION_LOCKED",
+            409,
+            "Cannot change allocation after draft has started"
+          );
         }
 
         const updated =
@@ -50,4 +64,3 @@ export function buildSeasonSettingsAllocationHandler(client: DbClient) {
     }
   };
 }
-

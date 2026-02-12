@@ -15,7 +15,9 @@ export function PageHeader(props: {
           </Title>
           {props.right ? <Box>{props.right}</Box> : null}
         </Group>
-        {props.subtitle ? <Text className="baseline-textBody">{props.subtitle}</Text> : null}
+        {props.subtitle ? (
+          <Text className="baseline-textBody">{props.subtitle}</Text>
+        ) : null}
       </Stack>
     </Box>
   );

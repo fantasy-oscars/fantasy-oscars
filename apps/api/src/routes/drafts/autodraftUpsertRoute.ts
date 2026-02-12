@@ -9,4 +9,3 @@ export function registerDraftAutodraftUpsertRoute(args: {
   const { router, pool } = args;
   router.post("/:id/autodraft", buildUpsertDraftAutodraftHandler(pool));
 }
-

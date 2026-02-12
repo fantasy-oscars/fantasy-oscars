@@ -1,7 +1,10 @@
 import type { Pool } from "pg";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
-import type { DraftPickRecord, DraftRecord } from "../../data/repositories/draftRepository.js";
+import type {
+  DraftPickRecord,
+  DraftRecord
+} from "../../data/repositories/draftRepository.js";
 import {
   completeDraftIfReady,
   createDraftEvent,
@@ -23,9 +26,15 @@ import {
 import { getWisdomBenchmarkForCeremony } from "../../data/repositories/wisdomBenchmarkRepository.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 import { computePickAssignment } from "../../domain/draftOrder.js";
-import { resolvePicksPerSeat, resolveTotalRequiredPicks } from "../../domain/draftPickRules.js";
+import {
+  resolvePicksPerSeat,
+  resolveTotalRequiredPicks
+} from "../../domain/draftPickRules.js";
 import { computeDeadline } from "../../domain/draftPickRules.js";
-import { resolveStrategy, type AutoPickConfig } from "../../domain/autodraftStrategies.js";
+import {
+  resolveStrategy,
+  type AutoPickConfig
+} from "../../domain/autodraftStrategies.js";
 import {
   chooseAlphabetical,
   chooseAlphabeticalThenCategory,
@@ -464,4 +473,3 @@ export async function runImmediateAutodraftIfEnabled(args: {
   if (!pickNumber) return;
   scheduleUserAutodraft({ pool, draftId, pickNumber });
 }
-

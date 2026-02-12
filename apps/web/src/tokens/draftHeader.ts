@@ -10,4 +10,3 @@ export const DRAFT_HEADER_NONCOMPACT_EXTRA_PX = 72;
 export const DRAFT_BUCKLE_MAX_PX = 360;
 export const DRAFT_BUCKLE_MIN_PX = 200;
 export const DRAFT_BUCKLE_VW_FRACTION = 0.25;
-

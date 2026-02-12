@@ -63,7 +63,12 @@ export function ParticipantStrip(props: {
   }
 
   return (
-    <Group className="drh-strip" gap="var(--fo-space-8)" wrap="nowrap" ref={props.containerRef}>
+    <Group
+      className="drh-strip"
+      gap="var(--fo-space-8)"
+      wrap="nowrap"
+      ref={props.containerRef}
+    >
       {headHidden > 0 && (
         <Tooltip
           events={NOMINEE_TOOLTIP_EVENTS}
@@ -78,7 +83,11 @@ export function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" tabIndex={0} aria-label={`${headHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${headHidden} more`}
+          >
             <Text className="drh-overflowText">+{headHidden}</Text>
           </Box>
         </Tooltip>
@@ -115,7 +124,11 @@ export function ParticipantStrip(props: {
             </Box>
           }
         >
-          <Box className="drh-token drh-overflow" tabIndex={0} aria-label={`${tailHidden} more`}>
+          <Box
+            className="drh-token drh-overflow"
+            tabIndex={0}
+            aria-label={`${tailHidden} more`}
+          >
             <Text className="drh-overflowText">+{tailHidden}</Text>
           </Box>
         </Tooltip>

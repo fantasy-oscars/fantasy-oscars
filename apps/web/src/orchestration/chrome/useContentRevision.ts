@@ -27,4 +27,3 @@ export function useContentRevision(): number {
 
   return rev;
 }
-

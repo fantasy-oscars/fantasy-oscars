@@ -7,7 +7,12 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "../nomineeTooltip";
-import type { AutoDraftState, DraftLedgerRow, DraftNomineeMeta, DraftRosterPick } from "../types";
+import type {
+  AutoDraftState,
+  DraftLedgerRow,
+  DraftNomineeMeta,
+  DraftRosterPick
+} from "../types";
 
 type MobileDraftRailOrchestration = {
   ledger: { rows: DraftLedgerRow[] };
@@ -231,7 +236,9 @@ export function MobileRail(props: {
         {o.autodraft.strategy === "custom" ? (
           <Select
             label="Plan"
-            placeholder={o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"}
+            placeholder={
+              o.autodraft.plans.length === 0 ? "No plans available" : "Choose…"
+            }
             value={o.autodraft.selectedPlanId ? String(o.autodraft.selectedPlanId) : null}
             onChange={(v) => o.autodraft.setSelectedPlanId(v ? Number(v) : null)}
             data={o.autodraft.plans.map((p) => ({
@@ -255,12 +262,18 @@ export function MobileRail(props: {
                   const isDrafted = props.draftedNominationIds.has(item.nominationId);
                   const pill = (
                     <Box
-                      className={["dr-pill", "dr-pill-static", isDrafted ? "is-muted" : ""]
+                      className={[
+                        "dr-pill",
+                        "dr-pill-static",
+                        isDrafted ? "is-muted" : ""
+                      ]
                         .filter(Boolean)
                         .join(" ")}
                       tabIndex={nominee ? 0 : undefined}
                       role={nominee ? "group" : undefined}
-                      aria-label={nominee ? `${nominee.categoryName}: ${item.label}` : undefined}
+                      aria-label={
+                        nominee ? `${nominee.categoryName}: ${item.label}` : undefined
+                      }
                     >
                       {nominee ? (
                         <DraftCategoryIcon

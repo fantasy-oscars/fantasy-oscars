@@ -2,7 +2,11 @@ import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
-import { getLeagueById, getLeagueMember, listLeagueRoster } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember,
+  listLeagueRoster
+} from "../../data/repositories/leagueRepository.js";
 
 export function registerLeagueMembersListRoute(args: {
   router: express.Router;
@@ -37,4 +41,3 @@ export function registerLeagueMembersListRoute(args: {
     }
   );
 }
-

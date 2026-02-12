@@ -70,11 +70,9 @@ export function registerAdminNominationDeleteRoute(args: {
           }
 
           // Remove dependent rows first (no ON DELETE CASCADE on these FKs).
-          await query(
-            tx,
-            `DELETE FROM nomination_contributor WHERE nomination_id = $1`,
-            [nominationId]
-          );
+          await query(tx, `DELETE FROM nomination_contributor WHERE nomination_id = $1`, [
+            nominationId
+          ]);
           await query(
             tx,
             `DELETE FROM nomination_change_audit WHERE nomination_id = $1`,
@@ -132,4 +130,3 @@ export function registerAdminNominationDeleteRoute(args: {
     }
   );
 }
-

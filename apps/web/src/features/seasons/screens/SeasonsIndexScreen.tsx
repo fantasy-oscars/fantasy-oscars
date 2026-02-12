@@ -4,7 +4,10 @@ import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 import type { SeasonIndexCard, SeasonsIndexView } from "@/orchestration/seasonsIndex";
-import { computeSeasonsIndexGrouping, type SeasonsIndexGroupMode } from "@/decisions/seasonsIndex";
+import {
+  computeSeasonsIndexGrouping,
+  type SeasonsIndexGroupMode
+} from "@/decisions/seasonsIndex";
 
 export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
   const { view } = props;

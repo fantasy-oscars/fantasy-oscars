@@ -31,9 +31,14 @@ export function registerAdminPeopleUpdateRoute({
               : NaN;
 
       if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-        throw new AppError("VALIDATION_FAILED", 400, "tmdb_id must be a positive integer", {
-          fields: ["tmdb_id"]
-        });
+        throw new AppError(
+          "VALIDATION_FAILED",
+          400,
+          "tmdb_id must be a positive integer",
+          {
+            fields: ["tmdb_id"]
+          }
+        );
       }
 
       const result = await runInTransaction(client as Pool, async (tx) => {
@@ -139,4 +144,3 @@ export function registerAdminPeopleUpdateRoute({
     }
   });
 }
-

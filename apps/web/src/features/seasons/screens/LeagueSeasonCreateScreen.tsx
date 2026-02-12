@@ -1,15 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Group,
-  NumberInput,
-  Select,
-  Stack,
-  Switch,
-  Text,
-  Title
-} from "@ui";
+import { Box, Button, Group, NumberInput, Select, Stack, Switch, Text, Title } from "@ui";
 import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
 import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";

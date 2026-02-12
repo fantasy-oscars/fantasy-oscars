@@ -153,7 +153,10 @@ export function DraftBoardHeader(props: {
   const buckleMaxPx = useMemo(() => {
     // Defensive default: ~25% of viewport, clamped.
     const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-    return Math.min(DRAFT_BUCKLE_MAX_PX, Math.max(DRAFT_BUCKLE_MIN_PX, Math.floor(vw * DRAFT_BUCKLE_VW_FRACTION)));
+    return Math.min(
+      DRAFT_BUCKLE_MAX_PX,
+      Math.max(DRAFT_BUCKLE_MIN_PX, Math.floor(vw * DRAFT_BUCKLE_VW_FRACTION))
+    );
   }, []);
 
   useEffect(() => {
@@ -182,7 +185,9 @@ export function DraftBoardHeader(props: {
         const limit = half - buckleHalf - (prev ? exitPad : enterPad);
         const needsCompact = leftW > limit || rightW > limit;
         if (!prev) {
-          nonCompactNeededWidthRef.current = Math.ceil(leftW + rightW + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX);
+          nonCompactNeededWidthRef.current = Math.ceil(
+            leftW + rightW + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
+          );
           return needsCompact;
         }
         // When compact, require more headroom before switching back.
@@ -217,7 +222,9 @@ export function DraftBoardHeader(props: {
         const limit = half - buckleHalf - (prev ? exitPad : enterPad);
         const needsCompact = l.width > limit || r.width > limit;
         if (!prev) {
-          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX);
+          nonCompactNeededWidthRef.current = Math.ceil(
+            l.width + r.width + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
+          );
           return needsCompact;
         }
         return needsCompact ? true : false;
@@ -291,7 +298,11 @@ export function DraftBoardHeader(props: {
             className={[
               isPre ? "is-pre" : "",
               countdownActive ? "is-countdown" : "",
-              countdownActive ? (countdownPhase === "red" ? "pulse-red" : "pulse-gold") : ""
+              countdownActive
+                ? countdownPhase === "red"
+                  ? "pulse-red"
+                  : "pulse-gold"
+                : ""
             ]
               .filter(Boolean)
               .join(" ")}

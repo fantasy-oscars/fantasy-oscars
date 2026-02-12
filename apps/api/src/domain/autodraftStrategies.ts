@@ -161,4 +161,3 @@ export function chooseCustomUser(
   const match = userList.find((id) => availableIds.includes(id));
   return match ?? undefined;
 }
-

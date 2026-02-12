@@ -4,10 +4,17 @@ import { AppError, validationError } from "../../errors.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
-import { getLeagueById, getLeagueMember, listLeagueRoster } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember,
+  listLeagueRoster
+} from "../../data/repositories/leagueRepository.js";
 import { createExtantSeason } from "../../data/repositories/seasonRepository.js";
 import { addSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
-import { createDraft, getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
+import {
+  createDraft,
+  getDraftBySeasonId
+} from "../../data/repositories/draftRepository.js";
 
 export function registerLeagueSeasonsCreateRoute(args: {
   router: express.Router;
@@ -30,31 +37,45 @@ export function registerLeagueSeasonsCreateRoute(args: {
 
         const ceremonyIdRaw = req.body?.ceremony_id;
         const ceremonyId =
-          ceremonyIdRaw === undefined || ceremonyIdRaw === null ? null : Number(ceremonyIdRaw);
+          ceremonyIdRaw === undefined || ceremonyIdRaw === null
+            ? null
+            : Number(ceremonyIdRaw);
 
         const scoringRaw = req.body?.scoring_strategy_name;
         const scoringStrategy =
           scoringRaw === undefined || scoringRaw === null ? "fixed" : String(scoringRaw);
         if (!["fixed", "negative", "category_weighted"].includes(scoringStrategy)) {
-          throw validationError("Invalid scoring_strategy_name", ["scoring_strategy_name"]);
+          throw validationError("Invalid scoring_strategy_name", [
+            "scoring_strategy_name"
+          ]);
         }
 
         const remainderRaw = req.body?.remainder_strategy;
         const remainderStrategy =
-          remainderRaw === undefined || remainderRaw === null ? "UNDRAFTED" : String(remainderRaw);
+          remainderRaw === undefined || remainderRaw === null
+            ? "UNDRAFTED"
+            : String(remainderRaw);
         if (!["UNDRAFTED", "FULL_POOL"].includes(remainderStrategy)) {
           throw validationError("Invalid remainder_strategy", ["remainder_strategy"]);
         }
 
         const timerRaw = req.body?.pick_timer_seconds;
-        const pickTimerSeconds = timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
-        if (pickTimerSeconds !== null && (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)) {
+        const pickTimerSeconds =
+          timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
+        if (
+          pickTimerSeconds !== null &&
+          (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
+        ) {
           throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
         }
 
         // Multi-ceremony: season creation must explicitly choose a ceremony.
         if (!ceremonyId || Number.isNaN(Number(ceremonyId))) {
-          throw new AppError("CEREMONY_REQUIRED", 409, "Ceremony is required to create a season");
+          throw new AppError(
+            "CEREMONY_REQUIRED",
+            409,
+            "Ceremony is required to create a season"
+          );
         }
 
         const ceremonyIdNum = Number(ceremonyId);
@@ -93,7 +114,11 @@ export function registerLeagueSeasonsCreateRoute(args: {
             [leagueId, ceremonyIdNum]
           );
           if (existingRows[0]?.id) {
-            throw new AppError("SEASON_EXISTS", 409, "An active season already exists for this ceremony");
+            throw new AppError(
+              "SEASON_EXISTS",
+              409,
+              "An active season already exists for this ceremony"
+            );
           }
 
           const season = await createExtantSeason(tx, {
@@ -107,7 +132,10 @@ export function registerLeagueSeasonsCreateRoute(args: {
             `UPDATE season SET scoring_strategy_name = $2, remainder_strategy = $3 WHERE id = $1`,
             [season.id, scoringStrategy, remainderStrategy]
           );
-          season.scoring_strategy_name = scoringStrategy as "fixed" | "negative" | "category_weighted";
+          season.scoring_strategy_name = scoringStrategy as
+            | "fixed"
+            | "negative"
+            | "category_weighted";
           season.remainder_strategy = remainderStrategy as "UNDRAFTED" | "FULL_POOL";
 
           // Seed season membership from current league roster so the season is immediately usable.
@@ -138,8 +166,11 @@ export function registerLeagueSeasonsCreateRoute(args: {
             completed_at: null,
             remainder_strategy: remainderStrategy as "UNDRAFTED" | "FULL_POOL",
             pick_timer_seconds:
-              pickTimerSeconds && pickTimerSeconds > 0 ? Math.floor(pickTimerSeconds) : null,
-            auto_pick_strategy: pickTimerSeconds && pickTimerSeconds > 0 ? "RANDOM_SEED" : null
+              pickTimerSeconds && pickTimerSeconds > 0
+                ? Math.floor(pickTimerSeconds)
+                : null,
+            auto_pick_strategy:
+              pickTimerSeconds && pickTimerSeconds > 0 ? "RANDOM_SEED" : null
           });
 
           return { season, draft };
@@ -152,4 +183,3 @@ export function registerLeagueSeasonsCreateRoute(args: {
     }
   );
 }
-

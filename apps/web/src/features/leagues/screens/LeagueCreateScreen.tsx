@@ -1,7 +1,7 @@
 import { FormField } from "@/shared/forms";
 import { Box, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 import { Button } from "@ui/Button";
 import classes from "./LeagueCreateScreen.module.css";
 

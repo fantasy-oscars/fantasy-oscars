@@ -5,7 +5,10 @@ import type { DbClient } from "../../data/db.js";
 import { listWinnersByCeremony } from "../../data/repositories/winnerRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminWinnersListRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminWinnersListRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.get(
@@ -24,4 +27,3 @@ export function registerAdminWinnersListRoute(args: { router: Router; client: Db
     }
   );
 }
-

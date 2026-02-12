@@ -50,4 +50,3 @@ export function useSeasonInviteeSearch(args: {
     };
   }, [canEdit, query, seasonId, setMatches, setSearching]);
 }
-

@@ -28,4 +28,3 @@ export function useCssVars<T extends HTMLElement>(
     };
   }, [ref, vars]);
 }
-

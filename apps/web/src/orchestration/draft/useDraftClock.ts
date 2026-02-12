@@ -10,4 +10,3 @@ export function useDraftClock() {
 
   return nowTs;
 }
-

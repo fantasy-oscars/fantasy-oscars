@@ -10,13 +10,14 @@ export function computeActiveLandingSeasonPreviews(
   seasonResults: Array<{ league: LeagueSummary; seasons: SeasonSummary[] }>,
   ceremonyNameById: Map<number, string>
 ): LandingSeasonPreview[] {
-  const allSeasons: LandingSeasonPreview[] = seasonResults.flatMap(({ league, seasons }) =>
-    seasons.map((s) => ({
-      ...s,
-      league_name: league.name,
-      league_code: league.code,
-      ceremony_name: ceremonyNameById.get(s.ceremony_id) ?? null
-    }))
+  const allSeasons: LandingSeasonPreview[] = seasonResults.flatMap(
+    ({ league, seasons }) =>
+      seasons.map((s) => ({
+        ...s,
+        league_name: league.name,
+        league_code: league.code,
+        ceremony_name: ceremonyNameById.get(s.ceremony_id) ?? null
+      }))
   );
 
   const activeSeasons = allSeasons
@@ -32,4 +33,3 @@ export function computeActiveLandingSeasonPreviews(
 
   return activeSeasons;
 }
-

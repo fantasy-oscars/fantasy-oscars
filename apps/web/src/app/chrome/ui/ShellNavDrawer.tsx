@@ -9,7 +9,14 @@ export function ShellNavDrawer(props: {
   onLogout: () => Promise<void>;
 }) {
   return (
-    <Drawer opened={props.opened} onClose={props.onClose} position="left" withinPortal={false} title="Menu" size="xs">
+    <Drawer
+      opened={props.opened}
+      onClose={props.onClose}
+      position="left"
+      withinPortal={false}
+      title="Menu"
+      size="xs"
+    >
       <Stack gap="sm">
         <Stack gap="var(--fo-space-0)">
           {props.primaryLinks.map((l) => (

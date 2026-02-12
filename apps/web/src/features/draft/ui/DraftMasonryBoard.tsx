@@ -31,7 +31,10 @@ export function DraftMasonryBoard(props: {
   >;
   keyboardCategoryId: string | null;
   setKeyboardCategoryId: (categoryId: string | null) => void;
-  firstPillRefByCategoryId?: Record<string, RefObject<HTMLButtonElement | null> | undefined>;
+  firstPillRefByCategoryId?: Record<
+    string,
+    RefObject<HTMLButtonElement | null> | undefined
+  >;
   canDraftAction: boolean;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;

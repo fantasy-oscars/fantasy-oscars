@@ -35,7 +35,7 @@
 
 - Add migration: create `database/migrations/NNN_description.sql` with the next unused numeric prefix.
 - Validate ordering: `pnpm run test:migrations` (part of `pnpm run ci`).
-- Apply in tests: automatic (see `apps/api/test/db.ts`).
+- Apply in tests: automatic (see `apps/api/tests/db.ts`).
 - Local DB (docker-compose): `pnpm run db:up` / `pnpm run db:down`.
 
 ## Links

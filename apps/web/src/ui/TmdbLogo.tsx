@@ -20,4 +20,3 @@ export function TmdbLogo(props: { className?: string; title?: string }) {
     </svg>
   );
 }
-

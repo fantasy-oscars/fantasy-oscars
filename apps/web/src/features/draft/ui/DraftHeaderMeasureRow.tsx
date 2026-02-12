@@ -100,7 +100,12 @@ export function DraftHeaderMeasureRow(props: {
         ) : null}
 
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-          <Button type="button" variant="subtle" className="theme-toggle" aria-hidden="true">
+          <Button
+            type="button"
+            variant="subtle"
+            className="theme-toggle"
+            aria-hidden="true"
+          >
             <Text component="span" className="gicon" aria-hidden="true">
               {props.themeIcon}
             </Text>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Divider, Text, Title } from "@ui";
-import "../../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AdminContentLayoutScreen(props: { children: ReactNode }) {
   return (

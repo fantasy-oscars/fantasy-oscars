@@ -9,4 +9,3 @@ export function registerSeasonSettingsScoringSeasonRoute(args: {
   const { router, client } = args;
   router.post("/seasons/:id/scoring", buildSeasonSettingsScoringHandler(client));
 }
-

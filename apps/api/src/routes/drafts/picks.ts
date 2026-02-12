@@ -20,7 +20,10 @@ import {
   updateDraftTimer
 } from "../../data/repositories/draftRepository.js";
 import type { DraftPickRecord } from "../../data/repositories/draftRepository.js";
-import { getLeagueById, getDraftSeatForUser } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getDraftSeatForUser
+} from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getCeremonyDraftLockedAt } from "../../data/repositories/ceremonyRepository.js";
 import { runInTransaction } from "../../data/db.js";
@@ -359,4 +362,3 @@ export function buildSubmitPickHandler(pool: Pool) {
     }
   };
 }
-

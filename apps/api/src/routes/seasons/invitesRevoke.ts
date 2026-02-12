@@ -42,7 +42,11 @@ export function registerSeasonInvitesRevokeRoute(args: {
 
         const revoked = await revokePendingPlaceholderInvite(client, seasonId, inviteId);
         if (!revoked) {
-          throw new AppError("INVITE_NOT_FOUND", 404, "Pending placeholder invite not found");
+          throw new AppError(
+            "INVITE_NOT_FOUND",
+            404,
+            "Pending placeholder invite not found"
+          );
         }
 
         return res.status(200).json({ invite: sanitizeInvite(revoked) });
@@ -52,4 +56,3 @@ export function registerSeasonInvitesRevokeRoute(args: {
     }
   );
 }
-

@@ -3,7 +3,10 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
 
-export function registerAdminCategoryFamiliesListRoute(args: { router: Router; client: DbClient }) {
+export function registerAdminCategoryFamiliesListRoute(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.get("/category-families", async (req: AuthedRequest, res, next) => {
@@ -38,4 +41,3 @@ export function registerAdminCategoryFamiliesListRoute(args: { router: Router; c
     }
   });
 }
-

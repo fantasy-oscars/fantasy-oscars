@@ -13,4 +13,3 @@ export function registerAdminNominationRoutes(router: Router, client: DbClient) 
   registerAdminNominationChangeRoute({ router, client });
   registerAdminNominationDeleteRoute({ router, client });
 }
-

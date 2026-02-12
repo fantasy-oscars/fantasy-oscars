@@ -86,7 +86,9 @@ export function registerLeaguesCreateRoute(args: {
             return { league, season: null };
           });
 
-          return res.status(201).json({ league: result.league, season: result.season ?? null });
+          return res
+            .status(201)
+            .json({ league: result.league, season: result.season ?? null });
         } catch (err: unknown) {
           lastErr = err;
           // Postgres unique_violation (e.g. league_code_key) => retry.
@@ -101,4 +103,3 @@ export function registerLeaguesCreateRoute(args: {
     }
   });
 }
-

@@ -9,4 +9,3 @@ export function registerSeasonSettingsTimerSeasonRoute(args: {
   const { router, client } = args;
   router.post("/seasons/:id/timer", buildSeasonSettingsTimerHandler(client));
 }
-

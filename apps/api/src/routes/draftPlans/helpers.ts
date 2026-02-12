@@ -21,4 +21,3 @@ export async function listDefaultNominationIdsForCeremony(
   );
   return rows.map((r) => r.id);
 }
-

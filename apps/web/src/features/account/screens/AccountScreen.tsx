@@ -1,6 +1,6 @@
 import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 
 export function AccountScreen(props: {
   username: string | null;

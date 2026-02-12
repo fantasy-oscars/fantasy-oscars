@@ -3,7 +3,10 @@ import type { Pool } from "pg";
 import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { getActiveCeremonyId } from "../../data/repositories/appConfigRepository.js";
-import { getLeagueById, getLeagueMember } from "../../data/repositories/leagueRepository.js";
+import {
+  getLeagueById,
+  getLeagueMember
+} from "../../data/repositories/leagueRepository.js";
 import {
   createSeason,
   getExtantSeasonForLeague,
@@ -31,13 +34,21 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
 
         const ceremonyIdRaw = req.body?.ceremony_id;
         const ceremonyId =
-          ceremonyIdRaw === undefined || ceremonyIdRaw === null ? null : Number(ceremonyIdRaw);
+          ceremonyIdRaw === undefined || ceremonyIdRaw === null
+            ? null
+            : Number(ceremonyIdRaw);
 
         // Back-compat: if no ceremony_id provided, fall back to the legacy single-active ceremony.
-        const fallbackActiveCeremonyId = ceremonyId ? null : await getActiveCeremonyId(client);
+        const fallbackActiveCeremonyId = ceremonyId
+          ? null
+          : await getActiveCeremonyId(client);
         const chosenCeremonyId = ceremonyId ?? fallbackActiveCeremonyId;
         if (!chosenCeremonyId || Number.isNaN(Number(chosenCeremonyId))) {
-          throw new AppError("CEREMONY_REQUIRED", 409, "Ceremony is required to create a season");
+          throw new AppError(
+            "CEREMONY_REQUIRED",
+            409,
+            "Ceremony is required to create a season"
+          );
         }
 
         const ceremonyIdNum = Number(chosenCeremonyId);
@@ -71,7 +82,11 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
 
           const existing = await getExtantSeasonForLeague(tx, leagueId);
           if (existing && existing.ceremony_id === ceremonyIdNum) {
-            throw new AppError("SEASON_EXISTS", 409, "An active season already exists for this ceremony");
+            throw new AppError(
+              "SEASON_EXISTS",
+              409,
+              "An active season already exists for this ceremony"
+            );
           }
 
           const prior = await getMostRecentSeason(tx, leagueId);
@@ -97,4 +112,3 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
     }
   );
 }
-

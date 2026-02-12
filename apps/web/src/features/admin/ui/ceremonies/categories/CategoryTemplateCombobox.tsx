@@ -14,7 +14,7 @@ export function CategoryTemplateCombobox(props: {
     onDropdownClose: () => combobox.resetSelectedOption()
   });
 
-  const selectedLabel = value ? options.find((o) => o.value === value)?.name ?? "" : "";
+  const selectedLabel = value ? (options.find((o) => o.value === value)?.name ?? "") : "";
 
   return (
     <Box className="admin-add-select">

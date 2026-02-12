@@ -51,7 +51,10 @@ export function registerSeasonInvitesCreateRoute(args: {
         let token = "";
         for (let attempt = 0; attempt < 5; attempt++) {
           const candidateToken = crypto.randomBytes(24).toString("base64url");
-          const tokenHash = crypto.createHash("sha256").update(candidateToken).digest("hex");
+          const tokenHash = crypto
+            .createHash("sha256")
+            .update(candidateToken)
+            .digest("hex");
           try {
             invite = await createPlaceholderInvite(client, {
               season_id: seasonId,
@@ -85,4 +88,3 @@ export function registerSeasonInvitesCreateRoute(args: {
     }
   );
 }
-

@@ -39,7 +39,8 @@ export function SeasonScreen(props: {
     (ceremonyId ? `Ceremony ${ceremonyId}` : `Ceremony`);
 
   const progression = useMemo(
-    () => computeSeasonProgression({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
+    () =>
+      computeSeasonProgression({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
     [s.draftStatus, s.isArchived]
   );
 
@@ -199,7 +200,9 @@ export function SeasonScreen(props: {
             weights={weights.weightsDraft}
             setWeights={weights.setWeightsDraft}
             onSave={async (nextWeights) => {
-              await s.updateScoring("category_weighted", { categoryWeights: nextWeights });
+              await s.updateScoring("category_weighted", {
+                categoryWeights: nextWeights
+              });
               weights.setWeightsOpen(false);
             }}
           />

@@ -8,5 +8,4 @@ export function registerAdminWinnerRoutes(router: Router, client: DbClient) {
   registerAdminWinnersListRoute({ router, client });
   registerAdminWinnersUpsertRoute({ router, client });
   registerAdminWinnersFinalizeRoute({ router, client });
-
 }

@@ -9,4 +9,3 @@ export function registerDraftOverrideLockRoute(args: {
   const { router, pool } = args;
   router.post("/:id/override-lock", buildOverrideDraftLockHandler(pool));
 }
-

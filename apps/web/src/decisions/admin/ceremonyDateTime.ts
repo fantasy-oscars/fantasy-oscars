@@ -15,4 +15,3 @@ export function localInputToIso(local: string): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }
-

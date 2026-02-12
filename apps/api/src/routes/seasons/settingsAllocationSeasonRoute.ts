@@ -9,4 +9,3 @@ export function registerSeasonSettingsAllocationSeasonRoute(args: {
   const { router, client } = args;
   router.post("/seasons/:id/allocation", buildSeasonSettingsAllocationHandler(client));
 }
-

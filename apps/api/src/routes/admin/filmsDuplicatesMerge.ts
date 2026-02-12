@@ -45,9 +45,14 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           )
         ).filter((id) => id !== canonicalId);
         if (duplicateIds.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "No valid duplicate_ids provided", {
-            fields: ["duplicate_ids"]
-          });
+          throw new AppError(
+            "VALIDATION_FAILED",
+            400,
+            "No valid duplicate_ids provided",
+            {
+              fields: ["duplicate_ids"]
+            }
+          );
         }
 
         const actorId = Number(req.auth?.sub) || null;
@@ -65,7 +70,8 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
             [canonicalId]
           );
           const canonical = canonicalRows[0];
-          if (!canonical) throw new AppError("NOT_FOUND", 404, "Canonical film not found");
+          if (!canonical)
+            throw new AppError("NOT_FOUND", 404, "Canonical film not found");
 
           const { rows: dupRows } = await query<{
             id: number;
@@ -83,9 +89,14 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           const foundIds = new Set(dupRows.map((r) => r.id));
           const missing = duplicateIds.filter((id) => !foundIds.has(id));
           if (missing.length > 0) {
-            throw new AppError("NOT_FOUND", 404, "One or more duplicate films not found", {
-              missing_ids: missing
-            });
+            throw new AppError(
+              "NOT_FOUND",
+              404,
+              "One or more duplicate films not found",
+              {
+                missing_ids: missing
+              }
+            );
           }
 
           for (const d of dupRows) {
@@ -218,4 +229,3 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
     }
   );
 }
-

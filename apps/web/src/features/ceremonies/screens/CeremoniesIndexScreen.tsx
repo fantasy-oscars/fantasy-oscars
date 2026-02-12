@@ -1,7 +1,7 @@
 import { Box, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
-import "../../primitives/baseline.css";
+import "@/primitives/baseline.css";
 import type { CeremonyIndexRow } from "@/orchestration/ceremonies";
 
 function yearFromIso(iso: string | null): string {
