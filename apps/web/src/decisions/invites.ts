@@ -10,3 +10,17 @@ export function mapInviteError(code?: string, fallback?: string) {
       return fallback ?? "Invite is invalid or expired";
   }
 }
+
+export function inviteContextLine(args: {
+  leagueName?: string | null;
+  leagueId?: number | null;
+  seasonId?: number | null;
+}): string {
+  const left = args.leagueName
+    ? args.leagueName
+    : args.leagueId
+      ? `League ${args.leagueId}`
+      : "League";
+  const right = args.seasonId ? `Season ${args.seasonId}` : "Season";
+  return `${left} · ${right}`;
+}

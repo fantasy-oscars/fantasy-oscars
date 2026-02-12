@@ -1,36 +1,76 @@
-# Draft Room Layout Constraints
+# Draft Room Layout
 
-Milestone: Playable Draft MVP  
-Scope: Layout constraints only (not a full design system spec)
+This document captures the *structural* layout constraints for the draft room UI.
+It is not a visual style guide.
 
-## Density Assumptions
+## Core frame
 
-- Desktop-first grid with two primary columns in the draft view: left = summary + seats, right = picks + actions. Keep total width under ~1100px to avoid horizontal scroll on common laptop widths.
-- Nominee pill baseline from #41: single-line truncation; pill height ~36–40px; horizontal padding ~12px; icon/flag optional without changing height.
-- List density: pick list and seat list use 8–12px vertical spacing; avoid card-within-card padding bloat.
-- Status/pill rows should remain readable at 14–16px body text; headings 16–18px; avoid larger than 20px in the draft panel to preserve density.
+- The draft room is full-width.
+- The header and footer are fixed in-frame.
+- The area between header and footer ("draft area") scrolls vertically.
+- Each rail and each major body region should be able to scroll vertically *independently*.
 
-## Non‑Negotiable Sizing Constraints
+## Unit grid (desktop)
 
-- **Seat list**: row height ≤ 44px; text truncates, not wraps. Seat number + member id/name must fit within ~220px container.
-- **Pick list**: each pick row height ≤ 48px; pick number, seat, nomination id/name on a single line with ellipsis for long names.
-- **Nominee pills**: height 36–40px; max width ~240px before truncation; must remain stable when state changes (default/active/picked/disabled).
-- **Control cluster**: Load/Refresh/Start/Pick buttons stay on a single line on ≥1024px; buttons max width 140px; min touch target 40px height.
-- **Draft summary**: status + current pick text fits within 320px width; no wrapping of the “Current pick / Version” line.
-- **Error/success toasts** (inline status blocks): max height 2 lines; text truncates; avoid pushing core controls below the fold.
+We express horizontal layout in "units".
 
-## Interaction Notes
+- A unit is: `frameWidth / divisor`
+- Base divisor: `7.75`
+- Minimum divisor before switching to a mobile layout: `4.75`
 
-- Start Draft: only visible when snapshot status = PENDING; stays above the fold in the summary area; shows inline success/error state without navigating away.
-- Pick entry: nomination id input + submit button on one line at desktop; stack vertically on <640px.
-- Refresh/Retry actions must remain visible without scrolling the pick list.
+### Rails
 
-## Mobile/Responsive Guardrails (MVP)
+There are three rails:
 
-- Below 768px: stack columns (summary/seats above picks/actions); maintain 16px outer padding.
-- Text sizes may drop to 14px; keep buttons ≥40px height and full‑width within their stacked section.
+- Draft history (left)
+- My roster (right)
+- Auto-draft (rightmost)
 
-## Accessibility/Robustness
+Rail widths are expressed in units:
 
-- All truncation uses `text-overflow: ellipsis`; no hidden content without a tooltip or title attribute.
-- Avoid horizontal scroll in the draft card; vertical scroll is acceptable inside pick lists.
+- Expanded: `1.25u`
+- Collapsed: `0.25u`
+
+With 3 rails expanded, the remaining center area is `4.0u` (four category columns).
+Each time a rail collapses, exactly `+1.0u` is freed into the center area.
+
+### Spacing (padding comes from allocation)
+
+Spacing is subtracted from each unit's allocation (it is not additive).
+
+For a reference padding of 10px:
+
+- Left rail: subtract 5px from the **right** edge.
+- Category columns: subtract 5px from **both** left and right edges (10px total).
+- First right rail ("My roster"): subtract 5px from the **left** edge.
+- Final right rail ("Auto-draft"): no horizontal padding subtraction.
+
+Net effect:
+
+- Gap between rails and the body is larger than the gap between body columns.
+- Gap between columns is smaller and consistent.
+
+## Category board (masonry)
+
+- The board renders one category card per category.
+- Category cards are placed into N columns using a masonry strategy:
+  - Each card is placed at the top of the column with the lowest current height.
+  - Column count is derived from available center units (rails expanded/collapsed).
+
+## Responsive behavior (non-mobile)
+
+- The header composition is independent from the body layout.
+- When the header cannot fit the full control cluster, it switches to a compact header
+  pattern (burger/gear), even if the body can still render multiple columns.
+
+## Mobile layout (high level)
+
+Mobile uses a different interaction model:
+
+- Rails are opened via a 3-button bottom bar (one per rail).
+- Only one rail is visible at a time on mobile; a selected rail fills the screen.
+- With rails closed, categories render in a single column.
+  - The mobile header becomes a compact top bar:
+    - Left: burger menu
+    - Middle: round/time/pick (time is emphasized)
+    - Right: gear menu

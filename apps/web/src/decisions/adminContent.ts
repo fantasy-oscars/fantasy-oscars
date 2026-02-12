@@ -89,3 +89,7 @@ export function localInputToIso(value: string): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
 }
+
+export function cmsDynamicEntryStatusLabel(status: string): "Active" | "Inactive" {
+  return status === "PUBLISHED" ? "Active" : "Inactive";
+}

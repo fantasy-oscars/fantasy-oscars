@@ -77,7 +77,6 @@ async function main() {
       .catch(() => {});
 
     await client.query("COMMIT");
-    // eslint-disable-next-line no-console
     console.log(
       JSON.stringify(
         { ok: true, user: { id: user.id, username: user.username, email: user.email } },
@@ -95,7 +94,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

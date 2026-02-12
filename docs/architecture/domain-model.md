@@ -4,7 +4,7 @@
 
 - Core entities: ceremony, category family/edition, nomination (+ contributors), app user/auth, league, league member, draft, draft seat, draft pick, and supporting catalog (icon, film/song/performance, person).
 - Invariants: nomination has exactly one subject (film OR song OR performance); unique category edition per ceremony/family; one draft per league; unique draft seats per draft/seat and draft/member; draft picks unique per draft pick_number, per draft nomination, and per (round, seat); league membership unique per league/user.
-- Sources of truth: schema `db/migrations/001_init.sql`, test factories (`apps/api/test/factories`), and ADR [0001-domain-model.md](../adr/0001-domain-model.md).
+- Sources of truth: schema `database/migrations/001_init.sql`, test factories (`apps/api/tests/factories`), and ADR [0001-domain-model.md](../adr/0001-domain-model.md).
 
 ## Entities and Relationships
 
@@ -34,11 +34,11 @@
 ## Usage Guidance
 
 - Centralize rules in schema and shared helpers; avoid ad-hoc UI/API logic that drifts.
-- Use factories (`apps/api/test/factories`) to mirror the canonical shapes in tests.
+- Use factories (`apps/api/tests/factories`) to mirror the canonical shapes in tests.
 - Schema changes that alter these entities/invariants require ADR updates.
 
 ## Links
 
 - ADR: [0001-domain-model.md](../adr/0001-domain-model.md)
-- Schema: [db/migrations/001_init.sql](../../db/migrations/001_init.sql)
-- Factories: [apps/api/test/factories](../../apps/api/test/factories)
+- Schema: [database/migrations/001_init.sql](../../database/migrations/001_init.sql)
+- Factories: [apps/api/tests/factories](../../apps/api/tests/factories)

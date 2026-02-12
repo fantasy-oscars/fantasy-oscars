@@ -16,6 +16,7 @@ import {
   registerCeremonyEventEmitter
 } from "./realtime/ceremonyEvents.js";
 import { startDraftSweeper } from "./services/draftSweeper.js";
+import { log } from "./logger.js";
 
 const config = loadConfig();
 const app = createServer();
@@ -41,8 +42,7 @@ if (config.realtimeEnabled) {
 }
 
 httpServer.listen(config.port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${config.port}`);
+  log({ level: "info", msg: "startup", port: config.port });
 });
 
 // Server-side timer enforcement: ensures timed drafts progress even if no clients are open.

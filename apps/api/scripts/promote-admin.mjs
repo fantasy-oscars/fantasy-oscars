@@ -34,7 +34,6 @@ async function main() {
     if (!res.rows[0]) {
       throw new Error(`User not found: ${normalizedUsername}`);
     }
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify({ ok: true, user: res.rows[0] }, null, 2));
   } finally {
     client.release();
@@ -43,7 +42,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

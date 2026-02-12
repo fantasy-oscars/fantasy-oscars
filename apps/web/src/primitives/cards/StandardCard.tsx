@@ -1,7 +1,8 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 
 export type StandardCardProps = {
   interactive?: boolean;
+  tone?: "default" | "nested";
   className?: string;
   children?: React.ReactNode;
   // Polymorphic props (Link, button, etc.) are passed through to Mantine Box.
@@ -9,10 +10,11 @@ export type StandardCardProps = {
 };
 
 export function StandardCard(props: StandardCardProps) {
-  const { interactive, className, ...rest } = props;
+  const { interactive, tone = "default", className, ...rest } = props;
   return (
     <Box
       {...rest}
+      data-tone={tone}
       className={[
         "baseline-card",
         "baseline-standardCard",

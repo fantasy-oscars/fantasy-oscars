@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 
 import { log } from "../logger.js";
-import { tickDraft } from "../routes/drafts.js";
+import { tickDraft } from "../routes/drafts/runtime.js";
 
 function parseOptionalBool(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined || value.trim() === "") return fallback;
