@@ -1,6 +1,6 @@
 import { confirm } from "@/notifications/confirm";
 import { useAdminCategoryTemplatesOrchestration } from "@/orchestration/adminCategoryTemplates";
-import { AdminCategoryTemplatesScreen } from "@/screens/admin/categoryTemplates/AdminCategoryTemplatesScreen";
+import { AdminCategoryTemplatesScreen } from "@/features/admin/screens/categoryTemplates/AdminCategoryTemplatesScreen";
 
 export function AdminCategoryTemplatesPage() {
   const o = useAdminCategoryTemplatesOrchestration();

@@ -1,5 +1,5 @@
 import { useStaticContentOrchestration } from "@/orchestration/content";
-import { StaticContentScreen } from "@/screens/content/StaticContentScreen";
+import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function CodeOfConductPage() {
   const { view } = useStaticContentOrchestration("code_of_conduct");

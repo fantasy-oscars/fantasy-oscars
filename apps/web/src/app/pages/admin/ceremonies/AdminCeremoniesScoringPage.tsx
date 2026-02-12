@@ -1,4 +1,4 @@
-import { AdminCeremoniesScoringScreen } from "@/screens/admin/ceremonies/AdminCeremoniesScoringScreen";
+import { AdminCeremoniesScoringScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesScoringScreen";
 
 export function AdminCeremoniesScoringPage() {
   return <AdminCeremoniesScoringScreen />;

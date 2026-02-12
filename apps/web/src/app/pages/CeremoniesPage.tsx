@@ -1,5 +1,5 @@
 import { useCeremoniesIndexOrchestration } from "@/orchestration/ceremonies";
-import { CeremoniesIndexScreen } from "@/screens/ceremonies/CeremoniesIndexScreen";
+import { CeremoniesIndexScreen } from "@/features/ceremonies/screens/CeremoniesIndexScreen";
 
 export function CeremoniesPage() {
   const o = useCeremoniesIndexOrchestration();

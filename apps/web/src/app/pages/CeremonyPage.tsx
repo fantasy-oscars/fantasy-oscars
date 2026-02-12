@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useCeremonyDetailOrchestration } from "@/orchestration/ceremonies";
-import { CeremonyDetailScreen } from "@/screens/ceremonies/CeremonyDetailScreen";
+import { CeremonyDetailScreen } from "@/features/ceremonies/screens/CeremonyDetailScreen";
 
 export function CeremonyPage() {
   const { id: idRaw } = useParams();

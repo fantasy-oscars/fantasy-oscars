@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { useRegisterOrchestration } from "@/orchestration/auth";
-import { RegisterScreen } from "@/screens/auth/RegisterScreen";
+import { RegisterScreen } from "@/features/auth/screens/RegisterScreen";
 
 export function RegisterPage() {
   const { register } = useAuthContext();

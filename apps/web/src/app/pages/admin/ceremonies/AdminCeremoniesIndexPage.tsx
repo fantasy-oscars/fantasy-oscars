@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAdminCeremoniesIndexOrchestration } from "@/orchestration/adminCeremonies";
-import { AdminCeremoniesIndexScreen } from "@/screens/admin/ceremonies/AdminCeremoniesIndexScreen";
+import { AdminCeremoniesIndexScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesIndexScreen";
 import { notify } from "@/notifications";
 
 export function AdminCeremoniesIndexPage() {

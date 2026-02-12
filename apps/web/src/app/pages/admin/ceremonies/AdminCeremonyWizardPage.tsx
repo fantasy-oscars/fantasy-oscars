@@ -10,7 +10,7 @@ import {
   isCeremonyStatus
 } from "@/decisions/admin/ceremonyWizard";
 
-import { AdminCeremonyWizardScreen } from "@/screens/admin/ceremonies/AdminCeremonyWizardScreen";
+import { AdminCeremonyWizardScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyWizardScreen";
 import { AdminCeremoniesOverviewPage } from "./AdminCeremoniesOverviewPage";
 import { AdminCeremoniesCategoriesPage } from "./AdminCeremoniesCategoriesPage";
 import { AdminCeremoniesNomineesPage } from "./AdminCeremoniesNomineesPage";

@@ -1,6 +1,6 @@
 import { useAdminFilmDuplicatesOrchestration } from "@/orchestration/adminFilmsDuplicates";
 import { confirm } from "@/notifications";
-import { AdminFilmDuplicatesScreen } from "@/screens/admin/films/AdminFilmDuplicatesScreen";
+import { AdminFilmDuplicatesScreen } from "@/features/admin/screens/films/AdminFilmDuplicatesScreen";
 
 export function AdminFilmsPage() {
   const o = useAdminFilmDuplicatesOrchestration();

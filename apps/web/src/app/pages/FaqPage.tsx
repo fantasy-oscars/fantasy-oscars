@@ -1,5 +1,5 @@
 import { useStaticContentOrchestration } from "@/orchestration/content";
-import { StaticContentScreen } from "@/screens/content/StaticContentScreen";
+import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function FaqPage() {
   const { view } = useStaticContentOrchestration("faq");

@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { AdminContentLayoutScreen } from "@/screens/admin/content/AdminContentLayoutScreen";
+import { AdminContentLayoutScreen } from "@/features/admin/screens/content/AdminContentLayoutScreen";
 
 export function AdminContentLayout() {
   return (

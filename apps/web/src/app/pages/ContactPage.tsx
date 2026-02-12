@@ -1,4 +1,4 @@
-import { ContactScreen } from "@/screens/static/ContactScreen";
+import { ContactScreen } from "@/features/static/screens/ContactScreen";
 
 export function ContactPage() {
   return <ContactScreen />;

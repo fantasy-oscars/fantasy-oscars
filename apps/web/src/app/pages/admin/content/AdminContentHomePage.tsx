@@ -1,4 +1,4 @@
-import { AdminContentHomeScreen } from "@/screens/admin/content/AdminContentHomeScreen";
+import { AdminContentHomeScreen } from "@/features/admin/screens/content/AdminContentHomeScreen";
 
 export function AdminContentHomePage() {
   return <AdminContentHomeScreen />;

@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import type { DynamicKey } from "@/decisions/adminContent";
 import { useAdminDynamicContentEditorOrchestration } from "@/orchestration/adminContent";
-import { AdminDynamicContentEditorScreen } from "@/screens/admin/content/AdminDynamicContentEditorScreen";
+import { AdminDynamicContentEditorScreen } from "@/features/admin/screens/content/AdminDynamicContentEditorScreen";
 import { confirm } from "@/notifications";
 import { useLocation } from "react-router-dom";
 

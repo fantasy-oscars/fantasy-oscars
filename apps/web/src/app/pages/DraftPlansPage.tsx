@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useCeremonyDetailOrchestration } from "@/orchestration/ceremonies";
-import { DraftPlansScreen } from "@/screens/ceremonies/DraftPlansScreen";
+import { DraftPlansScreen } from "@/features/ceremonies/screens/DraftPlansScreen";
 import { useDraftPlansOrchestration } from "@/orchestration/draftPlans";
 
 export function DraftPlansPage() {

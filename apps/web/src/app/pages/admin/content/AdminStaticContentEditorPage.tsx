@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import type { StaticKey } from "@/decisions/adminContent";
 import { useAdminStaticContentEditorOrchestration } from "@/orchestration/adminContent";
-import { AdminStaticContentEditorScreen } from "@/screens/admin/content/AdminStaticContentEditorScreen";
+import { AdminStaticContentEditorScreen } from "@/features/admin/screens/content/AdminStaticContentEditorScreen";
 
 export function AdminStaticContentEditorPage() {
   const { key: keyRaw } = useParams();

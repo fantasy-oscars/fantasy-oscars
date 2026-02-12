@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useAdminCeremonyWinnersOrchestration } from "@/orchestration/adminCeremonies";
-import { AdminCeremoniesWinnersScreen } from "@/screens/admin/ceremonies/AdminCeremoniesWinnersScreen";
+import { AdminCeremoniesWinnersScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesWinnersScreen";
 
 export function AdminCeremoniesWinnersPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();

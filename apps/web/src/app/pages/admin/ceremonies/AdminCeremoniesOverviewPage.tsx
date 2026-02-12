@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
-import { AdminCeremoniesOverviewScreen } from "@/screens/admin/ceremonies/AdminCeremoniesOverviewScreen";
+import { AdminCeremoniesOverviewScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesOverviewScreen";
 import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremoniesOverviewPage() {

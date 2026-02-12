@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { InboxInvite } from "@/lib/types";
 import { useInvitesInboxOrchestration } from "@/orchestration/invites";
-import { InvitesInboxScreen } from "@/screens/invites/InvitesInboxScreen";
+import { InvitesInboxScreen } from "@/features/invites/screens/InvitesInboxScreen";
 import { notify } from "@/notifications";
 
 export function InvitesInboxPage() {

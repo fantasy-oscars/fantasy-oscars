@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
-import { AdminCeremonyPublishScreen } from "@/screens/admin/ceremonies/AdminCeremonyPublishScreen";
+import { AdminCeremonyPublishScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyPublishScreen";
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
 
 export function AdminCeremonyPublishPage() {

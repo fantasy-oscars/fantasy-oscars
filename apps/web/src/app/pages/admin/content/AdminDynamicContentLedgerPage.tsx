@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import type { DynamicKey } from "@/decisions/adminContent";
 import { useAdminDynamicContentLedgerOrchestration } from "@/orchestration/adminContent";
-import { AdminDynamicContentLedgerScreen } from "@/screens/admin/content/AdminDynamicContentLedgerScreen";
+import { AdminDynamicContentLedgerScreen } from "@/features/admin/screens/content/AdminDynamicContentLedgerScreen";
 
 export function AdminDynamicContentLedgerPage() {
   const { key: keyRaw } = useParams();

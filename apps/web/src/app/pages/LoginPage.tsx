@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { useLoginOrchestration } from "@/orchestration/auth";
-import { LoginScreen } from "@/screens/auth/LoginScreen";
+import { LoginScreen } from "@/features/auth/screens/LoginScreen";
 
 export function LoginPage() {
   const { login } = useAuthContext();

@@ -1,4 +1,4 @@
-import { AdminSystemAuditLogScreen } from "@/screens/admin/system/AdminSystemAuditLogScreen";
+import { AdminSystemAuditLogScreen } from "@/features/admin/screens/system/AdminSystemAuditLogScreen";
 
 export function AdminSystemAuditLogPage() {
   return <AdminSystemAuditLogScreen />;

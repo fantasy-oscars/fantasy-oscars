@@ -1,5 +1,5 @@
 import { useAdminUsersSearchOrchestration } from "@/orchestration/adminUsers";
-import { AdminUsersSearchScreen } from "@/screens/admin/users/AdminUsersSearchScreen";
+import { AdminUsersSearchScreen } from "@/features/admin/screens/users/AdminUsersSearchScreen";
 import { confirm } from "@/notifications";
 
 export function AdminUsersSearchPage() {

@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useAdminCeremonyCategoriesOrchestration } from "@/orchestration/adminCeremoniesCategories";
-import { AdminCeremoniesCategoriesScreen } from "@/screens/admin/ceremonies/AdminCeremoniesCategoriesScreen";
+import { AdminCeremoniesCategoriesScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesCategoriesScreen";
 import { PageError } from "@/shared/page-state";
 import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 

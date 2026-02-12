@@ -1,5 +1,5 @@
 import { useAuthContext } from "@/auth/context";
-import { LandingScreen } from "@/screens/LandingScreen";
+import { LandingScreen } from "@/features/home/screens/LandingScreen";
 import { useLandingOrchestration } from "@/orchestration/landing";
 
 export function HomePage() {

@@ -1,5 +1,5 @@
 import { useAuthContext } from "@/auth/context";
-import { AccountScreen } from "@/screens/account/AccountScreen";
+import { AccountScreen } from "@/features/account/screens/AccountScreen";
 
 export function AccountPage() {
   const { user, logout } = useAuthContext();

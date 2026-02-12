@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";
-import { AdminCeremoniesLockScreen } from "@/screens/admin/ceremonies/AdminCeremoniesLockScreen";
+import { AdminCeremoniesLockScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesLockScreen";
 import { confirm } from "@/notifications";
 
 export function AdminCeremoniesLockPage() {

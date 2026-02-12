@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageError, PageLoader } from "@/shared/page-state";
-import { AdminCeremonyHomeScreen } from "@/screens/admin/ceremonies/AdminCeremonyHomeScreen";
+import { AdminCeremonyHomeScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyHomeScreen";
 import { useAdminCeremonyWorksheetOrchestration } from "@/orchestration/adminCeremonyWorksheet";
 import type { CeremonyWorkflowStepId } from "@/decisions/ceremonyWorkflow";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";

@@ -1,5 +1,5 @@
 import { useStaticContentOrchestration } from "@/orchestration/content";
-import { AboutScreen } from "@/screens/AboutScreen";
+import { AboutScreen } from "@/features/content/screens/AboutScreen";
 
 export function AboutPage() {
   const { view } = useStaticContentOrchestration("about");
