@@ -123,7 +123,7 @@ export function ShellHeader(props: {
           ) : !props.user && props.navMode === "inline" ? (
             <>
               {props.loading && (
-                <Text className="nav-muted" c="dimmed">
+                <Text className="nav-muted" variant="meta">
                   Checking…
                 </Text>
               )}

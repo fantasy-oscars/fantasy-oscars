@@ -102,6 +102,65 @@ body {
   color: var(--fo-text-primary);
 }
 
+/* Typography variants (semantic roles only; no ad-hoc sizing in feature code). */
+.mantine-Title-root[data-fo-typo="brand"] {
+  font-size: var(--fo-heading-h2-size);
+}
+
+.mantine-Title-root[data-fo-typo="hero"] {
+  font-size: var(--fo-font-size-hero-title);
+  line-height: 1.1;
+}
+
+.mantine-Title-root[data-fo-typo="page"] {
+  font-size: var(--fo-heading-h2-size);
+}
+
+.mantine-Title-root[data-fo-typo="section"] {
+  font-size: var(--fo-heading-h3-size);
+}
+
+.mantine-Title-root[data-fo-typo="card"] {
+  font-size: var(--fo-heading-h4-size);
+}
+
+.mantine-Text-root[data-fo-typo="meta"] {
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-medium);
+  /* Allow inverted surfaces (e.g. HeroCard) to provide a local muted color. */
+  color: var(--fo-typo-muted, var(--fo-text-deemphasized));
+}
+
+.mantine-Text-root[data-fo-typo="helper"] {
+  color: var(--fo-typo-muted, var(--fo-text-deemphasized));
+}
+
+.mantine-Text-root[data-fo-typo="muted"] {
+  color: var(--fo-typo-muted, var(--fo-text-deemphasized));
+}
+
+.mantine-Text-root[data-fo-typo="danger"] {
+  color: var(--fo-danger);
+}
+
+.mantine-Text-root[data-fo-typo="success"] {
+  color: var(--fo-gold-primary);
+}
+
+.mantine-Text-root[data-fo-typo="chromeHeading"] {
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--fo-text-deemphasized);
+  letter-spacing: var(--fo-letterSpacing-meta);
+  text-transform: uppercase;
+}
+
+.mantine-Text-root[data-fo-typo="chromeFineprint"] {
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-regular);
+  color: var(--fo-text-deemphasized);
+}
+
 /* A11y: keyboard-only "Skip to content" link. Visible only on focus. */
 .skip-link {
   position: absolute;
@@ -1036,7 +1095,7 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
 .dr-railList {
   display: flex;
   flex-direction: column;
-  gap: var(--fo-space-8);
+  gap: var(--fo-space-4);
 }
 
 .dr-railRow {
@@ -1047,11 +1106,16 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
 }
 
 .dr-ledgerRow {
-  grid-template-columns: var(--fo-db-mobileIconSize) var(--fo-hit-size-sm) 1fr;
+  /* Tighten the left meta + avatar cluster; the "gap" here is mostly column width. */
+  grid-template-columns: max-content var(--fo-hit-size-sm) 1fr;
+  column-gap: var(--fo-space-2);
+  row-gap: var(--fo-space-0);
 }
 
 .dr-rosterRow {
-  grid-template-columns: var(--fo-db-mobileIconSize) 1fr;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--fo-space-2);
+  row-gap: var(--fo-space-0);
 }
 
 .dr-railMeta {
@@ -2061,6 +2125,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .fo-tip-tmdbLink {
   display: inline-flex;
   align-items: center;
+  color: rgba(var(--fo-text-primary-rgb), 0.6);
 }
 
 .fo-tip-tmdbLogo {
@@ -2733,12 +2798,14 @@ small.error {
 .footer-col-links a {
   color: var(--muted);
   text-decoration: none;
-  font-weight: var(--fo-font-weight-bold);
-  font-size: var(--fo-font-size-sm);
+  font-weight: var(--fo-font-weight-regular);
+  font-size: var(--fo-font-size-xs);
 }
 
 .footer-col-links a:hover {
   color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
 }
 
 .footer-logo-link {
@@ -2750,10 +2817,12 @@ small.error {
   border: 0;
   border-radius: 0;
   background: transparent;
+  color: var(--muted);
   opacity: var(--fo-opacity-muted-2);
 }
 
 .footer-logo-link:hover {
+  color: var(--text);
   opacity: var(--fo-alpha-100);
 }
 

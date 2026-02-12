@@ -6,24 +6,21 @@ import {
   SimpleGrid,
   Stack,
   Text,
-  Title,
+  TmdbLogo,
   useMantineColorScheme
 } from "@ui";
-import tmdbLogoBlackUrl from "../assets/tmdb/tmdb-black.svg";
-import tmdbLogoWhiteUrl from "../assets/tmdb/tmdb-white.svg";
 
 export function SiteFooter() {
-  const { colorScheme } = useMantineColorScheme();
-  const tmdbLogoUrl = colorScheme === "dark" ? tmdbLogoWhiteUrl : tmdbLogoBlackUrl;
+  useMantineColorScheme(); // keep hook for future theme-driven footer tweaks
 
   return (
     <Box component="footer" className="site-footer">
       <Box component="nav" className="footer-grid" aria-label="Footer">
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
           <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Product">
-            <Title order={3} className="footer-col-title">
+            <Text variant="chromeHeading" component="h2" className="footer-col-title">
               Product
-            </Title>
+            </Text>
             <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/about">
                 About
@@ -38,9 +35,9 @@ export function SiteFooter() {
           </Stack>
 
           <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Community">
-            <Title order={3} className="footer-col-title">
+            <Text variant="chromeHeading" component="h2" className="footer-col-title">
               Community
-            </Title>
+            </Text>
             <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/contact">
                 Contact
@@ -55,9 +52,9 @@ export function SiteFooter() {
           </Stack>
 
           <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Legal">
-            <Title order={3} className="footer-col-title">
+            <Text variant="chromeHeading" component="h2" className="footer-col-title">
               Legal
-            </Title>
+            </Text>
             <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/terms">
                 Terms
@@ -72,9 +69,9 @@ export function SiteFooter() {
           </Stack>
 
           <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="With">
-            <Title order={3} className="footer-col-title">
+            <Text variant="chromeHeading" component="h2" className="footer-col-title">
               With
-            </Title>
+            </Text>
             <Group className="footer-col-links" gap="sm">
               <Anchor
                 className="footer-logo-link"
@@ -83,14 +80,14 @@ export function SiteFooter() {
                 rel="noreferrer"
                 aria-label="The Movie Database (TMDB)"
               >
-                <Box component="img" className="footer-logo" src={tmdbLogoUrl} alt="TMDB" />
+                <TmdbLogo className="footer-logo" />
               </Anchor>
             </Group>
           </Stack>
         </SimpleGrid>
       </Box>
 
-      <Text className="footer-fineprint" ta="center" size="sm">
+      <Text variant="chromeFineprint" className="footer-fineprint" ta="center">
         © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
       </Text>
     </Box>
@@ -100,7 +97,7 @@ export function SiteFooter() {
 export function SiteFooterFineprintOnly() {
   return (
     <Box component="footer" className="site-footer">
-      <Text className="footer-fineprint" ta="center" size="sm">
+      <Text variant="chromeFineprint" className="footer-fineprint" ta="center">
         © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
       </Text>
     </Box>

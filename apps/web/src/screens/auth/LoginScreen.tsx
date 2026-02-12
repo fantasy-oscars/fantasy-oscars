@@ -17,12 +17,8 @@ export function LoginScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard component="section">
           <Box component="header">
-            <Title order={2} className="baseline-textHeroTitle">
-              Sign in
-            </Title>
-            <Text className="baseline-textBody">
-              Sign in with your username and password.
-            </Text>
+            <Title variant="page">Sign in</Title>
+            <Text variant="helper">Sign in with your username and password.</Text>
           </Box>
           <Box component="form" onSubmit={onSubmit} mt="md">
             <Stack gap="sm">
@@ -44,12 +40,8 @@ export function LoginScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard tone="nested" component="section">
           <Box component="header">
-            <Title order={3} className="baseline-textCardTitle">
-              New here?
-            </Title>
-            <Text className="baseline-textBody">
-              Create an account to join or run drafts.
-            </Text>
+            <Title variant="card">New here?</Title>
+            <Text>Create an account to join or run drafts.</Text>
           </Box>
           <Button component={Link} to="/register" variant="outline">
             Go to registration

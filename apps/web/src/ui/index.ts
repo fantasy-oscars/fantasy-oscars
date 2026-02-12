@@ -42,3 +42,4 @@ export * from "./useMantineColorScheme";
 export * from "./List";
 export * from "./Blockquote";
 export * from "./Indicator";
+export * from "./TmdbLogo";

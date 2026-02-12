@@ -35,10 +35,8 @@ export function LandingScreen(props: {
     <Stack gap="md">
       <HeroCard>
         <Stack gap="var(--fo-space-md)">
-          <Title className="baseline-textHeroTitle" order={1}>
-            {heroTitle}
-          </Title>
-          <Text className="baseline-textBody baseline-heroTagline">{tagline}</Text>
+          <Title variant="hero">{heroTitle}</Title>
+          <Text variant="helper">{tagline}</Text>
         </Stack>
       </HeroCard>
 
@@ -46,22 +44,22 @@ export function LandingScreen(props: {
 
       <StandardCard className="baseline-updatesCard">
         {view.updates.state === "loading" ? (
-          <Text className="baseline-textBody">Loading…</Text>
+          <Text>Loading…</Text>
         ) : view.updates.state === "error" ? (
-          <Text className="baseline-textBody">{view.updates.message}</Text>
+          <Text>{view.updates.message}</Text>
         ) : view.updates.content ? (
           <Stack gap="var(--fo-space-dense-2)">
-            <Text className="baseline-textMeta">
+            <Text variant="meta">
               {updatesDate ? updatesDate.toLocaleDateString() : ""}
             </Text>
-            <Text className="baseline-textCardTitle">{view.updates.content.title}</Text>
+            <Title variant="card">{view.updates.content.title}</Title>
             <Markdown markdown={view.updates.content.body_markdown} />
           </Stack>
         ) : (
           <Stack gap="var(--fo-space-dense-2)">
-            <Text className="baseline-textMeta">{new Date().toLocaleDateString()}</Text>
-            <Text className="baseline-textCardTitle">It’s quiet… too quiet</Text>
-            <Text className="baseline-textBody">No updates have been published yet.</Text>
+            <Text variant="meta">{new Date().toLocaleDateString()}</Text>
+            <Title variant="card">It’s quiet… too quiet</Title>
+            <Text>No updates have been published yet.</Text>
           </Stack>
         )}
       </StandardCard>
@@ -72,8 +70,8 @@ export function LandingScreen(props: {
     <Stack gap="md">
       <ActionCard>
         <Stack gap="sm">
-          <Text className="baseline-textCardTitle">Create a league</Text>
-          <Text className="baseline-textBody">
+          <Title variant="card">Create a league</Title>
+          <Text>
             Start a season with friends and draft nominees together.
           </Text>
           <Button
@@ -90,21 +88,21 @@ export function LandingScreen(props: {
       <Divider />
 
       <Box>
-        <Text className="baseline-textSectionHeader">Active Seasons</Text>
+        <Title variant="section">Active Seasons</Title>
       </Box>
 
       {user ? (
         view.seasons.state === "idle" ? null : view.seasons.state === "loading" ? (
           <StandardCard>
-            <Text className="baseline-textBody">Loading…</Text>
+            <Text>Loading…</Text>
           </StandardCard>
         ) : view.seasons.state === "error" ? (
           <StandardCard>
-            <Text className="baseline-textBody">{view.seasons.message}</Text>
+            <Text>{view.seasons.message}</Text>
           </StandardCard>
         ) : view.seasons.seasons.length === 0 ? (
           <StandardCard>
-            <Text className="baseline-textBody">No active seasons yet.</Text>
+            <Text>No active seasons yet.</Text>
           </StandardCard>
         ) : (
           <Stack gap="sm">
@@ -125,9 +123,9 @@ export function LandingScreen(props: {
                   to={`/seasons/${s.id}`}
                 >
                   <Stack gap="var(--fo-space-dense-2)">
-                    <Text className="baseline-textCardTitle">{ceremonyLabel}</Text>
+                    <Title variant="card">{ceremonyLabel}</Title>
                     <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
-                      <Text className="baseline-textMeta">{s.league_name}</Text>
+                      <Text variant="meta">{s.league_name}</Text>
                       <Tooltip
                         label={status.urgencyHelp ?? ""}
                         disabled={!status.urgencyHelp}
@@ -138,11 +136,11 @@ export function LandingScreen(props: {
                           tabIndex={status.urgencyHelp ? 0 : -1}
                           className={[
                             "baseline-statusPill",
-                            "baseline-textMeta",
                             status.urgent ? "isUrgent" : ""
                           ]
                             .filter(Boolean)
                             .join(" ")}
+                          variant="meta"
                         >
                           {titleCase(status.label)}
                         </Text>
@@ -156,7 +154,7 @@ export function LandingScreen(props: {
         )
       ) : (
         <StandardCard>
-          <Text className="baseline-textBody">Log in to view your active seasons.</Text>
+          <Text>Log in to view your active seasons.</Text>
         </StandardCard>
       )}
     </Stack>

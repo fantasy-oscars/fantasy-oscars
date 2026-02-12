@@ -192,6 +192,7 @@ body[data-mantine-color-scheme="light"] .baseline-heroCard {
     color-mix(in srgb, var(--fo-charcoal-8) 60%, var(--fo-charcoal-9) 40%) 100%
   );
   color: var(--fo-ivory);
+  --fo-typo-muted: rgba(var(--fo-ivory-rgb), var(--fo-alpha-75));
   box-shadow: var(--fo-shadow-hero-light);
 }
 
@@ -204,6 +205,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
     color-mix(in srgb, var(--fo-ivory) 60%, var(--fo-gold-wash) 40%) 100%
   );
   color: var(--fo-charcoal-9);
+  --fo-typo-muted: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-75));
   box-shadow: var(--fo-shadow-hero-dark);
 }
 

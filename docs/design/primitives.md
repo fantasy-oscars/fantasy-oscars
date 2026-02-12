@@ -44,7 +44,8 @@ Baseline layout + typography classes live in:
 Theme tokens and Mantine skinning live in:
 
 - `apps/web/src/styles.css`
-- `apps/web/src/theme/theme.ts`
+- `apps/web/src/theme/index.ts`
+- `apps/web/src/theme/tokens.ts`
 
 ## Tokens (no literals)
 
@@ -55,6 +56,7 @@ Allowed sources of truth:
 
 - CSS variables in `apps/web/src/styles.css` (e.g. `--fo-space-*`, `--fo-shadow-*`, `--fo-*` surfaces/text)
 - Theme bindings in `apps/web/src/theme/theme.ts` (Mantine mapping only)
+- Theme bindings in `apps/web/src/theme/index.ts` (Mantine mapping only)
 - JS/TS-only numeric tokens for props that require numbers (e.g. `iconSize={...}`):
   - `apps/web/src/tokens/**`
 
@@ -81,3 +83,7 @@ Only two font families are used:
 
 - Serif (Cinzel): page titles, section headers, card titles, update headlines, and brand text.
 - Sans: everything else (taglines, body, meta, pills, buttons, navigation, footers).
+
+See also:
+
+- `docs/design/typography.md` (the semantic typography variant vocabulary)

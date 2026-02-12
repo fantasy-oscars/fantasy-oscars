@@ -1,7 +1,4 @@
-import { Box, Image, Text } from "@ui";
-import { useMantineColorScheme } from "@ui";
-import tmdbLogoBlackUrl from "../../assets/tmdb/tmdb-black.svg";
-import tmdbLogoWhiteUrl from "../../assets/tmdb/tmdb-white.svg";
+import { Box, Text, TmdbLogo } from "@ui";
 
 export function NomineeTooltipCard(props: {
   unitKind: string;
@@ -31,9 +28,6 @@ export function NomineeTooltipCard(props: {
     songTitle,
     action
   } = props;
-
-  const { colorScheme } = useMantineColorScheme();
-  const tmdbLogoUrl = colorScheme === "dark" ? tmdbLogoWhiteUrl : tmdbLogoBlackUrl;
 
   const resolvedFilmPosterUrl =
     filmPosterUrl && filmPosterUrl.startsWith("/")
@@ -151,7 +145,7 @@ export function NomineeTooltipCard(props: {
           rel="noreferrer"
           aria-label="The Movie Database (TMDB)"
         >
-          <Image className="fo-tip-tmdbLogo" src={tmdbLogoUrl} alt="TMDB" />
+          <TmdbLogo className="fo-tip-tmdbLogo" />
         </a>
       </Box>
     </Box>

@@ -12,13 +12,11 @@ export function AboutScreen(props: { title: string; view: StaticContentView }) {
       <Box className="baseline-pageInner">
         <StandardCard>
           <Stack gap="sm">
-            <Title order={2} className="baseline-textHeroTitle">
-              {view.state === "ready" ? view.content.title : title}
-            </Title>
+            <Title variant="page">{view.state === "ready" ? view.content.title : title}</Title>
             {view.state === "loading" ? (
-              <Text className="baseline-textBody">Loading…</Text>
+              <Text>Loading…</Text>
             ) : view.state === "error" ? (
-              <Text className="baseline-textBody">{view.message}</Text>
+              <Text>{view.message}</Text>
             ) : (
               <Markdown markdown={view.content.body_markdown} />
             )}

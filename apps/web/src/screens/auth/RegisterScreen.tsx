@@ -17,10 +17,8 @@ export function RegisterScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard component="section">
           <Box component="header">
-            <Title order={2} className="baseline-textHeroTitle">
-              Create account
-            </Title>
-            <Text className="baseline-textBody">Pick a username and join a league.</Text>
+            <Title variant="page">Create account</Title>
+            <Text variant="helper">Pick a username and join a league.</Text>
           </Box>
           <Box component="form" onSubmit={onSubmit} mt="md">
             <Stack gap="sm">
@@ -43,10 +41,8 @@ export function RegisterScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard tone="nested" component="section">
           <Box component="header">
-            <Title order={3} className="baseline-textCardTitle">
-              Already have an account?
-            </Title>
-            <Text className="baseline-textBody">Sign in to view leagues and drafts.</Text>
+            <Title variant="card">Already have an account?</Title>
+            <Text>Sign in to view leagues and drafts.</Text>
           </Box>
           <Button component={Link} to="/login" variant="outline">
             Go to login

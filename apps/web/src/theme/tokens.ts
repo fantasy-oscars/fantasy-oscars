@@ -7,6 +7,8 @@ export const foTokens = {
   "--fo-border": `rgba(var(--fo-ivory-rgb), 0.12)`,
   "--fo-border-width": `1px`,
   "--fo-border-width-strong": `2px`,
+  // Shared hit targets (used for small icon buttons in tight UI like rails).
+  "--fo-hit-size-sm": `var(--fo-control-height)`,
   // Primary button micro-states (keep tokens here so UI behavior stays theme-driven).
   "--fo-button-primary-border": `color-mix(in oklab, var(--fo-gold-primary) 72%, black)`,
   "--fo-button-primary-border-hover": `color-mix(in oklab, var(--fo-gold-primary) 62%, black)`,
