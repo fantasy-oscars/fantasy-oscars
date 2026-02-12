@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "../orchestration/leagueIndex";
 import { ActionCard, StandardCard } from "../primitives";
@@ -39,7 +39,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                       component={Link}
                       to={`/leagues/${l.id}`}
                     >
-                      <Stack gap={10}>
+                      <Stack gap="var(--fo-space-dense-2)">
                         <Text className="baseline-textCardTitle">{l.name}</Text>
                         <Text className="baseline-textMeta">
                           {l.commissioner_name ?? ""}
@@ -61,8 +61,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                   <Button
                     component={Link}
                     to="/leagues/new"
-                    variant="filled"
-                    color="blue"
+                    variant="primary"
                   >
                     New league
                   </Button>

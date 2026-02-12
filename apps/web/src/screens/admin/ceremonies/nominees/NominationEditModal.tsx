@@ -1,4 +1,4 @@
-import { Modal, Stack } from "@mantine/core";
+import { Modal, Stack } from "@ui";
 import { useMemo } from "react";
 import { NominationEditFilmSection } from "./NominationEditFilmSection";
 import { NominationEditPeopleSection } from "./NominationEditPeopleSection";

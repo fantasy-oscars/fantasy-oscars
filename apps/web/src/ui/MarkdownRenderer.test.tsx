@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider } from "@ui";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 describe("<MarkdownRenderer /> typography normalization", () => {

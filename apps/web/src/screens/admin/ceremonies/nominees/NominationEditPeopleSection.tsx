@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Group, Stack, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Box, Button, Group, Stack, Text, TextInput } from "@ui";
 import { useMemo, useState } from "react";
 import { normalizeForSearch } from "@fantasy-oscars/shared";
 import { notify } from "../../../../notifications";
@@ -186,7 +186,7 @@ export function NominationEditPeopleSection(props: {
 
   return (
     <Box>
-      <Text fw={700}>People</Text>
+      <Text fw="var(--fo-font-weight-bold)">People</Text>
       <Text className="muted" size="xs">
         Changes here apply only to this nomination.
       </Text>
@@ -196,12 +196,16 @@ export function NominationEditPeopleSection(props: {
           No contributors yet.
         </Text>
       ) : (
-        <Stack gap={4} mt="xs">
+        <Stack gap="var(--fo-space-4)" mt="xs">
           {contributorRows.map((c) => (
-            <Group key={`${c.person_id}:${c.nomination_contributor_id ?? "?"}`} justify="space-between" wrap="nowrap">
-              <Box style={{ minWidth: 0 }}>
-                <Group gap={6} wrap="nowrap">
-                  <Text fw={700} size="sm" lineClamp={1}>
+            <Group
+              key={`${c.person_id}:${c.nomination_contributor_id ?? "?"}`}
+              justify="space-between"
+              wrap="nowrap"
+            >
+              <Box className="fo-minw0">
+                <Group gap="var(--fo-space-8)" wrap="nowrap">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm" lineClamp={1}>
                     {c.full_name}
                   </Text>
                   {!c.tmdb_id ? (
@@ -336,7 +340,7 @@ export function NominationEditPeopleSection(props: {
       ) : null}
 
       <Group mt="sm" align="flex-end" wrap="wrap">
-        <Box style={{ flex: "1 1 360px", minWidth: 240 }}>
+        <Box className="fo-flexFieldMd">
           <ContributorCombobox
             label="Add contributor"
             value={pendingContributorInput}
@@ -372,4 +376,3 @@ export function NominationEditPeopleSection(props: {
     </Box>
   );
 }
-

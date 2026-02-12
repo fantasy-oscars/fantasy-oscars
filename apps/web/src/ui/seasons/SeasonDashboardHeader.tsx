@@ -1,4 +1,4 @@
-import { Box, Group, Text, Title } from "@mantine/core";
+import { Box, Group, Text, Title } from "@ui";
 import { StatusPill } from "../pills";
 
 export function SeasonDashboardHeader(props: {

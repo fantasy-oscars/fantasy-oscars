@@ -1,4 +1,4 @@
-import { Box, Button, Group, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Text, Title } from "@ui";
 import { StandardCard } from "../../../../primitives";
 
 export function WinnersConfirmOverlay(props: {

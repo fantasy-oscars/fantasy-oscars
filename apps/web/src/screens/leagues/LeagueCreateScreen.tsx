@@ -1,7 +1,9 @@
 import { FormField } from "../../ui/forms";
-import { Box, Button, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
+import { Button } from "@ui/Button";
+import classes from "./LeagueCreateScreen.module.css";
 
 export function LeagueCreateScreen(props: {
   creating: boolean;
@@ -27,17 +29,12 @@ export function LeagueCreateScreen(props: {
             <Box
               component="form"
               // Keep the existing layout composition (single column, sensible width).
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: 16,
-                maxWidth: 520
-              }}
+              className={classes.form}
               onSubmit={onCreate}
             >
               <FormField label="Name" name="name" />
               <Group wrap="wrap" justify="flex-start">
-                <Button type="submit" disabled={creating} variant="filled">
+                <Button type="submit" disabled={creating} variant="primary">
                   {creating ? "Creating..." : "Create league"}
                 </Button>
                 {error && (

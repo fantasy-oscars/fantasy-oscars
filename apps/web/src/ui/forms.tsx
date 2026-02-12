@@ -1,5 +1,5 @@
 import type { ApiResult } from "../lib/types";
-import { Alert, Button, Loader, Text, TextInput } from "@mantine/core";
+import { Alert, Button, Loader, Text, TextInput } from "@ui";
 
 export function FormField(props: {
   label: string;

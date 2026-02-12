@@ -1,5 +1,14 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  DRAFT_BUCKLE_MAX_PX,
+  DRAFT_BUCKLE_MIN_PX,
+  DRAFT_BUCKLE_VW_FRACTION,
+  DRAFT_HEADER_HYSTERESIS_ENTER_PX,
+  DRAFT_HEADER_HYSTERESIS_EXIT_PX,
+  DRAFT_HEADER_NONCOMPACT_EXTRA_PX,
+  DRAFT_HEADER_SIDE_PADDING_PX
+} from "../../tokens/draftHeader";
 import { CenterBuckle } from "../../ui/draft/CenterBuckle";
 import { DraftHeaderLeftWing } from "../../ui/draft/DraftHeaderLeftWing";
 import { DraftHeaderMeasureRow } from "../../ui/draft/DraftHeaderMeasureRow";
@@ -144,7 +153,7 @@ export function DraftBoardHeader(props: {
   const buckleMaxPx = useMemo(() => {
     // Defensive default: ~25% of viewport, clamped.
     const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-    return Math.min(360, Math.max(200, Math.floor(vw * 0.25)));
+    return Math.min(DRAFT_BUCKLE_MAX_PX, Math.max(DRAFT_BUCKLE_MIN_PX, Math.floor(vw * DRAFT_BUCKLE_VW_FRACTION)));
   }, []);
 
   useEffect(() => {
@@ -160,7 +169,7 @@ export function DraftBoardHeader(props: {
 
       // Use a width-based model instead of bounding-box overlap. The buckle is centered,
       // so each "wing" must fit inside its half of the header.
-      const headerPad = 28; // .drh-row has padding: 0 14px
+      const headerPad = DRAFT_HEADER_SIDE_PADDING_PX * 2;
       const available = Math.max(0, headerRect.width - headerPad);
       const half = available / 2;
       const buckleHalf = b.width / 2;
@@ -168,12 +177,12 @@ export function DraftBoardHeader(props: {
       const rightW = r.width;
 
       setCompactHeader((prev) => {
-        const enterPad = 10;
-        const exitPad = 22; // hysteresis to prevent flip-flop near the threshold
+        const enterPad = DRAFT_HEADER_HYSTERESIS_ENTER_PX;
+        const exitPad = DRAFT_HEADER_HYSTERESIS_EXIT_PX; // hysteresis to prevent flip-flop near the threshold
         const limit = half - buckleHalf - (prev ? exitPad : enterPad);
         const needsCompact = leftW > limit || rightW > limit;
         if (!prev) {
-          nonCompactNeededWidthRef.current = Math.ceil(leftW + rightW + b.width + 72);
+          nonCompactNeededWidthRef.current = Math.ceil(leftW + rightW + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX);
           return needsCompact;
         }
         // When compact, require more headroom before switching back.
@@ -199,16 +208,16 @@ export function DraftBoardHeader(props: {
       const b = buckleRef.current?.getBoundingClientRect();
       if (!l || !r || !b) return;
       setCompactHeader((prev) => {
-        const headerPad = 28;
+        const headerPad = DRAFT_HEADER_SIDE_PADDING_PX * 2;
         const available = Math.max(0, headerRect.width - headerPad);
         const half = available / 2;
         const buckleHalf = b.width / 2;
-        const enterPad = 10;
-        const exitPad = 22;
+        const enterPad = DRAFT_HEADER_HYSTERESIS_ENTER_PX;
+        const exitPad = DRAFT_HEADER_HYSTERESIS_EXIT_PX;
         const limit = half - buckleHalf - (prev ? exitPad : enterPad);
         const needsCompact = l.width > limit || r.width > limit;
         if (!prev) {
-          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + 72);
+          nonCompactNeededWidthRef.current = Math.ceil(l.width + r.width + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX);
           return needsCompact;
         }
         return needsCompact ? true : false;
@@ -279,14 +288,13 @@ export function DraftBoardHeader(props: {
             roundNumber={isCompleted ? null : props.roundNumber}
             pickNumber={isCompleted ? null : props.pickNumber}
             centerText={centerText}
-            className={
-              countdownActive
-                ? [
-                    "is-countdown",
-                    countdownPhase === "red" ? "pulse-red" : "pulse-gold"
-                  ].join(" ")
-                : ""
-            }
+            className={[
+              isPre ? "is-pre" : "",
+              countdownActive ? "is-countdown" : "",
+              countdownActive ? (countdownPhase === "red" ? "pulse-red" : "pulse-gold") : ""
+            ]
+              .filter(Boolean)
+              .join(" ")}
             measureText={
               props.isTimerDraft
                 ? null

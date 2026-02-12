@@ -1,7 +1,7 @@
-import { Box, Checkbox, Select, Stack, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { Box, Checkbox, Select, Stack, Text, Tooltip, UnstyledButton } from "@ui";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
-import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS, NOMINEE_TOOLTIP_OFFSET_PX } from "./nomineeTooltip";
 import type { AutoDraftState, DraftNomineeMeta } from "./types";
 
 export function DraftAutoDraftRail(props: {
@@ -76,7 +76,7 @@ export function DraftAutoDraftRail(props: {
                   {props.autodraft.list.length === 0 ? (
                     <Text className="muted">No nominees.</Text>
                   ) : (
-                    <Stack gap={6}>
+                    <Stack gap="var(--fo-space-4)">
                       {props.autodraft.list.map((item) => {
                         const nominee = props.nomineeById.get(item.nominationId);
                         const isDrafted = props.draftedNominationIds.has(item.nominationId);
@@ -104,7 +104,7 @@ export function DraftAutoDraftRail(props: {
                             withArrow={false}
                             position="bottom-start"
                             multiline
-                            offset={10}
+                            offset={NOMINEE_TOOLTIP_OFFSET_PX}
                             styles={NOMINEE_CARD_TOOLTIP_STYLES}
                             label={
                               <NomineeTooltipCard

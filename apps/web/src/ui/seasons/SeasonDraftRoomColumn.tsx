@@ -1,4 +1,4 @@
-import { Button, Divider, Group, Stack, Title } from "@mantine/core";
+import { Button, Divider, Group, Stack, Title } from "@ui";
 import { Link } from "react-router-dom";
 
 export function SeasonDraftRoomColumn(props: {

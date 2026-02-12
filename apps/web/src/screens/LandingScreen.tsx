@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Group, Stack, Text, Title, Tooltip } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title, Tooltip } from "@ui";
 import { Link } from "react-router-dom";
 import type { AuthUser } from "../auth/context";
 import type { LandingView } from "../orchestration/landing";
@@ -34,7 +34,7 @@ export function LandingScreen(props: {
   const left = (
     <Stack gap="md">
       <HeroCard>
-        <Stack gap={22}>
+        <Stack gap="var(--fo-space-md)">
           <Title className="baseline-textHeroTitle" order={1}>
             {heroTitle}
           </Title>
@@ -50,7 +50,7 @@ export function LandingScreen(props: {
         ) : view.updates.state === "error" ? (
           <Text className="baseline-textBody">{view.updates.message}</Text>
         ) : view.updates.content ? (
-          <Stack gap={10}>
+          <Stack gap="var(--fo-space-dense-2)">
             <Text className="baseline-textMeta">
               {updatesDate ? updatesDate.toLocaleDateString() : ""}
             </Text>
@@ -58,7 +58,7 @@ export function LandingScreen(props: {
             <Markdown markdown={view.updates.content.body_markdown} />
           </Stack>
         ) : (
-          <Stack gap={10}>
+          <Stack gap="var(--fo-space-dense-2)">
             <Text className="baseline-textMeta">{new Date().toLocaleDateString()}</Text>
             <Text className="baseline-textCardTitle">It’s quiet… too quiet</Text>
             <Text className="baseline-textBody">No updates have been published yet.</Text>
@@ -80,8 +80,7 @@ export function LandingScreen(props: {
             component={Link}
             to={user ? "/leagues/new" : "/login"}
             disabled={authLoading}
-            variant="filled"
-            color="blue"
+            variant="primary"
           >
             New league
           </Button>
@@ -114,6 +113,10 @@ export function LandingScreen(props: {
                 draftStatus: s.draft_status,
                 draftId: s.draft_id
               });
+              const ceremonyLabel = computeLandingSeasonCeremonyLabel({
+                ceremonyName: s.ceremony_name,
+                ceremonyId: s.ceremony_id
+              });
               return (
                 <StandardCard
                   key={s.id}
@@ -121,15 +124,10 @@ export function LandingScreen(props: {
                   component={Link}
                   to={`/seasons/${s.id}`}
                 >
-                  <Stack gap={10}>
-                    <Text className="baseline-textCardTitle">{s.league_name}</Text>
+                  <Stack gap="var(--fo-space-dense-2)">
+                    <Text className="baseline-textCardTitle">{ceremonyLabel}</Text>
                     <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
-                      <Text className="baseline-textMeta">
-                        {computeLandingSeasonCeremonyLabel({
-                          ceremonyName: s.ceremony_name,
-                          ceremonyId: s.ceremony_id
-                        })}
-                      </Text>
+                      <Text className="baseline-textMeta">{s.league_name}</Text>
                       <Tooltip
                         label={status.urgencyHelp ?? ""}
                         disabled={!status.urgencyHelp}

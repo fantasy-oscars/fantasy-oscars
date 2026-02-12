@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 import type { RefObject } from "react";
 import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
@@ -8,6 +8,7 @@ import { DraftAutoDraftRail } from "../../ui/draft/DraftAutoDraftRail";
 import { DraftLedgerRail } from "../../ui/draft/DraftLedgerRail";
 import { DraftMasonryBoard } from "../../ui/draft/DraftMasonryBoard";
 import { DraftMyRosterRail } from "../../ui/draft/DraftMyRosterRail";
+import { useCssVars } from "../../ui/dom/useCssVars";
 
 export function DraftRoomScaffold(props: {
   categories: Array<{
@@ -163,16 +164,23 @@ export function DraftRoomScaffold(props: {
     }
   }
 
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+  const layoutVars = useMemo(
+    () => ({
+      "--d": unitDivisor,
+      "--rail-ledger": ledgerOpen ? 1.25 : 0.25,
+      "--rail-roster": myRosterOpen ? 1.25 : 0.25,
+      "--rail-auto": autoDraftOpen ? 1.25 : 0.25,
+      "--mid-cols": midCols
+    }),
+    [autoDraftOpen, ledgerOpen, midCols, myRosterOpen, unitDivisor]
+  );
+  useCssVars(layoutRef, layoutVars);
+
   return (
     <Box
+      ref={layoutRef}
       className="dr-layout"
-      style={{
-        ["--d" as never]: unitDivisor,
-        ["--rail-ledger" as never]: ledgerOpen ? 1.25 : 0.25,
-        ["--rail-roster" as never]: myRosterOpen ? 1.25 : 0.25,
-        ["--rail-auto" as never]: autoDraftOpen ? 1.25 : 0.25,
-        ["--mid-cols" as never]: midCols
-      }}
     >
       <DraftLedgerRail
         open={ledgerOpen}

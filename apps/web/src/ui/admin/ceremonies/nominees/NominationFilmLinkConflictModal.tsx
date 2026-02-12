@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { Button, Group, Modal, Stack, Text } from "@ui";
 import { notify } from "../../../../notifications";
 
 export function NominationFilmLinkConflictModal(props: {

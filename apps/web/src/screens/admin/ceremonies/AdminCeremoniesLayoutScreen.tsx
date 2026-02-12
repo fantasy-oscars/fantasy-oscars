@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { Box, Button, Divider, Group, Select, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Select, Stack, Text, Title } from "@ui";
 import type { CeremonyOption } from "../../../orchestration/adminCeremonies";
 
 export function AdminCeremoniesLayoutScreen(props: {
@@ -24,9 +24,7 @@ export function AdminCeremoniesLayoutScreen(props: {
         <Box>
           <Title
             order={2}
-            style={{
-              fontFamily: '"Cinzel", ui-serif, Georgia, "Times New Roman", serif'
-            }}
+            className="baseline-textHeroTitle"
           >
             Ceremonies
           </Title>

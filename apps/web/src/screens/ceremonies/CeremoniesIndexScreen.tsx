@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
@@ -50,7 +50,7 @@ export function CeremoniesIndexScreen(props: {
                       component={Link}
                       to={`/ceremonies/${c.id}`}
                     >
-                      <Stack gap={10}>
+                      <Stack gap="var(--fo-space-dense-2)">
                         <Text className="baseline-textCardTitle">
                           {c.name?.trim() ? c.name : `Ceremony ${c.id}`}
                         </Text>
@@ -76,7 +76,7 @@ export function CeremoniesIndexScreen(props: {
                         component={Link}
                         to={`/ceremonies/${c.id}`}
                       >
-                        <Stack gap={10}>
+                        <Stack gap="var(--fo-space-dense-2)">
                           <Text className="baseline-textCardTitle">
                             {c.name?.trim() ? c.name : `Ceremony ${c.id}`}
                           </Text>

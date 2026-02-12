@@ -10,7 +10,7 @@ import {
   Text,
   Title,
   UnstyledButton
-} from "@mantine/core";
+} from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { AdminCeremonyCategoriesOrchestration } from "../../../orchestration/adminCeremoniesCategories";
@@ -66,7 +66,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <StandardCard className="card nested" component="section">
+      <StandardCard tone="nested" component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -85,7 +85,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
         </Group>
       </StandardCard>
 
-      <StandardCard className="card nested" component="section">
+      <StandardCard tone="nested" component="section">
         <Group
           className="header-with-controls"
           justify="space-between"

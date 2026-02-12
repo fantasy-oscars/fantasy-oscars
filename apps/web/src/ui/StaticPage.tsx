@@ -1,4 +1,4 @@
-import { Box, Stack, Title } from "@mantine/core";
+import { Box, Stack, Title } from "@ui";
 import { StandardCard } from "../primitives";
 import "../primitives/baseline.css";
 

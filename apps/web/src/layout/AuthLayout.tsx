@@ -6,7 +6,7 @@ import {
   Text,
   Title,
   useMantineColorScheme
-} from "@mantine/core";
+} from "@ui";
 import { Link, Outlet } from "react-router-dom";
 
 export function AuthLayout() {

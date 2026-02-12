@@ -1,8 +1,12 @@
-import { Box, Group, Text, Tooltip } from "@mantine/core";
+import { Box, Group, Text, Tooltip } from "@ui";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
 import { DraftCategoryIcon } from "../../draft/DraftCategoryIcon";
+import { FO_TOOLTIP_OFFSET_LG_PX } from "../../../tokens/overlays";
+import { NOMINEE_CARD_TOOLTIP_STYLES } from "../../draft/nomineeTooltip";
+import { useCallback, useMemo, useRef } from "react";
+import { useSortableInlineStyle } from "../../dnd/useSortableInlineStyle";
 
 export function SortableNomineeRow(props: {
   id: number;
@@ -14,40 +18,40 @@ export function SortableNomineeRow(props: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: props.id });
 
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      elRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef]
+  );
+
+  const sortableStyle = useMemo(
+    () => ({
+      transform: CSS.Transform.toString(transform),
+      transition
+    }),
+    [transform, transition]
+  );
+  useSortableInlineStyle(elRef, sortableStyle);
+
   return (
     <Tooltip.Floating
       label={props.tooltip}
-      offset={14}
+      offset={FO_TOOLTIP_OFFSET_LG_PX}
       position="right"
-      styles={{
-        tooltip: {
-          padding: 0,
-          background: "transparent",
-          border: "none",
-          boxShadow: "none"
-        }
-      }}
+      styles={NOMINEE_CARD_TOOLTIP_STYLES}
     >
       <Box
-        ref={setNodeRef}
-        style={{
-          transform: CSS.Transform.toString(transform),
-          transition
-        }}
+        ref={setRef}
       >
         <Tooltip
           events={{ hover: false, focus: true, touch: false }}
           label={props.tooltip}
-          offset={14}
+          offset={FO_TOOLTIP_OFFSET_LG_PX}
           position="right"
-          styles={{
-            tooltip: {
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              boxShadow: "none"
-            }
-          }}
+          styles={NOMINEE_CARD_TOOLTIP_STYLES}
         >
           <Group
             className={["draft-plan-row", isDragging ? "is-dragging" : ""].join(" ")}
@@ -58,7 +62,7 @@ export function SortableNomineeRow(props: {
             role="listitem"
             aria-label={props.label}
           >
-            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+            <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
               <Box
                 component="button"
                 type="button"
@@ -74,7 +78,7 @@ export function SortableNomineeRow(props: {
                 </Text>
               </Box>
               <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
-              <Text size="xs" style={{ whiteSpace: "nowrap", overflow: "hidden" }} lineClamp={1}>
+              <Text size="xs" truncate="end" lineClamp={1}>
                 {props.label}
               </Text>
             </Group>
@@ -84,4 +88,3 @@ export function SortableNomineeRow(props: {
     </Tooltip.Floating>
   );
 }
-

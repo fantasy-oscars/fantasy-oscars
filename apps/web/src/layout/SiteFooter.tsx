@@ -3,13 +3,12 @@ import {
   Anchor,
   Box,
   Group,
-  Image,
   SimpleGrid,
   Stack,
   Text,
   Title,
   useMantineColorScheme
-} from "@mantine/core";
+} from "@ui";
 import tmdbLogoBlackUrl from "../assets/tmdb/tmdb-black.svg";
 import tmdbLogoWhiteUrl from "../assets/tmdb/tmdb-white.svg";
 
@@ -21,11 +20,11 @@ export function SiteFooter() {
     <Box component="footer" className="site-footer">
       <Box component="nav" className="footer-grid" aria-label="Footer">
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
-          <Stack gap={8} className="footer-col" aria-label="Product">
+          <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Product">
             <Title order={3} className="footer-col-title">
               Product
             </Title>
-            <Stack gap={6} className="footer-col-links">
+            <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/about">
                 About
               </Anchor>
@@ -38,11 +37,11 @@ export function SiteFooter() {
             </Stack>
           </Stack>
 
-          <Stack gap={8} className="footer-col" aria-label="Community">
+          <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Community">
             <Title order={3} className="footer-col-title">
               Community
             </Title>
-            <Stack gap={6} className="footer-col-links">
+            <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/contact">
                 Contact
               </Anchor>
@@ -55,11 +54,11 @@ export function SiteFooter() {
             </Stack>
           </Stack>
 
-          <Stack gap={8} className="footer-col" aria-label="Legal">
+          <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="Legal">
             <Title order={3} className="footer-col-title">
               Legal
             </Title>
-            <Stack gap={6} className="footer-col-links">
+            <Stack gap="var(--fo-space-4)" className="footer-col-links">
               <Anchor component={Link} to="/terms">
                 Terms
               </Anchor>
@@ -72,7 +71,7 @@ export function SiteFooter() {
             </Stack>
           </Stack>
 
-          <Stack gap={8} className="footer-col" aria-label="With">
+          <Stack gap="var(--fo-space-8)" className="footer-col" aria-label="With">
             <Title order={3} className="footer-col-title">
               With
             </Title>
@@ -84,7 +83,7 @@ export function SiteFooter() {
                 rel="noreferrer"
                 aria-label="The Movie Database (TMDB)"
               >
-                <Image className="footer-logo" src={tmdbLogoUrl} alt="TMDB" />
+                <Box component="img" className="footer-logo" src={tmdbLogoUrl} alt="TMDB" />
               </Anchor>
             </Group>
           </Stack>

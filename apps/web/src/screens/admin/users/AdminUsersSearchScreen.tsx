@@ -9,7 +9,7 @@ import {
   Text,
   TextInput,
   useCombobox
-} from "@mantine/core";
+} from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import type { ApiResult } from "../../../lib/types";
 import type { AdminUserRow } from "../../../orchestration/adminUsers";
@@ -42,20 +42,9 @@ export function AdminUsersSearchScreen(props: {
 
   const options = results.slice(0, 8).map((u) => (
     <Combobox.Option key={u.id} value={String(u.id)}>
-      <Box style={{ minWidth: 0 }}>
-        <Text fw={600} className="baseline-textBody">
+      <Box miw="var(--fo-space-0)">
+        <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody" truncate="end">
           {u.username}
-        </Text>
-        <Text
-          className="baseline-textMeta"
-          c="dimmed"
-          style={{
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
-          }}
-        >
-          {u.email}
         </Text>
       </Box>
     </Combobox.Option>
@@ -75,7 +64,7 @@ export function AdminUsersSearchScreen(props: {
         >
           <Combobox.Target>
             <TextInput
-              aria-label="Username or email"
+              aria-label="Username"
               value={query}
               onChange={(e) => {
                 setQuery(e.currentTarget.value);
@@ -83,7 +72,7 @@ export function AdminUsersSearchScreen(props: {
               }}
               onFocus={() => combobox.openDropdown()}
               onBlur={() => combobox.closeDropdown()}
-              placeholder="Username or email"
+              placeholder="Username"
             />
           </Combobox.Target>
           <Combobox.Dropdown>
@@ -106,7 +95,7 @@ export function AdminUsersSearchScreen(props: {
       <FormStatus loading={searching} result={status} />
 
       {results.length === 0 ? (
-        <Stack gap={6}>
+        <Stack gap="var(--fo-space-8)">
           <Text className="baseline-textBody" c="dimmed">
             No results
           </Text>
@@ -117,26 +106,15 @@ export function AdminUsersSearchScreen(props: {
       ) : (
         <Stack
           component="ul"
-          gap={0}
-          style={{ listStyle: "none", margin: 0, padding: 0 }}
+          gap="var(--fo-space-0)"
+          className="fo-listReset"
         >
           {results.map((u, idx) => (
             <Box key={u.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
-                <Box style={{ minWidth: 0 }}>
-                  <Text fw={600} className="baseline-textBody">
+                <Box miw="var(--fo-space-0)">
+                  <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody" truncate="end">
                     {u.username}
-                  </Text>
-                  <Text
-                    className="baseline-textMeta"
-                    c="dimmed"
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis"
-                    }}
-                  >
-                    {u.email}
                   </Text>
                 </Box>
                 <Select
@@ -151,7 +129,6 @@ export function AdminUsersSearchScreen(props: {
                     if (!v) return;
                     onSetAdmin(u, v === "admin");
                   }}
-                  w={120}
                   size="xs"
                 />
               </Group>

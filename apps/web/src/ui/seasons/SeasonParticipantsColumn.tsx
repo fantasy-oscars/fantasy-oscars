@@ -1,4 +1,4 @@
-import { Box, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { CommissionerPill } from "../pills";
 
 export function SeasonParticipantsColumn(props: {
@@ -17,7 +17,7 @@ export function SeasonParticipantsColumn(props: {
       {members.length === 0 ? (
         <Text className="muted">No participants.</Text>
       ) : (
-        <Stack component="ul" gap="xs" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <Stack component="ul" gap="xs" className="fo-listReset">
           {members.map((m) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap">

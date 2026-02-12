@@ -10,7 +10,7 @@ import {
   Tooltip,
   Title,
   UnstyledButton
-} from "@mantine/core";
+} from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -127,22 +127,22 @@ export function AdminCeremoniesOverviewScreen(props: {
           <Tooltip
             withArrow
             multiline
-            w={360}
+            w="var(--fo-layout-fieldBasis-md)"
             position="bottom-end"
             withinPortal
             events={{ hover: true, focus: true, touch: true }}
             label={
               <Stack gap="sm">
-                <Stack gap={2}>
-                  <Text fw={700} size="sm">
+                <Stack gap="var(--fo-space-2)">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm">
                     Name
                   </Text>
                   <Text size="sm" c="dimmed">
                     Display name shown to users across drafts, leagues, and results.
                   </Text>
                 </Stack>
-                <Stack gap={2}>
-                  <Text fw={700} size="sm">
+                <Stack gap="var(--fo-space-2)">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm">
                     Ceremony code
                   </Text>
                   <Text size="sm" c="dimmed">
@@ -150,8 +150,8 @@ export function AdminCeremoniesOverviewScreen(props: {
                     users.
                   </Text>
                 </Stack>
-                <Stack gap={2}>
-                  <Text fw={700} size="sm">
+                <Stack gap="var(--fo-space-2)">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm">
                     Ceremony date &amp; time
                   </Text>
                   <Text size="sm" c="dimmed">
@@ -159,8 +159,8 @@ export function AdminCeremoniesOverviewScreen(props: {
                     internally in UTC.
                   </Text>
                 </Stack>
-                <Stack gap={2}>
-                  <Text fw={700} size="sm">
+                <Stack gap="var(--fo-space-2)">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm">
                     Draft warning
                   </Text>
                   <Text size="sm" c="dimmed">

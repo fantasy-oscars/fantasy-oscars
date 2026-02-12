@@ -1,5 +1,5 @@
 import type { InboxInvite } from "../../lib/types";
-import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { PageLoader } from "../../ui/page-state";
 import type { InvitesInboxView } from "../../orchestration/invites";
 import { inviteContextLine } from "../../decisions/invites";
@@ -37,15 +37,15 @@ export function InvitesInboxScreen(props: {
             ) : view.invites.length === 0 ? (
               <Text className="baseline-textBody">No pending invites.</Text>
             ) : (
-              <Stack gap={0}>
+              <Stack gap="var(--fo-space-0)">
                 {view.invites.map((invite, idx) => (
                   <Box key={invite.id}>
                     {idx !== 0 ? <Divider /> : null}
                     <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
-                      <Stack gap={4} style={{ minWidth: 0 }}>
+                      <Stack gap="var(--fo-space-4)" miw="var(--fo-space-0)">
                         <Text
                           className="baseline-textCardTitle"
-                          style={{ lineHeight: 1.2 }}
+                          lh="var(--fo-line-height-tight)"
                         >
                           {inviteContextLine({
                             leagueName: invite.league_name,

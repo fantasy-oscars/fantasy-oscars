@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Box, Button, Group, Stack, Stepper, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Stack, Stepper, Text, Title } from "@ui";
 import type { StepId, StepState } from "../../../decisions/admin/ceremonyWizard";
 import { stepIconFor } from "../../../decisions/admin/ceremonyWizard";
+import { FO_ICON_SIZE_SM_PX } from "../../../tokens/sizes";
 
 export type WizardStepRow = {
   id: StepId;
@@ -14,8 +15,8 @@ function GatePanel(props: { title: string; reason?: string }) {
   const { title, reason } = props;
   return (
     <Box className="status status-warning" role="status">
-      <Stack gap={4}>
-        <Text fw={700}>{title}</Text>
+      <Stack gap="var(--fo-space-4)">
+        <Text fw="var(--fo-font-weight-bold)">{title}</Text>
         {reason ? <Text className="muted">{reason}</Text> : null}
       </Stack>
     </Box>
@@ -60,12 +61,15 @@ export function AdminCeremonyWizardScreen(props: {
           wrap={false}
           color="gray"
           size="xs"
-          iconSize={22}
+          iconSize={FO_ICON_SIZE_SM_PX}
           contentPadding={0}
           styles={{
-            step: { padding: "6px 0" },
-            stepLabel: { fontSize: 12, lineHeight: 1.1 },
-            stepBody: { paddingLeft: 8 }
+            step: { padding: "var(--fo-space-dense-1) var(--fo-space-0)" },
+            stepLabel: {
+              fontSize: "var(--fo-font-size-xs)",
+              lineHeight: "var(--fo-line-height-tight)"
+            },
+            stepBody: { paddingLeft: "var(--fo-space-8)" }
           }}
         >
           {stepStates.map((s, idx) => (

@@ -1,4 +1,4 @@
-import { Box, Button, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";
 import { StatusPill } from "../pills";
@@ -26,12 +26,12 @@ export function LeagueSeasonsSection(props: {
       {seasons.length === 0 ? (
         <Text className="baseline-textBody">No seasons yet.</Text>
       ) : (
-        <Stack component="ul" gap="sm" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <Stack component="ul" gap="sm" className="fo-listReset">
           {seasons.map((s) => (
             <Box key={s.id} component="li">
               <StandardCard component={Link} to={`/seasons/${s.id}`} interactive>
                 <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-                  <Box style={{ minWidth: 0 }}>
+                  <Box miw="var(--fo-space-0)">
                     <Text className="baseline-textCardTitle">{s.ceremonyLabel}</Text>
                   </Box>
                   <StatusPill>{s.statusLabel.toUpperCase()}</StatusPill>
@@ -44,4 +44,3 @@ export function LeagueSeasonsSection(props: {
     </Stack>
   );
 }
-

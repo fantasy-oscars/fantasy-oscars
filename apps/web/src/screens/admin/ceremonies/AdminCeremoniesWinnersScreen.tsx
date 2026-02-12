@@ -7,7 +7,7 @@ import {
   Stack,
   Text,
   Title
-} from "@mantine/core";
+} from "@ui";
 import * as React from "react";
 import type { AdminCeremonyWinnersOrchestration } from "../../../orchestration/adminCeremonies";
 import { FormStatus } from "../../../ui/forms";
@@ -77,7 +77,7 @@ export function AdminCeremoniesWinnersScreen(props: {
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
-      <StandardCard className="card nested" component="section">
+      <StandardCard tone="nested" component="section">
         <Group
           className="header-with-controls"
           justify="space-between"
@@ -110,7 +110,7 @@ export function AdminCeremoniesWinnersScreen(props: {
         <Box>
           <Box className="results-sticky-header">
             <Group justify="space-between" align="center" wrap="nowrap">
-              <Text fw={700}>Winners</Text>
+              <Text fw="var(--fo-font-weight-bold)">Winners</Text>
               <Group gap="xs" wrap="nowrap">
                 <Button
                   type="button"
@@ -146,7 +146,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                         gap="sm"
                         align="center"
                         wrap="nowrap"
-                        style={{ minWidth: 0 }}
+                        className="fo-minw0"
                       >
                         <Text
                           component="span"
@@ -185,7 +185,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                         No nominations yet.
                       </Text>
                     ) : (
-                      <Stack gap={0} className="nomination-list">
+                      <Stack gap="var(--fo-space-0)" className="nomination-list">
                         {nominations.map((nom: WinnersNomination) => (
                           <Group
                             key={nom.id}
@@ -200,7 +200,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                               gap="sm"
                               align="center"
                               wrap="nowrap"
-                              style={{ minWidth: 0 }}
+                              className="fo-minw0"
                             >
                               <Checkbox
                                 aria-label={`Select winner: ${nominationLabel(nom)}`}
@@ -215,7 +215,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                                   )
                                 }
                               />
-                              <Text fw={700} lineClamp={1} style={{ minWidth: 0 }}>
+                              <Text fw="var(--fo-font-weight-bold)" lineClamp={1} className="fo-minw0">
                                 {nominationLabel(nom)}
                               </Text>
                             </Group>

@@ -1,4 +1,4 @@
-import { Text } from "@mantine/core";
+import { Text } from "@ui";
 
 export function DirectionChevron(props: { direction: "FORWARD" | "REVERSE" | null }) {
   const glyph = props.direction === "REVERSE" ? "chevron_left" : "chevron_right";

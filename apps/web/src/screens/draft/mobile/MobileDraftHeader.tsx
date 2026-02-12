@@ -8,7 +8,7 @@ import {
   Stack,
   Switch,
   Text
-} from "@mantine/core";
+} from "@ui";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "../../../ui/animalAvatarIcon";
@@ -218,14 +218,14 @@ export function MobileDraftHeader(props: {
           </Button>
 
           <Box>
-            <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+            <Text className="baseline-textMeta" mb="var(--fo-space-8)">
               Draft order
             </Text>
             <Stack gap="xs">
               {props.participants.map((p) => (
                 <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
                   <Group gap="sm" wrap="nowrap">
-                    <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                    <AnimalAvatarIcon avatarKey={p.avatarKey} />
                     <Text>{p.label}</Text>
                   </Group>
                   {p.active ? (

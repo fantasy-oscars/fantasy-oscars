@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@ui";
 import type { StaticContentView } from "../orchestration/content";
 import { Markdown } from "../ui/Markdown";
 import { StandardCard } from "../primitives";

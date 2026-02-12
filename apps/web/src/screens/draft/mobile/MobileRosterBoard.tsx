@@ -1,5 +1,5 @@
 import type { DraftRoomOrchestration } from "../../../orchestration/draft";
-import { Box, Select, Stack, Text, Tooltip } from "@mantine/core";
+import { Box, Select, Stack, Text, Tooltip } from "@ui";
 import { useEffect, useMemo, useState } from "react";
 import { AnimalAvatarIcon } from "../../../ui/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "../../../decisions/avatars";
@@ -8,7 +8,8 @@ import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard
 import { formatSignedInt } from "../../../decisions/draftRoomLayout";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
-  NOMINEE_TOOLTIP_EVENTS
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
 } from "../../../ui/draft/nomineeTooltip";
 
 export function MobileRosterBoard(props: {
@@ -96,8 +97,8 @@ export function MobileRosterBoard(props: {
       {current ? (
         <Box className="dr-card dr-rosterCard">
           <Box className="dr-card-titleRow">
-            <AnimalAvatarIcon avatarKey={current.avatarKey} size={24} />
-            <Text className="dr-card-title" lineClamp={1} style={{ flex: "1 1 auto" }}>
+            <AnimalAvatarIcon avatarKey={current.avatarKey} size="md" />
+            <Text className="dr-card-title fo-flex1Minw0" lineClamp={1}>
               {current.label}
             </Text>
             {o.header.status === "COMPLETED" ? (
@@ -107,7 +108,7 @@ export function MobileRosterBoard(props: {
             ) : null}
           </Box>
 
-          <Stack gap={6} className="dr-card-pills">
+          <Stack gap="var(--fo-space-4)" className="dr-card-pills">
             {picks.map((pick) => {
               const nominee =
                 pick.nominationId != null
@@ -160,7 +161,7 @@ export function MobileRosterBoard(props: {
                     withArrow={!nominee}
                     position="bottom-start"
                     multiline
-                    offset={10}
+                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
                     styles={nominee ? NOMINEE_CARD_TOOLTIP_STYLES : undefined}
                     label={
                       nominee ? (
@@ -195,4 +196,3 @@ export function MobileRosterBoard(props: {
     </Stack>
   );
 }
-

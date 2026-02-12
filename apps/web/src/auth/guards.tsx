@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Box, Card, Text, Title } from "@mantine/core";
+import { Box, Card, Text, Title } from "@ui";
 import { useAuthContext } from "./context";
 import { PageLoader } from "../ui/page-state";
 

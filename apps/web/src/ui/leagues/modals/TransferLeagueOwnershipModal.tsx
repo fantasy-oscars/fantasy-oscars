@@ -1,4 +1,4 @@
-import { Button, Group, Modal, Select, Stack, Text } from "@mantine/core";
+import { Button, Group, Modal, Select, Stack, Text } from "@ui";
 
 export function TransferLeagueOwnershipModal(props: {
   opened: boolean;

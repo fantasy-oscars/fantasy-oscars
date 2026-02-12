@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Stack, Text, Title } from "@mantine/core";
+import { Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
 

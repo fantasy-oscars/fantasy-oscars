@@ -1,4 +1,4 @@
-import { Button, Divider, Group, Stack, Title } from "@mantine/core";
+import { Button, Divider, Group, Stack, Title } from "@ui";
 import { FormStatus } from "../forms";
 
 export function LeagueManagementSection(props: {

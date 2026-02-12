@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 
 export type HeroCardProps = {
   className?: string;

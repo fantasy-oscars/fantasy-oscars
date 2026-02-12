@@ -1,4 +1,4 @@
-import { Anchor, Box, Group } from "@mantine/core";
+import { Anchor, Box, Group } from "@ui";
 import type { RefObject } from "react";
 import { NavLink } from "react-router-dom";
 

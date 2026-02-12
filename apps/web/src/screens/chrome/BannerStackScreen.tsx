@@ -1,5 +1,5 @@
 import type { BannerRow } from "../../orchestration/chrome";
-import { Alert, Box } from "@mantine/core";
+import { Alert, Box } from "@ui";
 import { Markdown } from "../../ui/Markdown";
 import { bannerColor } from "../../decisions/chrome/bannerColor";
 
@@ -22,18 +22,10 @@ export function BannerStackScreen(props: {
           withCloseButton={b.dismissible}
           closeButtonLabel="Dismiss announcement"
           onClose={b.dismissible ? () => onDismiss(b.id) : undefined}
-          styles={{
-            root: {
-              justifyContent: "center"
-            },
-            body: {
-              width: "100%",
-              textAlign: "center"
-            }
-          }}
+          classNames={{ root: "fo-alertCenteredRoot", body: "fo-alertCenteredBody" }}
         >
           {/* Title is admin-only metadata; the banner shows only the content body. */}
-          <Box style={{ width: "100%", textAlign: "center" }}>
+          <Box w="100%" ta="center">
             <Markdown markdown={b.body_markdown} />
           </Box>
         </Alert>

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Button, Group, Modal, Text } from "@mantine/core";
+import { Button, Group, Modal, Text } from "@ui";
 
 export type ConfirmRequest = {
   title: string;

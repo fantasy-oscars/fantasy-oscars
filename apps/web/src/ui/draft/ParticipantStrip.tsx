@@ -1,4 +1,4 @@
-import { Box, Group, Text, Tooltip } from "@mantine/core";
+import { Box, Group, Text, Tooltip } from "@ui";
 import type { RefObject } from "react";
 import { AvatarToken } from "./AvatarToken";
 import { DirectionChevron } from "./DirectionChevron";
@@ -63,7 +63,7 @@ export function ParticipantStrip(props: {
   }
 
   return (
-    <Group className="drh-strip" gap={8} wrap="nowrap" ref={props.containerRef}>
+    <Group className="drh-strip" gap="var(--fo-space-8)" wrap="nowrap" ref={props.containerRef}>
       {headHidden > 0 && (
         <Tooltip
           events={NOMINEE_TOOLTIP_EVENTS}

@@ -7,7 +7,7 @@ import {
   Text,
   Title,
   UnstyledButton
-} from "@mantine/core";
+} from "@ui";
 import type { CeremonyDetail } from "../../../orchestration/adminCeremonyWorksheet";
 import type {
   CeremonyWorkflowStepId,
@@ -149,7 +149,7 @@ export function AdminCeremonyHomeScreen(props: {
           mt="sm"
           type="button"
           variant="subtle"
-          className="danger"
+          color="red"
           onClick={archive.onArchive}
           disabled={archive.saving || ceremony.status === "ARCHIVED"}
         >

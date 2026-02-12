@@ -8,7 +8,7 @@ import {
   Stack,
   Text,
   Title
-} from "@mantine/core";
+} from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -72,7 +72,7 @@ export function AdminCeremoniesIndexScreen(props: {
 
       {ceremonies.length === 0 ? (
         <StandardCard>
-          <Text fw={700} className="baseline-textBody">
+          <Text fw="var(--fo-font-weight-bold)" className="baseline-textBody">
             No ceremonies exist yet.
           </Text>
           <Text className="baseline-textBody" c="dimmed" mt="xs">
@@ -94,20 +94,14 @@ export function AdminCeremoniesIndexScreen(props: {
 
             return (
               <StandardCard key={c.id}>
-                <Group
-                  justify="space-between"
-                  align="center"
-                  wrap="nowrap"
-                  style={{ gap: 10 }}
-                >
-                  <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
-                    <Box style={{ minWidth: 0 }}>
+                <Group justify="space-between" align="center" wrap="nowrap" gap="var(--fo-space-dense-2)">
+                  <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
+                    <Box miw="var(--fo-space-0)">
                       <Text
-                        fw={700}
+                        fw="var(--fo-font-weight-bold)"
                         component={Link}
                         to={`/admin/ceremonies/${c.id}`}
-                        className="link-plain"
-                        style={{ display: "block" }}
+                        className="link-plain fo-block"
                         lineClamp={1}
                       >
                         {c.name || "Untitled ceremony"}
@@ -115,9 +109,8 @@ export function AdminCeremoniesIndexScreen(props: {
                     </Box>
                     <Box component="span" className="baseline-statusPill">
                       <Text
-                        className="baseline-textMeta"
-                        fw={650}
-                        style={{ letterSpacing: "0.06em" }}
+                        className="baseline-textMeta fo-letterSpacingTracked"
+                        fw="var(--fo-font-weight-bold)"
                       >
                         {statusUpper}
                       </Text>

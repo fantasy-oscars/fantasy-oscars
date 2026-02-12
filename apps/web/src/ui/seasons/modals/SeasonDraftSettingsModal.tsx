@@ -8,7 +8,7 @@ import {
   Stack,
   Switch,
   Text
-} from "@mantine/core";
+} from "@ui";
 
 export type SeasonDraftSettingsDraft = {
   scoringStrategy: "fixed" | "negative" | "category_weighted";

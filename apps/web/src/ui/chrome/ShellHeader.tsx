@@ -8,7 +8,7 @@ import {
   Text,
   Title,
   type MantineColorScheme
-} from "@mantine/core";
+} from "@ui";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 
@@ -80,9 +80,6 @@ export function ShellHeader(props: {
             <Indicator
               disabled={props.inviteCount <= 0}
               label={props.inviteCount > 9 ? "9+" : String(props.inviteCount)}
-              size={16}
-              offset={4}
-              color="yellow"
             >
               <Button
                 component={Link}
@@ -105,7 +102,7 @@ export function ShellHeader(props: {
                 <Button
                   type="button"
                   variant="subtle"
-                  leftSection={<AnimalAvatarIcon avatarKey={props.user.avatar_key} size={26} />}
+                  leftSection={<AnimalAvatarIcon avatarKey={props.user.avatar_key} size="lg" />}
                   rightSection={
                     <Text component="span" aria-hidden="true">
                       ▾
@@ -147,4 +144,3 @@ export function ShellHeader(props: {
     </Box>
   );
 }
-

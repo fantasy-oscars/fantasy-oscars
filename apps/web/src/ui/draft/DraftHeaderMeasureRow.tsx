@@ -1,4 +1,4 @@
-import { Box, Button, Group, SegmentedControl, Switch, Text, UnstyledButton } from "@mantine/core";
+import { Box, Button, Group, SegmentedControl, Switch, Text, UnstyledButton } from "@ui";
 import type { RefObject } from "react";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 import { ParticipantStrip } from "./ParticipantStrip";
@@ -106,7 +106,7 @@ export function DraftHeaderMeasureRow(props: {
             </Text>
           </Button>
           <Box className="drh-userBadge">
-            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>
           </Box>
         </Group>

@@ -1,4 +1,4 @@
-import { Box, Button, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";
@@ -33,7 +33,7 @@ export function AdminCeremoniesLockScreen(props: {
       </Box>
 
       {lockState ? (
-        <StandardCard className="card nested" component="section">
+        <StandardCard tone="nested" component="section">
           <Group
             className="header-with-controls"
             justify="space-between"
@@ -64,7 +64,7 @@ export function AdminCeremoniesLockScreen(props: {
         </StandardCard>
       ) : null}
 
-      <StandardCard className="card nested" component="section">
+      <StandardCard tone="nested" component="section">
         <Box component="header">
           <Title order={4}>Actions</Title>
           <Text className="muted">
@@ -75,7 +75,7 @@ export function AdminCeremoniesLockScreen(props: {
           <Button type="button" onClick={onLock} disabled={saving}>
             Lock ceremony
           </Button>
-          <Button type="button" className="danger" onClick={onArchive} disabled={saving}>
+          <Button type="button" color="red" variant="outline" onClick={onArchive} disabled={saving}>
             Archive ceremony
           </Button>
         </Group>

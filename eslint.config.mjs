@@ -56,7 +56,32 @@ export default [
       ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
-      "react/jsx-uses-react": "off"
+      "react/jsx-uses-react": "off",
+      // Design-system guardrail: Mantine must be accessed via `apps/web/src/ui/*`.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@mantine/*"],
+              message: "Import Mantine via apps/web/src/ui/* wrappers instead of @mantine/*."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    // Allow direct Mantine imports inside the UI + theme layers (wrappers) and tests.
+    files: [
+      "apps/web/src/ui/**/*.{ts,tsx}",
+      "apps/web/src/theme/**/*.{ts,tsx}",
+      "apps/web/src/main.tsx",
+      "apps/web/src/**/*.test.{ts,tsx}",
+      "apps/web/src/**/__tests__/**/*.{ts,tsx}"
+    ],
+    rules: {
+      "no-restricted-imports": "off"
     }
   },
   {

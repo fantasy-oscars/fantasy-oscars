@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider } from "@ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 

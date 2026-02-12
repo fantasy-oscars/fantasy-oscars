@@ -1,4 +1,4 @@
-import { Box, Text, UnstyledButton } from "@mantine/core";
+import { Box, Text, UnstyledButton } from "@ui";
 import { NomineePill } from "../NomineePill";
 
 export type DraftBoardGridCategory = {

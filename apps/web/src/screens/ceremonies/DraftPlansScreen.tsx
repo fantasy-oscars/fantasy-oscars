@@ -7,7 +7,7 @@ import {
   TextInput,
   Title,
   useCombobox
-} from "@mantine/core";
+} from "@ui";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { CeremonyDetail } from "../../orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "../../orchestration/draftPlans";
@@ -220,7 +220,7 @@ export function DraftPlansScreen(props: {
             </Box>
 
             {o.selectedPlanId ? (
-              <StandardCard component="section" className="nested">
+              <StandardCard component="section" tone="nested">
                 <Stack gap="xs">
                   <Group justify="space-between" wrap="nowrap">
                     <Title order={4} className="baseline-textSectionHeader">
@@ -253,7 +253,7 @@ export function DraftPlansScreen(props: {
                         items={effectiveOrder}
                         strategy={verticalListSortingStrategy}
                       >
-                        <Stack gap={0} role="list" aria-label="Nominee order">
+                        <Stack gap="var(--fo-space-0)" role="list" aria-label="Nominee order">
                           {effectiveOrder.map((id) => {
                             const n = nominationById.get(id);
                             if (!n) return null;

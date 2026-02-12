@@ -1,7 +1,9 @@
-import { ActionIcon, Box, Group, Text, Tooltip } from "@mantine/core";
+import { ActionIcon, Box, Group, Text, Tooltip } from "@ui";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useSortableInlineStyle } from "../../../dnd/useSortableInlineStyle";
 
 export function SortableNominationRow(props: {
   id: number;
@@ -16,9 +18,27 @@ export function SortableNominationRow(props: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      elRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef]
+  );
+
+  const sortableStyle = useMemo(
+    () => ({
+      transform: CSS.Transform.toString(transform),
+      transition
+    }),
+    [transform, transition]
+  );
+  useSortableInlineStyle(elRef, sortableStyle);
+
   return (
     <Group
-      ref={setNodeRef}
+      ref={setRef}
       className={[
         "nomination-row",
         "nomination-row-compact",
@@ -31,12 +51,8 @@ export function SortableNominationRow(props: {
       justify="space-between"
       align="center"
       wrap="nowrap"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition
-      }}
     >
-      <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+      <Group gap="sm" align="center" wrap="nowrap" className="fo-minw0">
         <Box
           component="button"
           type="button"
@@ -55,8 +71,8 @@ export function SortableNominationRow(props: {
             drag_indicator
           </Text>
         </Box>
-        <Box style={{ minWidth: 0 }}>
-          <Text className="nomination-title" fw={700} lineClamp={1}>
+        <Box className="fo-minw0">
+          <Text className="nomination-title" fw="var(--fo-font-weight-bold)" lineClamp={1}>
             {primary}
           </Text>
           {secondary ? (

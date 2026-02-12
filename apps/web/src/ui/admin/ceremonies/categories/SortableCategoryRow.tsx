@@ -1,6 +1,8 @@
-import { ActionIcon, Box, Group, Text } from "@mantine/core";
+import { ActionIcon, Box, Group, Text } from "@ui";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useCallback, useMemo, useRef } from "react";
+import { useSortableInlineStyle } from "../../../dnd/useSortableInlineStyle";
 
 const TRASH_ICON = String.fromCharCode(0xe872);
 
@@ -17,17 +19,31 @@ export function SortableCategoryRow(props: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled: !canEdit });
 
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      elRef.current = node;
+      setNodeRef(node);
+    },
+    [setNodeRef]
+  );
+
+  const sortableStyle = useMemo(
+    () => ({
+      transform: CSS.Transform.toString(transform),
+      transition
+    }),
+    [transform, transition]
+  );
+  useSortableInlineStyle(elRef, sortableStyle);
+
   return (
     <Box
-      ref={setNodeRef}
+      ref={setRef}
       className={["admin-category-row", isDragging ? "is-dragging" : ""].join(" ")}
       role="listitem"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition
-      }}
     >
-      <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+      <Group gap="sm" wrap="nowrap" className="fo-flex1Minw0">
         <Box
           component="button"
           type="button"
@@ -48,7 +64,7 @@ export function SortableCategoryRow(props: {
           </Text>
         </Box>
 
-        <Box style={{ flex: 1, minWidth: 0 }}>
+        <Box className="fo-flex1Minw0">
           <Group gap="xs" wrap="nowrap">
             <Text
               component="span"
@@ -59,7 +75,7 @@ export function SortableCategoryRow(props: {
             >
               {iconGlyph}
             </Text>
-            <Text fw={700} lineClamp={1} style={{ flex: 1, minWidth: 0 }}>
+            <Text fw="var(--fo-font-weight-bold)" lineClamp={1} className="fo-flex1Minw0">
               {name}
             </Text>
           </Group>
@@ -84,4 +100,3 @@ export function SortableCategoryRow(props: {
     </Box>
   );
 }
-

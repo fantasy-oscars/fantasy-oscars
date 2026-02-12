@@ -1,11 +1,11 @@
-import { Stack, Text, Title } from "@mantine/core";
+import { Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../../primitives";
 import "../../../primitives/baseline.css";
 
 export function AdminCeremoniesScoringScreen() {
   return (
     <Stack component="section">
-      <Stack gap={0}>
+      <Stack gap="var(--fo-space-0)">
         <Title order={3} className="baseline-textSectionHeader">
           Scoring
         </Title>
@@ -15,7 +15,7 @@ export function AdminCeremoniesScoringScreen() {
       </Stack>
 
       <StandardCard>
-        <Text fw={700} className="baseline-textBody">
+        <Text fw="var(--fo-font-weight-bold)" className="baseline-textBody">
           Not wired yet.
         </Text>
         <Text className="baseline-textBody" c="dimmed" mt="xs">

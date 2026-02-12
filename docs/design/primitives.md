@@ -46,6 +46,29 @@ Theme tokens and Mantine skinning live in:
 - `apps/web/src/styles.css`
 - `apps/web/src/theme/theme.ts`
 
+## Tokens (no literals)
+
+The UI uses tokens everywhere. Hard-coded literals (colors, spacing, sizes, shadows, opacity)
+should not appear in component code or CSS rules.
+
+Allowed sources of truth:
+
+- CSS variables in `apps/web/src/styles.css` (e.g. `--fo-space-*`, `--fo-shadow-*`, `--fo-*` surfaces/text)
+- Theme bindings in `apps/web/src/theme/theme.ts` (Mantine mapping only)
+- JS/TS-only numeric tokens for props that require numbers (e.g. `iconSize={...}`):
+  - `apps/web/src/tokens/**`
+
+Spacing tokens:
+
+- Global spacing: `--fo-space-xs|sm|md|lg` (used for page rhythm)
+- Dense spacing: `--fo-space-dense-1|dense-2` (reserved for high-density surfaces like the Draft Room)
+
+Rule of thumb:
+
+- Prefer Mantine primitives (`Stack`, `Group`) for layout.
+- Do not use numeric spacing props (e.g. `gap={6}`); use token strings instead (e.g. `gap="var(--fo-space-8)"`).
+- For brittle layouts (Draft Room), introduce or reuse domain-scoped tokens (e.g. `--fo-db-*`) rather than tweaking values.
+
 ## Usage rules (orthodoxy)
 
 - Pages (`apps/web/src/pages/**`) are glue only: call orchestration hooks and render screens.

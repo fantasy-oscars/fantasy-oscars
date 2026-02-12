@@ -1,4 +1,4 @@
-import { Box, Button, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { Box, Button, Group, Select, Stack, Text, TextInput } from "@ui";
 import type { ApiResult } from "../../../../lib/types";
 import { StandardCard } from "../../../../primitives";
 import { FormStatus } from "../../../forms";
@@ -33,10 +33,10 @@ export function CreateNominationPanel(props: {
   return (
     <StandardCard className="wizard-panel is-primary">
       <Stack className="stack-sm" gap="sm">
-        <Text fw={700}>Create nominations</Text>
+        <Text fw="var(--fo-font-weight-bold)">Create nominations</Text>
 
         <Group className="admin-add-row" align="flex-end" wrap="wrap">
-          <Box style={{ flex: "1 1 260px", minWidth: 220 }}>
+          <Box className="fo-flexFieldSm">
             <Select
               label="Category"
               placeholder="Select…"
@@ -49,7 +49,7 @@ export function CreateNominationPanel(props: {
               }))}
             />
           </Box>
-          <Box style={{ flex: "2 1 420px", minWidth: 260 }}>
+          <Box className="fo-flexField2Lg">
             <FilmCombobox
               label="Film"
               value={props.filmInput}
@@ -71,7 +71,7 @@ export function CreateNominationPanel(props: {
           <Stack gap="sm" mt="xs">
             <Group justify="space-between" align="center" wrap="nowrap">
               <Group gap="xs" align="center" wrap="nowrap">
-                <Text fw={700}>Contributor</Text>
+                <Text fw="var(--fo-font-weight-bold)">Contributor</Text>
                 {props.hasTmdbCredits ? (
                   <Text
                     component="span"
@@ -89,7 +89,7 @@ export function CreateNominationPanel(props: {
             ) : null}
 
             <Group className="admin-add-row" align="flex-end" wrap="wrap">
-              <Box style={{ flex: "1 1 360px", minWidth: 240 }}>
+              <Box className="fo-flexFieldMd">
                 <Select
                   label="Select a person"
                   placeholder="Select…"
@@ -121,7 +121,7 @@ export function CreateNominationPanel(props: {
                 {props.selectedCredits.map((c) => (
                   <Box key={c.tmdb_id} className="list-row">
                     <Box>
-                      <Text fw={700} span>
+                      <Text fw="var(--fo-font-weight-bold)" span>
                         {c.name}
                       </Text>
                       <Text className="muted" span>
@@ -161,4 +161,3 @@ export function CreateNominationPanel(props: {
     </StandardCard>
   );
 }
-

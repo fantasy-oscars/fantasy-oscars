@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Box, Divider, Stack, Text, Title } from "@mantine/core";
+import { Box, Divider, Stack, Text, Title } from "@ui";
 import "../../../primitives/baseline.css";
 
 export function AdminUsersLayoutScreen(props: { children: ReactNode }) {

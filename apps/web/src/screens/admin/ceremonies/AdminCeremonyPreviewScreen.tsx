@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@ui";
 import { DraftBoardGrid } from "../../../components/draft/DraftBoardGrid";
 
 export function AdminCeremonyPreviewScreen(props: {

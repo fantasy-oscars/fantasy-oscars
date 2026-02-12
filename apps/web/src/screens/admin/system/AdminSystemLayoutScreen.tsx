@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { Box, Divider, Group, Text, Title } from "@mantine/core";
+import { Box, Divider, Group, Text, Title } from "@ui";
 import "../../../primitives/baseline.css";
 
 export function AdminSystemLayoutScreen(props: { children: ReactNode }) {

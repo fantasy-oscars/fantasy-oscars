@@ -1,4 +1,4 @@
-import { Divider, Stack, Text, Title } from "@mantine/core";
+import { Divider, Stack, Text, Title } from "@ui";
 
 export function SeasonRulesColumn(props: {
   scoringLabel: string;
@@ -11,7 +11,7 @@ export function SeasonRulesColumn(props: {
     <Stack gap="sm">
       <Title order={3}>Rules</Title>
       <Divider />
-      <Stack gap={6}>
+      <Stack gap="var(--fo-space-8)">
         <Text>
           <Text component="span" className="muted">
             Scoring:
@@ -40,4 +40,3 @@ export function SeasonRulesColumn(props: {
     </Stack>
   );
 }
-

@@ -1,8 +1,12 @@
-import { Box, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { Box, Text, Tooltip, UnstyledButton } from "@ui";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
-import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import {
+  NOMINEE_CARD_TOOLTIP_STYLES,
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
+} from "./nomineeTooltip";
 import type { DraftLedgerRow, DraftNomineeMeta } from "./types";
 
 export function DraftLedgerRail(props: {
@@ -71,7 +75,7 @@ export function DraftLedgerRail(props: {
                   <Box key={r.pickNumber} className="dr-railRow dr-ledgerRow" data-active={r.active ? "true" : "false"}>
                     <Text className="dr-railMeta">{r.roundPick}</Text>
                     <Box className="dr-railAvatar">
-                      <AnimalAvatarIcon avatarKey={avatarKey} size={22} />
+                      <AnimalAvatarIcon avatarKey={avatarKey} />
                     </Box>
                     {nominee ? (
                       <Tooltip
@@ -79,7 +83,7 @@ export function DraftLedgerRail(props: {
                         withArrow={false}
                         position="bottom-start"
                         multiline
-                        offset={10}
+                        offset={NOMINEE_TOOLTIP_OFFSET_PX}
                         styles={NOMINEE_CARD_TOOLTIP_STYLES}
                         label={
                           <NomineeTooltipCard

@@ -1,8 +1,12 @@
-import { Box, Text, Tooltip, UnstyledButton } from "@mantine/core";
+import { Box, Text, Tooltip, UnstyledButton } from "@ui";
 import type { RefObject } from "react";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
-import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import {
+  NOMINEE_CARD_TOOLTIP_STYLES,
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
+} from "./nomineeTooltip";
 
 export function CategoryCard(props: {
   categoryId: string;
@@ -135,7 +139,7 @@ export function CategoryCard(props: {
                 withArrow={false}
                 position="bottom-start"
                 multiline
-                offset={10}
+                offset={NOMINEE_TOOLTIP_OFFSET_PX}
                 styles={NOMINEE_CARD_TOOLTIP_STYLES}
                 label={
                   <NomineeTooltipCard

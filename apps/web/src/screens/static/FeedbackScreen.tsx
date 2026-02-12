@@ -1,4 +1,4 @@
-import { Anchor, Text } from "@mantine/core";
+import { Anchor, Text } from "@ui";
 import { StaticPage } from "../../ui/StaticPage";
 
 export function FeedbackScreen() {

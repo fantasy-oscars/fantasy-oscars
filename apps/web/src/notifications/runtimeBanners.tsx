@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Alert, Box } from "@mantine/core";
+import { Alert, Box } from "@ui";
 import { bannerColor } from "../decisions/chrome/bannerColor";
 
 export type RuntimeBanner = {
@@ -94,12 +94,11 @@ export function RuntimeBannerStack() {
           withCloseButton={b.dismissible}
           closeButtonLabel="Dismiss notification"
           onClose={b.dismissible ? () => dismiss(b.id) : undefined}
-          styles={{
-            root: { justifyContent: "center" },
-            body: { width: "100%", textAlign: "center" }
-          }}
+          classNames={{ root: "fo-alertCenteredRoot", body: "fo-alertCenteredBody" }}
         >
-          <Box style={{ width: "100%", textAlign: "center" }}>{b.message}</Box>
+          <Box w="100%" ta="center">
+            {b.message}
+          </Box>
         </Alert>
       ))}
     </Box>

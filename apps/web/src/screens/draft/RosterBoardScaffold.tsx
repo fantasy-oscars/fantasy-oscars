@@ -1,12 +1,17 @@
-import { Box, Stack, Text, Tooltip, UnstyledButton } from "@mantine/core";
-import { useEffect, useMemo, useState } from "react";
+import { Box, Stack, Text, Tooltip, UnstyledButton } from "@ui";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
 import { pickDeterministicAvatarKey } from "../../decisions/avatars";
 import { formatSignedInt } from "../../decisions/draftRoomLayout";
 import { NomineeTooltipCard } from "../../components/draft/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "../../ui/animalAvatarIcon";
 import { DraftCategoryIcon } from "../../ui/draft/DraftCategoryIcon";
-import { NOMINEE_CARD_TOOLTIP_STYLES, NOMINEE_TOOLTIP_EVENTS } from "../../ui/draft/nomineeTooltip";
+import { useCssVars } from "../../ui/dom/useCssVars";
+import {
+  NOMINEE_CARD_TOOLTIP_STYLES,
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
+} from "../../ui/draft/nomineeTooltip";
 
 export function RosterBoardScaffold(props: {
   o: DraftRoomOrchestration;
@@ -78,6 +83,12 @@ export function RosterBoardScaffold(props: {
   const showWeightedPoints =
     Boolean(o.header.isFinalResults) &&
     o.header.scoringStrategyName === "category_weighted";
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  useCssVars(gridRef, {
+    "--roster-unit": "calc(100vw / var(--fo-db-rosterUnitDivisor))",
+    "--roster-cols": visible.length
+  });
 
   return (
     <Box className="dr-middle dr-roster">
@@ -114,12 +125,7 @@ export function RosterBoardScaffold(props: {
 
       <Box
         className="dr-rosterGrid"
-        style={
-          {
-            ["--roster-unit" as never]: "calc(100vw / 6.25)",
-            ["--roster-cols" as never]: visible.length
-          } as React.CSSProperties
-        }
+        ref={gridRef}
       >
         {visible.map((p) => {
           const picks = o.rosterBoard.rowsBySeat.get(p.seatNumber) ?? [];
@@ -127,11 +133,10 @@ export function RosterBoardScaffold(props: {
             <Box key={p.seatNumber} className="dr-rosterCol">
               <Box className="dr-card dr-rosterCard">
                 <Box className="dr-card-titleRow">
-                  <AnimalAvatarIcon avatarKey={p.avatarKey} size={24} />
+                  <AnimalAvatarIcon avatarKey={p.avatarKey} size="md" />
                   <Text
-                    className="dr-card-title"
+                    className="dr-card-title fo-flex1Minw0"
                     lineClamp={1}
-                    style={{ flex: "1 1 auto" }}
                   >
                     {p.label}
                   </Text>
@@ -142,7 +147,7 @@ export function RosterBoardScaffold(props: {
                     {p.winnerCount}
                   </Text>
                 </Box>
-                <Stack gap={6} className="dr-card-pills">
+                <Stack gap="var(--fo-space-4)" className="dr-card-pills">
                   {picks.map((pick) => {
                     const nominee =
                       pick.nominationId != null
@@ -201,7 +206,7 @@ export function RosterBoardScaffold(props: {
                           withArrow={!nominee}
                           position="bottom-start"
                           multiline
-                          offset={10}
+                          offset={NOMINEE_TOOLTIP_OFFSET_PX}
                           styles={nominee ? NOMINEE_CARD_TOOLTIP_STYLES : undefined}
                           label={
                             nominee ? (
@@ -237,4 +242,3 @@ export function RosterBoardScaffold(props: {
     </Box>
   );
 }
-

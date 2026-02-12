@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../../primitives";
 import "../../../primitives/baseline.css";
 
@@ -15,7 +15,7 @@ export function AdminSystemAuditLogScreen() {
       </Box>
 
       <StandardCard>
-        <Text fw={700} className="baseline-textBody">
+        <Text fw="var(--fo-font-weight-bold)" className="baseline-textBody">
           Not wired yet.
         </Text>
         <Text className="baseline-textBody" c="dimmed" mt="xs">

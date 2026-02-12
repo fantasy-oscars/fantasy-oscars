@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Box, Button, Checkbox, Group, Select, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Box, Button, Checkbox, Group, Select, Stack, Text, TextInput, Title } from "@ui";
 import { StandardCard } from "../../../../primitives";
 
 export type NewTemplateDraft = {

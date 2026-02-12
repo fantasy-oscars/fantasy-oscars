@@ -1,4 +1,4 @@
-import { Alert, Group, Loader, Text } from "@mantine/core";
+import { Alert, Group, Loader, Text } from "@ui";
 
 export function PageLoader(props: { label?: string }) {
   return (

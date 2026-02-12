@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Group, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Box, Button, Group, Text, TextInput } from "@ui";
 import { useState } from "react";
 import { notify } from "../../../../notifications";
 import { NominationFilmLinkConflictModal } from "../../../../ui/admin/ceremonies/nominees/NominationFilmLinkConflictModal";
@@ -37,7 +37,7 @@ export function NominationEditFilmSection(props: {
   return (
     <Box>
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Text fw={700}>Film</Text>
+        <Text fw="var(--fo-font-weight-bold)">Film</Text>
         {filmId ? (
           <Group gap="xs" wrap="nowrap">
             {!filmLinked ? (

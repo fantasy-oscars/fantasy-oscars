@@ -1,4 +1,4 @@
-import { Button, Divider, Stack, Title } from "@mantine/core";
+import { Button, Divider, Stack, Title } from "@ui";
 
 export function SeasonManagementColumn(props: {
   isLocked: boolean;

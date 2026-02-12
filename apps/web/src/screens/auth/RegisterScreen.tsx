@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Grid, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Grid, Stack, Text, Title } from "@ui";
 import type { ApiResult, FieldErrors } from "../../lib/types";
 import { FormField, FormStatus } from "../../ui/forms";
 import { StandardCard } from "../../primitives";
@@ -15,7 +15,7 @@ export function RegisterScreen(props: {
   return (
     <Grid className="card-grid" gutter="lg">
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <StandardCard className="card" component="section">
+        <StandardCard component="section">
           <Box component="header">
             <Title order={2} className="baseline-textHeroTitle">
               Create account
@@ -41,7 +41,7 @@ export function RegisterScreen(props: {
         </StandardCard>
       </Grid.Col>
       <Grid.Col span={{ base: 12, md: 6 }}>
-        <StandardCard className="card nested" component="section">
+        <StandardCard tone="nested" component="section">
           <Box component="header">
             <Title order={3} className="baseline-textCardTitle">
               Already have an account?

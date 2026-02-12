@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Divider,
   Group,
@@ -7,7 +8,7 @@ import {
   Text,
   TextInput,
   Title
-} from "@mantine/core";
+} from "@ui";
 import { StandardCard } from "../../../primitives/cards/StandardCard";
 
 import type { AdminFilmDuplicateGroup } from "../../../orchestration/adminFilmsDuplicates";
@@ -40,7 +41,7 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
 
   return (
     <Stack gap="md">
-      <Stack gap={4}>
+      <Stack gap="var(--fo-space-4)">
         <Title order={2} className="baseline-textHeroTitle">
           Films
         </Title>
@@ -50,13 +51,14 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
       </Stack>
 
       <Group align="flex-end" gap="sm" wrap="wrap">
-        <TextInput
-          label="Search duplicates"
-          placeholder="Film title"
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
-          style={{ flex: "1 1 360px" }}
-        />
+        <Box className="fo-flexFieldMd">
+          <TextInput
+            label="Search duplicates"
+            placeholder="Film title"
+            value={query}
+            onChange={(e) => setQuery(e.currentTarget.value)}
+          />
+        </Box>
         <Button variant="default" loading={loading} onClick={onReload}>
           Search
         </Button>
@@ -84,14 +86,16 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
                   <Divider />
                   <Radio.Group
                     value={String(canonicalId)}
-                    onChange={(val) => setCanonicalForGroup(g.norm_title, Number(val))}
+                    onChange={(val: string) =>
+                      setCanonicalForGroup(g.norm_title, Number(val))
+                    }
                     label={
                       <Text className="baseline-textMeta">
                         Choose the canonical film to keep
                       </Text>
                     }
                   >
-                    <Stack gap={6} mt={6}>
+                    <Stack gap="var(--fo-space-8)" mt="var(--fo-space-8)">
                       {g.films.map((f) => (
                         <Radio
                           key={f.id}

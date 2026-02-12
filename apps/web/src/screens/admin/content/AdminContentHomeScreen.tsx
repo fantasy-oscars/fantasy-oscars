@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import "../../../primitives/baseline.css";
 
 export function AdminContentHomeScreen() {
@@ -8,7 +8,7 @@ export function AdminContentHomeScreen() {
       <Title order={4} className="baseline-textSectionHeader">
         Landing page
       </Title>
-      <Stack gap={0}>
+      <Stack gap="var(--fo-space-0)">
         {[
           {
             title: "Hero",
@@ -26,7 +26,7 @@ export function AdminContentHomeScreen() {
           <Box key={row.to}>
             <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
               <Box>
-                <Text fw={600} className="baseline-textBody">
+                <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
                   {row.title}
                 </Text>
                 <Text className="baseline-textBody" c="dimmed">
@@ -47,7 +47,7 @@ export function AdminContentHomeScreen() {
       <Title order={3} className="baseline-textSectionHeader">
         Site Pages
       </Title>
-      <Stack gap={0}>
+      <Stack gap="var(--fo-space-0)">
         {[
           {
             label: "About",
@@ -68,7 +68,7 @@ export function AdminContentHomeScreen() {
           <Box key={row.to}>
             <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
               <Box>
-                <Text fw={600} className="baseline-textBody">
+                <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
                   {row.label}
                 </Text>
                 <Text className="baseline-textBody" c="dimmed">
@@ -89,7 +89,7 @@ export function AdminContentHomeScreen() {
       <Title order={3} className="baseline-textSectionHeader">
         Announcements &amp; Messaging
       </Title>
-      <Stack gap={0}>
+      <Stack gap="var(--fo-space-0)">
         {[
           {
             label: "Banner messages",
@@ -101,7 +101,7 @@ export function AdminContentHomeScreen() {
           <Box key={row.to}>
             <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
               <Box>
-                <Text fw={600} className="baseline-textBody">
+                <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
                   {row.label}
                 </Text>
                 <Text className="baseline-textBody" c="dimmed">
@@ -119,10 +119,13 @@ export function AdminContentHomeScreen() {
 
       <Divider my="md" />
 
-      <Title order={3} className="baseline-textSectionHeader" style={{ opacity: 0.85 }}>
+      <Title
+        order={3}
+        className="baseline-textSectionHeader fo-opacityMuted2"
+      >
         Legal
       </Title>
-      <Stack gap={0} style={{ opacity: 0.92 }}>
+      <Stack gap="var(--fo-space-0)" className="fo-opacityMuted1">
         {[
           {
             label: "Code of Conduct",
@@ -148,7 +151,7 @@ export function AdminContentHomeScreen() {
           <Box key={row.to}>
             <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
               <Box>
-                <Text fw={600} className="baseline-textBody">
+                <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
                   {row.label}
                 </Text>
                 <Text className="baseline-textBody" c="dimmed">

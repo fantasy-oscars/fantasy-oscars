@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import {
@@ -73,14 +73,14 @@ export function AdminDynamicContentLedgerScreen(props: {
       ) : (
         <Stack
           component="ul"
-          gap={0}
-          style={{ listStyle: "none", margin: 0, padding: 0 }}
+          gap="var(--fo-space-0)"
+          className="fo-listReset"
         >
           {entries.map((e, idx) => (
             <Box key={e.id} component="li">
               <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
                 <Box>
-                  <Text fw={600} className="baseline-textBody">
+                  <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
                     {e.title || "(untitled)"}
                   </Text>
                   <Text className="baseline-textMeta" c="dimmed">

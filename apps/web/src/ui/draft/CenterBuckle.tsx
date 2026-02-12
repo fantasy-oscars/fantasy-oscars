@@ -1,4 +1,6 @@
-import { Box, Text } from "@mantine/core";
+import React from "react";
+import { Box, Text } from "@ui";
+import { useCssVars } from "../dom/useCssVars";
 
 export function CenterBuckle(props: {
   roundNumber: number | null;
@@ -13,16 +15,17 @@ export function CenterBuckle(props: {
   // Keep buckle width stable. For untimed drafts we clamp to a defensible max width
   // (derived from viewport) and rely on text truncation rather than dynamic measuring.
   const centerPx = props.isTimerDraft ? 140 : props.maxHandleLengthPx;
+  const elRef = React.useRef<HTMLDivElement | null>(null);
+
+  useCssVars(elRef, {
+    "--drh-buckle-max": `${centerPx}px`
+  });
 
   return (
     <Box
       className={["drh-buckle", props.className ?? ""].join(" ")}
       data-mode={props.isTimerDraft ? "timer" : "non-timer"}
-      style={
-        {
-          ["--drh-buckle-max" as never]: `${centerPx}px`
-        } as React.CSSProperties
-      }
+      ref={elRef}
     >
       {props.roundNumber !== null && (
         <Box className="drh-buckleStack">

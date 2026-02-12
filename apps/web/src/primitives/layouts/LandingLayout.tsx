@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 
 export function LandingLayout(props: { left: React.ReactNode; right: React.ReactNode }) {
   return (

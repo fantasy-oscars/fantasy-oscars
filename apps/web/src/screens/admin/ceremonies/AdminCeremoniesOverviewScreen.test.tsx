@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { screen } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider } from "@ui";
 import { MemoryRouter } from "react-router-dom";
 import React from "react";
 import { AdminCeremoniesOverviewScreen } from "./AdminCeremoniesOverviewScreen";

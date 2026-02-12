@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@ui";
 import { useState } from "react";
 import type { DraftRoomOrchestration } from "../../../orchestration/draft";
 import { RuntimeBannerStack } from "../../../notifications";
@@ -8,6 +8,10 @@ import { CategoryCard } from "../../../ui/draft/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "../../../ui/draft/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
+import {
+  FO_MODAL_OVERLAY_BLUR_PX,
+  FO_MODAL_OVERLAY_OPACITY
+} from "../../../tokens/overlays";
 
 type DraftAudioController =
   ReturnType<typeof import("../../../lib/draftAudio").createDraftAudioController>;
@@ -194,7 +198,7 @@ export function MobileDraftRoom(props: {
 
       {!isCompleted && o.header.view !== "roster" ? (
         <Box className="dr-mobileBottomBar" role="navigation" aria-label="Draft rails">
-          <Group justify="space-between" gap={0} wrap="nowrap">
+          <Group justify="space-between" gap="var(--fo-space-0)" wrap="nowrap">
             <UnstyledButton
               type="button"
               className={[
@@ -259,19 +263,21 @@ export function MobileDraftRoom(props: {
         onClose={closeNomineeCard}
         centered
         withCloseButton={false}
-        overlayProps={{ opacity: 0.3, blur: 2 }}
+        overlayProps={{ opacity: FO_MODAL_OVERLAY_OPACITY, blur: FO_MODAL_OVERLAY_BLUR_PX }}
       >
-        <Box style={{ position: "relative" }}>
-          <ActionIcon
-            variant="subtle"
-            onClick={closeNomineeCard}
-            aria-label="Close"
-            style={{ position: "absolute", right: 4, top: 4, zIndex: 2 }}
+        <Box pos="relative">
+          <Box
+            pos="absolute"
+            top="var(--fo-space-4)"
+            right="var(--fo-space-4)"
+            className="fo-z2"
           >
-            <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-              close
-            </Text>
-          </ActionIcon>
+            <ActionIcon variant="subtle" onClick={closeNomineeCard} aria-label="Close">
+              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                close
+              </Text>
+            </ActionIcon>
+          </Box>
 
           {mobileNominee ? (
             <NomineeTooltipCard

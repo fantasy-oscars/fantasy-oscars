@@ -1,10 +1,11 @@
-import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@mantine/core";
+import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@ui";
 import { AnimalAvatarIcon } from "../../animalAvatarIcon";
 import { DraftCategoryIcon } from "../DraftCategoryIcon";
 import { NomineeTooltipCard } from "../../../components/draft/NomineeTooltipCard";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
-  NOMINEE_TOOLTIP_EVENTS
+  NOMINEE_TOOLTIP_EVENTS,
+  NOMINEE_TOOLTIP_OFFSET_PX
 } from "../nomineeTooltip";
 import type { AutoDraftState, DraftLedgerRow, DraftNomineeMeta, DraftRosterPick } from "../types";
 
@@ -76,7 +77,7 @@ export function MobileRail(props: {
               <Box key={r.pickNumber} className="dr-railRow dr-ledgerRow">
                 <Text className="dr-railMeta">{r.roundPick}</Text>
                 <Box className="dr-railAvatar">
-                  <AnimalAvatarIcon avatarKey={avatarKey} size={22} />
+                  <AnimalAvatarIcon avatarKey={avatarKey} />
                 </Box>
                 {nominee ? (
                   <Tooltip
@@ -84,7 +85,7 @@ export function MobileRail(props: {
                     withArrow={false}
                     position="bottom-start"
                     multiline
-                    offset={10}
+                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
                     styles={NOMINEE_CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
@@ -168,7 +169,7 @@ export function MobileRail(props: {
                     withArrow={false}
                     position="bottom-start"
                     multiline
-                    offset={10}
+                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
                     styles={NOMINEE_CARD_TOOLTIP_STYLES}
                     label={
                       <NomineeTooltipCard
@@ -248,7 +249,7 @@ export function MobileRail(props: {
             {o.autodraft.list.length === 0 ? (
               <Text className="baseline-textBody">No nominees.</Text>
             ) : (
-              <Stack gap={6}>
+              <Stack gap="var(--fo-space-4)">
                 {o.autodraft.list.map((item) => {
                   const nominee = props.nomineeById.get(item.nominationId) ?? null;
                   const isDrafted = props.draftedNominationIds.has(item.nominationId);
@@ -287,7 +288,7 @@ export function MobileRail(props: {
                       withArrow={false}
                       position="bottom-start"
                       multiline
-                      offset={10}
+                      offset={NOMINEE_TOOLTIP_OFFSET_PX}
                       styles={NOMINEE_CARD_TOOLTIP_STYLES}
                       label={
                         <NomineeTooltipCard

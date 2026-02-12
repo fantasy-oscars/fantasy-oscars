@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { Box, Group, Stack, Title } from "@mantine/core";
+import { Box, Group, Stack, Title } from "@ui";
 import "../../primitives/baseline.css";
 
 function navLinkClass(isActive: boolean) {

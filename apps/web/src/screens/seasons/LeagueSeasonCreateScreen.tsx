@@ -9,7 +9,7 @@ import {
   Switch,
   Text,
   Title
-} from "@mantine/core";
+} from "@ui";
 import type { LeagueSeasonCreateView } from "../../orchestration/seasons";
 import { FormStatus } from "../../ui/forms";
 import { PageError, PageLoader } from "../../ui/page-state";

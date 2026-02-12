@@ -1,4 +1,4 @@
-import { Combobox, InputBase, Text, useCombobox } from "@mantine/core";
+import { Combobox, InputBase, Text, useCombobox } from "@ui";
 
 export type ContributorOption =
   | { kind: "tmdb"; value: string; label: string; name: string; tmdb_id: number }

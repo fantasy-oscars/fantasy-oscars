@@ -8,7 +8,7 @@ import {
   Text,
   TextInput,
   Title
-} from "@mantine/core";
+} from "@ui";
 import { StandardCard } from "../../../primitives";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type {
@@ -46,13 +46,14 @@ export function AdminCategoryTemplatesScreen(props: {
       </Group>
 
       <Group align="end" wrap="wrap">
-        <TextInput
-          label="Search"
-          placeholder="Search by name or code"
-          value={o.query}
-          onChange={(e) => o.setQuery(e.currentTarget.value)}
-          style={{ flex: 1, minWidth: 260 }}
-        />
+        <Box flex={1} miw="var(--fo-layout-fieldBasis-sm)">
+          <TextInput
+            label="Search"
+            placeholder="Search by name or code"
+            value={o.query}
+            onChange={(e) => o.setQuery(e.currentTarget.value)}
+          />
+        </Box>
       </Group>
 
       <Divider />
@@ -62,14 +63,14 @@ export function AdminCategoryTemplatesScreen(props: {
           <Text className="muted">No templates found.</Text>
         ) : (
           o.templates.map((t) => (
-            <StandardCard key={t.id} className="card" component="section">
+            <StandardCard key={t.id} component="section">
               <Group justify="space-between" align="start" wrap="wrap">
-                <Box style={{ flex: 1, minWidth: 240 }}>
+                <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
                   <Title order={4}>{t.name}</Title>
                   <Text className="muted" size="sm">
                     {t.code}
                   </Text>
-                  <Text className="muted" size="sm" mt={4}>
+                  <Text className="muted" size="sm" mt="var(--fo-space-4)">
                     Default nominee type: {unitKindLabel(t.default_unit_kind)}
                   </Text>
                 </Box>

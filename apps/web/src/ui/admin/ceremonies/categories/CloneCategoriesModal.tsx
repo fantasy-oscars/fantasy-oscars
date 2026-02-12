@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Box, Button, Group, Select, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Select, Stack, Text, Title } from "@ui";
 import { StandardCard } from "../../../../primitives";
 
 export function CloneCategoriesModal(props: {

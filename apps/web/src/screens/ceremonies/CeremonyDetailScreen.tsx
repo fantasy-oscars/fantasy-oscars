@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { CeremonyDetail } from "../../orchestration/ceremonies";
 import { Link } from "react-router-dom";
@@ -74,7 +74,7 @@ export function CeremonyDetailScreen(props: {
                       {rows.length === 0 ? (
                         <Text className="baseline-textBody">No nominees.</Text>
                       ) : (
-                        <Stack gap={6}>
+                        <Stack gap="var(--fo-space-8)">
                           {rows.map((n) => {
                             const isWinner = winnersSet.has(n.id);
                             return (
@@ -97,7 +97,7 @@ export function CeremonyDetailScreen(props: {
                                     className="gicon"
                                     aria-label="Winner"
                                     title="Winner"
-                                    style={{ opacity: 0.9 }}
+                                    opacity="var(--fo-opacity-muted-1)"
                                   >
                                     {String.fromCharCode(0xe838) /* emoji_events */}
                                   </Text>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { screen } from "@testing-library/dom";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider } from "@ui";
 import { NomineePill } from "./NomineePill";
 
 describe("<NomineePill />", () => {

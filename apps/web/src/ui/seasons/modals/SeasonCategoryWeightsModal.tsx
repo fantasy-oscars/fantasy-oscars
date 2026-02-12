@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Stack, Text } from "@mantine/core";
+import { Button, Group, Modal, NumberInput, Stack, Text } from "@ui";
 
 export function SeasonCategoryWeightsModal(props: {
   opened: boolean;
@@ -56,7 +56,7 @@ export function SeasonCategoryWeightsModal(props: {
                   min={-99}
                   max={99}
                   step={1}
-                  w={120}
+                  w="calc(var(--fo-space-md) * 5)"
                 />
               </Group>
             ))}
@@ -79,4 +79,3 @@ export function SeasonCategoryWeightsModal(props: {
     </Modal>
   );
 }
-

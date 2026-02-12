@@ -1,4 +1,4 @@
-import { Box, Button, Group, Modal, Stack, Text, TextInput } from "@mantine/core";
+import { Box, Button, Group, Modal, Stack, Text, TextInput } from "@ui";
 import type { SeasonInvite } from "../../../lib/types";
 import { UserSearchCombobox } from "../../comboboxes/UserSearchCombobox";
 

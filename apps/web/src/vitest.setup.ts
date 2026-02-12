@@ -1,16 +1,15 @@
 import "@testing-library/jest-dom/vitest";
 
 // Mantine uses matchMedia for color scheme and reduced motion.
-const noop = () => {};
 const matchMediaStub = (query: string): MediaQueryList => ({
   matches: false,
   media: query,
   onchange: null,
-  addListener: () => {}, // deprecated
-  removeListener: () => {}, // deprecated
-  addEventListener: (_type: string, _listener: EventListenerOrEventListenerObject) => {},
-  removeEventListener: (_type: string, _listener: EventListenerOrEventListenerObject) => {},
-  dispatchEvent: (_event: Event) => true
+  addListener: (...args: unknown[]) => void args, // deprecated
+  removeListener: (...args: unknown[]) => void args, // deprecated
+  addEventListener: (...args: unknown[]) => void args,
+  removeEventListener: (...args: unknown[]) => void args,
+  dispatchEvent: (...args: unknown[]) => (void args, true)
 });
 
 Object.defineProperty(window, "matchMedia", {

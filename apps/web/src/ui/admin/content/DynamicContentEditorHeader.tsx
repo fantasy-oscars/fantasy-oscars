@@ -1,4 +1,4 @@
-import { Box, Button, Group, Text, Title } from "@mantine/core";
+import { Box, Button, Group, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 
 export function DynamicContentEditorHeader(props: {
@@ -59,7 +59,7 @@ export function DynamicContentEditorHeader(props: {
               </Button>
             )}
             {!isActive ? (
-              <Button type="button" className="danger" onClick={onDelete} disabled={busy}>
+              <Button type="button" color="red" variant="outline" onClick={onDelete} disabled={busy}>
                 Delete
               </Button>
             ) : null}
@@ -69,4 +69,3 @@ export function DynamicContentEditorHeader(props: {
     </Group>
   );
 }
-

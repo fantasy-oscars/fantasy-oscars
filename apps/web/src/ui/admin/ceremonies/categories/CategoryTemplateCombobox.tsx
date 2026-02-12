@@ -1,4 +1,4 @@
-import { Box, Combobox, InputBase, Stack, Text, useCombobox } from "@mantine/core";
+import { Box, Combobox, InputBase, Stack, Text, useCombobox } from "@ui";
 
 export function CategoryTemplateCombobox(props: {
   disabled: boolean;
@@ -53,8 +53,8 @@ export function CategoryTemplateCombobox(props: {
             ) : (
               options.map((o) => (
                 <Combobox.Option value={o.value} key={o.value}>
-                  <Stack gap={2}>
-                    <Text fw={700} size="sm">
+                  <Stack gap="var(--fo-space-2)">
+                    <Text fw="var(--fo-font-weight-bold)" size="sm">
                       {o.name}
                     </Text>
                     <Text className="muted" size="xs">

@@ -1,4 +1,4 @@
-import { notifications } from "@mantine/notifications";
+import { notifications } from "@ui/notifications";
 import { canonicalTypeFor } from "./decisionTree";
 import type { CanonicalNotificationType, NotificationEvent } from "./model";
 import { pushRuntimeBanner } from "./runtimeBanners";

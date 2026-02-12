@@ -1,4 +1,4 @@
-import { Box, Text } from "@mantine/core";
+import { Box, Text } from "@ui";
 
 type NomineeState = "default" | "active" | "picked" | "disabled";
 

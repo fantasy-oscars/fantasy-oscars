@@ -1,5 +1,5 @@
-import { Box, Text } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { Box, Text } from "@ui";
+import { notifications } from "@ui/notifications";
 import { useCallback, useEffect, useRef } from "react";
 
 export function useDraftPickConfirmToast(args: {
@@ -58,14 +58,14 @@ export function useDraftPickConfirmToast(args: {
         message: (
           <Box
             data-fo-draft-confirm-toast="true"
+            className="fo-clickable"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
               cancelDraftConfirmToast();
               onConfirmPickRef.current(nominationId);
             }}
-            style={{ cursor: "pointer" }}
           >
-            <Text fw={700}>Confirm draft pick</Text>
+            <Text fw="var(--fo-font-weight-bold)">Confirm draft pick</Text>
             <Text c="dimmed" size="sm">
               Draft “{payload.label}”
             </Text>

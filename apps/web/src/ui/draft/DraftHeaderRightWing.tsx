@@ -1,4 +1,4 @@
-import { Box, Button, Group, Menu, SegmentedControl, Switch, Text, UnstyledButton } from "@mantine/core";
+import { Box, Button, Group, Menu, SegmentedControl, Switch, Text, UnstyledButton } from "@ui";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
 
 export function DraftHeaderRightWing(props: {
@@ -128,7 +128,7 @@ export function DraftHeaderRightWing(props: {
           </Menu>
 
           <Box className="drh-userBadge">
-            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>
           </Box>
         </Group>
@@ -146,7 +146,7 @@ export function DraftHeaderRightWing(props: {
             </Text>
           </Button>
           <Box className="drh-userBadge">
-            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size={24} />
+            <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>
           </Box>
         </Group>
@@ -154,4 +154,3 @@ export function DraftHeaderRightWing(props: {
     </>
   );
 }
-

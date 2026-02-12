@@ -20,47 +20,43 @@
 .baseline-landing-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: var(--fo-space-sm);
   align-items: start;
-  padding: 18px 0 0;
+  padding: var(--fo-space-sm) 0 0;
 }
 
 @media (max-width: 900px) {
   .baseline-landing-grid {
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }
 
 @media (max-width: 500px) {
   .baseline-landing-grid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }
 
 .baseline-card {
   background: var(--panel);
-  border-radius: 10px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.03) inset,
-    0 10px 24px rgba(0, 0, 0, 0.22);
+  border-radius: var(--fo-radius-small);
+  box-shadow: var(--fo-shadow-card);
   color: inherit;
   text-decoration: none;
 }
 
 .baseline-standardCard,
 .baseline-actionCard {
-  padding: 16px;
+  padding: var(--fo-space-sm);
 }
 
 .baseline-heroCard {
-  padding: 22px 18px;
+  padding: var(--fo-space-md) var(--fo-space-sm);
 }
 
-@media (max-width: 600px) {
-  .baseline-heroCard {
-    padding: 20px 16px;
-  }
+.baseline-card[data-tone="nested"] {
+  background: var(--fo-surface-pill);
 }
 
 .baseline-card.isInteractive {
@@ -76,35 +72,30 @@
 
 .baseline-card.isInteractive:hover {
   background: color-mix(in srgb, var(--panel) 92%, var(--text) 8%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 14px 34px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--fo-shadow-card-hover);
 }
 
 .baseline-card.isInteractive:focus-visible {
   outline: none;
   /* Keyboard focus ring: visible but consistent with the baseline palette. */
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.03) inset,
-    0 10px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--fo-shadow-card-focus);
 }
 
 .baseline-card.isInteractive:active {
-  transform: translateY(0.5px);
+  transform: translateY(var(--fo-press-offset));
 }
 
 .baseline-textHeroTitle {
   font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 30px;
+  font-size: var(--fo-font-size-hero-title);
   line-height: 1.05;
-  font-weight: 700;
+  font-weight: var(--fo-font-weight-bold);
   letter-spacing: 0.01em;
 }
 
 .baseline-textSectionHeader {
   font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 14px;
+  font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0;
@@ -113,7 +104,7 @@
 
 .baseline-textCardTitle {
   font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 15px;
+  font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 650;
 }
@@ -128,9 +119,9 @@
     Helvetica,
     Arial,
     sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  font-weight: 450;
+  font-size: var(--fo-font-size-sm);
+  line-height: var(--fo-line-height-body);
+  font-weight: var(--fo-font-weight-regular);
 }
 
 .baseline-textMeta {
@@ -143,9 +134,9 @@
     Helvetica,
     Arial,
     sans-serif;
-  font-size: 12px;
-  line-height: 1.3;
-  font-weight: 450;
+  font-size: var(--fo-font-size-xs);
+  line-height: var(--fo-line-height-meta);
+  font-weight: var(--fo-font-weight-regular);
   color: var(--text);
 }
 
@@ -153,8 +144,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  padding: 1px 6px;
+  border-radius: var(--fo-radius-pill);
+  padding: var(--fo-pill-padding-y) var(--fo-pill-padding-x);
   background: rgba(var(--fo-text-primary-rgb), 0.05);
   color: var(--text);
   white-space: nowrap;
@@ -170,26 +161,24 @@
 }
 
 .baseline-updates-prose p + p {
-  margin-top: 10px;
+  margin-top: var(--fo-space-xs);
 }
 
 .baseline-metaRow {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--fo-space-xs);
 }
 
 .baseline-heroTagline {
   /* Taglines are sans; only muted via contrast. */
-  opacity: 0.84;
+  opacity: var(--fo-opacity-muted-2);
 }
 
 .baseline-updatesCard {
-  padding: 14px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.02) inset,
-    0 6px 16px rgba(0, 0, 0, 0.16);
+  padding: var(--fo-space-xs);
+  box-shadow: var(--fo-shadow-updates);
 }
 
 /* HeroCard inverted surface */
@@ -203,12 +192,7 @@ body[data-mantine-color-scheme="light"] .baseline-heroCard {
     color-mix(in srgb, var(--fo-charcoal-8) 60%, var(--fo-charcoal-9) 40%) 100%
   );
   color: var(--fo-ivory);
-  box-shadow:
-    /* edge separation */
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    /* atmospheric elevation */ 0 18px 56px rgba(0, 0, 0, 0.14),
-    0 10px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--fo-shadow-hero-light);
 }
 
 :root[data-mantine-color-scheme="dark"] .baseline-heroCard,
@@ -217,15 +201,10 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
     circle at 33% -10%,
     color-mix(in srgb, var(--fo-ivory) 70%, var(--fo-gold-primary) 30%) 0%,
     var(--fo-ivory) 65%,
-    color-mix(in srgb, var(--fo-ivory) 60%, #efe6d0 40%) 100%
+    color-mix(in srgb, var(--fo-ivory) 60%, var(--fo-gold-wash) 40%) 100%
   );
   color: var(--fo-charcoal-9);
-  box-shadow:
-    /* edge separation */
-    0 0 0 1px rgba(0, 0, 0, 0.06) inset,
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    /* atmospheric elevation */ 0 18px 56px rgba(0, 0, 0, 0.12),
-    0 10px 24px rgba(0, 0, 0, 0.07);
+  box-shadow: var(--fo-shadow-hero-dark);
 }
 
 /* Button labels must be sans under the new baseline. */
@@ -249,38 +228,38 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 .baseline-pageInner {
   /* ShellLayout already constrains width + applies gutters. */
   width: 100%;
-  padding: 18px 0 0;
+  padding: var(--fo-space-sm) 0 0;
 }
 
 @media (max-width: 900px) {
   .baseline-pageInner {
-    padding: 16px 0 0;
+    padding: var(--fo-space-sm) 0 0;
   }
 }
 
 @media (max-width: 500px) {
   .baseline-pageInner {
-    padding: 14px 0 0;
+    padding: var(--fo-space-xs) 0 0;
   }
 }
 
 .baseline-leagueGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: var(--fo-space-sm);
   align-items: stretch;
 }
 
 @media (max-width: 900px) {
   .baseline-leagueGrid {
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }
 
 @media (max-width: 500px) {
   .baseline-leagueGrid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }
 
@@ -290,15 +269,15 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 .baseline-twoCol {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) var(--fo-layout-sidebarWidth);
+  gap: var(--fo-space-sm);
   align-items: start;
 }
 
 @media (max-width: 900px) {
   .baseline-twoCol {
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) var(--fo-layout-sidebarWidthNarrow);
+    gap: var(--fo-space-xs);
   }
 }
 
@@ -310,7 +289,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 .baseline-stickyCol {
   position: sticky;
-  top: 16px;
+  top: var(--fo-space-sm);
   align-self: start;
 }
 
@@ -323,13 +302,13 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 .baseline-grid2Wide {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: var(--fo-space-sm);
   align-items: start;
 }
 
 @media (max-width: 900px) {
   .baseline-grid2Wide {
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }
 
@@ -342,13 +321,13 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 .baseline-grid3Equal {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: var(--fo-space-sm);
   align-items: start;
 }
 
 @media (max-width: 900px) {
   .baseline-grid3Equal {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: var(--fo-space-xs);
   }
 }

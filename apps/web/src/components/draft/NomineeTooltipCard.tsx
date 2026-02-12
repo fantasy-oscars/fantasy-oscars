@@ -1,5 +1,5 @@
-import { Box, Image, Text } from "@mantine/core";
-import { useMantineColorScheme } from "@mantine/core";
+import { Box, Image, Text } from "@ui";
+import { useMantineColorScheme } from "@ui";
 import tmdbLogoBlackUrl from "../../assets/tmdb/tmdb-black.svg";
 import tmdbLogoWhiteUrl from "../../assets/tmdb/tmdb-white.svg";
 

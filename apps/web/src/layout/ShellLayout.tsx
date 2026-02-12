@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, useMantineColorScheme } from "@mantine/core";
+import { Box, useMantineColorScheme } from "@ui";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuthContext } from "../auth/context";
 import { BannerStack } from "./BannerStack";

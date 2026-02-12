@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+import { Box } from "@ui";
 import type { RefObject } from "react";
 import { CategoryCard } from "./CategoryCard";
 

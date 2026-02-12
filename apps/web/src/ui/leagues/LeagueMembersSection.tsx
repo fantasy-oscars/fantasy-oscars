@@ -1,4 +1,4 @@
-import { Box, Divider, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { CommissionerPill } from "../pills";
 
 export function LeagueMembersSection(props: {
@@ -13,7 +13,11 @@ export function LeagueMembersSection(props: {
       {members.length === 0 ? (
         <Text className="baseline-textBody">No members yet.</Text>
       ) : (
-        <Stack component="ul" gap={0} style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        <Stack
+          component="ul"
+          gap="var(--fo-space-0)"
+          className="fo-listReset"
+        >
           {members.map((m, idx) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap" py="sm">
@@ -28,4 +32,3 @@ export function LeagueMembersSection(props: {
     </Stack>
   );
 }
-

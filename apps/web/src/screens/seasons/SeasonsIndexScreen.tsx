@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Group, SegmentedControl, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, SegmentedControl, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "../../primitives";
 import "../../primitives/baseline.css";
@@ -65,13 +65,13 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                           component={Link}
                           to={`/seasons/${s.season_id}`}
                         >
-                          <Stack gap={10}>
+                          <Stack gap="var(--fo-space-dense-2)">
                             <Text className="baseline-textCardTitle">
-                              {s.league_name} — {s.ceremony_name}
+                              {mode === "ceremony" ? s.league_name : s.ceremony_name}
                             </Text>
                             <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
                               <Text className="baseline-textMeta">
-                                {s.league_name} · {s.ceremony_name}
+                                {mode === "ceremony" ? s.ceremony_name : s.league_name}
                               </Text>
                               <Text
                                 component="span"

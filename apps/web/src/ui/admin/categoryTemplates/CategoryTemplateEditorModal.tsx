@@ -1,6 +1,6 @@
 import type { ApiResult } from "../../../lib/types";
 import type { Dispatch, SetStateAction } from "react";
-import { Box, Button, Group, Modal, Select, Stack, TextInput } from "@mantine/core";
+import { Box, Button, Group, Modal, Select, Stack, TextInput } from "@ui";
 
 export type CategoryTemplateDraft = {
   code: string;

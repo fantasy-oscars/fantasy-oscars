@@ -1,4 +1,4 @@
-import { Checkbox, Divider, Grid, Select, Stack, TextInput, Textarea } from "@mantine/core";
+import { Checkbox, Divider, Grid, Select, Stack, TextInput, Textarea } from "@ui";
 import { FormStatus } from "../../../ui/forms";
 import { PageError, PageLoader } from "../../../ui/page-state";
 import type { ApiResult } from "../../../lib/types";

@@ -1,4 +1,4 @@
-import { Combobox, InputBase, Text, useCombobox } from "@mantine/core";
+import { Combobox, InputBase, Text, useCombobox } from "@ui";
 import { includesNormalized, normalizeForSearch } from "@fantasy-oscars/shared";
 import { formatFilmTitleWithYear } from "../../../../lib/films";
 
@@ -70,7 +70,7 @@ export function FilmCombobox(props: {
         <Combobox.Options>
           {!hasExactMatch && value.trim() ? (
             <Combobox.Option value={`create:${value.trim()}`}>
-              <Text size="sm" fw={700}>
+              <Text size="sm" fw="var(--fo-font-weight-bold)">
                 Create film: {value.trim()}
               </Text>
             </Combobox.Option>

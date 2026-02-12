@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@ui";
 import { allocationLabel, scoringLabel } from "../../lib/labels";
 import { PageLoader } from "../../ui/page-state";
 import { SeasonDashboardHeader } from "../../ui/seasons/SeasonDashboardHeader";

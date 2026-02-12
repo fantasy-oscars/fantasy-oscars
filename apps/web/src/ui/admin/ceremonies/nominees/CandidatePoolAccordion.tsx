@@ -1,4 +1,4 @@
-import { Accordion, Button, FileInput, Group, Stack, Text } from "@mantine/core";
+import { Accordion, Button, FileInput, Group, Stack, Text } from "@ui";
 import type { ApiResult } from "../../../../lib/types";
 import { FormStatus } from "../../../forms";
 
@@ -27,7 +27,7 @@ export function CandidatePoolAccordion(props: {
       >
         <Accordion.Control>
           <Group justify="space-between" wrap="nowrap" w="100%">
-            <Text fw={700}>Candidate pool (optional)</Text>
+            <Text fw="var(--fo-font-weight-bold)">Candidate pool (optional)</Text>
             {props.candidateLoaded ? (
               <Text
                 component="span"

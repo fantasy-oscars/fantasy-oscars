@@ -8,7 +8,7 @@ import {
   TextInput,
   Textarea,
   Title
-} from "@mantine/core";
+} from "@ui";
 import type { ApiResult } from "../../../lib/types";
 import type { StaticKey } from "../../../decisions/adminContent";
 import { PageError, PageLoader } from "../../../ui/page-state";

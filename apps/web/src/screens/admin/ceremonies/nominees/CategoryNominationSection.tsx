@@ -1,4 +1,4 @@
-import { Box, Group, Stack, Text } from "@mantine/core";
+import { Box, Group, Stack, Text } from "@ui";
 import {
   DndContext,
   closestCenter,
@@ -98,7 +98,7 @@ export function CategoryNominationSection(props: {
         }}
       >
         <Group justify="space-between" align="center" wrap="nowrap">
-          <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Group gap="sm" align="center" wrap="nowrap" className="fo-minw0">
             <Text
               component="span"
               className={["mi-icon", isInverted ? "mi-icon-inverted" : ""]
@@ -137,13 +137,18 @@ export function CategoryNominationSection(props: {
           onDragEnd={onDragEnd}
         >
           <SortableContext items={nominationIds} strategy={verticalListSortingStrategy}>
-            <Stack gap={0} className="nomination-list" role="list" aria-label={label}>
+            <Stack
+              gap="var(--fo-space-0)"
+              className="nomination-list"
+              role="list"
+              aria-label={label}
+            >
               {items.map((n) => (
                 <SortableNominationRow
                   key={n.id}
                   id={n.id}
                   primary={
-                    <Group gap={6} wrap="nowrap">
+                    <Group gap="var(--fo-space-8)" wrap="nowrap">
                       <Text component="span" inherit>
                         {nominationPrimaryLabel({
                           unit_kind: c.unit_kind,

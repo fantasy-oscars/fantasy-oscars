@@ -1,7 +1,7 @@
 import type { DraftRoomOrchestration } from "../../orchestration/draft";
-import { Box, useMantineColorScheme } from "@mantine/core";
+import { Box, useMantineColorScheme } from "@ui";
 import { useEffect, useMemo, useRef } from "react";
-import { useMediaQuery } from "@mantine/hooks";
+import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "../../layout/SiteFooter";
 import { useAuthContext } from "../../auth/context";
 import { RuntimeBannerStack } from "../../notifications";
@@ -12,6 +12,7 @@ import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
 import { useDraftPickConfirmToast } from "./useDraftPickConfirmToast";
+import { FO_BP_MOBILE_MAX_PX } from "../../tokens/breakpoints";
 import {
   buildDraftedNominationIds,
   buildNomineeMetaById,
@@ -23,7 +24,7 @@ import { formatSignedInt } from "../../decisions/draftRoomLayout";
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const isMobile = useMediaQuery("(max-width: 500px)");
+  const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
   const isPreview = props.o.myRoster.pickDisabledReason === "Preview mode";
   const draftStatus = props.o.header.status ?? null;
   const isPre = draftStatus === "PENDING";

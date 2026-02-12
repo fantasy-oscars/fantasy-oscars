@@ -1,4 +1,4 @@
-import { Box, Group, Stack, Text } from "@mantine/core";
+import { Box, Group, Stack, Text } from "@ui";
 import {
   PointerSensor,
   useSensor,
@@ -155,7 +155,7 @@ export function AdminCeremoniesNomineesScreen(props: {
       <StandardCard className="wizard-panel">
         <Stack className="stack-sm" gap="sm">
           <Group justify="space-between" wrap="nowrap">
-            <Text fw={700}>Review nominations</Text>
+            <Text fw="var(--fo-font-weight-bold)">Review nominations</Text>
             <Box component="span" className="pill">
               {nominations.length}
             </Box>

@@ -1,4 +1,4 @@
-import { Combobox, Text, TextInput, useCombobox } from "@mantine/core";
+import { Combobox, Text, TextInput, useCombobox } from "@ui";
 
 export function UserSearchCombobox(props: {
   label: string;

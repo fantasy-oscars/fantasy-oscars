@@ -1,4 +1,4 @@
-import { Box, Group, Stack, Text, Title } from "@mantine/core";
+import { Box, Group, Stack, Text, Title } from "@ui";
 import type { AuthUser } from "../../auth/context";
 import { PageError, PageLoader } from "../../ui/page-state";
 import type { LeagueMember } from "../../lib/types";

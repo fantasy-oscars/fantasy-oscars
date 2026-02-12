@@ -1,4 +1,4 @@
-import { Box, Button, Drawer, Group, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Box, Button, Drawer, Group, Stack, Text, UnstyledButton } from "@ui";
 import type { RefObject } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "../animalAvatarIcon";
@@ -81,14 +81,14 @@ export function DraftHeaderLeftWing(props: {
 
             {!props.isCompleted ? (
               <Box>
-                <Text className="baseline-textMeta" style={{ marginBottom: 8 }}>
+                <Text className="baseline-textMeta" mb="var(--fo-space-8)">
                   Draft order
                 </Text>
                 <Stack gap="xs">
                   {props.participants.map((p) => (
                     <Group key={p.seatNumber} justify="space-between" wrap="nowrap">
                       <Group gap="sm" wrap="nowrap">
-                        <AnimalAvatarIcon avatarKey={p.avatarKey} size={22} />
+                        <AnimalAvatarIcon avatarKey={p.avatarKey} />
                         <Text>{p.label}</Text>
                       </Group>
                       {p.active ? (
