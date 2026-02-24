@@ -19,7 +19,7 @@
 
 ## DB
 
-- Verify migrations applied: inspect `db/migrations`.
+- Verify migrations applied: inspect `database/migrations`.
 - If Testcontainers fails: confirm `docker ps` works; restart Docker if needed.
 
 ## Links

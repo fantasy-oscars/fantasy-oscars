@@ -1,0 +1,6 @@
+.form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fo-space-sm);
+  max-width: var(--fo-layout-formMaxWidth);
+}

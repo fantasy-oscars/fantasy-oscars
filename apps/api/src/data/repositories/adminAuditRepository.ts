@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { log } from "../../logger.js";
 
 type AuditInput = {
   actor_user_id: number;
@@ -25,7 +26,10 @@ export async function insertAdminAudit(pool: Pool, input: AuditInput) {
   } catch (err) {
     // Audit logging must never break the primary action. In local/dev the audit
     // table may be missing due to DB resets or partial migrations.
-    // eslint-disable-next-line no-console
-    console.warn("[admin_audit] failed to insert audit log (ignored)", err);
+    log({
+      level: "error",
+      msg: "admin_audit_insert_failed",
+      error: err instanceof Error ? err.message : String(err)
+    });
   }
 }

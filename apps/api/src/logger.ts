@@ -93,7 +93,6 @@ function toPrettyLine(entry: LogEntry): string {
 export function log(entry: LogEntry) {
   if (!shouldLog(entry.level)) return;
   // Structured console logging for now; replace with real logger later.
-  // eslint-disable-next-line no-console
   console.log(wantsPrettyOutput() ? toPrettyLine(entry) : JSON.stringify(entry));
 }
 

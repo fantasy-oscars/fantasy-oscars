@@ -1,5 +1,9 @@
 import { formatTimer } from "../lib/draft";
 import type { Snapshot } from "../lib/types";
+import {
+  FO_DRAFT_RAIL_COLLAPSED_PX,
+  FO_DRAFT_RAIL_OPEN_MIN_PX
+} from "../tokens/draftLayout";
 
 export type DraftRoomView = "draft" | "roster";
 export type PoolMode = "UNDRAFTED_ONLY" | "ALL_MUTED";
@@ -181,13 +185,16 @@ export function computeDraftBoardCols(args: {
 }) {
   if (!args.hasSnapshot) return "minmax(0, 1fr)";
   const cols: string[] = [];
-  if (args.showLedger === "open") cols.push("minmax(210px, 1fr)");
-  if (args.showLedger === "collapsed") cols.push("36px");
+  if (args.showLedger === "open")
+    cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
+  if (args.showLedger === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
   // Draft pool gets the most space.
   cols.push("minmax(0, 3fr)");
-  if (args.showRoster === "open") cols.push("minmax(210px, 1fr)");
-  if (args.showRoster === "collapsed") cols.push("36px");
-  if (args.showAutodraft === "open") cols.push("minmax(210px, 1fr)");
-  if (args.showAutodraft === "collapsed") cols.push("36px");
+  if (args.showRoster === "open")
+    cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
+  if (args.showRoster === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
+  if (args.showAutodraft === "open")
+    cols.push(`minmax(${FO_DRAFT_RAIL_OPEN_MIN_PX}px, 1fr)`);
+  if (args.showAutodraft === "collapsed") cols.push(`${FO_DRAFT_RAIL_COLLAPSED_PX}px`);
   return cols.join(" ");
 }

@@ -4,7 +4,7 @@ const webPort = Number(process.env.E2E_WEB_PORT ?? 4173);
 const webBaseUrl = `http://127.0.0.1:${webPort}`;
 
 export default defineConfig({
-  testDir: "e2e",
+  testDir: "tests/e2e",
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: true,

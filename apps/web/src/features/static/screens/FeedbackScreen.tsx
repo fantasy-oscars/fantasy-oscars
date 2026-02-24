@@ -1,0 +1,19 @@
+import { Anchor, Text } from "@ui";
+import { StaticPage } from "@/shared/StaticPage";
+
+export function FeedbackScreen() {
+  return (
+    <StaticPage title="Feedback">
+      <Text>
+        We&apos;re dogfooding actively. If something feels off, tell us what you expected
+        to happen and what actually happened.
+      </Text>
+      <Text>
+        Email:{" "}
+        <Anchor href="mailto:feedback@fantasy-oscars.com">
+          feedback@fantasy-oscars.com
+        </Anchor>
+      </Text>
+    </StaticPage>
+  );
+}

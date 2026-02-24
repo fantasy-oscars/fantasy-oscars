@@ -1,21 +1,10 @@
-import {
-  Anchor,
-  Blockquote,
-  Box,
-  Code,
-  Divider,
-  List,
-  Stack,
-  Text,
-  Title
-} from "@mantine/core";
+import { Anchor, Blockquote, Box, Code, Divider, List, Stack, Text, Title } from "@ui";
 import { Link as RouterLink } from "react-router-dom";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import type { Root, Content, PhrasingContent, ListItem, Definition } from "mdast";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
 import { CodeBlock } from "./CodeBlock";
 
 type Props = {
@@ -115,7 +104,7 @@ function renderInline(
         return node.value;
       case "strong":
         return (
-          <Text key={key} span fw={700} inherit>
+          <Text key={key} span fw="var(--fo-font-weight-bold)" inherit>
             {renderInline(node.children, key, definitions)}
           </Text>
         );
@@ -133,7 +122,7 @@ function renderInline(
         );
       case "inlineCode":
         return (
-          <Code key={key} style={{ fontSize: "0.95em" }}>
+          <Code key={key} fz="var(--fo-font-size-sm)">
             {node.value}
           </Code>
         );
@@ -202,7 +191,12 @@ function renderBlocks(
 
         if (depth >= 5) {
           out.push(
-            <Text key={key} fw={500} style={{ margin: 0 }} mb="xs">
+            <Text
+              key={key}
+              fw="var(--fo-font-weight-medium)"
+              m="var(--fo-space-0)"
+              mb="xs"
+            >
               {renderInline(node.children as PhrasingContent[], key, definitions)}
             </Text>
           );
@@ -210,7 +204,7 @@ function renderBlocks(
         }
 
         out.push(
-          <Title key={key} order={depth} style={{ marginTop: 0 }} mb="xs">
+          <Title key={key} order={depth} mt="var(--fo-space-0)" mb="xs">
             {renderInline(node.children as PhrasingContent[], key, definitions)}
           </Title>
         );
@@ -218,7 +212,7 @@ function renderBlocks(
       }
       case "paragraph": {
         out.push(
-          <Text key={key} component="p" style={{ margin: 0 }} mb="sm">
+          <Text key={key} component="p" m="var(--fo-space-0)" mb="sm">
             {renderInline(node.children as PhrasingContent[], key, definitions)}
           </Text>
         );
@@ -249,7 +243,9 @@ function renderBlocks(
       case "blockquote": {
         out.push(
           <Blockquote key={key} mb="sm">
-            <Stack gap={0}>{renderBlocks(node.children, key, definitions)}</Stack>
+            <Stack gap="var(--fo-space-0)">
+              {renderBlocks(node.children, key, definitions)}
+            </Stack>
           </Blockquote>
         );
         return;
@@ -282,17 +278,29 @@ function renderBlocks(
   return out;
 }
 
-export function MarkdownRenderer(props: Props) {
-  const { tree, definitions } = useMemo(() => {
-    const parsed = unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .parse(props.markdown) as Root;
-    return {
-      tree: applyTypographyReplacements(parsed),
-      definitions: collectDefinitions(parsed)
-    };
-  }, [props.markdown]);
+type ParsedMarkdown = { tree: Root; definitions: DefinitionsMap };
 
-  return <Stack gap={0}>{renderBlocks(tree.children, "md", definitions)}</Stack>;
+// Avoid hooks inside UI primitives. We still want to avoid re-parsing on every render,
+// so keep a tiny module-level cache keyed by the full markdown string.
+let lastParsed: { markdown: string; parsed: ParsedMarkdown } | null = null;
+function parseMarkdown(markdown: string): ParsedMarkdown {
+  if (lastParsed?.markdown === markdown) return lastParsed.parsed;
+
+  const parsed = unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
+  const next = {
+    tree: applyTypographyReplacements(parsed),
+    definitions: collectDefinitions(parsed)
+  };
+  lastParsed = { markdown, parsed: next };
+  return next;
+}
+
+export function MarkdownRenderer(props: Props) {
+  const { tree, definitions } = parseMarkdown(props.markdown);
+
+  return (
+    <Stack gap="var(--fo-space-0)">
+      {renderBlocks(tree.children, "md", definitions)}
+    </Stack>
+  );
 }

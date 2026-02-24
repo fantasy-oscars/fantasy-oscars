@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Box, Card, Text, Title } from "@mantine/core";
+import { Box, Card, Text, Title } from "@ui";
 import { useAuthContext } from "./context";
-import { PageLoader } from "../ui/page-state";
+import { PageLoader } from "@/shared/page-state";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext();

@@ -4,9 +4,9 @@ Purpose: quick reference for deploying, rolling back, validating health, and bas
 
 ## Environments & Endpoints
 
-- API: <https://fantasy-oscars-api-prod.onrender.com>
-- Frontend: <https://fantasy-oscars.onrender.com>
-- Health: <https://fantasy-oscars-api-prod.onrender.com/health>
+- API: <https://api.fantasy-oscars.com>
+- Frontend: <https://www.fantasy-oscars.com>
+- Health: <https://api.fantasy-oscars.com/health>
 
 ## Deploy
 
@@ -14,13 +14,13 @@ Purpose: quick reference for deploying, rolling back, validating health, and bas
 
 1. Merge to `main` (auto-deploy on Render).
 2. Verify deploy event in Render → Service → Events.
-3. Smoke: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health`.
+3. Smoke: `curl -sS https://api.fantasy-oscars.com/health`.
 
 ### Frontend (Render Static Site)
 
 1. Merge to `main` (auto-deploy on Render).
 2. Verify deploy event.
-3. Smoke: load <https://fantasy-oscars.onrender.com> and check Network `/auth/me` hits the API.
+3. Smoke: load <https://www.fantasy-oscars.com> and check Network `/auth/me` hits the API.
 
 ## Rollback
 
@@ -32,13 +32,13 @@ Purpose: quick reference for deploying, rolling back, validating health, and bas
 Run these after deploys or incidents:
 
 1) API health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health`
-2) Auth unauth path: `curl -i https://fantasy-oscars-api-prod.onrender.com/auth/me` (expect 401 JSON)
-3) 404 JSON: `curl -i https://fantasy-oscars-api-prod.onrender.com/does-not-exist` (expect JSON NOT_FOUND)
+2) Auth unauth path: `curl -i https://api.fantasy-oscars.com/auth/me` (expect 401 JSON)
+3) 404 JSON: `curl -i https://api.fantasy-oscars.com/does-not-exist` (expect JSON NOT_FOUND)
 4) CORS preflight (frontend):
 
 ```bash
-curl -i -X OPTIONS 'https://fantasy-oscars-api-prod.onrender.com/auth/me' \
-  -H 'Origin: https://fantasy-oscars.onrender.com' \
+curl -i -X OPTIONS 'https://api.fantasy-oscars.com/auth/me' \
+  -H 'Origin: https://www.fantasy-oscars.com' \
   -H 'Access-Control-Request-Method: GET'
 ```
 
@@ -54,7 +54,7 @@ Go-live gate: follow [go-live checklist & smoke plan](go-live.md) before opening
 ## Config (must-have env vars)
 
 - API: `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS`, `REALTIME_ENABLED` (optional, default true).
-- Frontend: `VITE_API_BASE=https://fantasy-oscars-api-prod.onrender.com`
+- Frontend: `VITE_API_BASE=https://api.fantasy-oscars.com`
 
 ## Troubleshooting Cheatsheet
 
@@ -64,64 +64,44 @@ Go-live gate: follow [go-live checklist & smoke plan](go-live.md) before opening
 - DB connection errors: confirm `DATABASE_URL` password matches the current Postgres user password.
 - Build failures (frontend): re-run `pnpm install && pnpm run build --filter @fantasy-oscars/web` locally to reproduce.
 
-## Annual Ceremony Rollover (example: archive 2026 → create/activate 2027)
+## Annual Ceremony Rollover (example: archive 2026 → create 2027)
 
-Goal: close out the prior ceremony, keep its data readable, and stand up the next ceremony with drafting reopened. All admin/API actions are scoped to the *active* ceremony; prior ceremonies become effectively read-only once a new active ceremony is set.
+Goal: close out the prior ceremony, keep its data readable, and stand up the next ceremony with drafting opened for new seasons.
 
 ### Guardrails & lock rule
 
-- Drafting is *permanently* locked for a ceremony once the first winner is saved (`ceremony.draft_locked_at` set). There is no unlock; the only way to reopen drafts is to move to a new ceremony.
-- Winners entry, nominee upload, league/draft creation/start/picks all **require the active ceremony**. If the ceremony is not active, these calls fail with `CEREMONY_INACTIVE` / `Active ceremony is not configured`.
-- Existing seasons/drafts tied to an older ceremony stay visible but are inert: no new picks or starts; standings remain view-only.
+- Drafting is locked for a ceremony once results entry begins (winners are saved) and remains locked through completion/archival.
+- Existing seasons/drafts tied to an older ceremony stay visible historically; new drafts should be created on new seasons tied to the new ceremony.
 
 ### Prereqs
 
 - Admin user signed in (UI) or admin token/cookie (API).
-- New ceremony id/code/year selected (coordinate to avoid id collisions).
-- Nominees dataset JSON for the new ceremony that includes a `ceremonies` entry with that id.
+- Nominees dataset JSON for the new ceremony (if using bulk upload tooling).
 
 ### Steps
 
 1) **Freeze the outgoing ceremony (e.g., 2026)**
-   - Ensure all winners are entered in Admin → Winners. Saving the *first* winner should show the lock warning modal; after saving, confirm the lock pill reads “Drafts locked”.
-   - API check (optional): `GET /ceremony/active/lock` → `draft_locked: true` once any winner exists.
+   - Ensure all winners are entered in Admin → Results/Winners.
+   - Finalize winners (if the UI supports a finalize action), then set ceremony status to Complete/Archived as appropriate.
 
-2) **Insert the new ceremony record**
-   - One-time SQL (psql or Render console), adjust values:
+2) **Create the new ceremony record**
+   - Use Admin → Ceremonies → New ceremony (preferred).
+   - Fill identity (name/code/year), add categories, then populate nominees.
 
-     ```sql
-     INSERT INTO ceremony (id, code, name, year, starts_at)
-     VALUES (2027, 'oscars-2027', 'Oscars 2027', 2027, NULL)
-     ON CONFLICT (id) DO NOTHING;
-     ```
+3) **Publish the ceremony**
+   - Once categories and nominees are ready, publish the ceremony so users can create seasons against it.
 
-   - Verify: `SELECT id, code, year FROM ceremony WHERE id = 2027;`
+4) **Open drafting for the new year**
+   - Commissioners can now create seasons for the new ceremony and draft as usual.
 
-3) **Activate the new ceremony**
-   - Admin UI: Admin → Active ceremony → enter `2027` → “Update active ceremony” (confirm dialog).
-   - Or API: `curl -X POST https://fantasy-oscars-api-prod.onrender.com/admin/ceremony/active -H "Content-Type: application/json" --data '{"ceremony_id":2027}'` (with admin cookie/token).
-   - Verify: `GET /ceremony/active` returns the new id/code/year.
+5) **Smoke**
+   - Confirm old seasons remain visible.
+   - Confirm new ceremony is visible in the Ceremonies index and can be selected when creating a season.
 
-4) **Load nominees for the new ceremony**
-   - Admin UI: in Nominees, upload the JSON dataset (must include the active ceremony id). Wait for success status; refresh winners panel to pull the fresh categories.
-   - Or API: `curl -X POST https://fantasy-oscars-api-prod.onrender.com/admin/nominees/upload -H "Content-Type: application/json" --data @/path/to/oscars-2027-nominees.json` (admin auth required).
-   - Verify: `GET /ceremony/active/nominations` returns non-empty list for the new ceremony.
-
-5) **Reopen drafting for the new year**
-   - Leagues created now will be tied to the active ceremony automatically; commissioners can start new seasons/drafts as usual.
-   - Confirm `GET /ceremony/active/lock` shows `draft_locked: false` (no winners yet), and the admin Winners panel shows “Drafts open” pill.
-
-6) **Smoke older data is read-only**
-   - Attempting to start a draft or enter winners for the prior ceremony should fail unless you re-activate that ceremony (do not do so in prod).
-   - Standings and historical seasons remain visible; no further writes occur without reactivating the old ceremony.
-
-7) **Post-rollover checklist**
+6) **Post-rollover checklist**
 
 - Admin UI: upload nominees success message logged; categories render with radio buttons.
 - Admin UI: Winners page shows empty winners and unlocked state.
-- Optional API spot-checks:
-  - `GET /ceremony/active/winners` → empty array.
-  - `GET /ceremony/active/lock` → `draft_locked: false`.
 - Communicate to commissioners that drafts for the new ceremony are now open; remind them drafting will lock immediately when the first winner is saved.
 
 ## Bootstrap First Production Admin (one-time, safe path)
@@ -160,7 +140,7 @@ Post-steps:
 
 - **API logs:** Render dashboard → API service → Logs. Use the search box to filter by path snippets (`/drafts`, `/auth`, `/admin`, `/ceremony`). For a time window, set the time filter (e.g., “past 1h”) then search; copy/paste logs for incident notes.
 - **Realtime (Socket.IO) checks:**
-  - Browser Network tab: websocket upgrade to `https://fantasy-oscars-api-prod.onrender.com/socket.io/…` should return 101. Failures show 4xx (auth) or 5xx; check console for CORS errors.
+  - Browser Network tab: websocket upgrade to `https://api.fantasy-oscars.com/socket.io/…` should return 101. Failures show 4xx (auth) or 5xx; check console for CORS errors.
   - Common API error codes: `401/403` (unauthenticated/unauthorized), `409 CEREMONY_INACTIVE` (wrong ceremony), `409 ACTIVE_CEREMONY_NOT_SET`, `409 DRAFTS_LOCKED` (winners entered).
 - **Web runtime errors:** Static site has no server logs; use browser console + Network tab. If a client error corresponds to API failures, correlate timestamps with API logs above.
 - **Healthy signals:** `GET /health` returns `{ ok: true, service: "api", status: "healthy" }`; Socket.IO connects without retry loops; `/auth/me` returns 200 for authenticated users and 401 for logged-out sessions.

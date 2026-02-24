@@ -169,12 +169,7 @@ export function createServer(deps?: { db?: Pool }): Express {
         ...context
       });
       if (!appErr && err instanceof Error) {
-        // Emit stack to stderr during dev for quicker debugging.
-        // (In tests, this is usually noise; use LOG_STACK=1 to force it.)
-        if (!isTestRuntime() || process.env.LOG_STACK === "1") {
-          // eslint-disable-next-line no-console
-          console.error(err);
-        }
+        // Stack logging is handled by the structured logger via error_stack.
       }
       res.status(status).json(errorBody(appErr ?? (err as Error), { requestId }));
     }

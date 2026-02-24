@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-We need a single source of truth for core fantasy draft concepts so API/UI/tests don’t drift. Schema exists in `db/migrations/001_init.sql`, and factories mirror it, but there’s no explicit statement of entities, relationships, and invariants.
+We need a single source of truth for core fantasy draft concepts so API/UI/tests don’t drift. Schema exists in `database/migrations/001_init.sql`, and factories mirror it, but there’s no explicit statement of entities, relationships, and invariants.
 
 ## Decision
 
@@ -39,8 +39,8 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 
 ## Sources of truth
 
-- Schema: `db/migrations/001_init.sql` encodes entities/invariants.
-- Test factories: `apps/api/test/factories/*.ts` mirror the schema for fixtures.
+- Schema: `database/migrations/001_init.sql` encodes entities/invariants.
+- Test factories: `apps/api/tests/factories/*.ts` mirror the schema for fixtures.
 - Domain docs: this ADR plus a short summary in architecture docs.
 
 ## Usage guidance
