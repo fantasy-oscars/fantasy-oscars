@@ -95,6 +95,7 @@ export function SeasonScreen(props: {
     () => computeSeasonLocked({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
     [s.draftStatus, s.isArchived]
   );
+  const isDeleteLocked = s.draftStatus === "COMPLETED";
 
   const draftRoomCtaLabel = useMemo(
     () =>
@@ -184,6 +185,7 @@ export function SeasonScreen(props: {
               <Box />
               <SeasonManagementColumn
                 isLocked={isLocked}
+                isDeleteLocked={isDeleteLocked}
                 working={Boolean(s.working)}
                 onOpenInvites={() => setInvitesOpen(true)}
                 onOpenDraftSettings={settings.openSettingsModal}

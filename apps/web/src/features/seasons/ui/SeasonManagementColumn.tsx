@@ -2,12 +2,18 @@ import { Button, Divider, Stack, Title } from "@ui";
 
 export function SeasonManagementColumn(props: {
   isLocked: boolean;
+  isDeleteLocked: boolean;
   working: boolean;
   onOpenInvites: () => void;
   onOpenDraftSettings: () => void;
   onOpenDelete: () => void;
 }) {
-  const { isLocked, working, onOpenInvites, onOpenDraftSettings, onOpenDelete } = props;
+  const { isLocked, isDeleteLocked, working, onOpenInvites, onOpenDraftSettings, onOpenDelete } =
+    props;
+  const deleteDisabled = working || isDeleteLocked;
+  const deleteTitle = isDeleteLocked
+    ? "Completed drafts cannot be deleted"
+    : undefined;
   return (
     <Stack gap="sm">
       <Title order={3} className="baseline-textSectionHeader">
@@ -35,7 +41,13 @@ export function SeasonManagementColumn(props: {
       <Title order={4} className="baseline-textSectionHeader">
         Danger zone
       </Title>
-      <Button color="red" variant="outline" onClick={onOpenDelete} disabled={working}>
+      <Button
+        color="red"
+        variant="outline"
+        onClick={onOpenDelete}
+        disabled={deleteDisabled}
+        title={deleteTitle}
+      >
         Delete season
       </Button>
     </Stack>
