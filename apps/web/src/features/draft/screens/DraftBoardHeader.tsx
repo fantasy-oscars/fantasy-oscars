@@ -52,6 +52,7 @@ export function DraftBoardHeader(props: {
   isMyTurn: boolean;
   userLabel: string;
   userAvatarKey: string | null;
+  onParticipantHoverSeat: (seatNumber: number | null) => void;
 }) {
   const isPre = props.draftStatus === "PENDING";
   const isPaused = props.draftStatus === "PAUSED";
@@ -260,6 +261,7 @@ export function DraftBoardHeader(props: {
               view={props.view}
               onViewChange={props.onViewChange}
               canToggleView={props.canToggleView}
+              onParticipantHoverSeat={props.onParticipantHoverSeat}
             />
           </Box>
         </Box>
