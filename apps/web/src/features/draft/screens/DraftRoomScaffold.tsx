@@ -35,6 +35,9 @@ export function DraftRoomScaffold(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      draftedByLabel?: string | null;
+      draftedByAvatarKey?: string | null;
+      draftedRoundPick?: string | null;
     }>;
   }>;
   draftStatus: string | null;
@@ -58,10 +61,14 @@ export function DraftRoomScaffold(props: {
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
+      draftedByLabel?: string | null;
+      draftedByAvatarKey?: string | null;
+      draftedRoundPick?: string | null;
     }
   >;
   autodraft: DraftRoomOrchestration["autodraft"];
   draftedNominationIds: Set<number>;
+  hoveredNominationIds: Set<number>;
   canDraftAction: boolean;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
@@ -194,6 +201,7 @@ export function DraftRoomScaffold(props: {
         ledgerRows={props.ledgerRows}
         avatarKeyBySeat={props.avatarKeyBySeat}
         nomineeById={props.nomineeById}
+        hoveredNominationIds={props.hoveredNominationIds}
       />
 
       <DraftMasonryBoard
@@ -203,6 +211,7 @@ export function DraftRoomScaffold(props: {
         setKeyboardCategoryId={setKeyboardCategoryId}
         firstPillRefByCategoryId={firstPillRefByCategoryId.current}
         canDraftAction={props.canDraftAction}
+        hoveredNominationIds={props.hoveredNominationIds}
         onNomineeClick={props.onNomineeClick}
         onNomineeDoubleClick={props.onNomineeDoubleClick}
       />
@@ -215,6 +224,7 @@ export function DraftRoomScaffold(props: {
         openRailExclusive={openRailExclusive}
         myPicks={props.myPicks}
         nomineeById={props.nomineeById}
+        hoveredNominationIds={props.hoveredNominationIds}
       />
 
       <DraftAutoDraftRail
@@ -225,6 +235,7 @@ export function DraftRoomScaffold(props: {
         autodraft={props.autodraft}
         nomineeById={props.nomineeById}
         draftedNominationIds={props.draftedNominationIds}
+        hoveredNominationIds={props.hoveredNominationIds}
       />
     </Box>
   );

@@ -16,6 +16,7 @@ export function DraftMyRosterRail(props: {
   openRailExclusive: (rail: "ledger" | "roster" | "auto") => void;
   myPicks: DraftRosterPick[];
   nomineeById: Map<number, DraftNomineeMeta>;
+  hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
@@ -59,11 +60,12 @@ export function DraftMyRosterRail(props: {
                   const nominee = props.nomineeById.get(p.nominationId) ?? null;
                   const pill = (
                     <Box
-                      className={[
-                        "dr-pill",
-                        "dr-pill-static",
-                        p.winner ? "is-winner" : ""
-                      ]
+                    className={[
+                      "dr-pill",
+                      "dr-pill-static",
+                      props.hoveredNominationIds.has(p.nominationId) ? "is-hoverMatch" : "",
+                      p.winner ? "is-winner" : ""
+                    ]
                         .filter(Boolean)
                         .join(" ")}
                       tabIndex={nominee ? 0 : undefined}
@@ -114,6 +116,9 @@ export function DraftMyRosterRail(props: {
                               performerProfileUrl={nominee.performerProfileUrl}
                               performerProfilePath={nominee.performerProfilePath}
                               songTitle={nominee.songTitle}
+                              draftedByLabel={nominee.draftedByLabel}
+                              draftedByAvatarKey={nominee.draftedByAvatarKey}
+                              draftedRoundPick={nominee.draftedRoundPick}
                             />
                           }
                         >

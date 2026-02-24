@@ -26,6 +26,9 @@ export function DraftMasonryBoard(props: {
         performerCharacter: string | null;
         performerProfileUrl: string | null;
         performerProfilePath: string | null;
+        draftedByLabel?: string | null;
+        draftedByAvatarKey?: string | null;
+        draftedRoundPick?: string | null;
       }>;
     }>
   >;
@@ -36,6 +39,7 @@ export function DraftMasonryBoard(props: {
     RefObject<HTMLButtonElement | null> | undefined
   >;
   canDraftAction: boolean;
+  hoveredNominationIds: Set<number>;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
 }) {
@@ -64,6 +68,7 @@ export function DraftMasonryBoard(props: {
                 isKeyboardMode={props.keyboardCategoryId === b.id}
                 setKeyboardMode={props.setKeyboardCategoryId}
                 canDraftAction={props.canDraftAction}
+                hoveredNominationIds={props.hoveredNominationIds}
                 onNomineeClick={props.onNomineeClick}
                 onNomineeDoubleClick={props.onNomineeDoubleClick}
               />

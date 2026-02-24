@@ -16,6 +16,7 @@ export function DraftAutoDraftRail(props: {
   autodraft: AutoDraftState;
   nomineeById: Map<number, DraftNomineeMeta>;
   draftedNominationIds: Set<number>;
+  hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, compactRails, openRailExclusive } = props;
 
@@ -125,6 +126,9 @@ export function DraftAutoDraftRail(props: {
                             className={[
                               "dr-pill",
                               "dr-pill-static",
+                              props.hoveredNominationIds.has(item.nominationId)
+                                ? "is-hoverMatch"
+                                : "",
                               isDrafted ? "is-muted" : ""
                             ]
                               .filter(Boolean)
@@ -177,6 +181,9 @@ export function DraftAutoDraftRail(props: {
                                 performerProfileUrl={nominee.performerProfileUrl}
                                 performerProfilePath={nominee.performerProfilePath}
                                 songTitle={nominee.songTitle}
+                                draftedByLabel={nominee.draftedByLabel}
+                                draftedByAvatarKey={nominee.draftedByAvatarKey}
+                                draftedRoundPick={nominee.draftedRoundPick}
                               />
                             }
                           >

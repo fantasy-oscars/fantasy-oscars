@@ -18,6 +18,7 @@ export function ParticipantStrip(props: {
   activeIndex: number;
   direction: "FORWARD" | "REVERSE" | null;
   suppressActive?: boolean;
+  onParticipantHoverSeat?: (seatNumber: number | null) => void;
 }) {
   const minTokens = 4;
   const n = props.participants.length;
@@ -52,8 +53,16 @@ export function ParticipantStrip(props: {
           </Box>
         }
       >
-        <Box className="drh-strip" ref={props.containerRef}>
-          <Box className="drh-tokenWrap">
+        <Box
+          className="drh-strip"
+          ref={props.containerRef}
+          onMouseLeave={() => props.onParticipantHoverSeat?.(null)}
+        >
+          <Box
+            className="drh-tokenWrap"
+            onMouseEnter={() => props.onParticipantHoverSeat?.(current.seatNumber)}
+            onMouseLeave={() => props.onParticipantHoverSeat?.(null)}
+          >
             <AvatarToken label={current.label} avatarKey={current.avatarKey} active />
             <DirectionChevron direction={props.direction} />
           </Box>
@@ -68,6 +77,7 @@ export function ParticipantStrip(props: {
       gap="var(--fo-space-8)"
       wrap="nowrap"
       ref={props.containerRef}
+      onMouseLeave={() => props.onParticipantHoverSeat?.(null)}
     >
       {headHidden > 0 && (
         <Tooltip
@@ -102,7 +112,13 @@ export function ParticipantStrip(props: {
             label={p.label}
             withArrow
           >
-            <Box className="drh-tokenWrap" tabIndex={0} aria-label={p.label}>
+            <Box
+              className="drh-tokenWrap"
+              tabIndex={0}
+              aria-label={p.label}
+              onMouseEnter={() => props.onParticipantHoverSeat?.(p.seatNumber)}
+              onMouseLeave={() => props.onParticipantHoverSeat?.(null)}
+            >
               <AvatarToken label={p.label} avatarKey={p.avatarKey} active={isActive} />
               {isActive && <DirectionChevron direction={props.direction} />}
             </Box>

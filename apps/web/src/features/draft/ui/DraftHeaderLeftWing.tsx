@@ -29,6 +29,7 @@ export function DraftHeaderLeftWing(props: {
   view: "draft" | "roster";
   onViewChange: (v: "draft" | "roster") => void;
   canToggleView: boolean;
+  onParticipantHoverSeat: (seatNumber: number | null) => void;
 }) {
   if (props.compactHeader) {
     return (
@@ -138,6 +139,7 @@ export function DraftHeaderLeftWing(props: {
           activeIndex={props.activeIndex}
           direction={props.direction}
           suppressActive={props.isPre || props.isPaused || props.isCompleted}
+          onParticipantHoverSeat={props.onParticipantHoverSeat}
         />
       ) : null}
     </>

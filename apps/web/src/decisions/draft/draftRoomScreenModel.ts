@@ -21,6 +21,9 @@ export type DraftScreenCategory = {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }>;
 };
 
@@ -40,6 +43,9 @@ export type NomineeMetaById = Map<
     songTitle: string | null;
     categoryIcon: string;
     categoryIconVariant: "default" | "inverted";
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }
 >;
 

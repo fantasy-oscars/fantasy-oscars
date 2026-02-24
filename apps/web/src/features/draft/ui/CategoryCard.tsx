@@ -30,10 +30,14 @@ export function CategoryCard(props: {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }>;
   // A11y / focus behavior is controlled by glue; this component only consumes the ref.
   firstPillRef?: RefObject<HTMLButtonElement | null> | null;
   canDraftAction: boolean;
+  hoveredNominationIds?: Set<number>;
   isKeyboardMode: boolean;
   setKeyboardMode: (categoryId: string | null) => void;
   onNomineeClick: (nominationId: number, label: string) => void;
@@ -87,6 +91,7 @@ export function CategoryCard(props: {
                 className={[
                   "dr-pill",
                   "dr-pill-btn",
+                  props.hoveredNominationIds?.has(Number(n.id)) ? "is-hoverMatch" : "",
                   n.muted ? "is-muted" : "",
                   n.winner ? "is-winner" : ""
                 ]
@@ -154,6 +159,9 @@ export function CategoryCard(props: {
                     performerProfileUrl={n.performerProfileUrl}
                     performerProfilePath={n.performerProfilePath}
                     songTitle={n.songTitle}
+                    draftedByLabel={n.draftedByLabel}
+                    draftedByAvatarKey={n.draftedByAvatarKey}
+                    draftedRoundPick={n.draftedRoundPick}
                   />
                 }
               >

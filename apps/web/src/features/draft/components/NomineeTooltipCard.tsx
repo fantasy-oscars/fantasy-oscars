@@ -1,4 +1,5 @@
 import { Box, Text, TmdbLogo } from "@ui";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 
 export function NomineeTooltipCard(props: {
   unitKind: string;
@@ -12,6 +13,9 @@ export function NomineeTooltipCard(props: {
   performerProfileUrl?: string | null;
   performerProfilePath?: string | null;
   songTitle?: string | null;
+  draftedByLabel?: string | null;
+  draftedByAvatarKey?: string | null;
+  draftedRoundPick?: string | null;
   action?: React.ReactNode;
 }) {
   const {
@@ -26,6 +30,9 @@ export function NomineeTooltipCard(props: {
     performerProfileUrl,
     performerProfilePath,
     songTitle,
+    draftedByLabel,
+    draftedByAvatarKey,
+    draftedRoundPick,
     action
   } = props;
 
@@ -75,9 +82,32 @@ export function NomineeTooltipCard(props: {
     unitKind === "SONG" && filmTitle
       ? `${filmTitle}${filmYear ? ` (${filmYear})` : ""}`
       : null;
+  const showDraftedChip = Boolean(draftedByLabel && draftedRoundPick);
 
   return (
-    <Box className="fo-tip" role="tooltip">
+    <Box
+      className={["fo-tip", showDraftedChip ? "has-draftedChip" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      role="tooltip"
+    >
+      {showDraftedChip ? (
+        <Box
+          className="fo-tip-draftedChip"
+          aria-label={`Drafted by ${draftedByLabel} ${draftedRoundPick}`}
+        >
+          <Box className="fo-tip-draftedChipLeft">
+            <Box className="fo-tip-draftedChipAvatar" aria-hidden="true">
+              <AnimalAvatarIcon avatarKey={draftedByAvatarKey} size="sm" />
+            </Box>
+            <Text className="fo-tip-draftedChipName" lineClamp={1}>
+              {draftedByLabel}
+            </Text>
+          </Box>
+          <Text className="fo-tip-draftedChipPick">{draftedRoundPick}</Text>
+        </Box>
+      ) : null}
+
       <Box className="fo-tip-bar fo-tip-header">
         <Text component="span" className="fo-tip-barText">
           {categoryName}

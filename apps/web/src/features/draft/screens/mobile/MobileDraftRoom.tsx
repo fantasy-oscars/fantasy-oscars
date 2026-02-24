@@ -65,6 +65,9 @@ export function MobileDraftRoom(props: {
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
+      draftedByLabel?: string | null;
+      draftedByAvatarKey?: string | null;
+      draftedRoundPick?: string | null;
     }
   >;
   draftedNominationIds: Set<number>;
@@ -307,6 +310,9 @@ export function MobileDraftRoom(props: {
               performerProfileUrl={mobileNominee.performerProfileUrl}
               performerProfilePath={mobileNominee.performerProfilePath}
               songTitle={mobileNominee.songTitle}
+              draftedByLabel={mobileNominee.draftedByLabel}
+              draftedByAvatarKey={mobileNominee.draftedByAvatarKey}
+              draftedRoundPick={mobileNominee.draftedRoundPick}
               action={
                 props.canDraftAction ? (
                   <Button
