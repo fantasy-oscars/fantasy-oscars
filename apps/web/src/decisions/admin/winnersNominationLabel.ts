@@ -23,8 +23,20 @@ export function winnersNominationLabel(n: WinnersNominationRow) {
     people.length > 0
       ? `${people[0]}${people.length > 1 ? ` +${people.length - 1}` : ""}`
       : "";
-  if (n.song_title)
-    return peopleLabel ? `${n.song_title} — ${peopleLabel}` : n.song_title;
-  if (peopleLabel) return n.film_title ? `${peopleLabel} — ${n.film_title}` : peopleLabel;
-  return n.film_title ?? `Nomination #${n.id}`;
+
+  if (n.song_title) {
+    const secondary = [n.film_title, peopleLabel].filter(Boolean).join(" • ");
+    return secondary ? `${n.song_title} — ${secondary}` : n.song_title;
+  }
+
+  if (n.performer_name) {
+    return n.film_title ? `${n.performer_name} — ${n.film_title}` : n.performer_name;
+  }
+
+  if (n.film_title) {
+    return peopleLabel ? `${n.film_title} — ${peopleLabel}` : n.film_title;
+  }
+
+  if (peopleLabel) return peopleLabel;
+  return `Nomination #${n.id}`;
 }
