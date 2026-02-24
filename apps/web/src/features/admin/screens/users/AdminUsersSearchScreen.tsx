@@ -59,7 +59,9 @@ export function AdminUsersSearchScreen(props: {
       <Group className="inline-form" wrap="wrap" align="flex-end">
         <Combobox
           store={combobox}
-          withinPortal={false}
+          withinPortal
+          position="bottom-start"
+          middlewares={{ flip: true, shift: true }}
           onOptionSubmit={(value) => {
             const u = results.find((r) => String(r.id) === value);
             if (u) setQuery(u.username);

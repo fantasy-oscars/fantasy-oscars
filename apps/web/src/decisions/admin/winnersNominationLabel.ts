@@ -12,31 +12,26 @@ type WinnersNominationRow = {
   }>;
 };
 
-export function winnersNominationLabel(n: WinnersNominationRow) {
-  const people =
-    Array.isArray(n.contributors) && n.contributors.length > 0
-      ? n.contributors.map((c) => c.full_name)
-      : n.performer_name
-        ? [n.performer_name]
-        : [];
-  const peopleLabel =
-    people.length > 0
-      ? `${people[0]}${people.length > 1 ? ` +${people.length - 1}` : ""}`
-      : "";
-
-  if (n.song_title) {
-    const secondary = [n.film_title, peopleLabel].filter(Boolean).join(" • ");
-    return secondary ? `${n.song_title} — ${secondary}` : n.song_title;
+export function winnersNominationLabel(
+  n: WinnersNominationRow,
+  unitKind?: "FILM" | "SONG" | "PERFORMANCE" | null
+) {
+  if (unitKind === "SONG") {
+    if (n.song_title) return n.song_title;
+  } else if (unitKind === "PERFORMANCE") {
+    if (n.performer_name) return n.performer_name;
+    if (Array.isArray(n.contributors) && n.contributors.length > 0) {
+      return n.contributors[0]?.full_name ?? `Nomination #${n.id}`;
+    }
+  } else if (unitKind === "FILM") {
+    if (n.film_title) return n.film_title;
   }
 
-  if (n.performer_name) {
-    return n.film_title ? `${n.performer_name} — ${n.film_title}` : n.performer_name;
-  }
-
-  if (n.film_title) {
-    return peopleLabel ? `${n.film_title} — ${peopleLabel}` : n.film_title;
-  }
-
-  if (peopleLabel) return peopleLabel;
+  // Defensive fallback when unit kind is unavailable or data is sparse.
+  if (n.song_title) return n.song_title;
+  if (n.performer_name) return n.performer_name;
+  if (n.film_title) return n.film_title;
+  if (Array.isArray(n.contributors) && n.contributors.length > 0)
+    return n.contributors[0]?.full_name ?? `Nomination #${n.id}`;
   return `Nomination #${n.id}`;
 }

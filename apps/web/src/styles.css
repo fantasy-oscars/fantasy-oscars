@@ -1801,11 +1801,23 @@ body[data-mantine-color-scheme="dark"]
   font-weight: 400;
 }
 
+.mantine-Combobox-dropdown,
 .mantine-Select-dropdown,
 .mantine-MultiSelect-dropdown {
   background: var(--fo-surface-card-primary);
   border: var(--fo-border-width) solid var(--fo-border);
   box-shadow: none;
+  max-height: min(320px, calc(100vh - 180px));
+  overflow: hidden;
+}
+
+.mantine-Combobox-options,
+.mantine-Select-options,
+.mantine-MultiSelect-options {
+  max-height: min(280px, calc(100vh - 220px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mantine-Select-option,

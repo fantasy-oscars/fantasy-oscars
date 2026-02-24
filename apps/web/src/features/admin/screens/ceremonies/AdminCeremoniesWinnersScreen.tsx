@@ -189,7 +189,10 @@ export function AdminCeremoniesWinnersScreen(props: {
                               className="fo-minw0"
                             >
                               <Checkbox
-                                aria-label={`Select winner: ${nominationLabel(nom)}`}
+                                aria-label={`Select winner: ${nominationLabel(
+                                  nom,
+                                  category?.unit_kind ?? null
+                                )}`}
                                 checked={(selectedWinner[categoryId] ?? []).includes(
                                   nom.id
                                 )}
@@ -206,7 +209,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                                 lineClamp={1}
                                 className="fo-minw0"
                               >
-                                {nominationLabel(nom)}
+                                {nominationLabel(nom, category?.unit_kind ?? null)}
                               </Text>
                             </Group>
                           </Group>

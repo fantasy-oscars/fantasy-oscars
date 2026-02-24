@@ -146,7 +146,9 @@ export function DraftPlansScreen(props: {
             <Box>
               <Combobox
                 store={combobox}
-                withinPortal={false}
+                withinPortal
+                position="bottom-start"
+                middlewares={{ flip: true, shift: true }}
                 onOptionSubmit={async (value) => {
                   if (value.startsWith("create:")) {
                     const name = value.slice("create:".length);

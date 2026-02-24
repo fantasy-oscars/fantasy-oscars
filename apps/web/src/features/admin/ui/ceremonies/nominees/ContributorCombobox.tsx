@@ -21,7 +21,9 @@ export function ContributorCombobox(props: {
   return (
     <Combobox
       store={combobox}
-      withinPortal={false}
+      withinPortal
+      position="bottom-start"
+      middlewares={{ flip: true, shift: true }}
       onOptionSubmit={(val) => {
         const picked = options.find((o) => o.value === val);
         if (!picked) return;

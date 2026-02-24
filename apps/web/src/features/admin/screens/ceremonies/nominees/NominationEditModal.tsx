@@ -8,6 +8,7 @@ export function NominationEditModal(props: {
   nomination: null | {
     id: number;
     display_film_id?: number | null;
+    display_film_tmdb_id?: number | null;
     film_title?: string | null;
     contributors?: Array<{
       nomination_contributor_id?: number;
@@ -77,7 +78,24 @@ export function NominationEditModal(props: {
   } = props;
 
   const filmId = nomination?.display_film_id ?? null;
-  const film = filmId ? (films.find((f) => f.id === filmId) ?? null) : null;
+  const film = filmId
+    ? (() => {
+        const existing = films.find((f) => f.id === filmId);
+        if (existing)
+          return {
+            id: existing.id,
+            title: existing.title,
+            tmdb_id: existing.tmdb_id ?? null
+          };
+        // Fallback: nominations payload is authoritative for this modal even when
+        // the global films list is paged/capped and doesn't include this row.
+        return {
+          id: filmId,
+          title: nomination?.film_title ?? "Untitled film",
+          tmdb_id: nomination?.display_film_tmdb_id ?? null
+        };
+      })()
+    : null;
   const filmLinked = Boolean(film?.tmdb_id);
 
   const { filmCredits, setFilmCredits } = useFilmCredits({
@@ -106,11 +124,7 @@ export function NominationEditModal(props: {
       <Stack gap="sm">
         <NominationEditFilmSection
           nominationFilmTitle={nomination.film_title ?? "—"}
-          film={
-            film
-              ? { id: film.id, title: film.title, tmdb_id: film.tmdb_id ?? null }
-              : null
-          }
+          film={film}
           onLinkFilm={onLinkFilm}
           onAfterLinkChange={() => {
             // Ensure contributor pickers don't show stale credits after unlinking/relinking.

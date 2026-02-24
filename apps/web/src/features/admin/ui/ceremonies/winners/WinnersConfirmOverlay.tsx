@@ -1,5 +1,4 @@
-import { Box, Button, Group, Text, Title } from "@ui";
-import { StandardCard } from "@/primitives";
+import { Button, Group, Modal, Stack, Text } from "@ui";
 
 export function WinnersConfirmOverlay(props: {
   ariaLabel: string;
@@ -11,16 +10,16 @@ export function WinnersConfirmOverlay(props: {
   onConfirm: () => void;
 }) {
   return (
-    <Box className="modal-backdrop" role="presentation">
-      <StandardCard
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={props.ariaLabel}
-      >
-        <Title order={4}>{props.title}</Title>
+    <Modal
+      opened
+      onClose={props.onCancel}
+      centered
+      title={props.title}
+      aria-label={props.ariaLabel}
+    >
+      <Stack gap="md">
         <Text className="muted">{props.message}</Text>
-        <Group className="inline-actions" wrap="wrap">
+        <Group justify="flex-end" wrap="wrap">
           <Button type="button" onClick={props.onCancel}>
             {props.cancelLabel}
           </Button>
@@ -28,7 +27,7 @@ export function WinnersConfirmOverlay(props: {
             {props.confirmLabel}
           </Button>
         </Group>
-      </StandardCard>
-    </Box>
+      </Stack>
+    </Modal>
   );
 }

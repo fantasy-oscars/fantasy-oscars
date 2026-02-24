@@ -19,7 +19,9 @@ export function UserSearchCombobox(props: {
   return (
     <Combobox
       store={combobox}
-      withinPortal={false}
+      withinPortal
+      position="bottom-start"
+      middlewares={{ flip: true, shift: true }}
       onOptionSubmit={(v) => {
         const id = Number(v);
         const picked = options.find((o) => o.id === id);
