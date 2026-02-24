@@ -162,8 +162,6 @@ export function NomineeTooltipCard(props: {
         </Box>
       </Box>
 
-      {action ? <Box className="fo-tip-action">{action}</Box> : null}
-
       <Box className="fo-tip-bar fo-tip-footer">
         <Text component="span" className="fo-tip-attribution">
           Data provided by TMDB
@@ -178,6 +176,8 @@ export function NomineeTooltipCard(props: {
           <TmdbLogo className="fo-tip-tmdbLogo" />
         </a>
       </Box>
+
+      {action ? <Box className="fo-tip-action">{action}</Box> : null}
     </Box>
   );
 }

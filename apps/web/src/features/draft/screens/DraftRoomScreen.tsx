@@ -11,7 +11,6 @@ import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
-import { useDraftPickConfirmToast } from "./useDraftPickConfirmToast";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import {
   buildDraftedNominationIds,
@@ -91,13 +90,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
 
-  const { scheduleDraftConfirmToast, cancelDraftConfirmToast, clearConfirmTimer } =
-    useDraftPickConfirmToast({
-      enabled: canDraftAction,
-      onConfirmPick: (nominationId) =>
-        props.o.myRoster.submitPickNomination(nominationId),
-      onClearSelection: () => props.o.myRoster.clearSelection()
-    });
+  useEffect(() => {
+    if (!canDraftAction) props.o.myRoster.clearSelection();
+  }, [canDraftAction, props.o.myRoster]);
   const draftedNominationIds = useMemo(
     () => buildDraftedNominationIds(props.o.ledger.rows),
     [props.o.ledger.rows]
@@ -272,15 +267,17 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
             draftedNominationIds={draftedNominationIds}
             hoveredNominationIds={hoveredNominationIds}
             canDraftAction={canDraftAction}
-            onNomineeClick={(id, label) => {
+            onNomineeClick={(id) => {
               if (!canDraftAction) return;
+              if (draftedNominationIds.has(id)) return;
+              if (props.o.myRoster.selected?.id === id) {
+                props.o.myRoster.clearSelection();
+                return;
+              }
               props.o.pool.onSelectNomination(id);
-              scheduleDraftConfirmToast({ nominationId: id, label });
             }}
             onNomineeDoubleClick={(id) => {
               if (!canDraftAction) return;
-              clearConfirmTimer();
-              cancelDraftConfirmToast();
               props.o.myRoster.clearSelection();
               props.o.myRoster.submitPickNomination(id);
             }}

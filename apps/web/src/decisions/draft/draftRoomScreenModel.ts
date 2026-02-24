@@ -11,6 +11,7 @@ export type DraftScreenCategory = {
     id: string;
     label: string;
     muted: boolean;
+    selected: boolean;
     winner: boolean;
     posterUrl: string | null;
     filmTitle: string | null;
@@ -63,6 +64,7 @@ export function mapDraftScreenCategories(
       id: String(n.id),
       label: n.label,
       muted: n.muted,
+      selected: n.selected,
       winner: n.winner,
       posterUrl: n.posterUrl ?? null,
       filmTitle: n.filmTitle ?? null,

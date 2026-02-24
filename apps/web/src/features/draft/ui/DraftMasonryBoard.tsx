@@ -16,6 +16,7 @@ export function DraftMasonryBoard(props: {
         id: string;
         label: string;
         muted: boolean;
+        selected: boolean;
         winner: boolean;
         posterUrl: string | null;
         filmTitle: string | null;
