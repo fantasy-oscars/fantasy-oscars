@@ -6,11 +6,9 @@ import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
 import {
   getLeagueById,
-  getLeagueMember,
-  listLeagueRoster
+  getLeagueMember
 } from "../../data/repositories/leagueRepository.js";
 import { createExtantSeason } from "../../data/repositories/seasonRepository.js";
-import { addSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
 import {
   createDraft,
   getDraftBySeasonId
@@ -137,18 +135,6 @@ export function registerLeagueSeasonsCreateRoute(args: {
             | "negative"
             | "category_weighted";
           season.remainder_strategy = remainderStrategy as "UNDRAFTED" | "FULL_POOL";
-
-          // Seed season membership from current league roster so the season is immediately usable.
-          // This mirrors user expectations: seasons are inside a league, so league members participate by default.
-          const roster = await listLeagueRoster(tx, leagueId);
-          for (const r of roster) {
-            await addSeasonMember(tx, {
-              season_id: season.id,
-              user_id: r.user_id,
-              league_member_id: r.id,
-              role: r.role as "OWNER" | "CO_OWNER" | "MEMBER"
-            });
-          }
 
           const existingDraft = await getDraftBySeasonId(tx, season.id);
           if (existingDraft) {

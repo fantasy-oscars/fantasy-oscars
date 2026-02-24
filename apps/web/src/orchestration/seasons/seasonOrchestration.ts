@@ -546,6 +546,60 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     }
   }
 
+  async function inviteAllLeagueMembers() {
+    const targets = computeAvailableLeagueMembers({
+      leagueMembers: leagueContext?.leagueMembers,
+      seasonMembers: members
+    });
+    if (!targets.length) return;
+
+    setWorking(true);
+    setUserInviteResult(null);
+
+    const results = await Promise.all(
+      targets.map((member) => postSeasonUserInvite(seasonId, { user_id: member.user_id }))
+    );
+
+    setWorking(false);
+
+    const successCount = results.filter((res) => res.ok).length;
+    const failureCount = results.length - successCount;
+
+    if (successCount > 0) {
+      notify({
+        id: "season.invite.bulk.create.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message:
+          successCount === 1
+            ? "Created 1 invite"
+            : `Created ${successCount} invites`
+      });
+    }
+
+    if (failureCount > 0) {
+      const message =
+        failureCount === 1
+          ? "1 invite could not be created"
+          : `${failureCount} invites could not be created`;
+      notify({
+        id: "season.invite.bulk.create.error",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message
+      });
+      setUserInviteResult({ ok: false, message });
+    } else {
+      setUserInviteResult(null);
+    }
+  }
+
   async function revokeInvite(inviteId: number) {
     setWorking(true);
     const res = await postRevokeSeasonInvite(seasonId, inviteId);
@@ -708,6 +762,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     cancelSeason,
     transferSeasonOwnership,
     createUserInvite,
+    inviteAllLeagueMembers,
     createPlaceholderInvite,
     revokeInvite,
     regenerateInvite,

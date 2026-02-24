@@ -213,11 +213,12 @@ export function SeasonScreen(props: {
               s.setUserInviteQuery(username);
             }}
             onCreateUserInvite={() => void s.createUserInvite()}
+            availableLeagueMemberCount={s.availableLeagueMembers.length}
+            onInviteAllLeagueMembers={() => void s.inviteAllLeagueMembers()}
             placeholderLabel={s.placeholderLabel}
             onChangePlaceholderLabel={(next) => s.setPlaceholderLabel(next)}
             onCreatePlaceholderInvite={() => void s.createPlaceholderInvite()}
             invites={s.invites}
-            buildInviteLink={(id) => s.buildInviteLink(id)}
             onCopyLink={(id) => s.copyLink(id)}
             onRevokeInvite={(id) => void s.revokeInvite(id)}
             onRegenerateInvite={(id) => void s.regenerateInvite(id)}

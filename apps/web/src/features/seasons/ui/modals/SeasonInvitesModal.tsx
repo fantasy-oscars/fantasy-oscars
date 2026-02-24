@@ -16,13 +16,14 @@ export function SeasonInvitesModal(props: {
   onChangeUserInviteQuery: (next: string) => void;
   onPickUserInvitee: (id: number, username: string) => void;
   onCreateUserInvite: () => void | Promise<void>;
+  availableLeagueMemberCount: number;
+  onInviteAllLeagueMembers: () => void | Promise<void>;
 
   placeholderLabel: string;
   onChangePlaceholderLabel: (next: string) => void;
   onCreatePlaceholderInvite: () => void | Promise<void>;
 
   invites: SeasonInvite[];
-  buildInviteLink: (inviteId: number) => string;
   onCopyLink: (inviteId: number) => void;
   onRevokeInvite: (inviteId: number) => void | Promise<void>;
   onRegenerateInvite: (inviteId: number) => void | Promise<void>;
@@ -39,15 +40,19 @@ export function SeasonInvitesModal(props: {
     onChangeUserInviteQuery,
     onPickUserInvitee,
     onCreateUserInvite,
+    availableLeagueMemberCount,
+    onInviteAllLeagueMembers,
     placeholderLabel,
     onChangePlaceholderLabel,
     onCreatePlaceholderInvite,
     invites,
-    buildInviteLink,
     onCopyLink,
     onRevokeInvite,
     onRegenerateInvite
   } = props;
+  const visibleInvites = invites.filter(
+    (invite) => invite.status !== "CLAIMED" && invite.status !== "DECLINED"
+  );
 
   return (
     <Modal opened={opened} onClose={onClose} title="Manage invites" centered>
@@ -62,13 +67,25 @@ export function SeasonInvitesModal(props: {
             onChange={onChangeUserInviteQuery}
             onPick={onPickUserInvitee}
           />
-          <Button
-            type="button"
-            onClick={() => void onCreateUserInvite()}
-            disabled={!canEdit || working || locked}
-          >
-            Create invite
-          </Button>
+          <Stack gap="xs">
+            <Button
+              type="button"
+              onClick={() => void onCreateUserInvite()}
+              disabled={!canEdit || working || locked}
+            >
+              Create invite
+            </Button>
+            {availableLeagueMemberCount > 0 ? (
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={() => void onInviteAllLeagueMembers()}
+                disabled={!canEdit || working || locked}
+              >
+                Invite all league members
+              </Button>
+            ) : null}
+          </Stack>
         </Group>
 
         <Group className="inline-form" wrap="wrap" align="flex-end">
@@ -88,31 +105,15 @@ export function SeasonInvitesModal(props: {
           </Button>
         </Group>
 
-        {invites.length === 0 ? (
-          <Text className="muted">No invites created yet.</Text>
+        {visibleInvites.length === 0 ? (
+          <Text className="muted">No pending invites.</Text>
         ) : (
           <Stack className="list" gap="sm">
-            {invites.map((invite) => (
-              <Box key={invite.id} className="list-row">
-                <Box>
-                  <Group className="pill-list" wrap="wrap">
-                    <Box component="span" className="pill">
-                      #{invite.id}
-                    </Box>
-                    <Box component="span" className="pill">
-                      {invite.kind}
-                    </Box>
-                    <Box
-                      component="span"
-                      className={`pill ${invite.status === "REVOKED" ? "muted" : ""}`}
-                    >
-                      {invite.status}
-                    </Box>
-                  </Group>
-                  <Text className="muted">{invite.label ?? "No label"}</Text>
-                  <Text className="muted">{buildInviteLink(invite.id)}</Text>
-                </Box>
-                <Group className="pill-actions" wrap="wrap">
+            {visibleInvites.map((invite) => (
+              <Box key={invite.id} className={["list-row", "season-invite-row"].join(" ")}>
+                <Text className="season-invite-name">{invite.label ?? "No label"}</Text>
+
+                <Group className="season-invite-actions" wrap="wrap">
                   <Button
                     type="button"
                     onClick={() => onCopyLink(invite.id)}
