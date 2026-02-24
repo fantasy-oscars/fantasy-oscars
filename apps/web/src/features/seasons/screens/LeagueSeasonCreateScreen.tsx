@@ -96,7 +96,7 @@ export function LeagueSeasonCreateScreen(props: {
                 disabled={view.working}
                 data={view.ceremonies.map((c) => ({
                   value: String(c.id),
-                  label: `${c.name} (${c.code})`
+                  label: c.name
                 }))}
               />
               {view.ceremonies.length === 0 && (
