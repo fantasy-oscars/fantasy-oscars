@@ -145,8 +145,12 @@ export function DraftLedgerRail(props: {
       ) : (
         <UnstyledButton
           type="button"
-          className="dr-railToggle"
+          className={["dr-railToggle", isPre ? "is-disabled" : ""]
+            .filter(Boolean)
+            .join(" ")}
           aria-label="Expand draft history"
+          aria-disabled={isPre}
+          title={isPre ? "Draft history (available after draft starts)" : "Draft history"}
           onClick={() => {
             if (isPre) return;
             if (compactRails) openRailExclusive("ledger");

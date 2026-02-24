@@ -914,7 +914,7 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
 
 .dr-mobileRailBtn.is-disabled {
   opacity: var(--fo-alpha-40);
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .dr-mobileRailPane {
@@ -971,6 +971,11 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+.dr-railToggle.is-disabled,
+.dr-railToggle[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 .dr-railToggle:focus-visible {

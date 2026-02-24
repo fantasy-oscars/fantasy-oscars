@@ -205,6 +205,12 @@ export function MobileDraftRoom(props: {
                 canOpenLedger ? "" : "is-disabled"
               ].join(" ")}
               aria-label="Draft history"
+              aria-disabled={!canOpenLedger}
+              title={
+                canOpenLedger
+                  ? "Draft history"
+                  : "Draft history (available after draft starts)"
+              }
               onClick={() => {
                 if (!canOpenLedger) return;
                 setActiveRail((r) => (r === "ledger" ? null : "ledger"));
@@ -222,6 +228,12 @@ export function MobileDraftRoom(props: {
                 canOpenRosterRail ? "" : "is-disabled"
               ].join(" ")}
               aria-label="My roster"
+              aria-disabled={!canOpenRosterRail}
+              title={
+                canOpenRosterRail
+                  ? "My roster"
+                  : "My roster (available after draft starts)"
+              }
               onClick={() => {
                 if (!canOpenRosterRail) return;
                 setActiveRail((r) => (r === "roster" ? null : "roster"));
@@ -239,6 +251,8 @@ export function MobileDraftRoom(props: {
                 canOpenAutodraft ? "" : "is-disabled"
               ].join(" ")}
               aria-label="Auto-draft"
+              aria-disabled={!canOpenAutodraft}
+              title="Auto-draft"
               onClick={() => {
                 if (!canOpenAutodraft) return;
                 setActiveRail((r) => (r === "autodraft" ? null : "autodraft"));

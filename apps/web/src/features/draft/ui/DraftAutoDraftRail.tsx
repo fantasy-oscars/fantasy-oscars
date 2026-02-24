@@ -198,6 +198,7 @@ export function DraftAutoDraftRail(props: {
           type="button"
           className="dr-railToggle"
           aria-label="Expand auto-draft"
+          title="Auto-draft"
           onClick={() => {
             if (compactRails) openRailExclusive("auto");
             else setOpen(true);
