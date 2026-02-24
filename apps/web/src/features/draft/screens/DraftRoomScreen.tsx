@@ -226,6 +226,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         draftStatus={draftStatus}
         isFinalResults={isFinalResults}
         resultsWinnerLabel={props.o.header.resultsWinnerLabel}
+        resultsPodium={props.o.header.resultsPodium}
         view={isPre ? "draft" : isCompleted ? "roster" : props.o.header.view}
         onViewChange={props.o.header.setView}
         canToggleView={props.o.header.canToggleView && !isPre && !isCompleted}

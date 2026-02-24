@@ -146,6 +146,7 @@ export function MobileDraftRoom(props: {
         onResumeDraft={o.header.onResumeDraft}
         isFinalResults={props.isFinalResults}
         resultsWinnerLabel={o.header.resultsWinnerLabel}
+        resultsPodium={o.header.resultsPodium}
         view={props.isPre ? "draft" : isCompleted ? "roster" : o.header.view}
         onViewChange={(v) => o.header.setView(v)}
         canToggleView={o.header.canToggleView && !props.isPre && !isCompleted}

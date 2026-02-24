@@ -233,6 +233,10 @@ body {
   background: var(--fo-surface-card-primary);
 }
 
+.dr-mobileHeader.is-podium {
+  flex: 0 0 auto;
+}
+
 .dr-frame[data-turn="mine"] .dr-mobileHeader {
   background: var(--fo-gold);
 }
@@ -246,6 +250,10 @@ body {
   align-items: center;
   gap: var(--fo-space-dense-2);
   padding: 0 var(--fo-db-mobilePadX);
+}
+
+.dr-mobileHeader.is-podium .dr-mobileBar {
+  height: var(--fo-db-headerHeight);
 }
 
 .dr-mobileBar.is-countdown {
@@ -319,6 +327,61 @@ body {
 
 .dr-frame[data-turn="mine"] .drm-miniLabel {
   color: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-72));
+}
+
+.drm-podiumStack {
+  padding: 0 var(--fo-db-mobilePadX) var(--fo-space-8);
+}
+
+.drm-podiumBar {
+  min-height: 34px;
+  border-radius: var(--fo-radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 var(--fo-space-2) calc(var(--fo-space-4) + var(--fo-space-2))
+      rgba(0, 0, 0, var(--fo-alpha-18)),
+    inset 0 var(--fo-border-width) 0 rgba(255, 255, 255, var(--fo-alpha-14)),
+    inset 0 calc(-1 * var(--fo-border-width)) 0 rgba(0, 0, 0, var(--fo-alpha-10));
+}
+
+.drm-podiumBar.is-gold {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--fo-gold) 92%, white),
+    color-mix(in oklab, var(--fo-gold) 86%, black)
+  );
+}
+
+.drm-podiumBar.is-silver {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, #bcc2cc 92%, white),
+    color-mix(in oklab, #bcc2cc 86%, black)
+  );
+}
+
+.drm-podiumBar.is-bronze {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, #b07a3f 92%, white),
+    color-mix(in oklab, #b07a3f 86%, black)
+  );
+}
+
+.drm-podiumText {
+  font-size: var(--fo-db-clock-font);
+  font-weight: var(--fo-font-weight-black);
+  letter-spacing: var(--fo-letterSpacing-tight);
+  color: var(--fo-charcoal-9);
+  text-align: center;
+  line-height: var(--fo-line-height-tight);
+  max-width: 100%;
+}
+
+.drm-podiumText.is-rolling {
+  animation: drh-buckle-slot-roll 280ms cubic-bezier(0.16, 0.84, 0.22, 1);
 }
 
 .drh-row {
@@ -581,7 +644,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   position: absolute;
   left: 50%;
   top: 0;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + var(--drh-buckle-shift-x, 0px)));
   height: 100%;
   padding: 0 var(--fo-db-headerPadX);
   display: grid;
@@ -612,6 +675,10 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
     inset 0 var(--fo-border-width) 0 rgba(255, 255, 255, var(--fo-alpha-14)),
     inset 0 calc(-1 * var(--fo-border-width)) 0 rgba(0, 0, 0, var(--fo-alpha-10));
   z-index: 3;
+}
+
+.drh-buckle.is-fixed {
+  grid-template-columns: auto var(--drh-buckle-max, var(--fo-db-buckleMax-default)) auto;
 }
 
 /* Top highlight edge (overhead light). */
@@ -645,6 +712,18 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .dr-frame[data-results="final"] .drh-buckle {
   --drh-buckle-base: var(--fo-gold);
   --drh-buckle-contact: rgba(0, 0, 0, var(--fo-alpha-18));
+}
+
+.dr-frame[data-results="final"] .drh-buckle.is-silver {
+  --drh-buckle-base: #bcc2cc;
+}
+
+.dr-frame[data-results="final"] .drh-buckle.is-bronze {
+  --drh-buckle-base: #b07a3f;
+}
+
+.drh-buckle.is-podium-side {
+  opacity: 0.97;
 }
 
 /* Countdown pulse (5s window): toggled via class in sync with beeps. */
@@ -707,6 +786,53 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   grid-column: 2;
   justify-self: center;
   max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
+}
+
+.drh-buckleCenterStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  grid-column: 2;
+  justify-self: center;
+  min-width: 0;
+  max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
+  line-height: 1;
+}
+
+.drh-buckleCenterSlot {
+  grid-column: 2;
+  justify-self: center;
+  width: 100%;
+  max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
+}
+
+.drh-buckleCenterViewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.drh-buckleCenterType {
+  font-size: calc(var(--fo-db-pill-font) - var(--fo-space-hairline));
+  font-weight: var(--fo-font-weight-bold);
+  letter-spacing: var(--fo-letterSpacing-tracked);
+  text-transform: uppercase;
+  color: var(--fo-text-deemphasized);
+}
+
+.drh-buckleCenter.is-rolling {
+  animation: drh-buckle-slot-roll 280ms cubic-bezier(0.16, 0.84, 0.22, 1);
+}
+
+@keyframes drh-buckle-slot-roll {
+  0% {
+    opacity: 0;
+    transform: translateY(-80%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .drh-buckle[data-mode="timer"] .drh-buckleCenter {
