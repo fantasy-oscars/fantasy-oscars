@@ -14,6 +14,7 @@ import {
 } from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { mapDraftStateError, transitionDraftState } from "../../domain/draftState.js";
+import { computeDeadline } from "../../domain/draftPickRules.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 
@@ -178,11 +179,17 @@ export function buildResumeDraftHandler(pool: Pool) {
 
         let timerUpdated = null;
         if (draft.pick_timer_seconds) {
-          const ms =
-            draft.pick_timer_remaining_ms ??
-            (draft.pick_timer_seconds ? draft.pick_timer_seconds * 1000 : null);
-          const deadline =
-            ms && ms > 0 ? new Date(Date.now() + ms) : (draft.pick_deadline_at ?? null);
+          const remainingMs = draft.pick_timer_remaining_ms;
+          // Defensive: if a paused draft has no usable remaining time, restart from full timer.
+          const resumeMs =
+            typeof remainingMs === "number" && remainingMs > 0
+              ? remainingMs
+              : draft.pick_timer_seconds * 1000;
+          const deadline = computeDeadline(
+            new Date(),
+            draft.pick_timer_seconds ?? null,
+            resumeMs
+          );
           timerUpdated = await updateDraftTimer(tx, draft.id, deadline, null);
         }
 
