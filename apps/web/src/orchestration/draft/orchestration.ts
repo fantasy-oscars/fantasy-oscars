@@ -819,7 +819,9 @@ export function useDraftRoomOrchestration(args: {
     if (!Number.isFinite(deadlineMs)) return null;
     const remaining = deadlineMs - nowTs;
     if (!Number.isFinite(remaining)) return null;
-    return remaining > 0 ? remaining : 0;
+    const maxMs = d.pick_timer_seconds * 1000;
+    const clamped = Math.min(Math.max(remaining, 0), maxMs);
+    return Number.isFinite(clamped) ? clamped : null;
   }, [nowTs, snapshot]);
 
   const participants = useMemo(() => {

@@ -39,7 +39,8 @@ export function formatTimer(draft: Snapshot["draft"], nowMs: number) {
     : null;
   // Defensive fallback for transient sync gaps: never surface "no deadline set" to users.
   if (!deadline) return `${draft.pick_timer_seconds}s`;
-  const remaining = Math.max(0, deadline - nowMs);
+  const maxMs = draft.pick_timer_seconds * 1000;
+  const remaining = Math.min(Math.max(0, deadline - nowMs), maxMs);
   const seconds = Math.round(remaining / 1000);
   return `${draft.pick_timer_seconds}s • ${seconds}s left`;
 }
