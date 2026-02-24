@@ -879,32 +879,92 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   border-bottom: var(--fo-border-width) solid
     rgba(var(--fo-charcoal-rgb), var(--fo-alpha-14));
   border-radius: var(--fo-radius-medium);
+  cursor: grab;
 }
 .draft-plan-row:hover {
   background: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-04));
 }
+.draft-plan-row:active {
+  cursor: grabbing;
+}
 .draft-plan-row.is-dragging {
   background: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-06));
   box-shadow: var(--fo-shadow-dragging);
+  cursor: grabbing;
 }
 .draft-plan-drag {
-  appearance: none;
-  border: 0;
-  background: transparent;
   padding: 0;
-  cursor: grab;
   color: var(--fo-text-deemphasized);
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.draft-plan-drag:active {
-  cursor: grabbing;
+.draft-plan-indexWrap {
+  position: relative;
+  width: 30px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+.draft-plan-indexValue {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--fo-text-deemphasized);
+  pointer-events: none;
+}
+.draft-plan-indexInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: var(--fo-border-width) solid var(--fo-border);
+  border-radius: var(--fo-radius-small);
+  background: var(--fo-surface-pill);
+  color: var(--fo-text-primary);
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+}
+.draft-plan-indexInput::-webkit-outer-spin-button,
+.draft-plan-indexInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.draft-plan-indexInput[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.draft-plan-row:hover .draft-plan-indexInput,
+.draft-plan-indexWrap:focus-within .draft-plan-indexInput {
+  opacity: 1;
+  pointer-events: auto;
+}
+.draft-plan-row:hover .draft-plan-indexValue,
+.draft-plan-indexWrap:focus-within .draft-plan-indexValue {
+  opacity: 0;
 }
 .draft-plan-rowText {
   font-size: var(--fo-font-size-xs);
   font-weight: 600;
   color: var(--fo-text-primary);
+}
+.draft-plans-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--fo-space-sm);
+}
+.draft-plans-selectWrap {
+  width: 33%;
+  min-width: 260px;
+}
+.draft-plans-actions {
+  margin-left: auto;
 }
 
 .drh-right {

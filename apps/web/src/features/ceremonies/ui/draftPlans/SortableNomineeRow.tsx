@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
 import { FO_TOOLTIP_OFFSET_LG_PX } from "@/tokens/overlays";
 import { NOMINEE_CARD_TOOLTIP_STYLES } from "@/features/draft/ui/nomineeTooltip";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSortableInlineStyle } from "@/shared/dnd/useSortableInlineStyle";
 
 export function SortableNomineeRow(props: {
@@ -14,6 +14,9 @@ export function SortableNomineeRow(props: {
   iconVariant: "default" | "inverted";
   label: string;
   tooltip: ReactNode;
+  index: number;
+  maxIndex: number;
+  onJumpToIndex: (nextIndex: number) => void | Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: props.id });
@@ -30,11 +33,30 @@ export function SortableNomineeRow(props: {
   const sortableStyle = useMemo(
     () => ({
       transform: CSS.Transform.toString(transform),
-      transition
+      // Keep the dragged card pinned to the pointer, including while the page auto-scrolls.
+      transition: isDragging ? undefined : transition
     }),
-    [transform, transition]
+    [isDragging, transform, transition]
   );
   useSortableInlineStyle(elRef, sortableStyle);
+  const [indexInput, setIndexInput] = useState(String(props.index));
+  const [indexEditing, setIndexEditing] = useState(false);
+
+  useEffect(() => {
+    setIndexInput(String(props.index));
+  }, [props.index]);
+
+  const submitIndex = useCallback(() => {
+    const parsed = Number(indexInput);
+    if (!Number.isFinite(parsed)) {
+      setIndexInput(String(props.index));
+      return;
+    }
+    const clamped = Math.min(props.maxIndex, Math.max(1, Math.floor(parsed)));
+    setIndexInput(String(clamped));
+    if (clamped === props.index) return;
+    void props.onJumpToIndex(clamped);
+  }, [indexInput, props]);
 
   return (
     <Tooltip.Floating
@@ -42,6 +64,7 @@ export function SortableNomineeRow(props: {
       offset={FO_TOOLTIP_OFFSET_LG_PX}
       position="right"
       styles={NOMINEE_CARD_TOOLTIP_STYLES}
+      disabled={indexEditing}
     >
       <Box ref={setRef}>
         <Tooltip
@@ -50,27 +73,56 @@ export function SortableNomineeRow(props: {
           offset={FO_TOOLTIP_OFFSET_LG_PX}
           position="right"
           styles={NOMINEE_CARD_TOOLTIP_STYLES}
+          disabled={indexEditing}
         >
           <Group
             className={["draft-plan-row", isDragging ? "is-dragging" : ""].join(" ")}
             justify="space-between"
             align="center"
             wrap="nowrap"
-            tabIndex={0}
+            {...attributes}
+            {...listeners}
             role="listitem"
-            aria-label={props.label}
+            aria-label={`Reorder nominee: ${props.label}`}
           >
             <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
-              <Box
-                component="button"
-                type="button"
-                className="draft-plan-drag"
-                {...attributes}
-                {...listeners}
-                aria-label="Reorder nominee"
-                aria-roledescription="draggable"
-                aria-grabbed={isDragging}
-              >
+              <Box className="draft-plan-indexWrap">
+                <Text component="span" className="draft-plan-indexValue" aria-hidden="true">
+                  {props.index}
+                </Text>
+                <Box
+                  component="input"
+                  className="draft-plan-indexInput"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={props.maxIndex}
+                  value={indexInput}
+                  aria-label={`Move ${props.label} to position`}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onFocus={(e) => {
+                    setIndexEditing(true);
+                    e.currentTarget.select();
+                  }}
+                  onChange={(e) => setIndexInput(e.currentTarget.value)}
+                  onBlur={() => {
+                    submitIndex();
+                    setIndexEditing(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitIndex();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setIndexInput(String(props.index));
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                />
+              </Box>
+              <Box component="span" className="draft-plan-drag" aria-hidden="true">
                 <Text component="span" className="gicon" aria-hidden="true">
                   drag_indicator
                 </Text>
