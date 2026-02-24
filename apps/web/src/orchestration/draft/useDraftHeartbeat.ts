@@ -29,7 +29,11 @@ export function useDraftHeartbeat(args: {
       const deadlineMs = d.pick_deadline_at
         ? new Date(d.pick_deadline_at).getTime()
         : null;
-      if (!deadlineMs || !Number.isFinite(deadlineMs)) return;
+      if (!deadlineMs || !Number.isFinite(deadlineMs)) {
+        // Self-heal: ask the server to restore a valid timer deadline for live timed drafts.
+        void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
+        return;
+      }
       if (Date.now() <= deadlineMs) return;
 
       void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
