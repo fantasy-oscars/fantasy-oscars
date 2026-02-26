@@ -124,6 +124,18 @@ export function registerLeagueSeasonsCreateRoute(args: {
             ceremony_id: ceremonyIdNum
           });
 
+          // Ensure the creator is always a season commissioner for the season they create.
+          await query(
+            tx,
+            `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+             VALUES ($1, $2, $3, 'OWNER')
+             ON CONFLICT (season_id, user_id)
+             DO UPDATE SET
+               role = 'OWNER',
+               league_member_id = COALESCE(EXCLUDED.league_member_id, season_member.league_member_id)`,
+            [season.id, userId, member?.id ?? null]
+          );
+
           // Apply creation-time defaults (editable later).
           await query(
             tx,
