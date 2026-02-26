@@ -45,7 +45,7 @@ export async function listNominationsForCeremony(
        n.film_id::int,
        n.song_id::int,
        n.performance_id::int,
-       COALESCE(n.film_id, s.film_id, perf.film_id)::int AS display_film_id,
+       COALESCE(f.id, sf.id, pf.id)::int AS display_film_id,
        COALESCE(f.tmdb_id, sf.tmdb_id, pf.tmdb_id)::int AS display_film_tmdb_id,
        n.status,
        n.replaced_by_nomination_id::int,
@@ -73,11 +73,14 @@ export async function listNominationsForCeremony(
        ) AS contributors
      FROM nomination n
      JOIN category_edition ce ON ce.id = n.category_edition_id
-     LEFT JOIN film f ON f.id = n.film_id
+     LEFT JOIN film f0 ON f0.id = n.film_id
+     LEFT JOIN film f ON f.id = COALESCE(f0.consolidated_into_film_id, f0.id)
      LEFT JOIN song s ON s.id = n.song_id
-     LEFT JOIN film sf ON sf.id = s.film_id
+     LEFT JOIN film sf0 ON sf0.id = s.film_id
+     LEFT JOIN film sf ON sf.id = COALESCE(sf0.consolidated_into_film_id, sf0.id)
      LEFT JOIN performance perf ON perf.id = n.performance_id
-     LEFT JOIN film pf ON pf.id = perf.film_id
+     LEFT JOIN film pf0 ON pf0.id = perf.film_id
+     LEFT JOIN film pf ON pf.id = COALESCE(pf0.consolidated_into_film_id, pf0.id)
      LEFT JOIN LATERAL (
        SELECT p.full_name, p.profile_url, p.profile_path, nc.role_label
        FROM nomination_contributor nc
@@ -97,8 +100,9 @@ export async function listNominationsForCeremony(
        n.film_id,
        n.song_id,
        n.performance_id,
-       s.film_id,
-       perf.film_id,
+       f.id,
+       sf.id,
+       pf.id,
        f.tmdb_id,
        sf.tmdb_id,
        pf.tmdb_id,
@@ -124,10 +128,10 @@ export async function listNominationsForCeremony(
 
   // Best-effort: infer missing cast roles from stored film TMDB credits.
   const perfRows = rows.filter(
-    (r) => String(r.unit_kind ?? "").toUpperCase() === "PERFORMANCE" && r.film_id
+    (r) => String(r.unit_kind ?? "").toUpperCase() === "PERFORMANCE" && r.display_film_id
   );
   const filmIds = Array.from(
-    new Set(perfRows.map((r) => Number(r.film_id)).filter(Boolean))
+    new Set(perfRows.map((r) => Number(r.display_film_id)).filter(Boolean))
   );
   if (filmIds.length === 0) return rows;
 
@@ -140,7 +144,7 @@ export async function listNominationsForCeremony(
   for (const r of creditsRes.rows) creditsByFilmId.set(Number(r.id), r.tmdb_credits);
 
   for (const row of perfRows) {
-    const credits = creditsByFilmId.get(Number(row.film_id)) as
+    const credits = creditsByFilmId.get(Number(row.display_film_id)) as
       | {
           cast?: Array<{
             id?: number;

@@ -31,7 +31,7 @@ export function registerAdminFilmDuplicatesListRoute(args: {
           }>;
         }>(
           client,
-          `WITH f AS (
+           `WITH f AS (
              SELECT
                id::int,
                title,
@@ -41,6 +41,7 @@ export function registerAdminFilmDuplicatesListRoute(args: {
                tmdb_last_synced_at,
                ${sqlNorm("title")} AS norm_title
              FROM film
+             WHERE consolidated_into_film_id IS NULL
            )
            SELECT
              norm_title,

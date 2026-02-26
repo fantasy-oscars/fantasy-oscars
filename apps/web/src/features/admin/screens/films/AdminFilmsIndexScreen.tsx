@@ -1,6 +1,8 @@
 import {
+  ActionIcon,
   Box,
   Button,
+  Checkbox,
   Divider,
   Group,
   Menu,
@@ -9,12 +11,16 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
   Title
 } from "@ui";
 import { useMemo, useState } from "react";
 import { StandardCard } from "@/primitives/cards/StandardCard";
 import { notify } from "@/notifications";
-import type { AdminFilmRow } from "@/orchestration/admin/filmsIndex/orchestration";
+import type {
+  AdminFilmRow,
+  ConsolidatedFilmRow
+} from "@/orchestration/admin/filmsIndex/orchestration";
 import "@/primitives/baseline.css";
 
 type LinkEditFilm = {
@@ -22,6 +28,21 @@ type LinkEditFilm = {
   title: string;
   tmdb_id: number | null;
 };
+
+type MergeResult = {
+  ok: boolean;
+  errorCode?: string;
+  errorDetails?: Record<string, unknown>;
+};
+
+type ConsolidatedGroup = {
+  normTitle: string;
+  films: AdminFilmRow[];
+};
+
+type FilmDisplayRow =
+  | { type: "film"; film: AdminFilmRow }
+  | { type: "group"; group: ConsolidatedGroup; representative: AdminFilmRow };
 
 export function AdminFilmsIndexScreen(props: {
   query: string;
@@ -36,12 +57,56 @@ export function AdminFilmsIndexScreen(props: {
   status: { ok: true } | { ok: false; message: string } | null;
   films: AdminFilmRow[];
   years: number[];
+  page: number;
+  pageSize: number;
+  total: number;
+  setPage: (page: number) => void;
   linkWorkingFilmId: number | null;
   onReload: () => void;
   onSaveTmdbId: (filmId: number, tmdbId: number | null) => Promise<{ ok: boolean }>;
+  onLoadConsolidated: (
+    canonicalId: number,
+    page: number,
+    pageSize: number
+  ) => Promise<
+    | {
+        ok: true;
+        films: ConsolidatedFilmRow[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }
+    | { ok: false; error: string }
+  >;
+  onDecoupleConsolidated: (
+    canonicalId: number,
+    filmId: number
+  ) => Promise<{ ok: boolean }>;
+  onMergeSelected: (films: AdminFilmRow[]) => Promise<MergeResult>;
 }) {
   const [editingFilm, setEditingFilm] = useState<LinkEditFilm | null>(null);
   const [tmdbInput, setTmdbInput] = useState("");
+  const [decoupledFilmIds, setDecoupledFilmIds] = useState<Record<number, true>>({});
+  const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
+  const [groupPage, setGroupPage] = useState(1);
+  const [selectedFilmById, setSelectedFilmById] = useState<Record<number, AdminFilmRow>>({});
+  const [mergingSelected, setMergingSelected] = useState(false);
+  const [mergeConflict, setMergeConflict] = useState<{
+    selectedFilms: AdminFilmRow[];
+    linkedFilms: AdminFilmRow[];
+    keepLinkedId: string;
+  } | null>(null);
+  const [resolvingConflict, setResolvingConflict] = useState(false);
+
+  const [consolidatedModalFilm, setConsolidatedModalFilm] = useState<AdminFilmRow | null>(
+    null
+  );
+  const [consolidatedLoading, setConsolidatedLoading] = useState(false);
+  const [consolidatedRows, setConsolidatedRows] = useState<ConsolidatedFilmRow[]>([]);
+  const [consolidatedPage, setConsolidatedPage] = useState(1);
+  const [consolidatedPageSize, setConsolidatedPageSize] = useState(8);
+  const [consolidatedTotal, setConsolidatedTotal] = useState(0);
+  const [decouplingFilmId, setDecouplingFilmId] = useState<number | null>(null);
 
   const activeFilters = useMemo(() => {
     let count = 0;
@@ -58,6 +123,270 @@ export function AdminFilmsIndexScreen(props: {
     ],
     [props.years]
   );
+
+  const groupsByNormTitle = useMemo(() => {
+    const grouped = new Map<string, AdminFilmRow[]>();
+    for (const film of props.films) {
+      const key = film.norm_title || String(film.id);
+      const existing = grouped.get(key);
+      if (existing) existing.push(film);
+      else grouped.set(key, [film]);
+    }
+    return grouped;
+  }, [props.films]);
+
+  const displayRows = useMemo<FilmDisplayRow[]>(() => {
+    const rows: FilmDisplayRow[] = [];
+    for (const films of groupsByNormTitle.values()) {
+      const decoupled = films.filter((f) => decoupledFilmIds[f.id]);
+      const coupled = films.filter((f) => !decoupledFilmIds[f.id]);
+
+      for (const film of decoupled) rows.push({ type: "film", film });
+      if (coupled.length === 1) {
+        rows.push({ type: "film", film: coupled[0] });
+        continue;
+      }
+      if (coupled.length > 1) {
+        const representative =
+          coupled.find((f) => Boolean(f.tmdb_id)) ??
+          coupled.find((f) => f.is_nominated) ??
+          coupled[0];
+        rows.push({
+          type: "group",
+          group: {
+            normTitle: coupled[0]?.norm_title ?? String(coupled[0]?.id ?? ""),
+            films: coupled
+          },
+          representative
+        });
+      }
+    }
+    return rows;
+  }, [decoupledFilmIds, groupsByNormTitle]);
+
+  const openGroup = useMemo<ConsolidatedGroup | null>(() => {
+    if (!openGroupKey) return null;
+    const row = displayRows.find(
+      (entry): entry is Extract<FilmDisplayRow, { type: "group" }> =>
+        entry.type === "group" && entry.group.normTitle === openGroupKey
+    );
+    return row?.group ?? null;
+  }, [displayRows, openGroupKey]);
+
+  const GROUP_PAGE_SIZE = 8;
+  const groupPageCount = Math.max(1, Math.ceil((openGroup?.films.length ?? 0) / GROUP_PAGE_SIZE));
+  const clampedGroupPage = Math.min(Math.max(groupPage, 1), groupPageCount);
+  const pagedGroupFilms = useMemo<AdminFilmRow[]>(() => {
+    if (!openGroup) return [];
+    const start = (clampedGroupPage - 1) * GROUP_PAGE_SIZE;
+    return openGroup.films.slice(start, start + GROUP_PAGE_SIZE);
+  }, [clampedGroupPage, openGroup]);
+
+  const selectedFilms = useMemo(
+    () =>
+      Object.values(selectedFilmById).sort((a, b) =>
+        `${a.title}${a.release_year ?? ""}`.localeCompare(`${b.title}${b.release_year ?? ""}`)
+      ),
+    [selectedFilmById]
+  );
+
+  const totalPages = Math.max(1, Math.ceil((props.total || 0) / Math.max(props.pageSize, 1)));
+
+  const isRowChecked = (row: FilmDisplayRow) => {
+    const film = row.type === "film" ? row.film : row.representative;
+    return row.type === "group"
+      ? row.group.films.every((groupFilm) => Boolean(selectedFilmById[groupFilm.id]))
+      : Boolean(selectedFilmById[film.id]);
+  };
+
+  const isRowIndeterminate = (row: FilmDisplayRow) =>
+    row.type === "group"
+      ? row.group.films.some((groupFilm) => Boolean(selectedFilmById[groupFilm.id])) &&
+        !row.group.films.every((groupFilm) => Boolean(selectedFilmById[groupFilm.id]))
+      : false;
+
+  const toggleRowSelection = (row: FilmDisplayRow, checked: boolean) => {
+    const film = row.type === "film" ? row.film : row.representative;
+    setSelectedFilmById((prev) => {
+      const next = { ...prev };
+      if (row.type === "group") {
+        for (const groupFilm of row.group.films) {
+          if (checked) next[groupFilm.id] = groupFilm;
+          else delete next[groupFilm.id];
+        }
+        return next;
+      }
+      if (checked) next[film.id] = film;
+      else delete next[film.id];
+      return next;
+    });
+  };
+
+  const selectedDisplayRows = useMemo(
+    () => displayRows.filter((row) => isRowChecked(row) || isRowIndeterminate(row)),
+    [displayRows, selectedFilmById]
+  );
+
+  const loadConsolidatedModal = (canonicalFilm: AdminFilmRow, page = 1) => {
+    setConsolidatedModalFilm(canonicalFilm);
+    setConsolidatedLoading(true);
+    void props.onLoadConsolidated(canonicalFilm.id, page, consolidatedPageSize).then((res) => {
+      setConsolidatedLoading(false);
+      if (!res.ok) return;
+      setConsolidatedRows(res.films);
+      setConsolidatedTotal(res.total);
+      setConsolidatedPage(res.page);
+      setConsolidatedPageSize(res.pageSize);
+    });
+  };
+
+  const consolidatedTotalPages = Math.max(
+    1,
+    Math.ceil(consolidatedTotal / Math.max(consolidatedPageSize, 1))
+  );
+
+  const renderFilmCard = (row: FilmDisplayRow, key: string) => {
+    const film = row.type === "film" ? row.film : row.representative;
+    const isGroup = row.type === "group";
+
+    return (
+      <StandardCard key={key}>
+        <Group justify="space-between" align="center" wrap="wrap">
+          <Group align="center" gap="sm" wrap="nowrap" miw="var(--fo-space-0)">
+            <Checkbox
+              aria-label={isGroup ? "Select consolidated film records" : "Select film record"}
+              checked={isRowChecked(row)}
+              indeterminate={isRowIndeterminate(row)}
+              onChange={(e) => toggleRowSelection(row, e.currentTarget.checked)}
+            />
+            <Box miw="var(--fo-space-0)">
+              <Text fw="var(--fo-font-weight-bold)" className="baseline-textBody">
+                {film.title}
+                {film.release_year ? ` (${film.release_year})` : ""}
+              </Text>
+              {isGroup ? (
+                <Text className="baseline-textMeta">
+                  Consolidates {row.group.films.length} duplicate entries
+                </Text>
+              ) : null}
+            </Box>
+          </Group>
+
+          <Group gap="xs" wrap="wrap" justify="flex-end">
+            {film.is_nominated ? (
+              <Tooltip label="Nominated in at least one ceremony" withArrow>
+                <Box component="span" className="baseline-statusPill" aria-hidden="true">
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    star
+                  </Text>
+                </Box>
+              </Tooltip>
+            ) : null}
+
+            {isGroup ? (
+              <Tooltip label="View grouped records" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Open grouped records"
+                  onClick={() => {
+                    setOpenGroupKey(row.group.normTitle);
+                    setGroupPage(1);
+                  }}
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    layers
+                  </Text>
+                </ActionIcon>
+              </Tooltip>
+            ) : film.is_consolidated ? (
+              <Tooltip label="Manage consolidated records" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Manage consolidated records"
+                  onClick={() => loadConsolidatedModal(film, 1)}
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    layers
+                  </Text>
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
+
+            <Tooltip
+              label={film.tmdb_id ? "Linked to TMDB (edit link)" : "Not linked to TMDB"}
+              withArrow
+            >
+              <ActionIcon
+                variant="subtle"
+                aria-label={film.tmdb_id ? "Edit TMDB link" : "Link to TMDB"}
+                onClick={() => {
+                  setEditingFilm({ id: film.id, title: film.title, tmdb_id: film.tmdb_id });
+                  setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
+                }}
+              >
+                <Text
+                  component="span"
+                  className={film.tmdb_id ? "gicon" : "gicon muted"}
+                  aria-hidden="true"
+                >
+                  {film.tmdb_id ? "link" : "link_off"}
+                </Text>
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
+      </StandardCard>
+    );
+  };
+
+  const tryMergeSelected = (filmsToMerge: AdminFilmRow[]) => {
+    if (filmsToMerge.length < 2) return;
+    const linkedFilms = filmsToMerge.filter(
+      (film) => Number.isInteger(film.tmdb_id) && Number(film.tmdb_id) > 0
+    );
+    if (linkedFilms.length > 1) {
+      setMergeConflict({
+        selectedFilms: filmsToMerge,
+        linkedFilms,
+        keepLinkedId: String(linkedFilms[0]?.id ?? "")
+      });
+      return;
+    }
+    setMergingSelected(true);
+    void props.onMergeSelected(filmsToMerge).then((res) => {
+      setMergingSelected(false);
+      if (!res.ok) {
+        if (
+          res.errorCode === "FILM_MERGE_LINK_CONFLICT" &&
+          Array.isArray(res.errorDetails?.linked_films)
+        ) {
+          const linkedById = new Map(
+            filmsToMerge
+              .filter((film) => Number.isInteger(film.tmdb_id) && Number(film.tmdb_id) > 0)
+              .map((film) => [film.id, film] as const)
+          );
+          const linkedFilmsFromError = (res.errorDetails?.linked_films as Array<{ id?: unknown }>)
+            .map((f) => linkedById.get(Number(f.id)))
+            .filter((f): f is AdminFilmRow => Boolean(f));
+          const linkedFilmsResolved =
+            linkedFilmsFromError.length > 1
+              ? linkedFilmsFromError
+              : filmsToMerge.filter(
+                  (film) => Number.isInteger(film.tmdb_id) && Number(film.tmdb_id) > 0
+                );
+          if (linkedFilmsResolved.length > 1) {
+            setMergeConflict({
+              selectedFilms: filmsToMerge,
+              linkedFilms: linkedFilmsResolved,
+              keepLinkedId: String(linkedFilmsResolved[0]?.id ?? "")
+            });
+          }
+        }
+        return;
+      }
+      setSelectedFilmById({});
+    });
+  };
 
   return (
     <Stack gap="md">
@@ -84,9 +413,7 @@ export function AdminFilmsIndexScreen(props: {
         </Box>
         <Menu closeOnItemClick={false} withinPortal position="bottom-end">
           <Menu.Target>
-            <Button variant="default">
-              Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
-            </Button>
+            <Button variant="default">Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}</Button>
           </Menu.Target>
           <Menu.Dropdown>
             <Box p="sm" style={{ width: 260 }}>
@@ -152,60 +479,135 @@ export function AdminFilmsIndexScreen(props: {
         <Text className="baseline-textBody">{props.status.message}</Text>
       ) : null}
 
-      {props.films.length === 0 ? (
+      {selectedFilms.length > 0 ? (
+        <Stack gap="sm">
+          {selectedDisplayRows.map((row) =>
+            renderFilmCard(
+              row,
+              row.type === "group" ? `selected-group:${row.group.normTitle}` : `selected-film:${row.film.id}`
+            )
+          )}
+          {selectedFilms.length > 1 ? (
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                loading={mergingSelected}
+                onClick={() => {
+                  if (selectedFilms.length < 2) return;
+                  tryMergeSelected(selectedFilms);
+                }}
+              >
+                Merge films
+              </Button>
+            </Group>
+          ) : null}
+          <Divider />
+        </Stack>
+      ) : null}
+
+      {displayRows.length === 0 ? (
         <Text className="baseline-textBody">No films matched your filters.</Text>
       ) : (
         <Stack gap="sm">
-          {props.films.map((film) => (
-            <StandardCard key={film.id}>
-              <Group justify="space-between" align="center" wrap="wrap">
-                <Box miw="var(--fo-space-0)">
-                  <Text fw="var(--fo-font-weight-bold)" className="baseline-textBody">
-                    {film.title}
-                    {film.release_year ? ` (${film.release_year})` : ""}
-                  </Text>
-                  <Text className="baseline-textMeta">Film #{film.id}</Text>
-                </Box>
-
-                <Group gap="xs" wrap="wrap" justify="flex-end">
-                  <Box component="span" className="baseline-statusPill">
-                    <Text
-                      className="baseline-textMeta fo-letterSpacingTracked"
-                      fw="var(--fo-font-weight-bold)"
-                    >
-                      {film.release_year ? String(film.release_year) : "YEAR UNKNOWN"}
-                    </Text>
-                  </Box>
-
-                  <Box component="span" className="baseline-statusPill">
-                    <Text
-                      className="baseline-textMeta fo-letterSpacingTracked"
-                      fw="var(--fo-font-weight-bold)"
-                    >
-                      {film.is_nominated ? "NOMINATED" : "NOT NOMINATED"}
-                    </Text>
-                  </Box>
-
-                  <Button
-                    variant="default"
-                    size="xs"
-                    onClick={() => {
-                      setEditingFilm({
-                        id: film.id,
-                        title: film.title,
-                        tmdb_id: film.tmdb_id
-                      });
-                      setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
-                    }}
-                  >
-                    {film.tmdb_id ? "Linked" : "Unlinked"}
-                  </Button>
-                </Group>
-              </Group>
-            </StandardCard>
-          ))}
+          {displayRows.map((row) =>
+            renderFilmCard(
+              row,
+              row.type === "group" ? `index-group:${row.group.normTitle}` : `index-film:${row.film.id}`
+            )
+          )}
         </Stack>
       )}
+
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Text className="baseline-textMeta">
+          Page {props.page} of {totalPages} ({props.total} records)
+        </Text>
+        <Group gap="xs">
+          <Button
+            variant="default"
+            disabled={props.page <= 1 || props.loading}
+            onClick={() => props.setPage(Math.max(1, props.page - 1))}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="default"
+            disabled={props.page >= totalPages || props.loading}
+            onClick={() => props.setPage(Math.min(totalPages, props.page + 1))}
+          >
+            Next
+          </Button>
+        </Group>
+      </Group>
+
+      <Modal
+        opened={Boolean(mergeConflict)}
+        onClose={() => {
+          if (resolvingConflict) return;
+          setMergeConflict(null);
+        }}
+        title="Resolve TMDB link conflict"
+        centered
+        size="md"
+        overlayProps={{ opacity: 0.35, blur: 2 }}
+      >
+        <Stack gap="sm">
+          <Text className="baseline-textBody">
+            Multiple selected films are linked to TMDB. Choose one film to remain linked,
+            and the others will be unlinked before merge.
+          </Text>
+          <Select
+            label="Keep linked"
+            data={(mergeConflict?.linkedFilms ?? []).map((film) => ({
+              value: String(film.id),
+              label: `${film.title}${film.release_year ? ` (${film.release_year})` : ""}`
+            }))}
+            value={mergeConflict?.keepLinkedId ?? null}
+            onChange={(value) => {
+              if (!value) return;
+              setMergeConflict((prev) => (prev ? { ...prev, keepLinkedId: value } : prev));
+            }}
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="subtle"
+              disabled={resolvingConflict}
+              onClick={() => setMergeConflict(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={resolvingConflict}
+              disabled={!mergeConflict?.keepLinkedId}
+              onClick={() => {
+                if (!mergeConflict?.keepLinkedId) return;
+                const keepId = Number(mergeConflict.keepLinkedId);
+                const toUnlink = mergeConflict.linkedFilms.filter((film) => film.id !== keepId);
+                setResolvingConflict(true);
+                void (async () => {
+                  for (const film of toUnlink) {
+                    const unlink = await props.onSaveTmdbId(film.id, null);
+                    if (!unlink.ok) {
+                      setResolvingConflict(false);
+                      return;
+                    }
+                  }
+                  const nextSelected = mergeConflict.selectedFilms.map((film) =>
+                    toUnlink.some((u) => u.id === film.id) ? { ...film, tmdb_id: null } : film
+                  );
+                  const merged = await props.onMergeSelected(nextSelected);
+                  setResolvingConflict(false);
+                  if (!merged.ok) return;
+                  setSelectedFilmById({});
+                  setMergeConflict(null);
+                })();
+              }}
+            >
+              Unlink others and merge
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <Modal
         opened={Boolean(editingFilm)}
@@ -216,9 +618,7 @@ export function AdminFilmsIndexScreen(props: {
         overlayProps={{ opacity: 0.35, blur: 2 }}
       >
         <Stack gap="sm">
-          <Text className="baseline-textBody">
-            {editingFilm?.title ?? "Untitled film"}
-          </Text>
+          <Text className="baseline-textBody">{editingFilm?.title ?? "Untitled film"}</Text>
           <Text className="baseline-textMeta">
             Saving hydrates film metadata from TMDB when available.
           </Text>
@@ -278,7 +678,167 @@ export function AdminFilmsIndexScreen(props: {
         </Stack>
       </Modal>
 
-      <Divider />
+      <Modal
+        opened={Boolean(openGroup)}
+        onClose={() => setOpenGroupKey(null)}
+        title="Grouped records"
+        centered
+        size="lg"
+        overlayProps={{ opacity: 0.35, blur: 2 }}
+      >
+        <Stack gap="sm">
+          {openGroup ? (
+            <>
+              <Text className="baseline-textMeta">
+                Showing {openGroup.films.length} records in this grouped entry.
+              </Text>
+              <Stack gap="xs">
+                {pagedGroupFilms.map((groupFilm) => (
+                  <StandardCard key={`group-film-${groupFilm.id}`}>
+                    <Group justify="space-between" align="center" wrap="wrap">
+                      <Box miw="var(--fo-space-0)">
+                        <Text className="baseline-textBody" fw="var(--fo-font-weight-semibold)">
+                          {groupFilm.title}
+                          {groupFilm.release_year ? ` (${groupFilm.release_year})` : ""}
+                        </Text>
+                      </Box>
+                      <Group gap="xs" wrap="nowrap">
+                        <ActionIcon
+                          variant="subtle"
+                          aria-label="Decouple from grouped entry"
+                          onClick={() => {
+                            setDecoupledFilmIds((prev) => ({ ...prev, [groupFilm.id]: true }));
+                          }}
+                        >
+                          <Text component="span" className="gicon" aria-hidden="true">
+                            call_split
+                          </Text>
+                        </ActionIcon>
+                      </Group>
+                    </Group>
+                  </StandardCard>
+                ))}
+              </Stack>
+              <Group justify="space-between" align="center">
+                <Text className="baseline-textMeta">
+                  Page {clampedGroupPage} of {groupPageCount}
+                </Text>
+                <Group gap="xs">
+                  <Button
+                    variant="default"
+                    disabled={clampedGroupPage <= 1}
+                    onClick={() => setGroupPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="default"
+                    disabled={clampedGroupPage >= groupPageCount}
+                    onClick={() => setGroupPage((p) => Math.min(groupPageCount, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </Group>
+              </Group>
+            </>
+          ) : null}
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={Boolean(consolidatedModalFilm)}
+        onClose={() => {
+          if (consolidatedLoading || decouplingFilmId) return;
+          setConsolidatedModalFilm(null);
+          setConsolidatedRows([]);
+          setConsolidatedTotal(0);
+          setConsolidatedPage(1);
+        }}
+        title="Manage consolidated records"
+        centered
+        size="lg"
+        overlayProps={{ opacity: 0.35, blur: 2 }}
+      >
+        <Stack gap="sm">
+          <Text className="baseline-textMeta">
+            {consolidatedModalFilm
+              ? `Consolidated into ${consolidatedModalFilm.title}${consolidatedModalFilm.release_year ? ` (${consolidatedModalFilm.release_year})` : ""}`
+              : ""}
+          </Text>
+          {consolidatedLoading ? (
+            <Text className="baseline-textMeta">Loading…</Text>
+          ) : consolidatedRows.length === 0 ? (
+            <Text className="baseline-textMeta">No consolidated child records.</Text>
+          ) : (
+            <Stack gap="xs">
+              {consolidatedRows.map((groupFilm) => (
+                <StandardCard key={`consolidated-child-${groupFilm.id}`}>
+                  <Group justify="space-between" align="center" wrap="wrap">
+                    <Box miw="var(--fo-space-0)">
+                      <Text className="baseline-textBody" fw="var(--fo-font-weight-semibold)">
+                        {groupFilm.title}
+                        {groupFilm.release_year ? ` (${groupFilm.release_year})` : ""}
+                      </Text>
+                    </Box>
+                    <Group gap="xs" wrap="nowrap">
+                      <ActionIcon
+                        variant="subtle"
+                        aria-label="Decouple consolidated film"
+                        disabled={decouplingFilmId === groupFilm.id}
+                        onClick={() => {
+                          if (!consolidatedModalFilm) return;
+                          setDecouplingFilmId(groupFilm.id);
+                          void props
+                            .onDecoupleConsolidated(consolidatedModalFilm.id, groupFilm.id)
+                            .then((res) => {
+                              setDecouplingFilmId(null);
+                              if (!res.ok) return;
+                              loadConsolidatedModal(consolidatedModalFilm, consolidatedPage);
+                            });
+                        }}
+                      >
+                        <Text component="span" className="gicon" aria-hidden="true">
+                          call_split
+                        </Text>
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                </StandardCard>
+              ))}
+            </Stack>
+          )}
+          <Group justify="space-between" align="center">
+            <Text className="baseline-textMeta">
+              Page {consolidatedPage} of {consolidatedTotalPages} ({consolidatedTotal} records)
+            </Text>
+            <Group gap="xs">
+              <Button
+                variant="default"
+                disabled={consolidatedPage <= 1 || consolidatedLoading}
+                onClick={() => {
+                  if (!consolidatedModalFilm) return;
+                  loadConsolidatedModal(consolidatedModalFilm, Math.max(1, consolidatedPage - 1));
+                }}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="default"
+                disabled={consolidatedPage >= consolidatedTotalPages || consolidatedLoading}
+                onClick={() => {
+                  if (!consolidatedModalFilm) return;
+                  loadConsolidatedModal(
+                    consolidatedModalFilm,
+                    Math.min(consolidatedTotalPages, consolidatedPage + 1)
+                  );
+                }}
+              >
+                Next
+              </Button>
+            </Group>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
