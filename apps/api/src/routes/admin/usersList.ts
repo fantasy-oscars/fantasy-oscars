@@ -19,12 +19,20 @@ export function registerAdminUsersListRoute({
       const likeNorm = `%${escapeLike(normalizeForSearch(q))}%`;
       const { rows } = await query(
         client,
-        `SELECT id::int, username, email, is_admin, created_at
+        `SELECT id::int,
+                username,
+                email,
+                is_admin,
+                COALESCE(admin_role, CASE WHEN is_admin THEN 'SUPER_ADMIN' ELSE 'NONE' END) AS admin_role,
+                created_at
            FROM app_user
-           WHERE username ILIKE $1 ESCAPE '\\'
-              OR email ILIKE $1 ESCAPE '\\'
-              OR ${sqlNorm("username")} LIKE $2 ESCAPE '\\'
-              OR ${sqlNorm("coalesce(email, '')")} LIKE $2 ESCAPE '\\'
+           WHERE deleted_at IS NULL
+             AND (
+                  username ILIKE $1 ESCAPE '\\'
+                  OR email ILIKE $1 ESCAPE '\\'
+                  OR ${sqlNorm("username")} LIKE $2 ESCAPE '\\'
+                  OR ${sqlNorm("coalesce(email, '')")} LIKE $2 ESCAPE '\\'
+             )
            ORDER BY created_at DESC
            LIMIT 25`,
         [likeRaw, likeNorm]

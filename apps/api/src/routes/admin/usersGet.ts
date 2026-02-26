@@ -18,9 +18,15 @@ export function registerAdminUsersGetRoute({
       }
       const { rows } = await query(
         client,
-        `SELECT id::int, username, email, is_admin, created_at
+        `SELECT id::int,
+                username,
+                email,
+                is_admin,
+                COALESCE(admin_role, CASE WHEN is_admin THEN 'SUPER_ADMIN' ELSE 'NONE' END) AS admin_role,
+                created_at
            FROM app_user
-           WHERE id = $1`,
+           WHERE id = $1
+             AND deleted_at IS NULL`,
         [id]
       );
       const user = rows[0];

@@ -5,6 +5,7 @@ import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { upsertStaticContent } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
+import { assertStaticContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentStaticPutRoute({
   router,
@@ -20,6 +21,7 @@ export function registerAdminContentStaticPutRoute({
       const body_markdown =
         typeof req.body?.body_markdown === "string" ? req.body.body_markdown : "";
       if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      assertStaticContentAccess(req, key);
 
       const actorId = Number(req.auth?.sub);
       const content = await upsertStaticContent(client, {

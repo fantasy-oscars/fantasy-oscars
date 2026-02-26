@@ -2451,6 +2451,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 
 .nav-links {
   display: flex;
+  align-items: flex-start;
   gap: var(--fo-card-gap);
   flex-wrap: nowrap;
 }
@@ -2475,6 +2476,50 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   color: var(--fo-text-primary);
   border-bottom-color: var(--fo-gold-primary);
   background: transparent;
+}
+
+.admin-navTriggerCaret {
+  display: inline-block;
+  margin-left: calc(var(--fo-gutter-mobile) * 0.25);
+  opacity: var(--fo-alpha-80);
+  font-size: var(--fo-font-size-xs);
+  transform: translateY(-1px) rotate(0deg);
+  transition: transform 140ms ease;
+}
+
+.admin-navGroup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+}
+
+.admin-navGroup.is-open .admin-navTriggerCaret {
+  transform: translateY(-1px) rotate(180deg);
+}
+
+.admin-navDrawer {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  position: absolute;
+  top: calc(100% + (var(--fo-gutter-mobile) * 0.15));
+  left: 0;
+  z-index: 2;
+  background: var(--fo-surface-page);
+  border: var(--fo-border-width) solid var(--fo-border);
+  border-radius: var(--fo-radius-medium);
+  padding: calc(var(--fo-gutter-mobile) * 0.35);
+  box-shadow: 0 10px 24px rgba(var(--fo-text-primary-rgb), 0.12);
+}
+
+.admin-navDrawer.is-open {
+  display: inline-flex;
+}
+
+.admin-navDrawerLink {
+  padding-top: calc(var(--fo-gutter-mobile) * 0.45);
+  padding-bottom: calc(var(--fo-gutter-mobile) * 0.45);
 }
 
 .nav-actions {
@@ -3576,6 +3621,23 @@ small.error {
   border: var(--fo-border-width) solid var(--border);
   border-radius: var(--fo-radius-small);
   background: var(--fo-surface-pill);
+}
+
+.season-invite-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fo-space-8);
+}
+
+.season-invite-name {
+  font-size: var(--fo-font-size-sm);
+  font-weight: var(--fo-font-weight-regular);
+  line-height: var(--fo-line-height-body);
+  color: var(--fo-text-primary);
+}
+
+.season-invite-actions {
+  margin-top: 0;
 }
 
 .season-grid {
