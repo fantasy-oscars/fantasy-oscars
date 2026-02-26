@@ -12,6 +12,7 @@ import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
+import { PageError, PageLoader } from "@/shared/page-state";
 import {
   buildDraftedNominationIds,
   buildNomineeMetaById,
@@ -174,6 +175,14 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     }
     return m;
   }, [categoriesRaw, draftedMetaByNominationId]);
+
+  if (props.o.state.loadingInitial) {
+    return <PageLoader label="Loading draft board..." />;
+  }
+
+  if (!props.o.header.status && props.o.state.error) {
+    return <PageError message={props.o.state.error} />;
+  }
 
   if (isMobile) {
     return (

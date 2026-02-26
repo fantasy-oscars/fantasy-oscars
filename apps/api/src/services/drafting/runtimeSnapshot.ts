@@ -52,6 +52,13 @@ export async function getDraftRuntimeSnapshot(args: {
 
   let draft = await getDraftById(pool, draftId);
   if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+  if (draft.status === "CANCELLED") {
+    throw new AppError(
+      "DRAFT_ABORTED",
+      409,
+      "This draft was aborted when ceremony results entry began."
+    );
+  }
 
   let seats = await listDraftSeats(pool, draftId);
   let picks = await listDraftPicks(pool, draftId);
@@ -147,6 +154,16 @@ export async function getDraftRuntimeSnapshot(args: {
   const season = await getSeasonById(pool, draft.season_id);
   if (season && season.status === "CANCELLED") {
     throw new AppError("SEASON_CANCELLED", 409, "Season cancelled");
+  }
+  const ceremonyStatus = String(
+    (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? ""
+  ).toUpperCase();
+  if (draft.status !== "COMPLETED" && ceremonyStatus === "LOCKED") {
+    throw new AppError(
+      "DRAFT_LOCKED",
+      409,
+      "Draft board is unavailable once results entry begins."
+    );
   }
   if (season) {
     nomineePoolSize = await countNominationsByCeremony(pool, season.ceremony_id);

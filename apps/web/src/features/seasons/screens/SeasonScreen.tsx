@@ -174,6 +174,8 @@ export function SeasonScreen(props: {
             <SeasonDraftRoomColumn
               draftId={s.draftId ?? null}
               ceremonyId={ceremonyId}
+              ceremonyStatus={s.ceremonyStatus}
+              draftStatus={s.draftStatus}
               draftRoomCtaLabel={draftRoomCtaLabel}
             />
           </Box>
@@ -261,6 +263,7 @@ export function SeasonScreen(props: {
             opened={deleteOpen}
             onClose={() => setDeleteOpen(false)}
             working={Boolean(s.working)}
+            error={s.cancelResult && !s.cancelResult.ok ? s.cancelResult.message : null}
             onConfirm={() => {
               setDeleteOpen(false);
               void onDeleteSeason();

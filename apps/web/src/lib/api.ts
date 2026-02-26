@@ -47,6 +47,8 @@ function friendlyApiErrorMessage(input: {
       return "That resource was not found.";
     case "INTERNAL_ERROR":
       return "Something went wrong on our side. Please try again.";
+    case "DRAFT_ABORTED":
+      return "This draft was aborted when results entry began.";
     default:
       break;
   }
