@@ -15,6 +15,7 @@ export function useDraftSocket(args: {
   loadSnapshot: (options?: { preserveSnapshot?: boolean }) => Promise<boolean>;
   setSnapshot: Dispatch<SetStateAction<Snapshot | null>>;
   setError: (msg: string | null) => void;
+  onRemoteCursor?: (cursor: { userId: number; x: number; y: number; ts: number }) => void;
 }) {
   const {
     disabled,
@@ -24,7 +25,8 @@ export function useDraftSocket(args: {
     lastVersionRef,
     loadSnapshot,
     setSnapshot,
-    setError
+    setError,
+    onRemoteCursor
   } = args;
 
   useEffect(() => {
@@ -228,9 +230,36 @@ export function useDraftSocket(args: {
       });
     };
 
+    const onDraftCursor = (msg: {
+      draft_id?: unknown;
+      user_id?: unknown;
+      x?: unknown;
+      y?: unknown;
+      ts?: unknown;
+    }) => {
+      const current = snapshotRef.current;
+      if (!current) return;
+      if (Number(msg?.draft_id) !== current.draft.id) return;
+      const status = String(current.draft.status ?? "").toUpperCase();
+      if (status !== "IN_PROGRESS" && status !== "PAUSED") return;
+      const userId = Number(msg?.user_id);
+      const x = Number(msg?.x);
+      const y = Number(msg?.y);
+      const tsRaw = Number(msg?.ts);
+      if (!Number.isFinite(userId) || userId <= 0) return;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      onRemoteCursor?.({
+        userId,
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y)),
+        ts: Number.isFinite(tsRaw) ? tsRaw : Date.now()
+      });
+    };
+
     socket.on("draft:event", onDraftEvent);
     socket.on("ceremony:winners.updated", onWinnersUpdated);
     socket.on("ceremony:finalized", onCeremonyFinalized);
+    socket.on("draft:cursor", onDraftCursor);
     socket.on("connect", () => {
       // Always resync on (re)connect to avoid drift if we missed events while disconnected.
       void loadSnapshot({ preserveSnapshot: true });
@@ -241,6 +270,7 @@ export function useDraftSocket(args: {
       socket.off("draft:event", onDraftEvent);
       socket.off("ceremony:winners.updated", onWinnersUpdated);
       socket.off("ceremony:finalized", onCeremonyFinalized);
+      socket.off("draft:cursor", onDraftCursor);
       socket.off("connect");
       socket.disconnect();
       socketRef.current = null;
@@ -251,6 +281,7 @@ export function useDraftSocket(args: {
     loadSnapshot,
     setError,
     setSnapshot,
+    onRemoteCursor,
     snapshot?.draft.id,
     snapshotRef,
     socketRef

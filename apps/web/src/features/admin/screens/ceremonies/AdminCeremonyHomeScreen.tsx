@@ -43,6 +43,7 @@ export function AdminCeremonyHomeScreen(props: {
   } = props;
 
   const next = nextStep ?? getCeremonyWorkflowStepMeta("initialize");
+  const canArchive = ceremony.status === "COMPLETE";
   const nextAllowed =
     next.id === "archive"
       ? false
@@ -134,7 +135,8 @@ export function AdminCeremonyHomeScreen(props: {
       <Box component="section" className="admin-archive">
         <Title order={3}>Archive ceremony</Title>
         <Text className="muted">
-          Archiving marks the ceremony inactive and removes it from current views.
+          Archiving marks the ceremony inactive and removes it from current views. This is
+          available only after winners are finalized.
         </Text>
         <Button
           mt="sm"
@@ -142,10 +144,15 @@ export function AdminCeremonyHomeScreen(props: {
           variant="subtle"
           color="red"
           onClick={archive.onArchive}
-          disabled={archive.saving || ceremony.status === "ARCHIVED"}
+          disabled={archive.saving || ceremony.status === "ARCHIVED" || !canArchive}
         >
           Archive ceremony
         </Button>
+        {!canArchive ? (
+          <Text className="muted" size="sm" mt="xs">
+            Finalize winners first to enable archiving.
+          </Text>
+        ) : null}
         <FormStatus loading={archive.saving} result={archive.status} />
       </Box>
     </Stack>

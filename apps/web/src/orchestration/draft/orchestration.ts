@@ -49,6 +49,7 @@ export type DraftRoomOrchestration = {
       label: string;
       active: boolean;
       avatarKey: string | null;
+      userId?: number | null;
     }>;
     status: Snapshot["draft"]["status"] | null;
     roundNumber: number | null;
@@ -203,6 +204,18 @@ export type DraftRoomOrchestration = {
     saving: boolean;
     error: string | null;
   };
+  cursorSpy: {
+    enabled: boolean;
+    cursors: Array<{
+      userId: number;
+      seatNumber: number | null;
+      label: string;
+      avatarKey: string | null;
+      x: number;
+      y: number;
+    }>;
+    emit: (x: number, y: number) => void;
+  };
   refresh: () => void;
 };
 
@@ -236,6 +249,9 @@ export function useDraftRoomOrchestration(args: {
   const [pauseLoading, setPauseLoading] = useState(false);
   const [resumeState, setResumeState] = useState<ApiResult | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
+  const [remoteCursorByUserId, setRemoteCursorByUserId] = useState<
+    Record<number, { x: number; y: number; ts: number }>
+  >({});
   const nowTs = useDraftClock();
 
   const socketRef = useRef<Socket | null>(null);
@@ -561,6 +577,58 @@ export function useDraftRoomOrchestration(args: {
     setResumeLoading(false);
   }, [loadSnapshot, snapshot]);
 
+  const draftStatus = snapshot?.draft.status ?? null;
+  const cursorSpyEnabled = draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED";
+
+  const upsertRemoteCursor = useCallback(
+    (cursor: { userId: number; x: number; y: number; ts: number }) => {
+      setRemoteCursorByUserId((prev) => ({
+        ...prev,
+        [cursor.userId]: { x: cursor.x, y: cursor.y, ts: cursor.ts }
+      }));
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!cursorSpyEnabled) {
+      setRemoteCursorByUserId({});
+      return;
+    }
+    const ttlMs = 3200;
+    const intervalId = window.setInterval(() => {
+      const now = Date.now();
+      setRemoteCursorByUserId((prev) => {
+        const next: Record<number, { x: number; y: number; ts: number }> = {};
+        let changed = false;
+        for (const [rawUserId, item] of Object.entries(prev)) {
+          const userId = Number(rawUserId);
+          if (!Number.isFinite(userId) || now - item.ts > ttlMs) {
+            changed = true;
+            continue;
+          }
+          next[userId] = item;
+        }
+        return changed ? next : prev;
+      });
+    }, 800);
+    return () => window.clearInterval(intervalId);
+  }, [cursorSpyEnabled]);
+
+  const emitCursor = useCallback(
+    (x: number, y: number) => {
+      if (!cursorSpyEnabled) return;
+      const socket = socketRef.current;
+      if (!socket || !socket.connected) return;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      socket.emit("draft:cursor", {
+        x: Math.max(0, Math.min(1, x)),
+        y: Math.max(0, Math.min(1, y))
+      });
+    },
+    [cursorSpyEnabled]
+  );
+
   useDraftSocket({
     disabled,
     snapshot,
@@ -569,10 +637,10 @@ export function useDraftRoomOrchestration(args: {
     lastVersionRef,
     loadSnapshot,
     setSnapshot,
-    setError
+    setError,
+    onRemoteCursor: upsertRemoteCursor
   });
 
-  const draftStatus = snapshot?.draft.status ?? null;
   const canManageDraft = Boolean(snapshot?.can_manage_draft);
   const phase: DraftRoomOrchestration["layout"]["phase"] =
     draftStatus === "PENDING" ? "PRE" : draftStatus === "COMPLETED" ? "POST" : "LIVE";
@@ -823,9 +891,43 @@ export function useDraftRoomOrchestration(args: {
       seatNumber: s.seat_number,
       label: s.username ?? `Seat ${s.seat_number}`,
       active: turn?.seat_number === s.seat_number,
-      avatarKey: s.avatar_key ?? null
+      avatarKey: s.avatar_key ?? null,
+      userId: s.user_id ?? null
     }));
   }, [snapshot, turn?.seat_number]);
+
+  const cursorSpyCursors = useMemo(() => {
+    if (!cursorSpyEnabled || !snapshot) return [];
+    const seatByUserId = new Map<number, NonNullable<Snapshot["seats"]>[number]>();
+    for (const seat of snapshot.seats) {
+      const uid = Number(seat.user_id);
+      if (!Number.isFinite(uid) || uid <= 0) continue;
+      seatByUserId.set(uid, seat);
+    }
+
+    return Object.entries(remoteCursorByUserId)
+      .map(([rawUserId, point]) => {
+        const userId = Number(rawUserId);
+        if (!Number.isFinite(userId) || userId <= 0) return null;
+        const seat = seatByUserId.get(userId);
+        return {
+          userId,
+          seatNumber: seat?.seat_number ?? null,
+          label: seat?.username ?? `User ${userId}`,
+          avatarKey: seat?.avatar_key ?? null,
+          x: point.x,
+          y: point.y
+        };
+      })
+      .filter(Boolean) as Array<{
+      userId: number;
+      seatNumber: number | null;
+      label: string;
+      avatarKey: string | null;
+      x: number;
+      y: number;
+    }>;
+  }, [cursorSpyEnabled, remoteCursorByUserId, snapshot]);
 
   const backToSeasonHref = snapshot ? `/seasons/${snapshot.draft.season_id}` : null;
 
@@ -980,6 +1082,11 @@ export function useDraftRoomOrchestration(args: {
       loading: autodraftState.loading,
       saving: autodraftState.saving,
       error: autodraftState.error
+    },
+    cursorSpy: {
+      enabled: cursorSpyEnabled,
+      cursors: cursorSpyCursors,
+      emit: emitCursor
     },
     refresh
   };

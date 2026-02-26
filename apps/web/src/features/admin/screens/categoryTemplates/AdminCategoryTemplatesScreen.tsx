@@ -4,13 +4,14 @@ import {
   Button,
   Divider,
   Group,
+  Skeleton,
   Stack,
   Text,
   TextInput,
   Title
 } from "@ui";
 import { StandardCard } from "@/primitives";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type {
   AdminCategoryTemplatesOrchestration,
   CategoryTemplate
@@ -28,7 +29,37 @@ export function AdminCategoryTemplatesScreen(props: {
 }) {
   const { o, onConfirmDelete } = props;
 
-  if (o.loading) return <PageLoader label="Loading templates..." />;
+  if (o.loading)
+    return (
+      <Stack gap="md" role="status" aria-label="Loading templates">
+        <Group justify="space-between" align="end" wrap="wrap">
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-hero-title)" width="34%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="46%" />
+          </Stack>
+          <Skeleton height="36px" width="130px" />
+        </Group>
+        <Skeleton height="56px" width="100%" />
+        <Divider />
+        <Stack gap="sm">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <StandardCard key={idx} component="section">
+              <Group justify="space-between" align="start" wrap="wrap">
+                <Stack gap="var(--fo-space-4)" className="fo-flex1Minw0">
+                  <Skeleton height="var(--fo-font-size-sm)" width="34%" />
+                  <Skeleton height="var(--fo-font-size-xs)" width="18%" />
+                  <Skeleton height="var(--fo-font-size-xs)" width="42%" />
+                </Stack>
+                <Group gap="xs">
+                  <Skeleton height="30px" width="30px" />
+                  <Skeleton height="30px" width="30px" />
+                </Group>
+              </Group>
+            </StandardCard>
+          ))}
+        </Stack>
+      </Stack>
+    );
   if (o.error) return <PageError message={o.error} />;
 
   return (

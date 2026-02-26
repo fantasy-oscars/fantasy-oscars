@@ -82,14 +82,18 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                       {list.map((s) => (
                         <StandardCard
                           key={s.season_id}
-                          interactive
-                          component={Link}
-                          to={seasonPath({
-                            leagueId: s.league_id,
-                            leagueName: s.league_name,
-                            ceremonyCode: s.ceremony_code,
-                            ceremonyId: s.ceremony_id
-                          })}
+                          {...(s.is_navigable
+                            ? {
+                                interactive: true,
+                                component: Link,
+                                to: seasonPath({
+                                  leagueId: s.league_id,
+                                  leagueName: s.league_name,
+                                  ceremonyCode: s.ceremony_code,
+                                  ceremonyId: s.ceremony_id
+                                })
+                              }
+                            : {})}
                         >
                           <Stack gap="var(--fo-space-dense-2)">
                             <Text className="baseline-textCardTitle">

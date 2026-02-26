@@ -96,6 +96,18 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
             status: "EXTANT"
           });
 
+          // Ensure the creator is always a season commissioner for the season they create.
+          await query(
+            tx,
+            `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+             VALUES ($1, $2, $3, 'OWNER')
+             ON CONFLICT (season_id, user_id)
+             DO UPDATE SET
+               role = 'OWNER',
+               league_member_id = COALESCE(EXCLUDED.league_member_id, season_member.league_member_id)`,
+            [season.id, userId, member?.id ?? null]
+          );
+
           // Participant seeding: league_member is season participation proxy; ensure at least commissioner present.
           if (!member) {
             // backfill commissioner membership if somehow missing

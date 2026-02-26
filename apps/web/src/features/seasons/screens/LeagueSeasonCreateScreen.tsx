@@ -1,8 +1,19 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Group, NumberInput, Select, Stack, Switch, Text, Title } from "@ui";
+import {
+  Box,
+  Button,
+  Group,
+  NumberInput,
+  Select,
+  Skeleton,
+  Stack,
+  Switch,
+  Text,
+  Title
+} from "@ui";
 import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import { StandardCard } from "@/primitives";
 import { leaguePath } from "@/lib/routes";
 import "@/primitives/baseline.css";
@@ -23,7 +34,43 @@ export function LeagueSeasonCreateScreen(props: {
   const { leagueId, view, actions } = props;
 
   if (view.state === "loading") {
-    return <PageLoader label="Loading..." />;
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack
+            gap="md"
+            component="section"
+            role="status"
+            aria-label="Loading season form"
+          >
+            <Group justify="space-between" align="flex-start" wrap="wrap">
+              <Box>
+                <Skeleton height="var(--fo-font-size-hero-title)" width="36%" />
+                <Box mt="var(--fo-space-dense-2)">
+                  <Skeleton height="var(--fo-font-size-sm)" width="46%" />
+                </Box>
+              </Box>
+              <Skeleton height="36px" width="120px" />
+            </Group>
+            <StandardCard>
+              <Stack gap="sm">
+                <Skeleton height="56px" width="100%" />
+                <Skeleton height="56px" width="100%" />
+                <Skeleton height="56px" width="100%" />
+                <Group justify="space-between" align="end" wrap="wrap">
+                  <Skeleton height="56px" width="150px" />
+                  <Skeleton height="56px" width="180px" />
+                </Group>
+                <Group gap="sm">
+                  <Skeleton height="36px" width="130px" />
+                  <Skeleton height="36px" width="100px" />
+                </Group>
+              </Stack>
+            </StandardCard>
+          </Stack>
+        </Box>
+      </Box>
+    );
   }
 
   if (view.state === "forbidden") {

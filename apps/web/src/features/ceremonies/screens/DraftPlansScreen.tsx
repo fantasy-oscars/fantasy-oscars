@@ -5,13 +5,14 @@ import {
   Combobox,
   Group,
   Modal,
+  Skeleton,
   Stack,
   Text,
   TextInput,
   Title,
   useCombobox
 } from "@ui";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "@/orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -268,7 +269,32 @@ export function DraftPlansScreen(props: {
   );
 
   if (props.ceremonyState === "loading")
-    return <PageLoader label="Loading draft plans..." />;
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <StandardCard component="section">
+            <Stack gap="md" role="status" aria-label="Loading draft plans">
+              <Skeleton height="var(--fo-font-size-hero-title)" width="34%" />
+              <Skeleton height="var(--fo-font-size-sm)" width="42%" />
+              <Box className="draft-plans-controls">
+                <Box className="draft-plans-selectWrap">
+                  <Skeleton height="56px" width="100%" />
+                </Box>
+                <Group gap="sm" wrap="nowrap" className="draft-plans-actions">
+                  <Skeleton height="36px" width="120px" />
+                  <Skeleton height="36px" width="120px" />
+                </Group>
+              </Box>
+              <Stack gap="xs">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <Skeleton key={idx} height="44px" width="100%" />
+                ))}
+              </Stack>
+            </Stack>
+          </StandardCard>
+        </Box>
+      </Box>
+    );
   if (props.ceremonyState === "error")
     return <PageError message={props.ceremonyError ?? "Failed to load"} />;
   if (!props.detail) return <PageError message="Ceremony not found" />;

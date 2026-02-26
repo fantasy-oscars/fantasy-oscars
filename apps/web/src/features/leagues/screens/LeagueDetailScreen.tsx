@@ -161,7 +161,8 @@ export function LeagueDetailScreen(props: {
       ceremonyId: s.ceremony_id,
       ceremonyCode: s.ceremony_code ?? null,
       ceremonyLabel,
-      statusLabel
+      statusLabel,
+      isNavigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED"
     };
   });
 

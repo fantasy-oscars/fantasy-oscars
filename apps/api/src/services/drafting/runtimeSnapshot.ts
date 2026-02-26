@@ -34,8 +34,9 @@ export async function getDraftRuntimeSnapshot(args: {
   pool: Pool;
   draftId: number;
   viewerUserId: number | null;
+  viewerIsSuperAdmin?: boolean;
 }) {
-  const { pool, draftId, viewerUserId } = args;
+  const { pool, draftId, viewerUserId, viewerIsSuperAdmin = false } = args;
 
   // First: enforce pick timers and any timer-driven auto picks, within a DB lock.
   await runInTransaction(pool, async (tx) => {
@@ -65,8 +66,8 @@ export async function getDraftRuntimeSnapshot(args: {
   let completedEventEmitted = false;
 
   // If all required picks are made but status not updated, complete draft lazily.
-  const league = await getLeagueById(pool, draft.league_id);
-  const picksPerSeat = resolvePicksPerSeat(draft, league ?? { roster_size: 1 });
+  const draftLeague = await getLeagueById(pool, draft.league_id);
+  const picksPerSeat = resolvePicksPerSeat(draft, draftLeague ?? { roster_size: 1 });
   if (draft.picks_per_seat === null || draft.picks_per_seat === undefined) {
     draft = { ...draft, picks_per_seat: picksPerSeat };
   }
@@ -154,6 +155,14 @@ export async function getDraftRuntimeSnapshot(args: {
   const season = await getSeasonById(pool, draft.season_id);
   if (season && season.status === "CANCELLED") {
     throw new AppError("SEASON_CANCELLED", 409, "Season cancelled");
+  }
+  const league = season ? await getLeagueById(pool, season.league_id) : null;
+  const viewerLeagueMember =
+    viewerUserId && league ? await getLeagueMember(pool, league.id, viewerUserId) : null;
+  const viewerSeasonMember =
+    viewerUserId && season ? await getSeasonMember(pool, season.id, viewerUserId) : null;
+  if (!viewerIsSuperAdmin && !viewerLeagueMember && !viewerSeasonMember) {
+    throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
   }
   const ceremonyStatus = String(
     (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? ""
@@ -245,10 +254,6 @@ export async function getDraftRuntimeSnapshot(args: {
     viewerUserId && seats.length
       ? (seats.find((s) => Number(s.user_id) === viewerUserId)?.seat_number ?? null)
       : null;
-  const viewerLeagueMember =
-    viewerUserId && league ? await getLeagueMember(pool, league.id, viewerUserId) : null;
-  const viewerSeasonMember =
-    viewerUserId && season ? await getSeasonMember(pool, season.id, viewerUserId) : null;
   const canManageDraft = Boolean(
     viewerUserId &&
     league &&

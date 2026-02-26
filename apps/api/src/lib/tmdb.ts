@@ -29,6 +29,15 @@ type TmdbMovieDetails = {
   };
 };
 
+type TmdbMovieSearchResult = {
+  id: number;
+  title: string;
+  original_title?: string | null;
+  release_date?: string | null;
+  poster_path?: string | null;
+  overview?: string | null;
+};
+
 type TmdbPersonDetails = {
   id: number;
   name: string;
@@ -152,6 +161,20 @@ export async function fetchTmdbMovieDetails(
     language: "en-US",
     include_image_language: "en,null"
   });
+}
+
+export async function searchTmdbMovies(
+  queryText: string
+): Promise<TmdbMovieSearchResult[]> {
+  const queryTrimmed = String(queryText ?? "").trim();
+  if (!queryTrimmed) return [];
+  const res = await tmdbGetJson<{ results?: TmdbMovieSearchResult[] }>("/search/movie", {
+    query: queryTrimmed,
+    language: "en-US",
+    include_adult: "false",
+    page: 1
+  });
+  return Array.isArray(res.results) ? res.results : [];
 }
 
 export async function fetchTmdbPersonDetails(

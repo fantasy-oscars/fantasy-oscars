@@ -3,6 +3,7 @@ import {
   Button,
   Divider,
   Group,
+  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -11,7 +12,7 @@ import {
 } from "@ui";
 import type { ApiResult } from "@/lib/types";
 import type { StaticKey } from "@/decisions/adminContent";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
 export function AdminStaticContentEditorScreen(props: {
@@ -42,7 +43,28 @@ export function AdminStaticContentEditorScreen(props: {
   } = props;
 
   if (!contentKey || !meta) return <PageError message="Unknown static content key" />;
-  if (loading) return <PageLoader label="Loading content..." />;
+  if (loading)
+    return (
+      <Stack component="section" role="status" aria-label="Loading content editor">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-hero-title)" width="28%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="54%" />
+          </Stack>
+          <Skeleton height="36px" width="90px" />
+        </Group>
+        <Divider />
+        <Stack className="stack-sm" gap="sm">
+          <Skeleton height="56px" width="100%" />
+          <Skeleton height="320px" width="100%" />
+        </Stack>
+      </Stack>
+    );
 
   return (
     <Stack component="section">

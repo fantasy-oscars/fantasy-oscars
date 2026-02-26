@@ -8,7 +8,8 @@ export type SeasonIndexCard = {
   ceremony_code: string | null;
   ceremony_name: string;
   ceremony_sort_ts: number;
-  status_label: "Open" | "Drafting" | "Complete" | "Archived";
+  status_label: "Open" | "Drafting" | "Complete" | "Closed";
+  is_navigable: boolean;
 };
 
 function ceremonySortTs(ceremony: CeremonySummary): number {
@@ -22,11 +23,12 @@ function statusLabel(season: SeasonSummary): SeasonIndexCard["status_label"] {
   const draft = (season.draft_status ?? "").toUpperCase();
   if (draft === "LIVE" || draft === "IN_PROGRESS") return "Drafting";
   if (draft === "COMPLETED") return "Complete";
+  if (draft === "CANCELLED") return "Closed";
 
   // Season "archive" concept is a mix of ceremony activity and season status in this app.
   // Keep user-facing vocabulary constrained to the spec.
-  if (season.status !== "EXTANT") return "Archived";
-  if (season.is_active_ceremony === false) return "Archived";
+  if (season.status !== "EXTANT") return "Closed";
+  if (season.is_active_ceremony === false) return "Closed";
   if (!season.draft_id) return "Open";
   return "Open";
 }
@@ -47,7 +49,8 @@ export function buildSeasonIndexCards(args: {
         ceremony_code: s.ceremony_code ?? null,
         ceremony_name: ceremony?.name ?? `Ceremony ${s.ceremony_id}`,
         ceremony_sort_ts: ceremony ? ceremonySortTs(ceremony) : 0,
-        status_label: statusLabel(s)
+        status_label: statusLabel(s),
+        is_navigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED"
       };
     })
   );

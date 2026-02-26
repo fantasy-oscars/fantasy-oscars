@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Group, Select, Stack, Text, Title } from "@ui";
+import { Alert, Button, Group, Select, Stack, Text, Title, Tooltip } from "@ui";
 import { StandardCard } from "@/primitives";
 import { fetchJson } from "@/lib/api";
-import { ceremonyCodeSlug, slugifyPathSegment } from "@/lib/routes";
+import {
+  ceremonyCodeSlug,
+  leaguePath,
+  seasonPath,
+  slugifyPathSegment
+} from "@/lib/routes";
 import { notify } from "@/notifications";
 import {
   DestructiveActionModal,
@@ -21,6 +26,21 @@ type DeleteModalState = {
 };
 
 export function AdminSafeguardsScreen() {
+  const [ceremonies, setCeremonies] = useState<
+    Array<{ id: number; code: string; name: string; year?: number | null }>
+  >([]);
+  const [seasons, setSeasons] = useState<
+    Array<{
+      id: number;
+      league_id: number;
+      league_name: string;
+      ceremony_name: string;
+      ceremony_code: string | null;
+    }>
+  >([]);
+  const [leagues, setLeagues] = useState<
+    Array<{ id: number; name: string; code: string }>
+  >([]);
   const [ceremonyOptions, setCeremonyOptions] = useState<
     Array<{ value: string; label: string }>
   >([]);
@@ -58,6 +78,7 @@ export function AdminSafeguardsScreen() {
         fetchJson<{
           seasons: Array<{
             id: number;
+            league_id: number;
             league_name: string;
             ceremony_name: string;
             ceremony_code: string | null;
@@ -82,6 +103,10 @@ export function AdminSafeguardsScreen() {
         });
         return;
       }
+
+      setCeremonies(ceremoniesRes.data?.ceremonies ?? []);
+      setSeasons(seasonsRes.data?.seasons ?? []);
+      setLeagues(leaguesRes.data?.leagues ?? []);
 
       setCeremonyOptions(
         (ceremoniesRes.data?.ceremonies ?? []).map((c) => ({
@@ -155,6 +180,7 @@ export function AdminSafeguardsScreen() {
     const res = await fetchJson<{
       season: {
         id: number;
+        league_id: number;
         status: string;
         ceremony_name: string | null;
         ceremony_code: string | null;
@@ -204,6 +230,41 @@ export function AdminSafeguardsScreen() {
       ]
     });
   }
+
+  const selectedCeremony = useMemo(
+    () => ceremonies.find((c) => c.id === ceremonyId) ?? null,
+    [ceremonies, ceremonyId]
+  );
+  const selectedSeason = useMemo(
+    () => seasons.find((s) => s.id === seasonId) ?? null,
+    [seasonId, seasons]
+  );
+  const selectedLeague = useMemo(
+    () => leagues.find((l) => l.id === leagueId) ?? null,
+    [leagueId, leagues]
+  );
+
+  const ceremonyHref = selectedCeremony ? `/admin/ceremonies/${selectedCeremony.id}` : "";
+  const seasonHref = selectedSeason
+    ? seasonPath({
+        leagueId: selectedSeason.league_id,
+        leagueName: selectedSeason.league_name,
+        ceremonyCode:
+          selectedSeason.ceremony_code ?? selectedSeason.ceremony_name ?? String(seasonId)
+      })
+    : "";
+  const leagueHref = selectedLeague
+    ? leaguePath({ leagueId: selectedLeague.id, leagueName: selectedLeague.name })
+    : "";
+  const ceremonyLinkTooltip = selectedCeremony
+    ? `Open ceremony page: ${selectedCeremony.name}`
+    : "Select a ceremony to open its page";
+  const seasonLinkTooltip = selectedSeason
+    ? `Open season page: ${slugifyPathSegment(selectedSeason.league_name)} / ${ceremonyCodeSlug(selectedSeason.ceremony_code ?? selectedSeason.ceremony_name)}`
+    : "Select a season to open its page";
+  const leagueLinkTooltip = selectedLeague
+    ? `Open league page: ${selectedLeague.name}`
+    : "Select a league to open its page";
 
   async function confirmDelete() {
     if (!modal) return;
@@ -265,6 +326,34 @@ export function AdminSafeguardsScreen() {
             >
               {loadingPreview === "ceremony" ? "Loading..." : "Review delete"}
             </Button>
+            <Tooltip label={ceremonyLinkTooltip} withArrow>
+              <span className="fo-inlineFlex">
+                <Button
+                  component="a"
+                  href={ceremonyHref}
+                  type="button"
+                  color="red"
+                  variant="outline"
+                  disabled={!selectedCeremony || loadingLists}
+                  aria-label={
+                    selectedCeremony ? "Open ceremony page" : ceremonyLinkTooltip
+                  }
+                  className={
+                    !selectedCeremony || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
+                >
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny is-inherit"
+                    aria-hidden="true"
+                  >
+                    open_in_new
+                  </Text>
+                </Button>
+              </span>
+            </Tooltip>
           </Group>
         </Stack>
       </StandardCard>
@@ -294,6 +383,32 @@ export function AdminSafeguardsScreen() {
             >
               {loadingPreview === "season" ? "Loading..." : "Review delete"}
             </Button>
+            <Tooltip label={seasonLinkTooltip} withArrow>
+              <span className="fo-inlineFlex">
+                <Button
+                  component="a"
+                  href={seasonHref}
+                  type="button"
+                  color="red"
+                  variant="outline"
+                  disabled={!selectedSeason || loadingLists}
+                  aria-label={selectedSeason ? "Open season page" : seasonLinkTooltip}
+                  className={
+                    !selectedSeason || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
+                >
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny is-inherit"
+                    aria-hidden="true"
+                  >
+                    open_in_new
+                  </Text>
+                </Button>
+              </span>
+            </Tooltip>
           </Group>
         </Stack>
       </StandardCard>
@@ -323,6 +438,32 @@ export function AdminSafeguardsScreen() {
             >
               {loadingPreview === "league" ? "Loading..." : "Review delete"}
             </Button>
+            <Tooltip label={leagueLinkTooltip} withArrow>
+              <span className="fo-inlineFlex">
+                <Button
+                  component="a"
+                  href={leagueHref}
+                  type="button"
+                  color="red"
+                  variant="outline"
+                  disabled={!selectedLeague || loadingLists}
+                  aria-label={selectedLeague ? "Open league page" : leagueLinkTooltip}
+                  className={
+                    !selectedLeague || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
+                >
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny is-inherit"
+                    aria-hidden="true"
+                  >
+                    open_in_new
+                  </Text>
+                </Button>
+              </span>
+            </Tooltip>
           </Group>
         </Stack>
       </StandardCard>

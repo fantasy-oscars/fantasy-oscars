@@ -24,6 +24,7 @@ import * as draftEvents from "../../../src/realtime/draftEvents.js";
 import type { Pool, PoolClient } from "pg";
 import * as appConfigRepo from "../../../src/data/repositories/appConfigRepository.js";
 import * as draftState from "../../../src/domain/draftState.js";
+import * as runtimeSnapshotSvc from "../../../src/services/drafting/runtimeSnapshot.js";
 
 const AUTH_SECRET = "test-secret";
 
@@ -815,12 +816,13 @@ describe("GET /drafts/:id/standings", () => {
 });
 
 describe("GET /drafts/:id/snapshot", () => {
-  const getDraftByIdSpy = vi.spyOn(draftRepo, "getDraftById");
-  const listDraftSeatsSpy = vi.spyOn(draftRepo, "listDraftSeats");
-  const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
-  const getLeagueByIdSpy = vi.spyOn(leagueRepo, "getLeagueById");
-  const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
-  const countNominationsByCeremonySpy = vi.spyOn(draftRepo, "countNominationsByCeremony");
+  const getDraftRuntimeSnapshotSpy = vi.spyOn(
+    runtimeSnapshotSvc,
+    "getDraftRuntimeSnapshot"
+  );
+  type RuntimeSnapshot = Awaited<
+    ReturnType<typeof runtimeSnapshotSvc.getDraftRuntimeSnapshot>
+  >;
   const poolClient = {
     query: vi.fn().mockResolvedValue({ rows: [] }),
     release: vi.fn()
@@ -831,71 +833,49 @@ describe("GET /drafts/:id/snapshot", () => {
   } as unknown as Pool);
 
   beforeEach(() => {
-    getDraftByIdSpy.mockResolvedValue({
-      id: 10,
-      league_id: 22,
-      season_id: 500,
-      status: "IN_PROGRESS",
-      draft_order_type: "SNAKE",
-      current_pick_number: 2,
-      picks_per_seat: 4,
-      version: 5,
-      started_at: new Date("2024-01-01T00:00:00Z"),
-      completed_at: null
-    });
-    listDraftSeatsSpy.mockResolvedValue([
-      {
-        id: 1,
-        draft_id: 10,
-        league_member_id: 11,
-        seat_number: 1,
-        is_active: true,
-        user_id: 201
+    getDraftRuntimeSnapshotSpy.mockResolvedValue({
+      draft: {
+        id: 10,
+        league_id: 22,
+        season_id: 500,
+        status: "IN_PROGRESS",
+        draft_order_type: "SNAKE",
+        current_pick_number: 2,
+        picks_per_seat: 4,
+        version: 5,
+        started_at: new Date("2024-01-01T00:00:00Z"),
+        completed_at: null
       },
-      {
-        id: 2,
-        draft_id: 10,
-        league_member_id: 12,
-        seat_number: 2,
-        is_active: true,
-        user_id: 202
-      }
-    ]);
-    listDraftPicksSpy.mockResolvedValue([
-      {
-        id: 100,
-        draft_id: 10,
-        pick_number: 1,
-        round_number: 1,
-        seat_number: 1,
-        league_member_id: 11,
-        user_id: 201,
-        nomination_id: 300,
-        made_at: new Date("2024-01-01T00:01:00Z"),
-        request_id: "req-1"
-      }
-    ]);
-    getLeagueByIdSpy.mockResolvedValue({
-      id: 22,
-      code: "L1",
-      name: "Test League",
       ceremony_id: 99,
-      max_members: 10,
-      roster_size: 10,
-      is_public: true,
-      is_public_season: false,
-      created_by_user_id: 1,
-      created_at: new Date("2024-01-01T00:00:00Z")
-    });
-    getSeasonByIdSpy.mockResolvedValue({
-      id: 500,
-      league_id: 22,
-      ceremony_id: 99,
-      status: "EXTANT",
-      scoring_strategy_name: "fixed",
-      created_at: new Date("2024-01-01T00:00:00Z")
-    });
-    countNominationsByCeremonySpy.mockResolvedValue(10);
+      seats: [
+        {
+          seat_number: 1,
+          user_id: 201,
+          league_member_id: 11,
+          username: "u1",
+          avatar_key: null
+        },
+        {
+          seat_number: 2,
+          user_id: 202,
+          league_member_id: 12,
+          username: "u2",
+          avatar_key: null
+        }
+      ],
+      categories: [],
+      nominations: [],
+      picks: [],
+      lock: {
+        is_locked: false,
+        locked_at: null,
+        can_override: false,
+        allow_drafting_after_lock: false,
+        lock_override_set_at: null,
+        lock_override_set_by_user_id: null
+      },
+      version: 5
+    } as unknown as RuntimeSnapshot);
   });
 
   afterEach(() => {

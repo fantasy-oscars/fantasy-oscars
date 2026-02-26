@@ -1,6 +1,5 @@
 import type { InboxInvite } from "@/lib/types";
-import { Alert, Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import { PageLoader } from "@/shared/page-state";
+import { Alert, Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { InvitesInboxView } from "@/orchestration/invites";
 import { inviteContextLine } from "@/decisions/invites";
 import { StandardCard } from "@/primitives";
@@ -14,8 +13,36 @@ export function InvitesInboxScreen(props: {
   const { view, onAccept, onDecline } = props;
 
   if (view.state === "loading") {
-    // Prevent "heading appears before actions are ready" UX (and avoids brittle tests).
-    return <PageLoader label="Loading invites..." />;
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack gap="md" role="status" aria-label="Loading invites">
+            <Box component="header">
+              <Skeleton height="var(--fo-font-size-hero-title)" width="26%" />
+              <Box mt="var(--fo-space-dense-2)">
+                <Skeleton height="var(--fo-font-size-sm)" width="48%" />
+              </Box>
+            </Box>
+            <StandardCard component="section" aria-label="Pending invites">
+              <Stack gap="sm">
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <Box key={idx}>
+                    {idx !== 0 ? <Divider /> : null}
+                    <Group justify="space-between" align="center" wrap="wrap" py="sm">
+                      <Skeleton height="var(--fo-font-size-sm)" width="52%" />
+                      <Group gap="sm" wrap="wrap">
+                        <Skeleton height="36px" width="90px" />
+                        <Skeleton height="36px" width="90px" />
+                      </Group>
+                    </Group>
+                  </Box>
+                ))}
+              </Stack>
+            </StandardCard>
+          </Stack>
+        </Box>
+      </Box>
+    );
   }
 
   return (

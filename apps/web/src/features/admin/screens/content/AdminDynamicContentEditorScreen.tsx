@@ -1,6 +1,15 @@
-import { Checkbox, Divider, Grid, Select, Stack, TextInput, Textarea } from "@ui";
+import {
+  Checkbox,
+  Divider,
+  Grid,
+  Select,
+  Skeleton,
+  Stack,
+  TextInput,
+  Textarea
+} from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import type { CmsDynamicRow } from "@/orchestration/adminContent";
 import type { DynamicKey } from "@/decisions/adminContent";
@@ -54,7 +63,20 @@ export function AdminDynamicContentEditorScreen(props: {
 
   if (!contentKey || !meta || entryId === null)
     return <PageError message="Invalid content key or entry id" />;
-  if (loading) return <PageLoader label="Loading entry..." />;
+  if (loading)
+    return (
+      <Stack component="section" role="status" aria-label="Loading entry editor">
+        <Stack gap="sm">
+          <Skeleton height="var(--fo-font-size-hero-title)" width="30%" />
+          <Skeleton height="var(--fo-font-size-sm)" width="34%" />
+        </Stack>
+        <Divider />
+        <Stack className="stack-sm" gap="sm">
+          <Skeleton height="56px" width="100%" />
+          <Skeleton height="320px" width="100%" />
+        </Stack>
+      </Stack>
+    );
   if (!entry) return <PageError message={status?.message ?? "Entry not found"} />;
 
   const isSequential = contentKey === "home_main";

@@ -1,4 +1,4 @@
-import { Box, Stack, Text, Title } from "@ui";
+import { Box, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
@@ -29,9 +29,23 @@ export function CeremoniesIndexScreen(props: {
           <Text className="baseline-textBody">Browse current and past ceremonies.</Text>
 
           {state === "loading" ? (
-            <StandardCard>
-              <Text className="baseline-textBody">Loading…</Text>
-            </StandardCard>
+            <Stack gap="lg" role="status" aria-label="Loading ceremonies">
+              {Array.from({ length: 2 }).map((_, sectionIdx) => (
+                <Stack key={sectionIdx} gap="sm">
+                  <Skeleton height="var(--fo-font-size-sm)" width="22%" />
+                  <Stack gap="sm">
+                    {Array.from({ length: 3 }).map((__, idx) => (
+                      <StandardCard key={idx}>
+                        <Stack gap="var(--fo-space-dense-2)">
+                          <Skeleton height="var(--fo-font-size-sm)" width="52%" />
+                          <Skeleton height="var(--fo-font-size-xs)" width="28%" />
+                        </Stack>
+                      </StandardCard>
+                    ))}
+                  </Stack>
+                </Stack>
+              ))}
+            </Stack>
           ) : state === "error" ? (
             <StandardCard>
               <Text className="baseline-textBody">
@@ -64,9 +78,9 @@ export function CeremoniesIndexScreen(props: {
               </Stack>
 
               <Stack gap="sm">
-                <Text className="baseline-textSectionHeader">Archived</Text>
+                <Text className="baseline-textSectionHeader">Past</Text>
                 {archived.length === 0 ? (
-                  <Text className="baseline-textBody">No archived ceremonies yet.</Text>
+                  <Text className="baseline-textBody">No past ceremonies yet.</Text>
                 ) : (
                   <Stack gap="sm">
                     {archived.map((c) => (
@@ -81,7 +95,7 @@ export function CeremoniesIndexScreen(props: {
                             {c.name?.trim() ? c.name : `Ceremony ${c.id}`}
                           </Text>
                           <Text className="baseline-textMeta">
-                            {yearFromIso(c.starts_at)} · Archived
+                            {yearFromIso(c.starts_at)} · Past
                           </Text>
                         </Stack>
                       </StandardCard>

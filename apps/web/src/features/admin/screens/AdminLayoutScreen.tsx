@@ -14,7 +14,7 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
     location.pathname.startsWith("/admin/ceremonies") ||
     location.pathname.startsWith("/admin/category-templates") ||
     location.pathname.startsWith("/admin/films");
-  const gameContentOpen = isGameContentOpen || gameContentActive;
+  const gameContentOpen = isGameContentOpen;
   const ceremoniesActive = location.pathname.startsWith("/admin/ceremonies");
   const templatesActive = location.pathname.startsWith("/admin/category-templates");
   const filmsActive = location.pathname.startsWith("/admin/films");

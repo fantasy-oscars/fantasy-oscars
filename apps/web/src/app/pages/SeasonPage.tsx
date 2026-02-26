@@ -19,11 +19,14 @@ function ResolvedSeasonPage(props: {
   seasonId: number;
   seasonIdLabel: string;
   preferCanonicalUrl: boolean;
+  leagueIdHint?: number | null;
 }) {
-  const { seasonId, seasonIdLabel, preferCanonicalUrl } = props;
+  const { seasonId, seasonIdLabel, preferCanonicalUrl, leagueIdHint } = props;
   const { user } = useAuthContext();
   const navigate = useNavigate();
-  const s = useSeasonOrchestration(seasonId, user?.sub);
+  const s = useSeasonOrchestration(seasonId, user?.sub, {
+    leagueIdHint: leagueIdHint ?? null
+  });
 
   useEffect(() => {
     if (!preferCanonicalUrl) return;
@@ -158,6 +161,7 @@ export function SeasonPage() {
       seasonId={resolvedSeasonId}
       seasonIdLabel={String(resolvedSeasonId)}
       preferCanonicalUrl={Boolean(seasonIdFromLegacy)}
+      leagueIdHint={leagueId}
     />
   );
 }

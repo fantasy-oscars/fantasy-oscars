@@ -1,6 +1,6 @@
-import { Box, Button, Group, Stack, Text, Title } from "@ui";
+import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
@@ -18,8 +18,45 @@ export function AdminCeremoniesLockScreen(props: {
   onArchive: () => void;
 }) {
   const { loading, saving, lockState, status, onLock, onArchive } = props;
+  const canArchive = lockState?.status === "COMPLETE";
 
-  if (loading && !lockState) return <PageLoader label="Loading lock state..." />;
+  if (loading && !lockState)
+    return (
+      <Stack
+        component="section"
+        className="stack"
+        mt="md"
+        role="status"
+        aria-label="Loading lock state"
+      >
+        <Box component="header">
+          <Skeleton height="var(--fo-font-size-hero-title)" width="18%" />
+          <Box mt="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-sm)" width="64%" />
+          </Box>
+        </Box>
+        <StandardCard tone="nested" component="section">
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-sm)" width="18%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="36%" />
+            <Group gap="xs">
+              <Skeleton height="22px" width="100px" />
+              <Skeleton height="22px" width="120px" />
+            </Group>
+          </Stack>
+        </StandardCard>
+        <StandardCard tone="nested" component="section">
+          <Stack gap="sm">
+            <Skeleton height="var(--fo-font-size-sm)" width="14%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="44%" />
+            <Group gap="sm">
+              <Skeleton height="36px" width="120px" />
+              <Skeleton height="36px" width="140px" />
+            </Group>
+          </Stack>
+        </StandardCard>
+      </Stack>
+    );
   if (!lockState && status?.ok === false) return <PageError message={status.message} />;
 
   return (
@@ -28,7 +65,7 @@ export function AdminCeremoniesLockScreen(props: {
         <Title order={3}>Archive</Title>
         <Text className="muted">
           Lock blocks new seasons/drafts for this ceremony and cancels in-progress drafts.
-          Archived ceremonies stop appearing as active.
+          You can archive only after results are finalized (status: Complete).
         </Text>
       </Box>
 
@@ -80,7 +117,7 @@ export function AdminCeremoniesLockScreen(props: {
             color="red"
             variant="outline"
             onClick={onArchive}
-            disabled={saving}
+            disabled={saving || !canArchive}
           >
             Archive ceremony
           </Button>
@@ -89,6 +126,9 @@ export function AdminCeremoniesLockScreen(props: {
         <Text className="muted">
           Note: entering the first winner will also lock the ceremony automatically.
         </Text>
+        {!canArchive ? (
+          <Text className="muted">Finalize winners first to enable archiving.</Text>
+        ) : null}
       </StandardCard>
     </Stack>
   );

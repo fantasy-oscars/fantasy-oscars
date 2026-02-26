@@ -58,7 +58,8 @@ export function AdminCeremonyHomePage() {
         saving: archive.saving,
         status: archive.status,
         onArchive: () => {
-          if (o.ceremony?.status === "ARCHIVED") return;
+          if (o.ceremony?.status === "ARCHIVED" || o.ceremony?.status !== "COMPLETE")
+            return;
           void confirm({
             title: "Archive ceremony?",
             message:

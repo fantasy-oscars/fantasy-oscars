@@ -88,9 +88,27 @@ export function registerDraftNamespace(
 
   nsp.on("connection", (socket) => {
     const draftId = (socket.data as DraftSocketData).draftId;
+    const userId = (socket.data as DraftSocketData).userId;
     const room = draftRoom(draftId);
     socket.join(room);
     socket.emit("joined", { draftId });
+
+    socket.on("draft:cursor", (payload: unknown) => {
+      if (!payload || typeof payload !== "object") return;
+      const raw = payload as { x?: unknown; y?: unknown };
+      const x = Number(raw.x);
+      const y = Number(raw.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      const nx = Math.max(0, Math.min(1, x));
+      const ny = Math.max(0, Math.min(1, y));
+      emitToDraft(nsp, draftId, "draft:cursor", {
+        draft_id: draftId,
+        user_id: userId,
+        x: nx,
+        y: ny,
+        ts: Date.now()
+      });
+    });
   });
 
   return nsp;

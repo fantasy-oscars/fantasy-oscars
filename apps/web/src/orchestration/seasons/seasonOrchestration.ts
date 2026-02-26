@@ -34,7 +34,11 @@ type LeagueContext = {
 
 type TokenMap = Record<number, string>;
 
-export function useSeasonOrchestration(seasonId: number, userSub?: string) {
+export function useSeasonOrchestration(
+  seasonId: number,
+  userSub?: string,
+  opts?: { leagueIdHint?: number | null }
+) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<SeasonMember[]>([]);
@@ -111,7 +115,9 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
       }
       if (!cancelled) setMembers(memberRes.data?.members ?? []);
 
-      const found = await loadLeagueContextForSeason(seasonId);
+      const found = await loadLeagueContextForSeason(seasonId, {
+        leagueIdHint: opts?.leagueIdHint ?? null
+      });
       if (!cancelled && found) {
         setLeagueContext({
           league: found.league,
@@ -135,7 +141,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
     return () => {
       cancelled = true;
     };
-  }, [seasonId]);
+  }, [opts?.leagueIdHint, seasonId]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 60_000);

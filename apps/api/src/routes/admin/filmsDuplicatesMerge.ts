@@ -5,7 +5,6 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
-import { sqlNorm } from "../../domain/search.js";
 
 export function registerAdminFilmDuplicatesMergeRoute(args: {
   router: Router;
@@ -61,10 +60,11 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           const { rows: canonicalRows } = await query<{
             id: number;
             title: string;
-            norm_title: string;
+            tmdb_id: number | null;
+            consolidated_into_film_id: number | null;
           }>(
             tx,
-            `SELECT id::int, title, ${sqlNorm("title")} AS norm_title
+            `SELECT id::int, title, tmdb_id::int, consolidated_into_film_id::int
              FROM film
              WHERE id = $1`,
             [canonicalId]
@@ -72,14 +72,22 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           const canonical = canonicalRows[0];
           if (!canonical)
             throw new AppError("NOT_FOUND", 404, "Canonical film not found");
+          if (canonical.consolidated_into_film_id) {
+            throw new AppError(
+              "VALIDATION_FAILED",
+              400,
+              "Cannot merge into a film that is already consolidated"
+            );
+          }
 
           const { rows: dupRows } = await query<{
             id: number;
             title: string;
-            norm_title: string;
+            tmdb_id: number | null;
+            consolidated_into_film_id: number | null;
           }>(
             tx,
-            `SELECT id::int, title, ${sqlNorm("title")} AS norm_title
+            `SELECT id::int, title, tmdb_id::int, consolidated_into_film_id::int
              FROM film
              WHERE id = ANY($1::int[])
              ORDER BY id ASC`,
@@ -99,113 +107,65 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
             );
           }
 
-          for (const d of dupRows) {
-            if (d.norm_title !== canonical.norm_title) {
-              throw new AppError(
-                "VALIDATION_FAILED",
-                400,
-                "Can only merge films with the same title",
-                {
-                  canonical: { id: canonical.id, title: canonical.title },
-                  duplicate: { id: d.id, title: d.title }
-                }
-              );
-            }
+          if (dupRows.some((row) => Boolean(row.consolidated_into_film_id))) {
+            throw new AppError(
+              "VALIDATION_FAILED",
+              400,
+              "One or more selected duplicate films are already consolidated"
+            );
           }
+
+          const selectedFilms = [canonical, ...dupRows];
+          const linkedFilms = selectedFilms.filter(
+            (f) => Number.isInteger(f.tmdb_id) && Number(f.tmdb_id) > 0
+          );
+          if (linkedFilms.length > 1) {
+            throw new AppError(
+              "FILM_MERGE_LINK_CONFLICT",
+              409,
+              "Multiple selected films are linked to TMDB. Unlink at least one before merging.",
+              {
+                linked_films: linkedFilms.map((f) => ({
+                  id: f.id,
+                  title: f.title,
+                  tmdb_id: f.tmdb_id
+                }))
+              }
+            );
+          }
+
+          const effectiveCanonicalId =
+            linkedFilms.length === 1 ? linkedFilms[0].id : canonical.id;
+          const effectiveCanonical =
+            selectedFilms.find((f) => f.id === effectiveCanonicalId) ?? canonical;
+          const effectiveDuplicateIds = selectedFilms
+            .map((f) => f.id)
+            .filter((id) => id !== effectiveCanonicalId);
 
           const counts = {
-            nominations_repointed: 0,
-            songs_repointed: 0,
-            performances_repointed: 0,
-            performance_collisions_resolved: 0,
-            film_credits_repointed: 0,
-            film_credit_conflicts_deleted: 0,
-            films_deleted: 0
+            films_consolidated: 0
           };
 
-          for (const dupId of duplicateIds) {
-            // Nominations referencing this film directly.
-            const nomRes = await query(
+          for (const dupId of effectiveDuplicateIds) {
+            await query(
               tx,
-              `UPDATE nomination
-               SET film_id = $1
-               WHERE film_id = $2`,
-              [canonicalId, dupId]
+              `UPDATE film
+               SET consolidated_into_film_id = $1,
+                   consolidated_at = now()
+               WHERE id = $2`,
+              [effectiveCanonicalId, dupId]
             );
-            counts.nominations_repointed += nomRes.rowCount ?? 0;
-
-            // Songs referencing this film.
-            const songRes = await query(
-              tx,
-              `UPDATE song
-               SET film_id = $1
-               WHERE film_id = $2`,
-              [canonicalId, dupId]
-            );
-            counts.songs_repointed += songRes.rowCount ?? 0;
-
-            // Performance rows may collide on (film_id, person_id).
-            const { rows: perfCollisions } = await query<{
-              dup_perf_id: number;
-              can_perf_id: number;
-            }>(
-              tx,
-              `SELECT p_dup.id::int AS dup_perf_id, p_can.id::int AS can_perf_id
-               FROM performance p_dup
-               JOIN performance p_can
-                 ON p_can.film_id = $1
-                AND p_can.person_id = p_dup.person_id
-               WHERE p_dup.film_id = $2`,
-              [canonicalId, dupId]
-            );
-            for (const c of perfCollisions) {
-              const repoint = await query(
-                tx,
-                `UPDATE nomination
-                 SET performance_id = $1
-                 WHERE performance_id = $2`,
-                [c.can_perf_id, c.dup_perf_id]
-              );
-              counts.performance_collisions_resolved += repoint.rowCount ?? 0;
-              await query(tx, `DELETE FROM performance WHERE id = $1`, [c.dup_perf_id]);
-            }
-
-            const perfRes = await query(
-              tx,
-              `UPDATE performance
-               SET film_id = $1
-               WHERE film_id = $2`,
-              [canonicalId, dupId]
-            );
-            counts.performances_repointed += perfRes.rowCount ?? 0;
-
-            // Film credits may collide on (film_id, tmdb_credit_id) when present.
-            const delCreditRes = await query(
-              tx,
-              `DELETE FROM film_credit fc
-               USING film_credit existing
-               WHERE fc.film_id = $2
-                 AND fc.tmdb_credit_id IS NOT NULL
-                 AND existing.film_id = $1
-                 AND existing.tmdb_credit_id = fc.tmdb_credit_id`,
-              [canonicalId, dupId]
-            );
-            counts.film_credit_conflicts_deleted += delCreditRes.rowCount ?? 0;
-
-            const creditRes = await query(
-              tx,
-              `UPDATE film_credit
-               SET film_id = $1
-               WHERE film_id = $2`,
-              [canonicalId, dupId]
-            );
-            counts.film_credits_repointed += creditRes.rowCount ?? 0;
-
-            await query(tx, `DELETE FROM film WHERE id = $1`, [dupId]);
-            counts.films_deleted += 1;
+            counts.films_consolidated += 1;
           }
 
-          return { canonical, counts };
+          return {
+            canonical: {
+              id: effectiveCanonical.id,
+              title: effectiveCanonical.title
+            },
+            counts,
+            effective_duplicate_ids: effectiveDuplicateIds
+          };
         });
 
         if (actorId) {
@@ -213,10 +173,11 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
             actor_user_id: actorId,
             action: "merge_films",
             target_type: "film",
-            target_id: canonicalId,
+            target_id: result.canonical.id,
             meta: {
+              requested_canonical_id: canonicalId,
               canonical: { id: result.canonical.id, title: result.canonical.title },
-              duplicate_ids: duplicateIds,
+              duplicate_ids: result.effective_duplicate_ids,
               counts: result.counts
             }
           });

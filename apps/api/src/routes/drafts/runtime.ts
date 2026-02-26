@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { AppError, validationError } from "../../errors.js";
 import { runInTransaction } from "../../data/db.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
+import { hasSuperAdminAccess } from "../../auth/roles.js";
 import {
   createDraftEvent,
   getDraftByIdForUpdate,
@@ -109,7 +110,8 @@ export function buildSnapshotDraftHandler(pool: Pool) {
       const snapshot = await getDraftRuntimeSnapshot({
         pool,
         draftId,
-        viewerUserId: req.auth?.sub ? Number(req.auth.sub) : null
+        viewerUserId: req.auth?.sub ? Number(req.auth.sub) : null,
+        viewerIsSuperAdmin: hasSuperAdminAccess(req.auth)
       });
       return res.status(200).json(snapshot);
     } catch (err) {

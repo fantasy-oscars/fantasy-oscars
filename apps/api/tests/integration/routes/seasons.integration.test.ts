@@ -235,19 +235,10 @@ describe("seasons integration", () => {
     expect(draftRes.status).toBe(201);
 
     // add second participant
-    const ownerLm = await db.pool.query<{ id: number }>(
-      `SELECT id::int FROM league_member WHERE league_id = $1 AND user_id = $2`,
-      [leagueRes.json.league.id, user.id]
-    );
     const lm = await db.pool.query<{ id: number }>(
       `INSERT INTO league_member (league_id, user_id, role)
        VALUES ($1,$2,'MEMBER') RETURNING id::int`,
       [leagueRes.json.league.id, user2.id]
-    );
-    await db.pool.query(
-      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
-       VALUES ($1,$2,$3,'OWNER')`,
-      [seasonRes.json.season.id, user.id, ownerLm.rows[0].id]
     );
     await db.pool.query(
       `INSERT INTO season_member (season_id, user_id, league_member_id, role)

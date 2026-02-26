@@ -22,7 +22,8 @@ export function computeActiveLandingSeasonPreviews(
 
   const activeSeasons = allSeasons
     .filter((s) => Boolean(s.is_active_ceremony))
-    .filter((s) => s.status !== "CANCELLED");
+    .filter((s) => s.status !== "CANCELLED")
+    .filter((s) => String(s.draft_status ?? "").toUpperCase() !== "CANCELLED");
 
   activeSeasons.sort((a, b) => {
     const at = Date.parse(a.created_at ?? "") || 0;

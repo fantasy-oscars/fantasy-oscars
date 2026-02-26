@@ -8,6 +8,7 @@ import {
   insertDraftPick,
   insertDraftSeat,
   insertLeague,
+  insertLeagueMember,
   insertCeremony,
   insertNomination,
   insertUser
@@ -74,6 +75,17 @@ describe("draft snapshot integration", () => {
       ceremony_id: (await insertCeremony(db.pool, { starts_at: ceremonyStart })).id
     });
     const draft = await insertDraft(db.pool, { league_id: league.id, status: "PENDING" });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1, $2, $3, 'OWNER')
+       ON CONFLICT (season_id, user_id) DO NOTHING`,
+      [draft.season_id, 1, member.id]
+    );
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
     await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
 
@@ -103,6 +115,17 @@ describe("draft snapshot integration", () => {
       status: "IN_PROGRESS",
       current_pick_number: 3
     });
+    const member = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1,
+      role: "OWNER"
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1, $2, $3, 'OWNER')
+       ON CONFLICT (season_id, user_id) DO NOTHING`,
+      [draft.season_id, 1, member.id]
+    );
     const seat1 = await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 1 });
     const seat2 = await insertDraftSeat(db.pool, { draft_id: draft.id, seat_number: 2 });
     const nomination1 = await insertNomination(db.pool);

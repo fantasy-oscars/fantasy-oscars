@@ -142,6 +142,25 @@ export function SeasonScreen(props: {
     );
   }
 
+  if (String(s.draftStatus ?? "").toUpperCase() === "CANCELLED") {
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack component="section" gap="md">
+            <Box component="header">
+              <Title order={2} className="baseline-textHeroTitle">
+                {ceremonyName}
+              </Title>
+              <Text className="baseline-textBody">
+                This season is closed and no longer available.
+              </Text>
+            </Box>
+          </Stack>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box className="baseline-page">
       <Box className="baseline-pageInner">

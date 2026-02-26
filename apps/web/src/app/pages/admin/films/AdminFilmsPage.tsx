@@ -1,40 +1,59 @@
-import { useAdminFilmDuplicatesOrchestration } from "@/orchestration/adminFilmsDuplicates";
 import { confirm } from "@/notifications";
-import { AdminFilmDuplicatesScreen } from "@/features/admin/screens/films/AdminFilmDuplicatesScreen";
+import { useAdminFilmsIndexOrchestration } from "@/orchestration/admin/filmsIndex/orchestration";
+import { AdminFilmsIndexScreen } from "@/features/admin/screens/films/AdminFilmsIndexScreen";
 
 export function AdminFilmsPage() {
-  const o = useAdminFilmDuplicatesOrchestration();
+  const films = useAdminFilmsIndexOrchestration();
 
   return (
-    <AdminFilmDuplicatesScreen
-      query={o.query}
-      setQuery={o.setQuery}
-      loading={o.loading}
-      status={o.status}
-      groups={o.groups}
-      canonicalByGroup={o.canonicalByGroup}
-      setCanonicalForGroup={o.setCanonicalForGroup}
-      onReload={() => void o.reload()}
-      onMergeGroup={(group) => {
-        const canonicalId =
-          o.canonicalByGroup[group.norm_title] ?? group.films[0]?.id ?? 0;
-        if (!canonicalId) return;
-        const duplicateIds = group.films
-          .map((f) => f.id)
-          .filter((id) => id !== canonicalId);
-        if (duplicateIds.length === 0) return;
-
-        void confirm({
-          title: "Merge duplicate films?",
+    <AdminFilmsIndexScreen
+      query={films.query}
+      setQuery={films.setQuery}
+      year={films.year}
+      setYear={films.setYear}
+      linked={films.linked}
+      setLinked={films.setLinked}
+      nominated={films.nominated}
+      setNominated={films.setNominated}
+      loading={films.loading}
+      status={films.status}
+      films={films.films}
+      years={films.years}
+      page={films.page}
+      pageSize={films.pageSize}
+      total={films.total}
+      setPage={films.setPage}
+      linkWorkingFilmId={films.linkWorkingFilmId}
+      onReload={() => void films.reload()}
+      onSaveTmdbId={(filmId, tmdbId) => films.setFilmTmdbId(filmId, tmdbId)}
+      onSearchTmdb={async (q) => films.searchTmdbFilmCandidates(q)}
+      onLoadConsolidated={(canonicalId, page, pageSize) =>
+        films.loadConsolidatedFilms(canonicalId, page, pageSize)
+      }
+      onDecoupleConsolidated={(canonicalId, filmId) =>
+        films.decoupleConsolidatedFilm(canonicalId, filmId)
+      }
+      onMergeSelected={async (selectedFilms) => {
+        if (selectedFilms.length < 2) return { ok: false };
+        const canonical =
+          selectedFilms.find((f) => Boolean(f.tmdb_id)) ??
+          selectedFilms.find((f) => f.is_nominated) ??
+          selectedFilms[0];
+        if (!canonical) return { ok: false };
+        const duplicateIds = selectedFilms
+          .map((film) => film.id)
+          .filter((id) => id !== canonical.id);
+        if (duplicateIds.length === 0) return { ok: false };
+        const ok = await confirm({
+          title: "Merge selected films?",
           message:
-            "This will move nominations/credits from the duplicates to the selected canonical film and permanently delete the duplicate records.",
+            "This will move nominations and credits into one canonical film, then permanently delete the duplicate records.",
           confirmLabel: "Merge",
           cancelLabel: "Cancel",
           danger: true
-        }).then((ok) => {
-          if (!ok) return;
-          void o.mergeIntoCanonical(canonicalId, duplicateIds);
         });
+        if (!ok) return { ok: false };
+        return films.mergeFilms(canonical.id, duplicateIds);
       }}
     />
   );
