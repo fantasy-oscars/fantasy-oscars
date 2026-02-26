@@ -1,6 +1,7 @@
 import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
+import { hasSuperAdminAccess } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
 import {
   getLeagueById,
@@ -29,7 +30,8 @@ export function registerLeagueMembersListRoute(args: {
         const league = await getLeagueById(client, leagueId);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
         const actor = await getLeagueMember(client, leagueId, userId);
-        if (!actor || (actor.role !== "OWNER" && actor.role !== "CO_OWNER")) {
+        const isSuperAdmin = hasSuperAdminAccess(req.auth);
+        if (!isSuperAdmin && (!actor || (actor.role !== "OWNER" && actor.role !== "CO_OWNER"))) {
           throw new AppError("FORBIDDEN", 403, "Commissioner permission required");
         }
 

@@ -14,12 +14,35 @@ export type LeagueContextForSeason = {
 };
 
 export async function loadLeagueContextForSeason(
-  seasonId: number
+  seasonId: number,
+  opts?: { leagueIdHint?: number | null }
 ): Promise<LeagueContextForSeason | null> {
+  const hintedLeagueId =
+    Number.isFinite(opts?.leagueIdHint) && (opts?.leagueIdHint ?? 0) > 0
+      ? Number(opts?.leagueIdHint)
+      : null;
+
+  const leagueCandidates: LeagueSummary[] = [];
+  if (hintedLeagueId) {
+    const hintedLeagueRes = await fetchJson<{ league: LeagueSummary }>(
+      `/leagues/${hintedLeagueId}`,
+      { method: "GET" }
+    );
+    if (hintedLeagueRes.ok && hintedLeagueRes.data?.league) {
+      leagueCandidates.push(hintedLeagueRes.data.league);
+    }
+  }
+
   const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues", {
     method: "GET"
   });
-  if (!leaguesRes.ok || !leaguesRes.data?.leagues) return null;
+  if (leaguesRes.ok && leaguesRes.data?.leagues) {
+    for (const lg of leaguesRes.data.leagues) {
+      if (leagueCandidates.some((c) => c.id === lg.id)) continue;
+      leagueCandidates.push(lg);
+    }
+  }
+  if (leagueCandidates.length === 0) return null;
 
   let found: {
     league: LeagueSummary;
@@ -27,7 +50,7 @@ export async function loadLeagueContextForSeason(
   } | null = null;
   let leagueMembers: LeagueMember[] = [];
 
-  for (const lg of leaguesRes.data.leagues) {
+  for (const lg of leagueCandidates) {
     const seasonsRes = await fetchJson<{ seasons: Array<SeasonMeta & { id: number }> }>(
       `/leagues/${lg.id}/seasons`,
       { method: "GET" }

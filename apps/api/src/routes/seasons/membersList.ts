@@ -1,6 +1,7 @@
 import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
+import { hasSuperAdminAccess } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
 import { getLeagueMember } from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
@@ -63,8 +64,11 @@ export function registerSeasonMembersListRoute(args: {
           throw new AppError("SEASON_NOT_FOUND", 404, "Season not found");
         }
 
-        // Early-MVP ergonomics: if the season_member row wasn't seeded, auto-join league members.
-        await ensureSeasonMember(client, seasonId, season.league_id, userId);
+        const isSuperAdmin = hasSuperAdminAccess(req.auth);
+        if (!isSuperAdmin) {
+          // Early-MVP ergonomics: if the season_member row wasn't seeded, auto-join league members.
+          await ensureSeasonMember(client, seasonId, season.league_id, userId);
+        }
 
         const members = await listSeasonMembers(client, seasonId);
         return res.json({ members });

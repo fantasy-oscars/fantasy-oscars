@@ -1,6 +1,7 @@
 import type express from "express";
 import { AppError, validationError } from "../../errors.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
+import { hasSuperAdminAccess } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
 import {
   getLeagueById,
@@ -28,8 +29,11 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
         const league = await getLeagueById(client, leagueId);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
 
-        const member = await getLeagueMember(client, leagueId, userId);
-        if (!member) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        const isSuperAdmin = hasSuperAdminAccess(req.auth);
+        if (!isSuperAdmin) {
+          const member = await getLeagueMember(client, leagueId, userId);
+          if (!member) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
+        }
 
         const includeCancelled =
           req.query.include_cancelled === "true" &&

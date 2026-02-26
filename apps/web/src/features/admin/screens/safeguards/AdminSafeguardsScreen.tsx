@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Group, Select, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
 import { fetchJson } from "@/lib/api";
-import { ceremonyCodeSlug, slugifyPathSegment } from "@/lib/routes";
+import { ceremonyCodeSlug, leaguePath, seasonPath, slugifyPathSegment } from "@/lib/routes";
 import { notify } from "@/notifications";
 import {
   DestructiveActionModal,
@@ -18,6 +18,7 @@ type DeleteModalState = {
   title: string;
   summary: string;
   consequences: DestructiveConsequence[];
+  contextLinks?: Array<{ label: string; href: string }>;
 };
 
 export function AdminSafeguardsScreen() {
@@ -143,6 +144,12 @@ export function AdminSafeguardsScreen() {
           label: "Seasons removed",
           value: Number(res.data.consequences.seasons_removed ?? 0)
         }
+      ],
+      contextLinks: [
+        {
+          label: "View ceremony page",
+          href: `/admin/ceremonies/${res.data.ceremony.id}`
+        }
       ]
     });
   }
@@ -155,6 +162,7 @@ export function AdminSafeguardsScreen() {
     const res = await fetchJson<{
       season: {
         id: number;
+        league_id: number;
         status: string;
         ceremony_name: string | null;
         ceremony_code: string | null;
@@ -173,7 +181,17 @@ export function AdminSafeguardsScreen() {
       id: seasonId,
       title: "Delete season?",
       summary: `Deleting this season (${s.league_name ?? "League"} · ${s.ceremony_code ?? s.ceremony_name ?? `Season ${seasonId}`}) is irreversible.`,
-      consequences: [{ label: "Seasons removed", value: 1 }]
+      consequences: [{ label: "Seasons removed", value: 1 }],
+      contextLinks: [
+        {
+          label: "View season page",
+          href: seasonPath({
+            leagueId: s.league_id,
+            leagueName: s.league_name ?? "",
+            ceremonyCode: s.ceremony_code ?? s.ceremony_name ?? String(s.id)
+          })
+        }
+      ]
     });
   }
 
@@ -200,6 +218,15 @@ export function AdminSafeguardsScreen() {
         {
           label: "Seasons removed",
           value: Number(res.data.consequences.seasons_removed ?? 0)
+        }
+      ],
+      contextLinks: [
+        {
+          label: "View league page",
+          href: leaguePath({
+            leagueId: res.data.league.id,
+            leagueName: res.data.league.name
+          })
         }
       ]
     });
@@ -343,6 +370,7 @@ export function AdminSafeguardsScreen() {
         consequences={modal?.consequences ?? []}
         confirmPhrase="DELETE"
         confirmLabel="Delete"
+        contextLinks={modal?.contextLinks}
         loading={loadingDelete}
         error={modalError}
         onConfirm={() => void confirmDelete()}

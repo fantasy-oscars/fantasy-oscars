@@ -65,6 +65,7 @@ export function registerAdminSeasonDeleteRoutes(args: {
 
         const { rows } = await query<{
           id: number;
+          league_id: number;
           status: string;
           ceremony_name: string | null;
           ceremony_code: string | null;
@@ -72,6 +73,7 @@ export function registerAdminSeasonDeleteRoutes(args: {
         }>(
           client,
           `SELECT s.id::int,
+                  s.league_id::int,
                   s.status,
                   c.name AS ceremony_name,
                   c.code AS ceremony_code,
