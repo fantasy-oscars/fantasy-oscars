@@ -18,6 +18,7 @@ export function AdminCeremoniesLockScreen(props: {
   onArchive: () => void;
 }) {
   const { loading, saving, lockState, status, onLock, onArchive } = props;
+  const canArchive = lockState?.status === "COMPLETE";
 
   if (loading && !lockState) return <PageLoader label="Loading lock state..." />;
   if (!lockState && status?.ok === false) return <PageError message={status.message} />;
@@ -28,7 +29,7 @@ export function AdminCeremoniesLockScreen(props: {
         <Title order={3}>Archive</Title>
         <Text className="muted">
           Lock blocks new seasons/drafts for this ceremony and cancels in-progress drafts.
-          Archived ceremonies stop appearing as active.
+          You can archive only after results are finalized (status: Complete).
         </Text>
       </Box>
 
@@ -80,7 +81,7 @@ export function AdminCeremoniesLockScreen(props: {
             color="red"
             variant="outline"
             onClick={onArchive}
-            disabled={saving}
+            disabled={saving || !canArchive}
           >
             Archive ceremony
           </Button>
@@ -89,6 +90,11 @@ export function AdminCeremoniesLockScreen(props: {
         <Text className="muted">
           Note: entering the first winner will also lock the ceremony automatically.
         </Text>
+        {!canArchive ? (
+          <Text className="muted">
+            Finalize winners first to enable archiving.
+          </Text>
+        ) : null}
       </StandardCard>
     </Stack>
   );

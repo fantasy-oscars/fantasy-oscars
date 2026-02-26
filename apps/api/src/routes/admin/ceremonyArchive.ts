@@ -28,11 +28,11 @@ export function registerAdminCeremonyArchiveRoute(args: {
         );
         const status = ceremonyRows[0]?.status;
         if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        if (status !== "LOCKED") {
+        if (status !== "COMPLETE") {
           throw new AppError(
-            "CEREMONY_NOT_LOCKED",
+            "CEREMONY_NOT_COMPLETE",
             409,
-            "Ceremony must be locked before archiving"
+            "Ceremony results must be finalized before archiving"
           );
         }
 

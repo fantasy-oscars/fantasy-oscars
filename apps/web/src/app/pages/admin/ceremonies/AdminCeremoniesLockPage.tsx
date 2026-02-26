@@ -26,6 +26,7 @@ export function AdminCeremoniesLockPage() {
         });
       }}
       onArchive={() => {
+        if (o.lockState?.status !== "COMPLETE") return;
         void confirm({
           title: "Archive ceremony?",
           message:
