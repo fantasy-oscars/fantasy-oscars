@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
+import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
@@ -23,35 +23,35 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
               {
                 title: "Ceremonies",
                 description: "Create, publish, and manage ceremony workflows.",
-                action: "Manage",
                 to: "/admin/ceremonies"
               },
               {
                 title: "Category Templates",
                 description: "Define reusable category rules and metadata.",
-                action: "Manage",
                 to: "/admin/category-templates"
               },
               {
                 title: "Films",
                 description: "Maintain film records and resolve duplicates.",
-                action: "Open",
                 to: "/admin/films"
               }
             ].map((row, idx, all) => (
               <Box key={row.to}>
                 <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
                   <Box>
-                    <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
+                    <Text
+                      component={Link}
+                      to={row.to}
+                      fw="var(--fo-font-weight-semibold)"
+                      className="baseline-textBody"
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
                       {row.title}
                     </Text>
                     <Text className="baseline-textBody" c="dimmed">
                       {row.description}
                     </Text>
                   </Box>
-                  <Button component={Link} to={row.to} variant="subtle">
-                    {row.action}
-                  </Button>
                 </Group>
                 {idx === all.length - 1 ? null : <Divider />}
               </Box>
@@ -81,7 +81,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
 
             <StandardCard interactive component={Link} to="/admin/destructive-actions">
               <Title order={3} className="baseline-textSectionHeader">
-                Critical Actions
+                Data Deletion
               </Title>
               <Text className="baseline-textBody">
                 Reserved for irreversible and high-impact admin operations.

@@ -219,7 +219,7 @@ export function AdminSafeguardsScreen() {
   return (
     <Stack component="section" className="stack" gap="md">
       <Title order={3} className="baseline-textSectionHeader">
-        Critical Actions
+        Data Deletion
       </Title>
 
       <StandardCard>

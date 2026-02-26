@@ -103,7 +103,7 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
                       to="/admin/destructive-actions"
                       className={({ isActive }) => navLinkClass(isActive)}
                     >
-                      Critical Actions
+                      Data Deletion
                     </NavLink>
                   </>
                 ) : null}
