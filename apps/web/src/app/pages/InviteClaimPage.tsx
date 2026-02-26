@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Grid, Stack, Text, Title } from "@ui";
+import { Box, Button, Grid, Skeleton, Stack, Text, Title } from "@ui";
 import { useAuthContext } from "@/auth/context";
 import { useInviteClaimOrchestration } from "@/orchestration/invites";
 import { notify } from "@/notifications";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
@@ -60,7 +60,34 @@ export function InviteClaimPage() {
     navigate("/invites", { replace: true, state: { inviteClaimed: false } });
   }
 
-  if (authLoading) return <PageLoader label="Checking session..." />;
+  if (authLoading) {
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Grid className="card-grid" gutter="lg" role="status" aria-label="Checking session">
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <StandardCard component="section">
+                <Stack gap="sm">
+                  <Skeleton height="var(--fo-font-size-hero-title)" width="82%" />
+                  <Skeleton height="var(--fo-font-size-sm)" width="92%" />
+                  <Skeleton height="36px" width="180px" />
+                </Stack>
+              </StandardCard>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <StandardCard tone="nested" component="section">
+                <Stack gap="sm">
+                  <Skeleton height="var(--fo-font-size-sm)" width="58%" />
+                  <Skeleton height="var(--fo-font-size-sm)" width="88%" />
+                  <Skeleton height="36px" width="150px" />
+                </Stack>
+              </StandardCard>
+            </Grid.Col>
+          </Grid>
+        </Box>
+      </Box>
+    );
+  }
   if (!user) {
     return (
       <Box className="baseline-page">

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
+import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import {
   cmsDynamicEntryStatusLabel,
   formatDateTimeForHumans,
@@ -35,7 +35,35 @@ export function AdminDynamicContentLedgerScreen(props: {
   } = props;
 
   if (!contentKey || !meta) return <PageError message="Unknown dynamic content key" />;
-  if (loading) return <PageLoader label="Loading entries..." />;
+  if (loading)
+    return (
+      <Stack component="section" role="status" aria-label="Loading entries">
+        <Group className="header-with-controls" justify="space-between" align="start" wrap="wrap">
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-hero-title)" width="28%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="58%" />
+          </Stack>
+          <Skeleton height="36px" width="120px" />
+        </Group>
+        <Stack gap="var(--fo-space-0)">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <Box key={idx}>
+              <Group justify="space-between" align="center" wrap="wrap" py="sm">
+                <Stack gap="var(--fo-space-4)">
+                  <Skeleton height="var(--fo-font-size-sm)" width="180px" />
+                  <Skeleton height="var(--fo-font-size-xs)" width="130px" />
+                </Stack>
+                <Group className="inline-actions" wrap="wrap">
+                  <Skeleton height="30px" width="70px" />
+                  <Skeleton height="30px" width="70px" />
+                </Group>
+              </Group>
+              {idx === 5 ? null : <Divider />}
+            </Box>
+          ))}
+        </Stack>
+      </Stack>
+    );
 
   const isSequential = contentKey === "home_main";
   const headerTitle = meta.label;

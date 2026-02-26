@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Group,
+  Skeleton,
   Stack,
   Text,
   TextInput,
@@ -12,7 +13,7 @@ import {
   UnstyledButton
 } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
@@ -75,7 +76,30 @@ export function AdminCeremoniesOverviewScreen(props: {
   const showCodeError = touched.code && !required.code;
   const showNameError = touched.name && !required.name;
 
-  if (loading && !ceremony) return <PageLoader label="Loading ceremony..." />;
+  if (loading && !ceremony)
+    return (
+      <Stack className="stack-lg" mt="md" gap="lg" role="status" aria-label="Loading ceremony">
+        <StandardCard component="section">
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-sm)" width="26%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="52%" />
+            <Skeleton height="22px" width="180px" />
+          </Stack>
+        </StandardCard>
+        <StandardCard component="section">
+          <Stack gap="sm">
+            <Skeleton height="var(--fo-font-size-sm)" width="24%" />
+            <Box className="grid">
+              <Skeleton height="56px" width="100%" />
+              <Skeleton height="56px" width="100%" />
+              <Skeleton height="56px" width="100%" />
+              <Skeleton height="56px" width="100%" />
+            </Box>
+            <Skeleton height="36px" width="180px" />
+          </Stack>
+        </StandardCard>
+      </Stack>
+    );
   if (loadError) return <PageError message={loadError} />;
   if (!ceremony) return <PageError message="Ceremony not found" />;
 

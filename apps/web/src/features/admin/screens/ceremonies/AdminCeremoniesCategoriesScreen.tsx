@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { Box, Button, Group, Stack, Text, Title, UnstyledButton } from "@ui";
+import { Box, Button, Group, Skeleton, Stack, Text, Title, UnstyledButton } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { AdminCeremonyCategoriesOrchestration } from "@/orchestration/adminCeremoniesCategories";
 import { StandardCard } from "@/primitives";
 import { materialGlyph } from "@/decisions/admin/materialGlyph";
@@ -43,7 +43,32 @@ export function AdminCeremoniesCategoriesScreen(props: {
     [o.familyResults]
   );
 
-  if (o.loading) return <PageLoader label="Loading categories..." />;
+  if (o.loading)
+    return (
+      <Stack className="stack-lg" mt="md" gap="lg" role="status" aria-label="Loading categories">
+        <StandardCard tone="nested" component="section">
+          <Stack gap="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-sm)" width="22%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="46%" />
+          </Stack>
+        </StandardCard>
+        <StandardCard tone="nested" component="section">
+          <Stack gap="sm">
+            <Skeleton height="var(--fo-font-size-sm)" width="30%" />
+            <Skeleton height="var(--fo-font-size-sm)" width="44%" />
+            <Group align="flex-end" wrap="nowrap">
+              <Skeleton height="56px" width="100%" />
+              <Skeleton height="36px" width="80px" />
+            </Group>
+            <Stack gap="xs" mt="sm">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <Skeleton key={idx} height="44px" width="100%" />
+              ))}
+            </Stack>
+          </Stack>
+        </StandardCard>
+      </Stack>
+    );
   if (o.error) return <PageError message={o.error} />;
 
   const hasCategories = o.categories.length > 0;

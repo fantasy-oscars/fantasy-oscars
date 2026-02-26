@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-import { ActionIcon, Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
+import { ActionIcon, Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageLoader } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import type { CeremonyOption } from "@/orchestration/adminCeremonies";
 import { useState } from "react";
@@ -40,7 +39,35 @@ export function AdminCeremoniesIndexScreen(props: {
   const [confirmCeremonyName, setConfirmCeremonyName] = useState("Ceremony");
   const [confirmSeasonsRemoved, setConfirmSeasonsRemoved] = useState(0);
 
-  if (state === "loading") return <PageLoader label="Loading ceremonies..." />;
+  if (state === "loading")
+    return (
+      <Stack component="section" gap="md" role="status" aria-label="Loading ceremonies">
+        <Box component="header" className="admin-page-header">
+          <Skeleton height="var(--fo-font-size-hero-title)" width="28%" />
+          <Skeleton height="var(--fo-font-size-sm)" width="62%" />
+          <Skeleton height="36px" width="140px" />
+        </Box>
+        <Divider />
+        <Skeleton height="var(--fo-font-size-sm)" width="24%" />
+        <Stack gap="sm">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <StandardCard key={idx}>
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Stack gap="var(--fo-space-4)" style={{ flex: 1 }}>
+                  <Skeleton height="var(--fo-font-size-sm)" width="48%" />
+                  <Skeleton height="22px" width="110px" />
+                </Stack>
+                <Group gap="xs" wrap="nowrap">
+                  <Skeleton height="30px" width="30px" />
+                  <Skeleton height="30px" width="30px" />
+                  <Skeleton height="30px" width="30px" />
+                </Group>
+              </Group>
+            </StandardCard>
+          ))}
+        </Stack>
+      </Stack>
+    );
   if (state === "error")
     return (
       <Box className="status status-error">{error ?? "Unable to load ceremonies"}</Box>

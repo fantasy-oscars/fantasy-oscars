@@ -1,6 +1,6 @@
-import { Box, Button, Group, Stack, Text, Title } from "@ui";
+import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 
 export function AdminCeremonyPublishScreen(props: {
@@ -24,7 +24,21 @@ export function AdminCeremonyPublishScreen(props: {
     onPublish
   } = props;
 
-  if (loading && !ceremony) return <PageLoader label="Loading ceremony..." />;
+  if (loading && !ceremony)
+    return (
+      <Stack className="stack-lg" gap="lg" role="status" aria-label="Loading publish settings">
+        <Box component="header">
+          <Skeleton height="var(--fo-font-size-hero-title)" width="24%" />
+          <Box mt="var(--fo-space-dense-2)">
+            <Skeleton height="var(--fo-font-size-sm)" width="64%" />
+          </Box>
+        </Box>
+        <Stack gap="sm">
+          <Skeleton height="var(--fo-font-size-sm)" width="40%" />
+          <Skeleton height="36px" width="150px" />
+        </Stack>
+      </Stack>
+    );
   if (loadError) return <PageError message={loadError} />;
   if (!ceremony) return <PageError message="Ceremony not found" />;
 

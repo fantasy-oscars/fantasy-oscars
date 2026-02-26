@@ -1,5 +1,5 @@
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
+import { PageError } from "@/shared/page-state";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
@@ -10,7 +10,39 @@ export function CeremonyDetailScreen(props: {
   error: string | null;
   detail: CeremonyDetail | null;
 }) {
-  if (props.state === "loading") return <PageLoader label="Loading ceremony..." />;
+  if (props.state === "loading") {
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <StandardCard component="section">
+            <Stack gap="lg" role="status" aria-label="Loading ceremony">
+              <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+                <Box>
+                  <Skeleton height="var(--fo-font-size-hero-title)" width="34%" />
+                  <Box mt="var(--fo-space-dense-2)">
+                    <Skeleton height="var(--fo-font-size-sm)" width="44%" />
+                  </Box>
+                </Box>
+                <Skeleton height="36px" width="120px" />
+              </Group>
+              <Stack gap="md">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <Box key={idx}>
+                    <Skeleton height="var(--fo-font-size-sm)" width="26%" />
+                    <Divider my="xs" />
+                    <Stack gap="var(--fo-space-8)">
+                      <Skeleton height="var(--fo-font-size-sm)" width="72%" />
+                      <Skeleton height="var(--fo-font-size-sm)" width="68%" />
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            </Stack>
+          </StandardCard>
+        </Box>
+      </Box>
+    );
+  }
   if (props.state === "error")
     return <PageError message={props.error ?? "Failed to load"} />;
   if (!props.detail) return <PageError message="Ceremony not found" />;

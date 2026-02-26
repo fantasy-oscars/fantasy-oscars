@@ -1,5 +1,5 @@
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
-import { Box, useMantineColorScheme } from "@ui";
+import { Box, Skeleton, Stack, useMantineColorScheme } from "@ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
@@ -12,7 +12,7 @@ import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
-import { PageError, PageLoader } from "@/shared/page-state";
+import { PageError } from "@/shared/page-state";
 import { useCssVars } from "@/shared/dom/useCssVars";
 import {
   buildDraftedNominationIds,
@@ -253,7 +253,35 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   }, [categoriesRaw, draftedMetaByNominationId]);
 
   if (props.o.state.loadingInitial) {
-    return <PageLoader label="Loading draft board..." />;
+    return (
+      <Box className="baseline-page">
+        <Box className="baseline-pageInner">
+          <Stack gap="md" role="status" aria-label="Loading draft board">
+            <Skeleton height="96px" width="100%" />
+            <Box className="baseline-grid3Equal">
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-sm)" width="38%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+              </Stack>
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-sm)" width="32%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+              </Stack>
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-sm)" width="34%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+                <Skeleton height="40px" width="100%" />
+              </Stack>
+            </Box>
+          </Stack>
+        </Box>
+      </Box>
+    );
   }
 
   if (!props.o.header.status && props.o.state.error) {
