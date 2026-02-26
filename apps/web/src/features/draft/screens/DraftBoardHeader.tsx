@@ -394,7 +394,9 @@ export function DraftBoardHeader(props: {
                 if (!podium) return null;
                 const names = podium.names;
                 const currentName =
-                  names.length > 1 ? names[podiumCycleTick % names.length] ?? names[0] : names[0];
+                  names.length > 1
+                    ? (names[podiumCycleTick % names.length] ?? names[0])
+                    : names[0];
                 const isSide = place !== 1;
                 return (
                   <CenterBuckle
@@ -405,7 +407,13 @@ export function DraftBoardHeader(props: {
                     centerTypeLabel={place === 1 ? "Winner" : null}
                     centerTextRolling={names.length > 1}
                     centerTextKey={`podium-${place}-${podiumCycleTick % names.length}`}
-                    shiftPx={place === 2 ? podiumSideShiftPx : place === 3 ? -podiumSideShiftPx : 0}
+                    shiftPx={
+                      place === 2
+                        ? podiumSideShiftPx
+                        : place === 3
+                          ? -podiumSideShiftPx
+                          : 0
+                    }
                     zIndex={place === 1 ? 7 : place === 2 ? 5 : 4}
                     className={[
                       "is-podium",
@@ -446,7 +454,8 @@ export function DraftBoardHeader(props: {
                 props.isTimerDraft
                   ? null
                   : props.participants.reduce(
-                      (longest, p) => (p.label.length > longest.length ? p.label : longest),
+                      (longest, p) =>
+                        p.label.length > longest.length ? p.label : longest,
                       ""
                     )
               }

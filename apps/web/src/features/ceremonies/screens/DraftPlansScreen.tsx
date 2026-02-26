@@ -97,9 +97,9 @@ export function DraftPlansScreen(props: {
   const [uploadFilename, setUploadFilename] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadRows, setUploadRows] = useState<Array<{ category: string; nominee: string }>>(
-    []
-  );
+  const [uploadRows, setUploadRows] = useState<
+    Array<{ category: string; nominee: string }>
+  >([]);
 
   const ceremony = props.detail?.ceremony ?? null;
   const categories = props.detail?.categories ?? EMPTY_CATEGORIES;
@@ -187,12 +187,11 @@ export function DraftPlansScreen(props: {
     const m = new Map<number, string>();
     for (const n of nominations) {
       const cat = categoryById.get(n.category_edition_id);
-      const categoryName = String(cat?.name ?? `Category ${n.category_edition_id}`).trim();
+      const categoryName = String(
+        cat?.name ?? `Category ${n.category_edition_id}`
+      ).trim();
       const nominee = String(n.label ?? "").trim();
-      m.set(
-        n.id,
-        `${categoryName.toLocaleLowerCase()}||${nominee.toLocaleLowerCase()}`
-      );
+      m.set(n.id, `${categoryName.toLocaleLowerCase()}||${nominee.toLocaleLowerCase()}`);
     }
     return m;
   }, [categoryById, nominations]);
@@ -294,69 +293,69 @@ export function DraftPlansScreen(props: {
 
             <Box className="draft-plans-controls">
               <Box className="draft-plans-selectWrap">
-              <Combobox
-                store={combobox}
-                withinPortal
-                position="bottom-start"
-                middlewares={{ flip: true, shift: true }}
-                onOptionSubmit={async (value) => {
-                  if (value.startsWith("create:")) {
-                    const name = value.slice("create:".length);
-                    if (!name.trim()) return;
-                    await o.createPlan(name.trim());
-                    setPlanQuery("");
-                    combobox.closeDropdown();
-                    return;
-                  }
-                  const planId = Number(value);
-                  if (!Number.isFinite(planId)) return;
-                  await o.loadPlan(planId);
-                  combobox.closeDropdown();
-                }}
-              >
-                <Combobox.Target>
-                  <TextInput
-                    label="Plan name"
-                    placeholder="Choose a plan..."
-                    value={o.selectedPlanName ?? planQuery}
-                    onChange={(e) => {
-                      const v = e.currentTarget.value;
-                      setPlanQuery(v);
-                      // Editing the input implies selecting/searching.
-                      o.setSelectedPlanId(null);
-                      o.setSelectedPlanName(null);
-                      combobox.openDropdown();
-                      combobox.updateSelectedOptionIndex();
-                    }}
-                    onFocus={() => combobox.openDropdown()}
-                    rightSection={
-                      <Text component="span" className="gicon" aria-hidden="true">
-                        expand_more
-                      </Text>
+                <Combobox
+                  store={combobox}
+                  withinPortal
+                  position="bottom-start"
+                  middlewares={{ flip: true, shift: true }}
+                  onOptionSubmit={async (value) => {
+                    if (value.startsWith("create:")) {
+                      const name = value.slice("create:".length);
+                      if (!name.trim()) return;
+                      await o.createPlan(name.trim());
+                      setPlanQuery("");
+                      combobox.closeDropdown();
+                      return;
                     }
-                  />
-                </Combobox.Target>
+                    const planId = Number(value);
+                    if (!Number.isFinite(planId)) return;
+                    await o.loadPlan(planId);
+                    combobox.closeDropdown();
+                  }}
+                >
+                  <Combobox.Target>
+                    <TextInput
+                      label="Plan name"
+                      placeholder="Choose a plan..."
+                      value={o.selectedPlanName ?? planQuery}
+                      onChange={(e) => {
+                        const v = e.currentTarget.value;
+                        setPlanQuery(v);
+                        // Editing the input implies selecting/searching.
+                        o.setSelectedPlanId(null);
+                        o.setSelectedPlanName(null);
+                        combobox.openDropdown();
+                        combobox.updateSelectedOptionIndex();
+                      }}
+                      onFocus={() => combobox.openDropdown()}
+                      rightSection={
+                        <Text component="span" className="gicon" aria-hidden="true">
+                          expand_more
+                        </Text>
+                      }
+                    />
+                  </Combobox.Target>
 
-                <Combobox.Dropdown>
-                  <Combobox.Options>
-                    {planQuery.trim().length > 0 && (
-                      <Combobox.Option value={`create:${planQuery.trim()}`}>
-                        Create “{planQuery.trim()}”
-                      </Combobox.Option>
-                    )}
-                    {filteredPlans.map((p) => (
-                      <Combobox.Option key={p.id} value={String(p.id)}>
-                        {p.name}
-                      </Combobox.Option>
-                    ))}
-                    {filteredPlans.length === 0 && planQuery.trim().length === 0 ? (
-                      <Combobox.Empty>
-                        No plans yet. Type a name to create one.
-                      </Combobox.Empty>
-                    ) : null}
-                  </Combobox.Options>
-                </Combobox.Dropdown>
-              </Combobox>
+                  <Combobox.Dropdown>
+                    <Combobox.Options>
+                      {planQuery.trim().length > 0 && (
+                        <Combobox.Option value={`create:${planQuery.trim()}`}>
+                          Create “{planQuery.trim()}”
+                        </Combobox.Option>
+                      )}
+                      {filteredPlans.map((p) => (
+                        <Combobox.Option key={p.id} value={String(p.id)}>
+                          {p.name}
+                        </Combobox.Option>
+                      ))}
+                      {filteredPlans.length === 0 && planQuery.trim().length === 0 ? (
+                        <Combobox.Empty>
+                          No plans yet. Type a name to create one.
+                        </Combobox.Empty>
+                      ) : null}
+                    </Combobox.Options>
+                  </Combobox.Dropdown>
+                </Combobox>
               </Box>
               <Group gap="sm" wrap="nowrap" className="draft-plans-actions">
                 <Button
@@ -387,7 +386,8 @@ export function DraftPlansScreen(props: {
                     const a = document.createElement("a");
                     const url = URL.createObjectURL(blob);
                     a.href = url;
-                    const base = (o.selectedPlanName ?? "draft-plan").trim() || "draft-plan";
+                    const base =
+                      (o.selectedPlanName ?? "draft-plan").trim() || "draft-plan";
                     a.download = `${base.replace(/[^\w.-]+/g, "_")}.csv`;
                     document.body.appendChild(a);
                     a.click();
@@ -482,7 +482,11 @@ export function DraftPlansScreen(props: {
                                     Math.max(0, nextIndex - 1)
                                   );
                                   if (oldIndex === target) return;
-                                  const next = arrayMove(effectiveOrder, oldIndex, target);
+                                  const next = arrayMove(
+                                    effectiveOrder,
+                                    oldIndex,
+                                    target
+                                  );
                                   o.setOrder(next);
                                   await o.saveOrder(o.selectedPlanId!, next);
                                 }}

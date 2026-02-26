@@ -43,8 +43,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
                       component={Link}
                       to={row.to}
                       fw="var(--fo-font-weight-semibold)"
-                      className="baseline-textBody"
-                      style={{ textDecoration: "none", color: "inherit" }}
+                      className={["baseline-textBody", "admin-cardHeadingLink"].join(" ")}
                     >
                       {row.title}
                     </Text>

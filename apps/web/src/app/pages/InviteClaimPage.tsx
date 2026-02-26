@@ -114,7 +114,11 @@ export function InviteClaimPage() {
                 </Box>
                 {result && !result.ok ? <PageError message={result.message} /> : null}
                 <Stack gap="xs">
-                  <Button type="button" onClick={() => void onAcceptInvite()} disabled={loading}>
+                  <Button
+                    type="button"
+                    onClick={() => void onAcceptInvite()}
+                    disabled={loading}
+                  >
                     {loading ? "Working..." : "Accept invite"}
                   </Button>
                   <Button

@@ -8,7 +8,10 @@ import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 
-export function registerAdminLeagueDeleteRoutes(args: { router: Router; client: DbClient }) {
+export function registerAdminLeagueDeleteRoutes(args: {
+  router: Router;
+  client: DbClient;
+}) {
   const { router, client } = args;
 
   router.get(

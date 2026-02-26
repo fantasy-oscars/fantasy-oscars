@@ -163,10 +163,7 @@ function RoutesConfig() {
             </RequireAuth>
           }
         />
-        <Route
-          path="/invites/:token"
-          element={<InviteClaimPage />}
-        />
+        <Route path="/invites/:token" element={<InviteClaimPage />} />
         <Route
           path="/invites"
           element={

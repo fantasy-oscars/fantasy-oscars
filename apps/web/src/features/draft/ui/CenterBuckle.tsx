@@ -24,14 +24,14 @@ export function CenterBuckle(props: {
 
   useCssVars(elRef, {
     "--drh-buckle-max": `${centerPx}px`,
-    "--drh-buckle-shift-x": `${props.shiftPx ?? 0}px`
+    "--drh-buckle-shift-x": `${props.shiftPx ?? 0}px`,
+    "--drh-buckle-z-index": String(props.zIndex ?? 3)
   });
 
   return (
     <Box
       className={["drh-buckle", props.className ?? ""].join(" ")}
       data-mode={props.isTimerDraft ? "timer" : "non-timer"}
-      style={props.zIndex != null ? { zIndex: props.zIndex } : undefined}
       ref={elRef}
     >
       {props.roundNumber !== null && (

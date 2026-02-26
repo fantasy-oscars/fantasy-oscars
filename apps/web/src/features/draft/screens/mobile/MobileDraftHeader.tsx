@@ -133,7 +133,13 @@ export function MobileDraftHeader(props: {
   const canShowRosterLink = props.canToggleView;
 
   return (
-    <Box className={["dr-header", "dr-mobileHeader", showMobilePodium ? "is-podium" : ""].join(" ")}>
+    <Box
+      className={[
+        "dr-header",
+        "dr-mobileHeader",
+        showMobilePodium ? "is-podium" : ""
+      ].join(" ")}
+    >
       <Box
         className={[
           "dr-mobileBar",
@@ -227,7 +233,7 @@ export function MobileDraftHeader(props: {
           {podiumPositions.map((p) => {
             const currentName =
               p.names.length > 1
-                ? p.names[podiumCycleTick % p.names.length] ?? p.names[0]
+                ? (p.names[podiumCycleTick % p.names.length] ?? p.names[0])
                 : p.names[0];
             return (
               <Box
@@ -239,9 +245,10 @@ export function MobileDraftHeader(props: {
               >
                 <Text
                   key={`mobile-podium-text-${p.place}-${podiumCycleTick % p.names.length}`}
-                  className={["drm-podiumText", p.names.length > 1 ? "is-rolling" : ""].join(
-                    " "
-                  )}
+                  className={[
+                    "drm-podiumText",
+                    p.names.length > 1 ? "is-rolling" : ""
+                  ].join(" ")}
                   lineClamp={1}
                 >
                   {currentName}

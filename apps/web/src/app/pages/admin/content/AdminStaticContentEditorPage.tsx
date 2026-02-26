@@ -1,8 +1,5 @@
 import { useParams } from "react-router-dom";
-import {
-  canEditStaticContentByRole,
-  type StaticKey
-} from "@/decisions/adminContent";
+import { canEditStaticContentByRole, type StaticKey } from "@/decisions/adminContent";
 import { useAdminStaticContentEditorOrchestration } from "@/orchestration/adminContent";
 import { AdminStaticContentEditorScreen } from "@/features/admin/screens/content/AdminStaticContentEditorScreen";
 import { useAuthContext } from "@/auth/context";
@@ -14,10 +11,12 @@ export function AdminStaticContentEditorPage() {
   const { user } = useAuthContext();
   const key = keyRaw as StaticKey | undefined;
   const role = normalizeAdminRole(user?.admin_role, Boolean(user?.is_admin));
-  if (key && !canEditStaticContentByRole({ role, key })) {
+  const forbidden = Boolean(key && !canEditStaticContentByRole({ role, key }));
+  const o = useAdminStaticContentEditorOrchestration({ key: key ?? null });
+  if (forbidden) {
     return <PageError message="Super admin access required for this content." />;
   }
-  const o = useAdminStaticContentEditorOrchestration({ key: key ?? null });
+
   return (
     <AdminStaticContentEditorScreen
       contentKey={key ?? null}

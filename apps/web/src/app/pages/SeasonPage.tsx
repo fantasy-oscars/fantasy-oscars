@@ -92,9 +92,12 @@ export function SeasonPage() {
     async function resolveSeasonId() {
       setResolving(true);
       setResolveError(null);
-      const res = await fetchJson<{ seasons: SeasonSummary[] }>(`/leagues/${leagueId}/seasons`, {
-        method: "GET"
-      });
+      const res = await fetchJson<{ seasons: SeasonSummary[] }>(
+        `/leagues/${leagueId}/seasons`,
+        {
+          method: "GET"
+        }
+      );
       if (cancelled) return;
       setResolving(false);
       if (!res.ok) {
@@ -104,8 +107,7 @@ export function SeasonPage() {
       }
 
       const matches = (res.data?.seasons ?? []).filter(
-        (s) =>
-          ceremonyCodeSlug(s.ceremony_code ?? String(s.ceremony_id)) === ceremonySlug
+        (s) => ceremonyCodeSlug(s.ceremony_code ?? String(s.ceremony_id)) === ceremonySlug
       );
       if (matches.length === 0) {
         setResolveError("Season not found");
@@ -117,8 +119,7 @@ export function SeasonPage() {
       const chosen =
         extant ??
         [...matches].sort(
-          (a, b) =>
-            Date.parse(b.created_at ?? "") - Date.parse(a.created_at ?? "")
+          (a, b) => Date.parse(b.created_at ?? "") - Date.parse(a.created_at ?? "")
         )[0];
       setResolvedSeasonId(chosen?.id ?? null);
     }

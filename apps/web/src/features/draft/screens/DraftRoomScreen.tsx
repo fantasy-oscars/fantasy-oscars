@@ -101,7 +101,11 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const draftedMetaByNominationId = useMemo(() => {
     const m = new Map<
       number,
-      { draftedByLabel: string; draftedByAvatarKey: string | null; draftedRoundPick: string }
+      {
+        draftedByLabel: string;
+        draftedByAvatarKey: string | null;
+        draftedRoundPick: string;
+      }
     >();
     for (const row of props.o.ledger.rows) {
       if (row.nominationId == null) continue;

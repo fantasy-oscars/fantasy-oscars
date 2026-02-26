@@ -60,12 +60,14 @@ export function DraftMyRosterRail(props: {
                   const nominee = props.nomineeById.get(p.nominationId) ?? null;
                   const pill = (
                     <Box
-                    className={[
-                      "dr-pill",
-                      "dr-pill-static",
-                      props.hoveredNominationIds.has(p.nominationId) ? "is-hoverMatch" : "",
-                      p.winner ? "is-winner" : ""
-                    ]
+                      className={[
+                        "dr-pill",
+                        "dr-pill-static",
+                        props.hoveredNominationIds.has(p.nominationId)
+                          ? "is-hoverMatch"
+                          : "",
+                        p.winner ? "is-winner" : ""
+                      ]
                         .filter(Boolean)
                         .join(" ")}
                       tabIndex={nominee ? 0 : undefined}

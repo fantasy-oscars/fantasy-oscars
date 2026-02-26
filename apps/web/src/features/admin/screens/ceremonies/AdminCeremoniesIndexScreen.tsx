@@ -23,7 +23,9 @@ export function AdminCeremoniesIndexScreen(props: {
   status: ApiResult | null;
   onCreate: () => void;
   onDelete: (id: number) => void;
-  onLoadDeletePreview: (id: number) => Promise<
+  onLoadDeletePreview: (
+    id: number
+  ) => Promise<
     | { ok: true; preview: { ceremonyName: string; seasonsRemoved: number } }
     | { ok: false; error: string }
   >;

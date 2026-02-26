@@ -2,11 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../errors.js";
 import { query } from "../data/db.js";
 import { TokenClaims, verifyToken } from "./token.js";
-import {
-  hasOperatorAccess,
-  hasSuperAdminAccess,
-  normalizeAdminRole
-} from "./roles.js";
+import { hasOperatorAccess, hasSuperAdminAccess, normalizeAdminRole } from "./roles.js";
 
 export type AuthedRequest = Request & { auth?: TokenClaims };
 
@@ -47,7 +43,11 @@ export function requireAuth(secret: string) {
         let rows: Array<{ id: number; is_admin: boolean; admin_role?: string | null }> =
           [];
         try {
-          const res = await query<{ id: number; is_admin: boolean; admin_role: string | null }>(
+          const res = await query<{
+            id: number;
+            is_admin: boolean;
+            admin_role: string | null;
+          }>(
             db as never,
             `SELECT id::int, is_admin, admin_role
              FROM app_user
@@ -60,7 +60,9 @@ export function requireAuth(secret: string) {
           const pgErr = err as { code?: string; message?: string };
           const missingAdminRole =
             pgErr.code === "42703" &&
-            String(pgErr.message ?? "").toLowerCase().includes("admin_role");
+            String(pgErr.message ?? "")
+              .toLowerCase()
+              .includes("admin_role");
           if (!missingAdminRole) throw err;
           const res = await query<{ id: number; is_admin: boolean }>(
             db as never,

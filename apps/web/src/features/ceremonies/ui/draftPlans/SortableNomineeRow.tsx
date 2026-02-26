@@ -87,7 +87,11 @@ export function SortableNomineeRow(props: {
           >
             <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
               <Box className="draft-plan-indexWrap">
-                <Text component="span" className="draft-plan-indexValue" aria-hidden="true">
+                <Text
+                  component="span"
+                  className="draft-plan-indexValue"
+                  aria-hidden="true"
+                >
                   {props.index}
                 </Text>
                 <Box

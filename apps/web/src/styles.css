@@ -334,7 +334,7 @@ body {
 }
 
 .drm-podiumBar {
-  min-height: 34px;
+  min-height: 2.125rem;
   border-radius: var(--fo-radius-pill);
   display: flex;
   align-items: center;
@@ -658,7 +658,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   align-items: center;
   gap: var(--fo-db-buckleGap);
   border-radius: var(--fo-radius-pill);
-  z-index: 3;
+  z-index: var(--drh-buckle-z-index, 3);
 
   /* Buckle depth model (same structure across themes; token values vary). */
   --drh-buckle-base: var(--fo-surface-card-primary);
@@ -674,7 +674,6 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
       var(--drh-buckle-contact),
     inset 0 var(--fo-border-width) 0 rgba(255, 255, 255, var(--fo-alpha-14)),
     inset 0 calc(-1 * var(--fo-border-width)) 0 rgba(0, 0, 0, var(--fo-alpha-10));
-  z-index: 3;
 }
 
 .drh-buckle.is-fixed {
@@ -723,7 +722,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .drh-buckle.is-podium-side {
-  opacity: 0.97;
+  opacity: var(--fo-alpha-100);
 }
 
 /* Countdown pulse (5s window): toggled via class in sync with beeps. */
@@ -901,8 +900,8 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 .draft-plan-indexWrap {
   position: relative;
-  width: 30px;
-  height: 24px;
+  width: 1.875rem;
+  height: 1.5rem;
   flex: 0 0 auto;
 }
 .draft-plan-indexValue {
@@ -961,7 +960,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 .draft-plans-selectWrap {
   width: 33%;
-  min-width: 260px;
+  min-width: 16.25rem;
 }
 .draft-plans-actions {
   margin-left: auto;
@@ -2520,6 +2519,15 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .admin-navDrawerLink {
   padding-top: calc(var(--fo-gutter-mobile) * 0.45);
   padding-bottom: calc(var(--fo-gutter-mobile) * 0.45);
+}
+
+.admin-cardHeadingLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.admin-usersRoleActions {
+  margin-left: auto;
 }
 
 .nav-actions {

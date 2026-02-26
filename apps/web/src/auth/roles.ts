@@ -7,7 +7,9 @@ export function normalizeAdminRole(input: unknown, isAdminFallback = false): Adm
   return isAdminFallback ? "SUPER_ADMIN" : "NONE";
 }
 
-export function hasOperatorAccess(user: { admin_role?: unknown; is_admin?: boolean } | null) {
+export function hasOperatorAccess(
+  user: { admin_role?: unknown; is_admin?: boolean } | null
+) {
   if (!user) return false;
   const role = normalizeAdminRole(user.admin_role, Boolean(user.is_admin));
   return role === "OPERATOR" || role === "SUPER_ADMIN";

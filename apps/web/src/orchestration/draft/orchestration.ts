@@ -352,10 +352,6 @@ export function useDraftRoomOrchestration(args: {
           : (winnerCountBySeat.get(s.seat_number) ?? 0)
     }));
     if (!scores.length) return [];
-    const bestScore =
-      scoringStrategyName === "negative"
-        ? Math.min(...scores.map((s) => s.score))
-        : Math.max(...scores.map((s) => s.score));
     const rankScores = Array.from(new Set(scores.map((s) => s.score))).sort((a, b) =>
       scoringStrategyName === "negative" ? a - b : b - a
     );
@@ -379,10 +375,7 @@ export function useDraftRoomOrchestration(args: {
     if (!isFinalResults || firstPlace.length === 0) return null;
     if (firstPlace.length === 1) return firstPlace[0];
     return `Tie: ${firstPlace.join(", ")}`;
-  }, [
-    isFinalResults,
-    resultsPodium
-  ]);
+  }, [isFinalResults, resultsPodium]);
 
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;

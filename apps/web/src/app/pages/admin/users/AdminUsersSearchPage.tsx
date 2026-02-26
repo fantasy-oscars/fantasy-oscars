@@ -89,7 +89,10 @@ export function AdminUsersSearchPage() {
         ]}
         confirmPhrase="DELETE"
         confirmLabel="Delete user"
-        loading={deleteLoading || Boolean(deleteUserTarget && o.updatingById[deleteUserTarget.id])}
+        loading={
+          deleteLoading ||
+          Boolean(deleteUserTarget && o.updatingById[deleteUserTarget.id])
+        }
         error={deletePreviewError}
         onConfirm={async () => {
           if (!deleteUserTarget) return;

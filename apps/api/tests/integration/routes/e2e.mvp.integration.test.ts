@@ -279,7 +279,7 @@ describe("MVP end-to-end flow", () => {
     // First winner entry locks the ceremony and cancels any in-progress drafts.
     expect(blockedPick.json.error.code).toBe("DRAFT_NOT_IN_PROGRESS");
 
-    // Standings reflect winner
+    // Standings remain neutral because draft cancellation purges partial picks.
     const standingsRes = await getJson<{
       standings: Array<{
         seat_number: number;
@@ -290,9 +290,13 @@ describe("MVP end-to-end flow", () => {
     }>(`/drafts/${draftId}/standings`, commishLogin.json.token);
     expect(standingsRes.status).toBe(200);
     const seatOne = standingsRes.json.standings.find((s) => s.seat_number === 1)!;
-    expect(seatOne.points).toBeGreaterThan(0);
+    expect(seatOne.points).toBe(0);
+    expect(seatOne.picks).toHaveLength(0);
     const seatTwo = standingsRes.json.standings.find((s) => s.seat_number === 2)!;
     expect(seatTwo.points).toBe(0);
-    expect(standingsRes.json.results.find((r) => r.nomination_id === 1)?.won).toBe(true);
+    expect(seatTwo.picks).toHaveLength(0);
+    expect(
+      standingsRes.json.results.find((r) => r.nomination_id === 1)?.won ?? false
+    ).toBe(false);
   });
 });

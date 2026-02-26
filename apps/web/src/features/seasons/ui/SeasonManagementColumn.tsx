@@ -8,12 +8,16 @@ export function SeasonManagementColumn(props: {
   onOpenDraftSettings: () => void;
   onOpenDelete: () => void;
 }) {
-  const { isLocked, isDeleteLocked, working, onOpenInvites, onOpenDraftSettings, onOpenDelete } =
-    props;
+  const {
+    isLocked,
+    isDeleteLocked,
+    working,
+    onOpenInvites,
+    onOpenDraftSettings,
+    onOpenDelete
+  } = props;
   const deleteDisabled = working || isDeleteLocked;
-  const deleteTitle = isDeleteLocked
-    ? "Completed drafts cannot be deleted"
-    : undefined;
+  const deleteTitle = isDeleteLocked ? "Completed drafts cannot be deleted" : undefined;
   return (
     <Stack gap="sm">
       <Title order={3} className="baseline-textSectionHeader">

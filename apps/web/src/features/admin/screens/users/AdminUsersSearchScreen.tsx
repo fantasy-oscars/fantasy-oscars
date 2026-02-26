@@ -132,7 +132,12 @@ export function AdminUsersSearchScreen(props: {
                     {u.username}
                   </Text>
                 </Box>
-                <Group gap="xs" justify="flex-end" wrap="nowrap" style={{ marginLeft: "auto" }}>
+                <Group
+                  gap="xs"
+                  justify="flex-end"
+                  wrap="nowrap"
+                  className="admin-usersRoleActions"
+                >
                   <Select
                     aria-label="Role"
                     data={[

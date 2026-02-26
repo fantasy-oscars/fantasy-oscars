@@ -15,7 +15,10 @@ export function parsePositiveIntParam(raw: string | null | undefined): number | 
   return parsed;
 }
 
-export function leaguePath(input: { leagueId: number; leagueName?: string | null }): string {
+export function leaguePath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+}): string {
   return `/leagues/${input.leagueId}/${slugifyPathSegment(input.leagueName ?? "")}`;
 }
 

@@ -110,7 +110,10 @@ export function SeasonInvitesModal(props: {
         ) : (
           <Stack className="list" gap="sm">
             {visibleInvites.map((invite) => (
-              <Box key={invite.id} className={["list-row", "season-invite-row"].join(" ")}>
+              <Box
+                key={invite.id}
+                className={["list-row", "season-invite-row"].join(" ")}
+              >
                 <Text className="season-invite-name">{invite.label ?? "No label"}</Text>
 
                 <Group className="season-invite-actions" wrap="wrap">

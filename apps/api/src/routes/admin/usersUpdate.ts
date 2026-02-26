@@ -50,14 +50,14 @@ export function registerAdminUsersUpdateRoute({
       if (!user) throw new AppError("NOT_FOUND", 404, "User not found");
 
       if (req.auth?.sub) {
-          await insertAdminAudit(client as Pool, {
-            actor_user_id: Number(req.auth.sub),
-            action: "set_admin_role",
-            target_type: "user",
-            target_id: user.id,
-            meta: { username: user.username, admin_role: user.admin_role }
-          });
-        }
+        await insertAdminAudit(client as Pool, {
+          actor_user_id: Number(req.auth.sub),
+          action: "set_admin_role",
+          target_type: "user",
+          target_id: user.id,
+          meta: { username: user.username, admin_role: user.admin_role }
+        });
+      }
       return res.status(200).json({ user });
     } catch (err) {
       next(err);

@@ -574,9 +574,7 @@ export function useSeasonOrchestration(seasonId: number, userSub?: string) {
         durability: "ephemeral",
         requires_decision: false,
         message:
-          successCount === 1
-            ? "Created 1 invite"
-            : `Created ${successCount} invites`
+          successCount === 1 ? "Created 1 invite" : `Created ${successCount} invites`
       });
     }
 

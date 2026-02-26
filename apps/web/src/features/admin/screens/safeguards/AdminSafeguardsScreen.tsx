@@ -21,11 +21,15 @@ type DeleteModalState = {
 };
 
 export function AdminSafeguardsScreen() {
-  const [ceremonyOptions, setCeremonyOptions] = useState<Array<{ value: string; label: string }>>(
-    []
-  );
-  const [seasonOptions, setSeasonOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [leagueOptions, setLeagueOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [ceremonyOptions, setCeremonyOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [seasonOptions, setSeasonOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+  const [leagueOptions, setLeagueOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
 
   const [ceremonySelectedId, setCeremonySelectedId] = useState<string | null>(null);
   const [seasonSelectedId, setSeasonSelectedId] = useState<string | null>(null);
@@ -44,7 +48,12 @@ export function AdminSafeguardsScreen() {
       setLoadingLists(true);
       const [ceremoniesRes, seasonsRes, leaguesRes] = await Promise.all([
         fetchJson<{
-          ceremonies: Array<{ id: number; code: string; name: string; year?: number | null }>;
+          ceremonies: Array<{
+            id: number;
+            code: string;
+            name: string;
+            year?: number | null;
+          }>;
         }>("/admin/ceremonies", { method: "GET" }),
         fetchJson<{
           seasons: Array<{
@@ -66,7 +75,10 @@ export function AdminSafeguardsScreen() {
         setStatus({
           ok: false,
           message:
-            ceremoniesRes.error ?? seasonsRes.error ?? leaguesRes.error ?? "Failed to load options"
+            ceremoniesRes.error ??
+            seasonsRes.error ??
+            leaguesRes.error ??
+            "Failed to load options"
         });
         return;
       }
@@ -127,7 +139,10 @@ export function AdminSafeguardsScreen() {
       title: "Delete ceremony?",
       summary: `Deleting "${res.data.ceremony.name}" removes the ceremony and all associated seasons.`,
       consequences: [
-        { label: "Seasons removed", value: Number(res.data.consequences.seasons_removed ?? 0) }
+        {
+          label: "Seasons removed",
+          value: Number(res.data.consequences.seasons_removed ?? 0)
+        }
       ]
     });
   }
@@ -182,7 +197,10 @@ export function AdminSafeguardsScreen() {
       title: "Delete league?",
       summary: `Deleting "${res.data.league.name}" removes the league and all contained seasons.`,
       consequences: [
-        { label: "Seasons removed", value: Number(res.data.consequences.seasons_removed ?? 0) }
+        {
+          label: "Seasons removed",
+          value: Number(res.data.consequences.seasons_removed ?? 0)
+        }
       ]
     });
   }
@@ -309,7 +327,9 @@ export function AdminSafeguardsScreen() {
         </Stack>
       </StandardCard>
 
-      {status ? <Alert color={status.ok ? "green" : "red"}>{status.message}</Alert> : null}
+      {status ? (
+        <Alert color={status.ok ? "green" : "red"}>{status.message}</Alert>
+      ) : null}
 
       <DestructiveActionModal
         opened={open}
