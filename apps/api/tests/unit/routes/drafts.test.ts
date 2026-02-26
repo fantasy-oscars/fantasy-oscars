@@ -845,8 +845,20 @@ describe("GET /drafts/:id/snapshot", () => {
       },
       ceremony_id: 99,
       seats: [
-        { seat_number: 1, user_id: 201, league_member_id: 11, label: "u1", active: true },
-        { seat_number: 2, user_id: 202, league_member_id: 12, label: "u2", active: false }
+        {
+          seat_number: 1,
+          user_id: 201,
+          league_member_id: 11,
+          username: "u1",
+          avatar_key: null
+        },
+        {
+          seat_number: 2,
+          user_id: 202,
+          league_member_id: 12,
+          username: "u2",
+          avatar_key: null
+        }
       ],
       participants: [],
       categories: [],
