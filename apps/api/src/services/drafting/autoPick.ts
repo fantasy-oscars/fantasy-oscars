@@ -339,7 +339,31 @@ export async function autoPickIfExpired(options: {
 }) {
   const { tx, draft, season, league } = options;
   if (draft.status !== "IN_PROGRESS") return draft;
-  if (!draft.pick_deadline_at || draft.pick_timer_seconds === null) return draft;
+  if (draft.pick_timer_seconds === null) return draft;
+  if (!draft.pick_deadline_at) {
+    const deadline = computeDeadline(new Date(), draft.pick_timer_seconds);
+    const timerUpdated = await updateDraftTimer(tx, draft.id, deadline, null);
+    const nextDraft: DraftRecord = {
+      ...draft,
+      pick_deadline_at: timerUpdated?.pick_deadline_at ?? deadline,
+      pick_timer_remaining_ms: null
+    };
+    if (nextDraft.pick_deadline_at) {
+      const event = await createDraftEvent(tx, {
+        draft_id: draft.id,
+        event_type: "draft.timer.deadline_set",
+        payload: {
+          draft: {
+            status: nextDraft.status,
+            current_pick_number: nextDraft.current_pick_number,
+            pick_deadline_at: nextDraft.pick_deadline_at
+          }
+        }
+      });
+      emitDraftEvent(event);
+    }
+    return nextDraft;
+  }
   const deadlineMs = new Date(draft.pick_deadline_at).getTime();
   if (!Number.isFinite(deadlineMs)) return draft;
   if (Date.now() <= deadlineMs) return draft;

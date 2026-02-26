@@ -20,6 +20,7 @@ export function ShellHeader(props: {
     sub: string;
     username: string | null;
     is_admin: boolean;
+    admin_role?: "NONE" | "OPERATOR" | "SUPER_ADMIN";
     avatar_key: string | null;
   };
   loading: boolean;

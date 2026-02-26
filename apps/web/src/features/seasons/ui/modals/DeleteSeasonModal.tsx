@@ -1,29 +1,26 @@
-import { Button, Group, Modal, Stack, Text } from "@ui";
+import { DestructiveActionModal } from "@/shared/modals/DestructiveActionModal";
 
 export function DeleteSeasonModal(props: {
   opened: boolean;
   onClose: () => void;
   working: boolean;
   onConfirm: () => void | Promise<void>;
+  error?: string | null;
 }) {
-  const { opened, onClose, working, onConfirm } = props;
+  const { opened, onClose, working, onConfirm, error } = props;
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Delete season?" centered>
-      <Stack gap="md">
-        <Text>
-          Delete this season? This cancels the season and blocks drafting. This cannot be
-          undone.
-        </Text>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button color="red" onClick={() => void onConfirm()} disabled={working}>
-            Delete season
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+    <DestructiveActionModal
+      opened={opened}
+      onClose={onClose}
+      title="Delete season?"
+      summary="Deleting this season cancels it and blocks drafting for this league/ceremony pairing."
+      consequences={[{ label: "Seasons removed", value: 1 }]}
+      confirmPhrase="DELETE"
+      confirmLabel="Delete season"
+      loading={working}
+      error={error}
+      onConfirm={() => void onConfirm()}
+    />
   );
 }

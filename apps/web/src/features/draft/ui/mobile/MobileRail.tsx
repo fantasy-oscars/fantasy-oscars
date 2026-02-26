@@ -105,6 +105,9 @@ export function MobileRail(props: {
                         performerProfileUrl={nominee.performerProfileUrl}
                         performerProfilePath={nominee.performerProfilePath}
                         songTitle={nominee.songTitle}
+                        draftedByLabel={nominee.draftedByLabel}
+                        draftedByAvatarKey={nominee.draftedByAvatarKey}
+                        draftedRoundPick={nominee.draftedRoundPick}
                       />
                     }
                   >
@@ -189,6 +192,9 @@ export function MobileRail(props: {
                         performerProfileUrl={nominee.performerProfileUrl}
                         performerProfilePath={nominee.performerProfilePath}
                         songTitle={nominee.songTitle}
+                        draftedByLabel={nominee.draftedByLabel}
+                        draftedByAvatarKey={nominee.draftedByAvatarKey}
+                        draftedRoundPick={nominee.draftedRoundPick}
                       />
                     }
                   >
@@ -316,6 +322,9 @@ export function MobileRail(props: {
                           performerProfileUrl={nominee.performerProfileUrl}
                           performerProfilePath={nominee.performerProfilePath}
                           songTitle={nominee.songTitle}
+                          draftedByLabel={nominee.draftedByLabel}
+                          draftedByAvatarKey={nominee.draftedByAvatarKey}
+                          draftedRoundPick={nominee.draftedRoundPick}
                         />
                       }
                     >

@@ -11,6 +11,7 @@ export type DraftScreenCategory = {
     id: string;
     label: string;
     muted: boolean;
+    selected: boolean;
     winner: boolean;
     posterUrl: string | null;
     filmTitle: string | null;
@@ -21,6 +22,9 @@ export type DraftScreenCategory = {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }>;
 };
 
@@ -40,6 +44,9 @@ export type NomineeMetaById = Map<
     songTitle: string | null;
     categoryIcon: string;
     categoryIconVariant: "default" | "inverted";
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }
 >;
 
@@ -57,6 +64,7 @@ export function mapDraftScreenCategories(
       id: String(n.id),
       label: n.label,
       muted: n.muted,
+      selected: n.selected,
       winner: n.winner,
       posterUrl: n.posterUrl ?? null,
       filmTitle: n.filmTitle ?? null,

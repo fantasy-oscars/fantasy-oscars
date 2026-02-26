@@ -91,6 +91,26 @@ export function useAdminCeremoniesIndexOrchestration() {
     [refresh]
   );
 
+  const getDeletePreview = useCallback(async (id: number) => {
+    if (!Number.isFinite(id) || id <= 0) {
+      return { ok: false as const, error: "Invalid ceremony id" };
+    }
+    const res = await fetchJson<{
+      ceremony: { id: number; name: string };
+      consequences: { seasons_removed: number };
+    }>(`/admin/ceremonies/${id}/delete-preview`, { method: "GET" });
+    if (!res.ok || !res.data?.ceremony || !res.data?.consequences) {
+      return { ok: false as const, error: res.error ?? "Failed to load delete preview" };
+    }
+    return {
+      ok: true as const,
+      preview: {
+        ceremony: res.data.ceremony,
+        seasonsRemoved: Number(res.data.consequences.seasons_removed ?? 0)
+      }
+    };
+  }, []);
+
   return {
     state,
     error,
@@ -100,6 +120,7 @@ export function useAdminCeremoniesIndexOrchestration() {
     workingId,
     status,
     createDraftCeremony,
-    deleteCeremony
+    deleteCeremony,
+    getDeletePreview
   };
 }

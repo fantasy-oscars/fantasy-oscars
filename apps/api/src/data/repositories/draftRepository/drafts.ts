@@ -165,16 +165,31 @@ export async function cancelDraftsForCeremony(
 ): Promise<Array<{ id: number; season_id: number; status: string }>> {
   const { rows } = await query<{ id: number; season_id: number; status: string }>(
     client,
-    `UPDATE draft d
-     SET status = 'CANCELLED',
-         completed_at = COALESCE(completed_at, now()),
-         pick_deadline_at = NULL,
-         pick_timer_remaining_ms = NULL
-     FROM season s
-     WHERE s.id = d.season_id
-       AND s.ceremony_id = $1
-       AND d.status IN ('PENDING','IN_PROGRESS','PAUSED')
-     RETURNING d.id::int, d.season_id::int AS season_id, d.status`,
+    `WITH cancelled AS (
+       UPDATE draft d
+       SET status = 'CANCELLED',
+           completed_at = COALESCE(completed_at, now()),
+           current_pick_number = NULL,
+           pick_deadline_at = NULL,
+           pick_timer_remaining_ms = NULL
+       FROM season s
+       WHERE s.id = d.season_id
+         AND s.ceremony_id = $1
+         AND d.status IN ('PENDING','IN_PROGRESS','PAUSED')
+       RETURNING d.id::int, d.season_id::int AS season_id, d.status
+     ),
+     purged_picks AS (
+       DELETE FROM draft_pick dp
+       USING cancelled c
+       WHERE dp.draft_id = c.id
+     ),
+     purged_results AS (
+       DELETE FROM draft_result dr
+       USING cancelled c
+       WHERE dr.draft_id = c.id
+     )
+     SELECT c.id, c.season_id, c.status
+     FROM cancelled c`,
     [ceremonyId]
   );
   return rows;

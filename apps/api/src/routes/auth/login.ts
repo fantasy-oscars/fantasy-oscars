@@ -7,6 +7,7 @@ import {
 import { query, type DbClient } from "../../data/db.js";
 import { AppError, validationError } from "../../errors.js";
 import { signToken } from "../../auth/token.js";
+import { normalizeAdminRole } from "../../auth/roles.js";
 import { verifyPassword } from "./password.js";
 import { isMissingColumnError } from "./pgErrors.js";
 import type { AuthCookieConfig } from "./logout.js";
@@ -48,10 +49,11 @@ export function registerAuthLoginRoute(args: {
           (
             await query(
               client,
-              `SELECT u.id, u.username, u.email, u.is_admin, u.avatar_key, p.password_hash, p.password_algo
+              `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
-               WHERE lower(u.username) = $1`,
+               WHERE lower(u.username) = $1
+                 AND u.deleted_at IS NULL`,
               [normalizedUsername]
             )
           ).rows as unknown[],
@@ -59,10 +61,11 @@ export function registerAuthLoginRoute(args: {
           (
             await query(
               client,
-              `SELECT u.id, u.username, u.email, false AS is_admin, u.avatar_key, p.password_hash, p.password_algo
+              `SELECT u.id, u.username, u.email, false AS is_admin, NULL::text AS admin_role, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
-               WHERE lower(u.username) = $1`,
+               WHERE lower(u.username) = $1
+                 AND u.deleted_at IS NULL`,
               [normalizedUsername]
             )
           ).rows as unknown[],
@@ -70,10 +73,11 @@ export function registerAuthLoginRoute(args: {
           (
             await query(
               client,
-              `SELECT u.id, u.handle AS username, u.email, u.is_admin, p.password_hash, p.password_algo
+              `SELECT u.id, u.handle AS username, u.email, u.is_admin, u.admin_role, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
-               WHERE lower(u.handle) = $1`,
+               WHERE lower(u.handle) = $1
+                 AND u.deleted_at IS NULL`,
               [normalizedUsername]
             )
           ).rows as unknown[],
@@ -81,10 +85,11 @@ export function registerAuthLoginRoute(args: {
           (
             await query(
               client,
-              `SELECT u.id, u.handle AS username, u.email, false AS is_admin, p.password_hash, p.password_algo
+              `SELECT u.id, u.handle AS username, u.email, false AS is_admin, NULL::text AS admin_role, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
-               WHERE lower(u.handle) = $1`,
+               WHERE lower(u.handle) = $1
+                 AND u.deleted_at IS NULL`,
               [normalizedUsername]
             )
           ).rows as unknown[]
@@ -101,6 +106,7 @@ export function registerAuthLoginRoute(args: {
           // Only continue retrying on missing-column errors.
           if (
             !isMissingColumnError(err, "is_admin") &&
+            !isMissingColumnError(err, "admin_role") &&
             !isMissingColumnError(err, "username") &&
             !isMissingColumnError(err, "handle") &&
             !isMissingColumnError(err, "avatar_key")
@@ -114,6 +120,7 @@ export function registerAuthLoginRoute(args: {
           isMissingColumnError(lastErr, "username") ||
           isMissingColumnError(lastErr, "handle") ||
           isMissingColumnError(lastErr, "is_admin") ||
+          isMissingColumnError(lastErr, "admin_role") ||
           isMissingColumnError(lastErr, "avatar_key")
         ) {
           throw new AppError(
@@ -130,6 +137,7 @@ export function registerAuthLoginRoute(args: {
         username: string;
         email: string;
         is_admin: boolean;
+        admin_role?: string | null;
         avatar_key?: string | null;
         password_hash: string;
         password_algo: string;
@@ -147,11 +155,13 @@ export function registerAuthLoginRoute(args: {
 
       // Skeleton: return placeholder token (non-secure) for v0.
       const avatarKey = String(user.avatar_key ?? "monkey");
+      const adminRole = normalizeAdminRole(user.admin_role, Boolean(user.is_admin));
       const token = signToken(
         {
           sub: String(user.id),
           username: user.username,
-          is_admin: user.is_admin,
+          is_admin: adminRole !== "NONE",
+          admin_role: adminRole,
           avatar_key: avatarKey
         },
         authSecret,
@@ -169,7 +179,8 @@ export function registerAuthLoginRoute(args: {
           id: user.id,
           username: user.username,
           email: user.email,
-          is_admin: user.is_admin,
+          is_admin: adminRole !== "NONE",
+          admin_role: adminRole,
           avatar_key: avatarKey
         },
         token

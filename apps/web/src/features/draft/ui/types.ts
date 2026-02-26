@@ -12,6 +12,9 @@ export type DraftNomineeMeta = {
   songTitle: string | null;
   categoryIcon: string;
   categoryIconVariant: "default" | "inverted";
+  draftedByLabel?: string | null;
+  draftedByAvatarKey?: string | null;
+  draftedRoundPick?: string | null;
 };
 
 export type DraftLedgerRow = {

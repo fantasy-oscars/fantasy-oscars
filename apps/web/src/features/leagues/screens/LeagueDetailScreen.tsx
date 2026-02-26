@@ -156,7 +156,13 @@ export function LeagueDetailScreen(props: {
       draftStatus: s.draft_status,
       isActiveCeremony: s.is_active_ceremony
     });
-    return { id: s.id, ceremonyLabel, statusLabel };
+    return {
+      id: s.id,
+      ceremonyId: s.ceremony_id,
+      ceremonyCode: s.ceremony_code ?? null,
+      ceremonyLabel,
+      statusLabel
+    };
   });
 
   return (
@@ -177,6 +183,7 @@ export function LeagueDetailScreen(props: {
           <Box className="baseline-grid2Wide">
             <LeagueSeasonsSection
               leagueId={leagueId}
+              leagueName={league.name}
               canCreateSeason={view.isCommissioner}
               seasons={seasonCards}
             />
@@ -214,6 +221,7 @@ export function LeagueDetailScreen(props: {
             opened={deleteOpen}
             onClose={() => setDeleteOpen(false)}
             working={working}
+            seasonsRemoved={view.seasons.length}
             onConfirm={() => {
               void Promise.resolve(onDeleteLeague()).then(() => setDeleteOpen(false));
             }}

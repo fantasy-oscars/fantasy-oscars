@@ -3,6 +3,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { getStaticContentByKey } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
+import { assertStaticContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentStaticGetRoute({
   router,
@@ -15,6 +16,7 @@ export function registerAdminContentStaticGetRoute({
     try {
       const key = String(req.params.key ?? "").trim();
       if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      assertStaticContentAccess(req, key);
       const content = await getStaticContentByKey(client, key);
       return res.status(200).json({ content });
     } catch (err) {

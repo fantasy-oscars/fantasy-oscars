@@ -153,7 +153,7 @@ export function NominationEditPeopleSection(props: {
         const role = info.characters.length ? ` (as ${info.characters.join(" / ")})` : "";
         jobs.push(`Cast${role}`);
       }
-      const label = `${info.name} -- ${jobs.join(", ")}`;
+      const label = `${info.name} — ${jobs.join(", ")}`;
       opts.push({
         tmdb_id: tmdbId,
         name: info.name,

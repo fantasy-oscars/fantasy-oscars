@@ -56,6 +56,27 @@ export const DYNAMIC_META: Record<DynamicKey, { label: string; hint: string }> =
   }
 };
 
+const OPERATOR_STATIC_KEYS = new Set<StaticKey>(["landing_blurb"]);
+const OPERATOR_DYNAMIC_KEYS = new Set<DynamicKey>(["home_main", "banner"]);
+
+export function canEditStaticContentByRole(args: {
+  role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
+  key: StaticKey;
+}) {
+  if (args.role === "SUPER_ADMIN") return true;
+  if (args.role === "OPERATOR") return OPERATOR_STATIC_KEYS.has(args.key);
+  return false;
+}
+
+export function canEditDynamicContentByRole(args: {
+  role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
+  key: DynamicKey;
+}) {
+  if (args.role === "SUPER_ADMIN") return true;
+  if (args.role === "OPERATOR") return OPERATOR_DYNAMIC_KEYS.has(args.key);
+  return false;
+}
+
 export function formatDateTimeForHumans(value: string | null) {
   if (!value) return "";
   const d = new Date(value);

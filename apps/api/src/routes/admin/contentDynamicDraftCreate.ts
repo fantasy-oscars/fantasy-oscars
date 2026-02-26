@@ -5,6 +5,7 @@ import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { createDynamicDraft } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
+import { assertDynamicContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentDynamicDraftCreateRoute({
   router,
@@ -30,6 +31,7 @@ export function registerAdminContentDynamicDraftCreateRoute({
       const ends_at =
         typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
       if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      assertDynamicContentAccess(req, key);
       const actorId = Number(req.auth?.sub);
 
       const draft = await createDynamicDraft(client, {

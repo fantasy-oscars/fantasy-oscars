@@ -4,6 +4,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import { assertDynamicContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentDynamicEntryDeleteRoute({
   router,
@@ -19,6 +20,7 @@ export function registerAdminContentDynamicEntryDeleteRoute({
         const key = String(req.params.key ?? "").trim();
         const id = Number(req.params.id);
         if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        assertDynamicContentAccess(req, key);
         if (!Number.isInteger(id) || id <= 0) {
           throw new AppError("VALIDATION_FAILED", 400, "Invalid entry id");
         }

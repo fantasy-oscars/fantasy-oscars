@@ -16,6 +16,7 @@ export function DraftMyRosterRail(props: {
   openRailExclusive: (rail: "ledger" | "roster" | "auto") => void;
   myPicks: DraftRosterPick[];
   nomineeById: Map<number, DraftNomineeMeta>;
+  hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
@@ -62,6 +63,9 @@ export function DraftMyRosterRail(props: {
                       className={[
                         "dr-pill",
                         "dr-pill-static",
+                        props.hoveredNominationIds.has(p.nominationId)
+                          ? "is-hoverMatch"
+                          : "",
                         p.winner ? "is-winner" : ""
                       ]
                         .filter(Boolean)
@@ -114,6 +118,9 @@ export function DraftMyRosterRail(props: {
                               performerProfileUrl={nominee.performerProfileUrl}
                               performerProfilePath={nominee.performerProfilePath}
                               songTitle={nominee.songTitle}
+                              draftedByLabel={nominee.draftedByLabel}
+                              draftedByAvatarKey={nominee.draftedByAvatarKey}
+                              draftedRoundPick={nominee.draftedRoundPick}
                             />
                           }
                         >
@@ -132,8 +139,12 @@ export function DraftMyRosterRail(props: {
       ) : (
         <UnstyledButton
           type="button"
-          className="dr-railToggle"
+          className={["dr-railToggle", isPre ? "is-disabled" : ""]
+            .filter(Boolean)
+            .join(" ")}
           aria-label="Expand my roster"
+          aria-disabled={isPre}
+          title={isPre ? "My roster (available after draft starts)" : "My roster"}
           onClick={() => {
             if (isPre) return;
             if (compactRails) openRailExclusive("roster");

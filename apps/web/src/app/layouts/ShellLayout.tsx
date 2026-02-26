@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, useMantineColorScheme } from "@ui";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
+import { hasOperatorAccess } from "@/auth/roles";
 import { BannerStack } from "./BannerStack";
 import { PageError } from "@/shared/page-state";
 import { SiteFooter } from "./SiteFooter";
@@ -24,7 +25,7 @@ export function ShellLayout() {
 
   const { navMode } = useShellNavMode({
     navLinksRef,
-    userIsAdmin: Boolean(user?.is_admin)
+    userIsAdmin: hasOperatorAccess(user)
   });
 
   useEffect(() => {
@@ -41,8 +42,8 @@ export function ShellLayout() {
       { to: "/ceremonies", label: "Ceremonies" },
       { to: "/admin", label: "Admin", adminOnly: true }
     ];
-    return links.filter((l) => !l.adminOnly || Boolean(user?.is_admin));
-  }, [user?.is_admin]);
+    return links.filter((l) => !l.adminOnly || hasOperatorAccess(user));
+  }, [user]);
 
   return (
     <Box className="page">
@@ -59,6 +60,7 @@ export function ShellLayout() {
                   sub: user.sub,
                   username: user.username ?? null,
                   is_admin: Boolean(user.is_admin),
+                  admin_role: user.admin_role ?? "NONE",
                   avatar_key: user.avatar_key ?? null
                 }
               : null

@@ -2,10 +2,12 @@ import { useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { AdminCeremonyPublishScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyPublishScreen";
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
+import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremonyPublishPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
   const ceremonyId = ceremonyIdRaw ? Number(ceremonyIdRaw) : null;
+  const wizard = useCeremonyWizardContext();
   const o = useAdminCeremonyOverviewOrchestration({ ceremonyId });
 
   const publishDisabledReason = useMemo(() => {
@@ -35,7 +37,12 @@ export function AdminCeremonyPublishPage() {
       ceremony={o.ceremony}
       canPublish={canPublish}
       publishDisabledReason={publishDisabledReason}
-      onPublish={() => o.actions.publish()}
+      onPublish={() => {
+        void o.actions.publish().then(async () => {
+          // Keep wizard progression in sync after publish transitions out of DRAFT.
+          await wizard?.reloadWorksheet();
+        });
+      }}
     />
   );
 }

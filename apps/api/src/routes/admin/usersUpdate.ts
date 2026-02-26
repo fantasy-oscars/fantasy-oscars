@@ -18,18 +18,33 @@ export function registerAdminUsersUpdateRoute({
       if (!Number.isInteger(id) || id <= 0) {
         throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
       }
-      if (typeof req.body?.is_admin !== "boolean") {
-        throw new AppError("VALIDATION_FAILED", 400, "is_admin must be boolean");
+      const roleRaw =
+        typeof req.body?.admin_role === "string" ? req.body.admin_role.trim() : "";
+      const role = roleRaw.toUpperCase();
+      if (!["NONE", "OPERATOR", "SUPER_ADMIN"].includes(role)) {
+        throw new AppError(
+          "VALIDATION_FAILED",
+          400,
+          "admin_role must be NONE, OPERATOR, or SUPER_ADMIN"
+        );
       }
-      const isAdmin = Boolean(req.body.is_admin);
+      const isAdmin = role !== "NONE";
+      const roleDb = role === "NONE" ? null : role;
 
       const { rows } = await query(
         client,
         `UPDATE app_user
-           SET is_admin = $1
-           WHERE id = $2
-           RETURNING id::int, username, email, is_admin, created_at`,
-        [isAdmin, id]
+           SET is_admin = $1,
+               admin_role = $2
+           WHERE id = $3
+             AND deleted_at IS NULL
+           RETURNING id::int,
+                     username,
+                     email,
+                     is_admin,
+                     COALESCE(admin_role, CASE WHEN is_admin THEN 'SUPER_ADMIN' ELSE 'NONE' END) AS admin_role,
+                     created_at`,
+        [isAdmin, roleDb, id]
       );
       const user = rows[0];
       if (!user) throw new AppError("NOT_FOUND", 404, "User not found");
@@ -37,10 +52,10 @@ export function registerAdminUsersUpdateRoute({
       if (req.auth?.sub) {
         await insertAdminAudit(client as Pool, {
           actor_user_id: Number(req.auth.sub),
-          action: isAdmin ? "promote_admin" : "demote_admin",
+          action: "set_admin_role",
           target_type: "user",
           target_id: user.id,
-          meta: { username: user.username }
+          meta: { username: user.username, admin_role: user.admin_role }
         });
       }
       return res.status(200).json({ user });

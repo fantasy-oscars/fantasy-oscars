@@ -1,4 +1,4 @@
-import { Box, Text, Tooltip, UnstyledButton } from "@ui";
+import { Box, Button, Text, Tooltip, UnstyledButton } from "@ui";
 import type { RefObject } from "react";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
@@ -20,6 +20,7 @@ export function CategoryCard(props: {
     id: string;
     label: string;
     muted: boolean;
+    selected: boolean;
     winner: boolean;
     posterUrl: string | null;
     filmTitle: string | null;
@@ -30,10 +31,14 @@ export function CategoryCard(props: {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    draftedByLabel?: string | null;
+    draftedByAvatarKey?: string | null;
+    draftedRoundPick?: string | null;
   }>;
   // A11y / focus behavior is controlled by glue; this component only consumes the ref.
   firstPillRef?: RefObject<HTMLButtonElement | null> | null;
   canDraftAction: boolean;
+  hoveredNominationIds?: Set<number>;
   isKeyboardMode: boolean;
   setKeyboardMode: (categoryId: string | null) => void;
   onNomineeClick: (nominationId: number, label: string) => void;
@@ -81,12 +86,15 @@ export function CategoryCard(props: {
           </Box>
         ) : (
           props.nominees.map((n, idx) => {
+            const isArmed = props.canDraftAction && n.selected;
             const button = (
               <UnstyledButton
                 type="button"
                 className={[
                   "dr-pill",
                   "dr-pill-btn",
+                  isArmed ? "is-armed" : "",
+                  props.hoveredNominationIds?.has(Number(n.id)) ? "is-hoverMatch" : "",
                   n.muted ? "is-muted" : "",
                   n.winner ? "is-winner" : ""
                 ]
@@ -141,6 +149,7 @@ export function CategoryCard(props: {
                 multiline
                 offset={NOMINEE_TOOLTIP_OFFSET_PX}
                 styles={NOMINEE_CARD_TOOLTIP_STYLES}
+                opened={isArmed ? true : undefined}
                 label={
                   <NomineeTooltipCard
                     unitKind={props.unitKind}
@@ -154,6 +163,25 @@ export function CategoryCard(props: {
                     performerProfileUrl={n.performerProfileUrl}
                     performerProfilePath={n.performerProfilePath}
                     songTitle={n.songTitle}
+                    draftedByLabel={n.draftedByLabel}
+                    draftedByAvatarKey={n.draftedByAvatarKey}
+                    draftedRoundPick={n.draftedRoundPick}
+                    action={
+                      isArmed ? (
+                        <Button
+                          variant="filled"
+                          fullWidth
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            props.onNomineeDoubleClick(Number(n.id));
+                          }}
+                        >
+                          Confirm draft pick
+                        </Button>
+                      ) : null
+                    }
                   />
                 }
               >

@@ -2,6 +2,7 @@ import { Box, Button, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "@/orchestration/leagueIndex";
 import { ActionCard, StandardCard } from "@/primitives";
+import { leaguePath } from "@/lib/routes";
 import "@/primitives/baseline.css";
 
 export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
@@ -48,7 +49,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                       interactive
                       className="baseline-leagueTile"
                       component={Link}
-                      to={`/leagues/${l.id}`}
+                      to={leaguePath({ leagueId: l.id, leagueName: l.name })}
                     >
                       <Stack gap="var(--fo-space-dense-2)">
                         <Text className="baseline-textCardTitle">{l.name}</Text>

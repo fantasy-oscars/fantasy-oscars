@@ -8,7 +8,14 @@ export function LoginPage() {
   const { errors, result, loading, onSubmit } = useLoginOrchestration({ login });
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const search = new URLSearchParams(location.search);
+  const rawFrom =
+    search.get("next") ?? (location.state as { from?: string } | null)?.from ?? "/";
+  const from =
+    rawFrom.startsWith("/") && !rawFrom.startsWith("//") && !rawFrom.startsWith("/login")
+      ? rawFrom
+      : "/";
+  const registerHref = `/register?next=${encodeURIComponent(from)}`;
 
   async function onSubmitAndRedirect(e: React.FormEvent<HTMLFormElement>) {
     const res = await onSubmit(e);
@@ -20,6 +27,7 @@ export function LoginPage() {
       errors={errors}
       result={result}
       loading={loading}
+      registerHref={registerHref}
       onSubmit={onSubmitAndRedirect}
     />
   );

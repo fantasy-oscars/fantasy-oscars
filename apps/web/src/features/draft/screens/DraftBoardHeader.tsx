@@ -34,6 +34,7 @@ export function DraftBoardHeader(props: {
   draftStatus: string | null;
   isFinalResults: boolean;
   resultsWinnerLabel: string | null;
+  resultsPodium: Array<{ place: 1 | 2 | 3; names: string[] }>;
   view: "draft" | "roster";
   onViewChange: (v: "draft" | "roster") => void;
   canToggleView: boolean;
@@ -52,6 +53,7 @@ export function DraftBoardHeader(props: {
   isMyTurn: boolean;
   userLabel: string;
   userAvatarKey: string | null;
+  onParticipantHoverSeat: (seatNumber: number | null) => void;
 }) {
   const isPre = props.draftStatus === "PENDING";
   const isPaused = props.draftStatus === "PAUSED";
@@ -69,6 +71,7 @@ export function DraftBoardHeader(props: {
   const buckleRef = useRef<HTMLDivElement | null>(null);
   const [compactHeader, setCompactHeader] = useState(false);
   const [compactMenuOpen, setCompactMenuOpen] = useState(false);
+  const [podiumCycleTick, setPodiumCycleTick] = useState(0);
   const nonCompactNeededWidthRef = useRef<number>(0);
 
   const activeIndexRaw = props.participants.findIndex((p) => p.active);
@@ -89,18 +92,103 @@ export function DraftBoardHeader(props: {
     containerRef: participantStripMeasureRef,
     ...participantStripBase
   };
-  const centerText = (() => {
-    if (props.isFinalResults) {
-      const raw = props.resultsWinnerLabel?.trim();
-      if (!raw) return "Draft complete";
-      return raw.startsWith("Tie:") ? raw : `Winner: ${raw}`;
-    }
-    if (isPaused) return "Paused";
-    if (isPre) return "Not started";
-    if (isCompleted) return "Draft complete";
-    return props.isTimerDraft ? props.clockText : activeLabel;
-  })();
 
+  const podiumPositions = useMemo(
+    () =>
+      props.resultsPodium
+        .map((p) => ({
+          place: p.place,
+          names: p.names.map((name) => name.trim()).filter((name) => name.length > 0)
+        }))
+        .filter((p) => p.names.length > 0)
+        .sort((a, b) => a.place - b.place)
+        .slice(0, 3),
+    [props.resultsPodium]
+  );
+  const podiumSignature = useMemo(
+    () => podiumPositions.map((p) => `${p.place}:${p.names.join("|")}`).join("||"),
+    [podiumPositions]
+  );
+  const hasTiedPodiumPosition = useMemo(
+    () => podiumPositions.some((p) => p.names.length > 1),
+    [podiumPositions]
+  );
+
+  useEffect(() => {
+    setPodiumCycleTick(0);
+  }, [podiumSignature]);
+
+  useEffect(() => {
+    if (!props.isFinalResults || !hasTiedPodiumPosition) return;
+    const interval = window.setInterval(() => {
+      setPodiumCycleTick((prev) => prev + 1);
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [hasTiedPodiumPosition, props.isFinalResults]);
+
+  const { centerText, centerTypeLabel, centerTextRolling, centerTextKey } = (() => {
+    if (props.isFinalResults) {
+      const firstPlace = podiumPositions.find((p) => p.place === 1)?.names ?? [];
+      if (firstPlace.length > 1) {
+        return {
+          centerText: firstPlace[podiumCycleTick % firstPlace.length] ?? firstPlace[0],
+          centerTypeLabel: "Winner",
+          centerTextRolling: true,
+          centerTextKey: `winner-${podiumCycleTick % firstPlace.length}`
+        };
+      }
+      if (firstPlace.length === 1) {
+        return {
+          centerText: firstPlace[0],
+          centerTypeLabel: "Winner",
+          centerTextRolling: false,
+          centerTextKey: firstPlace[0]
+        };
+      }
+      const raw = props.resultsWinnerLabel?.trim();
+      if (!raw) {
+        return {
+          centerText: "Draft complete",
+          centerTypeLabel: null,
+          centerTextRolling: false,
+          centerTextKey: "draft-complete"
+        };
+      }
+      return {
+        centerText: raw,
+        centerTypeLabel: "Winner",
+        centerTextRolling: false,
+        centerTextKey: raw
+      };
+    }
+    if (isPaused)
+      return {
+        centerText: "Paused",
+        centerTypeLabel: null,
+        centerTextRolling: false,
+        centerTextKey: "paused"
+      };
+    if (isPre)
+      return {
+        centerText: "Not started",
+        centerTypeLabel: null,
+        centerTextRolling: false,
+        centerTextKey: "not-started"
+      };
+    if (isCompleted)
+      return {
+        centerText: "Draft complete",
+        centerTypeLabel: null,
+        centerTextRolling: false,
+        centerTextKey: "draft-complete"
+      };
+    return {
+      centerText: props.isTimerDraft ? props.clockText : activeLabel,
+      centerTypeLabel: null,
+      centerTextRolling: false,
+      centerTextKey: props.isTimerDraft ? props.clockText : activeLabel
+    };
+  })();
   const countdownActive = Boolean(
     props.isTimerDraft &&
     props.draftStatus === "IN_PROGRESS" &&
@@ -158,6 +246,13 @@ export function DraftBoardHeader(props: {
       Math.max(DRAFT_BUCKLE_MIN_PX, Math.floor(vw * DRAFT_BUCKLE_VW_FRACTION))
     );
   }, []);
+  const showPodiumBuckles = props.isFinalResults && podiumPositions.length > 0;
+  const podiumBuckleWidthPx = Math.max(140, Math.floor(buckleMaxPx * 0.82));
+  const podiumOverlapPx = 32;
+  const podiumSideShiftPx = Math.max(0, podiumBuckleWidthPx - podiumOverlapPx);
+  const podiumRenderOrder =
+    podiumPositions.length >= 3 ? [3, 1, 2] : podiumPositions.length === 2 ? [1, 2] : [1];
+  const podiumByPlace = new Map(podiumPositions.map((p) => [p.place, p]));
 
   useEffect(() => {
     const headerEl = headerRef.current;
@@ -260,6 +355,7 @@ export function DraftBoardHeader(props: {
               view={props.view}
               onViewChange={props.onViewChange}
               canToggleView={props.canToggleView}
+              onParticipantHoverSeat={props.onParticipantHoverSeat}
             />
           </Box>
         </Box>
@@ -291,32 +387,82 @@ export function DraftBoardHeader(props: {
         </Box>
 
         <Box ref={buckleRef}>
-          <CenterBuckle
-            roundNumber={isCompleted ? null : props.roundNumber}
-            pickNumber={isCompleted ? null : props.pickNumber}
-            centerText={centerText}
-            className={[
-              isPre ? "is-pre" : "",
-              countdownActive ? "is-countdown" : "",
-              countdownActive
-                ? countdownPhase === "red"
-                  ? "pulse-red"
-                  : "pulse-gold"
-                : ""
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            measureText={
-              props.isTimerDraft
-                ? null
-                : props.participants.reduce(
-                    (longest, p) => (p.label.length > longest.length ? p.label : longest),
-                    ""
-                  )
-            }
-            isTimerDraft={props.isTimerDraft}
-            maxHandleLengthPx={buckleMaxPx}
-          />
+          {showPodiumBuckles ? (
+            <>
+              {podiumRenderOrder.map((place) => {
+                const podium = podiumByPlace.get(place as 1 | 2 | 3);
+                if (!podium) return null;
+                const names = podium.names;
+                const currentName =
+                  names.length > 1
+                    ? (names[podiumCycleTick % names.length] ?? names[0])
+                    : names[0];
+                const isSide = place !== 1;
+                return (
+                  <CenterBuckle
+                    key={`podium-${place}`}
+                    roundNumber={null}
+                    pickNumber={null}
+                    centerText={currentName}
+                    centerTypeLabel={place === 1 ? "Winner" : null}
+                    centerTextRolling={names.length > 1}
+                    centerTextKey={`podium-${place}-${podiumCycleTick % names.length}`}
+                    shiftPx={
+                      place === 2
+                        ? podiumSideShiftPx
+                        : place === 3
+                          ? -podiumSideShiftPx
+                          : 0
+                    }
+                    zIndex={place === 1 ? 7 : place === 2 ? 5 : 4}
+                    className={[
+                      "is-podium",
+                      "is-fixed",
+                      place === 2 ? "is-silver" : "",
+                      place === 3 ? "is-bronze" : "",
+                      isSide ? "is-podium-side" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    measureText={null}
+                    isTimerDraft={false}
+                    maxHandleLengthPx={podiumBuckleWidthPx}
+                  />
+                );
+              })}
+            </>
+          ) : (
+            <CenterBuckle
+              roundNumber={isCompleted ? null : props.roundNumber}
+              pickNumber={isCompleted ? null : props.pickNumber}
+              centerText={centerText}
+              centerTypeLabel={centerTypeLabel}
+              centerTextRolling={centerTextRolling}
+              centerTextKey={centerTextKey}
+              className={[
+                isPre ? "is-pre" : "",
+                countdownActive ? "is-countdown" : "",
+                countdownActive
+                  ? countdownPhase === "red"
+                    ? "pulse-red"
+                    : "pulse-gold"
+                  : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              measureText={
+                props.isTimerDraft
+                  ? null
+                  : props.participants.reduce(
+                      (longest, p) =>
+                        p.label.length > longest.length ? p.label : longest,
+                      ""
+                    )
+              }
+              isTimerDraft={props.isTimerDraft}
+              maxHandleLengthPx={buckleMaxPx}
+            />
+          )}
         </Box>
 
         {/* Hidden measurement row: keeps compact/non-compact switching stable by measuring the real non-compact wings even when compact is active. */}

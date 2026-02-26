@@ -131,7 +131,7 @@ export const foTokens = {
   "--fo-radius-large": `12px`,
   "--fo-radius-medium": `8px`,
   "--fo-radius-pill": `999px`,
-  "--fo-radius-small": `3px`,
+  "--fo-radius-small": `6px`,
   "--fo-section-gap": `var(--fo-space-md)`,
   "--fo-shadow-card": `0 1px 0 rgba(255, 255, 255, 0.03) inset,
     0 10px 24px rgba(0, 0, 0, 0.22)`,

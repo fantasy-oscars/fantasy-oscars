@@ -18,6 +18,7 @@ export function DraftLedgerRail(props: {
   ledgerRows: DraftLedgerRow[];
   avatarKeyBySeat: Map<number, string | null>;
   nomineeById: Map<number, DraftNomineeMeta>;
+  hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
 
@@ -67,6 +68,10 @@ export function DraftLedgerRail(props: {
                     className={[
                       "dr-pill",
                       "dr-pill-static",
+                      r.nominationId != null &&
+                      props.hoveredNominationIds.has(r.nominationId)
+                        ? "is-hoverMatch"
+                        : "",
                       r.label === "—" ? "is-muted" : "",
                       r.winner ? "is-winner" : ""
                     ]
@@ -128,6 +133,9 @@ export function DraftLedgerRail(props: {
                             performerProfileUrl={nominee.performerProfileUrl}
                             performerProfilePath={nominee.performerProfilePath}
                             songTitle={nominee.songTitle}
+                            draftedByLabel={nominee.draftedByLabel}
+                            draftedByAvatarKey={nominee.draftedByAvatarKey}
+                            draftedRoundPick={nominee.draftedRoundPick}
                           />
                         }
                       >
@@ -145,8 +153,12 @@ export function DraftLedgerRail(props: {
       ) : (
         <UnstyledButton
           type="button"
-          className="dr-railToggle"
+          className={["dr-railToggle", isPre ? "is-disabled" : ""]
+            .filter(Boolean)
+            .join(" ")}
           aria-label="Expand draft history"
+          aria-disabled={isPre}
+          title={isPre ? "Draft history (available after draft starts)" : "Draft history"}
           onClick={() => {
             if (isPre) return;
             if (compactRails) openRailExclusive("ledger");

@@ -3,6 +3,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { listDynamicContentByKey } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
+import { assertDynamicContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentDynamicListRoute({
   router,
@@ -15,6 +16,7 @@ export function registerAdminContentDynamicListRoute({
     try {
       const key = String(req.params.key ?? "").trim();
       if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      assertDynamicContentAccess(req, key);
       const entries = await listDynamicContentByKey(client, key);
       return res.status(200).json({ entries });
     } catch (err) {

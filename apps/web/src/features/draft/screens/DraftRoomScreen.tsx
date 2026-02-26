@@ -1,6 +1,6 @@
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { Box, useMantineColorScheme } from "@ui";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
 import { useAuthContext } from "@/auth/context";
@@ -11,8 +11,8 @@ import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
-import { useDraftPickConfirmToast } from "./useDraftPickConfirmToast";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
+import { PageError, PageLoader } from "@/shared/page-state";
 import {
   buildDraftedNominationIds,
   buildNomineeMetaById,
@@ -31,6 +31,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const isPaused = draftStatus === "PAUSED";
   const isCompleted = draftStatus === "COMPLETED";
   const isFinalResults = props.o.header.isFinalResults;
+  const [hoveredSeatNumber, setHoveredSeatNumber] = useState<number | null>(null);
 
   const participants = useMemo(
     () =>
@@ -90,17 +91,52 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
 
-  const { scheduleDraftConfirmToast, cancelDraftConfirmToast, clearConfirmTimer } =
-    useDraftPickConfirmToast({
-      enabled: canDraftAction,
-      onConfirmPick: (nominationId) =>
-        props.o.myRoster.submitPickNomination(nominationId),
-      onClearSelection: () => props.o.myRoster.clearSelection()
-    });
+  useEffect(() => {
+    if (!canDraftAction) props.o.myRoster.clearSelection();
+  }, [canDraftAction, props.o.myRoster]);
   const draftedNominationIds = useMemo(
     () => buildDraftedNominationIds(props.o.ledger.rows),
     [props.o.ledger.rows]
   );
+  const draftedMetaByNominationId = useMemo(() => {
+    const m = new Map<
+      number,
+      {
+        draftedByLabel: string;
+        draftedByAvatarKey: string | null;
+        draftedRoundPick: string;
+      }
+    >();
+    for (const row of props.o.ledger.rows) {
+      if (row.nominationId == null) continue;
+      const participant =
+        row.seatNumber != null
+          ? participants.find((p) => p.seatNumber === row.seatNumber)
+          : null;
+      m.set(row.nominationId, {
+        draftedByLabel: row.seatLabel || participant?.label || "Unknown drafter",
+        draftedByAvatarKey: participant?.avatarKey ?? null,
+        draftedRoundPick: row.roundPick
+      });
+    }
+    return m;
+  }, [participants, props.o.ledger.rows]);
+  const draftedSeatByNominationId = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const row of props.o.ledger.rows) {
+      if (row.nominationId == null || row.seatNumber == null) continue;
+      m.set(row.nominationId, row.seatNumber);
+    }
+    return m;
+  }, [props.o.ledger.rows]);
+  const hoveredNominationIds = useMemo(() => {
+    if (hoveredSeatNumber == null) return new Set<number>();
+    const set = new Set<number>();
+    for (const [nominationId, seatNumber] of draftedSeatByNominationId) {
+      if (seatNumber === hoveredSeatNumber) set.add(nominationId);
+    }
+    return set;
+  }, [draftedSeatByNominationId, hoveredSeatNumber]);
 
   // Phase 0: blank composition scaffold only.
   // Header/body/footer are separated by minimal rules.
@@ -115,11 +151,42 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     () =>
       categoriesRaw.map((c) => ({
         ...c,
-        weightText: typeof c.weight === "number" ? formatSignedInt(c.weight) : null
+        weightText: typeof c.weight === "number" ? formatSignedInt(c.weight) : null,
+        nominees: c.nominees.map((n) => {
+          const draftedMeta = draftedMetaByNominationId.get(Number(n.id));
+          return {
+            ...n,
+            draftedByLabel: draftedMeta?.draftedByLabel ?? null,
+            draftedByAvatarKey: draftedMeta?.draftedByAvatarKey ?? null,
+            draftedRoundPick: draftedMeta?.draftedRoundPick ?? null
+          };
+        })
       })),
-    [categoriesRaw]
+    [categoriesRaw, draftedMetaByNominationId]
   );
-  const nomineeById = useMemo(() => buildNomineeMetaById(categoriesRaw), [categoriesRaw]);
+  const nomineeById = useMemo(() => {
+    const base = buildNomineeMetaById(categoriesRaw);
+    const m = new Map(base);
+    for (const [nominationId, draftedMeta] of draftedMetaByNominationId) {
+      const nominee = m.get(nominationId);
+      if (!nominee) continue;
+      m.set(nominationId, {
+        ...nominee,
+        draftedByLabel: draftedMeta.draftedByLabel,
+        draftedByAvatarKey: draftedMeta.draftedByAvatarKey,
+        draftedRoundPick: draftedMeta.draftedRoundPick
+      });
+    }
+    return m;
+  }, [categoriesRaw, draftedMetaByNominationId]);
+
+  if (props.o.state.loadingInitial) {
+    return <PageLoader label="Loading draft board..." />;
+  }
+
+  if (!props.o.header.status && props.o.state.error) {
+    return <PageError message={props.o.state.error} />;
+  }
 
   if (isMobile) {
     return (
@@ -172,6 +239,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         draftStatus={draftStatus}
         isFinalResults={isFinalResults}
         resultsWinnerLabel={props.o.header.resultsWinnerLabel}
+        resultsPodium={props.o.header.resultsPodium}
         view={isPre ? "draft" : isCompleted ? "roster" : props.o.header.view}
         onViewChange={props.o.header.setView}
         canToggleView={props.o.header.canToggleView && !isPre && !isCompleted}
@@ -194,6 +262,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         isMyTurn={isMyTurn}
         userLabel={previewUser.label}
         userAvatarKey={previewUser.avatarKey}
+        onParticipantHoverSeat={setHoveredSeatNumber}
       />
       <RuntimeBannerStack />
       <Box className="dr-body">
@@ -210,16 +279,19 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
             nomineeById={nomineeById}
             autodraft={props.o.autodraft}
             draftedNominationIds={draftedNominationIds}
+            hoveredNominationIds={hoveredNominationIds}
             canDraftAction={canDraftAction}
-            onNomineeClick={(id, label) => {
+            onNomineeClick={(id) => {
               if (!canDraftAction) return;
+              if (draftedNominationIds.has(id)) return;
+              if (props.o.myRoster.selected?.id === id) {
+                props.o.myRoster.clearSelection();
+                return;
+              }
               props.o.pool.onSelectNomination(id);
-              scheduleDraftConfirmToast({ nominationId: id, label });
             }}
             onNomineeDoubleClick={(id) => {
               if (!canDraftAction) return;
-              clearConfirmTimer();
-              cancelDraftConfirmToast();
               props.o.myRoster.clearSelection();
               props.o.myRoster.submitPickNomination(id);
             }}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchJson } from "../../lib/api";
 import type { ApiResult, InboxInvite, SeasonMeta } from "../../lib/types";
 import { mapInviteError } from "../../decisions/invites";
+import { leaguePath, seasonPath } from "../../lib/routes";
 
 export function useInviteClaimOrchestration(input: { token?: string }) {
   const token = input.token;
@@ -121,10 +122,24 @@ export function useInvitesInboxOrchestration() {
           (s) => s.id === invite.season_id
         );
         if (seasonMeta && seasonMeta.status === "EXTANT") {
-          return { ok: true as const, destination: `/seasons/${invite.season_id}` };
+          return {
+            ok: true as const,
+            destination: seasonPath({
+              leagueId: invite.league_id,
+              leagueName: invite.league_name,
+              ceremonyCode: seasonMeta.ceremony_code,
+              ceremonyId: seasonMeta.ceremony_id
+            })
+          };
         }
       }
-      return { ok: true as const, destination: `/leagues/${invite.league_id}` };
+      return {
+        ok: true as const,
+        destination: leaguePath({
+          leagueId: invite.league_id,
+          leagueName: invite.league_name
+        })
+      };
     }
     return { ok: true as const, destination: "/leagues" };
   }, []);

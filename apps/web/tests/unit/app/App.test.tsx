@@ -256,7 +256,8 @@ describe("<App /> shell + routing", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     renderApp();
-    await screen.findByText(/Opening invite/i);
+    await screen.findByRole("heading", { name: /Claim invitation/i });
+    await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
     await screen.findByRole("heading", { name: /Invites/i });
     await waitFor(() =>
       expect(
@@ -374,6 +375,8 @@ describe("<App /> shell + routing", () => {
     cleanup();
     window.history.pushState({}, "", "/invites/token123");
     renderApp();
+    await screen.findByRole("heading", { name: /Claim invitation/i });
+    await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
     await screen.findByRole("heading", { name: /Invites/i });
     await waitFor(() =>
       expect(
@@ -1072,8 +1075,12 @@ describe("<App /> shell + routing", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Delete league/i }));
     const deleteDialog = await screen.findByRole("dialog", { name: /Delete league\\?/i });
+    await userEvent.type(
+      within(deleteDialog).getByLabelText(/Type "DELETE" to continue/i),
+      "DELETE"
+    );
     await userEvent.click(
-      within(deleteDialog).getByRole("button", { name: /^Delete$/i })
+      within(deleteDialog).getByRole("button", { name: /^Delete league$/i })
     );
     await waitFor(() =>
       expect(

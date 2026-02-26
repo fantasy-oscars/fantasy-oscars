@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../errors.js";
 import { query } from "../data/db.js";
 import { TokenClaims, verifyToken } from "./token.js";
+import { hasOperatorAccess, hasSuperAdminAccess, normalizeAdminRole } from "./roles.js";
 
 export type AuthedRequest = Request & { auth?: TokenClaims };
 
@@ -39,11 +40,41 @@ export function requireAuth(secret: string) {
       const userId = sub ? Number(sub) : NaN;
       const db = (req.app as unknown as { locals?: { db?: unknown } })?.locals?.db;
       if (db && Number.isInteger(userId) && userId > 0) {
-        const { rows } = await query<{ id: number; is_admin: boolean }>(
-          db as never,
-          `SELECT id::int, is_admin FROM app_user WHERE id = $1`,
-          [userId]
-        );
+        let rows: Array<{ id: number; is_admin: boolean; admin_role?: string | null }> =
+          [];
+        try {
+          const res = await query<{
+            id: number;
+            is_admin: boolean;
+            admin_role: string | null;
+          }>(
+            db as never,
+            `SELECT id::int, is_admin, admin_role
+             FROM app_user
+             WHERE id = $1
+               AND deleted_at IS NULL`,
+            [userId]
+          );
+          rows = res.rows;
+        } catch (err) {
+          const pgErr = err as { code?: string; message?: string };
+          const missingAdminRole =
+            pgErr.code === "42703" &&
+            String(pgErr.message ?? "")
+              .toLowerCase()
+              .includes("admin_role");
+          if (!missingAdminRole) throw err;
+          const res = await query<{ id: number; is_admin: boolean }>(
+            db as never,
+            `SELECT id::int, is_admin
+             FROM app_user
+             WHERE id = $1
+               AND deleted_at IS NULL`,
+            [userId]
+          );
+          rows = res.rows;
+        }
+
         if (!rows[0]) {
           // Clear auth cookie if present; bearer-token callers can ignore.
           res.setHeader(
@@ -61,7 +92,9 @@ export function requireAuth(secret: string) {
 
         // Use the database as the source of truth for admin role so permission
         // changes take effect immediately without forcing a logout/login cycle.
-        req.auth.is_admin = Boolean(rows[0].is_admin);
+        const role = normalizeAdminRole(rows[0].admin_role, Boolean(rows[0].is_admin));
+        req.auth.is_admin = role !== "NONE";
+        req.auth.admin_role = role;
       }
       return next();
     } catch (err) {
@@ -72,8 +105,17 @@ export function requireAuth(secret: string) {
 
 export function requireAdmin() {
   return (req: AuthedRequest, _res: Response, next: NextFunction) => {
-    if (!req.auth?.is_admin) {
-      return next(new AppError("FORBIDDEN", 403, "Admin access required"));
+    if (!hasOperatorAccess(req.auth)) {
+      return next(new AppError("FORBIDDEN", 403, "Operator access required"));
+    }
+    return next();
+  };
+}
+
+export function requireSuperAdmin() {
+  return (req: AuthedRequest, _res: Response, next: NextFunction) => {
+    if (!hasSuperAdminAccess(req.auth)) {
+      return next(new AppError("FORBIDDEN", 403, "Super admin access required"));
     }
     return next();
   };

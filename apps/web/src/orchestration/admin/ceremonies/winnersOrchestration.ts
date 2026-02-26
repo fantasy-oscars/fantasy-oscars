@@ -219,6 +219,7 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       draft_locked: prev.draft_locked || Boolean(res.data?.draft_locked_at),
       draft_locked_at: res.data?.draft_locked_at ?? prev.draft_locked_at
     }));
+    setCeremonyStatus((prev) => (prev === "COMPLETE" ? prev : "LOCKED"));
     setWinnerStatus((prev) => ({
       ...prev,
       [categoryId]: { ok: true, message: "Saved" }

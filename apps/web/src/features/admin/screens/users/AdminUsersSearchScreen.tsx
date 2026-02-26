@@ -23,7 +23,8 @@ export function AdminUsersSearchScreen(props: {
   results: AdminUserRow[];
   onSearch: () => void;
   updatingById: Record<number, boolean>;
-  onSetAdmin: (user: AdminUserRow, nextIsAdmin: boolean) => void;
+  onSetRole: (user: AdminUserRow, nextRole: "NONE" | "OPERATOR" | "SUPER_ADMIN") => void;
+  onRemoveUser: (user: AdminUserRow) => void;
 }) {
   const {
     query,
@@ -33,7 +34,8 @@ export function AdminUsersSearchScreen(props: {
     results,
     onSearch,
     updatingById,
-    onSetAdmin
+    onSetRole,
+    onRemoveUser
   } = props;
 
   const combobox = useCombobox({
@@ -59,7 +61,9 @@ export function AdminUsersSearchScreen(props: {
       <Group className="inline-form" wrap="wrap" align="flex-end">
         <Combobox
           store={combobox}
-          withinPortal={false}
+          withinPortal
+          position="bottom-start"
+          middlewares={{ flip: true, shift: true }}
           onOptionSubmit={(value) => {
             const u = results.find((r) => String(r.id) === value);
             if (u) setQuery(u.username);
@@ -69,6 +73,13 @@ export function AdminUsersSearchScreen(props: {
           <Combobox.Target>
             <TextInput
               aria-label="Username"
+              name="admin_user_search"
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-lpignore="true"
+              data-1p-ignore
               value={query}
               onChange={(e) => {
                 setQuery(e.currentTarget.value);
@@ -121,20 +132,38 @@ export function AdminUsersSearchScreen(props: {
                     {u.username}
                   </Text>
                 </Box>
-                <Select
-                  aria-label="Role"
-                  data={[
-                    { value: "user", label: "User" },
-                    { value: "admin", label: "Admin" }
-                  ]}
-                  value={u.is_admin ? "admin" : "user"}
-                  disabled={Boolean(updatingById[u.id])}
-                  onChange={(v) => {
-                    if (!v) return;
-                    onSetAdmin(u, v === "admin");
-                  }}
-                  size="xs"
-                />
+                <Group
+                  gap="xs"
+                  justify="flex-end"
+                  wrap="nowrap"
+                  className="admin-usersRoleActions"
+                >
+                  <Select
+                    aria-label="Role"
+                    data={[
+                      { value: "NONE", label: "User" },
+                      { value: "OPERATOR", label: "Operator" },
+                      { value: "SUPER_ADMIN", label: "Super Admin" }
+                    ]}
+                    value={u.admin_role}
+                    disabled={Boolean(updatingById[u.id])}
+                    onChange={(v) => {
+                      if (!v) return;
+                      if (v !== "NONE" && v !== "OPERATOR" && v !== "SUPER_ADMIN") return;
+                      onSetRole(u, v);
+                    }}
+                    size="xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    color="red"
+                    disabled={Boolean(updatingById[u.id])}
+                    onClick={() => onRemoveUser(u)}
+                  >
+                    Remove
+                  </Button>
+                </Group>
               </Group>
               {idx === results.length - 1 ? null : <Divider />}
             </Box>

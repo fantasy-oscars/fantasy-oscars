@@ -34,6 +34,7 @@ export function MobileDraftHeader(props: {
   onResumeDraft: () => void;
   isFinalResults: boolean;
   resultsWinnerLabel: string | null;
+  resultsPodium: Array<{ place: 1 | 2 | 3; names: string[] }>;
   view: "draft" | "roster";
   onViewChange: (v: "draft" | "roster") => void;
   canToggleView: boolean;
@@ -57,6 +58,7 @@ export function MobileDraftHeader(props: {
     isCountdownActive(props.timerRemainingMs)
   );
   const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
+  const [podiumCycleTick, setPodiumCycleTick] = useState(0);
   const countdownIntervalRef = useRef<number | null>(null);
   const audioControllerRef = useRef(props.audioController);
 
@@ -89,6 +91,32 @@ export function MobileDraftHeader(props: {
     };
   }, [countdownActive, props.audioUnlocked]);
 
+  const podiumPositions = props.resultsPodium
+    .map((p) => ({
+      place: p.place,
+      names: p.names.map((name) => name.trim()).filter((name) => name.length > 0)
+    }))
+    .filter((p) => p.names.length > 0)
+    .sort((a, b) => a.place - b.place)
+    .slice(0, 3);
+  const hasTiedPodiumPosition = podiumPositions.some((p) => p.names.length > 1);
+  const showMobilePodium = props.isFinalResults && podiumPositions.length > 0;
+  const podiumSignature = podiumPositions
+    .map((p) => `${p.place}:${p.names.join("|")}`)
+    .join("||");
+
+  useEffect(() => {
+    setPodiumCycleTick(0);
+  }, [podiumSignature]);
+
+  useEffect(() => {
+    if (!showMobilePodium || !hasTiedPodiumPosition) return;
+    const interval = window.setInterval(() => {
+      setPodiumCycleTick((prev) => prev + 1);
+    }, 1500);
+    return () => window.clearInterval(interval);
+  }, [hasTiedPodiumPosition, showMobilePodium]);
+
   const centerText =
     props.isFinalResults && props.resultsWinnerLabel
       ? props.resultsWinnerLabel
@@ -105,7 +133,13 @@ export function MobileDraftHeader(props: {
   const canShowRosterLink = props.canToggleView;
 
   return (
-    <Box className="dr-header dr-mobileHeader">
+    <Box
+      className={[
+        "dr-header",
+        "dr-mobileHeader",
+        showMobilePodium ? "is-podium" : ""
+      ].join(" ")}
+    >
       <Box
         className={[
           "dr-mobileBar",
@@ -193,6 +227,37 @@ export function MobileDraftHeader(props: {
           </Menu.Dropdown>
         </Menu>
       </Box>
+
+      {showMobilePodium ? (
+        <Stack className="drm-podiumStack" gap="var(--fo-space-4)">
+          {podiumPositions.map((p) => {
+            const currentName =
+              p.names.length > 1
+                ? (p.names[podiumCycleTick % p.names.length] ?? p.names[0])
+                : p.names[0];
+            return (
+              <Box
+                key={`mobile-podium-${p.place}`}
+                className={[
+                  "drm-podiumBar",
+                  p.place === 1 ? "is-gold" : p.place === 2 ? "is-silver" : "is-bronze"
+                ].join(" ")}
+              >
+                <Text
+                  key={`mobile-podium-text-${p.place}-${podiumCycleTick % p.names.length}`}
+                  className={[
+                    "drm-podiumText",
+                    p.names.length > 1 ? "is-rolling" : ""
+                  ].join(" ")}
+                  lineClamp={1}
+                >
+                  {currentName}
+                </Text>
+              </Box>
+            );
+          })}
+        </Stack>
+      ) : null}
 
       <Drawer opened={props.open} onClose={props.onClose} title=" " position="left">
         <Stack gap="md">

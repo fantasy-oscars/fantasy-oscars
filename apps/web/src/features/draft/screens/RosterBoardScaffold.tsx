@@ -31,6 +31,9 @@ export function RosterBoardScaffold(props: {
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
+      draftedByLabel?: string | null;
+      draftedByAvatarKey?: string | null;
+      draftedRoundPick?: string | null;
     }
   >;
 }) {
@@ -216,6 +219,9 @@ export function RosterBoardScaffold(props: {
                                 performerProfileUrl={nominee.performerProfileUrl}
                                 performerProfilePath={nominee.performerProfilePath}
                                 songTitle={nominee.songTitle}
+                                draftedByLabel={nominee.draftedByLabel}
+                                draftedByAvatarKey={nominee.draftedByAvatarKey}
+                                draftedRoundPick={nominee.draftedRoundPick}
                               />
                             ) : (
                               <Text className="baseline-textBody">{pick.label}</Text>

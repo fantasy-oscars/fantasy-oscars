@@ -95,6 +95,7 @@ export function SeasonScreen(props: {
     () => computeSeasonLocked({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
     [s.draftStatus, s.isArchived]
   );
+  const isDeleteLocked = s.draftStatus === "COMPLETED";
 
   const draftRoomCtaLabel = useMemo(
     () =>
@@ -173,6 +174,8 @@ export function SeasonScreen(props: {
             <SeasonDraftRoomColumn
               draftId={s.draftId ?? null}
               ceremonyId={ceremonyId}
+              ceremonyStatus={s.ceremonyStatus}
+              draftStatus={s.draftStatus}
               draftRoomCtaLabel={draftRoomCtaLabel}
             />
           </Box>
@@ -184,6 +187,7 @@ export function SeasonScreen(props: {
               <Box />
               <SeasonManagementColumn
                 isLocked={isLocked}
+                isDeleteLocked={isDeleteLocked}
                 working={Boolean(s.working)}
                 onOpenInvites={() => setInvitesOpen(true)}
                 onOpenDraftSettings={settings.openSettingsModal}
@@ -211,11 +215,12 @@ export function SeasonScreen(props: {
               s.setUserInviteQuery(username);
             }}
             onCreateUserInvite={() => void s.createUserInvite()}
+            availableLeagueMemberCount={s.availableLeagueMembers.length}
+            onInviteAllLeagueMembers={() => void s.inviteAllLeagueMembers()}
             placeholderLabel={s.placeholderLabel}
             onChangePlaceholderLabel={(next) => s.setPlaceholderLabel(next)}
             onCreatePlaceholderInvite={() => void s.createPlaceholderInvite()}
             invites={s.invites}
-            buildInviteLink={(id) => s.buildInviteLink(id)}
             onCopyLink={(id) => s.copyLink(id)}
             onRevokeInvite={(id) => void s.revokeInvite(id)}
             onRegenerateInvite={(id) => void s.regenerateInvite(id)}
@@ -258,6 +263,7 @@ export function SeasonScreen(props: {
             opened={deleteOpen}
             onClose={() => setDeleteOpen(false)}
             working={Boolean(s.working)}
+            error={s.cancelResult && !s.cancelResult.ok ? s.cancelResult.message : null}
             onConfirm={() => {
               setDeleteOpen(false);
               void onDeleteSeason();

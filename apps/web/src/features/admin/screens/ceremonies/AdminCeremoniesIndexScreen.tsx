@@ -6,10 +6,7 @@ import type { ApiResult } from "@/lib/types";
 import type { CeremonyOption } from "@/orchestration/adminCeremonies";
 import { useState } from "react";
 import { StandardCard } from "@/primitives";
-import {
-  computeAdminCeremonyDeletePolicy,
-  computeAdminCeremonyIndexStatus
-} from "@/decisions/admin/ceremonyIndex";
+import { computeAdminCeremonyIndexStatus } from "@/decisions/admin/ceremonyIndex";
 import { ConfirmDeleteCeremonyModal } from "@/features/admin/ui/ceremonies/modals/ConfirmDeleteCeremonyModal";
 import "@/primitives/baseline.css";
 
@@ -26,12 +23,22 @@ export function AdminCeremoniesIndexScreen(props: {
   status: ApiResult | null;
   onCreate: () => void;
   onDelete: (id: number) => void;
+  onLoadDeletePreview: (
+    id: number
+  ) => Promise<
+    | { ok: true; preview: { ceremonyName: string; seasonsRemoved: number } }
+    | { ok: false; error: string }
+  >;
 }) {
   const { state, error, ceremonies, creating, workingId, status, onCreate, onDelete } =
     props;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmCeremonyName, setConfirmCeremonyName] = useState("Ceremony");
+  const [confirmSeasonsRemoved, setConfirmSeasonsRemoved] = useState(0);
 
   if (state === "loading") return <PageLoader label="Loading ceremonies..." />;
   if (state === "error")
@@ -78,9 +85,6 @@ export function AdminCeremoniesIndexScreen(props: {
         <Stack gap="sm">
           {ceremonies.map((c) => {
             const { statusUpper, isArchived } = computeAdminCeremonyIndexStatus({
-              status: c.status
-            });
-            const { needsConfirm } = computeAdminCeremonyDeletePolicy({
               status: c.status
             });
             const deleting = workingId === c.id;
@@ -144,14 +148,24 @@ export function AdminCeremoniesIndexScreen(props: {
                       variant="subtle"
                       aria-label="Delete ceremony"
                       disabled={isArchived || deleting}
-                      onClick={() => {
+                      onClick={async () => {
                         if (isArchived || deleting) return;
-                        if (needsConfirm) {
+                        setConfirmLoading(true);
+                        setConfirmError(null);
+                        const preview = await props.onLoadDeletePreview(c.id);
+                        setConfirmLoading(false);
+                        if (!preview.ok) {
+                          setConfirmError(preview.error);
+                          setConfirmCeremonyName(c.name || "Ceremony");
+                          setConfirmSeasonsRemoved(0);
                           setConfirmId(c.id);
                           setConfirmOpen(true);
                           return;
                         }
-                        onDelete(c.id);
+                        setConfirmCeremonyName(preview.preview.ceremonyName);
+                        setConfirmSeasonsRemoved(preview.preview.seasonsRemoved);
+                        setConfirmId(c.id);
+                        setConfirmOpen(true);
                       }}
                     >
                       <Text component="span" className="gicon" aria-hidden="true">
@@ -169,6 +183,10 @@ export function AdminCeremoniesIndexScreen(props: {
       <ConfirmDeleteCeremonyModal
         opened={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
+        ceremonyName={confirmCeremonyName}
+        seasonsRemoved={confirmSeasonsRemoved}
+        loading={confirmLoading || (confirmId ? workingId === confirmId : false)}
+        error={confirmError}
         onConfirm={() => {
           if (confirmId) onDelete(confirmId);
           setConfirmOpen(false);

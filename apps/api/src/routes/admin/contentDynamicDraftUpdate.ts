@@ -5,6 +5,7 @@ import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { updateDynamicDraft } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
+import { assertDynamicContentAccess } from "./contentPermissions.js";
 
 export function registerAdminContentDynamicDraftUpdateRoute({
   router,
@@ -33,6 +34,7 @@ export function registerAdminContentDynamicDraftUpdateRoute({
         const ends_at =
           typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
         if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        assertDynamicContentAccess(req, key);
         if (!Number.isInteger(id) || id <= 0) {
           throw new AppError("VALIDATION_FAILED", 400, "Invalid draft id");
         }

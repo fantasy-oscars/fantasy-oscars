@@ -8,6 +8,7 @@ export type AdminUserRow = {
   username: string;
   email: string;
   is_admin: boolean;
+  admin_role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
 };
 
 export function useAdminUsersSearchOrchestration() {
@@ -55,37 +56,97 @@ export function useAdminUsersSearchOrchestration() {
     };
   }, [query, search]);
 
-  const setAdminForUser = useCallback(async (userId: number, nextIsAdmin: boolean) => {
-    if (!Number.isFinite(userId) || userId <= 0) return;
+  const setAdminRoleForUser = useCallback(
+    async (userId: number, adminRole: "NONE" | "OPERATOR" | "SUPER_ADMIN") => {
+      if (!Number.isFinite(userId) || userId <= 0) return;
+      setUpdatingById((m) => ({ ...m, [userId]: true }));
+      setStatus(null);
+      const res = await fetchJson<{
+        user: {
+          id: number;
+          username: string;
+          email: string;
+          is_admin: boolean;
+          admin_role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
+        };
+      }>(`/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_role: adminRole })
+      });
+      setUpdatingById((m) => ({ ...m, [userId]: false }));
+      if (!res.ok) {
+        setStatus({ ok: false, message: res.error ?? "Failed to update role" });
+        return;
+      }
+      const u = res.data?.user;
+      if (u) {
+        setResults((prev) =>
+          prev.map((row) => (row.id === userId ? { ...row, ...u } : row))
+        );
+      }
+      notify({
+        id: "admin.users.role.updated",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message:
+          adminRole === "SUPER_ADMIN"
+            ? "User promoted to super admin"
+            : adminRole === "OPERATOR"
+              ? "User set to operator"
+              : "User role reset to user"
+      });
+    },
+    []
+  );
+
+  const deleteUser = useCallback(async (userId: number) => {
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return { ok: false as const, error: "Invalid user id" };
+    }
     setUpdatingById((m) => ({ ...m, [userId]: true }));
     setStatus(null);
-    const res = await fetchJson<{
-      user: { id: number; username: string; email: string; is_admin: boolean };
-    }>(`/admin/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_admin: nextIsAdmin })
+    const res = await fetchJson(`/admin/users/${userId}`, {
+      method: "DELETE"
     });
     setUpdatingById((m) => ({ ...m, [userId]: false }));
     if (!res.ok) {
-      setStatus({ ok: false, message: res.error ?? "Failed to update role" });
-      return;
+      setStatus({ ok: false, message: res.error ?? "Failed to remove user" });
+      return { ok: false as const, error: res.error ?? "Failed to remove user" };
     }
-    const u = res.data?.user;
-    if (u) {
-      setResults((prev) =>
-        prev.map((row) => (row.id === userId ? { ...row, ...u } : row))
-      );
-    }
+    setResults((prev) => prev.filter((row) => row.id !== userId));
     notify({
-      id: "admin.users.role.updated",
+      id: "admin.users.delete.success",
       severity: "success",
       trigger_type: "user_action",
       scope: "local",
       durability: "ephemeral",
       requires_decision: false,
-      message: nextIsAdmin ? "User promoted to admin" : "User demoted"
+      message: "User removed"
     });
+    return { ok: true as const };
+  }, []);
+
+  const loadDeletePreview = useCallback(async (userId: number) => {
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return { ok: false as const, error: "Invalid user id" };
+    }
+    const res = await fetchJson<{
+      user: { id: number; username: string };
+      consequences: {
+        leagues_removed: number;
+        leagues_commissioner_transferred: number;
+        open_season_memberships_removed: number;
+        open_season_commissioner_transferred: number;
+      };
+    }>(`/admin/users/${userId}/delete-preview`, { method: "GET" });
+    if (!res.ok || !res.data?.user || !res.data?.consequences) {
+      return { ok: false as const, error: res.error ?? "Failed to load preview" };
+    }
+    return { ok: true as const, preview: res.data };
   }, []);
 
   return {
@@ -95,7 +156,9 @@ export function useAdminUsersSearchOrchestration() {
     status,
     results,
     search,
-    setAdminForUser,
+    setAdminRoleForUser,
+    deleteUser,
+    loadDeletePreview,
     updatingById
   };
 }

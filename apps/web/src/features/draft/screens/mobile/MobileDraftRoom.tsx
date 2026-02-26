@@ -37,6 +37,7 @@ export function MobileDraftRoom(props: {
       id: string;
       label: string;
       muted: boolean;
+      selected: boolean;
       winner: boolean;
       posterUrl: string | null;
       filmTitle: string | null;
@@ -65,6 +66,9 @@ export function MobileDraftRoom(props: {
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
+      draftedByLabel?: string | null;
+      draftedByAvatarKey?: string | null;
+      draftedRoundPick?: string | null;
     }
   >;
   draftedNominationIds: Set<number>;
@@ -142,6 +146,7 @@ export function MobileDraftRoom(props: {
         onResumeDraft={o.header.onResumeDraft}
         isFinalResults={props.isFinalResults}
         resultsWinnerLabel={o.header.resultsWinnerLabel}
+        resultsPodium={o.header.resultsPodium}
         view={props.isPre ? "draft" : isCompleted ? "roster" : o.header.view}
         onViewChange={(v) => o.header.setView(v)}
         canToggleView={o.header.canToggleView && !props.isPre && !isCompleted}
@@ -205,6 +210,12 @@ export function MobileDraftRoom(props: {
                 canOpenLedger ? "" : "is-disabled"
               ].join(" ")}
               aria-label="Draft history"
+              aria-disabled={!canOpenLedger}
+              title={
+                canOpenLedger
+                  ? "Draft history"
+                  : "Draft history (available after draft starts)"
+              }
               onClick={() => {
                 if (!canOpenLedger) return;
                 setActiveRail((r) => (r === "ledger" ? null : "ledger"));
@@ -222,6 +233,12 @@ export function MobileDraftRoom(props: {
                 canOpenRosterRail ? "" : "is-disabled"
               ].join(" ")}
               aria-label="My roster"
+              aria-disabled={!canOpenRosterRail}
+              title={
+                canOpenRosterRail
+                  ? "My roster"
+                  : "My roster (available after draft starts)"
+              }
               onClick={() => {
                 if (!canOpenRosterRail) return;
                 setActiveRail((r) => (r === "roster" ? null : "roster"));
@@ -239,6 +256,8 @@ export function MobileDraftRoom(props: {
                 canOpenAutodraft ? "" : "is-disabled"
               ].join(" ")}
               aria-label="Auto-draft"
+              aria-disabled={!canOpenAutodraft}
+              title="Auto-draft"
               onClick={() => {
                 if (!canOpenAutodraft) return;
                 setActiveRail((r) => (r === "autodraft" ? null : "autodraft"));
@@ -293,6 +312,9 @@ export function MobileDraftRoom(props: {
               performerProfileUrl={mobileNominee.performerProfileUrl}
               performerProfilePath={mobileNominee.performerProfilePath}
               songTitle={mobileNominee.songTitle}
+              draftedByLabel={mobileNominee.draftedByLabel}
+              draftedByAvatarKey={mobileNominee.draftedByAvatarKey}
+              draftedRoundPick={mobileNominee.draftedRoundPick}
               action={
                 props.canDraftAction ? (
                   <Button

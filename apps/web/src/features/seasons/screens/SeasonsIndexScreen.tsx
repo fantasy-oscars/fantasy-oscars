@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
+import { seasonPath } from "@/lib/routes";
 import "@/primitives/baseline.css";
 import type { SeasonIndexCard, SeasonsIndexView } from "@/orchestration/seasonsIndex";
 import {
@@ -83,7 +84,12 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                           key={s.season_id}
                           interactive
                           component={Link}
-                          to={`/seasons/${s.season_id}`}
+                          to={seasonPath({
+                            leagueId: s.league_id,
+                            leagueName: s.league_name,
+                            ceremonyCode: s.ceremony_code,
+                            ceremonyId: s.ceremony_id
+                          })}
                         >
                           <Stack gap="var(--fo-space-dense-2)">
                             <Text className="baseline-textCardTitle">

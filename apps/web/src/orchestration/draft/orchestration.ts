@@ -77,6 +77,10 @@ export type DraftRoomOrchestration = {
     ceremonyStatus: string | null;
     isFinalResults: boolean;
     resultsWinnerLabel: string | null;
+    resultsPodium: Array<{
+      place: 1 | 2 | 3;
+      names: string[];
+    }>;
     scoringStrategyName: string;
     getNominationPoints: (nominationId: number) => number;
   };
@@ -337,8 +341,8 @@ export function useDraftRoomOrchestration(args: {
     return m;
   }, [pointsForNominationId, snapshot, winnerSet]);
 
-  const resultsWinnerLabel = useMemo(() => {
-    if (!snapshot || !isFinalResults) return null;
+  const resultsPodium = useMemo(() => {
+    if (!snapshot || !isFinalResults) return [];
     const scores = snapshot.seats.map((s) => ({
       seatNumber: s.seat_number,
       username: s.username ?? `Seat ${s.seat_number}`,
@@ -347,15 +351,17 @@ export function useDraftRoomOrchestration(args: {
           ? (seatScoreBySeatNumber.get(s.seat_number) ?? 0)
           : (winnerCountBySeat.get(s.seat_number) ?? 0)
     }));
-    if (!scores.length) return null;
-    const bestScore =
-      scoringStrategyName === "negative"
-        ? Math.min(...scores.map((s) => s.score))
-        : Math.max(...scores.map((s) => s.score));
-    const winners = scores.filter((s) => s.score === bestScore);
-    if (!winners.length) return null;
-    if (winners.length === 1) return winners[0].username;
-    return `Tie: ${winners.map((w) => w.username).join(", ")}`;
+    if (!scores.length) return [];
+    const rankScores = Array.from(new Set(scores.map((s) => s.score))).sort((a, b) =>
+      scoringStrategyName === "negative" ? a - b : b - a
+    );
+    const topThree = rankScores.slice(0, 3);
+    return topThree
+      .map((score, idx) => ({
+        place: (idx + 1) as 1 | 2 | 3,
+        names: scores.filter((s) => s.score === score).map((s) => s.username)
+      }))
+      .filter((p) => p.names.length > 0);
   }, [
     isFinalResults,
     scoringStrategyName,
@@ -363,6 +369,13 @@ export function useDraftRoomOrchestration(args: {
     snapshot,
     winnerCountBySeat
   ]);
+
+  const resultsWinnerLabel = useMemo(() => {
+    const firstPlace = resultsPodium.find((p) => p.place === 1)?.names ?? [];
+    if (!isFinalResults || firstPlace.length === 0) return null;
+    if (firstPlace.length === 1) return firstPlace[0];
+    return `Tie: ${firstPlace.join(", ")}`;
+  }, [isFinalResults, resultsPodium]);
 
   const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
   const activeSeatNumber = turn?.seat_number ?? null;
@@ -799,7 +812,9 @@ export function useDraftRoomOrchestration(args: {
     if (!Number.isFinite(deadlineMs)) return null;
     const remaining = deadlineMs - nowTs;
     if (!Number.isFinite(remaining)) return null;
-    return remaining > 0 ? remaining : 0;
+    const maxMs = d.pick_timer_seconds * 1000;
+    const clamped = Math.min(Math.max(remaining, 0), maxMs);
+    return Number.isFinite(clamped) ? clamped : null;
   }, [nowTs, snapshot]);
 
   const participants = useMemo(() => {
@@ -879,6 +894,7 @@ export function useDraftRoomOrchestration(args: {
       ceremonyStatus,
       isFinalResults,
       resultsWinnerLabel,
+      resultsPodium,
       scoringStrategyName,
       getNominationPoints: (nominationId: number) =>
         pointsForNominationId.get(nominationId) ?? 1

@@ -34,7 +34,9 @@ export function FilmCombobox(props: {
   return (
     <Combobox
       store={combobox}
-      withinPortal={false}
+      withinPortal
+      position="bottom-start"
+      middlewares={{ flip: true, shift: true }}
       onOptionSubmit={(val) => {
         if (val.startsWith("create:")) {
           const title = val.slice("create:".length);

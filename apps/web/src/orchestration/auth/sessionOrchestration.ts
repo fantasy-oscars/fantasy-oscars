@@ -7,6 +7,7 @@ export type AuthUser = {
   username?: string;
   email?: string;
   is_admin?: boolean;
+  admin_role?: "NONE" | "OPERATOR" | "SUPER_ADMIN";
   avatar_key?: string;
 };
 

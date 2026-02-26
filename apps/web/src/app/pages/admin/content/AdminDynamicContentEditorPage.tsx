@@ -1,20 +1,29 @@
 import { useNavigate, useParams } from "react-router-dom";
-import type { DynamicKey } from "@/decisions/adminContent";
+import { canEditDynamicContentByRole, type DynamicKey } from "@/decisions/adminContent";
 import { useAdminDynamicContentEditorOrchestration } from "@/orchestration/adminContent";
 import { AdminDynamicContentEditorScreen } from "@/features/admin/screens/content/AdminDynamicContentEditorScreen";
 import { confirm } from "@/notifications";
 import { useLocation } from "react-router-dom";
+import { useAuthContext } from "@/auth/context";
+import { normalizeAdminRole } from "@/auth/roles";
+import { PageError } from "@/shared/page-state";
 
 export function AdminDynamicContentEditorPage() {
   const { key: keyRaw, id: idRaw } = useParams();
-  const key = keyRaw as DynamicKey | undefined;
-  const id = idRaw ? Number(idRaw) : NaN;
+  const { user } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const key = keyRaw as DynamicKey | undefined;
+  const id = idRaw ? Number(idRaw) : NaN;
+  const role = normalizeAdminRole(user?.admin_role, Boolean(user?.is_admin));
+  const forbidden = Boolean(key && !canEditDynamicContentByRole({ role, key }));
   const contentKey = key ?? null;
   const entryId = Number.isFinite(id) ? id : null;
-
   const o = useAdminDynamicContentEditorOrchestration({ key: contentKey, entryId });
+
+  if (forbidden) {
+    return <PageError message="Super admin access required for this content." />;
+  }
   const q = new URLSearchParams(location.search);
   const viewOnly = q.get("view") === "1";
 

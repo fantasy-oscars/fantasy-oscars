@@ -1,50 +1,93 @@
 import { Link } from "react-router-dom";
-import { Stack, Text, Title } from "@ui";
+import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
-export function AdminHomeScreen() {
+export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
   return (
     <Stack component="section" className="stack" gap="md">
       <Text className="baseline-textBody">
-        Use Admin to configure ceremonies, manage users, publish site content, and audit
-        system activity.
+        Use Admin to configure ceremonies and manage user-facing content.
       </Text>
 
       <Stack gap="lg">
-        <StandardCard interactive component={Link} to="/admin/ceremonies">
+        <StandardCard>
           <Title order={3} className="baseline-textSectionHeader">
-            Ceremonies
+            Game Content
           </Title>
           <Text className="baseline-textBody">
-            Create and maintain ceremonies, categories, nominees, and winners.
+            Configure ceremony data and reusable game structures.
           </Text>
-        </StandardCard>
-
-        <StandardCard interactive component={Link} to="/admin/category-templates">
-          <Title order={3} className="baseline-textSectionHeader">
-            Category Templates
-          </Title>
-          <Text className="baseline-textBody">
-            Manage reusable category templates used to build ceremony category sets.
-          </Text>
-        </StandardCard>
-
-        <StandardCard interactive component={Link} to="/admin/users">
-          <Title order={3} className="baseline-textSectionHeader">
-            Users
-          </Title>
-          <Text className="baseline-textBody">Search users and manage admin access.</Text>
+          <Stack gap="var(--fo-space-0)">
+            {[
+              {
+                title: "Ceremonies",
+                description: "Create, publish, and manage ceremony workflows.",
+                to: "/admin/ceremonies"
+              },
+              {
+                title: "Category Templates",
+                description: "Define reusable category rules and metadata.",
+                to: "/admin/category-templates"
+              },
+              {
+                title: "Films",
+                description: "Maintain film records and resolve duplicates.",
+                to: "/admin/films"
+              }
+            ].map((row, idx, all) => (
+              <Box key={row.to}>
+                <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+                  <Box>
+                    <Text
+                      component={Link}
+                      to={row.to}
+                      fw="var(--fo-font-weight-semibold)"
+                      className={["baseline-textBody", "admin-cardHeadingLink"].join(" ")}
+                    >
+                      {row.title}
+                    </Text>
+                    <Text className="baseline-textBody" c="dimmed">
+                      {row.description}
+                    </Text>
+                  </Box>
+                </Group>
+                {idx === all.length - 1 ? null : <Divider />}
+              </Box>
+            ))}
+          </Stack>
         </StandardCard>
 
         <StandardCard interactive component={Link} to="/admin/content">
           <Title order={3} className="baseline-textSectionHeader">
-            Content &amp; Messaging
+            Site &amp; Messaging
           </Title>
           <Text className="baseline-textBody">
             Edit static pages and publish announcements and banners.
           </Text>
         </StandardCard>
+
+        {props.isSuperAdmin ? (
+          <>
+            <StandardCard interactive component={Link} to="/admin/users">
+              <Title order={3} className="baseline-textSectionHeader">
+                Users
+              </Title>
+              <Text className="baseline-textBody">
+                Search users and manage operator/super admin access.
+              </Text>
+            </StandardCard>
+
+            <StandardCard interactive component={Link} to="/admin/destructive-actions">
+              <Title order={3} className="baseline-textSectionHeader">
+                Data Deletion
+              </Title>
+              <Text className="baseline-textBody">
+                Reserved for irreversible and high-impact admin operations.
+              </Text>
+            </StandardCard>
+          </>
+        ) : null}
       </Stack>
     </Stack>
   );
