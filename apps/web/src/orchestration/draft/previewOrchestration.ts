@@ -264,6 +264,11 @@ export function useDraftPreviewOrchestration(args: {
       saving: false,
       error: null
     },
+    cursorSpy: {
+      enabled: false,
+      cursors: [],
+      emit: () => {}
+    },
     refresh
   };
 }

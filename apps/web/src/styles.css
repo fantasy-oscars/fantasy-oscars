@@ -216,10 +216,50 @@ body {
   /* Use dvh to avoid browser chrome clipping the footer. */
   height: 100dvh;
   width: 100vw;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--fo-surface-page);
+}
+
+.dr-cursorLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.dr-cursorGhost {
+  position: absolute;
+  left: var(--dr-cursor-x, 50%);
+  top: var(--dr-cursor-y, 50%);
+  transform: translate(calc(-1 * var(--fo-space-8)), calc(-1 * var(--fo-space-8)));
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fo-space-4);
+}
+
+.dr-cursorDot {
+  width: var(--fo-hit-size-sm);
+  height: var(--fo-hit-size-sm);
+  border-radius: var(--fo-radius-pill);
+  border: var(--fo-border-width) solid var(--fo-border-strong);
+  background: var(--fo-surface-card-primary);
+  box-shadow: var(--fo-shadow-chip);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dr-cursorLabel {
+  padding: var(--fo-space-hairline) var(--fo-space-4);
+  border-radius: var(--fo-radius-pill);
+  font-size: var(--fo-db-pill-font);
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--fo-text-primary);
+  background: var(--fo-surface-page);
+  border: var(--fo-border-width) solid var(--fo-border);
 }
 
 .dr-header {
