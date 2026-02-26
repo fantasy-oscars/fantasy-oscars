@@ -820,6 +820,9 @@ describe("GET /drafts/:id/snapshot", () => {
     runtimeSnapshotSvc,
     "getDraftRuntimeSnapshot"
   );
+  type RuntimeSnapshot = Awaited<
+    ReturnType<typeof runtimeSnapshotSvc.getDraftRuntimeSnapshot>
+  >;
   const poolClient = {
     query: vi.fn().mockResolvedValue({ rows: [] }),
     release: vi.fn()
@@ -860,7 +863,6 @@ describe("GET /drafts/:id/snapshot", () => {
           avatar_key: null
         }
       ],
-      participants: [],
       categories: [],
       nominations: [],
       picks: [],
@@ -873,7 +875,7 @@ describe("GET /drafts/:id/snapshot", () => {
         lock_override_set_by_user_id: null
       },
       version: 5
-    } as any);
+    } as unknown as RuntimeSnapshot);
   });
 
   afterEach(() => {
