@@ -2279,9 +2279,9 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   gap: var(--fo-space-8);
   min-height: var(--fo-control-height);
   padding: var(--fo-space-4) var(--fo-space-8);
-  border: var(--fo-border-width) solid rgba(var(--fo-gold-rgb), var(--fo-alpha-65));
+  border: var(--fo-border-width) solid var(--fo-gold-primary);
   border-radius: var(--fo-radius-pill);
-  background: color-mix(in srgb, var(--fo-gold-primary) 18%, var(--fo-surface-card-primary));
+  background: var(--fo-gold-primary);
   box-shadow: 0 6px 14px rgba(var(--fo-charcoal-rgb), var(--fo-alpha-25));
 }
 
@@ -2300,7 +2300,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .fo-tip-draftedChipName {
   font-size: var(--fo-font-size-xs);
   font-weight: var(--fo-font-weight-medium);
-  color: rgba(var(--fo-text-primary-rgb), var(--fo-alpha-92));
+  color: var(--fo-charcoal);
   line-height: 1.2;
   min-width: 0;
 }
@@ -2308,7 +2308,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .fo-tip-draftedChipPick {
   font-size: var(--fo-font-size-xs);
   font-weight: var(--fo-font-weight-semibold);
-  color: rgba(var(--fo-text-primary-rgb), var(--fo-alpha-75));
+  color: var(--fo-charcoal);
   line-height: 1.1;
   flex: 0 0 auto;
 }
