@@ -5,6 +5,7 @@ import type { AdminFilmDuplicateGroup } from "@/orchestration/adminFilmsDuplicat
 import { formatFilmLabel } from "@/decisions/admin/film";
 
 export type AdminFilmDuplicatesScreenProps = {
+  compact?: boolean;
   query: string;
   setQuery: (v: string) => void;
   loading: boolean;
@@ -18,6 +19,7 @@ export type AdminFilmDuplicatesScreenProps = {
 
 export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps) {
   const {
+    compact = false,
     query,
     setQuery,
     loading,
@@ -31,14 +33,25 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
 
   return (
     <Stack gap="md">
-      <Stack gap="var(--fo-space-4)">
-        <Title order={2} className="baseline-textHeroTitle">
-          Films
-        </Title>
-        <Text className="baseline-textBody">
-          Resolve duplicate film records and keep TMDB links consistent.
-        </Text>
-      </Stack>
+      {compact ? (
+        <Stack gap="var(--fo-space-4)">
+          <Title order={3} className="baseline-textSectionHeader">
+            Duplicate Utility
+          </Title>
+          <Text className="baseline-textBody">
+            Resolve duplicate film records and keep TMDB links consistent.
+          </Text>
+        </Stack>
+      ) : (
+        <Stack gap="var(--fo-space-4)">
+          <Title order={2} className="baseline-textHeroTitle">
+            Films
+          </Title>
+          <Text className="baseline-textBody">
+            Resolve duplicate film records and keep TMDB links consistent.
+          </Text>
+        </Stack>
+      )}
 
       <Group align="flex-end" gap="sm" wrap="wrap">
         <Box className="fo-flexFieldMd">
