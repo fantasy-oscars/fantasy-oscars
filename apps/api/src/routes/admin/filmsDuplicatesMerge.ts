@@ -116,7 +116,9 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           }
 
           const selectedFilms = [canonical, ...dupRows];
-          const linkedFilms = selectedFilms.filter((f) => Number.isInteger(f.tmdb_id) && Number(f.tmdb_id) > 0);
+          const linkedFilms = selectedFilms.filter(
+            (f) => Number.isInteger(f.tmdb_id) && Number(f.tmdb_id) > 0
+          );
           if (linkedFilms.length > 1) {
             throw new AppError(
               "FILM_MERGE_LINK_CONFLICT",

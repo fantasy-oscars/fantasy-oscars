@@ -45,7 +45,7 @@ export function AdminCategoryTemplatesScreen(props: {
           {Array.from({ length: 5 }).map((_, idx) => (
             <StandardCard key={idx} component="section">
               <Group justify="space-between" align="start" wrap="wrap">
-                <Stack gap="var(--fo-space-4)" style={{ flex: 1 }}>
+                <Stack gap="var(--fo-space-4)" className="fo-flex1Minw0">
                   <Skeleton height="var(--fo-font-size-sm)" width="34%" />
                   <Skeleton height="var(--fo-font-size-xs)" width="18%" />
                   <Skeleton height="var(--fo-font-size-xs)" width="42%" />

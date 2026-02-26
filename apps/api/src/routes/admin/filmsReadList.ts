@@ -20,7 +20,9 @@ export function registerAdminFilmsListRoute(args: {
         const yearNum = yearRaw ? Number(yearRaw) : null;
         const year = Number.isInteger(yearNum) ? yearNum : null;
         const linked =
-          typeof req.query.linked === "string" ? req.query.linked.trim().toLowerCase() : "";
+          typeof req.query.linked === "string"
+            ? req.query.linked.trim().toLowerCase()
+            : "";
         const nominated =
           typeof req.query.nominated === "string"
             ? req.query.nominated.trim().toLowerCase()
@@ -111,7 +113,11 @@ export function registerAdminFilmsListRoute(args: {
           [like, year, linkedFilter, nominatedFilter, pageSize, offset]
         );
         const total = Number(rows[0]?.total ?? 0);
-        const films = rows.map(({ total: _total, ...rest }) => rest);
+        const films = rows.map((row) => {
+          const { total, ...rest } = row;
+          void total;
+          return rest;
+        });
         return res.status(200).json({
           films,
           years,

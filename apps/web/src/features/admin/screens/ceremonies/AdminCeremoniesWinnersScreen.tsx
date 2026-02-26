@@ -1,4 +1,14 @@
-import { Accordion, Box, Button, Checkbox, Group, Skeleton, Stack, Text, Title } from "@ui";
+import {
+  Accordion,
+  Box,
+  Button,
+  Checkbox,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+  Title
+} from "@ui";
 import * as React from "react";
 import type { AdminCeremonyWinnersOrchestration } from "@/orchestration/adminCeremonies";
 import { FormStatus } from "@/shared/forms";
@@ -64,7 +74,13 @@ export function AdminCeremoniesWinnersScreen(props: {
 
   if (loading && loadState?.message === "Loading")
     return (
-      <Stack className="stack-lg" mt="md" gap="lg" role="status" aria-label="Loading winners">
+      <Stack
+        className="stack-lg"
+        mt="md"
+        gap="lg"
+        role="status"
+        aria-label="Loading winners"
+      >
         <StandardCard tone="nested" component="section">
           <Stack gap="var(--fo-space-dense-2)">
             <Skeleton height="var(--fo-font-size-sm)" width="18%" />

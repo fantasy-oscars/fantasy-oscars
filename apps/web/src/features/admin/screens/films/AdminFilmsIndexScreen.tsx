@@ -82,7 +82,9 @@ export function AdminFilmsIndexScreen(props: {
   onSaveTmdbId: (filmId: number, tmdbId: number | null) => Promise<{ ok: boolean }>;
   onSearchTmdb: (
     q: string
-  ) => Promise<{ ok: true; results: TmdbFilmSearchResult[] } | { ok: false; error: string }>;
+  ) => Promise<
+    { ok: true; results: TmdbFilmSearchResult[] } | { ok: false; error: string }
+  >;
   onLoadConsolidated: (
     canonicalId: number,
     page: number,
@@ -114,7 +116,9 @@ export function AdminFilmsIndexScreen(props: {
   const [decoupledFilmIds, setDecoupledFilmIds] = useState<Record<number, true>>({});
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(1);
-  const [selectedFilmById, setSelectedFilmById] = useState<Record<number, AdminFilmRow>>({});
+  const [selectedFilmById, setSelectedFilmById] = useState<Record<number, AdminFilmRow>>(
+    {}
+  );
   const [mergingSelected, setMergingSelected] = useState(false);
   const [mergeConflict, setMergeConflict] = useState<{
     selectedFilms: AdminFilmRow[];
@@ -199,7 +203,10 @@ export function AdminFilmsIndexScreen(props: {
   }, [displayRows, openGroupKey]);
 
   const GROUP_PAGE_SIZE = 8;
-  const groupPageCount = Math.max(1, Math.ceil((openGroup?.films.length ?? 0) / GROUP_PAGE_SIZE));
+  const groupPageCount = Math.max(
+    1,
+    Math.ceil((openGroup?.films.length ?? 0) / GROUP_PAGE_SIZE)
+  );
   const clampedGroupPage = Math.min(Math.max(groupPage, 1), groupPageCount);
   const pagedGroupFilms = useMemo<AdminFilmRow[]>(() => {
     if (!openGroup) return [];
@@ -210,12 +217,17 @@ export function AdminFilmsIndexScreen(props: {
   const selectedFilms = useMemo(
     () =>
       Object.values(selectedFilmById).sort((a, b) =>
-        `${a.title}${a.release_year ?? ""}`.localeCompare(`${b.title}${b.release_year ?? ""}`)
+        `${a.title}${a.release_year ?? ""}`.localeCompare(
+          `${b.title}${b.release_year ?? ""}`
+        )
       ),
     [selectedFilmById]
   );
 
-  const totalPages = Math.max(1, Math.ceil((props.total || 0) / Math.max(props.pageSize, 1)));
+  const totalPages = Math.max(
+    1,
+    Math.ceil((props.total || 0) / Math.max(props.pageSize, 1))
+  );
 
   const isRowChecked = (row: FilmDisplayRow) => {
     const film = row.type === "film" ? row.film : row.representative;
@@ -255,14 +267,16 @@ export function AdminFilmsIndexScreen(props: {
   const loadConsolidatedModal = (canonicalFilm: AdminFilmRow, page = 1) => {
     setConsolidatedModalFilm(canonicalFilm);
     setConsolidatedLoading(true);
-    void props.onLoadConsolidated(canonicalFilm.id, page, consolidatedPageSize).then((res) => {
-      setConsolidatedLoading(false);
-      if (!res.ok) return;
-      setConsolidatedRows(res.films);
-      setConsolidatedTotal(res.total);
-      setConsolidatedPage(res.page);
-      setConsolidatedPageSize(res.pageSize);
-    });
+    void props
+      .onLoadConsolidated(canonicalFilm.id, page, consolidatedPageSize)
+      .then((res) => {
+        setConsolidatedLoading(false);
+        if (!res.ok) return;
+        setConsolidatedRows(res.films);
+        setConsolidatedTotal(res.total);
+        setConsolidatedPage(res.page);
+        setConsolidatedPageSize(res.pageSize);
+      });
   };
 
   const consolidatedTotalPages = Math.max(
@@ -279,7 +293,9 @@ export function AdminFilmsIndexScreen(props: {
         <Group justify="space-between" align="center" wrap="wrap">
           <Group align="center" gap="sm" wrap="nowrap" miw="var(--fo-space-0)">
             <Checkbox
-              aria-label={isGroup ? "Select consolidated film records" : "Select film record"}
+              aria-label={
+                isGroup ? "Select consolidated film records" : "Select film record"
+              }
               checked={isRowChecked(row)}
               indeterminate={isRowIndeterminate(row)}
               onChange={(e) => toggleRowSelection(row, e.currentTarget.checked)}
@@ -345,7 +361,11 @@ export function AdminFilmsIndexScreen(props: {
                 variant="subtle"
                 aria-label={film.tmdb_id ? "Edit TMDB link" : "Link to TMDB"}
                 onClick={() => {
-                  setEditingFilm({ id: film.id, title: film.title, tmdb_id: film.tmdb_id });
+                  setEditingFilm({
+                    id: film.id,
+                    title: film.title,
+                    tmdb_id: film.tmdb_id
+                  });
                   setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
                   setTmdbSearchQuery(film.title);
                 }}
@@ -388,10 +408,14 @@ export function AdminFilmsIndexScreen(props: {
         ) {
           const linkedById = new Map(
             filmsToMerge
-              .filter((film) => Number.isInteger(film.tmdb_id) && Number(film.tmdb_id) > 0)
+              .filter(
+                (film) => Number.isInteger(film.tmdb_id) && Number(film.tmdb_id) > 0
+              )
               .map((film) => [film.id, film] as const)
           );
-          const linkedFilmsFromError = (res.errorDetails?.linked_films as Array<{ id?: unknown }>)
+          const linkedFilmsFromError = (
+            res.errorDetails?.linked_films as Array<{ id?: unknown }>
+          )
             .map((f) => linkedById.get(Number(f.id)))
             .filter((f): f is AdminFilmRow => Boolean(f));
           const linkedFilmsResolved =
@@ -470,10 +494,12 @@ export function AdminFilmsIndexScreen(props: {
         </Box>
         <Menu closeOnItemClick={false} withinPortal position="bottom-end">
           <Menu.Target>
-            <Button variant="default">Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}</Button>
+            <Button variant="default">
+              Filters{activeFilters > 0 ? ` (${activeFilters})` : ""}
+            </Button>
           </Menu.Target>
           <Menu.Dropdown>
-            <Box p="sm" style={{ width: 260 }}>
+            <Box p="sm" className="fo-comboboxPanelNarrow">
               <Stack gap="xs">
                 <Select
                   label="Year"
@@ -541,7 +567,9 @@ export function AdminFilmsIndexScreen(props: {
           {selectedDisplayRows.map((row) =>
             renderFilmCard(
               row,
-              row.type === "group" ? `selected-group:${row.group.normTitle}` : `selected-film:${row.film.id}`
+              row.type === "group"
+                ? `selected-group:${row.group.normTitle}`
+                : `selected-film:${row.film.id}`
             )
           )}
           {selectedFilms.length > 1 ? (
@@ -569,7 +597,9 @@ export function AdminFilmsIndexScreen(props: {
           {displayRows.map((row) =>
             renderFilmCard(
               row,
-              row.type === "group" ? `index-group:${row.group.normTitle}` : `index-film:${row.film.id}`
+              row.type === "group"
+                ? `index-group:${row.group.normTitle}`
+                : `index-film:${row.film.id}`
             )
           )}
         </Stack>
@@ -622,7 +652,9 @@ export function AdminFilmsIndexScreen(props: {
             value={mergeConflict?.keepLinkedId ?? null}
             onChange={(value) => {
               if (!value) return;
-              setMergeConflict((prev) => (prev ? { ...prev, keepLinkedId: value } : prev));
+              setMergeConflict((prev) =>
+                prev ? { ...prev, keepLinkedId: value } : prev
+              );
             }}
           />
           <Group justify="flex-end">
@@ -639,7 +671,9 @@ export function AdminFilmsIndexScreen(props: {
               onClick={() => {
                 if (!mergeConflict?.keepLinkedId) return;
                 const keepId = Number(mergeConflict.keepLinkedId);
-                const toUnlink = mergeConflict.linkedFilms.filter((film) => film.id !== keepId);
+                const toUnlink = mergeConflict.linkedFilms.filter(
+                  (film) => film.id !== keepId
+                );
                 setResolvingConflict(true);
                 void (async () => {
                   for (const film of toUnlink) {
@@ -650,7 +684,9 @@ export function AdminFilmsIndexScreen(props: {
                     }
                   }
                   const nextSelected = mergeConflict.selectedFilms.map((film) =>
-                    toUnlink.some((u) => u.id === film.id) ? { ...film, tmdb_id: null } : film
+                    toUnlink.some((u) => u.id === film.id)
+                      ? { ...film, tmdb_id: null }
+                      : film
                   );
                   const merged = await props.onMergeSelected(nextSelected);
                   setResolvingConflict(false);
@@ -679,7 +715,9 @@ export function AdminFilmsIndexScreen(props: {
         overlayProps={{ opacity: 0.35, blur: 2 }}
       >
         <Stack gap="sm">
-          <Text className="baseline-textBody">{editingFilm?.title ?? "Untitled film"}</Text>
+          <Text className="baseline-textBody">
+            {editingFilm?.title ?? "Untitled film"}
+          </Text>
           <Text className="baseline-textMeta">
             Saving hydrates film metadata from TMDB when available.
           </Text>
@@ -751,17 +789,23 @@ export function AdminFilmsIndexScreen(props: {
                   </Combobox.Empty>
                 ) : (
                   tmdbSearchResults.map((r) => (
-                    <Combobox.Option key={`tmdb-film-${r.tmdb_id}`} value={String(r.tmdb_id)}>
+                    <Combobox.Option
+                      key={`tmdb-film-${r.tmdb_id}`}
+                      value={String(r.tmdb_id)}
+                    >
                       <Group gap="sm" align="flex-start" wrap="nowrap">
                         <Image
                           src={r.poster_url}
                           alt=""
-                          w={42}
-                          h={63}
+                          className="fo-filmSearchPoster"
                           radius="sm"
                         />
-                        <Stack gap={2} style={{ flex: 1 }}>
-                          <Text size="sm" fw="var(--fo-font-weight-semibold)" lineClamp={1}>
+                        <Stack gap="var(--fo-space-4)" className="fo-flex1Minw0">
+                          <Text
+                            size="sm"
+                            fw="var(--fo-font-weight-semibold)"
+                            lineClamp={1}
+                          >
                             {r.title}
                           </Text>
                           <Text size="xs" className="muted">
@@ -863,7 +907,10 @@ export function AdminFilmsIndexScreen(props: {
                   <StandardCard key={`group-film-${groupFilm.id}`}>
                     <Group justify="space-between" align="center" wrap="wrap">
                       <Box miw="var(--fo-space-0)">
-                        <Text className="baseline-textBody" fw="var(--fo-font-weight-semibold)">
+                        <Text
+                          className="baseline-textBody"
+                          fw="var(--fo-font-weight-semibold)"
+                        >
                           {groupFilm.title}
                           {groupFilm.release_year ? ` (${groupFilm.release_year})` : ""}
                         </Text>
@@ -873,7 +920,10 @@ export function AdminFilmsIndexScreen(props: {
                           variant="subtle"
                           aria-label="Decouple from grouped entry"
                           onClick={() => {
-                            setDecoupledFilmIds((prev) => ({ ...prev, [groupFilm.id]: true }));
+                            setDecoupledFilmIds((prev) => ({
+                              ...prev,
+                              [groupFilm.id]: true
+                            }));
                           }}
                         >
                           <Text component="span" className="gicon" aria-hidden="true">
@@ -941,7 +991,10 @@ export function AdminFilmsIndexScreen(props: {
                 <StandardCard key={`consolidated-child-${groupFilm.id}`}>
                   <Group justify="space-between" align="center" wrap="wrap">
                     <Box miw="var(--fo-space-0)">
-                      <Text className="baseline-textBody" fw="var(--fo-font-weight-semibold)">
+                      <Text
+                        className="baseline-textBody"
+                        fw="var(--fo-font-weight-semibold)"
+                      >
                         {groupFilm.title}
                         {groupFilm.release_year ? ` (${groupFilm.release_year})` : ""}
                       </Text>
@@ -955,11 +1008,17 @@ export function AdminFilmsIndexScreen(props: {
                           if (!consolidatedModalFilm) return;
                           setDecouplingFilmId(groupFilm.id);
                           void props
-                            .onDecoupleConsolidated(consolidatedModalFilm.id, groupFilm.id)
+                            .onDecoupleConsolidated(
+                              consolidatedModalFilm.id,
+                              groupFilm.id
+                            )
                             .then((res) => {
                               setDecouplingFilmId(null);
                               if (!res.ok) return;
-                              loadConsolidatedModal(consolidatedModalFilm, consolidatedPage);
+                              loadConsolidatedModal(
+                                consolidatedModalFilm,
+                                consolidatedPage
+                              );
                             });
                         }}
                       >
@@ -975,7 +1034,8 @@ export function AdminFilmsIndexScreen(props: {
           )}
           <Group justify="space-between" align="center">
             <Text className="baseline-textMeta">
-              Page {consolidatedPage} of {consolidatedTotalPages} ({consolidatedTotal} records)
+              Page {consolidatedPage} of {consolidatedTotalPages} ({consolidatedTotal}{" "}
+              records)
             </Text>
             <Group gap="xs">
               <Button
@@ -983,14 +1043,19 @@ export function AdminFilmsIndexScreen(props: {
                 disabled={consolidatedPage <= 1 || consolidatedLoading}
                 onClick={() => {
                   if (!consolidatedModalFilm) return;
-                  loadConsolidatedModal(consolidatedModalFilm, Math.max(1, consolidatedPage - 1));
+                  loadConsolidatedModal(
+                    consolidatedModalFilm,
+                    Math.max(1, consolidatedPage - 1)
+                  );
                 }}
               >
                 Previous
               </Button>
               <Button
                 variant="default"
-                disabled={consolidatedPage >= consolidatedTotalPages || consolidatedLoading}
+                disabled={
+                  consolidatedPage >= consolidatedTotalPages || consolidatedLoading
+                }
                 onClick={() => {
                   if (!consolidatedModalFilm) return;
                   loadConsolidatedModal(

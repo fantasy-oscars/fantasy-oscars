@@ -78,7 +78,13 @@ export function AdminCeremoniesOverviewScreen(props: {
 
   if (loading && !ceremony)
     return (
-      <Stack className="stack-lg" mt="md" gap="lg" role="status" aria-label="Loading ceremony">
+      <Stack
+        className="stack-lg"
+        mt="md"
+        gap="lg"
+        role="status"
+        aria-label="Loading ceremony"
+      >
         <StandardCard component="section">
           <Stack gap="var(--fo-space-dense-2)">
             <Skeleton height="var(--fo-font-size-sm)" width="26%" />

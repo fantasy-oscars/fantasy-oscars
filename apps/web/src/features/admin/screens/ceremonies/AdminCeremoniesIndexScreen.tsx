@@ -1,5 +1,15 @@
 import { Link } from "react-router-dom";
-import { ActionIcon, Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Skeleton,
+  Stack,
+  Text,
+  Title
+} from "@ui";
 import { FormStatus } from "@/shared/forms";
 import type { ApiResult } from "@/lib/types";
 import type { CeremonyOption } from "@/orchestration/adminCeremonies";
@@ -53,7 +63,7 @@ export function AdminCeremoniesIndexScreen(props: {
           {Array.from({ length: 5 }).map((_, idx) => (
             <StandardCard key={idx}>
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Stack gap="var(--fo-space-4)" style={{ flex: 1 }}>
+                <Stack gap="var(--fo-space-4)" className="fo-flex1Minw0">
                   <Skeleton height="var(--fo-font-size-sm)" width="48%" />
                   <Skeleton height="22px" width="110px" />
                 </Stack>

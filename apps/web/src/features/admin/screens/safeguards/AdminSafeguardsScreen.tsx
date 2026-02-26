@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Group, Select, Stack, Text, Title, Tooltip } from "@ui";
 import { StandardCard } from "@/primitives";
 import { fetchJson } from "@/lib/api";
-import { ceremonyCodeSlug, leaguePath, seasonPath, slugifyPathSegment } from "@/lib/routes";
+import {
+  ceremonyCodeSlug,
+  leaguePath,
+  seasonPath,
+  slugifyPathSegment
+} from "@/lib/routes";
 import { notify } from "@/notifications";
 import {
   DestructiveActionModal,
@@ -33,9 +38,9 @@ export function AdminSafeguardsScreen() {
       ceremony_code: string | null;
     }>
   >([]);
-  const [leagues, setLeagues] = useState<Array<{ id: number; name: string; code: string }>>(
-    []
-  );
+  const [leagues, setLeagues] = useState<
+    Array<{ id: number; name: string; code: string }>
+  >([]);
   const [ceremonyOptions, setCeremonyOptions] = useState<
     Array<{ value: string; label: string }>
   >([]);
@@ -322,7 +327,7 @@ export function AdminSafeguardsScreen() {
               {loadingPreview === "ceremony" ? "Loading..." : "Review delete"}
             </Button>
             <Tooltip label={ceremonyLinkTooltip} withArrow>
-              <span style={{ display: "inline-flex" }}>
+              <span className="fo-inlineFlex">
                 <Button
                   component="a"
                   href={ceremonyHref}
@@ -330,13 +335,14 @@ export function AdminSafeguardsScreen() {
                   color="red"
                   variant="outline"
                   disabled={!selectedCeremony || loadingLists}
-                  aria-label={selectedCeremony ? "Open ceremony page" : ceremonyLinkTooltip}
-                  style={{
-                    ["--button-color" as string]:
-                      !selectedCeremony || loadingLists
-                        ? "var(--fo-text-deemphasized)"
-                        : "var(--fo-text-primary)"
-                  }}
+                  aria-label={
+                    selectedCeremony ? "Open ceremony page" : ceremonyLinkTooltip
+                  }
+                  className={
+                    !selectedCeremony || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
                 >
                   <Text
                     component="span"
@@ -378,7 +384,7 @@ export function AdminSafeguardsScreen() {
               {loadingPreview === "season" ? "Loading..." : "Review delete"}
             </Button>
             <Tooltip label={seasonLinkTooltip} withArrow>
-              <span style={{ display: "inline-flex" }}>
+              <span className="fo-inlineFlex">
                 <Button
                   component="a"
                   href={seasonHref}
@@ -387,12 +393,11 @@ export function AdminSafeguardsScreen() {
                   variant="outline"
                   disabled={!selectedSeason || loadingLists}
                   aria-label={selectedSeason ? "Open season page" : seasonLinkTooltip}
-                  style={{
-                    ["--button-color" as string]:
-                      !selectedSeason || loadingLists
-                        ? "var(--fo-text-deemphasized)"
-                        : "var(--fo-text-primary)"
-                  }}
+                  className={
+                    !selectedSeason || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
                 >
                   <Text
                     component="span"
@@ -434,7 +439,7 @@ export function AdminSafeguardsScreen() {
               {loadingPreview === "league" ? "Loading..." : "Review delete"}
             </Button>
             <Tooltip label={leagueLinkTooltip} withArrow>
-              <span style={{ display: "inline-flex" }}>
+              <span className="fo-inlineFlex">
                 <Button
                   component="a"
                   href={leagueHref}
@@ -443,12 +448,11 @@ export function AdminSafeguardsScreen() {
                   variant="outline"
                   disabled={!selectedLeague || loadingLists}
                   aria-label={selectedLeague ? "Open league page" : leagueLinkTooltip}
-                  style={{
-                    ["--button-color" as string]:
-                      !selectedLeague || loadingLists
-                        ? "var(--fo-text-deemphasized)"
-                        : "var(--fo-text-primary)"
-                  }}
+                  className={
+                    !selectedLeague || loadingLists
+                      ? "fo-buttonColorMuted"
+                      : "fo-buttonColorPrimary"
+                  }
                 >
                   <Text
                     component="span"

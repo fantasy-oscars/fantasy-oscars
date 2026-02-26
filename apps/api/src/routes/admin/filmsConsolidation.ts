@@ -83,7 +83,11 @@ export function registerAdminFilmConsolidationRoutes(args: {
           [id, pageSize, offset]
         );
         const total = Number(rows[0]?.total ?? 0);
-        const films = rows.map(({ total: _total, ...rest }) => rest);
+        const films = rows.map((row) => {
+          const { total, ...rest } = row;
+          void total;
+          return rest;
+        });
 
         return res.status(200).json({
           films,

@@ -46,7 +46,12 @@ export function AdminStaticContentEditorScreen(props: {
   if (loading)
     return (
       <Stack component="section" role="status" aria-label="Loading content editor">
-        <Group className="header-with-controls" justify="space-between" align="start" wrap="wrap">
+        <Group
+          className="header-with-controls"
+          justify="space-between"
+          align="start"
+          wrap="wrap"
+        >
           <Stack gap="var(--fo-space-dense-2)">
             <Skeleton height="var(--fo-font-size-hero-title)" width="28%" />
             <Skeleton height="var(--fo-font-size-sm)" width="54%" />

@@ -64,7 +64,12 @@ export function InviteClaimPage() {
     return (
       <Box className="baseline-page">
         <Box className="baseline-pageInner">
-          <Grid className="card-grid" gutter="lg" role="status" aria-label="Checking session">
+          <Grid
+            className="card-grid"
+            gutter="lg"
+            role="status"
+            aria-label="Checking session"
+          >
             <Grid.Col span={{ base: 12, md: 6 }}>
               <StandardCard component="section">
                 <Stack gap="sm">

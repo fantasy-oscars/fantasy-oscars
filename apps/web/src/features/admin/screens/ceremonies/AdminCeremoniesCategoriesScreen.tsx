@@ -45,7 +45,13 @@ export function AdminCeremoniesCategoriesScreen(props: {
 
   if (o.loading)
     return (
-      <Stack className="stack-lg" mt="md" gap="lg" role="status" aria-label="Loading categories">
+      <Stack
+        className="stack-lg"
+        mt="md"
+        gap="lg"
+        role="status"
+        aria-label="Loading categories"
+      >
         <StandardCard tone="nested" component="section">
           <Stack gap="var(--fo-space-dense-2)">
             <Skeleton height="var(--fo-font-size-sm)" width="22%" />

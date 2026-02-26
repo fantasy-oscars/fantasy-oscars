@@ -26,7 +26,12 @@ export function AdminCeremonyPublishScreen(props: {
 
   if (loading && !ceremony)
     return (
-      <Stack className="stack-lg" gap="lg" role="status" aria-label="Loading publish settings">
+      <Stack
+        className="stack-lg"
+        gap="lg"
+        role="status"
+        aria-label="Loading publish settings"
+      >
         <Box component="header">
           <Skeleton height="var(--fo-font-size-hero-title)" width="24%" />
           <Box mt="var(--fo-space-dense-2)">

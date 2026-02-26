@@ -209,11 +209,23 @@ export function NominationEditFilmSection(props: {
                   </Combobox.Empty>
                 ) : (
                   tmdbSearchResults.map((r) => (
-                    <Combobox.Option key={`tmdb-film-${r.tmdb_id}`} value={String(r.tmdb_id)}>
+                    <Combobox.Option
+                      key={`tmdb-film-${r.tmdb_id}`}
+                      value={String(r.tmdb_id)}
+                    >
                       <Group gap="sm" align="flex-start" wrap="nowrap">
-                        <Image src={r.poster_url} alt="" w={42} h={63} radius="sm" />
-                        <Stack gap={2} style={{ flex: 1 }}>
-                          <Text size="sm" fw="var(--fo-font-weight-semibold)" lineClamp={1}>
+                        <Image
+                          src={r.poster_url}
+                          alt=""
+                          className="fo-filmSearchPoster"
+                          radius="sm"
+                        />
+                        <Stack gap="var(--fo-space-4)" className="fo-flex1Minw0">
+                          <Text
+                            size="sm"
+                            fw="var(--fo-font-weight-semibold)"
+                            lineClamp={1}
+                          >
                             {r.title}
                           </Text>
                           <Text size="xs" className="muted">

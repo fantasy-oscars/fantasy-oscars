@@ -163,7 +163,9 @@ export async function fetchTmdbMovieDetails(
   });
 }
 
-export async function searchTmdbMovies(queryText: string): Promise<TmdbMovieSearchResult[]> {
+export async function searchTmdbMovies(
+  queryText: string
+): Promise<TmdbMovieSearchResult[]> {
   const queryTrimmed = String(queryText ?? "").trim();
   if (!queryTrimmed) return [];
   const res = await tmdbGetJson<{ results?: TmdbMovieSearchResult[] }>("/search/movie", {

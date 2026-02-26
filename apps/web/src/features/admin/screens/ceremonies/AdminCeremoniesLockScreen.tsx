@@ -22,7 +22,13 @@ export function AdminCeremoniesLockScreen(props: {
 
   if (loading && !lockState)
     return (
-      <Stack component="section" className="stack" mt="md" role="status" aria-label="Loading lock state">
+      <Stack
+        component="section"
+        className="stack"
+        mt="md"
+        role="status"
+        aria-label="Loading lock state"
+      >
         <Box component="header">
           <Skeleton height="var(--fo-font-size-hero-title)" width="18%" />
           <Box mt="var(--fo-space-dense-2)">
@@ -121,9 +127,7 @@ export function AdminCeremoniesLockScreen(props: {
           Note: entering the first winner will also lock the ceremony automatically.
         </Text>
         {!canArchive ? (
-          <Text className="muted">
-            Finalize winners first to enable archiving.
-          </Text>
+          <Text className="muted">Finalize winners first to enable archiving.</Text>
         ) : null}
       </StandardCard>
     </Stack>

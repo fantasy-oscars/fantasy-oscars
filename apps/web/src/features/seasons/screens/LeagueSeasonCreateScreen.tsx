@@ -37,7 +37,12 @@ export function LeagueSeasonCreateScreen(props: {
     return (
       <Box className="baseline-page">
         <Box className="baseline-pageInner">
-          <Stack gap="md" component="section" role="status" aria-label="Loading season form">
+          <Stack
+            gap="md"
+            component="section"
+            role="status"
+            aria-label="Loading season form"
+          >
             <Group justify="space-between" align="flex-start" wrap="wrap">
               <Box>
                 <Skeleton height="var(--fo-font-size-hero-title)" width="36%" />

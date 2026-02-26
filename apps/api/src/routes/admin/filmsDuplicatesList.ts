@@ -31,7 +31,7 @@ export function registerAdminFilmDuplicatesListRoute(args: {
           }>;
         }>(
           client,
-           `WITH f AS (
+          `WITH f AS (
              SELECT
                id::int,
                title,

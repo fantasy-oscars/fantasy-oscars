@@ -3035,6 +3035,27 @@ small.error {
   padding-inline: var(--fo-space-0);
 }
 
+.fo-inlineFlex {
+  display: inline-flex;
+}
+
+.fo-buttonColorMuted {
+  --button-color: var(--fo-text-deemphasized);
+}
+
+.fo-buttonColorPrimary {
+  --button-color: var(--fo-text-primary);
+}
+
+.fo-comboboxPanelNarrow {
+  width: min(100%, 16.25rem);
+}
+
+.fo-filmSearchPoster {
+  width: 2.625rem;
+  height: 3.9375rem;
+}
+
 .banner-body {
   min-width: 0;
 }

@@ -47,7 +47,9 @@ export function useAdminFilmsIndexOrchestration() {
   const [query, setQuery] = useState("");
   const [year, setYear] = useState<string>("all");
   const [linked, setLinked] = useState<"all" | "linked" | "unlinked">("all");
-  const [nominated, setNominated] = useState<"all" | "nominated" | "not_nominated">("all");
+  const [nominated, setNominated] = useState<"all" | "nominated" | "not_nominated">(
+    "all"
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
@@ -59,17 +61,20 @@ export function useAdminFilmsIndexOrchestration() {
   const [years, setYears] = useState<number[]>([]);
   const [linkWorkingFilmId, setLinkWorkingFilmId] = useState<number | null>(null);
 
-  const buildPath = useCallback((params: ListParams) => {
-    const search = new URLSearchParams();
-    if (params.query.trim()) search.set("q", params.query.trim());
-    if (params.year !== "all") search.set("year", params.year);
-    if (params.linked !== "all") search.set("linked", params.linked);
-    if (params.nominated !== "all") search.set("nominated", params.nominated);
-    search.set("page", String(params.page));
-    search.set("page_size", String(pageSize));
-    const qs = search.toString();
-    return qs ? `/admin/films?${qs}` : "/admin/films";
-  }, [pageSize]);
+  const buildPath = useCallback(
+    (params: ListParams) => {
+      const search = new URLSearchParams();
+      if (params.query.trim()) search.set("q", params.query.trim());
+      if (params.year !== "all") search.set("year", params.year);
+      if (params.linked !== "all") search.set("linked", params.linked);
+      if (params.nominated !== "all") search.set("nominated", params.nominated);
+      search.set("page", String(params.page));
+      search.set("page_size", String(pageSize));
+      const qs = search.toString();
+      return qs ? `/admin/films?${qs}` : "/admin/films";
+    },
+    [pageSize]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,10 +85,7 @@ export function useAdminFilmsIndexOrchestration() {
       page?: number;
       page_size?: number;
       total?: number;
-    }>(
-      buildPath({ query, year, linked, nominated, page }),
-      { method: "GET" }
-    );
+    }>(buildPath({ query, year, linked, nominated, page }), { method: "GET" });
     setLoading(false);
     if (!res.ok) {
       setFilms([]);
@@ -108,43 +110,48 @@ export function useAdminFilmsIndexOrchestration() {
     void load();
   }, [load]);
 
-  const setFilmTmdbId = useCallback(async (filmId: number, tmdbId: number | null) => {
-    setLinkWorkingFilmId(filmId);
-    const res = await fetchJson<{ hydrated?: boolean }>(`/admin/films/${filmId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id: tmdbId })
-    });
-    setLinkWorkingFilmId(null);
-    if (!res.ok) {
+  const setFilmTmdbId = useCallback(
+    async (filmId: number, tmdbId: number | null) => {
+      setLinkWorkingFilmId(filmId);
+      const res = await fetchJson<{ hydrated?: boolean }>(`/admin/films/${filmId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdb_id: tmdbId })
+      });
+      setLinkWorkingFilmId(null);
+      if (!res.ok) {
+        notify({
+          id: `admin_films_link_error_${filmId}`,
+          severity: "error",
+          trigger_type: "user_action",
+          scope: "local",
+          durability: "ephemeral",
+          requires_decision: false,
+          title: tmdbId ? "Could not link film" : "Could not unlink film",
+          message: res.error ?? "Request failed."
+        });
+        return { ok: false as const, error: res.error ?? "Request failed." };
+      }
+
       notify({
-        id: `admin_films_link_error_${filmId}`,
-        severity: "error",
+        id: `admin_films_link_ok_${filmId}`,
+        severity: "success",
         trigger_type: "user_action",
         scope: "local",
         durability: "ephemeral",
         requires_decision: false,
-        title: tmdbId ? "Could not link film" : "Could not unlink film",
-        message: res.error ?? "Request failed."
+        title: tmdbId ? "Film linked" : "Film unlinked",
+        message: tmdbId
+          ? res.data?.hydrated
+            ? "Hydrated details from TMDB."
+            : "Linked."
+          : "Link removed."
       });
-      return { ok: false as const, error: res.error ?? "Request failed." };
-    }
-
-    notify({
-      id: `admin_films_link_ok_${filmId}`,
-      severity: "success",
-      trigger_type: "user_action",
-      scope: "local",
-      durability: "ephemeral",
-      requires_decision: false,
-      title: tmdbId ? "Film linked" : "Film unlinked",
-      message: tmdbId
-        ? (res.data?.hydrated ? "Hydrated details from TMDB." : "Linked.")
-        : "Link removed."
-    });
-    await load();
-    return { ok: true as const };
-  }, [load]);
+      await load();
+      return { ok: true as const };
+    },
+    [load]
+  );
 
   const mergeFilms = useCallback(
     async (canonicalId: number, duplicateIds: number[]) => {
