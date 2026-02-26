@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Button, Stack, Text, Title } from "@ui";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
@@ -18,16 +18,44 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
           <Text className="baseline-textBody">
             Configure ceremony data and reusable game structures.
           </Text>
-          <Stack gap="xs" align="flex-start">
-            <Button component={Link} to="/admin/ceremonies" variant="subtle">
-              Ceremonies
-            </Button>
-            <Button component={Link} to="/admin/category-templates" variant="subtle">
-              Category Templates
-            </Button>
-            <Button component={Link} to="/admin/films" variant="subtle">
-              Films
-            </Button>
+          <Stack gap="var(--fo-space-0)">
+            {[
+              {
+                title: "Ceremonies",
+                description: "Create, publish, and manage ceremony workflows.",
+                action: "Manage",
+                to: "/admin/ceremonies"
+              },
+              {
+                title: "Category Templates",
+                description: "Define reusable category rules and metadata.",
+                action: "Manage",
+                to: "/admin/category-templates"
+              },
+              {
+                title: "Films",
+                description: "Maintain film records and resolve duplicates.",
+                action: "Open",
+                to: "/admin/films"
+              }
+            ].map((row, idx, all) => (
+              <Box key={row.to}>
+                <Group justify="space-between" align="flex-start" wrap="wrap" py="sm">
+                  <Box>
+                    <Text fw="var(--fo-font-weight-semibold)" className="baseline-textBody">
+                      {row.title}
+                    </Text>
+                    <Text className="baseline-textBody" c="dimmed">
+                      {row.description}
+                    </Text>
+                  </Box>
+                  <Button component={Link} to={row.to} variant="subtle">
+                    {row.action}
+                  </Button>
+                </Group>
+                {idx === all.length - 1 ? null : <Divider />}
+              </Box>
+            ))}
           </Stack>
         </StandardCard>
 
