@@ -14,6 +14,17 @@ export function AdminCeremoniesIndexPage() {
       creating={o.creating}
       workingId={o.workingId}
       status={o.status}
+      onLoadDeletePreview={async (id) => {
+        const res = await o.getDeletePreview(id);
+        if (!res.ok) return { ok: false as const, error: res.error };
+        return {
+          ok: true as const,
+          preview: {
+            ceremonyName: res.preview.ceremony.name,
+            seasonsRemoved: res.preview.seasonsRemoved
+          }
+        };
+      }}
       onCreate={() => {
         void o.createDraftCeremony().then((res) => {
           if (res.ok && res.ceremonyId) navigate(`/admin/ceremonies/${res.ceremonyId}`);

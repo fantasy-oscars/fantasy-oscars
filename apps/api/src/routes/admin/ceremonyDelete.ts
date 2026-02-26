@@ -12,6 +12,47 @@ export function registerAdminCeremonyDeleteRoute(args: {
 }) {
   const { router, client } = args;
 
+  router.get(
+    "/ceremonies/:id/delete-preview",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
+        }
+        const { rows: ceremonyRows } = await query<{ id: number; name: string }>(
+          client,
+          `SELECT id::int, name
+           FROM ceremony
+           WHERE id = $1`,
+          [id]
+        );
+        const ceremony = ceremonyRows[0];
+        if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+
+        const { rows: countRows } = await query<{ seasons_removed: number }>(
+          client,
+          `SELECT COUNT(*)::int AS seasons_removed
+           FROM season
+           WHERE ceremony_id = $1`,
+          [id]
+        );
+
+        return res.status(200).json({
+          ceremony: {
+            id: ceremony.id,
+            name: ceremony.name
+          },
+          consequences: {
+            seasons_removed: Number(countRows[0]?.seasons_removed ?? 0)
+          }
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   router.delete(
     "/ceremonies/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {

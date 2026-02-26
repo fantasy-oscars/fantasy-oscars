@@ -1,6 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/auth/context";
-import { RedirectIfAuthed, RequireAdmin, RequireAuth } from "@/auth/guards";
+import {
+  RedirectIfAuthed,
+  RequireAdmin,
+  RequireAuth,
+  RequireSuperAdmin
+} from "@/auth/guards";
 import { ShellLayout } from "./layouts/ShellLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { DraftLayout } from "./layouts/DraftLayout";
@@ -45,6 +50,7 @@ import { AdminContentHomePage } from "./pages/admin/content/AdminContentHomePage
 import { AdminStaticContentEditorPage } from "./pages/admin/content/AdminStaticContentEditorPage";
 import { AdminDynamicContentLedgerPage } from "./pages/admin/content/AdminDynamicContentLedgerPage";
 import { AdminDynamicContentEditorPage } from "./pages/admin/content/AdminDynamicContentEditorPage";
+import { AdminSafeguardsPage } from "./pages/admin/safeguards/AdminSafeguardsPage";
 import { AdminSystemLayout } from "./pages/admin/system/AdminSystemLayout";
 import { AdminSystemAuditLogPage } from "./pages/admin/system/AdminSystemAuditLogPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -101,6 +107,14 @@ function RoutesConfig() {
           }
         />
         <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/new"
+          element={
+            <RequireAuth>
+              <LeagueSeasonCreatePage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/leagues/:id/seasons/new"
           element={
             <RequireAuth>
@@ -117,6 +131,22 @@ function RoutesConfig() {
           }
         />
         <Route
+          path="/leagues/:leagueId/:leagueSlug/:ceremonyCode"
+          element={
+            <RequireAuth>
+              <SeasonPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug"
+          element={
+            <RequireAuth>
+              <LeagueDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/leagues/:id"
           element={
             <RequireAuth>
@@ -124,6 +154,7 @@ function RoutesConfig() {
             </RequireAuth>
           }
         />
+        {/* Lightweight legacy season route fallback. */}
         <Route
           path="/seasons/:id"
           element={
@@ -134,11 +165,7 @@ function RoutesConfig() {
         />
         <Route
           path="/invites/:token"
-          element={
-            <RequireAuth>
-              <InviteClaimPage />
-            </RequireAuth>
-          }
+          element={<InviteClaimPage />}
         />
         <Route
           path="/invites"
@@ -199,7 +226,14 @@ function RoutesConfig() {
           </Route>
 
           <Route path="users" element={<AdminUsersLayout />}>
-            <Route index element={<AdminUsersSearchPage />} />
+            <Route
+              index
+              element={
+                <RequireSuperAdmin>
+                  <AdminUsersSearchPage />
+                </RequireSuperAdmin>
+              }
+            />
           </Route>
 
           <Route path="category-templates" element={<AdminCategoryTemplatesPage />} />
@@ -215,6 +249,15 @@ function RoutesConfig() {
               element={<AdminDynamicContentEditorPage />}
             />
           </Route>
+
+          <Route
+            path="destructive-actions"
+            element={
+              <RequireSuperAdmin>
+                <AdminSafeguardsPage />
+              </RequireSuperAdmin>
+            }
+          />
 
           <Route path="system" element={<AdminSystemLayout />}>
             <Route path="audit" element={<AdminSystemAuditLogPage />} />
