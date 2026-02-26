@@ -16,7 +16,6 @@ export function DestructiveActionModal(props: {
   confirmPhrase: string;
   loading?: boolean;
   error?: string | null;
-  contextLinks?: Array<{ label: string; href: string }>;
   onConfirm: () => void | Promise<void>;
 }) {
   const {
@@ -29,7 +28,6 @@ export function DestructiveActionModal(props: {
     confirmPhrase,
     loading,
     error,
-    contextLinks,
     onConfirm
   } = props;
   const [typed, setTyped] = useState("");
@@ -53,21 +51,6 @@ export function DestructiveActionModal(props: {
             </Group>
           ))}
         </Stack>
-
-        {contextLinks?.length ? (
-          <Stack gap="var(--fo-space-dense-2)">
-            {contextLinks.map((link) => (
-              <Text
-                key={`${link.label}.${link.href}`}
-                className="baseline-textMeta"
-                component="a"
-                href={link.href}
-              >
-                {link.label}
-              </Text>
-            ))}
-          </Stack>
-        ) : null}
 
         <TextInput
           label={`Type "${confirmPhrase}" to continue`}

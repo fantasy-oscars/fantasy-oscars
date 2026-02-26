@@ -2088,6 +2088,14 @@ body[data-mantine-color-scheme="dark"]
   padding: var(--fo-space-hairline);
 }
 
+.mi-icon.is-suppressed {
+  color: var(--fo-text-deemphasized) !important;
+}
+
+.mi-icon.is-inherit {
+  color: inherit !important;
+}
+
 .wizard-panel.is-primary {
   background: var(--fo-surface-card-hero);
   border-color: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-18));
