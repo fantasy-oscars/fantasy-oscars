@@ -14,6 +14,7 @@ export function LeagueSeasonsSection(props: {
     ceremonyCode?: string | null;
     ceremonyLabel: string;
     statusLabel: string;
+    isNavigable: boolean;
   }>;
 }) {
   const { leagueId, leagueName, canCreateSeason, seasons } = props;
@@ -38,14 +39,18 @@ export function LeagueSeasonsSection(props: {
           {seasons.map((s) => (
             <Box key={s.id} component="li">
               <StandardCard
-                component={Link}
-                to={seasonPath({
-                  leagueId,
-                  leagueName,
-                  ceremonyCode: s.ceremonyCode,
-                  ceremonyId: s.ceremonyId
-                })}
-                interactive
+                {...(s.isNavigable
+                  ? {
+                      component: Link,
+                      to: seasonPath({
+                        leagueId,
+                        leagueName,
+                        ceremonyCode: s.ceremonyCode,
+                        ceremonyId: s.ceremonyId
+                      }),
+                      interactive: true
+                    }
+                  : {})}
               >
                 <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
                   <Box miw="var(--fo-space-0)">

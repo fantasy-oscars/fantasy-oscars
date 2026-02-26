@@ -64,9 +64,9 @@ export function CeremoniesIndexScreen(props: {
               </Stack>
 
               <Stack gap="sm">
-                <Text className="baseline-textSectionHeader">Archived</Text>
+                <Text className="baseline-textSectionHeader">Past</Text>
                 {archived.length === 0 ? (
-                  <Text className="baseline-textBody">No archived ceremonies yet.</Text>
+                  <Text className="baseline-textBody">No past ceremonies yet.</Text>
                 ) : (
                   <Stack gap="sm">
                     {archived.map((c) => (
@@ -81,7 +81,7 @@ export function CeremoniesIndexScreen(props: {
                             {c.name?.trim() ? c.name : `Ceremony ${c.id}`}
                           </Text>
                           <Text className="baseline-textMeta">
-                            {yearFromIso(c.starts_at)} · Archived
+                            {yearFromIso(c.starts_at)} · Past
                           </Text>
                         </Stack>
                       </StandardCard>

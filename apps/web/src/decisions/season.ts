@@ -1,11 +1,11 @@
 export function computeSeasonProgression(args: {
   isArchived: boolean;
   draftStatus: string | null | undefined;
-}): "Archived" | "Draft complete" | "Drafting" | "Paused" | "Pre-draft" | "Aborted" {
+}): "Closed" | "Draft complete" | "Drafting" | "Paused" | "Pre-draft" {
   const { isArchived, draftStatus } = args;
-  if (isArchived) return "Archived";
+  if (isArchived) return "Closed";
   const ds = String(draftStatus ?? "").toUpperCase();
-  if (ds === "CANCELLED") return "Aborted";
+  if (ds === "CANCELLED") return "Closed";
   if (ds === "COMPLETED") return "Draft complete";
   if (ds === "IN_PROGRESS" || ds === "LIVE") return "Drafting";
   if (ds === "PAUSED") return "Paused";
@@ -42,22 +42,21 @@ export function computeSeasonLifecycleLabelFromRow(args: {
   seasonStatus: string | null | undefined;
   draftStatus: string | null | undefined;
   isActiveCeremony: boolean | null | undefined;
-}):
-  | "Archived"
+}): 
+  | "Closed"
   | "Complete"
   | "In progress"
   | "Draft complete"
   | "Drafting"
-  | "Pre-draft"
-  | "Aborted" {
+  | "Pre-draft" {
   const seasonStatus = String(args.seasonStatus ?? "").toUpperCase();
-  if (args.isActiveCeremony === false || seasonStatus === "ARCHIVED") return "Archived";
+  if (args.isActiveCeremony === false || seasonStatus === "ARCHIVED") return "Closed";
 
   if (seasonStatus === "COMPLETE") return "Complete";
   if (seasonStatus === "IN_PROGRESS") return "In progress";
 
   const ds = String(args.draftStatus ?? "").toUpperCase();
-  if (ds === "CANCELLED") return "Aborted";
+  if (ds === "CANCELLED") return "Closed";
   if (ds === "COMPLETED") return "Draft complete";
   if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED") return "Drafting";
   return "Pre-draft";

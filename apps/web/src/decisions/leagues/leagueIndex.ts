@@ -11,7 +11,8 @@ export type LeagueIndexRow = {
 function computeActiveSeasonStats(seasons: SeasonSummary[]) {
   const active = seasons
     .filter((s) => Boolean(s.is_active_ceremony))
-    .filter((s) => s.status !== "CANCELLED");
+    .filter((s) => s.status !== "CANCELLED")
+    .filter((s) => String(s.draft_status ?? "").toUpperCase() !== "CANCELLED");
   const count = active.length;
   const recency = active.reduce((max, s) => {
     const ts = Date.parse(s.created_at ?? "") || 0;
