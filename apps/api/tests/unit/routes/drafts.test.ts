@@ -873,7 +873,7 @@ describe("GET /drafts/:id/snapshot", () => {
         lock_override_set_by_user_id: null
       },
       version: 5
-    });
+    } as any);
   });
 
   afterEach(() => {
