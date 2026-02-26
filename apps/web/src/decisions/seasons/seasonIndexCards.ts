@@ -5,6 +5,7 @@ export type SeasonIndexCard = {
   league_id: number;
   league_name: string;
   ceremony_id: number;
+  ceremony_code: string | null;
   ceremony_name: string;
   ceremony_sort_ts: number;
   status_label: "Open" | "Drafting" | "Complete" | "Archived";
@@ -43,6 +44,7 @@ export function buildSeasonIndexCards(args: {
         league_id: league.id,
         league_name: league.name,
         ceremony_id: s.ceremony_id,
+        ceremony_code: s.ceremony_code ?? null,
         ceremony_name: ceremony?.name ?? `Ceremony ${s.ceremony_id}`,
         ceremony_sort_ts: ceremony ? ceremonySortTs(ceremony) : 0,
         status_label: statusLabel(s)

@@ -4,6 +4,7 @@ import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
 import { FormStatus } from "@/shared/forms";
 import { PageError, PageLoader } from "@/shared/page-state";
 import { StandardCard } from "@/primitives";
+import { leaguePath } from "@/lib/routes";
 import "@/primitives/baseline.css";
 
 export function LeagueSeasonCreateScreen(props: {
@@ -81,7 +82,11 @@ export function LeagueSeasonCreateScreen(props: {
                 Create a new season for {leagueName}.
               </Text>
             </Box>
-            <Button component={Link} to={`/leagues/${leagueId}`} variant="outline">
+            <Button
+              component={Link}
+              to={leaguePath({ leagueId, leagueName: view.league?.name })}
+              variant="outline"
+            >
               Back to league
             </Button>
           </Group>

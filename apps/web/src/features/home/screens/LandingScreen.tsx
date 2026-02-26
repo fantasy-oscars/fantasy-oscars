@@ -10,6 +10,7 @@ import {
   markdownToTagline,
   titleCase
 } from "@/decisions/landing";
+import { seasonPath } from "@/lib/routes";
 import "@/primitives/baseline.css";
 
 export function LandingScreen(props: {
@@ -136,7 +137,12 @@ export function LandingScreen(props: {
                   key={s.id}
                   interactive
                   component={Link}
-                  to={`/seasons/${s.id}`}
+                  to={seasonPath({
+                    leagueId: s.league_id,
+                    leagueName: s.league_name,
+                    ceremonyCode: s.ceremony_code,
+                    ceremonyId: s.ceremony_id
+                  })}
                 >
                   <Stack gap="var(--fo-space-dense-2)">
                     <Title variant="card">{ceremonyLabel}</Title>

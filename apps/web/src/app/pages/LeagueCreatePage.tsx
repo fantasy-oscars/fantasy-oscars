@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useLeagueCreateOrchestration } from "@/orchestration/leagues";
 import { LeagueCreateScreen } from "@/features/leagues/screens/LeagueCreateScreen";
+import { leaguePath } from "@/lib/routes";
 
 export function LeagueCreatePage() {
   const { creating, error, create } = useLeagueCreateOrchestration();
@@ -14,7 +15,7 @@ export function LeagueCreatePage() {
     };
     const res = await create(payload);
     if (res.ok && res.league?.id) {
-      navigate(`/leagues/${res.league.id}`);
+      navigate(leaguePath({ leagueId: res.league.id, leagueName: res.league.name }));
     }
   }
 
