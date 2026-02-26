@@ -3,8 +3,11 @@ import {
   Box,
   Button,
   Checkbox,
+  Combobox,
   Divider,
   Group,
+  Image,
+  InputBase,
   Menu,
   Modal,
   Select,
@@ -12,9 +15,10 @@ import {
   Text,
   TextInput,
   Tooltip,
-  Title
+  Title,
+  useCombobox
 } from "@ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StandardCard } from "@/primitives/cards/StandardCard";
 import { notify } from "@/notifications";
 import type {
@@ -33,6 +37,18 @@ type MergeResult = {
   ok: boolean;
   errorCode?: string;
   errorDetails?: Record<string, unknown>;
+};
+
+type TmdbFilmSearchResult = {
+  tmdb_id: number;
+  title: string;
+  original_title: string | null;
+  release_year: number | null;
+  poster_url: string | null;
+  director: string | null;
+  overview: string | null;
+  linked_film_id: number | null;
+  linked_film_title: string | null;
 };
 
 type ConsolidatedGroup = {
@@ -64,6 +80,9 @@ export function AdminFilmsIndexScreen(props: {
   linkWorkingFilmId: number | null;
   onReload: () => void;
   onSaveTmdbId: (filmId: number, tmdbId: number | null) => Promise<{ ok: boolean }>;
+  onSearchTmdb: (
+    q: string
+  ) => Promise<{ ok: true; results: TmdbFilmSearchResult[] } | { ok: false; error: string }>;
   onLoadConsolidated: (
     canonicalId: number,
     page: number,
@@ -84,8 +103,14 @@ export function AdminFilmsIndexScreen(props: {
   ) => Promise<{ ok: boolean }>;
   onMergeSelected: (films: AdminFilmRow[]) => Promise<MergeResult>;
 }) {
+  const tmdbCombobox = useCombobox({
+    onDropdownClose: () => tmdbCombobox.resetSelectedOption()
+  });
   const [editingFilm, setEditingFilm] = useState<LinkEditFilm | null>(null);
   const [tmdbInput, setTmdbInput] = useState("");
+  const [tmdbSearchQuery, setTmdbSearchQuery] = useState("");
+  const [tmdbSearchLoading, setTmdbSearchLoading] = useState(false);
+  const [tmdbSearchResults, setTmdbSearchResults] = useState<TmdbFilmSearchResult[]>([]);
   const [decoupledFilmIds, setDecoupledFilmIds] = useState<Record<number, true>>({});
   const [openGroupKey, setOpenGroupKey] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(1);
@@ -322,6 +347,7 @@ export function AdminFilmsIndexScreen(props: {
                 onClick={() => {
                   setEditingFilm({ id: film.id, title: film.title, tmdb_id: film.tmdb_id });
                   setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
+                  setTmdbSearchQuery(film.title);
                 }}
               >
                 <Text
@@ -387,6 +413,37 @@ export function AdminFilmsIndexScreen(props: {
       setSelectedFilmById({});
     });
   };
+
+  useEffect(() => {
+    if (!editingFilm) {
+      setTmdbSearchResults([]);
+      setTmdbSearchLoading(false);
+      return;
+    }
+    const q = tmdbSearchQuery.trim();
+    if (!q || q.length < 2 || /^[0-9]+$/.test(q)) {
+      setTmdbSearchResults([]);
+      setTmdbSearchLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setTmdbSearchLoading(true);
+      void props.onSearchTmdb(q).then((res) => {
+        if (cancelled) return;
+        setTmdbSearchLoading(false);
+        if (!res.ok) {
+          setTmdbSearchResults([]);
+          return;
+        }
+        setTmdbSearchResults(res.results);
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [editingFilm, props, tmdbSearchQuery]);
 
   return (
     <Stack gap="md">
@@ -611,7 +668,11 @@ export function AdminFilmsIndexScreen(props: {
 
       <Modal
         opened={Boolean(editingFilm)}
-        onClose={() => setEditingFilm(null)}
+        onClose={() => {
+          setEditingFilm(null);
+          setTmdbSearchQuery("");
+          setTmdbSearchResults([]);
+        }}
         title="Link film to TMDB"
         centered
         size="md"
@@ -622,12 +683,113 @@ export function AdminFilmsIndexScreen(props: {
           <Text className="baseline-textMeta">
             Saving hydrates film metadata from TMDB when available.
           </Text>
-          <TextInput
-            label="TMDB id"
-            placeholder="603"
-            value={tmdbInput}
-            onChange={(e) => setTmdbInput(e.currentTarget.value)}
-          />
+          <Combobox
+            store={tmdbCombobox}
+            withinPortal
+            position="bottom-start"
+            middlewares={{ flip: true, shift: true }}
+            onOptionSubmit={(value) => {
+              const picked = tmdbSearchResults.find((r) => String(r.tmdb_id) === value);
+              if (!picked) return;
+              if (
+                picked.linked_film_id &&
+                editingFilm &&
+                picked.linked_film_id !== editingFilm.id
+              ) {
+                notify({
+                  id: `admin_films_link_search_linked_${picked.tmdb_id}`,
+                  severity: "warning",
+                  trigger_type: "user_action",
+                  scope: "local",
+                  durability: "ephemeral",
+                  requires_decision: false,
+                  title: "Already linked",
+                  message: picked.linked_film_title
+                    ? `TMDB ${picked.tmdb_id} is already linked to ${picked.linked_film_title}.`
+                    : `TMDB ${picked.tmdb_id} is already linked.`
+                });
+                return;
+              }
+              setTmdbInput(String(picked.tmdb_id));
+              setTmdbSearchQuery(picked.title);
+              tmdbCombobox.closeDropdown();
+            }}
+          >
+            <Combobox.Target>
+              <InputBase
+                label="TMDB search or id"
+                component="input"
+                placeholder="Search TMDB films or type id"
+                value={tmdbSearchQuery}
+                onChange={(e) => {
+                  const next = e.currentTarget.value;
+                  setTmdbSearchQuery(next);
+                  const trimmed = next.trim();
+                  if (/^[0-9]+$/.test(trimmed)) {
+                    setTmdbInput(trimmed);
+                  } else {
+                    setTmdbInput("");
+                  }
+                  tmdbCombobox.openDropdown();
+                }}
+                onFocus={() => tmdbCombobox.openDropdown()}
+              />
+            </Combobox.Target>
+            <Combobox.Dropdown>
+              <Combobox.Options>
+                {tmdbSearchLoading ? (
+                  <Combobox.Empty>
+                    <Text size="sm" className="muted">
+                      Searching TMDB…
+                    </Text>
+                  </Combobox.Empty>
+                ) : tmdbSearchResults.length === 0 ? (
+                  <Combobox.Empty>
+                    <Text size="sm" className="muted">
+                      No TMDB matches
+                    </Text>
+                  </Combobox.Empty>
+                ) : (
+                  tmdbSearchResults.map((r) => (
+                    <Combobox.Option key={`tmdb-film-${r.tmdb_id}`} value={String(r.tmdb_id)}>
+                      <Group gap="sm" align="flex-start" wrap="nowrap">
+                        <Image
+                          src={r.poster_url}
+                          alt=""
+                          w={42}
+                          h={63}
+                          radius="sm"
+                        />
+                        <Stack gap={2} style={{ flex: 1 }}>
+                          <Text size="sm" fw="var(--fo-font-weight-semibold)" lineClamp={1}>
+                            {r.title}
+                          </Text>
+                          <Text size="xs" className="muted">
+                            {r.release_year ?? "Year unknown"}
+                            {r.director ? ` · ${r.director}` : ""}
+                          </Text>
+                          {r.original_title && r.original_title !== r.title ? (
+                            <Text size="xs" className="muted" lineClamp={1}>
+                              Original title: {r.original_title}
+                            </Text>
+                          ) : null}
+                          {r.linked_film_id ? (
+                            <Text size="xs" c="dimmed" lineClamp={1}>
+                              Already linked to:{" "}
+                              {r.linked_film_title ?? `Film #${r.linked_film_id}`}
+                            </Text>
+                          ) : null}
+                        </Stack>
+                      </Group>
+                    </Combobox.Option>
+                  ))
+                )}
+              </Combobox.Options>
+            </Combobox.Dropdown>
+          </Combobox>
+          {tmdbInput ? (
+            <Text className="baseline-textMeta">Selected TMDB id: {tmdbInput}</Text>
+          ) : null}
           <Group justify="space-between" align="center">
             <Button
               variant="subtle"
@@ -641,6 +803,8 @@ export function AdminFilmsIndexScreen(props: {
                   if (!res.ok) return;
                   setEditingFilm(null);
                   setTmdbInput("");
+                  setTmdbSearchQuery("");
+                  setTmdbSearchResults([]);
                 });
               }}
             >
@@ -669,6 +833,8 @@ export function AdminFilmsIndexScreen(props: {
                   if (!res.ok) return;
                   setEditingFilm(null);
                   setTmdbInput("");
+                  setTmdbSearchQuery("");
+                  setTmdbSearchResults([]);
                 });
               }}
             >

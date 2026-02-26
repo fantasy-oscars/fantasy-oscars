@@ -23,6 +23,18 @@ export type ConsolidatedFilmRow = {
   is_nominated: boolean;
 };
 
+export type TmdbFilmSearchResult = {
+  tmdb_id: number;
+  title: string;
+  original_title: string | null;
+  release_year: number | null;
+  poster_url: string | null;
+  director: string | null;
+  overview: string | null;
+  linked_film_id: number | null;
+  linked_film_title: string | null;
+};
+
 type ListParams = {
   query: string;
   year: string;
@@ -238,6 +250,22 @@ export function useAdminFilmsIndexOrchestration() {
     [load]
   );
 
+  const searchTmdbFilmCandidates = useCallback(async (q: string) => {
+    const queryTrimmed = q.trim();
+    if (queryTrimmed.length < 2) return { ok: true as const, results: [] };
+    const res = await fetchJson<{ results: TmdbFilmSearchResult[] }>(
+      `/admin/films/tmdb-search?q=${encodeURIComponent(queryTrimmed)}`,
+      { method: "GET" }
+    );
+    if (!res.ok) {
+      return {
+        ok: false as const,
+        error: res.error ?? "Failed to search TMDB."
+      };
+    }
+    return { ok: true as const, results: res.data?.results ?? [] };
+  }, []);
+
   return useMemo(
     () => ({
       query,
@@ -273,7 +301,8 @@ export function useAdminFilmsIndexOrchestration() {
       setFilmTmdbId,
       mergeFilms,
       loadConsolidatedFilms,
-      decoupleConsolidatedFilm
+      decoupleConsolidatedFilm,
+      searchTmdbFilmCandidates
     }),
     [
       query,
@@ -292,7 +321,8 @@ export function useAdminFilmsIndexOrchestration() {
       setFilmTmdbId,
       mergeFilms,
       loadConsolidatedFilms,
-      decoupleConsolidatedFilm
+      decoupleConsolidatedFilm,
+      searchTmdbFilmCandidates
     ]
   );
 }

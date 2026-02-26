@@ -26,6 +26,7 @@ export function AdminFilmsPage() {
       linkWorkingFilmId={films.linkWorkingFilmId}
       onReload={() => void films.reload()}
       onSaveTmdbId={(filmId, tmdbId) => films.setFilmTmdbId(filmId, tmdbId)}
+      onSearchTmdb={async (q) => films.searchTmdbFilmCandidates(q)}
       onLoadConsolidated={(canonicalId, page, pageSize) =>
         films.loadConsolidatedFilms(canonicalId, page, pageSize)
       }
