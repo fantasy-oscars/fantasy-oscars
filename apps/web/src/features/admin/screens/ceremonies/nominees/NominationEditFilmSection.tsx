@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { notify } from "@/notifications";
 import { NominationFilmLinkConflictModal } from "@/features/admin/ui/ceremonies/nominees/NominationFilmLinkConflictModal";
 import { fetchJson } from "@/lib/api";
+import { parseFilmTitleWithYear } from "@/lib/films";
 
 export function NominationEditFilmSection(props: {
   nominationFilmTitle: string;
@@ -126,9 +127,10 @@ export function NominationEditFilmSection(props: {
               variant="subtle"
               aria-label="Link film to TMDB"
               onClick={() => {
+                const parsed = parseFilmTitleWithYear(film?.title ?? nominationFilmTitle);
                 setFilmLinkOpen((v) => !v);
                 setFilmTmdbId(film?.tmdb_id ? String(film.tmdb_id) : "");
-                setTmdbSearchQuery(film?.title ?? "");
+                setTmdbSearchQuery(parsed.title);
               }}
             >
               <Text component="span" className="gicon" aria-hidden="true">

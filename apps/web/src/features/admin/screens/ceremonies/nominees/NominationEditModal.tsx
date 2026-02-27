@@ -84,8 +84,8 @@ export function NominationEditModal(props: {
         if (existing)
           return {
             id: existing.id,
-            title: existing.title,
-            tmdb_id: existing.tmdb_id ?? null
+            title: existing.title || nomination?.film_title || "Untitled film",
+            tmdb_id: existing.tmdb_id ?? nomination?.display_film_tmdb_id ?? null
           };
         // Fallback: nominations payload is authoritative for this modal even when
         // the global films list is paged/capped and doesn't include this row.
