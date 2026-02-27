@@ -42,11 +42,13 @@ export async function getExtantSeasonForLeague(
 	       c.status AS ceremony_status,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
-	     FROM season s
-	     JOIN ceremony c ON c.id = s.ceremony_id
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
        AND s.status = 'EXTANT'
+       AND s.deleted_at IS NULL
+       AND c.deleted_at IS NULL
      LIMIT 1`,
     [leagueId]
   );
@@ -83,6 +85,8 @@ export async function getExtantSeasonForLeagueCeremony(
      WHERE s.league_id = $1
        AND s.ceremony_id = $2
        AND s.status = 'EXTANT'
+       AND s.deleted_at IS NULL
+       AND c.deleted_at IS NULL
      LIMIT 1`,
     [leagueId, ceremonyId]
   );
@@ -136,10 +140,12 @@ export async function getSeasonById(
 	       c.status AS ceremony_status,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
-	     FROM season s
-	     JOIN ceremony c ON c.id = s.ceremony_id
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
-     WHERE s.id = $1`,
+     WHERE s.id = $1
+       AND s.deleted_at IS NULL
+       AND c.deleted_at IS NULL`,
     [id]
   );
   return rows[0] ?? null;
@@ -192,10 +198,12 @@ export async function listSeasonsForLeague(
 	       c.status AS ceremony_status,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
-	     FROM season s
-	     JOIN ceremony c ON c.id = s.ceremony_id
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
+       AND s.deleted_at IS NULL
+       AND c.deleted_at IS NULL
        ${includeCancelled ? "" : "AND s.status <> 'CANCELLED'"}
      ORDER BY s.created_at DESC`,
     [leagueId]
@@ -226,10 +234,12 @@ export async function getMostRecentSeason(
 	       c.status AS ceremony_status,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
-	     FROM season s
-	     JOIN ceremony c ON c.id = s.ceremony_id
+     FROM season s
+     JOIN ceremony c ON c.id = s.ceremony_id
      LEFT JOIN draft d ON d.season_id = s.id
      WHERE s.league_id = $1
+       AND s.deleted_at IS NULL
+       AND c.deleted_at IS NULL
      ORDER BY s.created_at DESC
      LIMIT 1`,
     [leagueId]

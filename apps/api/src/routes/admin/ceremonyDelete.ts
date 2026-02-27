@@ -24,7 +24,8 @@ export function registerAdminCeremonyDeleteRoute(args: {
           client,
           `SELECT id::int, name
            FROM ceremony
-           WHERE id = $1`,
+           WHERE id = $1
+             AND deleted_at IS NULL`,
           [id]
         );
         const ceremony = ceremonyRows[0];
@@ -34,7 +35,8 @@ export function registerAdminCeremonyDeleteRoute(args: {
           client,
           `SELECT COUNT(*)::int AS seasons_removed
            FROM season
-           WHERE ceremony_id = $1`,
+           WHERE ceremony_id = $1
+             AND deleted_at IS NULL`,
           [id]
         );
 
@@ -63,24 +65,14 @@ export function registerAdminCeremonyDeleteRoute(args: {
         }
 
         await runInTransaction(client as Pool, async (tx) => {
-          const { rows: ceremonyRows } = await query<{ status: string }>(
+          const { rows: ceremonyRows } = await query<{ id: number }>(
             tx,
-            `SELECT status FROM ceremony WHERE id = $1`,
+            `SELECT id::int FROM ceremony WHERE id = $1 AND deleted_at IS NULL`,
             [id]
           );
-          const status = ceremonyRows[0]?.status;
-          if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-          if (status !== "DRAFT") {
-            throw new AppError(
-              "CANNOT_DELETE",
-              409,
-              "Only draft ceremonies can be deleted. Archive instead."
-            );
-          }
+          if (!ceremonyRows[0]) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
 
-          // Pre-launch behavior: deleting an unpublished ceremony should cascade
-          // to all dependent rows (seasons/drafts, categories, nominations, etc.).
-          // We'll revisit a safer, explicit flow for published ceremonies later.
+          // Soft-delete semantics: keep rows, but remove active behavior.
 
           // Detach any pointers to this ceremony.
           await query(
@@ -88,49 +80,49 @@ export function registerAdminCeremonyDeleteRoute(args: {
             `UPDATE app_config SET active_ceremony_id = NULL WHERE active_ceremony_id = $1`,
             [id]
           );
-          await query(tx, `UPDATE league SET ceremony_id = NULL WHERE ceremony_id = $1`, [
-            id
-          ]);
 
-          // Delete any seasons (will cascade to drafts, invites, members).
-          await query(tx, `DELETE FROM season WHERE ceremony_id = $1`, [id]);
-
-          // Winners (normally none for DRAFT, but safe).
-          await query(tx, `DELETE FROM ceremony_winner WHERE ceremony_id = $1`, [id]);
-
-          // Delete nominations + related tables, then categories.
+          // Cancel seasons tied to this ceremony.
           await query(
             tx,
-            `DELETE FROM nomination_change_audit
-             WHERE nomination_id IN (
-               SELECT n.id
-               FROM nomination n
-               JOIN category_edition ce ON ce.id = n.category_edition_id
-               WHERE ce.ceremony_id = $1
-             )`,
+            `UPDATE season
+             SET status = 'CANCELLED',
+                 deleted_at = COALESCE(deleted_at, NOW())
+             WHERE ceremony_id = $1`,
             [id]
           );
-          await query(
-            tx,
-            `DELETE FROM nomination_contributor
-             WHERE nomination_id IN (
-               SELECT n.id
-               FROM nomination n
-               JOIN category_edition ce ON ce.id = n.category_edition_id
-               WHERE ce.ceremony_id = $1
-             )`,
-            [id]
-          );
-          await query(
-            tx,
-            `DELETE FROM nomination
-             WHERE category_edition_id IN (SELECT id FROM category_edition WHERE ceremony_id = $1)`,
-            [id]
-          );
-          await query(tx, `DELETE FROM category_edition WHERE ceremony_id = $1`, [id]);
 
-          // Finally delete the ceremony itself.
-          await query(tx, `DELETE FROM ceremony WHERE id = $1`, [id]);
+          // Revoke any still-pending invites for those seasons.
+          await query(
+            tx,
+            `UPDATE season_invite
+             SET status = 'REVOKED'
+             WHERE status = 'PENDING'
+               AND season_id IN (SELECT s.id FROM season s WHERE s.ceremony_id = $1)`,
+            [id]
+          );
+
+          // Disable public league discovery for leagues tied to this ceremony.
+          await query(
+            tx,
+            `UPDATE league
+             SET is_public = FALSE,
+                 is_public_season = FALSE
+             WHERE ceremony_id = $1
+               AND deleted_at IS NULL`,
+            [id]
+          );
+
+          // Archive ceremony itself.
+          await query(
+            tx,
+            `UPDATE ceremony
+             SET status = 'ARCHIVED',
+                 archived_at = COALESCE(archived_at, NOW()),
+                 deleted_at = COALESCE(deleted_at, NOW())
+             WHERE id = $1
+               AND deleted_at IS NULL`,
+            [id]
+          );
         });
 
         if (req.auth?.sub) {

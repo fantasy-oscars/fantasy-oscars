@@ -31,7 +31,8 @@ export function registerCeremoniesGetRoute({
         client,
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
-         WHERE id = $1`,
+         WHERE id = $1
+           AND deleted_at IS NULL`,
         [id]
       );
       const ceremony = rows[0];

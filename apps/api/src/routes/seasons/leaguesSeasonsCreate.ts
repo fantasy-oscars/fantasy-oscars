@@ -54,7 +54,7 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
         const ceremonyIdNum = Number(chosenCeremonyId);
         const { rows: ceremonyRows } = await query<{ status: string }>(
           client,
-          `SELECT status FROM ceremony WHERE id = $1`,
+          `SELECT status FROM ceremony WHERE id = $1 AND deleted_at IS NULL`,
           [ceremonyIdNum]
         );
         const ceremonyStatus = ceremonyRows[0]?.status;

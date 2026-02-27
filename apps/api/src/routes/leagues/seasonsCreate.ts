@@ -79,7 +79,7 @@ export function registerLeagueSeasonsCreateRoute(args: {
         const ceremonyIdNum = Number(ceremonyId);
         const { rows: ceremonyRows } = await query<{ status: string }>(
           client,
-          `SELECT status FROM ceremony WHERE id = $1`,
+          `SELECT status FROM ceremony WHERE id = $1 AND deleted_at IS NULL`,
           [ceremonyIdNum]
         );
         const ceremonyStatus = ceremonyRows[0]?.status;
@@ -108,7 +108,13 @@ export function registerLeagueSeasonsCreateRoute(args: {
           // Strongly enforce: one extant season per ceremony per league.
           const { rows: existingRows } = await query<{ id: number }>(
             tx,
-            `SELECT id::int FROM season WHERE league_id = $1 AND ceremony_id = $2 AND status = 'EXTANT' LIMIT 1`,
+            `SELECT id::int
+             FROM season
+             WHERE league_id = $1
+               AND ceremony_id = $2
+               AND status = 'EXTANT'
+               AND deleted_at IS NULL
+             LIMIT 1`,
             [leagueId, ceremonyIdNum]
           );
           if (existingRows[0]?.id) {

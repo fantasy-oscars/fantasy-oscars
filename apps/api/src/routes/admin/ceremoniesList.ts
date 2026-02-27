@@ -19,7 +19,8 @@ export function registerAdminCeremoniesListRoute(args: {
           client,
           `SELECT id::int, code, name, year, starts_at, status
            FROM ceremony
-           ${q ? "WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1" : ""}
+           WHERE deleted_at IS NULL
+           ${q ? "AND (LOWER(name) LIKE $1 OR LOWER(code) LIKE $1)" : ""}
            ORDER BY starts_at DESC NULLS LAST, id DESC`,
           q ? [like] : []
         );

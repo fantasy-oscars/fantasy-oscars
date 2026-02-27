@@ -3,7 +3,7 @@ import type { Router } from "express";
 import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { hasSuperAdminAccess } from "../../auth/roles.js";
-import { query } from "../../data/db.js";
+import { query, runInTransaction } from "../../data/db.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
@@ -27,7 +27,8 @@ export function registerAdminLeagueDeleteRoutes(args: {
           client,
           `SELECT id::int, name, code
            FROM league
-           ${q ? "WHERE LOWER(name) LIKE $1 OR LOWER(code) LIKE $1" : ""}
+           WHERE deleted_at IS NULL
+           ${q ? "AND (LOWER(name) LIKE $1 OR LOWER(code) LIKE $1)" : ""}
            ORDER BY created_at DESC
            LIMIT 500`,
           q ? [like] : []
@@ -55,7 +56,8 @@ export function registerAdminLeagueDeleteRoutes(args: {
           client,
           `SELECT id::int, name
            FROM league
-           WHERE id = $1`,
+           WHERE id = $1
+             AND deleted_at IS NULL`,
           [id]
         );
         const league = leagueRows[0];
@@ -97,14 +99,50 @@ export function registerAdminLeagueDeleteRoutes(args: {
           throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
         }
 
-        const { rows } = await query<{ id: number }>(
-          client,
-          `DELETE FROM league
-           WHERE id = $1
-           RETURNING id::int`,
-          [id]
-        );
-        if (!rows[0]) throw new AppError("NOT_FOUND", 404, "League not found");
+        const result = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: leagueRows } = await query<{ id: number }>(
+            tx,
+            `SELECT id::int
+             FROM league
+             WHERE id = $1
+               AND deleted_at IS NULL
+             FOR UPDATE`,
+            [id]
+          );
+          if (!leagueRows[0]) throw new AppError("NOT_FOUND", 404, "League not found");
+
+          await query(
+            tx,
+            `UPDATE season
+             SET status = 'CANCELLED',
+                 deleted_at = COALESCE(deleted_at, NOW())
+             WHERE league_id = $1`,
+            [id]
+          );
+
+          await query(
+            tx,
+            `UPDATE season_invite
+             SET status = 'REVOKED'
+             WHERE status = 'PENDING'
+               AND season_id IN (SELECT s.id FROM season s WHERE s.league_id = $1)`,
+            [id]
+          );
+
+          const { rows } = await query<{ id: number }>(
+            tx,
+            `UPDATE league
+             SET is_public = FALSE,
+                 is_public_season = FALSE,
+                 ceremony_id = NULL,
+                 deleted_at = COALESCE(deleted_at, NOW())
+             WHERE id = $1
+             RETURNING id::int`,
+            [id]
+          );
+          return { leagueId: rows[0]?.id ?? null };
+        });
+        if (!result.leagueId) throw new AppError("NOT_FOUND", 404, "League not found");
 
         await insertAdminAudit(client as Pool, {
           actor_user_id: actorId,

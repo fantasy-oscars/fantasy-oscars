@@ -33,7 +33,8 @@ export function registerAdminCeremonyGetRoute(args: {
              published_at,
              archived_at
            FROM ceremony
-           WHERE id = $1`,
+           WHERE id = $1
+             AND deleted_at IS NULL`,
           [id]
         );
         const ceremony = rows[0];

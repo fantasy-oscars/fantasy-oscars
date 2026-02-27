@@ -87,7 +87,7 @@ export async function getLeagueById(
        is_public_season,
        created_by_user_id::int,
        created_at
-     FROM league WHERE id = $1`,
+     FROM league WHERE id = $1 AND deleted_at IS NULL`,
     [id]
   );
   return rows[0] ?? null;
@@ -213,7 +213,9 @@ export async function listLeaguesForUser(
        l.created_at
      FROM league l
      JOIN league_member lm ON lm.league_id = l.id
-     WHERE lm.user_id = $1 AND l.is_public_season = FALSE
+     WHERE lm.user_id = $1
+       AND l.is_public_season = FALSE
+       AND l.deleted_at IS NULL
      ORDER BY l.id, l.created_at DESC`,
     [userId]
   );
@@ -256,11 +258,13 @@ export async function listPublicLeagues(
        s.status AS season_status,
        COALESCE(sm.count, 0)::int AS member_count
      FROM league l
-     LEFT JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
+     LEFT JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT' AND s.deleted_at IS NULL
      LEFT JOIN (
        SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
      ) sm ON sm.season_id = s.id
-     WHERE l.is_public = TRUE AND l.is_public_season = FALSE
+     WHERE l.is_public = TRUE
+       AND l.is_public_season = FALSE
+       AND l.deleted_at IS NULL
        ${search ? "AND (LOWER(l.name) LIKE $1 OR LOWER(l.code) LIKE $1)" : ""}
     ORDER BY l.created_at DESC
     LIMIT 100`,
@@ -296,11 +300,13 @@ export async function getPublicSeasonForCeremony(
        l.roster_size::int,
        COALESCE(sm.count, 0)::int AS member_count
      FROM league l
-     JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT'
+     JOIN season s ON s.league_id = l.id AND s.status = 'EXTANT' AND s.deleted_at IS NULL
      LEFT JOIN (
        SELECT season_id, COUNT(*) AS count FROM season_member GROUP BY season_id
      ) sm ON sm.season_id = s.id
-     WHERE l.is_public_season = TRUE AND l.ceremony_id = $1
+     WHERE l.is_public_season = TRUE
+       AND l.ceremony_id = $1
+       AND l.deleted_at IS NULL
      LIMIT 1`,
     [ceremonyId]
   );
@@ -331,7 +337,12 @@ export async function listPublicSeasons(
 ): Promise<PublicSeasonRecord[]> {
   const search = opts?.search ? `%${opts.search.toLowerCase()}%` : null;
   const params: Array<string | number> = [];
-  const filters: string[] = ["l.is_public_season = TRUE", "s.status = 'EXTANT'"];
+  const filters: string[] = [
+    "l.is_public_season = TRUE",
+    "l.deleted_at IS NULL",
+    "s.status = 'EXTANT'",
+    "s.deleted_at IS NULL"
+  ];
   if (opts?.ceremonyId) {
     filters.push(`l.ceremony_id = $${filters.length + 1}`);
     params.push(opts.ceremonyId);
