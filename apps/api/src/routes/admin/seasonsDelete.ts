@@ -39,7 +39,10 @@ export function registerAdminSeasonDeleteRoutes(args: {
            FROM season s
            JOIN league l ON l.id = s.league_id
            JOIN ceremony c ON c.id = s.ceremony_id
-           ${q ? "WHERE LOWER(c.name) LIKE $1 OR LOWER(c.code) LIKE $1 OR LOWER(l.name) LIKE $1" : ""}
+           WHERE s.deleted_at IS NULL
+             AND l.deleted_at IS NULL
+             AND c.deleted_at IS NULL
+           ${q ? "AND (LOWER(c.name) LIKE $1 OR LOWER(c.code) LIKE $1 OR LOWER(l.name) LIKE $1)" : ""}
            ORDER BY s.created_at DESC
            LIMIT 500`,
           q ? [like] : []
@@ -81,7 +84,10 @@ export function registerAdminSeasonDeleteRoutes(args: {
            FROM season s
            JOIN ceremony c ON c.id = s.ceremony_id
            JOIN league l ON l.id = s.league_id
-           WHERE s.id = $1`,
+           WHERE s.id = $1
+             AND s.deleted_at IS NULL
+             AND c.deleted_at IS NULL
+             AND l.deleted_at IS NULL`,
           [id]
         );
 
@@ -116,8 +122,11 @@ export function registerAdminSeasonDeleteRoutes(args: {
 
         const { rows } = await query<{ id: number }>(
           client,
-          `DELETE FROM season
+          `UPDATE season
+           SET status = 'CANCELLED'
+             , deleted_at = COALESCE(deleted_at, NOW())
            WHERE id = $1
+             AND deleted_at IS NULL
            RETURNING id::int`,
           [id]
         );

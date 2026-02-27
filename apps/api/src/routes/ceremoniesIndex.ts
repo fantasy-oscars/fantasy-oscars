@@ -17,6 +17,7 @@ export function registerCeremoniesIndexRoute({
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
          WHERE status IN ('PUBLISHED','LOCKED','COMPLETE','ARCHIVED')
+           AND deleted_at IS NULL
          ORDER BY starts_at DESC NULLS LAST, id DESC`
       );
       return res.status(200).json({ ceremonies: rows });

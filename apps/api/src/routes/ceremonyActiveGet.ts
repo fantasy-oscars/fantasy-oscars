@@ -19,12 +19,15 @@ export function registerActiveCeremonyGetRoute({
       }
       const { rows } = await query(
         client,
-        `SELECT id::int, code, name, year, starts_at, status FROM ceremony WHERE id = $1`,
+        `SELECT id::int, code, name, year, starts_at, status
+         FROM ceremony
+         WHERE id = $1
+           AND deleted_at IS NULL`,
         [activeId]
       );
       const ceremony = rows[0];
       if (!ceremony) {
-        throw new AppError("ACTIVE_CEREMONY_INVALID", 500, "Active ceremony is invalid");
+        throw new AppError("ACTIVE_CEREMONY_NOT_SET", 404, "Active ceremony not set");
       }
       return res.json({ ceremony });
     } catch (err) {

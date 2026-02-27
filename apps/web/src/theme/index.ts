@@ -74,6 +74,18 @@ export const appTheme: MantineThemeOverride = {
           blur: 2
         }
       }
+    },
+    Tooltip: {
+      styles: {
+        tooltip: {
+          backgroundColor: "var(--fo-tooltip-bg)",
+          color: "var(--fo-tooltip-color)",
+          border: "1px solid var(--fo-tooltip-border)"
+        },
+        arrow: {
+          "--tooltip-bg": "var(--fo-tooltip-bg)"
+        }
+      }
     }
   }
 };
@@ -86,6 +98,14 @@ export const appCssVariablesResolver: CSSVariablesResolver = () => ({
     ...foTokens
   },
   // No component-scoped vars yet; keep all tokens at the root for predictability.
-  light: {},
-  dark: {}
+  light: {
+    "--fo-tooltip-bg": "var(--mantine-color-gray-0)",
+    "--fo-tooltip-color": "var(--mantine-color-dark-9)",
+    "--fo-tooltip-border": "var(--mantine-color-gray-4)"
+  },
+  dark: {
+    "--fo-tooltip-bg": "var(--mantine-color-dark-6)",
+    "--fo-tooltip-color": "var(--mantine-color-gray-0)",
+    "--fo-tooltip-border": "var(--mantine-color-dark-4)"
+  }
 });

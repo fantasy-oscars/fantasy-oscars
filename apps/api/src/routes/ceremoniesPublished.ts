@@ -17,6 +17,7 @@ export function registerCeremoniesPublishedRoute({
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
          WHERE status = 'PUBLISHED'
+           AND deleted_at IS NULL
          ORDER BY year DESC, id DESC`
       );
       return res.status(200).json({ ceremonies: rows });

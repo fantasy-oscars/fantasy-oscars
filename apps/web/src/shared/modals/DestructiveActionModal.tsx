@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Group, Modal, Stack, Text, TextInput } from "@ui";
 
 export type DestructiveConsequence = {
@@ -31,6 +31,11 @@ export function DestructiveActionModal(props: {
     onConfirm
   } = props;
   const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    if (!opened) return;
+    setTyped("");
+  }, [opened, confirmPhrase]);
 
   const normalizedTyped = useMemo(() => typed.trim(), [typed]);
   const canConfirm =

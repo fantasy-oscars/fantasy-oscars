@@ -165,7 +165,7 @@ export function AdminSafeguardsScreen() {
       summary: `Deleting "${res.data.ceremony.name}" removes the ceremony and all associated seasons.`,
       consequences: [
         {
-          label: "Seasons removed",
+          label: "Seasons affected",
           value: Number(res.data.consequences.seasons_removed ?? 0)
         }
       ]
@@ -198,8 +198,8 @@ export function AdminSafeguardsScreen() {
       entity: "season",
       id: seasonId,
       title: "Delete season?",
-      summary: `Deleting this season (${s.league_name ?? "League"} · ${s.ceremony_code ?? s.ceremony_name ?? `Season ${seasonId}`}) is irreversible.`,
-      consequences: [{ label: "Seasons removed", value: 1 }]
+      summary: `Soft-deleting this season (${s.league_name ?? "League"} · ${s.ceremony_code ?? s.ceremony_name ?? `Season ${seasonId}`}) is irreversible.`,
+      consequences: [{ label: "Seasons affected", value: 1 }]
     });
   }
 
@@ -224,7 +224,7 @@ export function AdminSafeguardsScreen() {
       summary: `Deleting "${res.data.league.name}" removes the league and all contained seasons.`,
       consequences: [
         {
-          label: "Seasons removed",
+          label: "Seasons affected",
           value: Number(res.data.consequences.seasons_removed ?? 0)
         }
       ]
@@ -289,9 +289,9 @@ export function AdminSafeguardsScreen() {
       scope: "local",
       durability: "ephemeral",
       requires_decision: false,
-      message: `${modal.entity[0]?.toUpperCase()}${modal.entity.slice(1)} deleted`
+      message: `${modal.entity[0]?.toUpperCase()}${modal.entity.slice(1)} soft-deleted`
     });
-    setStatus({ ok: true, message: `${modal.entity} deleted` });
+    setStatus({ ok: true, message: `${modal.entity} soft-deleted` });
     setModal(null);
   }
 
