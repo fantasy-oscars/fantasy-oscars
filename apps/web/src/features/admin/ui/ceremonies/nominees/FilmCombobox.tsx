@@ -6,7 +6,12 @@ export function FilmCombobox(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  films: Array<{ id: number; title: string; release_year?: number | null }>;
+  films: Array<{
+    id: number;
+    title: string;
+    release_year?: number | null;
+    tmdb_id?: number | null;
+  }>;
 }) {
   const { label, value, onChange, films } = props;
 
@@ -14,11 +19,36 @@ export function FilmCombobox(props: {
     onDropdownClose: () => combobox.resetSelectedOption()
   });
 
-  const data = films
-    .map((f) => ({
-      id: f.id,
-      label: formatFilmTitleWithYear(f.title, f.release_year ?? null)
-    }))
+  const groupedByTitle = new Map<
+    string,
+    Array<{ id: number; title: string; release_year?: number | null; tmdb_id?: number | null }>
+  >();
+  for (const f of films) {
+    const key = normalizeForSearch(f.title);
+    const bucket = groupedByTitle.get(key);
+    if (bucket) bucket.push(f);
+    else groupedByTitle.set(key, [f]);
+  }
+
+  const representativeFilms = Array.from(groupedByTitle.values()).map((group) =>
+    group
+      .slice()
+      .sort((a, b) => {
+        const aLinked = Number.isInteger(a.tmdb_id) ? 1 : 0;
+        const bLinked = Number.isInteger(b.tmdb_id) ? 1 : 0;
+        if (aLinked !== bLinked) return bLinked - aLinked;
+        const aYear = Number.isInteger(a.release_year) ? Number(a.release_year) : -Infinity;
+        const bYear = Number.isInteger(b.release_year) ? Number(b.release_year) : -Infinity;
+        if (aYear !== bYear) return bYear - aYear;
+        return a.id - b.id;
+      })[0]
+  );
+
+  const data = representativeFilms
+    .map((f) => {
+      const label = formatFilmTitleWithYear(f.title, f.release_year ?? null);
+      return { id: f.id, label };
+    })
     .filter((f) => includesNormalized(f.label, value))
     .slice(0, 50);
 
@@ -45,8 +75,14 @@ export function FilmCombobox(props: {
           return;
         }
         if (val.startsWith("film:")) {
-          const label = val.slice("film:".length);
-          onChange(label);
+          const idRaw = val.slice("film:".length);
+          const id = Number(idRaw);
+          if (Number.isFinite(id) && id > 0) {
+            onChange(String(id));
+            combobox.closeDropdown();
+            return;
+          }
+          onChange(idRaw);
           combobox.closeDropdown();
           return;
         }
@@ -86,7 +122,7 @@ export function FilmCombobox(props: {
             </Combobox.Empty>
           ) : (
             data.map((f) => (
-              <Combobox.Option key={f.id} value={`film:${f.label}`}>
+              <Combobox.Option key={f.id} value={`film:${f.id}`}>
                 <Text size="sm">{f.label}</Text>
               </Combobox.Option>
             ))
