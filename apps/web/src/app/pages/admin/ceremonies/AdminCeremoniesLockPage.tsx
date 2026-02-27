@@ -2,10 +2,12 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";
 import { AdminCeremoniesLockScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesLockScreen";
 import { confirm } from "@/notifications";
+import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremoniesLockPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
   const ceremonyId = ceremonyIdRaw ? Number(ceremonyIdRaw) : null;
+  const wizard = useCeremonyWizardContext();
   const o = useAdminCeremonyLockOrchestration({ ceremonyId });
 
   return (
@@ -14,17 +16,6 @@ export function AdminCeremoniesLockPage() {
       saving={o.saving}
       lockState={o.lockState}
       status={o.status}
-      onLock={() => {
-        void confirm({
-          title: "Lock ceremony?",
-          message: "Lock this ceremony? This will cancel any in-progress drafts.",
-          confirmLabel: "Lock",
-          cancelLabel: "Cancel",
-          danger: true
-        }).then((ok) => {
-          if (ok) void o.actions.lock();
-        });
-      }}
       onArchive={() => {
         if (o.lockState?.status !== "COMPLETE") return;
         void confirm({
@@ -34,7 +25,10 @@ export function AdminCeremoniesLockPage() {
           confirmLabel: "Archive",
           cancelLabel: "Cancel"
         }).then((ok) => {
-          if (ok) void o.actions.archive();
+          if (ok)
+            void o.actions.archive().then(async () => {
+              await wizard?.reloadWorksheet();
+            });
         });
       }}
     />

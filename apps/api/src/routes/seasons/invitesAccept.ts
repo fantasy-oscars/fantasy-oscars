@@ -10,7 +10,10 @@ import {
 } from "../../data/repositories/leagueRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
-import { addSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
+import {
+  addSeasonMember,
+  getSeasonMember
+} from "../../data/repositories/seasonMemberRepository.js";
 import { updateUserInviteStatus } from "../../data/repositories/seasonInviteRepository.js";
 import { sanitizeInvite } from "./helpers.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
@@ -84,21 +87,26 @@ export function registerSeasonInvitesAcceptRoute(args: {
             };
           }
 
-          let leagueMember = await getLeagueMember(tx, season.league_id, userId);
-          if (!leagueMember) {
-            leagueMember = await createLeagueMember(tx, {
-              league_id: season.league_id,
+          const existingMember = await getSeasonMember(tx, season.id, userId);
+          const alreadyMember = Boolean(existingMember);
+
+          if (!alreadyMember) {
+            let leagueMember = await getLeagueMember(tx, season.league_id, userId);
+            if (!leagueMember) {
+              leagueMember = await createLeagueMember(tx, {
+                league_id: season.league_id,
+                user_id: userId,
+                role: "MEMBER"
+              });
+            }
+
+            await addSeasonMember(tx, {
+              season_id: season.id,
               user_id: userId,
+              league_member_id: leagueMember.id,
               role: "MEMBER"
             });
           }
-
-          const member = await addSeasonMember(tx, {
-            season_id: season.id,
-            user_id: userId,
-            league_member_id: leagueMember.id,
-            role: "MEMBER"
-          });
 
           const updated = await updateUserInviteStatus(
             tx,
@@ -107,7 +115,7 @@ export function registerSeasonInvitesAcceptRoute(args: {
             "CLAIMED",
             new Date()
           );
-          return { invite: updated, member };
+          return { invite: updated, alreadyMember };
         });
 
         if ("error" in result && result.error) {
@@ -117,7 +125,10 @@ export function registerSeasonInvitesAcceptRoute(args: {
           throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
         }
 
-        return res.status(200).json({ invite: sanitizeInvite(result.invite) });
+        return res.status(200).json({
+          invite: sanitizeInvite(result.invite),
+          already_member: Boolean(result.alreadyMember)
+        });
       } catch (err) {
         next(err);
       }

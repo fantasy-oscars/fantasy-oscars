@@ -57,8 +57,7 @@ export function CeremonyDetailScreen(props: {
     nominationsByCategory.set(n.category_edition_id, bucket);
   }
 
-  const label =
-    ceremony.name?.trim() || ceremony.code?.trim() || `Ceremony #${ceremony.id}`;
+  const label = ceremony.name?.trim() || ceremony.code?.trim() || "Ceremony";
 
   return (
     <Box className="baseline-page">

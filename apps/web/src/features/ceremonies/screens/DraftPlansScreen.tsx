@@ -106,10 +106,7 @@ export function DraftPlansScreen(props: {
   const categories = props.detail?.categories ?? EMPTY_CATEGORIES;
   const nominations = props.detail?.nominations ?? EMPTY_NOMINATIONS;
 
-  const label =
-    ceremony?.name?.trim() ||
-    ceremony?.code?.trim() ||
-    (ceremony ? `Ceremony #${ceremony.id}` : "Ceremony");
+  const label = ceremony?.name?.trim() || ceremony?.code?.trim() || "Ceremony";
 
   const filteredPlans = useMemo(() => {
     return filterDraftPlansByName(o.plans, planQuery);

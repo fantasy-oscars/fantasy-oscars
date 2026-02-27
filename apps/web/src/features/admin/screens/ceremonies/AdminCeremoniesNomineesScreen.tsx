@@ -128,6 +128,7 @@ export function AdminCeremoniesNomineesScreen(props: {
         films={films}
         filmInput={filmInput}
         onFilmChange={(v) => void resolveFilmSelection(v)}
+        onFilmPick={(film) => void o.actions.selectFilmFromPicker(film)}
         unitKind={selectedCategory?.unit_kind ?? null}
         songTitle={songTitle}
         setSongTitle={setSongTitle}

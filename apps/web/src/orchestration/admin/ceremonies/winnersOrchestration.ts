@@ -7,8 +7,10 @@ import type { WinnersNominationRow } from "./winners/types";
 
 export function useAdminCeremonyWinnersOrchestration(args: {
   ceremonyId: number | null;
+  onAfterFinalize?: (() => void | Promise<void>) | null;
 }) {
   const { ceremonyId } = args;
+  const onAfterFinalize = args.onAfterFinalize ?? null;
 
   const [loading, setLoading] = useState(true);
   const [loadState, setLoadState] = useState<ApiResult | null>(null);
@@ -337,8 +339,9 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       message: "Winners finalized"
     });
     setFinalizeStatus({ ok: true, message: "Finalized" });
-    void load();
-  }, [ceremonyId, load]);
+    await load();
+    await onAfterFinalize?.();
+  }, [ceremonyId, load, onAfterFinalize]);
 
   const toggleNomination = useCallback(
     (categoryId: number, nominationId: number, checked: boolean) => {

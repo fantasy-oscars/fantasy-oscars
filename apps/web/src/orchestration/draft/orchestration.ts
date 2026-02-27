@@ -410,7 +410,7 @@ export function useDraftRoomOrchestration(args: {
     return ids.map((id) => ({
       nominationId: id,
       icon: nominationIconById.get(id) ?? null,
-      label: nominationLabelById.get(id) ?? `#${id}`
+      label: nominationLabelById.get(id) ?? "Unnamed nomination"
     }));
   }, [
     autoList,
@@ -726,7 +726,7 @@ export function useDraftRoomOrchestration(args: {
         null;
       const seatLabel = seatNumber ? (seatLabelByNumber.get(seatNumber) ?? "—") : "—";
       const label = pick
-        ? (nominationLabelById.get(pick.nomination_id) ?? `#${pick.nomination_id}`)
+        ? (nominationLabelById.get(pick.nomination_id) ?? "Unnamed nomination")
         : "—";
       const icon = pick ? (nominationIconById.get(pick.nomination_id) ?? null) : null;
       rows.push({
@@ -822,7 +822,7 @@ export function useDraftRoomOrchestration(args: {
         roundPick: computeRoundPickLabel({ pickNumber: p.pick_number, seatCount }),
         nominationId: p.nomination_id,
         icon: nominationIconById.get(p.nomination_id) ?? null,
-        label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`,
+        label: nominationLabelById.get(p.nomination_id) ?? "Unnamed nomination",
         winner: winnerSet.has(p.nomination_id)
       }));
   }, [mySeatNumber, nominationIconById, nominationLabelById, snapshot, winnerSet]);
@@ -832,7 +832,7 @@ export function useDraftRoomOrchestration(args: {
     return {
       id: selectedNominationId,
       icon: nominationIconById.get(selectedNominationId) ?? null,
-      label: nominationLabelById.get(selectedNominationId) ?? `#${selectedNominationId}`
+      label: nominationLabelById.get(selectedNominationId) ?? "Unnamed nomination"
     };
   }, [nominationIconById, nominationLabelById, selectedNominationId]);
 
@@ -855,7 +855,7 @@ export function useDraftRoomOrchestration(args: {
           pickNumber: p.pick_number,
           nominationId: p.nomination_id,
           icon: nominationIconById.get(p.nomination_id) ?? null,
-          label: nominationLabelById.get(p.nomination_id) ?? `#${p.nomination_id}`,
+          label: nominationLabelById.get(p.nomination_id) ?? "Unnamed nomination",
           winner: winnerSet.has(p.nomination_id)
         }))
       );

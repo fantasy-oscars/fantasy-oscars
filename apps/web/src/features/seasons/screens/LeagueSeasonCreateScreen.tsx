@@ -109,7 +109,7 @@ export function LeagueSeasonCreateScreen(props: {
     );
   }
 
-  const leagueName = view.league?.name ?? `League #${leagueId}`;
+  const leagueName = view.league?.name ?? "this league";
 
   return (
     <Box className="baseline-page">

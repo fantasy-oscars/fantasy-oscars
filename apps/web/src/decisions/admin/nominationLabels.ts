@@ -6,8 +6,8 @@ export function nominationPrimaryLabel(input: {
   contributors?: Array<{ full_name: string; sort_order: number }>;
   fallbackId: number;
 }) {
-  if (input.unit_kind === "SONG")
-    return input.song_title ?? `Nomination #${input.fallbackId}`;
+  void input.fallbackId;
+  if (input.unit_kind === "SONG") return input.song_title ?? "Untitled song nominee";
   if (input.unit_kind === "PERFORMANCE") {
     const names =
       input.contributors && input.contributors.length > 0
@@ -17,9 +17,9 @@ export function nominationPrimaryLabel(input: {
             .filter(Boolean)
         : [];
     if (names.length > 0) return names.join(", ");
-    return input.performer_name ?? `Nomination #${input.fallbackId}`;
+    return input.performer_name ?? "Untitled performance nominee";
   }
-  return input.film_title ?? `Nomination #${input.fallbackId}`;
+  return input.film_title ?? "Untitled film nominee";
 }
 
 export function nominationSecondaryLabel(input: {

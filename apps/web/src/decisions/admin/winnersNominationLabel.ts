@@ -21,7 +21,7 @@ export function winnersNominationLabel(
   } else if (unitKind === "PERFORMANCE") {
     if (n.performer_name) return n.performer_name;
     if (Array.isArray(n.contributors) && n.contributors.length > 0) {
-      return n.contributors[0]?.full_name ?? `Nomination #${n.id}`;
+      return n.contributors[0]?.full_name ?? "Untitled performance nominee";
     }
   } else if (unitKind === "FILM") {
     if (n.film_title) return n.film_title;
@@ -32,6 +32,6 @@ export function winnersNominationLabel(
   if (n.performer_name) return n.performer_name;
   if (n.film_title) return n.film_title;
   if (Array.isArray(n.contributors) && n.contributors.length > 0)
-    return n.contributors[0]?.full_name ?? `Nomination #${n.id}`;
-  return `Nomination #${n.id}`;
+    return n.contributors[0]?.full_name ?? "Untitled performance nominee";
+  return "Untitled nomination";
 }

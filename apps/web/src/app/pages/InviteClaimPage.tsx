@@ -31,12 +31,14 @@ export function InviteClaimPage() {
     notifyInvitesChanged();
     notify({
       id: "invites.claim.accepted",
-      severity: "success",
+      severity: res.alreadyMember ? "info" : "success",
       trigger_type: "user_action",
       scope: "local",
       durability: "ephemeral",
       requires_decision: false,
-      message: "Invite accepted"
+      message: res.alreadyMember
+        ? "You already belong to this season. Invite link cleared."
+        : "Invite accepted"
     });
     navigate("/invites", { replace: true, state: { inviteClaimed: true } });
   }

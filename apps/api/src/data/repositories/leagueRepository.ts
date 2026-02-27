@@ -442,3 +442,36 @@ export async function updateLeagueMemberRole(
   );
   return rows[0] ?? null;
 }
+
+export async function transferLeagueOwnership(
+  client: DbClient,
+  leagueId: number,
+  targetUserId: number
+): Promise<boolean> {
+  const { rows } = await query<{ ok: boolean }>(
+    client,
+    `WITH target AS (
+       SELECT 1 AS ok
+       FROM league_member
+       WHERE league_id = $1 AND user_id = $2
+     ),
+     demote_existing_owners AS (
+       UPDATE league_member
+       SET role = 'CO_OWNER'
+       WHERE league_id = $1
+         AND role = 'OWNER'
+         AND user_id <> $2
+         AND EXISTS (SELECT 1 FROM target)
+       RETURNING 1
+     ),
+     promote_target_owner AS (
+       UPDATE league_member
+       SET role = 'OWNER'
+       WHERE league_id = $1 AND user_id = $2 AND EXISTS (SELECT 1 FROM target)
+       RETURNING 1
+     )
+     SELECT EXISTS (SELECT 1 FROM promote_target_owner) AS ok`,
+    [leagueId, targetUserId]
+  );
+  return Boolean(rows[0]?.ok);
+}

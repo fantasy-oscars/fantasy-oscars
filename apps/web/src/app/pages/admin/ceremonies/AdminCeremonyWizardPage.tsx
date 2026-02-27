@@ -70,16 +70,20 @@ export function AdminCeremonyWizardPage() {
   const prevIndex = Math.max(0, currentIndex - 1);
 
   const canGoBack = currentIndex > 0;
+  const resultsFinalized = ceremonyStatus === "COMPLETE" || ceremonyStatus === "ARCHIVED";
   const canGoNext =
     currentIndex < STEP_ORDER.length - 1 &&
+    (current.id !== "results" || resultsFinalized) &&
     (current.state === "COMPLETE_EDITABLE" || current.state === "COMPLETE_LOCKED");
 
   const nextDisabledReason =
     currentIndex >= STEP_ORDER.length - 1
       ? null
-      : current.state === "INCOMPLETE_EDITABLE" || current.state === "GATED"
-        ? (current.reason ?? "Complete this step to continue.")
-        : null;
+      : current.id === "results" && !resultsFinalized
+        ? "Finalize results to continue to Archive."
+        : current.state === "INCOMPLETE_EDITABLE" || current.state === "GATED"
+          ? (current.reason ?? "Complete this step to continue.")
+          : null;
 
   const content = (() => {
     if (current.id === "initialize") return <AdminCeremoniesOverviewPage />;
