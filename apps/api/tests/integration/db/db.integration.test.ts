@@ -25,6 +25,17 @@ describe("database integration", () => {
     expect(rows[0].count).toBe(1);
   });
 
+  it("assigns avatar_key even when inserts pass null", async () => {
+    const insert = await db.pool.query(
+      `INSERT INTO app_user (username, email, avatar_key)
+       VALUES ($1, $2, $3)
+       RETURNING avatar_key`,
+      ["user-null-avatar", "user-null-avatar@example.com", null]
+    );
+    expect(typeof insert.rows[0].avatar_key).toBe("string");
+    expect(insert.rows[0].avatar_key.length).toBeGreaterThan(0);
+  });
+
   it("clears state between tests", async () => {
     await truncateAllTables(db.pool);
     const { rows } = await db.pool.query("SELECT count(*)::int AS count FROM app_user");
