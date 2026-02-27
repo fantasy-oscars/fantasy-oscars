@@ -322,6 +322,28 @@ describe("seasons placeholder invites", () => {
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("INVITES_LOCKED");
   });
+
+  it("consumes token invite when claimant is already a season member", async () => {
+    const { season, owner, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const created = await postJson<{
+      invite: { id: number };
+      token: string;
+    }>(`/seasons/${season.id}/invites`, { label: "Self claim" }, ownerToken);
+
+    const res = await postJson<{
+      invite: { id: number; status: string };
+      already_member: boolean;
+    }>(`/seasons/invites/token/${created.json.token}/accept`, {}, ownerToken);
+    expect(res.status).toBe(200);
+    expect(res.json.invite.status).toBe("CLAIMED");
+    expect(res.json.already_member).toBe(true);
+
+    const { rows: memberRows } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = $1 AND user_id = $2`,
+      [season.id, owner.id]
+    );
+    expect(Number(memberRows[0].count)).toBe(1);
+  });
 });
 
 describe("seasons user-targeted invites", () => {
@@ -486,5 +508,43 @@ describe("seasons user-targeted invites", () => {
     );
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("INVITES_LOCKED");
+  });
+
+  it("consumes user-targeted invite when user already joined before accepting", async () => {
+    const { season, league, token: ownerToken } = await bootstrapSeasonWithOwner();
+    const invitee = await insertUser(db.pool, { username: "already-joined" });
+    const created = await postJson<{ invite: { id: number } }>(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: invitee.id },
+      ownerToken
+    );
+    const inviteeLeagueMember = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: invitee.id,
+      role: "MEMBER"
+    });
+    await db.pool.query(
+      `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+       VALUES ($1, $2, $3, 'MEMBER')`,
+      [season.id, invitee.id, inviteeLeagueMember.id]
+    );
+    const inviteeToken = signToken({
+      sub: String(invitee.id),
+      username: invitee.username
+    });
+
+    const accepted = await postJson<{
+      invite: { status: string };
+      already_member: boolean;
+    }>(`/seasons/invites/${created.json.invite.id}/accept`, {}, inviteeToken);
+    expect(accepted.status).toBe(200);
+    expect(accepted.json.invite.status).toBe("CLAIMED");
+    expect(accepted.json.already_member).toBe(true);
+
+    const { rows } = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count FROM season_member WHERE season_id = $1 AND user_id = $2`,
+      [season.id, invitee.id]
+    );
+    expect(Number(rows[0].count)).toBe(1);
   });
 });

@@ -17,7 +17,10 @@ export function useInviteClaimOrchestration(input: { token?: string }) {
     }
     const isNumericId = /^\d+$/.test(token);
     setLoading(true);
-    const res = await fetchJson<{ invite?: { season_id?: number } }>(
+    const res = await fetchJson<{
+      invite?: { season_id?: number };
+      already_member?: boolean;
+    }>(
       isNumericId
         ? `/seasons/invites/${token}/accept`
         : `/seasons/invites/token/${token}/accept`,
@@ -30,7 +33,11 @@ export function useInviteClaimOrchestration(input: { token?: string }) {
       return { ok: false as const, error: message };
     }
     setResult(null);
-    return { ok: true as const, seasonId: res.data?.invite?.season_id };
+    return {
+      ok: true as const,
+      seasonId: res.data?.invite?.season_id,
+      alreadyMember: Boolean(res.data?.already_member)
+    };
   }, [token]);
 
   const decline = useCallback(async () => {

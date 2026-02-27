@@ -11,7 +11,10 @@ import {
 } from "../../data/repositories/leagueRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
-import { addSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
+import {
+  addSeasonMember,
+  getSeasonMember
+} from "../../data/repositories/seasonMemberRepository.js";
 import { findPendingPlaceholderInviteByTokenHash } from "../../data/repositories/seasonInviteRepository.js";
 import { sanitizeInvite } from "./helpers.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
@@ -60,21 +63,25 @@ export function registerSeasonInvitesTokenAcceptRoute(args: {
             };
           }
 
-          // Ensure league membership exists, then add season member.
-          let leagueMember = await getLeagueMember(tx, season.league_id, userId);
-          if (!leagueMember) {
-            leagueMember = await createLeagueMember(tx, {
-              league_id: season.league_id,
+          const existingMember = await getSeasonMember(tx, season.id, userId);
+          const alreadyMember = Boolean(existingMember);
+          if (!alreadyMember) {
+            // Ensure league membership exists, then add season member.
+            let leagueMember = await getLeagueMember(tx, season.league_id, userId);
+            if (!leagueMember) {
+              leagueMember = await createLeagueMember(tx, {
+                league_id: season.league_id,
+                user_id: userId,
+                role: "MEMBER"
+              });
+            }
+            await addSeasonMember(tx, {
+              season_id: season.id,
               user_id: userId,
+              league_member_id: leagueMember.id,
               role: "MEMBER"
             });
           }
-          await addSeasonMember(tx, {
-            season_id: season.id,
-            user_id: userId,
-            league_member_id: leagueMember.id,
-            role: "MEMBER"
-          });
 
           const { rows } = await query<{
             id: number;
@@ -106,14 +113,17 @@ export function registerSeasonInvitesTokenAcceptRoute(args: {
           const updated = rows[0];
           if (!updated)
             return { error: new AppError("INVITE_NOT_FOUND", 404, "Invite not found") };
-          return { invite: updated };
+          return { invite: updated, alreadyMember };
         });
 
         if ("error" in result && result.error) throw result.error;
         if (!result.invite)
           throw new AppError("INVITE_NOT_FOUND", 404, "Invite not found");
 
-        return res.status(200).json({ invite: sanitizeInvite(result.invite) });
+        return res.status(200).json({
+          invite: sanitizeInvite(result.invite),
+          already_member: Boolean(result.alreadyMember)
+        });
       } catch (err) {
         next(err);
       }
