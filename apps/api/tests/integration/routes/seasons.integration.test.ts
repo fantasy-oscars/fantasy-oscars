@@ -127,9 +127,9 @@ describe("seasons integration", () => {
     }>(`/seasons/leagues/${leagueRes.json.league.id}/seasons`, token);
     expect(listRes.status).toBe(200);
     expect(listRes.json.seasons.length).toBe(2);
-    expect(listRes.json.seasons.every((s) => s.league_id === leagueRes.json.league.id)).toBe(
-      true
-    );
+    expect(
+      listRes.json.seasons.every((s) => s.league_id === leagueRes.json.league.id)
+    ).toBe(true);
     expect(
       listRes.json.seasons.some(
         (s) => s.is_active_ceremony && s.ceremony_id === ceremony2.id
