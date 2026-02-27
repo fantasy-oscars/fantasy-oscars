@@ -75,14 +75,8 @@ export function FilmCombobox(props: {
           return;
         }
         if (val.startsWith("film:")) {
-          const idRaw = val.slice("film:".length);
-          const id = Number(idRaw);
-          if (Number.isFinite(id) && id > 0) {
-            onChange(String(id));
-            combobox.closeDropdown();
-            return;
-          }
-          onChange(idRaw);
+          const label = val.slice("film:".length);
+          onChange(label);
           combobox.closeDropdown();
           return;
         }
@@ -122,7 +116,7 @@ export function FilmCombobox(props: {
             </Combobox.Empty>
           ) : (
             data.map((f) => (
-              <Combobox.Option key={f.id} value={`film:${f.id}`}>
+              <Combobox.Option key={f.id} value={`film:${f.label}`}>
                 <Text size="sm">{f.label}</Text>
               </Combobox.Option>
             ))
