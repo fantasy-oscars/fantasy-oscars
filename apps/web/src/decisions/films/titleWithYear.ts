@@ -12,7 +12,7 @@ export function parseFilmTitleWithYear(input: string): {
 } {
   const trimmed = input.trim();
   // Parse a trailing " (YYYY)" disambiguator.
-  const m = trimmed.match(/^(.*?)(?:\\s*\\((\\d{4})\\))\\s*$/);
+  const m = trimmed.match(/^(.*?)(?:\s*\((\d{4})\))\s*$/);
   if (!m) return { title: trimmed, releaseYear: null };
   const title = (m[1] ?? "").trim();
   const yearRaw = m[2] ?? "";
