@@ -18,9 +18,8 @@ export function AdminCeremoniesLockScreen(props: {
   const { loading, saving, lockState, status, onArchive } = props;
   const canArchive = lockState?.status === "COMPLETE";
   const isArchived = lockState?.status === "ARCHIVED";
-  const archiveDisabledReason = !isArchived && !canArchive
-    ? "Finalize winners before archiving."
-    : null;
+  const archiveDisabledReason =
+    !isArchived && !canArchive ? "Finalize winners before archiving." : null;
   const showErrorOnly = status ? !status.ok : false;
 
   if (loading && !lockState)
@@ -50,14 +49,16 @@ export function AdminCeremoniesLockScreen(props: {
       <Box component="header">
         <Title order={2}>Archive</Title>
         <Text className="muted">
-          Archiving moves the ceremony out of active admin workflows while preserving
-          all existing data.
+          Archiving moves the ceremony out of active admin workflows while preserving all
+          existing data.
         </Text>
       </Box>
 
       {!isArchived ? (
         <Group className="inline-actions" mt="sm" wrap="wrap">
-          {archiveDisabledReason ? <Text className="muted">{archiveDisabledReason}</Text> : null}
+          {archiveDisabledReason ? (
+            <Text className="muted">{archiveDisabledReason}</Text>
+          ) : null}
           <Button type="button" onClick={onArchive} disabled={saving || !canArchive}>
             {saving ? "Archiving..." : "Archive ceremony"}
           </Button>

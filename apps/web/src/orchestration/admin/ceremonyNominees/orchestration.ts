@@ -212,17 +212,19 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       const titleLower = parsed.title.toLowerCase();
       const matches = films.filter((f) => f.title.toLowerCase() === titleLower);
       const pickPreferredMatch = (candidates: CandidateFilm[]) =>
-        candidates
-          .slice()
-          .sort((a, b) => {
-            const aLinked = Number.isInteger(a.tmdb_id) ? 1 : 0;
-            const bLinked = Number.isInteger(b.tmdb_id) ? 1 : 0;
-            if (aLinked !== bLinked) return bLinked - aLinked;
-            const aYear = Number.isInteger(a.release_year) ? Number(a.release_year) : -Infinity;
-            const bYear = Number.isInteger(b.release_year) ? Number(b.release_year) : -Infinity;
-            if (aYear !== bYear) return bYear - aYear;
-            return a.id - b.id;
-          })[0] ?? null;
+        candidates.slice().sort((a, b) => {
+          const aLinked = Number.isInteger(a.tmdb_id) ? 1 : 0;
+          const bLinked = Number.isInteger(b.tmdb_id) ? 1 : 0;
+          if (aLinked !== bLinked) return bLinked - aLinked;
+          const aYear = Number.isInteger(a.release_year)
+            ? Number(a.release_year)
+            : -Infinity;
+          const bYear = Number.isInteger(b.release_year)
+            ? Number(b.release_year)
+            : -Infinity;
+          if (aYear !== bYear) return bYear - aYear;
+          return a.id - b.id;
+        })[0] ?? null;
       const yearMatches = parsed.releaseYear
         ? matches.filter((f) => Number(f.release_year) === Number(parsed.releaseYear))
         : [];
@@ -283,39 +285,39 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [films]
   );
 
-  const selectFilmFromPicker = useCallback(
-    async (film: CandidateFilm) => {
-      const id = Number(film.id);
-      if (!Number.isFinite(id) || id <= 0) return;
-      setFilmInput(formatFilmTitleWithYear(film.title, film.release_year ?? null));
-      setSelectedFilmId(id);
-      setFilmTitleFallback("");
-      setCredits(null);
-      setCreditsState(null);
-      setSelectedContributorIds([]);
-      setPendingContributorId("");
-      setCreditQuery("");
+  const selectFilmFromPicker = useCallback(async (film: CandidateFilm) => {
+    const id = Number(film.id);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setFilmInput(formatFilmTitleWithYear(film.title, film.release_year ?? null));
+    setSelectedFilmId(id);
+    setFilmTitleFallback("");
+    setCredits(null);
+    setCreditsState(null);
+    setSelectedContributorIds([]);
+    setPendingContributorId("");
+    setCreditQuery("");
 
-      setCreditsLoading(true);
-      const res = await fetchJson<{ credits: FilmCredits | null }>(`/admin/films/${id}/credits`, {
+    setCreditsLoading(true);
+    const res = await fetchJson<{ credits: FilmCredits | null }>(
+      `/admin/films/${id}/credits`,
+      {
         method: "GET"
-      });
-      setCreditsLoading(false);
-      if (!res.ok) {
-        setCredits(null);
-        setCreditsState({ ok: false, message: res.error ?? "Failed to load credits" });
-        return;
       }
-      setCredits(res.data?.credits ?? null);
-      setCreditsState({
-        ok: true,
-        message: res.data?.credits
-          ? "Credits loaded"
-          : "No credits stored for this film yet"
-      });
-    },
-    []
-  );
+    );
+    setCreditsLoading(false);
+    if (!res.ok) {
+      setCredits(null);
+      setCreditsState({ ok: false, message: res.error ?? "Failed to load credits" });
+      return;
+    }
+    setCredits(res.data?.credits ?? null);
+    setCreditsState({
+      ok: true,
+      message: res.data?.credits
+        ? "Credits loaded"
+        : "No credits stored for this film yet"
+    });
+  }, []);
 
   const summarizeCandidates = useCallback((dataset: unknown) => {
     setCandidateSummary(summarizeCandidateDataset(dataset));

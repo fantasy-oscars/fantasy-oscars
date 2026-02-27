@@ -75,9 +75,7 @@ export function CategoryTemplateEditorModal(props: {
           label="Icon"
           searchable
           value={props.value?.icon ?? ""}
-          onChange={(v) =>
-            props.setValue((p) => (p ? { ...p, icon: v ?? "trophy" } : p))
-          }
+          onChange={(v) => props.setValue((p) => (p ? { ...p, icon: v ?? "trophy" } : p))}
           data={props.iconCodes.map((code) => ({ value: code, label: code }))}
           disabled={props.working}
         />

@@ -312,9 +312,7 @@ export function NominationEditFilmSection(props: {
                         durability: "ephemeral",
                         requires_decision: false,
                         title: "Film linked",
-                        message: link.hydrated
-                          ? "Hydrated details from TMDB."
-                          : "Linked."
+                        message: link.hydrated ? "Hydrated details from TMDB." : "Linked."
                       });
                       setFilmLinkConflict(null);
                       setFilmLinkOpen(false);
