@@ -2,7 +2,6 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
-import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
 export function AdminCeremoniesLockScreen(props: {
@@ -14,122 +13,58 @@ export function AdminCeremoniesLockScreen(props: {
     draft_locked_at: string | null;
   } | null;
   status: ApiResult | null;
-  onLock: () => void;
   onArchive: () => void;
 }) {
-  const { loading, saving, lockState, status, onLock, onArchive } = props;
+  const { loading, saving, lockState, status, onArchive } = props;
   const canArchive = lockState?.status === "COMPLETE";
+  const isArchived = lockState?.status === "ARCHIVED";
+  const archiveDisabledReason = !isArchived && !canArchive
+    ? "Finalize winners before archiving."
+    : null;
+  const showErrorOnly = status ? !status.ok : false;
 
   if (loading && !lockState)
     return (
       <Stack
-        component="section"
-        className="stack"
-        mt="md"
+        className="stack-lg"
+        gap="lg"
         role="status"
-        aria-label="Loading lock state"
+        aria-label="Loading archive settings"
       >
         <Box component="header">
-          <Skeleton height="var(--fo-font-size-hero-title)" width="18%" />
+          <Skeleton height="var(--fo-font-size-hero-title)" width="24%" />
           <Box mt="var(--fo-space-dense-2)">
             <Skeleton height="var(--fo-font-size-sm)" width="64%" />
           </Box>
         </Box>
-        <StandardCard tone="nested" component="section">
-          <Stack gap="var(--fo-space-dense-2)">
-            <Skeleton height="var(--fo-font-size-sm)" width="18%" />
-            <Skeleton height="var(--fo-font-size-sm)" width="36%" />
-            <Group gap="xs">
-              <Skeleton height="22px" width="100px" />
-              <Skeleton height="22px" width="120px" />
-            </Group>
-          </Stack>
-        </StandardCard>
-        <StandardCard tone="nested" component="section">
-          <Stack gap="sm">
-            <Skeleton height="var(--fo-font-size-sm)" width="14%" />
-            <Skeleton height="var(--fo-font-size-sm)" width="44%" />
-            <Group gap="sm">
-              <Skeleton height="36px" width="120px" />
-              <Skeleton height="36px" width="140px" />
-            </Group>
-          </Stack>
-        </StandardCard>
+        <Stack gap="sm">
+          <Skeleton height="var(--fo-font-size-sm)" width="40%" />
+          <Skeleton height="36px" width="150px" />
+        </Stack>
       </Stack>
     );
   if (!lockState && status?.ok === false) return <PageError message={status.message} />;
 
   return (
-    <Stack component="section" className="stack" mt="md">
+    <Stack className="stack-lg" gap="lg">
       <Box component="header">
-        <Title order={3}>Archive</Title>
+        <Title order={2}>Archive</Title>
         <Text className="muted">
-          Lock blocks new seasons/drafts for this ceremony and cancels in-progress drafts.
-          You can archive only after results are finalized (status: Complete).
+          Archiving moves the ceremony out of active admin workflows while preserving
+          all existing data.
         </Text>
       </Box>
 
-      {lockState ? (
-        <StandardCard tone="nested" component="section">
-          <Group
-            className="header-with-controls"
-            justify="space-between"
-            align="start"
-            wrap="wrap"
-          >
-            <Box>
-              <Title order={4}>Status</Title>
-              <Text className="muted">Current ceremony lifecycle state.</Text>
-            </Box>
-            <Group className="pill-list" wrap="wrap">
-              <Box component="span" className="pill">
-                {lockState.status}
-              </Box>
-              <Box
-                component="span"
-                className={`pill ${lockState.draft_locked ? "" : "muted"}`}
-              >
-                {lockState.draft_locked ? "Drafts locked" : "Drafts open"}
-              </Box>
-            </Group>
-          </Group>
-          {lockState.draft_locked_at ? (
-            <Text className="muted">
-              Locked at {new Date(lockState.draft_locked_at).toLocaleString()}
-            </Text>
-          ) : null}
-        </StandardCard>
-      ) : null}
-
-      <StandardCard tone="nested" component="section">
-        <Box component="header">
-          <Title order={4}>Actions</Title>
-          <Text className="muted">
-            These actions affect all leagues/seasons for this ceremony.
-          </Text>
-        </Box>
+      {!isArchived ? (
         <Group className="inline-actions" mt="sm" wrap="wrap">
-          <Button type="button" onClick={onLock} disabled={saving}>
-            Lock ceremony
-          </Button>
-          <Button
-            type="button"
-            color="red"
-            variant="outline"
-            onClick={onArchive}
-            disabled={saving || !canArchive}
-          >
-            Archive ceremony
+          {archiveDisabledReason ? <Text className="muted">{archiveDisabledReason}</Text> : null}
+          <Button type="button" onClick={onArchive} disabled={saving || !canArchive}>
+            {saving ? "Archiving..." : "Archive ceremony"}
           </Button>
         </Group>
-        <FormStatus loading={saving} result={status} />
-        <Text className="muted">
-          Note: entering the first winner will also lock the ceremony automatically.
-        </Text>
-        {!canArchive ? (
-          <Text className="muted">Finalize winners first to enable archiving.</Text>
-        ) : null}
-      </StandardCard>
+      ) : null}
+
+      {showErrorOnly ? <FormStatus loading={saving} result={status} /> : null}
     </Stack>
   );
 }

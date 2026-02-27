@@ -14,17 +14,6 @@ export function AdminCeremoniesLockPage() {
       saving={o.saving}
       lockState={o.lockState}
       status={o.status}
-      onLock={() => {
-        void confirm({
-          title: "Lock ceremony?",
-          message: "Lock this ceremony? This will cancel any in-progress drafts.",
-          confirmLabel: "Lock",
-          cancelLabel: "Cancel",
-          danger: true
-        }).then((ok) => {
-          if (ok) void o.actions.lock();
-        });
-      }}
       onArchive={() => {
         if (o.lockState?.status !== "COMPLETE") return;
         void confirm({
