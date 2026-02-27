@@ -1854,6 +1854,14 @@ body[data-mantine-color-scheme="dark"]
   --button-bd: transparent !important;
 }
 
+.mantine-Button-root:disabled,
+.mantine-Button-root[data-disabled] {
+  opacity: var(--fo-alpha-60);
+  cursor: not-allowed;
+  color: var(--fo-text-deemphasized);
+  --button-color: var(--fo-text-deemphasized) !important;
+}
+
 .mantine-Checkbox-root {
   /* Keep checkbox accent in-token; prevents default blue. */
   --checkbox-color: var(--fo-gold-primary) !important;
