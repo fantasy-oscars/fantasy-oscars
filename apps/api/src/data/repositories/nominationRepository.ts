@@ -45,35 +45,7 @@ export async function listNominationsForCeremony(
        n.film_id::int,
        n.song_id::int,
        n.performance_id::int,
-       (
-         CASE
-           WHEN n.film_id IS NOT NULL THEN
-             COALESCE(
-               CASE
-                 WHEN f.tmdb_id IS NULL AND f0.tmdb_id IS NOT NULL THEN f0.id
-                 ELSE f.id
-               END,
-               f0.id
-             )
-           WHEN n.song_id IS NOT NULL THEN
-             COALESCE(
-               CASE
-                 WHEN sf.tmdb_id IS NULL AND sf0.tmdb_id IS NOT NULL THEN sf0.id
-                 ELSE sf.id
-               END,
-               sf0.id
-             )
-           WHEN n.performance_id IS NOT NULL THEN
-             COALESCE(
-               CASE
-                 WHEN pf.tmdb_id IS NULL AND pf0.tmdb_id IS NOT NULL THEN pf0.id
-                 ELSE pf.id
-               END,
-               pf0.id
-             )
-           ELSE NULL
-         END
-       )::int AS display_film_id,
+       COALESCE(f.id, sf.id, pf.id, f0.id, sf0.id, pf0.id)::int AS display_film_id,
        (
          CASE
            WHEN n.film_id IS NOT NULL THEN COALESCE(f.tmdb_id, f0.tmdb_id)
