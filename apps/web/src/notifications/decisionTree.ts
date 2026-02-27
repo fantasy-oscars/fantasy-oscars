@@ -17,7 +17,9 @@ export function canonicalTypeFor(event: NotificationEvent): CanonicalNotificatio
   if (
     event.durability === "ephemeral" &&
     event.scope === "local" &&
-    (event.id.startsWith("draft.pick.") || event.id.startsWith("draft.autopick."))
+    (event.id.startsWith("draft.pick.") ||
+      event.id.startsWith("draft.autopick.") ||
+      event.id.startsWith("ceremony.winner."))
   ) {
     return "toast";
   }
