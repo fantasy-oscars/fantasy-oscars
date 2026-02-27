@@ -2,10 +2,12 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";
 import { AdminCeremoniesLockScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesLockScreen";
 import { confirm } from "@/notifications";
+import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremoniesLockPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
   const ceremonyId = ceremonyIdRaw ? Number(ceremonyIdRaw) : null;
+  const wizard = useCeremonyWizardContext();
   const o = useAdminCeremonyLockOrchestration({ ceremonyId });
 
   return (
@@ -23,7 +25,10 @@ export function AdminCeremoniesLockPage() {
           confirmLabel: "Archive",
           cancelLabel: "Cancel"
         }).then((ok) => {
-          if (ok) void o.actions.archive();
+          if (ok)
+            void o.actions.archive().then(async () => {
+              await wizard?.reloadWorksheet();
+            });
         });
       }}
     />
