@@ -49,16 +49,12 @@ export function DraftBoardGrid(props: {
                       type="button"
                       className="nominee-line"
                       onClick={() => onSelectNomination?.(n.id)}
-                      title={`Nomination #${n.id}`}
+                      title={n.label}
                     >
                       {pill}
                     </UnstyledButton>
                   ) : (
-                    <Box
-                      key={n.id}
-                      className="nominee-line"
-                      title={`Nomination #${n.id}`}
-                    >
+                    <Box key={n.id} className="nominee-line" title={n.label}>
                       {pill}
                     </Box>
                   );

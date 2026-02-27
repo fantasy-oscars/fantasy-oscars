@@ -177,7 +177,7 @@ export function LeagueDetailScreen(props: {
             wrap="wrap"
           >
             <Title order={2} className="baseline-textHeroTitle">
-              {league.name ?? `League #${leagueId}`}
+              {league.name ?? "League"}
             </Title>
           </Group>
 
