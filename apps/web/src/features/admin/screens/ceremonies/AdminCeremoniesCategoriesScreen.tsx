@@ -246,6 +246,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
         <NewTemplateModal
           working={o.working}
           canAddToCeremony={o.canEdit}
+          iconCodes={o.iconCodes}
           value={o.newFamily}
           onChange={o.setNewFamily}
           onCancel={o.closeNewTemplate}

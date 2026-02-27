@@ -14,12 +14,14 @@ export type NewTemplateDraft = {
 export function NewTemplateModal(props: {
   working: boolean;
   canAddToCeremony: boolean;
+  iconCodes: string[];
   value: NewTemplateDraft;
   onChange: Dispatch<SetStateAction<NewTemplateDraft>>;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
-  const { working, canAddToCeremony, value, onChange, onCancel, onSubmit } = props;
+  const { working, canAddToCeremony, iconCodes, value, onChange, onCancel, onSubmit } =
+    props;
   return (
     <Box className="modal-backdrop" role="presentation">
       <StandardCard
@@ -70,14 +72,12 @@ export function NewTemplateModal(props: {
               { value: "PERFORMANCE", label: "Performance" }
             ]}
           />
-          <TextInput
+          <Select
             label="Icon"
+            searchable
             value={value.icon_id}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              onChange((p) => ({ ...p, icon_id: v }));
-            }}
-            placeholder="trophy"
+            onChange={(v) => onChange((p) => ({ ...p, icon_id: v ?? "trophy" }))}
+            data={iconCodes.map((code) => ({ value: code, label: code }))}
             disabled={working}
           />
           <Select

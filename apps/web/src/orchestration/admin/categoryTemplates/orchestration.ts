@@ -30,6 +30,7 @@ export function useAdminCategoryTemplatesOrchestration() {
 
   const [query, setQuery] = useState("");
   const [templates, setTemplates] = useState<CategoryTemplate[]>([]);
+  const [iconCodes, setIconCodes] = useState<string[]>([]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorValue, setEditorValue] = useState<CategoryTemplateDraft | null>(null);
@@ -39,19 +40,33 @@ export function useAdminCategoryTemplatesOrchestration() {
     setLoading(true);
     setError(null);
     const q = query.trim();
-    const res = await fetchJson<{ families: CategoryTemplate[] }>(
-      q
-        ? `/admin/category-families?q=${encodeURIComponent(q)}`
-        : "/admin/category-families",
-      { method: "GET" }
-    );
-    if (!res.ok) {
-      setError(res.error ?? "Unable to load templates");
+    const [templatesRes, iconsRes] = await Promise.all([
+      fetchJson<{ families: CategoryTemplate[] }>(
+        q
+          ? `/admin/category-families?q=${encodeURIComponent(q)}`
+          : "/admin/category-families",
+        { method: "GET" }
+      ),
+      fetchJson<{ icons: Array<{ code: string }> }>("/admin/icons", { method: "GET" })
+    ]);
+    if (!templatesRes.ok) {
+      setError(templatesRes.error ?? "Unable to load templates");
       setTemplates([]);
       setLoading(false);
       return;
     }
-    setTemplates(res.data?.families ?? []);
+    if (!iconsRes.ok) {
+      setError(iconsRes.error ?? "Unable to load icons");
+      setLoading(false);
+      return;
+    }
+    setTemplates(templatesRes.data?.families ?? []);
+    setIconCodes(
+      (iconsRes.data?.icons ?? [])
+        .map((i) => String(i.code || "").trim())
+        .filter((i) => i.length > 0)
+        .sort((a, b) => a.localeCompare(b))
+    );
     setLoading(false);
   }, [query]);
 
@@ -178,6 +193,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     query,
     setQuery,
     templates: sortedTemplates,
+    iconCodes,
     editorOpen,
     editorValue,
     setEditorValue,

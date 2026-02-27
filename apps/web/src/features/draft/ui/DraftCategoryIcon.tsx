@@ -1,10 +1,12 @@
 import { Box } from "@ui";
+import { materialGlyph } from "@/decisions/admin/materialGlyph";
 
 export function DraftCategoryIcon(props: {
   icon: string;
   variant: "default" | "inverted";
   className?: string;
 }) {
+  const glyph = materialGlyph(props.icon);
   if (props.variant === "inverted") {
     return (
       <Box
@@ -14,7 +16,7 @@ export function DraftCategoryIcon(props: {
         )}
         aria-hidden="true"
       >
-        {props.icon}
+        {glyph}
       </Box>
     );
   }
@@ -24,7 +26,7 @@ export function DraftCategoryIcon(props: {
       className={["mi-icon mi-icon-tiny", props.className ?? ""].join(" ")}
       aria-hidden="true"
     >
-      {props.icon}
+      {glyph}
     </Box>
   );
 }
