@@ -7,7 +7,7 @@ import { runInTransaction } from "../../data/db.js";
 import {
   getLeagueById,
   getLeagueMember,
-  updateLeagueMemberRole
+  transferLeagueOwnership
 } from "../../data/repositories/leagueRepository.js";
 
 export function registerLeagueMembersTransferRoute(args: {
@@ -48,8 +48,10 @@ export function registerLeagueMembersTransferRoute(args: {
             return new AppError("ALREADY_OWNER", 409, "Target is already owner");
           }
 
-          await updateLeagueMemberRole(tx, leagueId, targetUserId, "OWNER");
-          await updateLeagueMemberRole(tx, leagueId, actorId, "CO_OWNER");
+          const ok = await transferLeagueOwnership(tx, leagueId, targetUserId);
+          if (!ok) {
+            return new AppError("LEAGUE_MEMBER_NOT_FOUND", 404, "Target is not a member");
+          }
           return null;
         });
 

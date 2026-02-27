@@ -289,6 +289,20 @@ describe("leagues integration", () => {
       [leagueId, target.id]
     );
     expect(rows[0].role).toBe("OWNER");
+
+    const priorOwner = await db.pool.query<{ role: string }>(
+      `SELECT role FROM league_member WHERE league_id = $1 AND user_id = $2`,
+      [leagueId, owner.id]
+    );
+    expect(priorOwner.rows[0].role).toBe("CO_OWNER");
+
+    const ownerCount = await db.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::int AS count
+       FROM league_member
+       WHERE league_id = $1 AND role = 'OWNER'`,
+      [leagueId]
+    );
+    expect(Number(ownerCount.rows[0].count)).toBe(1);
   });
 
   it("prevents removing the last commissioner", async () => {
