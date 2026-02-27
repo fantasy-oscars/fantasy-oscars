@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   Box,
   Button,
   Combobox,
@@ -12,7 +13,6 @@ import {
 } from "@ui";
 import { useEffect, useState } from "react";
 import { notify } from "@/notifications";
-import { NominationFilmLinkConflictModal } from "@/features/admin/ui/ceremonies/nominees/NominationFilmLinkConflictModal";
 import { fetchJson } from "@/lib/api";
 import { normalizeFilmTitleForTmdbQuery } from "@/lib/films";
 
@@ -63,6 +63,7 @@ export function NominationEditFilmSection(props: {
     linkedFilmId: number;
     linkedFilmTitle: string | null;
   } | null>(null);
+  const [mergeWorking, setMergeWorking] = useState(false);
 
   useEffect(() => {
     if (!filmLinkOpen) {
@@ -133,6 +134,7 @@ export function NominationEditFilmSection(props: {
                 setFilmLinkOpen((v) => !v);
                 setFilmTmdbId(film?.tmdb_id ? String(film.tmdb_id) : "");
                 setTmdbSearchQuery(querySeed);
+                setFilmLinkConflict(null);
               }}
             >
               <Text component="span" className="gicon" aria-hidden="true">
@@ -160,8 +162,19 @@ export function NominationEditFilmSection(props: {
             onOptionSubmit={(value) => {
               const picked = tmdbSearchResults.find((r) => String(r.tmdb_id) === value);
               if (!picked) return;
+              if (picked.linked_film_id && picked.linked_film_id !== filmId) {
+                setFilmTmdbId("");
+                setFilmLinkConflict({
+                  tmdbId: picked.tmdb_id,
+                  linkedFilmId: picked.linked_film_id,
+                  linkedFilmTitle: picked.linked_film_title ?? null
+                });
+                tmdbCombobox.closeDropdown();
+                return;
+              }
               setFilmTmdbId(String(picked.tmdb_id));
               setTmdbSearchQuery(picked.title);
+              setFilmLinkConflict(null);
               tmdbCombobox.closeDropdown();
             }}
           >
@@ -174,6 +187,7 @@ export function NominationEditFilmSection(props: {
                 onChange={(e) => {
                   const next = e.currentTarget.value;
                   setTmdbSearchQuery(next);
+                  setFilmLinkConflict(null);
                   const trimmed = next.trim();
                   if (/^[0-9]+$/.test(trimmed)) setFilmTmdbId(trimmed);
                   else setFilmTmdbId("");
@@ -244,6 +258,78 @@ export function NominationEditFilmSection(props: {
             <Text className="muted" size="xs">
               Selected TMDB id: {filmTmdbId}
             </Text>
+          ) : null}
+          {filmLinkConflict ? (
+            <Alert color="yellow" variant="light" role="status">
+              <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                <Text size="sm">
+                  This ID is already linked to another film. Do you want to merge?
+                </Text>
+                <Button
+                  size="xs"
+                  onClick={() =>
+                    void (async () => {
+                      if (!filmId || !filmLinkConflict) return;
+                      setMergeWorking(true);
+                      const unlink = await onLinkFilm(
+                        filmLinkConflict.linkedFilmId,
+                        null
+                      );
+                      if (!unlink.ok) {
+                        setMergeWorking(false);
+                        notify({
+                          id: "admin.nominees.film.unlink.other.error",
+                          severity: "error",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Could not remove link",
+                          message: unlink.error
+                        });
+                        return;
+                      }
+                      const link = await onLinkFilm(filmId, filmLinkConflict.tmdbId);
+                      setMergeWorking(false);
+                      if (!link.ok) {
+                        notify({
+                          id: "admin.nominees.film.link.after-unlink.error",
+                          severity: "error",
+                          trigger_type: "user_action",
+                          scope: "local",
+                          durability: "ephemeral",
+                          requires_decision: false,
+                          title: "Could not link film",
+                          message: link.error
+                        });
+                        return;
+                      }
+                      notify({
+                        id: "admin.nominees.film.link.after-unlink.success",
+                        severity: "success",
+                        trigger_type: "user_action",
+                        scope: "local",
+                        durability: "ephemeral",
+                        requires_decision: false,
+                        title: "Film linked",
+                        message: link.hydrated
+                          ? "Hydrated details from TMDB."
+                          : "Linked."
+                      });
+                      setFilmLinkConflict(null);
+                      setFilmLinkOpen(false);
+                      setFilmTmdbId("");
+                      setTmdbSearchQuery("");
+                      setTmdbSearchResults([]);
+                      onAfterLinkChange();
+                    })()
+                  }
+                  loading={mergeWorking}
+                >
+                  Merge films
+                </Button>
+              </Group>
+            </Alert>
           ) : null}
           {film?.tmdb_id ? (
             <ActionIcon
@@ -351,21 +437,6 @@ export function NominationEditFilmSection(props: {
           </Button>
         </Group>
       ) : null}
-
-      <NominationFilmLinkConflictModal
-        opened={Boolean(filmId) && Boolean(filmLinkConflict)}
-        onClose={() => setFilmLinkConflict(null)}
-        filmId={filmId}
-        conflict={filmLinkConflict}
-        onLinkFilm={onLinkFilm}
-        onClear={() => setFilmLinkConflict(null)}
-        onSuccess={() => {
-          setFilmLinkConflict(null);
-          setFilmLinkOpen(false);
-          setFilmTmdbId("");
-          onAfterLinkChange();
-        }}
-      />
     </Box>
   );
 }
