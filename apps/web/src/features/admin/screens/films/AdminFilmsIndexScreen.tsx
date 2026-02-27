@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { StandardCard } from "@/primitives/cards/StandardCard";
 import { notify } from "@/notifications";
+import { normalizeFilmTitleForTmdbQuery } from "@/lib/films";
 import type {
   AdminFilmRow,
   ConsolidatedFilmRow
@@ -367,7 +368,7 @@ export function AdminFilmsIndexScreen(props: {
                     tmdb_id: film.tmdb_id
                   });
                   setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
-                  setTmdbSearchQuery(film.title);
+                  setTmdbSearchQuery(normalizeFilmTitleForTmdbQuery(film.title));
                 }}
               >
                 <Text
