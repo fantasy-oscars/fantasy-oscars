@@ -153,7 +153,6 @@ export function AdminCeremonyWizardScreen(props: {
                   ) : null}
                   <Button
                     type="button"
-                    variant={canGoNext ? "default" : "subtle"}
                     className={canGoNext ? "fo-buttonColorPrimary" : "fo-buttonColorMuted"}
                     disabled={!canGoNext}
                     onClick={() => setActive(nextIndex)}
