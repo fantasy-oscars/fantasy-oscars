@@ -43,9 +43,13 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
         });
         const response = seasons.map((s) => ({
           id: s.id,
+          league_id: s.league_id,
           ceremony_id: s.ceremony_id,
           ceremony_name: s.ceremony_name ?? null,
+          ceremony_code: s.ceremony_code ?? null,
           status: s.status,
+          category_weights:
+            (s as { category_weights?: unknown }).category_weights ?? null,
           scoring_strategy_name: s.scoring_strategy_name,
           remainder_strategy: s.remainder_strategy,
           pick_timer_seconds: s.pick_timer_seconds ?? null,

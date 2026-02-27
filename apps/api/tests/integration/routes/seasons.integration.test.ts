@@ -118,10 +118,18 @@ describe("seasons integration", () => {
     expect(createSeasonRes.json.season.ceremony_id).toBe(ceremony2.id);
 
     const listRes = await getJson<{
-      seasons: Array<{ id: number; ceremony_id: number; is_active_ceremony: boolean }>;
+      seasons: Array<{
+        id: number;
+        league_id: number;
+        ceremony_id: number;
+        is_active_ceremony: boolean;
+      }>;
     }>(`/seasons/leagues/${leagueRes.json.league.id}/seasons`, token);
     expect(listRes.status).toBe(200);
     expect(listRes.json.seasons.length).toBe(2);
+    expect(listRes.json.seasons.every((s) => s.league_id === leagueRes.json.league.id)).toBe(
+      true
+    );
     expect(
       listRes.json.seasons.some(
         (s) => s.is_active_ceremony && s.ceremony_id === ceremony2.id

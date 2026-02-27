@@ -46,6 +46,7 @@ export function registerLeagueSeasonsListRoute(args: {
 
         const response = seasons.map((s) => ({
           id: s.id,
+          league_id: s.league_id,
           ceremony_id: s.ceremony_id,
           ceremony_name: s.ceremony_name ?? null,
           ceremony_code: s.ceremony_code ?? null,
