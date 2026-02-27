@@ -46,6 +46,13 @@ export function registerSeasonUserInvitesCreateRoute(args: {
         if (!resolvedUserId) {
           throw validationError("Missing required fields", ["user_id", "username"]);
         }
+        if (resolvedUserId === actorId) {
+          throw new AppError(
+            "SELF_INVITE_NOT_ALLOWED",
+            409,
+            "You cannot invite yourself to a season."
+          );
+        }
 
         const season = await getSeasonById(client, seasonId);
         if (!season || season.status !== "EXTANT") {

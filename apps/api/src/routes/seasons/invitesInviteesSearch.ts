@@ -63,6 +63,7 @@ export function registerSeasonInviteesSearchRoute(args: {
                 u.username ILIKE $1 ESCAPE '\\'
                 OR ${sqlNorm("u.username")} LIKE $2 ESCAPE '\\'
               )
+              AND u.id <> $4
               AND NOT EXISTS (
                 SELECT 1
                 FROM season_member sm
@@ -72,7 +73,7 @@ export function registerSeasonInviteesSearchRoute(args: {
             ORDER BY u.created_at DESC
             LIMIT 25
           `,
-          [likeRaw, likeNorm, seasonId]
+          [likeRaw, likeNorm, seasonId, actorId]
         );
 
         return res.status(200).json({ users: rows });

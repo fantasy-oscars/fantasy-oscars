@@ -363,6 +363,18 @@ describe("seasons user-targeted invites", () => {
     expect(second.json.invite.id).toBe(first.json.invite.id);
   });
 
+  it("rejects inviting yourself to a season", async () => {
+    const { season, owner, token: ownerToken } = await bootstrapSeasonWithOwner();
+
+    const res = await postJson<{ error: { code: string } }>(
+      `/seasons/${season.id}/user-invites`,
+      { user_id: owner.id },
+      ownerToken
+    );
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe("SELF_INVITE_NOT_ALLOWED");
+  });
+
   it("lists pending invites in the invitee inbox", async () => {
     const { season, token: ownerToken } = await bootstrapSeasonWithOwner();
     const invitee = await insertUser(db.pool, { username: "inbox" });
