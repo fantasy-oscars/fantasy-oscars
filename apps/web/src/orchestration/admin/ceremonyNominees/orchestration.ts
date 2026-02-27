@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readJsonFile } from "../../../lib/files";
 import { fetchJson } from "../../../lib/api";
-import { parseFilmTitleWithYear } from "../../../lib/films";
+import { formatFilmTitleWithYear, parseFilmTitleWithYear } from "../../../lib/films";
 import type { ApiResult } from "../../../lib/types";
 import {
   buildCreditByPersonId,
@@ -281,6 +281,40 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       });
     },
     [films]
+  );
+
+  const selectFilmFromPicker = useCallback(
+    async (film: CandidateFilm) => {
+      const id = Number(film.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      setFilmInput(formatFilmTitleWithYear(film.title, film.release_year ?? null));
+      setSelectedFilmId(id);
+      setFilmTitleFallback("");
+      setCredits(null);
+      setCreditsState(null);
+      setSelectedContributorIds([]);
+      setPendingContributorId("");
+      setCreditQuery("");
+
+      setCreditsLoading(true);
+      const res = await fetchJson<{ credits: FilmCredits | null }>(`/admin/films/${id}/credits`, {
+        method: "GET"
+      });
+      setCreditsLoading(false);
+      if (!res.ok) {
+        setCredits(null);
+        setCreditsState({ ok: false, message: res.error ?? "Failed to load credits" });
+        return;
+      }
+      setCredits(res.data?.credits ?? null);
+      setCreditsState({
+        ok: true,
+        message: res.data?.credits
+          ? "Credits loaded"
+          : "No credits stored for this film yet"
+      });
+    },
+    []
   );
 
   const summarizeCandidates = useCallback((dataset: unknown) => {
@@ -714,6 +748,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       loadManualContext,
       searchPeople,
       resolveFilmSelection,
+      selectFilmFromPicker,
       onCandidateFile,
       onCandidateFileChange,
       resetCandidates,

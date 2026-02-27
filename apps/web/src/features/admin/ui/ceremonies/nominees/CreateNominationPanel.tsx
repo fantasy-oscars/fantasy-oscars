@@ -11,6 +11,12 @@ export function CreateNominationPanel(props: {
   films: unknown[];
   filmInput: string;
   onFilmChange: (next: string) => void;
+  onFilmPick: (film: {
+    id: number;
+    title: string;
+    release_year?: number | null;
+    tmdb_id?: number | null;
+  }) => void;
   unitKind: string | null;
   songTitle: string;
   setSongTitle: (next: string) => void;
@@ -54,6 +60,7 @@ export function CreateNominationPanel(props: {
               label="Film"
               value={props.filmInput}
               onChange={props.onFilmChange}
+              onSelectFilm={props.onFilmPick}
               films={props.films as never}
             />
           </Box>

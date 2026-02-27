@@ -6,6 +6,12 @@ export function FilmCombobox(props: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onSelectFilm?: (film: {
+    id: number;
+    title: string;
+    release_year?: number | null;
+    tmdb_id?: number | null;
+  }) => void;
   films: Array<{
     id: number;
     title: string;
@@ -13,7 +19,7 @@ export function FilmCombobox(props: {
     tmdb_id?: number | null;
   }>;
 }) {
-  const { label, value, onChange, films } = props;
+  const { label, value, onChange, onSelectFilm, films } = props;
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption()
@@ -43,6 +49,7 @@ export function FilmCombobox(props: {
         return a.id - b.id;
       })[0]
   );
+  const representativeById = new Map(representativeFilms.map((f) => [f.id, f] as const));
 
   const data = representativeFilms
     .map((f) => {
@@ -75,8 +82,17 @@ export function FilmCombobox(props: {
           return;
         }
         if (val.startsWith("film:")) {
-          const label = val.slice("film:".length);
-          onChange(label);
+          const id = Number(val.slice("film:".length));
+          const picked = representativeById.get(id);
+          if (picked) {
+            const label = formatFilmTitleWithYear(picked.title, picked.release_year ?? null);
+            onChange(label);
+            onSelectFilm?.(picked);
+            combobox.closeDropdown();
+            return;
+          }
+          const fallbackLabel = val.slice("film:".length);
+          onChange(fallbackLabel);
           combobox.closeDropdown();
           return;
         }
@@ -116,7 +132,7 @@ export function FilmCombobox(props: {
             </Combobox.Empty>
           ) : (
             data.map((f) => (
-              <Combobox.Option key={f.id} value={`film:${f.label}`}>
+              <Combobox.Option key={f.id} value={`film:${f.id}`}>
                 <Text size="sm">{f.label}</Text>
               </Combobox.Option>
             ))
