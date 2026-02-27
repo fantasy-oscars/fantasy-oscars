@@ -160,21 +160,6 @@ export function NominationEditFilmSection(props: {
             onOptionSubmit={(value) => {
               const picked = tmdbSearchResults.find((r) => String(r.tmdb_id) === value);
               if (!picked) return;
-              if (picked.linked_film_id && picked.linked_film_id !== filmId) {
-                notify({
-                  id: `admin.nominees.film.tmdb.search.linked.${picked.tmdb_id}`,
-                  severity: "warning",
-                  trigger_type: "user_action",
-                  scope: "local",
-                  durability: "ephemeral",
-                  requires_decision: false,
-                  title: "Already linked",
-                  message: picked.linked_film_title
-                    ? `TMDB ${picked.tmdb_id} is already linked to ${picked.linked_film_title}.`
-                    : `TMDB ${picked.tmdb_id} is already linked.`
-                });
-                return;
-              }
               setFilmTmdbId(String(picked.tmdb_id));
               setTmdbSearchQuery(picked.title);
               tmdbCombobox.closeDropdown();
