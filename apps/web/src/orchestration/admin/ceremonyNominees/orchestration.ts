@@ -211,11 +211,24 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       const parsed = parseFilmTitleWithYear(trimmed);
       const titleLower = parsed.title.toLowerCase();
       const matches = films.filter((f) => f.title.toLowerCase() === titleLower);
+      const pickPreferredMatch = (candidates: CandidateFilm[]) =>
+        candidates
+          .slice()
+          .sort((a, b) => {
+            const aLinked = Number.isInteger(a.tmdb_id) ? 1 : 0;
+            const bLinked = Number.isInteger(b.tmdb_id) ? 1 : 0;
+            if (aLinked !== bLinked) return bLinked - aLinked;
+            const aYear = Number.isInteger(a.release_year) ? Number(a.release_year) : -Infinity;
+            const bYear = Number.isInteger(b.release_year) ? Number(b.release_year) : -Infinity;
+            if (aYear !== bYear) return bYear - aYear;
+            return a.id - b.id;
+          })[0] ?? null;
+      const yearMatches = parsed.releaseYear
+        ? matches.filter((f) => Number(f.release_year) === Number(parsed.releaseYear))
+        : [];
       const exact =
-        (parsed.releaseYear
-          ? (matches.find((f) => Number(f.release_year) === Number(parsed.releaseYear)) ??
-            null)
-          : null) ?? (matches.length === 1 ? matches[0] : null);
+        (yearMatches.length > 0 ? pickPreferredMatch(yearMatches) : null) ??
+        (matches.length === 1 ? matches[0] : null);
 
       if (matches.length > 1 && !exact) {
         setSelectedFilmId(null);
