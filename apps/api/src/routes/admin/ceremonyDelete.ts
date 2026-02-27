@@ -70,7 +70,8 @@ export function registerAdminCeremonyDeleteRoute(args: {
             `SELECT id::int FROM ceremony WHERE id = $1 AND deleted_at IS NULL`,
             [id]
           );
-          if (!ceremonyRows[0]) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+          if (!ceremonyRows[0])
+            throw new AppError("NOT_FOUND", 404, "Ceremony not found");
 
           // Soft-delete semantics: keep rows, but remove active behavior.
 
