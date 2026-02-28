@@ -14,7 +14,6 @@ export function CategoryTemplateEditorModal(props: {
   opened: boolean;
   title: string;
   working: boolean;
-  iconCodes: string[];
   value: CategoryTemplateDraft | null;
   setValue: Dispatch<SetStateAction<CategoryTemplateDraft | null>>;
   status: ApiResult | null;
@@ -71,12 +70,14 @@ export function CategoryTemplateEditorModal(props: {
             { value: "PERFORMANCE", label: "Performance" }
           ]}
         />
-        <Select
+        <TextInput
           label="Icon"
-          searchable
           value={props.value?.icon ?? ""}
-          onChange={(v) => props.setValue((p) => (p ? { ...p, icon: v ?? "trophy" } : p))}
-          data={props.iconCodes.map((code) => ({ value: code, label: code }))}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            props.setValue((p) => (p ? { ...p, icon: v } : p));
+          }}
+          placeholder="trophy"
           disabled={props.working}
         />
         <Select
