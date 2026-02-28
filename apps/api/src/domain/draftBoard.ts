@@ -19,6 +19,13 @@ export type DraftBoardNomination = {
   film_poster_url?: string | null;
   film_year?: number | null;
   contributors?: string[];
+  performer_contributors?: Array<{
+    full_name: string;
+    role_label: string | null;
+    profile_url: string | null;
+    profile_path: string | null;
+    sort_order: number;
+  }>;
   song_title?: string | null;
   performer_name?: string | null;
   performer_character?: string | null;
@@ -74,6 +81,13 @@ export async function getDraftBoardForCeremony(
       film_poster_url: n.film_poster_url ?? null,
       film_year: n.film_year ?? null,
       contributors: (n.contributors ?? []).map((c) => c.full_name),
+      performer_contributors: (n.contributors ?? []).map((c) => ({
+        full_name: c.full_name,
+        role_label: c.role_label ?? null,
+        profile_url: c.profile_url ?? null,
+        profile_path: c.profile_path ?? null,
+        sort_order: c.sort_order
+      })),
       song_title: n.song_title ?? null,
       performer_name: n.performer_name ?? null,
       performer_character: n.performer_character ?? null,

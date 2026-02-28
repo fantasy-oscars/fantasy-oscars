@@ -141,6 +141,13 @@ export type DraftRoomOrchestration = {
         filmTitle?: string | null;
         filmYear?: number | null;
         contributors?: string[];
+        performerContributors?: Array<{
+          fullName: string;
+          roleLabel: string | null;
+          profileUrl: string | null;
+          profilePath: string | null;
+          sortOrder: number;
+        }>;
         songTitle?: string | null;
         performerName?: string | null;
         performerCharacter?: string | null;
@@ -770,6 +777,25 @@ export function useDraftRoomOrchestration(args: {
           filmTitle: (n as { film_title?: string | null }).film_title ?? null,
           filmYear: (n as { film_year?: number | null }).film_year ?? null,
           contributors: (n as { contributors?: string[] }).contributors ?? [],
+          performerContributors:
+            (
+              n as {
+                performer_contributors?: Array<{
+                  full_name?: string | null;
+                  role_label?: string | null;
+                  profile_url?: string | null;
+                  profile_path?: string | null;
+                  sort_order?: number | null;
+                }>;
+              }
+            ).performer_contributors?.map((c, idx) => ({
+              fullName: String(c.full_name ?? "").trim(),
+              roleLabel: c.role_label ?? null,
+              profileUrl: c.profile_url ?? null,
+              profilePath: c.profile_path ?? null,
+              sortOrder:
+                typeof c.sort_order === "number" ? c.sort_order : idx + 1
+            })) ?? [],
           songTitle: (n as { song_title?: string | null }).song_title ?? null,
           performerName: (n as { performer_name?: string | null }).performer_name ?? null,
           performerCharacter:

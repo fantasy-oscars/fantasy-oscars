@@ -48,6 +48,13 @@ export function MobileDraftRoom(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
     }>;
   }>;
   nomineeById: Map<
@@ -63,6 +70,13 @@ export function MobileDraftRoom(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
@@ -311,6 +325,7 @@ export function MobileDraftRoom(props: {
               performerCharacter={mobileNominee.performerCharacter}
               performerProfileUrl={mobileNominee.performerProfileUrl}
               performerProfilePath={mobileNominee.performerProfilePath}
+              performerContributors={mobileNominee.performerContributors}
               songTitle={mobileNominee.songTitle}
               draftedByLabel={mobileNominee.draftedByLabel}
               draftedByAvatarKey={mobileNominee.draftedByAvatarKey}

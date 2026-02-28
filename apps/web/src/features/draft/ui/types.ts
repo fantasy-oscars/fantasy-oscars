@@ -5,6 +5,13 @@ export type DraftNomineeMeta = {
   filmYear: number | null;
   filmPosterUrl: string | null;
   contributors: string[];
+  performerContributors?: Array<{
+    fullName: string;
+    roleLabel: string | null;
+    profileUrl: string | null;
+    profilePath: string | null;
+    sortOrder: number;
+  }>;
   performerName: string | null;
   performerCharacter: string | null;
   performerProfileUrl: string | null;

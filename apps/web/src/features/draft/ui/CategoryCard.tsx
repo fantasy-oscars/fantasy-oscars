@@ -31,6 +31,13 @@ export function CategoryCard(props: {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
     draftedByLabel?: string | null;
     draftedByAvatarKey?: string | null;
     draftedRoundPick?: string | null;
@@ -162,6 +169,7 @@ export function CategoryCard(props: {
                     performerCharacter={n.performerCharacter}
                     performerProfileUrl={n.performerProfileUrl}
                     performerProfilePath={n.performerProfilePath}
+                    performerContributors={n.performerContributors}
                     songTitle={n.songTitle}
                     draftedByLabel={n.draftedByLabel}
                     draftedByAvatarKey={n.draftedByAvatarKey}

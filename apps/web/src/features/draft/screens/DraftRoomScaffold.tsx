@@ -36,6 +36,13 @@ export function DraftRoomScaffold(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
       draftedByLabel?: string | null;
       draftedByAvatarKey?: string | null;
       draftedRoundPick?: string | null;
@@ -59,6 +66,13 @@ export function DraftRoomScaffold(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";

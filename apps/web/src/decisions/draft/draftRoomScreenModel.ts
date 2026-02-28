@@ -22,6 +22,13 @@ export type DraftScreenCategory = {
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    performerContributors?: Array<{
+      fullName: string;
+      roleLabel: string | null;
+      profileUrl: string | null;
+      profilePath: string | null;
+      sortOrder: number;
+    }>;
     draftedByLabel?: string | null;
     draftedByAvatarKey?: string | null;
     draftedRoundPick?: string | null;
@@ -41,6 +48,13 @@ export type NomineeMetaById = Map<
     performerCharacter: string | null;
     performerProfileUrl: string | null;
     performerProfilePath: string | null;
+    performerContributors?: Array<{
+      fullName: string;
+      roleLabel: string | null;
+      profileUrl: string | null;
+      profilePath: string | null;
+      sortOrder: number;
+    }>;
     songTitle: string | null;
     categoryIcon: string;
     categoryIconVariant: "default" | "inverted";
@@ -74,7 +88,8 @@ export function mapDraftScreenCategories(
       performerName: n.performerName ?? null,
       performerCharacter: n.performerCharacter ?? null,
       performerProfileUrl: n.performerProfileUrl ?? null,
-      performerProfilePath: n.performerProfilePath ?? null
+      performerProfilePath: n.performerProfilePath ?? null,
+      performerContributors: n.performerContributors ?? []
     }))
   }));
 }
@@ -96,6 +111,7 @@ export function buildNomineeMetaById(categories: DraftScreenCategory[]): Nominee
         performerCharacter: n.performerCharacter,
         performerProfileUrl: n.performerProfileUrl,
         performerProfilePath: n.performerProfilePath,
+        performerContributors: n.performerContributors ?? [],
         songTitle: n.songTitle,
         categoryIcon: c.icon,
         categoryIconVariant: c.iconVariant

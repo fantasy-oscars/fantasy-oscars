@@ -24,6 +24,8 @@ export type NominationWithDisplay = {
     person_id: number;
     full_name: string;
     tmdb_id?: number | null;
+    profile_url?: string | null;
+    profile_path?: string | null;
     role_label: string | null;
     sort_order: number;
   }>;
@@ -71,6 +73,8 @@ export async function listNominationsForCeremony(
              'person_id', p2.id::int,
              'full_name', p2.full_name,
              'tmdb_id', p2.tmdb_id::int,
+             'profile_url', p2.profile_url,
+             'profile_path', p2.profile_path,
              'role_label', nc.role_label,
              'sort_order', nc.sort_order::int
            )
@@ -185,6 +189,13 @@ export async function listNominationsForCeremony(
       if (!primaryCharacter) primaryCharacter = character;
       if (!primaryProfilePath && typeof match?.profile_path === "string") {
         primaryProfilePath = match.profile_path;
+      }
+      if (
+        !c.profile_path &&
+        !c.profile_url &&
+        typeof match?.profile_path === "string"
+      ) {
+        c.profile_path = match.profile_path;
       }
     }
 

@@ -117,6 +117,7 @@ export function DraftMyRosterRail(props: {
                               performerCharacter={nominee.performerCharacter}
                               performerProfileUrl={nominee.performerProfileUrl}
                               performerProfilePath={nominee.performerProfilePath}
+                              performerContributors={nominee.performerContributors}
                               songTitle={nominee.songTitle}
                               draftedByLabel={nominee.draftedByLabel}
                               draftedByAvatarKey={nominee.draftedByAvatarKey}
