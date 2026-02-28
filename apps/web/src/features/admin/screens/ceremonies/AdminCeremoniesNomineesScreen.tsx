@@ -7,6 +7,7 @@ import { notify } from "@/notifications";
 import { StandardCard } from "@/primitives";
 import { CandidatePoolAccordion } from "@/features/admin/ui/ceremonies/nominees/CandidatePoolAccordion";
 import { CreateNominationPanel } from "@/features/admin/ui/ceremonies/nominees/CreateNominationPanel";
+import type { SelectedContributor } from "@/features/admin/ui/ceremonies/nominees/PeopleCombobox";
 import { CategoryNominationSection } from "./nominees/CategoryNominationSection";
 import { NominationEditModal } from "./nominees/NominationEditModal";
 import "@/primitives/baseline.css";
@@ -35,10 +36,10 @@ export function AdminCeremoniesNomineesScreen(props: {
     creditsLoading,
     creditsState,
     creditOptions,
-    setSelectedContributorIds,
-    pendingContributorId,
-    setPendingContributorId,
-    selectedCredits
+    selectedContributors,
+    setSelectedContributors,
+    pendingContributorInput,
+    setPendingContributorInput
   } = o;
 
   const {
@@ -62,20 +63,25 @@ export function AdminCeremoniesNomineesScreen(props: {
 
   const [candidateOpen, setCandidateOpen] = useState<string | null>(null);
 
-  const hasTmdbCredits = Boolean(
-    o.credits && (o.credits.cast?.length || o.credits.crew?.length)
-  );
   const requiresContributor = selectedCategory?.unit_kind === "PERFORMANCE";
-
-  const addPendingContributor = () => {
-    const id = Number(pendingContributorId);
-    if (!Number.isFinite(id) || id <= 0) return;
-    setSelectedContributorIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setPendingContributorId("");
+  const localContributorOptions = useMemo(
+    () =>
+      creditOptions.map((c) => ({
+        key: `tmdb:${c.tmdb_id}`,
+        name: c.name,
+        tmdb_id: c.tmdb_id,
+        label: c.label
+      })),
+    [creditOptions]
+  );
+  const addSelectedContributor = (contributor: SelectedContributor) => {
+    setSelectedContributors((prev) =>
+      prev.some((c) => c.key === contributor.key) ? prev : [...prev, contributor]
+    );
+    setPendingContributorInput("");
   };
-
-  const removeSelectedContributor = (tmdbId: number) => {
-    setSelectedContributorIds((prev) => prev.filter((id) => id !== tmdbId));
+  const removeSelectedContributor = (key: string) => {
+    setSelectedContributors((prev) => prev.filter((c) => c.key !== key));
   };
 
   const candidateLoaded = useMemo(() => {
@@ -135,14 +141,13 @@ export function AdminCeremoniesNomineesScreen(props: {
         songTitle={songTitle}
         setSongTitle={setSongTitle}
         requiresContributor={Boolean(requiresContributor)}
-        hasTmdbCredits={hasTmdbCredits}
         creditsLoading={creditsLoading}
         creditsState={creditsState}
-        creditOptions={creditOptions}
-        pendingContributorId={pendingContributorId}
-        setPendingContributorId={setPendingContributorId}
-        onAddPendingContributor={addPendingContributor}
-        selectedCredits={selectedCredits}
+        localContributorOptions={localContributorOptions}
+        pendingContributorInput={pendingContributorInput}
+        setPendingContributorInput={setPendingContributorInput}
+        selectedContributors={selectedContributors}
+        onAddSelectedContributor={addSelectedContributor}
         onRemoveSelectedContributor={removeSelectedContributor}
         manualLoading={manualLoading}
         manualState={manualState}
