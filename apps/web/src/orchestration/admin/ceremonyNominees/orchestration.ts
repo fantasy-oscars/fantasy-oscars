@@ -82,7 +82,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [pendingContributorId, setPendingContributorId] = useState<string>("");
   const [creditQuery, setCreditQuery] = useState("");
 
-  const fetchAllFilms = useCallback(async (): Promise<
+  const fetchAllFilms = useCallback(async (query?: string): Promise<
     | {
         ok: true;
         films: CandidateFilm[];
@@ -92,8 +92,13 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         error: string;
       }
   > => {
+    const q = (query ?? "").trim();
+    const firstParams = new URLSearchParams();
+    firstParams.set("page", "1");
+    firstParams.set("page_size", "100");
+    if (q) firstParams.set("q", q);
     const firstRes = await fetchJson<AdminFilmsListResponse>(
-      `/admin/films?page=1&page_size=100`,
+      `/admin/films?${firstParams.toString()}`,
       { method: "GET" }
     );
     if (!firstRes.ok) {
@@ -110,9 +115,13 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
     const pagePromises: Array<ReturnType<typeof fetchJson<AdminFilmsListResponse>>> = [];
     for (let page = 2; page <= totalPages; page += 1) {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("page_size", String(pageSize));
+      if (q) params.set("q", q);
       pagePromises.push(
         fetchJson<AdminFilmsListResponse>(
-          `/admin/films?page=${page}&page_size=${pageSize}`,
+          `/admin/films?${params.toString()}`,
           {
             method: "GET"
           }
@@ -283,7 +292,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
       const parsed = parseFilmTitleWithYear(trimmed);
       const titleLower = parsed.title.toLowerCase();
-      const matches = films.filter((f) => f.title.toLowerCase() === titleLower);
       const pickPreferredMatch = (candidates: CandidateFilm[]) =>
         candidates.slice().sort((a, b) => {
           const aLinked = Number.isInteger(a.tmdb_id) ? 1 : 0;
@@ -298,6 +306,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
           if (aYear !== bYear) return bYear - aYear;
           return a.id - b.id;
         })[0] ?? null;
+      let matches = films.filter((f) => f.title.toLowerCase() === titleLower);
       const yearMatches = parsed.releaseYear
         ? matches.filter((f) => Number(f.release_year) === Number(parsed.releaseYear))
         : [];
@@ -346,6 +355,70 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         return;
       }
 
+      // If local cache misses, query backend and merge results so search can find films
+      // added outside this screen without requiring a full reload.
+      const remoteRes = await fetchAllFilms(parsed.title);
+      if (remoteRes.ok) {
+        const remoteFilms = remoteRes.films;
+        setFilms((prev) => {
+          const byId = new Map<number, CandidateFilm>();
+          for (const f of prev) byId.set(f.id, f);
+          for (const f of remoteFilms) byId.set(f.id, f);
+          return Array.from(byId.values());
+        });
+        matches = remoteFilms.filter((f) => f.title.toLowerCase() === titleLower);
+        const remoteYearMatches = parsed.releaseYear
+          ? matches.filter((f) => Number(f.release_year) === Number(parsed.releaseYear))
+          : [];
+        const remoteExact =
+          (remoteYearMatches.length > 0 ? pickPreferredMatch(remoteYearMatches) : null) ??
+          (matches.length === 1 ? matches[0] : null);
+
+        if (matches.length > 1 && !remoteExact) {
+          setSelectedFilmId(null);
+          setFilmTitleFallback(parsed.title);
+          setCredits(null);
+          setCreditsState({
+            ok: false,
+            message:
+              "Multiple films match. Please select a specific film (with year) or type the numeric id."
+          });
+          return;
+        }
+
+        if (remoteExact) {
+          const id = remoteExact.id;
+          setSelectedFilmId(id);
+          setFilmTitleFallback("");
+          setCreditsLoading(true);
+          const res = await fetchJson<{ credits: FilmCredits | null }>(
+            `/admin/films/${id}/credits`,
+            {
+              method: "GET"
+            }
+          );
+          setCreditsLoading(false);
+          if (!res.ok) {
+            setCredits(null);
+            setCreditsState({
+              ok: false,
+              message: res.error ?? "Failed to load credits"
+            });
+            return;
+          }
+          setCredits(res.data?.credits ?? null);
+          setCreditsState({
+            ok: true,
+            message: res.data?.credits
+              ? "Credits loaded"
+              : "No credits stored for this film yet"
+          });
+          setPendingContributorId("");
+          setCreditQuery("");
+          return;
+        }
+      }
+
       // Free-text title: allow creating a new film on submission.
       setSelectedFilmId(null);
       setFilmTitleFallback(parsed.title);
@@ -355,7 +428,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
         message: "Will create a new film with this title on save."
       });
     },
-    [films]
+    [fetchAllFilms, films]
   );
 
   const selectFilmFromPicker = useCallback(async (film: CandidateFilm) => {
