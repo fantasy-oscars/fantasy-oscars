@@ -73,11 +73,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [filmInput, setFilmInput] = useState("");
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null);
   const [filmTitleFallback, setFilmTitleFallback] = useState("");
-  const [pendingTmdbFilm, setPendingTmdbFilm] = useState<{
-    tmdb_id: number;
-    title: string;
-    release_year: number | null;
-  } | null>(null);
 
   const [songTitle, setSongTitle] = useState("");
   const [creditsLoading, setCreditsLoading] = useState(false);
@@ -250,7 +245,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const resolveFilmSelection = useCallback(
     async (value: string) => {
       setFilmInput(value);
-      setPendingTmdbFilm(null);
       setCredits(null);
       setCreditsState(null);
       setSelectedContributorIds([]);
@@ -446,7 +440,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setFilmInput(formatFilmTitleWithYear(film.title, film.release_year ?? null));
     setSelectedFilmId(id);
     setFilmTitleFallback("");
-    setPendingTmdbFilm(null);
     setCredits(null);
     setCreditsState(null);
     setSelectedContributorIds([]);
@@ -481,7 +474,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setFilmInput(parsed.title);
     setSelectedFilmId(null);
     setFilmTitleFallback(parsed.title);
-    setPendingTmdbFilm(null);
     setCredits(null);
     setCreditsState({
       ok: true,
@@ -493,19 +485,96 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   }, []);
 
   const selectTmdbFilmCandidate = useCallback(
-    (candidate: { tmdb_id: number; title: string; release_year: number | null }) => {
+    async (candidate: {
+      tmdb_id: number;
+      title: string;
+      release_year: number | null;
+    }) => {
       setFilmInput(formatFilmTitleWithYear(candidate.title, candidate.release_year));
       setSelectedFilmId(null);
-      setFilmTitleFallback(candidate.title);
-      setPendingTmdbFilm(candidate);
+      setFilmTitleFallback("");
       setCredits(null);
-      setCreditsState({
-        ok: true,
-        message: "Will create and link this film to TMDB on save."
-      });
+      setCreditsState(null);
       setSelectedContributorIds([]);
       setPendingContributorId("");
       setCreditQuery("");
+      setManualLoading(true);
+      setManualState(null);
+
+      const importRes = await fetchJson<{
+        ok: true;
+        upserted?: number;
+        hydrated?: number;
+      }>("/admin/films/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          films: [
+            {
+              title: candidate.title,
+              tmdb_id: candidate.tmdb_id,
+              year: candidate.release_year
+            }
+          ]
+        })
+      });
+      if (!importRes.ok) {
+        setManualLoading(false);
+        setManualState({
+          ok: false,
+          message: importRes.error ?? "Could not create film from TMDB"
+        });
+        return;
+      }
+
+      const byTmdbRes = await fetchJson<{
+        film: { id: number; title: string; tmdb_id: number };
+      }>(`/admin/films/by-tmdb/${candidate.tmdb_id}`, { method: "GET" });
+      if (!byTmdbRes.ok || !byTmdbRes.data?.film?.id) {
+        setManualLoading(false);
+        setManualState({
+          ok: false,
+          message: byTmdbRes.error ?? "Could not load created film"
+        });
+        return;
+      }
+
+      const created = byTmdbRes.data.film;
+      const filmId = Number(created.id);
+      setFilms((prev) => {
+        const byId = new Map<number, CandidateFilm>();
+        for (const f of prev) byId.set(f.id, f);
+        byId.set(filmId, {
+          id: filmId,
+          title: created.title,
+          tmdb_id: created.tmdb_id,
+          release_year: candidate.release_year
+        });
+        return Array.from(byId.values());
+      });
+      setSelectedFilmId(filmId);
+      setFilmInput(formatFilmTitleWithYear(created.title, candidate.release_year));
+
+      const creditsRes = await fetchJson<{ credits: FilmCredits | null }>(
+        `/admin/films/${filmId}/credits`,
+        { method: "GET" }
+      );
+      setManualLoading(false);
+      if (!creditsRes.ok) {
+        setCredits(null);
+        setCreditsState({
+          ok: false,
+          message: creditsRes.error ?? "Failed to load credits"
+        });
+        return;
+      }
+      setCredits(creditsRes.data?.credits ?? null);
+      setCreditsState({
+        ok: true,
+        message: creditsRes.data?.credits
+          ? "Film linked and credits loaded"
+          : "Film linked. No credits stored for this film yet"
+      });
     },
     []
   );
@@ -555,7 +624,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setFilmInput("");
     setSelectedFilmId(null);
     setFilmTitleFallback("");
-    setPendingTmdbFilm(null);
     setSongTitle("");
     setCredits(null);
     setCreditsState(null);
@@ -762,35 +830,14 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       setManualState({ ok: false, message: res.error ?? "Failed to create nomination" });
       return;
     }
-    let linkSuffix = "";
-    const createdFilmIdRaw = Number(res.data?.film_id ?? selectedFilmId ?? 0);
-    const createdFilmId =
-      Number.isInteger(createdFilmIdRaw) && createdFilmIdRaw > 0
-        ? createdFilmIdRaw
-        : null;
-    if (!selectedFilmId && pendingTmdbFilm && createdFilmId) {
-      setManualLoading(true);
-      const linkRes = await patchFilmTmdbId(createdFilmId, pendingTmdbFilm.tmdb_id);
-      setManualLoading(false);
-      if (!linkRes.ok) {
-        setManualState({
-          ok: false,
-          message: `Created nomination #${res.data?.nomination_id ?? "?"}, but TMDB link failed: ${linkRes.error ?? "Unknown error"}`
-        });
-        void Promise.all([loadManualContext(), loadNominations()]);
-        return;
-      }
-      linkSuffix = " and linked to TMDB";
-    }
     setManualState({
       ok: true,
-      message: `Created nomination #${res.data?.nomination_id ?? "?"}${linkSuffix}`
+      message: `Created nomination #${res.data?.nomination_id ?? "?"}`
     });
     // Keep category for fast entry; clear everything else.
     setFilmInput("");
     setSelectedFilmId(null);
     setFilmTitleFallback("");
-    setPendingTmdbFilm(null);
     setSongTitle("");
     setCredits(null);
     setCreditsState(null);
@@ -805,7 +852,6 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     loadManualContext,
     loadNominations,
     onWorksheetChange,
-    pendingTmdbFilm,
     selectedCategory?.unit_kind,
     selectedCategoryId,
     selectedCredits,

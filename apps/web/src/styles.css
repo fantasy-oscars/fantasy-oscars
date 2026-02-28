@@ -2460,6 +2460,27 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   margin-top: var(--fo-space-4);
 }
 
+.fo-tip-filmLine {
+  font-size: var(--fo-font-size-xs);
+  line-height: 1.3;
+  color: var(--fo-text-deemphasized);
+  margin: var(--fo-space-0) var(--fo-space-0) var(--fo-space-4) var(--fo-space-0);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.fo-tip-performanceList {
+  display: grid;
+  gap: var(--fo-space-8);
+}
+
+.fo-tip-performanceCard {
+  display: grid;
+  grid-template-columns: var(--fo-tip-poster-width) 1fr;
+  gap: var(--fo-tip-card-gap);
+  align-items: start;
+}
+
 .fo-tip-tmdbLink {
   display: inline-flex;
   align-items: center;

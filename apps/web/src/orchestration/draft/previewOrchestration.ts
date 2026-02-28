@@ -119,26 +119,64 @@ export function useDraftPreviewOrchestration(args: {
       const icon = iconByCategoryId.get(c.id) ?? "";
       const iconVariant =
         (c as { icon_variant?: "default" | "inverted" | null }).icon_variant ?? "default";
-      const nominations = filtered.map((n) => ({
-        id: n.id,
-        label: n.label,
-        posterUrl: (n as { film_poster_url?: string | null }).film_poster_url ?? null,
-        filmTitle: (n as { film_title?: string | null }).film_title ?? null,
-        filmYear: (n as { film_year?: number | null }).film_year ?? null,
-        contributors: (n as { contributors?: string[] }).contributors ?? [],
-        songTitle: (n as { song_title?: string | null }).song_title ?? null,
-        performerName: (n as { performer_name?: string | null }).performer_name ?? null,
-        performerCharacter:
-          (n as { performer_character?: string | null }).performer_character ?? null,
-        performerProfileUrl:
-          (n as { performer_profile_url?: string | null }).performer_profile_url ?? null,
-        performerProfilePath:
-          (n as { performer_profile_path?: string | null }).performer_profile_path ??
-          null,
-        muted: poolMode === "ALL_MUTED" && drafted.has(n.id),
-        selected: false,
-        winner: false
-      }));
+      const nominations = filtered.map((n) => {
+        const performerContributorNames =
+          (
+            n as {
+              performer_contributors?: Array<{
+                full_name?: string | null;
+              }>;
+            }
+          ).performer_contributors
+            ?.map((contributor) => String(contributor.full_name ?? "").trim())
+            .filter(Boolean) ?? [];
+        const performanceLabel =
+          performerContributorNames.length > 0
+            ? formatNameList(performerContributorNames)
+            : n.label;
+        return {
+          id: n.id,
+          label:
+            String(c.unit_kind ?? "").toUpperCase() === "PERFORMANCE"
+              ? performanceLabel
+              : n.label,
+          posterUrl: (n as { film_poster_url?: string | null }).film_poster_url ?? null,
+          filmTitle: (n as { film_title?: string | null }).film_title ?? null,
+          filmYear: (n as { film_year?: number | null }).film_year ?? null,
+          contributors: (n as { contributors?: string[] }).contributors ?? [],
+          performerContributors:
+            (
+              n as {
+                performer_contributors?: Array<{
+                  full_name?: string | null;
+                  role_label?: string | null;
+                  profile_url?: string | null;
+                  profile_path?: string | null;
+                  sort_order?: number | null;
+                }>;
+              }
+            ).performer_contributors?.map((c, idx) => ({
+              fullName: String(c.full_name ?? "").trim(),
+              roleLabel: c.role_label ?? null,
+              profileUrl: c.profile_url ?? null,
+              profilePath: c.profile_path ?? null,
+              sortOrder: typeof c.sort_order === "number" ? c.sort_order : idx + 1
+            })) ?? [],
+          songTitle: (n as { song_title?: string | null }).song_title ?? null,
+          performerName: (n as { performer_name?: string | null }).performer_name ?? null,
+          performerCharacter:
+            (n as { performer_character?: string | null }).performer_character ?? null,
+          performerProfileUrl:
+            (n as { performer_profile_url?: string | null }).performer_profile_url ??
+            null,
+          performerProfilePath:
+            (n as { performer_profile_path?: string | null }).performer_profile_path ??
+            null,
+          muted: poolMode === "ALL_MUTED" && drafted.has(n.id),
+          selected: false,
+          winner: false
+        };
+      });
       return {
         id: c.id,
         title: c.family_name,
@@ -271,4 +309,11 @@ export function useDraftPreviewOrchestration(args: {
     },
     refresh
   };
+}
+
+function formatNameList(names: string[]) {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }

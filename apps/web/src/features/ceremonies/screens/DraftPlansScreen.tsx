@@ -174,6 +174,25 @@ export function DraftPlansScreen(props: {
             (n as { performer_profile_path?: string | null }).performer_profile_path ??
             null
           }
+          performerContributors={
+            (
+              n as {
+                performer_contributors?: Array<{
+                  full_name?: string | null;
+                  role_label?: string | null;
+                  profile_url?: string | null;
+                  profile_path?: string | null;
+                  sort_order?: number | null;
+                }>;
+              }
+            ).performer_contributors?.map((c, idx) => ({
+              fullName: String(c.full_name ?? "").trim(),
+              roleLabel: c.role_label ?? null,
+              profileUrl: c.profile_url ?? null,
+              profilePath: c.profile_path ?? null,
+              sortOrder: typeof c.sort_order === "number" ? c.sort_order : idx + 1
+            })) ?? []
+          }
           songTitle={(n as { song_title?: string | null }).song_title ?? null}
         />
       );

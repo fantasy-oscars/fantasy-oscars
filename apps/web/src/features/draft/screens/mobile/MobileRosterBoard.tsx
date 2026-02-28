@@ -27,6 +27,13 @@ export function MobileRosterBoard(props: {
       performerCharacter: string | null;
       performerProfileUrl: string | null;
       performerProfilePath: string | null;
+      performerContributors?: Array<{
+        fullName: string;
+        roleLabel: string | null;
+        profileUrl: string | null;
+        profilePath: string | null;
+        sortOrder: number;
+      }>;
       songTitle: string | null;
       categoryIcon: string;
       categoryIconVariant: "default" | "inverted";
@@ -183,6 +190,7 @@ export function MobileRosterBoard(props: {
                           performerCharacter={nominee.performerCharacter}
                           performerProfileUrl={nominee.performerProfileUrl}
                           performerProfilePath={nominee.performerProfilePath}
+                          performerContributors={nominee.performerContributors}
                           songTitle={nominee.songTitle}
                           draftedByLabel={nominee.draftedByLabel}
                           draftedByAvatarKey={nominee.draftedByAvatarKey}

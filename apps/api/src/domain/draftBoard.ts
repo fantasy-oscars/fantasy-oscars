@@ -19,6 +19,13 @@ export type DraftBoardNomination = {
   film_poster_url?: string | null;
   film_year?: number | null;
   contributors?: string[];
+  performer_contributors?: Array<{
+    full_name: string;
+    role_label: string | null;
+    profile_url: string | null;
+    profile_path: string | null;
+    sort_order: number;
+  }>;
   song_title?: string | null;
   performer_name?: string | null;
   performer_character?: string | null;
@@ -59,11 +66,18 @@ export async function getDraftBoardForCeremony(
     // contributor data (e.g. producers attached to Best Picture).
     const kind = unitKindByCategoryId.get(Number(n.category_edition_id)) ?? "";
     const songLabel = n.song_title ? `"${n.song_title}"` : null;
+    const performerNames = (n.contributors ?? [])
+      .map((c) => String(c.full_name ?? "").trim())
+      .filter(Boolean);
     const label =
       kind === "SONG"
         ? (songLabel ?? n.film_title ?? `Nomination #${n.id}`)
         : kind === "PERFORMANCE"
-          ? (n.performer_name ?? songLabel ?? n.film_title ?? `Nomination #${n.id}`)
+          ? (formatContributorsLabel(performerNames) ??
+            n.performer_name ??
+            songLabel ??
+            n.film_title ??
+            `Nomination #${n.id}`)
           : (n.film_title ?? songLabel ?? n.performer_name ?? `Nomination #${n.id}`);
     return {
       id: n.id,
@@ -74,6 +88,13 @@ export async function getDraftBoardForCeremony(
       film_poster_url: n.film_poster_url ?? null,
       film_year: n.film_year ?? null,
       contributors: (n.contributors ?? []).map((c) => c.full_name),
+      performer_contributors: (n.contributors ?? []).map((c) => ({
+        full_name: c.full_name,
+        role_label: c.role_label ?? null,
+        profile_url: c.profile_url ?? null,
+        profile_path: c.profile_path ?? null,
+        sort_order: c.sort_order
+      })),
       song_title: n.song_title ?? null,
       performer_name: n.performer_name ?? null,
       performer_character: n.performer_character ?? null,
@@ -83,4 +104,11 @@ export async function getDraftBoardForCeremony(
   });
 
   return { categories, nominations };
+}
+
+function formatContributorsLabel(names: string[]) {
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }

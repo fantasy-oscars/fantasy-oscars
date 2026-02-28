@@ -8,6 +8,13 @@ export function NomineeTooltipCard(props: {
   filmYear?: number | null;
   filmPosterUrl?: string | null;
   contributors?: string[];
+  performerContributors?: Array<{
+    fullName: string;
+    roleLabel: string | null;
+    profileUrl: string | null;
+    profilePath: string | null;
+    sortOrder: number;
+  }>;
   performerName?: string | null;
   performerCharacter?: string | null;
   performerProfileUrl?: string | null;
@@ -25,6 +32,7 @@ export function NomineeTooltipCard(props: {
     filmYear,
     filmPosterUrl,
     contributors,
+    performerContributors,
     performerName,
     performerCharacter,
     performerProfileUrl,
@@ -41,21 +49,64 @@ export function NomineeTooltipCard(props: {
       ? `https://image.tmdb.org/t/p/w342${filmPosterUrl}`
       : filmPosterUrl;
 
-  const resolvedPersonUrl =
-    performerProfileUrl && performerProfileUrl.startsWith("/")
-      ? `https://image.tmdb.org/t/p/w185${performerProfileUrl}`
-      : performerProfileUrl ||
-        (performerProfilePath && performerProfilePath.startsWith("/")
-          ? `https://image.tmdb.org/t/p/w185${performerProfilePath}`
-          : performerProfilePath);
+  const normalizedPerformerContributors = (performerContributors ?? [])
+    .map((c, idx) => ({
+      fullName: String(c.fullName ?? "").trim(),
+      roleLabel: c.roleLabel ?? null,
+      profileUrl: resolveTmdbImageUrl(
+        c.profileUrl ?? null,
+        c.profilePath ?? null,
+        "w185"
+      ),
+      sortOrder: Number.isFinite(c.sortOrder) ? c.sortOrder : idx + 1
+    }))
+    .filter((c) => Boolean(c.fullName))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  const fallbackPerformerContributor =
+    performerName && performerName.trim()
+      ? [
+          {
+            fullName: performerName.trim(),
+            roleLabel: performerCharacter ?? null,
+            profileUrl: resolveTmdbImageUrl(
+              performerProfileUrl ?? null,
+              performerProfilePath ?? null,
+              "w185"
+            ),
+            sortOrder: 1
+          }
+        ]
+      : [];
+
+  const namedContributors = (contributors ?? [])
+    .map((name, idx) => ({
+      fullName: String(name ?? "").trim(),
+      roleLabel: null,
+      profileUrl: null,
+      sortOrder: idx + 1
+    }))
+    .filter((c) => Boolean(c.fullName));
+
+  const performanceContributors =
+    unitKind === "PERFORMANCE"
+      ? normalizedPerformerContributors.length > 0
+        ? normalizedPerformerContributors
+        : fallbackPerformerContributor.length > 0
+          ? fallbackPerformerContributor
+          : namedContributors
+      : [];
+  const isSinglePerformance = performanceContributors.length === 1;
+  const singlePerformanceContributor = isSinglePerformance
+    ? performanceContributors[0]
+    : null;
   const hero =
     unitKind === "SONG"
       ? songTitle
         ? `"${songTitle}"`
         : ""
       : unitKind === "PERFORMANCE"
-        ? (performerName ?? "")
+        ? (performanceContributors[0]?.fullName ?? performerName ?? "")
         : (filmTitle ?? "");
   const support =
     unitKind === "FILM"
@@ -63,7 +114,7 @@ export function NomineeTooltipCard(props: {
         ? String(filmYear)
         : null
       : unitKind === "PERFORMANCE"
-        ? performerCharacter
+        ? performanceContributors.length <= 1 && performerCharacter
           ? `as ${performerCharacter}`
           : null
         : null;
@@ -83,6 +134,8 @@ export function NomineeTooltipCard(props: {
       ? `${filmTitle}${filmYear ? ` (${filmYear})` : ""}`
       : null;
   const showDraftedChip = Boolean(draftedByLabel && draftedRoundPick);
+  const performanceFilmLine =
+    filmTitle && filmYear ? `${filmTitle} (${filmYear})` : (filmTitle ?? null);
 
   return (
     <Box
@@ -115,51 +168,115 @@ export function NomineeTooltipCard(props: {
       </Box>
 
       <Box className="fo-tip-body">
-        <Box className="fo-tip-card">
-          <Box className="fo-tip-poster" aria-hidden="true">
-            {unitKind === "PERFORMANCE" ? (
-              resolvedPersonUrl ? (
+        {unitKind === "PERFORMANCE" && performanceContributors.length > 1 ? (
+          <Box className="fo-tip-performanceList">
+            {performanceContributors.map((c, idx) => {
+              const mediaSrc = c.profileUrl ?? (idx === 0 ? resolvedFilmPosterUrl : null);
+              return (
+                <Box key={`${c.fullName}-${idx}`} className="fo-tip-performanceCard">
+                  <Box className="fo-tip-poster" aria-hidden="true">
+                    {mediaSrc ? (
+                      <img
+                        className="fo-tip-poster-img"
+                        src={mediaSrc}
+                        alt=""
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Box className="fo-tip-poster-ph" />
+                    )}
+                  </Box>
+                  <Box className="fo-tip-meta">
+                    {idx === 0 && performanceFilmLine ? (
+                      <Text className="fo-tip-filmLine">{performanceFilmLine}</Text>
+                    ) : null}
+                    <Text className="fo-tip-name">{c.fullName || "—"}</Text>
+                    {c.roleLabel ? (
+                      <Text className="fo-tip-sub">as {c.roleLabel}</Text>
+                    ) : null}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : unitKind === "PERFORMANCE" && singlePerformanceContributor ? (
+          <Box className="fo-tip-card">
+            <Box className="fo-tip-poster" aria-hidden="true">
+              {singlePerformanceContributor.profileUrl || resolvedFilmPosterUrl ? (
                 <img
                   className="fo-tip-poster-img"
-                  src={resolvedPersonUrl}
+                  src={
+                    singlePerformanceContributor.profileUrl ?? resolvedFilmPosterUrl ?? ""
+                  }
                   alt=""
                   loading="lazy"
                 />
               ) : (
                 <Box className="fo-tip-poster-ph" />
-              )
-            ) : resolvedFilmPosterUrl ? (
-              <img
-                className="fo-tip-poster-img"
-                src={resolvedFilmPosterUrl}
-                alt=""
-                loading="lazy"
-              />
-            ) : (
-              <Box className="fo-tip-poster-ph" />
-            )}
-          </Box>
-
-          <Box className="fo-tip-meta">
-            <Box className="fo-tip-hero">
-              <Text className="fo-tip-name">{hero || "—"}</Text>
-              {support ? (
-                <Text component="span" className="fo-tip-support">
-                  {support}
-                </Text>
-              ) : null}
+              )}
             </Box>
 
-            {unitKind === "SONG" ? (
-              <>
-                {songLine1 ? <Text className="fo-tip-sub">{songLine1}</Text> : null}
-                {songLine2 ? <Text className="fo-tip-sub">{songLine2}</Text> : null}
-              </>
-            ) : secondary ? (
-              <Text className="fo-tip-sub">{secondary}</Text>
-            ) : null}
+            <Box className="fo-tip-meta">
+              <Text className="fo-tip-name">
+                {singlePerformanceContributor.fullName || "—"}
+              </Text>
+              {singlePerformanceContributor.roleLabel ? (
+                <Text className="fo-tip-sub">
+                  as {singlePerformanceContributor.roleLabel}
+                </Text>
+              ) : null}
+              {performanceFilmLine ? (
+                <Text className="fo-tip-filmLine">{performanceFilmLine}</Text>
+              ) : null}
+            </Box>
           </Box>
-        </Box>
+        ) : (
+          <Box className="fo-tip-card">
+            <Box className="fo-tip-poster" aria-hidden="true">
+              {unitKind === "PERFORMANCE" ? (
+                resolvedFilmPosterUrl ? (
+                  <img
+                    className="fo-tip-poster-img"
+                    src={resolvedFilmPosterUrl}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : (
+                  <Box className="fo-tip-poster-ph" />
+                )
+              ) : resolvedFilmPosterUrl ? (
+                <img
+                  className="fo-tip-poster-img"
+                  src={resolvedFilmPosterUrl}
+                  alt=""
+                  loading="lazy"
+                />
+              ) : (
+                <Box className="fo-tip-poster-ph" />
+              )}
+            </Box>
+
+            <Box className="fo-tip-meta">
+              <Box className="fo-tip-hero">
+                <Text className="fo-tip-name">{hero || "—"}</Text>
+                {support ? (
+                  <Text component="span" className="fo-tip-support">
+                    {support}
+                  </Text>
+                ) : null}
+              </Box>
+
+              {unitKind === "SONG" ? (
+                <>
+                  {songLine1 ? <Text className="fo-tip-sub">{songLine1}</Text> : null}
+                  {songLine2 ? <Text className="fo-tip-sub">{songLine2}</Text> : null}
+                </>
+              ) : secondary ? (
+                <Text className="fo-tip-sub">{secondary}</Text>
+              ) : null}
+            </Box>
+          </Box>
+        )}
       </Box>
 
       <Box className="fo-tip-bar fo-tip-footer">
@@ -180,6 +297,21 @@ export function NomineeTooltipCard(props: {
       {action ? <Box className="fo-tip-action">{action}</Box> : null}
     </Box>
   );
+}
+
+function resolveTmdbImageUrl(
+  explicitUrl: string | null,
+  path: string | null,
+  size: "w92" | "w154" | "w185" | "h632"
+) {
+  if (explicitUrl && explicitUrl.startsWith("/")) {
+    return `https://image.tmdb.org/t/p/${size}${explicitUrl}`;
+  }
+  if (explicitUrl) return explicitUrl;
+  if (path && path.startsWith("/")) {
+    return `https://image.tmdb.org/t/p/${size}${path}`;
+  }
+  return path;
 }
 
 function formatNameList(names: string[]) {

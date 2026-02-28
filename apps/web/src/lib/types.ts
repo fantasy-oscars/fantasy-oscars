@@ -152,6 +152,13 @@ export type Snapshot = {
     film_poster_url?: string | null;
     film_year?: number | null;
     contributors?: string[];
+    performer_contributors?: Array<{
+      full_name: string;
+      role_label?: string | null;
+      profile_url?: string | null;
+      profile_path?: string | null;
+      sort_order: number;
+    }>;
     song_title?: string | null;
     performer_name?: string | null;
     performer_character?: string | null;
