@@ -139,7 +139,6 @@ export function AdminCategoryTemplatesScreen(props: {
         onClose={o.closeEditor}
         title={o.isEditing ? "Edit template" : "New template"}
         working={o.working}
-        iconCodes={o.iconCodes}
         value={o.editorValue}
         setValue={o.setEditorValue}
         status={o.status}

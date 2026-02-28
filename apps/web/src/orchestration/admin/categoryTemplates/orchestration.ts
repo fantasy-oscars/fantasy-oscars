@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
@@ -24,51 +24,39 @@ export type CategoryTemplateDraft = {
 
 export function useAdminCategoryTemplatesOrchestration() {
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
 
   const [query, setQuery] = useState("");
   const [templates, setTemplates] = useState<CategoryTemplate[]>([]);
-  const [iconCodes, setIconCodes] = useState<string[]>([]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorValue, setEditorValue] = useState<CategoryTemplateDraft | null>(null);
   const isEditing = Boolean(editorValue?.id);
+  const didInitialLoadRef = useRef(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!didInitialLoadRef.current) setLoading(true);
+    else setSearching(true);
     setError(null);
-    const q = query.trim();
-    const [templatesRes, iconsRes] = await Promise.all([
-      fetchJson<{ families: CategoryTemplate[] }>(
-        q
-          ? `/admin/category-families?q=${encodeURIComponent(q)}`
-          : "/admin/category-families",
-        { method: "GET" }
-      ),
-      fetchJson<{ icons: Array<{ code: string }> }>("/admin/icons", { method: "GET" })
-    ]);
+    const templatesRes = await fetchJson<{ families: CategoryTemplate[] }>(
+      "/admin/category-families",
+      { method: "GET" }
+    );
     if (!templatesRes.ok) {
       setError(templatesRes.error ?? "Unable to load templates");
       setTemplates([]);
       setLoading(false);
-      return;
-    }
-    if (!iconsRes.ok) {
-      setError(iconsRes.error ?? "Unable to load icons");
-      setLoading(false);
+      setSearching(false);
       return;
     }
     setTemplates(templatesRes.data?.families ?? []);
-    setIconCodes(
-      (iconsRes.data?.icons ?? [])
-        .map((i) => String(i.code || "").trim())
-        .filter((i) => i.length > 0)
-        .sort((a, b) => a.localeCompare(b))
-    );
     setLoading(false);
-  }, [query]);
+    setSearching(false);
+    didInitialLoadRef.current = true;
+  }, []);
 
   useEffect(() => {
     void load();
@@ -180,20 +168,24 @@ export function useAdminCategoryTemplatesOrchestration() {
     [setTemplates]
   );
 
-  const sortedTemplates = useMemo(
-    () => [...templates].sort((a, b) => a.code.localeCompare(b.code)),
-    [templates]
-  );
+  const filteredTemplates = useMemo(() => {
+    const sorted = [...templates].sort((a, b) => a.code.localeCompare(b.code));
+    const q = query.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter(
+      (t) => t.code.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)
+    );
+  }, [query, templates]);
 
   return {
     loading,
+    searching,
     working,
     error,
     status,
     query,
     setQuery,
-    templates: sortedTemplates,
-    iconCodes,
+    templates: filteredTemplates,
     editorOpen,
     editorValue,
     setEditorValue,
