@@ -22,6 +22,7 @@ type CreditPerson = NonNullable<NonNullable<FilmCredits["cast"]>[number]>;
 export function NominationEditPeopleSection(props: {
   nominationId: number;
   contributors: NominationContributorRow[];
+  onPeopleQueryChange: (q: string) => void;
   people: Array<{ id: number; full_name: string; tmdb_id: number | null }>;
   peopleLoading: boolean;
   filmCredits: FilmCredits | null;
@@ -50,6 +51,7 @@ export function NominationEditPeopleSection(props: {
   const {
     nominationId,
     contributors,
+    onPeopleQueryChange,
     people,
     peopleLoading,
     filmCredits,
@@ -165,7 +167,8 @@ export function NominationEditPeopleSection(props: {
   }, [creditByPersonId]);
 
   const contributorComboboxOptions = useMemo<ContributorOption[]>(() => {
-    const q = normalizeForSearch(pendingContributorInput);
+    const input = pendingContributorInput.trim();
+    const q = normalizeForSearch(input);
     const fromCredits =
       creditOptions.length > 0
         ? creditOptions
@@ -199,9 +202,9 @@ export function NominationEditPeopleSection(props: {
         ? [
             {
               kind: "create" as const,
-              value: `create:${pendingContributorInput.trim()}`,
-              label: `Create person: ${pendingContributorInput.trim()}`,
-              name: pendingContributorInput.trim()
+              value: `create:${input}`,
+              label: `Create person: ${input}`,
+              name: input
             }
           ]
         : [];
@@ -384,7 +387,10 @@ export function NominationEditPeopleSection(props: {
           <ContributorCombobox
             label="Add contributor"
             value={pendingContributorInput}
-            onChange={setPendingContributorInput}
+            onChange={(next) => {
+              setPendingContributorInput(next);
+              if (creditOptions.length === 0) onPeopleQueryChange(next);
+            }}
             options={contributorComboboxOptions}
             disabled={peopleLoading}
             onSubmit={async (picked) => {
@@ -399,6 +405,7 @@ export function NominationEditPeopleSection(props: {
                 await onAddContributor(nominationId, { name: picked.name });
               }
               setPendingContributorInput("");
+              onPeopleQueryChange("");
             }}
           />
         </Box>
@@ -411,6 +418,7 @@ export function NominationEditPeopleSection(props: {
                 name: pendingContributorInput.trim()
               });
               setPendingContributorInput("");
+              onPeopleQueryChange("");
             }
           }}
           disabled={!pendingContributorInput.trim()}
