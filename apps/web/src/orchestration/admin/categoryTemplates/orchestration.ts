@@ -41,8 +41,11 @@ export function useAdminCategoryTemplatesOrchestration() {
     if (!didInitialLoadRef.current) setLoading(true);
     else setSearching(true);
     setError(null);
+    const q = query.trim();
     const templatesRes = await fetchJson<{ families: CategoryTemplate[] }>(
-      "/admin/category-families",
+      q
+        ? `/admin/category-families?q=${encodeURIComponent(q)}`
+        : "/admin/category-families",
       { method: "GET" }
     );
     if (!templatesRes.ok) {
@@ -56,7 +59,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     setLoading(false);
     setSearching(false);
     didInitialLoadRef.current = true;
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     void load();
@@ -168,14 +171,10 @@ export function useAdminCategoryTemplatesOrchestration() {
     [setTemplates]
   );
 
-  const filteredTemplates = useMemo(() => {
-    const sorted = [...templates].sort((a, b) => a.code.localeCompare(b.code));
-    const q = query.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter(
-      (t) => t.code.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)
-    );
-  }, [query, templates]);
+  const sortedTemplates = useMemo(
+    () => [...templates].sort((a, b) => a.code.localeCompare(b.code)),
+    [templates]
+  );
 
   return {
     loading,
@@ -185,7 +184,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     status,
     query,
     setQuery,
-    templates: filteredTemplates,
+    templates: sortedTemplates,
     editorOpen,
     editorValue,
     setEditorValue,

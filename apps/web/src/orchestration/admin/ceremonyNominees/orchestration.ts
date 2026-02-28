@@ -26,6 +26,13 @@ import {
   postNominationContributor as postNominationContributorReq
 } from "./actions";
 
+type AdminFilmsListResponse = {
+  films: CandidateFilm[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+
 export function useAdminCeremonyNomineesOrchestration(args: {
   ceremonyId: number | null;
   onWorksheetChange?: (() => void | Promise<void>) | null;
@@ -75,6 +82,53 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [pendingContributorId, setPendingContributorId] = useState<string>("");
   const [creditQuery, setCreditQuery] = useState("");
 
+  const fetchAllFilms = useCallback(async (): Promise<
+    | {
+        ok: true;
+        films: CandidateFilm[];
+      }
+    | {
+        ok: false;
+        error: string;
+      }
+  > => {
+    const firstRes = await fetchJson<AdminFilmsListResponse>(
+      `/admin/films?page=1&page_size=100`,
+      { method: "GET" }
+    );
+    if (!firstRes.ok) {
+      return { ok: false, error: firstRes.error ?? "Failed to load films" };
+    }
+
+    const firstData = firstRes.data;
+    const firstFilms = firstData?.films ?? [];
+    const total = Number(firstData?.total ?? firstFilms.length);
+    const pageSize = Number(firstData?.page_size ?? 100) || 100;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    if (totalPages <= 1) return { ok: true, films: firstFilms };
+
+    const pagePromises: Array<ReturnType<typeof fetchJson<AdminFilmsListResponse>>> = [];
+    for (let page = 2; page <= totalPages; page += 1) {
+      pagePromises.push(
+        fetchJson<AdminFilmsListResponse>(
+          `/admin/films?page=${page}&page_size=${pageSize}`,
+          {
+            method: "GET"
+          }
+        )
+      );
+    }
+
+    const pageResults = await Promise.all(pagePromises);
+    for (const res of pageResults) {
+      if (!res.ok) return { ok: false, error: res.error ?? "Failed to load films" };
+    }
+
+    const restFilms = pageResults.flatMap((res) => res.data?.films ?? []);
+    return { ok: true, films: [...firstFilms, ...restFilms] };
+  }, []);
+
   const loadManualContext = useCallback(async () => {
     if (ceremonyId === null || !Number.isFinite(ceremonyId) || ceremonyId <= 0) return;
     setManualLoading(true);
@@ -86,22 +140,23 @@ export function useAdminCeremonyNomineesOrchestration(args: {
           method: "GET"
         }
       ),
-      fetchJson<{ films: CandidateFilm[] }>(`/admin/films`, {
-        method: "GET"
-      })
+      fetchAllFilms()
     ]);
     if (!catsRes.ok || !filmsRes.ok) {
       setManualState({
         ok: false,
-        message: catsRes.error ?? filmsRes.error ?? "Failed to load ceremony context"
+        message:
+          catsRes.error ??
+          (filmsRes.ok ? undefined : filmsRes.error) ??
+          "Failed to load ceremony context"
       });
       setManualLoading(false);
       return;
     }
     setCategories(catsRes.data?.categories ?? []);
-    setFilms(filmsRes.data?.films ?? []);
+    setFilms(filmsRes.films);
     setManualLoading(false);
-  }, [ceremonyId]);
+  }, [ceremonyId, fetchAllFilms]);
 
   useEffect(() => {
     void loadManualContext();
@@ -109,6 +164,12 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const searchPeople = useCallback(async () => {
     const q = peopleQuery.trim();
+    if (!q) {
+      setPeopleResults([]);
+      setPeopleLoading(false);
+      setPeopleState(null);
+      return;
+    }
     setPeopleLoading(true);
     setPeopleState(null);
     const res = await fetchJson<{
@@ -132,8 +193,20 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   }, [peopleQuery]);
 
   useEffect(() => {
-    void searchPeople();
-  }, [searchPeople]);
+    const q = peopleQuery.trim();
+    if (!q) {
+      setPeopleResults([]);
+      setPeopleLoading(false);
+      setPeopleState(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void searchPeople();
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [peopleQuery, searchPeople]);
 
   const creditByPersonId = useMemo(() => {
     return buildCreditByPersonId(credits);

@@ -197,9 +197,13 @@ export function AdminCeremoniesNomineesScreen(props: {
         <NominationEditModal
           nomination={nominations.find((n) => n.id === editingNominationId) ?? null}
           films={films}
+          setPeopleQuery={o.setPeopleQuery}
           people={o.peopleResults}
           peopleLoading={o.peopleLoading}
-          onClose={() => setEditingNominationId(null)}
+          onClose={() => {
+            o.setPeopleQuery("");
+            setEditingNominationId(null);
+          }}
           onLinkFilm={linkFilmTmdb}
           onLinkPerson={linkPersonTmdb}
           getFilmCredits={(filmId) => o.actions.getFilmCredits(filmId)}

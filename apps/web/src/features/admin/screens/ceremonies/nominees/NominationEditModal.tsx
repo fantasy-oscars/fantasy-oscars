@@ -25,6 +25,7 @@ export function NominationEditModal(props: {
     tmdb_id?: number | null;
     release_year?: number | null;
   }>;
+  setPeopleQuery: (q: string) => void;
   people: Array<{ id: number; full_name: string; tmdb_id: number | null }>;
   peopleLoading: boolean;
   onClose: () => void;
@@ -67,6 +68,7 @@ export function NominationEditModal(props: {
   const {
     nomination,
     films,
+    setPeopleQuery,
     people,
     peopleLoading,
     onClose,
@@ -87,8 +89,8 @@ export function NominationEditModal(props: {
             title: existing.title || nomination?.film_title || "Untitled film",
             tmdb_id: existing.tmdb_id ?? nomination?.display_film_tmdb_id ?? null
           };
-        // Fallback: nominations payload is authoritative for this modal even when
-        // the global films list is paged/capped and doesn't include this row.
+        // Fallback: nominations payload is authoritative for this modal even if
+        // the films cache is stale or missing this row.
         return {
           id: filmId,
           title: nomination?.film_title ?? "Untitled film",
@@ -135,6 +137,7 @@ export function NominationEditModal(props: {
         <NominationEditPeopleSection
           nominationId={nomination.id}
           contributors={contributorRows}
+          onPeopleQueryChange={setPeopleQuery}
           people={people}
           peopleLoading={peopleLoading}
           filmCredits={filmCredits}
