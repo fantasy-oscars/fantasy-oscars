@@ -3,6 +3,7 @@ import type { ApiResult } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import { FormStatus } from "@/shared/forms";
 import { FilmCombobox } from "./FilmCombobox";
+import { PeopleCombobox, type SelectedContributor } from "./PeopleCombobox";
 
 export function CreateNominationPanel(props: {
   categories: Array<{ id: number; label: string }>;
@@ -27,15 +28,19 @@ export function CreateNominationPanel(props: {
   songTitle: string;
   setSongTitle: (next: string) => void;
   requiresContributor: boolean;
-  hasTmdbCredits: boolean;
   creditsLoading: boolean;
   creditsState: ApiResult | null;
-  creditOptions: Array<{ tmdb_id: number; label: string }>;
-  pendingContributorId: string;
-  setPendingContributorId: (next: string) => void;
-  onAddPendingContributor: () => void;
-  selectedCredits: Array<{ tmdb_id: number; name: string; jobs: string[] }>;
-  onRemoveSelectedContributor: (tmdbId: number) => void;
+  localContributorOptions: Array<{
+    key: string;
+    name: string;
+    tmdb_id: number | null;
+    label: string;
+  }>;
+  pendingContributorInput: string;
+  setPendingContributorInput: (next: string) => void;
+  selectedContributors: SelectedContributor[];
+  onAddSelectedContributor: (contributor: SelectedContributor) => void;
+  onRemoveSelectedContributor: (key: string) => void;
   manualLoading: boolean;
   manualState: ApiResult | null;
   onCreateNomination: () => void;
@@ -87,15 +92,13 @@ export function CreateNominationPanel(props: {
             <Group justify="space-between" align="center" wrap="nowrap">
               <Group gap="xs" align="center" wrap="nowrap">
                 <Text fw="var(--fo-font-weight-bold)">Contributor</Text>
-                {props.hasTmdbCredits ? (
-                  <Text
-                    component="span"
-                    className="gicon wizard-inline-check"
-                    aria-hidden="true"
-                  >
-                    {props.checkIconChar}
-                  </Text>
-                ) : null}
+                <Text
+                  component="span"
+                  className="gicon wizard-inline-check"
+                  aria-hidden="true"
+                >
+                  {props.checkIconChar}
+                </Text>
               </Group>
             </Group>
 
@@ -105,50 +108,42 @@ export function CreateNominationPanel(props: {
 
             <Group className="admin-add-row" align="flex-end" wrap="wrap">
               <Box className="fo-flexFieldMd">
-                <Select
-                  label="Select a person"
-                  placeholder="Select…"
-                  searchable
-                  value={props.pendingContributorId || null}
-                  onChange={(v) => props.setPendingContributorId(v ?? "")}
-                  data={props.creditOptions.map((o) => ({
-                    value: String(o.tmdb_id),
-                    label: o.label
-                  }))}
-                  disabled={!props.hasTmdbCredits}
+                <PeopleCombobox
+                  label="Add contributor"
+                  value={props.pendingContributorInput}
+                  onChange={props.setPendingContributorInput}
+                  localOptions={props.localContributorOptions}
+                  onSelectContributor={props.onAddSelectedContributor}
+                  disabled={props.manualLoading}
                 />
               </Box>
-              <Button
-                type="button"
-                onClick={props.onAddPendingContributor}
-                disabled={
-                  !props.pendingContributorId ||
-                  props.manualLoading ||
-                  !props.hasTmdbCredits
-                }
-              >
-                Add
-              </Button>
             </Group>
 
-            {props.selectedCredits.length > 0 ? (
+            {props.selectedContributors.length > 0 ? (
               <Stack className="stack-sm" gap="xs">
-                {props.selectedCredits.map((c) => (
-                  <Box key={c.tmdb_id} className="list-row">
+                {props.selectedContributors.map((c) => (
+                  <Box key={c.key} className="list-row">
                     <Box>
                       <Text fw="var(--fo-font-weight-bold)" span>
                         {c.name}
                       </Text>
-                      <Text className="muted" span>
-                        {" "}
-                        — {c.jobs.join(", ")}
-                      </Text>
+                      {c.tmdb_id ? (
+                        <Text className="muted" span>
+                          {" "}
+                          — TMDB {c.tmdb_id}
+                        </Text>
+                      ) : (
+                        <Text className="muted" span>
+                          {" "}
+                          — Unlinked
+                        </Text>
+                      )}
                     </Box>
                     <Group className="inline-actions" wrap="wrap">
                       <Button
                         type="button"
                         variant="subtle"
-                        onClick={() => props.onRemoveSelectedContributor(c.tmdb_id)}
+                        onClick={() => props.onRemoveSelectedContributor(c.key)}
                       >
                         Remove
                       </Button>

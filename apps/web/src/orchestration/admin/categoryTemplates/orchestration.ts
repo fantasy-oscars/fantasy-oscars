@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { includesNormalized } from "@fantasy-oscars/shared";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
@@ -41,11 +42,8 @@ export function useAdminCategoryTemplatesOrchestration() {
     if (!didInitialLoadRef.current) setLoading(true);
     else setSearching(true);
     setError(null);
-    const q = query.trim();
     const templatesRes = await fetchJson<{ families: CategoryTemplate[] }>(
-      q
-        ? `/admin/category-families?q=${encodeURIComponent(q)}`
-        : "/admin/category-families",
+      "/admin/category-families",
       { method: "GET" }
     );
     if (!templatesRes.ok) {
@@ -59,7 +57,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     setLoading(false);
     setSearching(false);
     didInitialLoadRef.current = true;
-  }, [query]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -171,10 +169,15 @@ export function useAdminCategoryTemplatesOrchestration() {
     [setTemplates]
   );
 
-  const sortedTemplates = useMemo(
-    () => [...templates].sort((a, b) => a.code.localeCompare(b.code)),
-    [templates]
-  );
+  const sortedTemplates = useMemo(() => {
+    const q = query.trim();
+    return templates
+      .filter((t) => {
+        if (!q) return true;
+        return includesNormalized(`${t.name} ${t.code}`, q);
+      })
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [query, templates]);
 
   return {
     loading,

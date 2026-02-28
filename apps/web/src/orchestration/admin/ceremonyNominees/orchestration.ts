@@ -5,9 +5,7 @@ import { formatFilmTitleWithYear, parseFilmTitleWithYear } from "../../../lib/fi
 import type { ApiResult } from "../../../lib/types";
 import {
   buildCreditByPersonId,
-  buildCreditOptionById,
   buildCreditOptions,
-  filterCreditOptions,
   type CreditOption,
   type FilmCredits
 } from "../../../decisions/admin/nomineeCredits";
@@ -78,8 +76,10 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [creditsState, setCreditsState] = useState<ApiResult | null>(null);
   const [credits, setCredits] = useState<FilmCredits | null>(null);
-  const [selectedContributorIds, setSelectedContributorIds] = useState<number[]>([]);
-  const [pendingContributorId, setPendingContributorId] = useState<string>("");
+  const [selectedContributors, setSelectedContributors] = useState<
+    Array<{ key: string; name: string; tmdb_id: number | null }>
+  >([]);
+  const [pendingContributorInput, setPendingContributorInput] = useState<string>("");
   const [creditQuery, setCreditQuery] = useState("");
 
   const fetchAllFilms = useCallback(
@@ -228,27 +228,23 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     return buildCreditOptions(creditByPersonId);
   }, [creditByPersonId]);
 
-  const creditOptionById = useMemo(() => {
-    return buildCreditOptionById(creditOptions);
-  }, [creditOptions]);
-
   const selectedCredits = useMemo(() => {
-    return selectedContributorIds
-      .map((id) => creditOptionById[id])
-      .filter((v): v is CreditOption => Boolean(v));
-  }, [creditOptionById, selectedContributorIds]);
-
-  const filteredCreditOptions = useMemo(() => {
-    return filterCreditOptions(creditOptions, creditQuery);
-  }, [creditOptions, creditQuery]);
+    return selectedContributors
+      .filter((c) => typeof c.tmdb_id === "number" && c.tmdb_id > 0)
+      .map((c) => ({
+        tmdb_id: Number(c.tmdb_id),
+        name: c.name,
+        jobs: [] as string[]
+      }));
+  }, [selectedContributors]);
 
   const resolveFilmSelection = useCallback(
     async (value: string) => {
       setFilmInput(value);
       setCredits(null);
       setCreditsState(null);
-      setSelectedContributorIds([]);
-      setPendingContributorId("");
+      setSelectedContributors([]);
+      setPendingContributorInput("");
       setCreditQuery("");
 
       const trimmed = value.trim();
@@ -287,7 +283,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
               ? "Credits loaded"
               : "No credits stored for this film yet"
           });
-          setPendingContributorId("");
+          setPendingContributorInput("");
           setCreditQuery("");
           return;
         }
@@ -353,7 +349,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
             ? "Credits loaded"
             : "No credits stored for this film yet"
         });
-        setPendingContributorId("");
+        setPendingContributorInput("");
         setCreditQuery("");
         return;
       }
@@ -416,7 +412,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
               ? "Credits loaded"
               : "No credits stored for this film yet"
           });
-          setPendingContributorId("");
+          setPendingContributorInput("");
           setCreditQuery("");
           return;
         }
@@ -442,8 +438,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setFilmTitleFallback("");
     setCredits(null);
     setCreditsState(null);
-    setSelectedContributorIds([]);
-    setPendingContributorId("");
+    setSelectedContributors([]);
+    setPendingContributorInput("");
     setCreditQuery("");
 
     setCreditsLoading(true);
@@ -479,8 +475,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       ok: true,
       message: "Will create a new unlinked film with this title on save."
     });
-    setSelectedContributorIds([]);
-    setPendingContributorId("");
+    setSelectedContributors([]);
+    setPendingContributorInput("");
     setCreditQuery("");
   }, []);
 
@@ -495,8 +491,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       setFilmTitleFallback("");
       setCredits(null);
       setCreditsState(null);
-      setSelectedContributorIds([]);
-      setPendingContributorId("");
+      setSelectedContributors([]);
+      setPendingContributorInput("");
       setCreditQuery("");
       setManualLoading(true);
       setManualState(null);
@@ -627,8 +623,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setSongTitle("");
     setCredits(null);
     setCreditsState(null);
-    setSelectedContributorIds([]);
-    setPendingContributorId("");
+    setSelectedContributors([]);
+    setPendingContributorInput("");
     setCreditQuery("");
   }, []);
 
@@ -800,7 +796,10 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       });
       return;
     }
-    if (selectedCategory?.unit_kind === "PERFORMANCE" && selectedCredits.length < 1) {
+    if (
+      selectedCategory?.unit_kind === "PERFORMANCE" &&
+      selectedContributors.length < 1
+    ) {
       setManualState({
         ok: false,
         message: "Performance categories require at least one contributor."
@@ -821,7 +820,10 @@ export function useAdminCeremonyNomineesOrchestration(args: {
           film_title: selectedFilmId ? undefined : filmTitleFallback.trim(),
           song_title:
             selectedCategory?.unit_kind === "SONG" ? songTitle.trim() : undefined,
-          contributors: selectedCredits.map((c) => ({ tmdb_id: c.tmdb_id, name: c.name }))
+          contributors: selectedContributors.map((c) => ({
+            tmdb_id: c.tmdb_id ?? undefined,
+            name: c.name
+          }))
         })
       }
     );
@@ -841,8 +843,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     setSongTitle("");
     setCredits(null);
     setCreditsState(null);
-    setSelectedContributorIds([]);
-    setPendingContributorId("");
+    setSelectedContributors([]);
+    setPendingContributorInput("");
     setCreditQuery("");
     void Promise.all([loadManualContext(), loadNominations()]);
     void onWorksheetChange?.();
@@ -854,7 +856,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     onWorksheetChange,
     selectedCategory?.unit_kind,
     selectedCategoryId,
-    selectedCredits,
+    selectedContributors,
     selectedFilmId,
     songTitle
   ]);
@@ -995,16 +997,14 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     creditsLoading,
     creditsState,
     credits,
-    selectedContributorIds,
-    setSelectedContributorIds,
-    pendingContributorId,
-    setPendingContributorId,
+    selectedContributors,
+    setSelectedContributors,
+    pendingContributorInput,
+    setPendingContributorInput,
     creditQuery,
     setCreditQuery,
     creditOptions,
-    creditOptionById,
     selectedCredits,
-    filteredCreditOptions,
 
     actions: {
       getFilmCredits,

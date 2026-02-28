@@ -44,6 +44,13 @@ type TmdbPersonDetails = {
   profile_path?: string | null;
 };
 
+type TmdbPersonSearchResult = {
+  id: number;
+  name: string;
+  known_for_department?: string | null;
+  profile_path?: string | null;
+};
+
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 function requireTmdbReadToken(env: NodeJS.ProcessEnv = process.env): string {
@@ -181,6 +188,23 @@ export async function fetchTmdbPersonDetails(
   tmdbPersonId: number
 ): Promise<TmdbPersonDetails> {
   return tmdbGetJson<TmdbPersonDetails>(`/person/${tmdbPersonId}`, { language: "en-US" });
+}
+
+export async function searchTmdbPeople(
+  queryText: string
+): Promise<TmdbPersonSearchResult[]> {
+  const queryTrimmed = String(queryText ?? "").trim();
+  if (!queryTrimmed) return [];
+  const res = await tmdbGetJson<{ results?: TmdbPersonSearchResult[] }>(
+    "/search/person",
+    {
+      query: queryTrimmed,
+      language: "en-US",
+      include_adult: "false",
+      page: 1
+    }
+  );
+  return Array.isArray(res.results) ? res.results : [];
 }
 
 export function parseReleaseYear(releaseDate: string | null | undefined): number | null {
