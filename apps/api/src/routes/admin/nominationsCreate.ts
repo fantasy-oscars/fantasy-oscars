@@ -328,7 +328,7 @@ export function registerAdminNominationCreateRoute(args: {
             );
           }
 
-          return { nomination_id: nominationId };
+          return { nomination_id: nominationId, film_id: resolvedFilmId };
         });
 
         if (req.auth?.sub) {

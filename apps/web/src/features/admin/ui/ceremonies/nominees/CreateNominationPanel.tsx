@@ -11,6 +11,12 @@ export function CreateNominationPanel(props: {
   films: unknown[];
   filmInput: string;
   onFilmChange: (next: string) => void;
+  onCreateUnlinkedFilm: (title: string) => void;
+  onSelectTmdbFilmCandidate: (candidate: {
+    tmdb_id: number;
+    title: string;
+    release_year: number | null;
+  }) => void;
   onFilmPick: (film: {
     id: number;
     title: string;
@@ -60,6 +66,8 @@ export function CreateNominationPanel(props: {
               label="Film"
               value={props.filmInput}
               onChange={props.onFilmChange}
+              onCreateUnlinked={props.onCreateUnlinkedFilm}
+              onSelectTmdbCandidate={props.onSelectTmdbFilmCandidate}
               onSelectFilm={props.onFilmPick}
               films={props.films as never}
             />

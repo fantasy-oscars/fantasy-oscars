@@ -3064,6 +3064,15 @@ small.error {
   height: 3.9375rem;
 }
 
+.fo-filmComboboxResults {
+  max-height: 17.5rem;
+  overflow-y: auto;
+}
+
+.fo-filmComboboxEscape {
+  border-top: var(--fo-border-width) solid var(--fo-color-border);
+}
+
 .banner-body {
   min-width: 0;
 }
