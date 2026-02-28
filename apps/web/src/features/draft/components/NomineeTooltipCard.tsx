@@ -53,7 +53,11 @@ export function NomineeTooltipCard(props: {
     .map((c, idx) => ({
       fullName: String(c.fullName ?? "").trim(),
       roleLabel: c.roleLabel ?? null,
-      profileUrl: resolveTmdbImageUrl(c.profileUrl ?? null, c.profilePath ?? null, "w185"),
+      profileUrl: resolveTmdbImageUrl(
+        c.profileUrl ?? null,
+        c.profilePath ?? null,
+        "w185"
+      ),
       sortOrder: Number.isFinite(c.sortOrder) ? c.sortOrder : idx + 1
     }))
     .filter((c) => Boolean(c.fullName))
@@ -92,13 +96,10 @@ export function NomineeTooltipCard(props: {
           ? fallbackPerformerContributor
           : namedContributors
       : [];
-  const showPerformanceCollage =
-    unitKind === "PERFORMANCE" &&
-    performanceContributors.length > 0 &&
-    performanceContributors.length <= 3;
-  const usePerformancePosterFallback =
-    unitKind === "PERFORMANCE" && performanceContributors.length > 3;
-
+  const isSinglePerformance = performanceContributors.length === 1;
+  const singlePerformanceContributor = isSinglePerformance
+    ? performanceContributors[0]
+    : null;
   const hero =
     unitKind === "SONG"
       ? songTitle
@@ -134,7 +135,7 @@ export function NomineeTooltipCard(props: {
       : null;
   const showDraftedChip = Boolean(draftedByLabel && draftedRoundPick);
   const performanceFilmLine =
-    filmTitle && filmYear ? `${filmTitle} (${filmYear})` : filmTitle ?? null;
+    filmTitle && filmYear ? `${filmTitle} (${filmYear})` : (filmTitle ?? null);
 
   return (
     <Box
@@ -167,42 +168,72 @@ export function NomineeTooltipCard(props: {
       </Box>
 
       <Box className="fo-tip-body">
-        <Box className="fo-tip-card">
-          <Box className="fo-tip-poster" aria-hidden="true">
-            {showPerformanceCollage ? (
-              <Box className="fo-tip-faceStack">
-                {performanceContributors.slice(0, 3).map((c, idx) =>
-                  c.profileUrl ? (
-                    <img
-                      key={`${c.fullName}-${idx}`}
-                      className={[
-                        "fo-tip-face",
-                        `face-${idx + 1}`,
-                        performanceContributors.length === 1 ? "is-solo" : ""
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      src={c.profileUrl}
-                      alt=""
-                      loading="lazy"
-                    />
-                  ) : (
-                    <Box
-                      key={`${c.fullName}-${idx}`}
-                      className={[
-                        "fo-tip-face",
-                        `face-${idx + 1}`,
-                        performanceContributors.length === 1 ? "is-solo" : "",
-                        "is-ph"
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    />
-                  )
-                )}
-              </Box>
-            ) : unitKind === "PERFORMANCE" ? (
-              usePerformancePosterFallback ? (
+        {unitKind === "PERFORMANCE" && performanceContributors.length > 1 ? (
+          <Box className="fo-tip-performanceList">
+            {performanceContributors.map((c, idx) => {
+              const mediaSrc = c.profileUrl ?? (idx === 0 ? resolvedFilmPosterUrl : null);
+              return (
+                <Box key={`${c.fullName}-${idx}`} className="fo-tip-performanceCard">
+                  <Box className="fo-tip-poster" aria-hidden="true">
+                    {mediaSrc ? (
+                      <img
+                        className="fo-tip-poster-img"
+                        src={mediaSrc}
+                        alt=""
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Box className="fo-tip-poster-ph" />
+                    )}
+                  </Box>
+                  <Box className="fo-tip-meta">
+                    {idx === 0 && performanceFilmLine ? (
+                      <Text className="fo-tip-filmLine">{performanceFilmLine}</Text>
+                    ) : null}
+                    <Text className="fo-tip-name">{c.fullName || "—"}</Text>
+                    {c.roleLabel ? (
+                      <Text className="fo-tip-sub">as {c.roleLabel}</Text>
+                    ) : null}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : unitKind === "PERFORMANCE" && singlePerformanceContributor ? (
+          <Box className="fo-tip-card">
+            <Box className="fo-tip-poster" aria-hidden="true">
+              {singlePerformanceContributor.profileUrl || resolvedFilmPosterUrl ? (
+                <img
+                  className="fo-tip-poster-img"
+                  src={
+                    singlePerformanceContributor.profileUrl ?? resolvedFilmPosterUrl ?? ""
+                  }
+                  alt=""
+                  loading="lazy"
+                />
+              ) : (
+                <Box className="fo-tip-poster-ph" />
+              )}
+            </Box>
+
+            <Box className="fo-tip-meta">
+              <Text className="fo-tip-name">
+                {singlePerformanceContributor.fullName || "—"}
+              </Text>
+              {singlePerformanceContributor.roleLabel ? (
+                <Text className="fo-tip-sub">
+                  as {singlePerformanceContributor.roleLabel}
+                </Text>
+              ) : null}
+              {performanceFilmLine ? (
+                <Text className="fo-tip-filmLine">{performanceFilmLine}</Text>
+              ) : null}
+            </Box>
+          </Box>
+        ) : (
+          <Box className="fo-tip-card">
+            <Box className="fo-tip-poster" aria-hidden="true">
+              {unitKind === "PERFORMANCE" ? (
                 resolvedFilmPosterUrl ? (
                   <img
                     className="fo-tip-poster-img"
@@ -213,61 +244,39 @@ export function NomineeTooltipCard(props: {
                 ) : (
                   <Box className="fo-tip-poster-ph" />
                 )
+              ) : resolvedFilmPosterUrl ? (
+                <img
+                  className="fo-tip-poster-img"
+                  src={resolvedFilmPosterUrl}
+                  alt=""
+                  loading="lazy"
+                />
               ) : (
                 <Box className="fo-tip-poster-ph" />
-              )
-            ) : resolvedFilmPosterUrl ? (
-              <img
-                className="fo-tip-poster-img"
-                src={resolvedFilmPosterUrl}
-                alt=""
-                loading="lazy"
-              />
-            ) : (
-              <Box className="fo-tip-poster-ph" />
-            )}
-          </Box>
+              )}
+            </Box>
 
-          <Box className="fo-tip-meta">
-            {unitKind === "PERFORMANCE" && performanceContributors.length > 0 ? (
-              <Box className="fo-tip-performanceMeta">
-                {performanceContributors.map((c, idx) => (
-                  <Box key={`${c.fullName}-${idx}`} className="fo-tip-performanceLine">
-                    <Text className="fo-tip-name">{c.fullName || "—"}</Text>
-                    {c.roleLabel ? (
-                      <Text component="span" className="fo-tip-support">
-                        as {c.roleLabel}
-                      </Text>
-                    ) : null}
-                  </Box>
-                ))}
-                {performanceFilmLine ? (
-                  <Text className="fo-tip-sub">{performanceFilmLine}</Text>
+            <Box className="fo-tip-meta">
+              <Box className="fo-tip-hero">
+                <Text className="fo-tip-name">{hero || "—"}</Text>
+                {support ? (
+                  <Text component="span" className="fo-tip-support">
+                    {support}
+                  </Text>
                 ) : null}
               </Box>
-            ) : (
-              <>
-                <Box className="fo-tip-hero">
-                  <Text className="fo-tip-name">{hero || "—"}</Text>
-                  {support ? (
-                    <Text component="span" className="fo-tip-support">
-                      {support}
-                    </Text>
-                  ) : null}
-                </Box>
 
-                {unitKind === "SONG" ? (
-                  <>
-                    {songLine1 ? <Text className="fo-tip-sub">{songLine1}</Text> : null}
-                    {songLine2 ? <Text className="fo-tip-sub">{songLine2}</Text> : null}
-                  </>
-                ) : secondary ? (
-                  <Text className="fo-tip-sub">{secondary}</Text>
-                ) : null}
-              </>
-            )}
+              {unitKind === "SONG" ? (
+                <>
+                  {songLine1 ? <Text className="fo-tip-sub">{songLine1}</Text> : null}
+                  {songLine2 ? <Text className="fo-tip-sub">{songLine2}</Text> : null}
+                </>
+              ) : secondary ? (
+                <Text className="fo-tip-sub">{secondary}</Text>
+              ) : null}
+            </Box>
           </Box>
-        </Box>
+        )}
       </Box>
 
       <Box className="fo-tip-bar fo-tip-footer">

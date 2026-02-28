@@ -770,9 +770,26 @@ export function useDraftRoomOrchestration(args: {
       const icon = iconByCategoryId.get(c.id) ?? "";
       const nominations = filtered.map((n) => {
         const isDrafted = drafted.has(n.id);
+        const performerContributorNames =
+          (
+            n as {
+              performer_contributors?: Array<{
+                full_name?: string | null;
+              }>;
+            }
+          ).performer_contributors
+            ?.map((c) => String(c.full_name ?? "").trim())
+            .filter(Boolean) ?? [];
+        const performanceLabel =
+          performerContributorNames.length > 0
+            ? formatNameList(performerContributorNames)
+            : n.label;
         return {
           id: n.id,
-          label: n.label,
+          label:
+            String(c.unit_kind ?? "").toUpperCase() === "PERFORMANCE"
+              ? performanceLabel
+              : n.label,
           posterUrl: (n as { film_poster_url?: string | null }).film_poster_url ?? null,
           filmTitle: (n as { film_title?: string | null }).film_title ?? null,
           filmYear: (n as { film_year?: number | null }).film_year ?? null,
@@ -793,8 +810,7 @@ export function useDraftRoomOrchestration(args: {
               roleLabel: c.role_label ?? null,
               profileUrl: c.profile_url ?? null,
               profilePath: c.profile_path ?? null,
-              sortOrder:
-                typeof c.sort_order === "number" ? c.sort_order : idx + 1
+              sortOrder: typeof c.sort_order === "number" ? c.sort_order : idx + 1
             })) ?? [],
           songTitle: (n as { song_title?: string | null }).song_title ?? null,
           performerName: (n as { performer_name?: string | null }).performer_name ?? null,
@@ -1116,4 +1132,11 @@ export function useDraftRoomOrchestration(args: {
     },
     refresh
   };
+}
+
+function formatNameList(names: string[]) {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }

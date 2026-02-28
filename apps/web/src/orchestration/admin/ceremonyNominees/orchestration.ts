@@ -485,7 +485,11 @@ export function useAdminCeremonyNomineesOrchestration(args: {
   }, []);
 
   const selectTmdbFilmCandidate = useCallback(
-    async (candidate: { tmdb_id: number; title: string; release_year: number | null }) => {
+    async (candidate: {
+      tmdb_id: number;
+      title: string;
+      release_year: number | null;
+    }) => {
       setFilmInput(formatFilmTitleWithYear(candidate.title, candidate.release_year));
       setSelectedFilmId(null);
       setFilmTitleFallback("");
@@ -497,22 +501,23 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       setManualLoading(true);
       setManualState(null);
 
-      const importRes = await fetchJson<{ ok: true; upserted?: number; hydrated?: number }>(
-        "/admin/films/import",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            films: [
-              {
-                title: candidate.title,
-                tmdb_id: candidate.tmdb_id,
-                year: candidate.release_year
-              }
-            ]
-          })
-        }
-      );
+      const importRes = await fetchJson<{
+        ok: true;
+        upserted?: number;
+        hydrated?: number;
+      }>("/admin/films/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          films: [
+            {
+              title: candidate.title,
+              tmdb_id: candidate.tmdb_id,
+              year: candidate.release_year
+            }
+          ]
+        })
+      });
       if (!importRes.ok) {
         setManualLoading(false);
         setManualState({

@@ -190,11 +190,7 @@ export async function listNominationsForCeremony(
       if (!primaryProfilePath && typeof match?.profile_path === "string") {
         primaryProfilePath = match.profile_path;
       }
-      if (
-        !c.profile_path &&
-        !c.profile_url &&
-        typeof match?.profile_path === "string"
-      ) {
+      if (!c.profile_path && !c.profile_url && typeof match?.profile_path === "string") {
         c.profile_path = match.profile_path;
       }
     }
