@@ -19,6 +19,7 @@ import type {
 import {
   deleteNominationContributor as deleteNominationContributorReq,
   getFilmCreditsRaw,
+  patchNominationContributorDisplay as patchNominationContributorDisplayReq,
   patchFilmTmdbId,
   patchPersonTmdbId,
   postNominationContributor as postNominationContributorReq
@@ -944,6 +945,38 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     [loadNominations]
   );
 
+  const updateNominationContributorDisplay = useCallback(
+    async (
+      nominationId: number,
+      nominationContributorId: number,
+      input: {
+        display_name_override?: string | null;
+        display_role_override?: string | null;
+        avatar_person_id_override?: number | null;
+      }
+    ) => {
+      setManualLoading(true);
+      setManualState(null);
+      const res = await patchNominationContributorDisplayReq(
+        nominationId,
+        nominationContributorId,
+        input
+      );
+      setManualLoading(false);
+      if (!res.ok) {
+        setManualState({
+          ok: false,
+          message: res.error ?? "Failed to update contributor display settings"
+        });
+        return false;
+      }
+      setManualState({ ok: true, message: "Contributor display updated" });
+      await loadNominations();
+      return true;
+    },
+    [loadNominations]
+  );
+
   const getFilmCredits = useCallback(async (filmId: number) => {
     if (!Number.isFinite(filmId) || filmId <= 0) return null;
     const res = await getFilmCreditsRaw(filmId);
@@ -1026,7 +1059,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
       linkFilmTmdb,
       linkPersonTmdb,
       addNominationContributor,
-      removeNominationContributor
+      removeNominationContributor,
+      updateNominationContributorDisplay
     }
   };
 }

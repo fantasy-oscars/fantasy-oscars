@@ -39,6 +39,25 @@ export async function deleteNominationContributor(
   );
 }
 
+export async function patchNominationContributorDisplay(
+  nominationId: number,
+  nominationContributorId: number,
+  input: {
+    display_name_override?: string | null;
+    display_role_override?: string | null;
+    avatar_person_id_override?: number | null;
+  }
+) {
+  return fetchJson(
+    `/admin/nominations/${nominationId}/contributors/${nominationContributorId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export async function getFilmCreditsRaw(filmId: number) {
   return fetchJson<{ credits: unknown | null }>(`/admin/films/${filmId}/credits`, {
     method: "GET"

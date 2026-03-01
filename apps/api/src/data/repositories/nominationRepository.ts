@@ -27,6 +27,9 @@ export type NominationWithDisplay = {
     profile_url?: string | null;
     profile_path?: string | null;
     role_label: string | null;
+    display_name_override?: string | null;
+    display_role_override?: string | null;
+    avatar_person_id_override?: number | null;
     sort_order: number;
   }>;
   status?: "ACTIVE" | "REVOKED" | "REPLACED";
@@ -62,20 +65,23 @@ export async function listNominationsForCeremony(
        COALESCE(f.poster_url, sf.poster_url, pf.poster_url) AS film_poster_url,
        COALESCE(f.release_year, sf.release_year, pf.release_year) AS film_year,
        s.title AS song_title,
-       primary_person.full_name AS performer_name,
+       primary_person.display_name AS performer_name,
        primary_person.profile_url AS performer_profile_url,
        primary_person.profile_path AS performer_profile_path,
-       primary_person.role_label AS performer_character,
+       primary_person.display_role AS performer_character,
        COALESCE(
          json_agg(
            json_build_object(
              'nomination_contributor_id', nc.id::int,
              'person_id', p2.id::int,
-             'full_name', p2.full_name,
+             'full_name', COALESCE(nc.display_name_override, p2.full_name),
              'tmdb_id', p2.tmdb_id::int,
-             'profile_url', p2.profile_url,
-             'profile_path', p2.profile_path,
-             'role_label', nc.role_label,
+             'profile_url', p2_avatar.profile_url,
+             'profile_path', p2_avatar.profile_path,
+             'role_label', COALESCE(nc.display_role_override, nc.role_label),
+             'display_name_override', nc.display_name_override,
+             'display_role_override', nc.display_role_override,
+             'avatar_person_id_override', nc.avatar_person_id_override::int,
              'sort_order', nc.sort_order::int
            )
            ORDER BY nc.sort_order ASC, nc.id ASC
@@ -93,15 +99,23 @@ export async function listNominationsForCeremony(
      LEFT JOIN film pf0 ON pf0.id = perf.film_id
      LEFT JOIN film pf ON pf.id = COALESCE(pf0.consolidated_into_film_id, pf0.id)
      LEFT JOIN LATERAL (
-       SELECT p.full_name, p.profile_url, p.profile_path, nc.role_label
+       SELECT
+         COALESCE(nc.display_name_override, p.full_name) AS display_name,
+         p_avatar.profile_url,
+         p_avatar.profile_path,
+         COALESCE(nc.display_role_override, nc.role_label) AS display_role
        FROM nomination_contributor nc
        JOIN person p ON p.id = nc.person_id
+       LEFT JOIN person p_avatar
+         ON p_avatar.id = COALESCE(nc.avatar_person_id_override, nc.person_id)
        WHERE nc.nomination_id = n.id
        ORDER BY nc.sort_order ASC, nc.id ASC
        LIMIT 1
      ) primary_person ON TRUE
      LEFT JOIN nomination_contributor nc ON nc.nomination_id = n.id
      LEFT JOIN person p2 ON p2.id = nc.person_id
+     LEFT JOIN person p2_avatar
+       ON p2_avatar.id = COALESCE(nc.avatar_person_id_override, nc.person_id)
      WHERE ce.ceremony_id = $1
      GROUP BY
        n.id,
@@ -135,10 +149,10 @@ export async function listNominationsForCeremony(
         pf.poster_url,
        pf.release_year,
         s.title,
-        primary_person.full_name,
+        primary_person.display_name,
         primary_person.profile_url,
         primary_person.profile_path,
-        primary_person.role_label
+        primary_person.display_role
      ORDER BY n.category_edition_id, n.sort_order ASC, n.id ASC`,
     [ceremonyId]
   );

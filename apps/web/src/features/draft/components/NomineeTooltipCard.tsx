@@ -171,7 +171,7 @@ export function NomineeTooltipCard(props: {
         {unitKind === "PERFORMANCE" && performanceContributors.length > 1 ? (
           <Box className="fo-tip-performanceList">
             {performanceContributors.map((c, idx) => {
-              const mediaSrc = c.profileUrl ?? (idx === 0 ? resolvedFilmPosterUrl : null);
+              const mediaSrc = c.profileUrl ?? resolvedFilmPosterUrl;
               return (
                 <Box key={`${c.fullName}-${idx}`} className="fo-tip-performanceCard">
                   <Box className="fo-tip-poster" aria-hidden="true">

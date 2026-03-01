@@ -14,6 +14,9 @@ type NominationContributorRow = {
   full_name: string;
   tmdb_id?: number | null;
   role_label: string | null;
+  display_name_override?: string | null;
+  display_role_override?: string | null;
+  avatar_person_id_override?: number | null;
   sort_order: number;
 };
 
@@ -47,6 +50,15 @@ export function NominationEditPeopleSection(props: {
     nominationId: number,
     nominationContributorId: number
   ) => Promise<void>;
+  onUpdateContributorDisplay: (
+    nominationId: number,
+    nominationContributorId: number,
+    input: {
+      display_name_override?: string | null;
+      display_role_override?: string | null;
+      avatar_person_id_override?: number | null;
+    }
+  ) => Promise<void>;
 }) {
   const {
     nominationId,
@@ -57,16 +69,30 @@ export function NominationEditPeopleSection(props: {
     filmCredits,
     onLinkPerson,
     onAddContributor,
-    onRemoveContributor
+    onRemoveContributor,
+    onUpdateContributorDisplay
   } = props;
 
   const [personLinkOpenId, setPersonLinkOpenId] = useState<number | null>(null);
   const [personTmdbId, setPersonTmdbId] = useState("");
   const [pendingContributorInput, setPendingContributorInput] = useState("");
+  const [displayEditorOpenId, setDisplayEditorOpenId] = useState<number | null>(null);
+  const [displayNameOverrideInput, setDisplayNameOverrideInput] = useState("");
+  const [displayRoleOverrideInput, setDisplayRoleOverrideInput] = useState("");
+  const [avatarPersonIdOverrideInput, setAvatarPersonIdOverrideInput] = useState("");
 
   const contributorRows = useMemo(() => {
     return contributors.slice().sort((a, b) => a.sort_order - b.sort_order);
   }, [contributors]);
+  const activeDisplayContributor = useMemo(
+    () =>
+      displayEditorOpenId
+        ? (contributorRows.find(
+            (c) => c.nomination_contributor_id === displayEditorOpenId
+          ) ?? null)
+        : null,
+    [contributorRows, displayEditorOpenId]
+  );
 
   const creditByPersonId = useMemo(() => {
     const map = new Map<
@@ -279,11 +305,106 @@ export function NominationEditPeopleSection(props: {
                     {String.fromCharCode(0xe872)}
                   </Text>
                 </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Contributor display settings"
+                  onClick={() => {
+                    const cid = c.nomination_contributor_id;
+                    if (!cid) return;
+                    setDisplayEditorOpenId((prev) => (prev === cid ? null : cid));
+                    setDisplayNameOverrideInput(c.display_name_override ?? "");
+                    setDisplayRoleOverrideInput(c.display_role_override ?? "");
+                    setAvatarPersonIdOverrideInput(
+                      c.avatar_person_id_override
+                        ? String(c.avatar_person_id_override)
+                        : ""
+                    );
+                  }}
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    settings
+                  </Text>
+                </ActionIcon>
               </Group>
             </Group>
           ))}
         </Stack>
       )}
+
+      {displayEditorOpenId ? (
+        <Group mt="xs" align="flex-end" wrap="wrap">
+          <TextInput
+            label="Display name override"
+            value={displayNameOverrideInput}
+            onChange={(e) => setDisplayNameOverrideInput(e.currentTarget.value)}
+            placeholder={activeDisplayContributor?.full_name ?? "Tom Hulce"}
+          />
+          <TextInput
+            label="Display role override"
+            value={displayRoleOverrideInput}
+            onChange={(e) => setDisplayRoleOverrideInput(e.currentTarget.value)}
+            placeholder={
+              activeDisplayContributor?.role_label ?? "as Wolfgang Amadeus Mozart"
+            }
+          />
+          <TextInput
+            label="Photo source person id"
+            value={avatarPersonIdOverrideInput}
+            onChange={(e) => setAvatarPersonIdOverrideInput(e.currentTarget.value)}
+            placeholder={
+              activeDisplayContributor
+                ? `Default: ${activeDisplayContributor.person_id}`
+                : "Default: contributor person id"
+            }
+          />
+          <Button
+            type="button"
+            onClick={() => {
+              const overrideIdRaw = avatarPersonIdOverrideInput.trim();
+              const avatarPersonId = overrideIdRaw === "" ? null : Number(overrideIdRaw);
+              if (
+                avatarPersonId !== null &&
+                (!Number.isInteger(avatarPersonId) || avatarPersonId <= 0)
+              ) {
+                notify({
+                  id: "admin.nominees.contributor.display.validation.error",
+                  severity: "error",
+                  trigger_type: "user_action",
+                  scope: "local",
+                  durability: "ephemeral",
+                  requires_decision: false,
+                  title: "Invalid photo source",
+                  message: "Photo source person id must be a positive integer."
+                });
+                return;
+              }
+              void onUpdateContributorDisplay(nominationId, displayEditorOpenId, {
+                display_name_override: displayNameOverrideInput.trim() || null,
+                display_role_override: displayRoleOverrideInput.trim() || null,
+                avatar_person_id_override: avatarPersonId
+              });
+              setDisplayEditorOpenId(null);
+              setDisplayNameOverrideInput("");
+              setDisplayRoleOverrideInput("");
+              setAvatarPersonIdOverrideInput("");
+            }}
+          >
+            Save display settings
+          </Button>
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={() => {
+              setDisplayEditorOpenId(null);
+              setDisplayNameOverrideInput("");
+              setDisplayRoleOverrideInput("");
+              setAvatarPersonIdOverrideInput("");
+            }}
+          >
+            Cancel
+          </Button>
+        </Group>
+      ) : null}
 
       {personLinkOpenId ? (
         <Group mt="xs" align="flex-end" wrap="wrap">
