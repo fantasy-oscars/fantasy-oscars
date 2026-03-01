@@ -74,11 +74,17 @@ export async function listNominationsForCeremony(
            json_build_object(
              'nomination_contributor_id', nc.id::int,
              'person_id', p2.id::int,
-             'full_name', COALESCE(nc.display_name_override, p2.full_name),
+             'full_name', CASE
+               WHEN nc.display_name_override IS NOT NULL THEN nc.display_name_override
+               ELSE p2.full_name
+             END,
              'tmdb_id', p2.tmdb_id::int,
              'profile_url', p2_avatar.profile_url,
              'profile_path', p2_avatar.profile_path,
-             'role_label', COALESCE(nc.display_role_override, nc.role_label),
+             'role_label', CASE
+               WHEN nc.display_role_override IS NOT NULL THEN nc.display_role_override
+               ELSE nc.role_label
+             END,
              'display_name_override', nc.display_name_override,
              'display_role_override', nc.display_role_override,
              'avatar_person_id_override', nc.avatar_person_id_override::int,
@@ -100,10 +106,16 @@ export async function listNominationsForCeremony(
      LEFT JOIN film pf ON pf.id = COALESCE(pf0.consolidated_into_film_id, pf0.id)
      LEFT JOIN LATERAL (
        SELECT
-         COALESCE(nc.display_name_override, p.full_name) AS display_name,
+         CASE
+           WHEN nc.display_name_override IS NOT NULL THEN nc.display_name_override
+           ELSE p.full_name
+         END AS display_name,
          p_avatar.profile_url,
          p_avatar.profile_path,
-         COALESCE(nc.display_role_override, nc.role_label) AS display_role
+         CASE
+           WHEN nc.display_role_override IS NOT NULL THEN nc.display_role_override
+           ELSE nc.role_label
+         END AS display_role
        FROM nomination_contributor nc
        JOIN person p ON p.id = nc.person_id
        LEFT JOIN person p_avatar
@@ -192,6 +204,9 @@ export async function listNominationsForCeremony(
     let primaryCharacter: string | null = row.performer_character ?? null;
     let primaryProfilePath: string | null = row.performer_profile_path ?? null;
     for (const c of contributors) {
+      if (c.display_role_override !== null && c.display_role_override !== undefined) {
+        continue;
+      }
       if (c.role_label) continue;
       const tmdbId = typeof c.tmdb_id === "number" ? c.tmdb_id : null;
       if (!tmdbId) continue;

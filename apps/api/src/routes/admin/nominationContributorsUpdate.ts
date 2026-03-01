@@ -38,9 +38,17 @@ export function registerAdminNominationContributorsUpdateRoute({
         )?.avatar_person_id_override;
 
         const displayName =
-          typeof displayNameRaw === "string" ? displayNameRaw.trim() : "";
+          displayNameRaw === null
+            ? null
+            : typeof displayNameRaw === "string"
+              ? displayNameRaw.trim()
+              : null;
         const displayRole =
-          typeof displayRoleRaw === "string" ? displayRoleRaw.trim() : "";
+          displayRoleRaw === null
+            ? null
+            : typeof displayRoleRaw === "string"
+              ? displayRoleRaw.trim()
+              : null;
         const avatarPersonId =
           avatarPersonIdRaw === null || avatarPersonIdRaw === undefined
             ? null
@@ -109,13 +117,7 @@ export function registerAdminNominationContributorsUpdateRoute({
                  avatar_person_id_override = $5
              WHERE id = $1
                AND nomination_id = $2`,
-            [
-              contributorId,
-              nominationId,
-              displayName || null,
-              displayRole || null,
-              avatarPersonId
-            ]
+            [contributorId, nominationId, displayName, displayRole, avatarPersonId]
           );
           if (!rowCount) throw new AppError("NOT_FOUND", 404, "Contributor not found");
         });
