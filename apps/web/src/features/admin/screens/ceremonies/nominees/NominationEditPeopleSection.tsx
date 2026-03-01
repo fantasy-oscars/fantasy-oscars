@@ -84,16 +84,6 @@ export function NominationEditPeopleSection(props: {
   const contributorRows = useMemo(() => {
     return contributors.slice().sort((a, b) => a.sort_order - b.sort_order);
   }, [contributors]);
-  const activeDisplayContributor = useMemo(
-    () =>
-      displayEditorOpenId
-        ? (contributorRows.find(
-            (c) => c.nomination_contributor_id === displayEditorOpenId
-          ) ?? null)
-        : null,
-    [contributorRows, displayEditorOpenId]
-  );
-
   const creditByPersonId = useMemo(() => {
     const map = new Map<
       number,
@@ -250,161 +240,164 @@ export function NominationEditPeopleSection(props: {
         </Text>
       ) : (
         <Stack gap="var(--fo-space-4)" mt="xs">
-          {contributorRows.map((c) => (
-            <Group
-              key={`${c.person_id}:${c.nomination_contributor_id ?? "?"}`}
-              justify="space-between"
-              wrap="nowrap"
-            >
-              <Box className="fo-minw0">
-                <Group gap="var(--fo-space-8)" wrap="nowrap">
-                  <Text fw="var(--fo-font-weight-bold)" size="sm" lineClamp={1}>
-                    {c.full_name}
-                  </Text>
-                  {!c.tmdb_id ? (
-                    <Text
-                      component="span"
-                      className="gicon muted"
-                      aria-label="Contributor not linked to TMDB"
-                    >
-                      link_off
-                    </Text>
-                  ) : null}
-                  {c.role_label ? (
-                    <Text className="muted" size="xs" lineClamp={1}>
-                      ({c.role_label})
-                    </Text>
-                  ) : null}
-                </Group>
-              </Box>
+          {contributorRows.map((c) => {
+            const cid = c.nomination_contributor_id;
+            const isDisplayEditorOpen = Boolean(cid && displayEditorOpenId === cid);
+            return (
+              <Box key={`${c.person_id}:${c.nomination_contributor_id ?? "?"}`}>
+                <Group justify="space-between" wrap="nowrap">
+                  <Box className="fo-minw0">
+                    <Group gap="var(--fo-space-8)" wrap="nowrap">
+                      <Text fw="var(--fo-font-weight-bold)" size="sm" lineClamp={1}>
+                        {c.full_name}
+                      </Text>
+                      {!c.tmdb_id ? (
+                        <Text
+                          component="span"
+                          className="gicon muted"
+                          aria-label="Contributor not linked to TMDB"
+                        >
+                          link_off
+                        </Text>
+                      ) : null}
+                      {c.role_label ? (
+                        <Text className="muted" size="xs" lineClamp={1}>
+                          ({c.role_label})
+                        </Text>
+                      ) : null}
+                    </Group>
+                  </Box>
 
-              <Group gap="xs" wrap="nowrap">
-                <ActionIcon
-                  variant="subtle"
-                  aria-label="Link contributor to TMDB"
-                  onClick={() => {
-                    setPersonLinkOpenId((prev) =>
-                      prev === c.person_id ? null : c.person_id
-                    );
-                    setPersonTmdbId(c.tmdb_id ? String(c.tmdb_id) : "");
-                  }}
-                >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    add_link
-                  </Text>
-                </ActionIcon>
-                <ActionIcon
-                  variant="subtle"
-                  aria-label="Remove contributor"
-                  onClick={() => {
-                    if (!c.nomination_contributor_id) return;
-                    void onRemoveContributor(nominationId, c.nomination_contributor_id);
-                  }}
-                >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    {String.fromCharCode(0xe872)}
-                  </Text>
-                </ActionIcon>
-                <ActionIcon
-                  variant="subtle"
-                  aria-label="Contributor display settings"
-                  onClick={() => {
-                    const cid = c.nomination_contributor_id;
-                    if (!cid) return;
-                    setDisplayEditorOpenId((prev) => (prev === cid ? null : cid));
-                    setDisplayNameOverrideInput(c.display_name_override ?? "");
-                    setDisplayRoleOverrideInput(c.display_role_override ?? "");
-                    setAvatarPersonIdOverrideInput(
-                      c.avatar_person_id_override
-                        ? String(c.avatar_person_id_override)
-                        : ""
-                    );
-                  }}
-                >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    settings
-                  </Text>
-                </ActionIcon>
-              </Group>
-            </Group>
-          ))}
+                  <Group gap="xs" wrap="nowrap">
+                    <ActionIcon
+                      variant="subtle"
+                      aria-label="Link contributor to TMDB"
+                      onClick={() => {
+                        setPersonLinkOpenId((prev) =>
+                          prev === c.person_id ? null : c.person_id
+                        );
+                        setPersonTmdbId(c.tmdb_id ? String(c.tmdb_id) : "");
+                      }}
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        add_link
+                      </Text>
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      aria-label="Remove contributor"
+                      onClick={() => {
+                        if (!c.nomination_contributor_id) return;
+                        void onRemoveContributor(
+                          nominationId,
+                          c.nomination_contributor_id
+                        );
+                      }}
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        {String.fromCharCode(0xe872)}
+                      </Text>
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      aria-label="Contributor display settings"
+                      onClick={() => {
+                        if (!cid) return;
+                        setDisplayEditorOpenId((prev) => (prev === cid ? null : cid));
+                        setDisplayNameOverrideInput(
+                          c.display_name_override ?? c.full_name
+                        );
+                        setDisplayRoleOverrideInput(
+                          c.display_role_override ?? c.role_label ?? ""
+                        );
+                        setAvatarPersonIdOverrideInput(
+                          c.avatar_person_id_override
+                            ? String(c.avatar_person_id_override)
+                            : String(c.person_id)
+                        );
+                      }}
+                    >
+                      <Text component="span" className="gicon" aria-hidden="true">
+                        settings
+                      </Text>
+                    </ActionIcon>
+                  </Group>
+                </Group>
+
+                {isDisplayEditorOpen && cid ? (
+                  <Group mt="xs" align="flex-end" wrap="wrap">
+                    <TextInput
+                      label="Display name override"
+                      value={displayNameOverrideInput}
+                      onChange={(e) => setDisplayNameOverrideInput(e.currentTarget.value)}
+                    />
+                    <TextInput
+                      label="Display role override"
+                      value={displayRoleOverrideInput}
+                      onChange={(e) => setDisplayRoleOverrideInput(e.currentTarget.value)}
+                    />
+                    <TextInput
+                      label="Photo source person id"
+                      value={avatarPersonIdOverrideInput}
+                      onChange={(e) =>
+                        setAvatarPersonIdOverrideInput(e.currentTarget.value)
+                      }
+                      placeholder={`Default: ${c.person_id}`}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const overrideIdRaw = avatarPersonIdOverrideInput.trim();
+                        const avatarPersonId =
+                          overrideIdRaw === "" ? null : Number(overrideIdRaw);
+                        if (
+                          avatarPersonId !== null &&
+                          (!Number.isInteger(avatarPersonId) || avatarPersonId <= 0)
+                        ) {
+                          notify({
+                            id: "admin.nominees.contributor.display.validation.error",
+                            severity: "error",
+                            trigger_type: "user_action",
+                            scope: "local",
+                            durability: "ephemeral",
+                            requires_decision: false,
+                            title: "Invalid photo source",
+                            message: "Photo source person id must be a positive integer."
+                          });
+                          return;
+                        }
+                        void onUpdateContributorDisplay(nominationId, cid, {
+                          display_name_override: displayNameOverrideInput.trim(),
+                          display_role_override: displayRoleOverrideInput.trim(),
+                          avatar_person_id_override: avatarPersonId
+                        });
+                        setDisplayEditorOpenId(null);
+                        setDisplayNameOverrideInput("");
+                        setDisplayRoleOverrideInput("");
+                        setAvatarPersonIdOverrideInput("");
+                      }}
+                    >
+                      Save display settings
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      onClick={() => {
+                        setDisplayEditorOpenId(null);
+                        setDisplayNameOverrideInput("");
+                        setDisplayRoleOverrideInput("");
+                        setAvatarPersonIdOverrideInput("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </Group>
+                ) : null}
+              </Box>
+            );
+          })}
         </Stack>
       )}
-
-      {displayEditorOpenId ? (
-        <Group mt="xs" align="flex-end" wrap="wrap">
-          <TextInput
-            label="Display name override"
-            value={displayNameOverrideInput}
-            onChange={(e) => setDisplayNameOverrideInput(e.currentTarget.value)}
-            placeholder={activeDisplayContributor?.full_name ?? "Tom Hulce"}
-          />
-          <TextInput
-            label="Display role override"
-            value={displayRoleOverrideInput}
-            onChange={(e) => setDisplayRoleOverrideInput(e.currentTarget.value)}
-            placeholder={
-              activeDisplayContributor?.role_label ?? "as Wolfgang Amadeus Mozart"
-            }
-          />
-          <TextInput
-            label="Photo source person id"
-            value={avatarPersonIdOverrideInput}
-            onChange={(e) => setAvatarPersonIdOverrideInput(e.currentTarget.value)}
-            placeholder={
-              activeDisplayContributor
-                ? `Default: ${activeDisplayContributor.person_id}`
-                : "Default: contributor person id"
-            }
-          />
-          <Button
-            type="button"
-            onClick={() => {
-              const overrideIdRaw = avatarPersonIdOverrideInput.trim();
-              const avatarPersonId = overrideIdRaw === "" ? null : Number(overrideIdRaw);
-              if (
-                avatarPersonId !== null &&
-                (!Number.isInteger(avatarPersonId) || avatarPersonId <= 0)
-              ) {
-                notify({
-                  id: "admin.nominees.contributor.display.validation.error",
-                  severity: "error",
-                  trigger_type: "user_action",
-                  scope: "local",
-                  durability: "ephemeral",
-                  requires_decision: false,
-                  title: "Invalid photo source",
-                  message: "Photo source person id must be a positive integer."
-                });
-                return;
-              }
-              void onUpdateContributorDisplay(nominationId, displayEditorOpenId, {
-                display_name_override: displayNameOverrideInput.trim() || null,
-                display_role_override: displayRoleOverrideInput.trim() || null,
-                avatar_person_id_override: avatarPersonId
-              });
-              setDisplayEditorOpenId(null);
-              setDisplayNameOverrideInput("");
-              setDisplayRoleOverrideInput("");
-              setAvatarPersonIdOverrideInput("");
-            }}
-          >
-            Save display settings
-          </Button>
-          <Button
-            type="button"
-            variant="subtle"
-            onClick={() => {
-              setDisplayEditorOpenId(null);
-              setDisplayNameOverrideInput("");
-              setDisplayRoleOverrideInput("");
-              setAvatarPersonIdOverrideInput("");
-            }}
-          >
-            Cancel
-          </Button>
-        </Group>
-      ) : null}
 
       {personLinkOpenId ? (
         <Group mt="xs" align="flex-end" wrap="wrap">
