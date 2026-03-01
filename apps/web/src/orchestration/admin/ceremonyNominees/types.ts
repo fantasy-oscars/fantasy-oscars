@@ -20,6 +20,9 @@ export type NominationContributorRow = {
   full_name: string;
   tmdb_id?: number | null;
   role_label: string | null;
+  display_name_override?: string | null;
+  display_role_override?: string | null;
+  avatar_person_id_override?: number | null;
   sort_order: number;
 };
 

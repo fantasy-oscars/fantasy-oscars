@@ -1,6 +1,6 @@
 import { Box, Group, Stack, Text } from "@ui";
 import { PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminCeremonyNomineesOrchestration } from "@/orchestration/adminCeremoniesNominees";
 import { FormStatus } from "@/shared/forms";
 import { notify } from "@/notifications";
@@ -54,7 +54,8 @@ export function AdminCeremoniesNomineesScreen(props: {
     linkFilmTmdb,
     linkPersonTmdb,
     addNominationContributor,
-    removeNominationContributor
+    removeNominationContributor,
+    updateNominationContributorDisplay
   } = o.actions;
 
   useEffect(() => {
@@ -74,10 +75,18 @@ export function AdminCeremoniesNomineesScreen(props: {
       })),
     [creditOptions]
   );
+  const contributorInstanceIdRef = useRef(1);
   const addSelectedContributor = (contributor: SelectedContributor) => {
-    setSelectedContributors((prev) =>
-      prev.some((c) => c.key === contributor.key) ? prev : [...prev, contributor]
-    );
+    const instanceId = contributorInstanceIdRef.current;
+    contributorInstanceIdRef.current += 1;
+    setSelectedContributors((prev) => [
+      ...prev,
+      {
+        ...contributor,
+        // Keep source identity (name/tmdb) but make each attachment distinct.
+        key: `${contributor.key}#${instanceId}`
+      }
+    ]);
     setPendingContributorInput("");
   };
   const removeSelectedContributor = (key: string) => {
@@ -242,6 +251,28 @@ export function AdminCeremoniesNomineesScreen(props: {
                 durability: "ephemeral",
                 requires_decision: false,
                 message: "Contributor removed"
+              });
+            }
+          }}
+          onUpdateContributorDisplay={async (
+            nominationId,
+            nominationContributorId,
+            input
+          ) => {
+            const ok = await updateNominationContributorDisplay(
+              nominationId,
+              nominationContributorId,
+              input
+            );
+            if (ok) {
+              notify({
+                id: "admin.nominees.contributor.display.update.success",
+                severity: "success",
+                trigger_type: "user_action",
+                scope: "local",
+                durability: "ephemeral",
+                requires_decision: false,
+                message: "Contributor display updated"
               });
             }
           }}

@@ -16,6 +16,9 @@ export function NominationEditModal(props: {
       full_name: string;
       tmdb_id?: number | null;
       role_label: string | null;
+      display_name_override?: string | null;
+      display_role_override?: string | null;
+      avatar_person_id_override?: number | null;
       sort_order: number;
     }>;
   };
@@ -63,6 +66,15 @@ export function NominationEditModal(props: {
     nominationId: number,
     nominationContributorId: number
   ) => Promise<void>;
+  onUpdateContributorDisplay: (
+    nominationId: number,
+    nominationContributorId: number,
+    input: {
+      display_name_override?: string | null;
+      display_role_override?: string | null;
+      avatar_person_id_override?: number | null;
+    }
+  ) => Promise<void>;
   getFilmCredits: (filmId: number) => Promise<unknown | null>;
 }) {
   const {
@@ -76,6 +88,7 @@ export function NominationEditModal(props: {
     onLinkPerson,
     onAddContributor,
     onRemoveContributor,
+    onUpdateContributorDisplay,
     getFilmCredits
   } = props;
 
@@ -144,6 +157,7 @@ export function NominationEditModal(props: {
           onLinkPerson={onLinkPerson}
           onAddContributor={onAddContributor}
           onRemoveContributor={onRemoveContributor}
+          onUpdateContributorDisplay={onUpdateContributorDisplay}
         />
       </Stack>
     </Modal>
