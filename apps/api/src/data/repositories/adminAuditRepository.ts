@@ -1,5 +1,5 @@
-import type { Pool } from "pg";
 import { log } from "../../logger.js";
+import type { DbClient } from "../db.js";
 
 type AuditInput = {
   actor_user_id: number;
@@ -9,7 +9,7 @@ type AuditInput = {
   meta?: Record<string, unknown> | null;
 };
 
-export async function insertAdminAudit(pool: Pool, input: AuditInput) {
+export async function insertAdminAudit(client: DbClient, input: AuditInput) {
   const {
     actor_user_id,
     action,
@@ -18,7 +18,7 @@ export async function insertAdminAudit(pool: Pool, input: AuditInput) {
     meta = null
   } = input;
   try {
-    await pool.query(
+    await client.query(
       `INSERT INTO admin_audit_log (actor_user_id, action, target_type, target_id, meta)
        VALUES ($1, $2, $3, $4, $5)`,
       [actor_user_id, action, target_type, target_id, meta]
