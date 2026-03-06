@@ -378,6 +378,84 @@ export async function insertLeagueMember(
   return member;
 }
 
+export async function insertSeasonMember(
+  pool: Pool,
+  overrides: {
+    season_id: number;
+    user_id: number;
+    league_member_id: number;
+    role?: "OWNER" | "MEMBER";
+  }
+) {
+  const role = overrides.role ?? "MEMBER";
+  await pool.query(
+    `INSERT INTO season_member (season_id, user_id, league_member_id, role)
+     VALUES ($1, $2, $3, $4)`,
+    [overrides.season_id, overrides.user_id, overrides.league_member_id, role]
+  );
+  return { season_id: overrides.season_id, user_id: overrides.user_id, role };
+}
+
+export async function insertSeasonInvite(
+  pool: Pool,
+  overrides: {
+    season_id: number;
+    created_by_user_id: number;
+    intended_user_id?: number | null;
+    token_hash?: string | null;
+    kind?: "USER_TARGETED" | "PLACEHOLDER";
+    status?: "PENDING" | "CLAIMED" | "REVOKED" | "DECLINED";
+    label?: string | null;
+  }
+) {
+  const kind =
+    overrides.kind ?? (overrides.intended_user_id ? "USER_TARGETED" : "PLACEHOLDER");
+  const status = overrides.status ?? "PENDING";
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO season_invite
+       (season_id, intended_user_id, token_hash, kind, status, label, created_by_user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id::int`,
+    [
+      overrides.season_id,
+      overrides.intended_user_id ?? null,
+      overrides.token_hash ?? null,
+      kind,
+      status,
+      overrides.label ?? null,
+      overrides.created_by_user_id
+    ]
+  );
+  return { id: rows[0].id, season_id: overrides.season_id, status };
+}
+
+export async function insertDraftPlan(
+  pool: Pool,
+  overrides: { user_id: number; ceremony_id: number; name?: string }
+) {
+  const name = overrides.name ?? `Plan ${Date.now()}`;
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO draft_plan (user_id, ceremony_id, name, name_normalized)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id::int`,
+    [overrides.user_id, overrides.ceremony_id, name, name.toLowerCase()]
+  );
+  return { id: rows[0].id, user_id: overrides.user_id };
+}
+
+export async function insertDraftAutodraft(
+  pool: Pool,
+  overrides: { draft_id: number; user_id: number; enabled?: boolean }
+) {
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO draft_autodraft (draft_id, user_id, enabled, strategy)
+     VALUES ($1, $2, $3, 'RANDOM')
+     RETURNING id::int`,
+    [overrides.draft_id, overrides.user_id, overrides.enabled ?? false]
+  );
+  return { id: rows[0].id, draft_id: overrides.draft_id, user_id: overrides.user_id };
+}
+
 export async function insertDraft(
   pool: Pool,
   overrides: Partial<ReturnType<typeof buildDraft>> = {}
