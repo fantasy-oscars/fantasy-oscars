@@ -13,6 +13,7 @@ import {
 import type { SeasonInvite, SeasonMember } from "@/lib/types";
 import { UserSearchCombobox } from "@/shared/comboboxes/UserSearchCombobox";
 import { CommissionerPill } from "@/shared/pills";
+import { useConfirm } from "@/notifications/confirm";
 
 function IconBtn(props: {
   label: string;
@@ -97,6 +98,8 @@ export function SeasonParticipantsModal(props: {
     onRevokeInvite,
     onRegenerateInvite
   } = props;
+
+  const { confirm } = useConfirm();
 
   const visibleInvites = invites.filter(
     (invite) => invite.status !== "CLAIMED" && invite.status !== "DECLINED"
@@ -192,7 +195,16 @@ export function SeasonParticipantsModal(props: {
                       label="Leave season"
                       icon="exit_to_app"
                       variant="danger"
-                      onClick={() => void onLeaveSeason()}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Leave season",
+                          message:
+                            "Are you sure you want to leave this season? You will need a new invite to rejoin.",
+                          confirmLabel: "Leave season",
+                          danger: true
+                        });
+                        if (ok) await onLeaveSeason();
+                      }}
                       disabled={working || locked}
                     />
                   ) : null}

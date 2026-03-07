@@ -242,7 +242,7 @@ describe("<App /> shell + routing", () => {
       if (url.includes("/seasons/invites/42/accept")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ invite: { season_id: 99 } })
+          json: () => Promise.resolve({ invite: {} })
         });
       }
       if (url.includes("/seasons/invites/inbox")) {
@@ -377,7 +377,7 @@ describe("<App /> shell + routing", () => {
     renderApp();
     await screen.findByRole("heading", { name: /Claim invitation/i });
     await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
-    await screen.findByRole("heading", { name: /Invites/i });
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) =>

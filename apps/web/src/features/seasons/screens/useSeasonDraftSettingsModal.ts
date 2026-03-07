@@ -68,7 +68,12 @@ export function useSeasonDraftSettingsModal(args: {
       if (draft.allocationStrategy !== draftDefaults.allocation) {
         await updateAllocation(draft.allocationStrategy);
       }
-      await updateTimerWith(nextTimerSeconds);
+      const currentTimerSeconds = draftDefaults.timerEnabled
+        ? draftDefaults.pickTimerSeconds
+        : null;
+      if (nextTimerSeconds !== currentTimerSeconds) {
+        await updateTimerWith(nextTimerSeconds);
+      }
 
       setSettingsOpen(false);
       setSettingsDraft(null);
