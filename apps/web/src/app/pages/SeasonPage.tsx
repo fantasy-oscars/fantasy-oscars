@@ -44,24 +44,29 @@ function ResolvedSeasonPage(props: {
     );
   }, [navigate, preferCanonicalUrl, s.leagueContext?.league, s.leagueContext?.season]);
 
+  function navigateAfterLeave() {
+    if (s.leagueContext?.league?.id) {
+      navigate(
+        leaguePath({
+          leagueId: s.leagueContext.league.id,
+          leagueName: s.leagueContext.league.name
+        }),
+        { replace: true }
+      );
+    } else {
+      navigate("/seasons", { replace: true });
+    }
+  }
+
   return (
     <SeasonScreen
       seasonIdLabel={seasonIdLabel}
       leagueIdForBackLink={s.leagueContext?.league?.id ?? null}
       view={s}
+      onLeaveSeason={navigateAfterLeave}
       onDeleteSeason={async () => {
         await s.cancelSeason();
-        if (s.leagueContext?.league?.id) {
-          navigate(
-            leaguePath({
-              leagueId: s.leagueContext.league.id,
-              leagueName: s.leagueContext.league.name
-            }),
-            { replace: true }
-          );
-        } else {
-          navigate("/seasons", { replace: true });
-        }
+        navigateAfterLeave();
       }}
     />
   );

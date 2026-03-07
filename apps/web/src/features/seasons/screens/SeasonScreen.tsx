@@ -72,8 +72,9 @@ export function SeasonScreen(props: {
   leagueIdForBackLink?: number | null;
   view: ReturnType<typeof import("@/orchestration/seasons").useSeasonOrchestration>;
   onDeleteSeason: () => void | Promise<void>;
+  onLeaveSeason: () => void | Promise<void>;
 }) {
-  const { seasonIdLabel, view: s, onDeleteSeason } = props;
+  const { seasonIdLabel, view: s, onDeleteSeason, onLeaveSeason } = props;
 
   const [invitesOpen, setInvitesOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -199,7 +200,10 @@ export function SeasonScreen(props: {
               members={s.members}
               canLeave={canLeaveSeason}
               working={Boolean(s.working)}
-              onLeaveSeason={() => void s.leaveSeason()}
+              onLeaveSeason={async () => {
+                await s.leaveSeason();
+                await onLeaveSeason();
+              }}
             />
 
             {/* Column 3: Draft room */}
@@ -239,7 +243,10 @@ export function SeasonScreen(props: {
             members={s.members}
             onRemoveMember={(id) => void s.removeMember(id)}
             onTransferOwnership={(id) => void s.transferSeasonOwnership(id)}
-            onLeaveSeason={() => void s.leaveSeason()}
+            onLeaveSeason={async () => {
+              await s.leaveSeason();
+              await onLeaveSeason();
+            }}
             userInviteQuery={s.userInviteQuery}
             userInviteSearching={Boolean(s.userInviteSearching)}
             userInviteMatches={s.userInviteMatches.map((u) => ({

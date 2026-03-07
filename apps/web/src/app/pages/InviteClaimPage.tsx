@@ -40,7 +40,8 @@ export function InviteClaimPage() {
         ? "You already belong to this season. Invite link cleared."
         : "Invite accepted"
     });
-    navigate("/invites", { replace: true, state: { inviteClaimed: true } });
+    const destination = res.seasonId ? `/seasons/${res.seasonId}` : "/invites";
+    navigate(destination, { replace: true });
   }
 
   async function onDeclineInvite() {
