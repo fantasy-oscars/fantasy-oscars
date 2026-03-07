@@ -1,14 +1,56 @@
-import { Box, Button, Group, Modal, Stack, Text, TextInput } from "@ui";
-import type { SeasonInvite } from "@/lib/types";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip
+} from "@ui";
+import type { SeasonInvite, SeasonMember } from "@/lib/types";
 import { UserSearchCombobox } from "@/shared/comboboxes/UserSearchCombobox";
+import { CommissionerPill } from "@/shared/pills";
 
-export function SeasonInvitesModal(props: {
+function IconBtn(props: {
+  label: string;
+  icon: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: "ghost" | "danger";
+}) {
+  return (
+    <Tooltip label={props.label} withArrow>
+      <ActionIcon
+        variant={props.variant ?? "ghost"}
+        size="sm"
+        onClick={props.onClick}
+        disabled={props.disabled}
+        aria-label={props.label}
+      >
+        <Text component="span" className="gicon" aria-hidden="true">
+          {props.icon}
+        </Text>
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
+export function SeasonParticipantsModal(props: {
   opened: boolean;
   onClose: () => void;
 
   canEdit: boolean;
   working: boolean;
   locked: boolean;
+
+  currentUserId: number;
+  members: SeasonMember[];
+  onRemoveMember: (userId: number) => void | Promise<void>;
+  onTransferOwnership: (userId: number) => void | Promise<void>;
+  onLeaveSeason: () => void | Promise<void>;
 
   userInviteQuery: string;
   userInviteSearching: boolean;
@@ -34,6 +76,11 @@ export function SeasonInvitesModal(props: {
     canEdit,
     working,
     locked,
+    currentUserId,
+    members,
+    onRemoveMember,
+    onTransferOwnership,
+    onLeaveSeason,
     userInviteQuery,
     userInviteSearching,
     userInviteMatches,
@@ -50,60 +97,112 @@ export function SeasonInvitesModal(props: {
     onRevokeInvite,
     onRegenerateInvite
   } = props;
+
   const visibleInvites = invites.filter(
     (invite) => invite.status !== "CLAIMED" && invite.status !== "DECLINED"
   );
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Manage invites" centered>
+    <Modal opened={opened} onClose={onClose} title="Manage participants" centered>
       <Stack gap="md">
-        <Group className="inline-form" wrap="wrap" align="flex-end">
-          <UserSearchCombobox
-            label="Username"
-            value={userInviteQuery}
-            disabled={!canEdit || working || locked}
-            searching={Boolean(userInviteSearching)}
-            options={userInviteMatches}
-            onChange={onChangeUserInviteQuery}
-            onPick={onPickUserInvitee}
-          />
-          <Stack gap="xs">
-            <Button
-              type="button"
-              onClick={() => void onCreateUserInvite()}
-              disabled={!canEdit || working || locked}
-            >
-              Create invite
-            </Button>
-            {availableLeagueMemberCount > 0 ? (
+        {canEdit ? (
+          <>
+            <Group className="inline-form" wrap="wrap" align="flex-end">
+              <UserSearchCombobox
+                label="Username"
+                value={userInviteQuery}
+                disabled={working || locked}
+                searching={Boolean(userInviteSearching)}
+                options={userInviteMatches}
+                onChange={onChangeUserInviteQuery}
+                onPick={onPickUserInvitee}
+              />
+              <Stack gap="xs">
+                <Button
+                  type="button"
+                  onClick={() => void onCreateUserInvite()}
+                  disabled={working || locked}
+                >
+                  Create invite
+                </Button>
+                {availableLeagueMemberCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    onClick={() => void onInviteAllLeagueMembers()}
+                    disabled={working || locked}
+                  >
+                    Invite all league members
+                  </Button>
+                ) : null}
+              </Stack>
+            </Group>
+
+            <Group className="inline-form" wrap="wrap" align="flex-end">
+              <TextInput
+                label="Placeholder invite label"
+                name="label"
+                value={placeholderLabel}
+                onChange={(e) => onChangePlaceholderLabel(e.currentTarget.value)}
+                disabled={working || locked}
+              />
               <Button
                 type="button"
-                variant="subtle"
-                onClick={() => void onInviteAllLeagueMembers()}
-                disabled={!canEdit || working || locked}
+                onClick={() => void onCreatePlaceholderInvite()}
+                disabled={working || locked}
               >
-                Invite all league members
+                Generate link
               </Button>
-            ) : null}
-          </Stack>
-        </Group>
+            </Group>
+          </>
+        ) : null}
 
-        <Group className="inline-form" wrap="wrap" align="flex-end">
-          <TextInput
-            label="Placeholder invite label"
-            name="label"
-            value={placeholderLabel}
-            onChange={(e) => onChangePlaceholderLabel(e.currentTarget.value)}
-            disabled={!canEdit || working || locked}
-          />
-          <Button
-            type="button"
-            onClick={() => void onCreatePlaceholderInvite()}
-            disabled={!canEdit || working || locked}
-          >
-            Generate link
-          </Button>
-        </Group>
+        <Divider label="Participants" labelPosition="left" />
+
+        {members.length === 0 ? (
+          <Text className="muted">No participants.</Text>
+        ) : (
+          <Stack className="list" gap="sm">
+            {members.map((m) => (
+              <Box key={m.id} className="list-row">
+                <Group gap="xs" align="center" wrap="nowrap">
+                  <Text size="sm">{m.username ?? `User ${m.user_id}`}</Text>
+                  {m.role === "OWNER" ? <CommissionerPill /> : null}
+                </Group>
+                <Group gap="xs" align="center" wrap="nowrap">
+                  {canEdit && m.role !== "OWNER" ? (
+                    <IconBtn
+                      label="Make commissioner"
+                      icon="workspace_premium"
+                      onClick={() => void onTransferOwnership(m.user_id)}
+                      disabled={working}
+                    />
+                  ) : null}
+                  {canEdit && m.role !== "OWNER" && m.user_id !== currentUserId ? (
+                    <IconBtn
+                      label="Remove"
+                      icon="person_remove"
+                      variant="danger"
+                      onClick={() => void onRemoveMember(m.user_id)}
+                      disabled={working}
+                    />
+                  ) : null}
+                  {m.user_id === currentUserId && m.role !== "OWNER" ? (
+                    <IconBtn
+                      label="Leave season"
+                      icon="exit_to_app"
+                      variant="danger"
+                      onClick={() => void onLeaveSeason()}
+                      disabled={working || locked}
+                    />
+                  ) : null}
+                </Group>
+              </Box>
+            ))}
+          </Stack>
+        )}
+
+        <Divider label="Invites" labelPosition="left" />
 
         {visibleInvites.length === 0 ? (
           <Text className="muted">No pending invites.</Text>
@@ -115,33 +214,30 @@ export function SeasonInvitesModal(props: {
                 className={["list-row", "season-invite-row"].join(" ")}
               >
                 <Text className="season-invite-name">{invite.label ?? "No label"}</Text>
-
-                <Group className="season-invite-actions" wrap="wrap">
-                  <Button
-                    type="button"
+                <Group className="season-invite-actions" gap="xs" wrap="nowrap">
+                  <IconBtn
+                    label="Copy link"
+                    icon="content_copy"
                     onClick={() => onCopyLink(invite.id)}
                     disabled={working}
-                  >
-                    Copy link
-                  </Button>
-                  {invite.status !== "REVOKED" ? (
-                    <Button
-                      type="button"
-                      variant="subtle"
+                  />
+                  {canEdit ? (
+                    <IconBtn
+                      label="Regenerate link"
+                      icon="autorenew"
+                      onClick={() => void onRegenerateInvite(invite.id)}
+                      disabled={working}
+                    />
+                  ) : null}
+                  {canEdit && invite.status !== "REVOKED" ? (
+                    <IconBtn
+                      label="Revoke"
+                      icon="block"
+                      variant="danger"
                       onClick={() => void onRevokeInvite(invite.id)}
                       disabled={working}
-                    >
-                      Revoke
-                    </Button>
+                    />
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={() => void onRegenerateInvite(invite.id)}
-                    disabled={working}
-                  >
-                    Regenerate
-                  </Button>
                 </Group>
               </Box>
             ))}

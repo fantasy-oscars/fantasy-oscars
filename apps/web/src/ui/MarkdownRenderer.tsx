@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { CodeBlock } from "./CodeBlock";
 
 type Props = {
-  markdown: string;
+  markdown: string | null | undefined;
 };
 
 function applyTypographyReplacementsToText(value: string): string {
@@ -296,7 +296,7 @@ function parseMarkdown(markdown: string): ParsedMarkdown {
 }
 
 export function MarkdownRenderer(props: Props) {
-  const { tree, definitions } = parseMarkdown(props.markdown);
+  const { tree, definitions } = parseMarkdown(props.markdown ?? "");
 
   return (
     <Stack gap="var(--fo-space-0)">

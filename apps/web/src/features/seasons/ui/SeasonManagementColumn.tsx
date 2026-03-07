@@ -28,9 +28,9 @@ export function SeasonManagementColumn(props: {
           variant="outline"
           onClick={onOpenInvites}
           disabled={isLocked}
-          title={isLocked ? "Invites are locked once drafting starts" : undefined}
+          title={isLocked ? "Participants are locked once drafting starts" : undefined}
         >
-          Manage invites
+          Manage participants
         </Button>
         <Button
           variant="outline"
