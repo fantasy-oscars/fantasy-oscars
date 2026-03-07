@@ -14,7 +14,7 @@ export function DeleteAccountModal(props: {
       title="Delete your account?"
       summary="This permanently removes your account. Any completed draft history will be preserved anonymously — your picks stay on the record, but your name won't be attached to them. Like a winner who asked not to be named."
       consequences={[]}
-      confirmPhrase="and the winner is"
+      confirmPhrase="I am Alan Smithee"
       confirmLabel="Delete my account"
       loading={props.working}
       error={props.error}
