@@ -43,7 +43,8 @@ export function SeasonParticipantsColumn(props: {
             onClick={async () => {
               const ok = await confirm({
                 title: "Leave season",
-                message: "Are you sure you want to leave this season? You will need a new invite to rejoin.",
+                message:
+                  "Are you sure you want to leave this season? You will need a new invite to rejoin.",
                 confirmLabel: "Leave season",
                 danger: true
               });
