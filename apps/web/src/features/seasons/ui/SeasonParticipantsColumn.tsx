@@ -1,5 +1,6 @@
-import { Box, Divider, Group, Stack, Text, Title } from "@ui";
+import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { CommissionerPill } from "@/shared/pills";
+import { useConfirm } from "@/notifications/confirm";
 
 export function SeasonParticipantsColumn(props: {
   members: Array<{
@@ -8,8 +9,12 @@ export function SeasonParticipantsColumn(props: {
     username?: string | null;
     role: string;
   }>;
+  canLeave?: boolean;
+  working?: boolean;
+  onLeaveSeason?: () => void | Promise<void>;
 }) {
-  const { members } = props;
+  const { members, canLeave, working, onLeaveSeason } = props;
+  const { confirm } = useConfirm();
   return (
     <Stack gap="sm">
       <Title order={3}>Participants</Title>
@@ -28,6 +33,28 @@ export function SeasonParticipantsColumn(props: {
           ))}
         </Stack>
       )}
+      {canLeave ? (
+        <>
+          <Divider />
+          <Button
+            color="red"
+            variant="outline"
+            disabled={Boolean(working)}
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Leave season",
+                message:
+                  "Are you sure you want to leave this season? You will need a new invite to rejoin.",
+                confirmLabel: "Leave season",
+                danger: true
+              });
+              if (ok) await onLeaveSeason?.();
+            }}
+          >
+            Leave season
+          </Button>
+        </>
+      ) : null}
     </Stack>
   );
 }

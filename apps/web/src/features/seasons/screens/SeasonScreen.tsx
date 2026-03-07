@@ -11,7 +11,7 @@ import {
   computeSeasonLocked,
   computeSeasonProgression
 } from "@/decisions/season";
-import { SeasonInvitesModal } from "@/features/seasons/ui/modals/SeasonInvitesModal";
+import { SeasonParticipantsModal } from "@/features/seasons/ui/modals/SeasonInvitesModal";
 import { SeasonDraftSettingsModal } from "@/features/seasons/ui/modals/SeasonDraftSettingsModal";
 import { SeasonCategoryWeightsModal } from "@/features/seasons/ui/modals/SeasonCategoryWeightsModal";
 import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModal";
@@ -96,6 +96,14 @@ export function SeasonScreen(props: {
     [s.draftStatus, s.isArchived]
   );
   const isDeleteLocked = s.draftStatus === "COMPLETED";
+
+  const myMembership = s.members.find((m) => m.user_id === s.userId);
+  const canLeaveSeason =
+    !s.canEdit &&
+    !s.isArchived &&
+    !isLocked &&
+    myMembership != null &&
+    myMembership.role !== "OWNER";
 
   const draftRoomCtaLabel = useMemo(
     () =>
@@ -187,7 +195,12 @@ export function SeasonScreen(props: {
             />
 
             {/* Column 2: Participants */}
-            <SeasonParticipantsColumn members={s.members} />
+            <SeasonParticipantsColumn
+              members={s.members}
+              canLeave={canLeaveSeason}
+              working={Boolean(s.working)}
+              onLeaveSeason={() => void s.leaveSeason()}
+            />
 
             {/* Column 3: Draft room */}
             <SeasonDraftRoomColumn
@@ -216,12 +229,17 @@ export function SeasonScreen(props: {
           ) : null}
 
           {/* Modals */}
-          <SeasonInvitesModal
+          <SeasonParticipantsModal
             opened={invitesOpen}
             onClose={() => setInvitesOpen(false)}
             canEdit={Boolean(s.canEdit)}
             working={Boolean(s.working)}
             locked={Boolean(isLocked)}
+            currentUserId={s.userId}
+            members={s.members}
+            onRemoveMember={(id) => void s.removeMember(id)}
+            onTransferOwnership={(id) => void s.transferSeasonOwnership(id)}
+            onLeaveSeason={() => void s.leaveSeason()}
             userInviteQuery={s.userInviteQuery}
             userInviteSearching={Boolean(s.userInviteSearching)}
             userInviteMatches={s.userInviteMatches.map((u) => ({

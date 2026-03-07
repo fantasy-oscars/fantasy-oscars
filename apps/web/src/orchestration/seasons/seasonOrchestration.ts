@@ -202,6 +202,34 @@ export function useSeasonOrchestration(
     });
   }
 
+  async function leaveSeason() {
+    setWorking(true);
+    const res = await fetchJson(`/seasons/${seasonId}/leave`, { method: "POST" });
+    setWorking(false);
+    if (!res.ok) {
+      notify({
+        id: "season.members.leave.error",
+        severity: "error",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: res.error ?? "Leave failed"
+      });
+      return;
+    }
+    setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    notify({
+      id: "season.members.leave.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "You have left the season"
+    });
+  }
+
   async function removeMember(userIdToRemove: number) {
     if (!Number.isFinite(userIdToRemove) || userIdToRemove <= 0) return;
     setWorking(true);
@@ -741,6 +769,7 @@ export function useSeasonOrchestration(
     setPlaceholderLabel,
     labelDrafts,
     setLabelDrafts,
+    userId,
     isCommissioner,
     isArchived,
     canEdit,
@@ -757,6 +786,7 @@ export function useSeasonOrchestration(
     draftStatus,
     integrityWarningActive,
     addMember,
+    leaveSeason,
     removeMember,
     updateScoring,
     updateAllocation,
