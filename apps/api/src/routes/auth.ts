@@ -2,6 +2,7 @@ import express from "express";
 import type { Router } from "express";
 import type { DbClient } from "../data/db.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
+import { registerAuthDeleteMeRoute } from "./auth/deleteMe.js";
 import { registerAuthLoginRoute } from "./auth/login.js";
 import type { AuthCookieConfig } from "./auth/logout.js";
 import { registerAuthLogoutRoute } from "./auth/logout.js";
@@ -37,6 +38,7 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
 
   registerAuthMeRoute({ router, client, authSecret });
   registerAuthLogoutRoute({ router, cookieConfig });
+  registerAuthDeleteMeRoute({ router, client, authSecret, cookieConfig });
   registerAuthRegisterRoute({ router, client, authLimiter });
   registerAuthLoginRoute({
     router,

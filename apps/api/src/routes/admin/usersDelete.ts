@@ -81,7 +81,7 @@ async function computeUserDeletePreview(
     `SELECT COUNT(DISTINCT d.id)::int AS n
      FROM draft d
      JOIN season_member sm ON sm.season_id = d.season_id AND sm.user_id = $1
-     WHERE d.status IN ('PENDING', 'IN_PROGRESS', 'PAUSED')`,
+     WHERE d.status IN ('IN_PROGRESS', 'PAUSED')`,
     [userId]
   );
 
@@ -185,9 +185,12 @@ export function registerAdminUsersDeleteRoute({
           const preview = await computeUserDeletePreview(tx, id);
 
           // --- Abort active drafts ---
-          // Drafts that are IN_PROGRESS, PAUSED, or PENDING for any season this
-          // user is a member of are cancelled. Connected clients are notified after
-          // the transaction commits (see emitDraftEvent calls below).
+          // Only IN_PROGRESS and PAUSED drafts are cancelled. PENDING drafts
+          // (pre-draft seasons that haven't started yet) are left intact so that
+          // the remaining participants can still run their draft. If a PENDING-draft
+          // season collapses to zero members further below, the orphaned-season step
+          // will cancel the season; the draft then becomes unreachable but is left
+          // as-is rather than adding a second UPDATE.
           //
           // Completed drafts are intentionally preserved. Their league_member and
           // draft_pick rows are retained further below to keep game history valid.
@@ -199,7 +202,7 @@ export function registerAdminUsersDeleteRoute({
             `SELECT DISTINCT d.id::int
              FROM draft d
              JOIN season_member sm ON sm.season_id = d.season_id AND sm.user_id = $1
-             WHERE d.status IN ('PENDING', 'IN_PROGRESS', 'PAUSED')`,
+             WHERE d.status IN ('IN_PROGRESS', 'PAUSED')`,
             [id]
           );
 
