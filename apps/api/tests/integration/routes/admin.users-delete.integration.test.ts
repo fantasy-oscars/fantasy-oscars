@@ -646,6 +646,91 @@ describe("admin users delete route", () => {
     expect(rows[0]?.status).toBe("CANCELLED");
   });
 
+  it("does not cancel a PENDING draft when a user is removed from a multi-member pre-draft season", async () => {
+    const { token } = await makeAdmin();
+
+    const target = await insertUser(db.pool, {
+      id: 17_101,
+      username: "predraft-member",
+      email: "pdm@example.com"
+    });
+    const other = await insertUser(db.pool, {
+      id: 17_102,
+      username: "predraft-other",
+      email: "pdo@example.com"
+    });
+
+    const ceremony = await insertCeremony(db.pool, { id: 27_101, code: "pd-cer" });
+    const league = await insertLeague(db.pool, {
+      id: 37_101,
+      ceremony_id: ceremony.id,
+      created_by_user_id: target.id
+    });
+    const targetMember = await insertLeagueMember(db.pool, {
+      id: 47_101,
+      league_id: league.id,
+      user_id: target.id,
+      role: "OWNER"
+    });
+    const otherMember = await insertLeagueMember(db.pool, {
+      id: 47_102,
+      league_id: league.id,
+      user_id: other.id,
+      role: "MEMBER"
+    });
+    const season = await insertSeason(db.pool, {
+      id: 57_101,
+      league_id: league.id,
+      ceremony_id: ceremony.id,
+      status: "EXTANT"
+    });
+    await insertSeasonMember(db.pool, {
+      season_id: season.id,
+      user_id: target.id,
+      league_member_id: targetMember.id,
+      role: "OWNER"
+    });
+    await insertSeasonMember(db.pool, {
+      season_id: season.id,
+      user_id: other.id,
+      league_member_id: otherMember.id,
+      role: "MEMBER"
+    });
+    const draft = await insertDraft(db.pool, {
+      id: 67_101,
+      league_id: league.id,
+      season_id: season.id,
+      status: "PENDING"
+    });
+
+    const res = await api
+      .delete(`/admin/users/${target.id}`)
+      .set({ Authorization: `Bearer ${token}` });
+    expect(res.status).toBe(204);
+
+    // Draft must remain PENDING — deleting one member from a pre-draft season
+    // should not cancel the draft for the remaining participants.
+    const { rows: draftRows } = await db.pool.query(
+      `SELECT status FROM draft WHERE id = $1`,
+      [draft.id]
+    );
+    expect(draftRows[0]?.status).toBe("PENDING");
+
+    // Season must remain EXTANT — other member is still present.
+    const { rows: seasonRows } = await db.pool.query(
+      `SELECT status FROM season WHERE id = $1`,
+      [season.id]
+    );
+    expect(seasonRows[0]?.status).toBe("EXTANT");
+
+    // Deleted user's membership must be gone.
+    const { rows: memberRows } = await db.pool.query(
+      `SELECT 1 FROM season_member WHERE season_id = $1 AND user_id = $2`,
+      [season.id, target.id]
+    );
+    expect(memberRows).toHaveLength(0);
+  });
+
   // ─── season_invite cleanup ─────────────────────────────────────────────────
 
   it("revokes pending USER_TARGETED invites addressed to the deleted user", async () => {
