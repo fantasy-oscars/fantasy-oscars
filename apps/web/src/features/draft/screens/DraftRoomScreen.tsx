@@ -49,6 +49,8 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
   const isPreview = props.o.myRoster.pickDisabledReason === "Preview mode";
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [cursorSpyUserEnabled, setCursorSpyUserEnabled] = useState(true);
   const draftStatus = props.o.header.status ?? null;
   const isPre = draftStatus === "PENDING";
   const isPaused = draftStatus === "PAUSED";
@@ -70,14 +72,14 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   );
   const selfUserId = Number(user?.sub);
   const remoteCursors = useMemo(() => {
-    if (!props.o.cursorSpy.enabled) return [];
+    if (!cursorSpyUserEnabled || !props.o.cursorSpy.enabled) return [];
     return props.o.cursorSpy.cursors
       .filter((cursor) => cursor.userId !== selfUserId)
       .map((cursor) => ({
         ...cursor,
         avatarKey: cursor.avatarKey ?? pickDeterministicAvatarKey(cursor.label)
       }));
-  }, [props.o.cursorSpy.cursors, props.o.cursorSpy.enabled, selfUserId]);
+  }, [cursorSpyUserEnabled, props.o.cursorSpy.cursors, props.o.cursorSpy.enabled, selfUserId]);
 
   const avatarKeyBySeat = useMemo(() => {
     const m = new Map<number, string | null>();
@@ -111,11 +113,11 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       return;
     }
     const prev = prevIsMyTurnRef.current;
-    if (audioUnlocked && prev !== null && !prev && isMyTurn) {
+    if (soundEnabled && audioUnlocked && prev !== null && !prev && isMyTurn) {
       playTurnStartChime(audioControllerRef.current);
     }
     prevIsMyTurnRef.current = isMyTurn;
-  }, [audioControllerRef, audioUnlocked, draftStatus, isMyTurn, isPreview]);
+  }, [audioControllerRef, audioUnlocked, draftStatus, isMyTurn, isPreview, soundEnabled]);
 
   // Draft actions are available during live drafts when it's "my turn".
   // Note: `myRoster.canPick` is selection-dependent; we want click-to-confirm
@@ -136,7 +138,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
 
   const onDraftPointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (isMobile || !props.o.cursorSpy.enabled) return;
+      if (isMobile || !cursorSpyUserEnabled || !props.o.cursorSpy.enabled) return;
       const frame = frameRef.current;
       if (!frame) return;
       const rect = frame.getBoundingClientRect();
@@ -152,7 +154,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         cursorEmitRafRef.current = window.requestAnimationFrame(flushCursorEmit);
       }
     },
-    [flushCursorEmit, isMobile, props.o.cursorSpy.enabled]
+    [cursorSpyUserEnabled, flushCursorEmit, isMobile, props.o.cursorSpy.enabled]
   );
 
   useEffect(() => {
@@ -219,22 +221,25 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     () => mapDraftScreenCategories(props.o.pool.categories),
     [props.o.pool.categories]
   );
+  const isUndraftedOnly = props.o.header.poolMode === "UNDRAFTED_ONLY";
   const categories = useMemo(
     () =>
       categoriesRaw.map((c) => ({
         ...c,
         weightText: typeof c.weight === "number" ? formatSignedInt(c.weight) : null,
-        nominees: c.nominees.map((n) => {
-          const draftedMeta = draftedMetaByNominationId.get(Number(n.id));
-          return {
-            ...n,
-            draftedByLabel: draftedMeta?.draftedByLabel ?? null,
-            draftedByAvatarKey: draftedMeta?.draftedByAvatarKey ?? null,
-            draftedRoundPick: draftedMeta?.draftedRoundPick ?? null
-          };
-        })
+        nominees: c.nominees
+          .filter((n) => !isUndraftedOnly || !n.muted)
+          .map((n) => {
+            const draftedMeta = draftedMetaByNominationId.get(Number(n.id));
+            return {
+              ...n,
+              draftedByLabel: draftedMeta?.draftedByLabel ?? null,
+              draftedByAvatarKey: draftedMeta?.draftedByAvatarKey ?? null,
+              draftedRoundPick: draftedMeta?.draftedRoundPick ?? null
+            };
+          })
       })),
-    [categoriesRaw, draftedMetaByNominationId]
+    [categoriesRaw, draftedMetaByNominationId, isUndraftedOnly]
   );
   const nomineeById = useMemo(() => {
     const base = buildNomineeMetaById(categoriesRaw);
@@ -361,7 +366,12 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         onResumeDraft={props.o.header.onResumeDraft}
         audioController={audioControllerRef.current}
         audioUnlocked={audioUnlocked}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => setSoundEnabled((v) => !v)}
         isMyTurn={isMyTurn}
+        showCursorSpyToggle={!isCompleted && !isPre}
+        cursorSpyUserEnabled={cursorSpyUserEnabled}
+        onToggleCursorSpy={() => setCursorSpyUserEnabled((v) => !v)}
         userLabel={previewUser.label}
         userAvatarKey={previewUser.avatarKey}
         onParticipantHoverSeat={setHoveredSeatNumber}

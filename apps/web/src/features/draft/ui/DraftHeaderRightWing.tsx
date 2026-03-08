@@ -25,6 +25,11 @@ export function DraftHeaderRightWing(props: {
   showDraftedVisible: boolean;
   themeIcon: string;
   onToggleTheme: () => void;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+  showCursorSpyToggle: boolean;
+  cursorSpyUserEnabled: boolean;
+  onToggleCursorSpy: () => void;
   onStartDraft: () => void;
   onPauseDraft: () => void;
   onResumeDraft: () => void;
@@ -114,6 +119,30 @@ export function DraftHeaderRightWing(props: {
               <Menu.Item
                 leftSection={
                   <Text component="span" className="gicon" aria-hidden="true">
+                    {props.soundEnabled ? "volume_up" : "volume_off"}
+                  </Text>
+                }
+                onClick={props.onToggleSound}
+              >
+                {props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
+              </Menu.Item>
+
+              {props.showCursorSpyToggle ? (
+                <Menu.Item
+                  leftSection={
+                    <Text component="span" className="gicon" aria-hidden="true">
+                      {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
+                    </Text>
+                  }
+                  onClick={props.onToggleCursorSpy}
+                >
+                  {props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+                </Menu.Item>
+              ) : null}
+
+              <Menu.Item
+                leftSection={
+                  <Text component="span" className="gicon" aria-hidden="true">
                     {props.themeIcon}
                   </Text>
                 }
@@ -154,6 +183,28 @@ export function DraftHeaderRightWing(props: {
         </Group>
       ) : (
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={props.onToggleSound}
+            aria-label={props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"}
+          >
+            <Text component="span" className="gicon" aria-hidden="true">
+              {props.soundEnabled ? "volume_up" : "volume_off"}
+            </Text>
+          </Button>
+          {props.showCursorSpyToggle ? (
+            <Button
+              type="button"
+              variant="subtle"
+              onClick={props.onToggleCursorSpy}
+              aria-label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+            >
+              <Text component="span" className="gicon" aria-hidden="true">
+                {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
+              </Text>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="subtle"

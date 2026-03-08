@@ -30,6 +30,7 @@ export function DraftHeaderMeasureRow(props: {
   showDraftedVisible: boolean;
   showDrafted: boolean;
   themeIcon: string;
+  showCursorSpyToggle: boolean;
   userLabel: string;
   userAvatarKey: string | null;
 }) {
@@ -100,6 +101,18 @@ export function DraftHeaderMeasureRow(props: {
         ) : null}
 
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
+          <Button type="button" variant="subtle" aria-hidden="true">
+            <Text component="span" className="gicon" aria-hidden="true">
+              volume_up
+            </Text>
+          </Button>
+          {props.showCursorSpyToggle ? (
+            <Button type="button" variant="subtle" aria-hidden="true">
+              <Text component="span" className="gicon" aria-hidden="true">
+                visibility
+              </Text>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="subtle"
