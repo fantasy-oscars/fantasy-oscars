@@ -30,6 +30,7 @@ export function DraftHeaderMeasureRow(props: {
   showDraftedVisible: boolean;
   showDrafted: boolean;
   themeIcon: string;
+  showCursorSpyToggle: boolean;
   userLabel: string;
   userAvatarKey: string | null;
 }) {
@@ -71,7 +72,7 @@ export function DraftHeaderMeasureRow(props: {
         {props.showDraftControls ? (
           <Box className="drh-controls">
             <Box className="drh-controlsGrid">
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+              <Box className="drh-controlRow">
                 <Text className="drh-label">View</Text>
                 <SegmentedControl
                   size="xs"
@@ -83,9 +84,14 @@ export function DraftHeaderMeasureRow(props: {
                   ]}
                   disabled={!props.canToggleView}
                 />
-              </Group>
+              </Box>
+              <Button type="button" variant="subtle" aria-hidden="true">
+                <Text component="span" className="gicon" aria-hidden="true">
+                  volume_up
+                </Text>
+              </Button>
 
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
+              <Box className="drh-controlRow">
                 <Text className="drh-label">Show drafted</Text>
                 <Box className="drh-toggleSlot">
                   {props.showDraftedVisible ? (
@@ -94,7 +100,16 @@ export function DraftHeaderMeasureRow(props: {
                     <Box className="drh-togglePlaceholder" aria-hidden="true" />
                   )}
                 </Box>
-              </Group>
+              </Box>
+              {props.showCursorSpyToggle ? (
+                <Button type="button" variant="subtle" aria-hidden="true">
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    visibility
+                  </Text>
+                </Button>
+              ) : (
+                <Box />
+              )}
             </Box>
           </Box>
         ) : null}

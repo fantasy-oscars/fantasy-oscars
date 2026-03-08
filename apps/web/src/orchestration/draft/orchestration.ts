@@ -229,6 +229,7 @@ export type DraftRoomOrchestration = {
 export function useDraftRoomOrchestration(args: {
   initialDraftId?: string | number;
   disabled?: boolean;
+  disableCursorSpy?: boolean;
 }): DraftRoomOrchestration {
   const { initialDraftId, disabled } = args;
 
@@ -585,7 +586,8 @@ export function useDraftRoomOrchestration(args: {
   }, [loadSnapshot, snapshot]);
 
   const draftStatus = snapshot?.draft.status ?? null;
-  const cursorSpyEnabled = draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED";
+  const cursorSpyEnabled =
+    !args.disableCursorSpy && (draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED");
 
   const upsertRemoteCursor = useCallback(
     (cursor: { userId: number; x: number; y: number; ts: number }) => {
@@ -765,8 +767,7 @@ export function useDraftRoomOrchestration(args: {
     return categories.map((c) => {
       const rows = nominationsByCategoryId.get(c.id) ?? [];
       const active = rows.filter((n) => n.status === "ACTIVE");
-      const filtered =
-        poolMode === "UNDRAFTED_ONLY" ? active.filter((n) => !drafted.has(n.id)) : active;
+      const filtered = active;
       const icon = iconByCategoryId.get(c.id) ?? "";
       const nominations = filtered.map((n) => {
         const isDrafted = drafted.has(n.id);
@@ -822,7 +823,7 @@ export function useDraftRoomOrchestration(args: {
           performerProfilePath:
             (n as { performer_profile_path?: string | null }).performer_profile_path ??
             null,
-          muted: poolMode === "ALL_MUTED" && isDrafted,
+          muted: isDrafted,
           selected: selectedNominationId === n.id,
           winner: winnerSet.has(n.id)
         };

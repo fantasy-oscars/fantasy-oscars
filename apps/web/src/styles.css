@@ -1011,10 +1011,20 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .drh-controlsGrid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto auto;
   align-items: center;
-  gap: var(--fo-space-dense-1);
+  justify-items: center;
+  column-gap: var(--mantine-spacing-sm);
+  row-gap: var(--fo-space-dense-1);
+}
+
+.drh-controlRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  justify-self: stretch;
 }
 
 .drh-label {
@@ -1029,11 +1039,6 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   width: var(--fo-db-mobileRailBtn-width);
   display: flex;
   justify-content: flex-end;
-}
-
-.drh-controlRow {
-  width: 100%;
-  justify-content: center;
 }
 
 .drh-togglePlaceholder {

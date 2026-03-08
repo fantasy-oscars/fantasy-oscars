@@ -50,7 +50,12 @@ export function DraftBoardHeader(props: {
   onResumeDraft: () => void;
   audioController: ReturnType<typeof createDraftAudioController>;
   audioUnlocked: boolean;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
   isMyTurn: boolean;
+  showCursorSpyToggle: boolean;
+  cursorSpyUserEnabled: boolean;
+  onToggleCursorSpy: () => void;
   userLabel: string;
   userAvatarKey: string | null;
   onParticipantHoverSeat: (seatNumber: number | null) => void;
@@ -208,8 +213,10 @@ export function DraftBoardHeader(props: {
   }, [props.audioController]);
 
   useEffect(() => {
-    canBeepRef.current = Boolean(props.audioUnlocked && props.isMyTurn);
-  }, [props.audioUnlocked, props.isMyTurn]);
+    canBeepRef.current = Boolean(
+      props.soundEnabled && props.audioUnlocked && props.isMyTurn
+    );
+  }, [props.audioUnlocked, props.isMyTurn, props.soundEnabled]);
 
   useEffect(() => {
     if (!countdownActive) {
@@ -380,6 +387,11 @@ export function DraftBoardHeader(props: {
               onStartDraft={props.onStartDraft}
               onPauseDraft={props.onPauseDraft}
               onResumeDraft={props.onResumeDraft}
+              soundEnabled={props.soundEnabled}
+              onToggleSound={props.onToggleSound}
+              showCursorSpyToggle={props.showCursorSpyToggle}
+              cursorSpyUserEnabled={props.cursorSpyUserEnabled}
+              onToggleCursorSpy={props.onToggleCursorSpy}
               userLabel={props.userLabel}
               userAvatarKey={props.userAvatarKey}
             />
@@ -483,6 +495,7 @@ export function DraftBoardHeader(props: {
           showDraftedVisible={props.showDraftedVisible}
           showDrafted={props.showDrafted}
           themeIcon={props.themeIcon}
+          showCursorSpyToggle={props.showCursorSpyToggle}
           userLabel={props.userLabel}
           userAvatarKey={props.userAvatarKey}
         />
