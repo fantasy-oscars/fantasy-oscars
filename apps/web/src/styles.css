@@ -1027,7 +1027,8 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--fo-space-dense-1);
+  justify-content: space-around;
+  align-self: stretch;
 }
 
 .drh-label {
