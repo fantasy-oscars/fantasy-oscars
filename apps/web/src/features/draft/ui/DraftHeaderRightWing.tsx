@@ -69,68 +69,66 @@ export function DraftHeaderRightWing(props: {
       {!compactHeader && props.showDraftControls ? (
         <Box className="drh-controls">
           <Box className="drh-controlsGrid">
-            <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-              <Text className="drh-label">View</Text>
-              <SegmentedControl
-                size="xs"
-                value={props.view}
-                onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-                data={[
-                  { value: "draft", label: "Draft" },
-                  { value: "roster", label: "Roster" }
-                ]}
-                disabled={!props.canToggleView}
-              />
+            <Text className="drh-label">View</Text>
+            <SegmentedControl
+              size="xs"
+              value={props.view}
+              onChange={(v) => props.onViewChange(v as "draft" | "roster")}
+              data={[
+                { value: "draft", label: "Draft" },
+                { value: "roster", label: "Roster" }
+              ]}
+              disabled={!props.canToggleView}
+            />
+            <Tooltip
+              label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
+              position="bottom"
+              withArrow
+            >
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={props.onToggleSound}
+                aria-label={props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"}
+              >
+                <Text component="span" className="gicon" aria-hidden="true">
+                  {props.soundEnabled ? "volume_up" : "volume_off"}
+                </Text>
+              </Button>
+            </Tooltip>
+
+            <Text className="drh-label">Show drafted</Text>
+            <Box className="drh-toggleSlot">
+              {props.showDraftedVisible ? (
+                <Switch
+                  size="sm"
+                  checked={props.showDrafted}
+                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                />
+              ) : (
+                <Box className="drh-togglePlaceholder" aria-hidden="true" />
+              )}
+            </Box>
+            {props.showCursorSpyToggle ? (
               <Tooltip
-                label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
+                label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
                 position="bottom"
                 withArrow
               >
                 <Button
                   type="button"
                   variant="subtle"
-                  onClick={props.onToggleSound}
-                  aria-label={props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"}
+                  onClick={props.onToggleCursorSpy}
+                  aria-label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
                 >
                   <Text component="span" className="gicon" aria-hidden="true">
-                    {props.soundEnabled ? "volume_up" : "volume_off"}
+                    {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
                   </Text>
                 </Button>
               </Tooltip>
-            </Group>
-
-            <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-              <Text className="drh-label">Show drafted</Text>
-              <Box className="drh-toggleSlot">
-                {props.showDraftedVisible ? (
-                  <Switch
-                    size="sm"
-                    checked={props.showDrafted}
-                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                  />
-                ) : (
-                  <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                )}
-              </Box>
-              {props.showCursorSpyToggle ? (
-                <Tooltip
-                  label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
-                  position="bottom"
-                  withArrow
-                >
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    onClick={props.onToggleCursorSpy}
-                    aria-label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
-                  >
-                    <Text component="span" className="gicon" aria-hidden="true">
-                      {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
-                    </Text>
-                  </Button>
-                </Tooltip>
-              ) : null}
-            </Group>
+            ) : (
+              <Box />
+            )}
           </Box>
         </Box>
       ) : null}

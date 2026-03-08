@@ -1011,10 +1011,11 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .drh-controlsGrid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto auto auto;
   align-items: center;
-  gap: var(--fo-space-dense-1);
+  column-gap: var(--mantine-spacing-sm);
+  row-gap: var(--fo-space-dense-1);
 }
 
 .drh-label {
@@ -1031,10 +1032,6 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   justify-content: flex-end;
 }
 
-.drh-controlRow {
-  width: 100%;
-  justify-content: center;
-}
 
 .drh-togglePlaceholder {
   height: calc(var(--fo-space-8) + var(--fo-space-dense-2) + var(--fo-space-4));

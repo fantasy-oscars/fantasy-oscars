@@ -72,42 +72,40 @@ export function DraftHeaderMeasureRow(props: {
         {props.showDraftControls ? (
           <Box className="drh-controls">
             <Box className="drh-controlsGrid">
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                <Text className="drh-label">View</Text>
-                <SegmentedControl
-                  size="xs"
-                  value={props.view}
-                  onChange={() => {}}
-                  data={[
-                    { value: "draft", label: "Draft" },
-                    { value: "roster", label: "Roster" }
-                  ]}
-                  disabled={!props.canToggleView}
-                />
+              <Text className="drh-label">View</Text>
+              <SegmentedControl
+                size="xs"
+                value={props.view}
+                onChange={() => {}}
+                data={[
+                  { value: "draft", label: "Draft" },
+                  { value: "roster", label: "Roster" }
+                ]}
+                disabled={!props.canToggleView}
+              />
+              <Button type="button" variant="subtle" aria-hidden="true">
+                <Text component="span" className="gicon" aria-hidden="true">
+                  volume_up
+                </Text>
+              </Button>
+
+              <Text className="drh-label">Show drafted</Text>
+              <Box className="drh-toggleSlot">
+                {props.showDraftedVisible ? (
+                  <Switch size="sm" checked={props.showDrafted} onChange={() => {}} />
+                ) : (
+                  <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                )}
+              </Box>
+              {props.showCursorSpyToggle ? (
                 <Button type="button" variant="subtle" aria-hidden="true">
                   <Text component="span" className="gicon" aria-hidden="true">
-                    volume_up
+                    visibility
                   </Text>
                 </Button>
-              </Group>
-
-              <Group className="drh-controlRow" gap="sm" wrap="nowrap">
-                <Text className="drh-label">Show drafted</Text>
-                <Box className="drh-toggleSlot">
-                  {props.showDraftedVisible ? (
-                    <Switch size="sm" checked={props.showDrafted} onChange={() => {}} />
-                  ) : (
-                    <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                  )}
-                </Box>
-                {props.showCursorSpyToggle ? (
-                  <Button type="button" variant="subtle" aria-hidden="true">
-                    <Text component="span" className="gicon" aria-hidden="true">
-                      visibility
-                    </Text>
-                  </Button>
-                ) : null}
-              </Group>
+              ) : (
+                <Box />
+              )}
             </Box>
           </Box>
         ) : null}
