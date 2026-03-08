@@ -97,22 +97,25 @@ export function DraftHeaderMeasureRow(props: {
                 </Box>
               </Group>
             </Box>
+
+            <Box className="drh-controlsIcons">
+              <Button type="button" variant="subtle" aria-hidden="true">
+                <Text component="span" className="gicon" aria-hidden="true">
+                  volume_up
+                </Text>
+              </Button>
+              {props.showCursorSpyToggle ? (
+                <Button type="button" variant="subtle" aria-hidden="true">
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    visibility
+                  </Text>
+                </Button>
+              ) : null}
+            </Box>
           </Box>
         ) : null}
 
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-          <Button type="button" variant="subtle" aria-hidden="true">
-            <Text component="span" className="gicon" aria-hidden="true">
-              volume_up
-            </Text>
-          </Button>
-          {props.showCursorSpyToggle ? (
-            <Button type="button" variant="subtle" aria-hidden="true">
-              <Text component="span" className="gicon" aria-hidden="true">
-                visibility
-              </Text>
-            </Button>
-          ) : null}
           <Button
             type="button"
             variant="subtle"
