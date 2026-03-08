@@ -72,30 +72,34 @@ export function DraftHeaderMeasureRow(props: {
         {props.showDraftControls ? (
           <Box className="drh-controls">
             <Box className="drh-controlsGrid">
-              <Text className="drh-label">View</Text>
-              <SegmentedControl
-                size="xs"
-                value={props.view}
-                onChange={() => {}}
-                data={[
-                  { value: "draft", label: "Draft" },
-                  { value: "roster", label: "Roster" }
-                ]}
-                disabled={!props.canToggleView}
-              />
+              <Box className="drh-controlRow">
+                <Text className="drh-label">View</Text>
+                <SegmentedControl
+                  size="xs"
+                  value={props.view}
+                  onChange={() => {}}
+                  data={[
+                    { value: "draft", label: "Draft" },
+                    { value: "roster", label: "Roster" }
+                  ]}
+                  disabled={!props.canToggleView}
+                />
+              </Box>
               <Button type="button" variant="subtle" aria-hidden="true">
                 <Text component="span" className="gicon" aria-hidden="true">
                   volume_up
                 </Text>
               </Button>
 
-              <Text className="drh-label">Show drafted</Text>
-              <Box className="drh-toggleSlot">
-                {props.showDraftedVisible ? (
-                  <Switch size="sm" checked={props.showDrafted} onChange={() => {}} />
-                ) : (
-                  <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                )}
+              <Box className="drh-controlRow">
+                <Text className="drh-label">Show drafted</Text>
+                <Box className="drh-toggleSlot">
+                  {props.showDraftedVisible ? (
+                    <Switch size="sm" checked={props.showDrafted} onChange={() => {}} />
+                  ) : (
+                    <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                  )}
+                </Box>
               </Box>
               {props.showCursorSpyToggle ? (
                 <Button type="button" variant="subtle" aria-hidden="true">

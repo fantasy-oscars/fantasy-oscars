@@ -69,17 +69,19 @@ export function DraftHeaderRightWing(props: {
       {!compactHeader && props.showDraftControls ? (
         <Box className="drh-controls">
           <Box className="drh-controlsGrid">
-            <Text className="drh-label">View</Text>
-            <SegmentedControl
-              size="xs"
-              value={props.view}
-              onChange={(v) => props.onViewChange(v as "draft" | "roster")}
-              data={[
-                { value: "draft", label: "Draft" },
-                { value: "roster", label: "Roster" }
-              ]}
-              disabled={!props.canToggleView}
-            />
+            <Box className="drh-controlRow">
+              <Text className="drh-label">View</Text>
+              <SegmentedControl
+                size="xs"
+                value={props.view}
+                onChange={(v) => props.onViewChange(v as "draft" | "roster")}
+                data={[
+                  { value: "draft", label: "Draft" },
+                  { value: "roster", label: "Roster" }
+                ]}
+                disabled={!props.canToggleView}
+              />
+            </Box>
             <Tooltip
               label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
               position="bottom"
@@ -97,17 +99,19 @@ export function DraftHeaderRightWing(props: {
               </Button>
             </Tooltip>
 
-            <Text className="drh-label">Show drafted</Text>
-            <Box className="drh-toggleSlot">
-              {props.showDraftedVisible ? (
-                <Switch
-                  size="sm"
-                  checked={props.showDrafted}
-                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                />
-              ) : (
-                <Box className="drh-togglePlaceholder" aria-hidden="true" />
-              )}
+            <Box className="drh-controlRow">
+              <Text className="drh-label">Show drafted</Text>
+              <Box className="drh-toggleSlot">
+                {props.showDraftedVisible ? (
+                  <Switch
+                    size="sm"
+                    checked={props.showDrafted}
+                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                  />
+                ) : (
+                  <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                )}
+              </Box>
             </Box>
             {props.showCursorSpyToggle ? (
               <Tooltip
