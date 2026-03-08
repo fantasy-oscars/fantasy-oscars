@@ -1010,25 +1010,11 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   gap: var(--fo-db-headerRight-gap);
 }
 
-.drh-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--fo-space-xs);
-}
-
 .drh-controlsGrid {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--fo-space-dense-1);
-}
-
-.drh-controlsIcons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-around;
-  align-self: stretch;
 }
 
 .drh-label {

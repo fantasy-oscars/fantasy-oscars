@@ -84,6 +84,11 @@ export function DraftHeaderMeasureRow(props: {
                   ]}
                   disabled={!props.canToggleView}
                 />
+                <Button type="button" variant="subtle" aria-hidden="true">
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    volume_up
+                  </Text>
+                </Button>
               </Group>
 
               <Group className="drh-controlRow" gap="sm" wrap="nowrap">
@@ -95,22 +100,14 @@ export function DraftHeaderMeasureRow(props: {
                     <Box className="drh-togglePlaceholder" aria-hidden="true" />
                   )}
                 </Box>
+                {props.showCursorSpyToggle ? (
+                  <Button type="button" variant="subtle" aria-hidden="true">
+                    <Text component="span" className="gicon" aria-hidden="true">
+                      visibility
+                    </Text>
+                  </Button>
+                ) : null}
               </Group>
-            </Box>
-
-            <Box className="drh-controlsIcons">
-              <Button type="button" variant="subtle" aria-hidden="true">
-                <Text component="span" className="gicon" aria-hidden="true">
-                  volume_up
-                </Text>
-              </Button>
-              {props.showCursorSpyToggle ? (
-                <Button type="button" variant="subtle" aria-hidden="true">
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    visibility
-                  </Text>
-                </Button>
-              ) : null}
             </Box>
           </Box>
         ) : null}

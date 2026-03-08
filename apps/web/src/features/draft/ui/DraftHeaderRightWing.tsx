@@ -81,6 +81,22 @@ export function DraftHeaderRightWing(props: {
                 ]}
                 disabled={!props.canToggleView}
               />
+              <Tooltip
+                label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
+                position="bottom"
+                withArrow
+              >
+                <Button
+                  type="button"
+                  variant="subtle"
+                  onClick={props.onToggleSound}
+                  aria-label={props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"}
+                >
+                  <Text component="span" className="gicon" aria-hidden="true">
+                    {props.soundEnabled ? "volume_up" : "volume_off"}
+                  </Text>
+                </Button>
+              </Tooltip>
             </Group>
 
             <Group className="drh-controlRow" gap="sm" wrap="nowrap">
@@ -96,44 +112,25 @@ export function DraftHeaderRightWing(props: {
                   <Box className="drh-togglePlaceholder" aria-hidden="true" />
                 )}
               </Box>
-            </Group>
-          </Box>
-
-          <Box className="drh-controlsIcons">
-            <Tooltip
-              label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
-              position="bottom"
-              withArrow
-            >
-              <Button
-                type="button"
-                variant="subtle"
-                onClick={props.onToggleSound}
-                aria-label={props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"}
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.soundEnabled ? "volume_up" : "volume_off"}
-                </Text>
-              </Button>
-            </Tooltip>
-            {props.showCursorSpyToggle ? (
-              <Tooltip
-                label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
-                position="bottom"
-                withArrow
-              >
-                <Button
-                  type="button"
-                  variant="subtle"
-                  onClick={props.onToggleCursorSpy}
-                  aria-label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+              {props.showCursorSpyToggle ? (
+                <Tooltip
+                  label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+                  position="bottom"
+                  withArrow
                 >
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
-                  </Text>
-                </Button>
-              </Tooltip>
-            ) : null}
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    onClick={props.onToggleCursorSpy}
+                    aria-label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+                  >
+                    <Text component="span" className="gicon" aria-hidden="true">
+                      {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
+                    </Text>
+                  </Button>
+                </Tooltip>
+              ) : null}
+            </Group>
           </Box>
         </Box>
       ) : null}
