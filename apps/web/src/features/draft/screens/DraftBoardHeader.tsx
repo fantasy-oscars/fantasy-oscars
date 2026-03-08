@@ -213,7 +213,9 @@ export function DraftBoardHeader(props: {
   }, [props.audioController]);
 
   useEffect(() => {
-    canBeepRef.current = Boolean(props.soundEnabled && props.audioUnlocked && props.isMyTurn);
+    canBeepRef.current = Boolean(
+      props.soundEnabled && props.audioUnlocked && props.isMyTurn
+    );
   }, [props.audioUnlocked, props.isMyTurn, props.soundEnabled]);
 
   useEffect(() => {

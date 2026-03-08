@@ -587,8 +587,7 @@ export function useDraftRoomOrchestration(args: {
 
   const draftStatus = snapshot?.draft.status ?? null;
   const cursorSpyEnabled =
-    !args.disableCursorSpy &&
-    (draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED");
+    !args.disableCursorSpy && (draftStatus === "IN_PROGRESS" || draftStatus === "PAUSED");
 
   const upsertRemoteCursor = useCallback(
     (cursor: { userId: number; x: number; y: number; ts: number }) => {

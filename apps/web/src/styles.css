@@ -1041,7 +1041,6 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   justify-content: flex-end;
 }
 
-
 .drh-togglePlaceholder {
   height: calc(var(--fo-space-8) + var(--fo-space-dense-2) + var(--fo-space-4));
   opacity: var(--fo-alpha-00);

@@ -79,7 +79,12 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         ...cursor,
         avatarKey: cursor.avatarKey ?? pickDeterministicAvatarKey(cursor.label)
       }));
-  }, [cursorSpyUserEnabled, props.o.cursorSpy.cursors, props.o.cursorSpy.enabled, selfUserId]);
+  }, [
+    cursorSpyUserEnabled,
+    props.o.cursorSpy.cursors,
+    props.o.cursorSpy.enabled,
+    selfUserId
+  ]);
 
   const avatarKeyBySeat = useMemo(() => {
     const m = new Map<number, string | null>();
