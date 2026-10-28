@@ -1,0 +1,16 @@
+{
+  "name": "Fantasy Oscars",
+  "short_name": "Fantasy Oscars",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#d4af37",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
