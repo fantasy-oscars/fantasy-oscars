@@ -47,12 +47,25 @@ export function verifyToken(token: string, secret: string): TokenClaims {
     .createHmac("sha256", secret)
     .update(data)
     .digest("base64url");
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+  const providedSig = Buffer.from(signature);
+  const expectedSigBuf = Buffer.from(expectedSig);
+  // timingSafeEqual throws on length mismatch, so compare lengths first.
+  if (
+    providedSig.length !== expectedSigBuf.length ||
+    !crypto.timingSafeEqual(providedSig, expectedSigBuf)
+  ) {
     throw new AppError("INVALID_TOKEN", 401, "Invalid token");
   }
-  const payload = JSON.parse(
-    parseBase64url(encodedPayload).toString("utf8")
-  ) as TokenClaims;
+  let payload: TokenClaims;
+  try {
+    const parsed: unknown = JSON.parse(parseBase64url(encodedPayload).toString("utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("payload is not an object");
+    }
+    payload = parsed as TokenClaims;
+  } catch {
+    throw new AppError("INVALID_TOKEN", 401, "Invalid token");
+  }
   // Back-compat for older tokens that used `handle` instead of `username`.
   const anyPayload = payload as unknown as { handle?: unknown; username?: unknown };
   if (typeof anyPayload.username !== "string" && typeof anyPayload.handle === "string") {

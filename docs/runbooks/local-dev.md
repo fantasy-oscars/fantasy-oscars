@@ -45,6 +45,7 @@ We use per-app env files for local dev:
   - `AUTH_SECRET`: Secret for signing/verifying auth tokens (any sufficiently random string for local dev).
   - `DATABASE_URL`: Postgres connection string (docker-compose default is `postgres://fantasy:fantasy@localhost:5433/fantasy_oscars`).
   - `CORS_ALLOWED_ORIGINS`: Comma-separated allowlist (include `http://localhost:5173` for Vite).
+  - `TRUST_PROXY`: Optional; number of reverse proxies in front of the API (defaults to `false` locally).
   - `REALTIME_ENABLED`: Optional kill switch for Socket.IO realtime drafting (`true`/`false`, defaults to `true`).
 - Web: `apps/web/.env` (see `apps/web/.env.example`)
   - `VITE_API_BASE`: Base URL for API requests (e.g. `http://localhost:4010`).

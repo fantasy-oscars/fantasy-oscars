@@ -25,13 +25,43 @@ export type ApiConfig = {
   port: number;
   authSecret: string;
   realtimeEnabled: boolean;
+  corsAllowedOrigins: string[];
+  /** Value for Express `trust proxy`: hop count, or boolean. */
+  trustProxy: boolean | number;
 };
+
+const DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173";
+
+function normalizeOrigin(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+export function parseCorsAllowedOrigins(value: string | undefined): string[] {
+  const raw = value === undefined || value.trim() === "" ? DEFAULT_CORS_ORIGINS : value;
+  return raw.split(",").map(normalizeOrigin).filter(Boolean);
+}
+
+export function parseTrustProxy(
+  value: string | undefined,
+  isProduction: boolean
+): boolean | number {
+  if (value === undefined || value.trim() === "") return isProduction ? 1 : false;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  throw new ConfigError(
+    `TRUST_PROXY must be a non-negative integer, true, or false, received: ${value}`
+  );
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = parsePort(requireEnv(env, "PORT"));
   const authSecret = requireEnv(env, "AUTH_SECRET");
   const realtimeEnabled = parseOptionalBool(env.REALTIME_ENABLED, true);
-  return { port, authSecret, realtimeEnabled };
+  const corsAllowedOrigins = parseCorsAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
+  const trustProxy = parseTrustProxy(env.TRUST_PROXY, env.NODE_ENV === "production");
+  return { port, authSecret, realtimeEnabled, corsAllowedOrigins, trustProxy };
 }
 
 function parseOptionalBool(value: string | undefined, fallback: boolean): boolean {

@@ -5,6 +5,7 @@ import { getLeagueMember } from "../data/repositories/leagueRepository.js";
 import { getSeasonMember } from "../data/repositories/seasonMemberRepository.js";
 import type { DbClient } from "../data/db.js";
 import { AppError } from "../errors.js";
+import { createCursorThrottle } from "./cursorThrottle.js";
 
 export const DRAFT_NAMESPACE = "/drafts";
 
@@ -93,7 +94,9 @@ export function registerDraftNamespace(
     socket.join(room);
     socket.emit("joined", { draftId });
 
+    const allowCursor = createCursorThrottle();
     socket.on("draft:cursor", (payload: unknown) => {
+      if (!allowCursor()) return;
       if (!payload || typeof payload !== "object") return;
       const raw = payload as { x?: unknown; y?: unknown };
       const x = Number(raw.x);
