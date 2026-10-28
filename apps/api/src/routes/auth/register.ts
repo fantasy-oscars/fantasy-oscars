@@ -8,8 +8,7 @@ import {
 import type { DbClient } from "../../data/db.js";
 import { AppError, validationError } from "../../errors.js";
 import { hashPassword } from "./password.js";
-import { insertUserWithFallback } from "./users.js";
-import { isMissingColumnError, isNotNullViolation } from "./pgErrors.js";
+import { insertUser } from "./users.js";
 
 export function registerAuthRegisterRoute(args: {
   router: express.Router;
@@ -59,7 +58,7 @@ export function registerAuthRegisterRoute(args: {
         ANIMAL_AVATAR_KEYS[crypto.randomInt(0, ANIMAL_AVATAR_KEYS.length)] ?? "monkey";
 
       try {
-        const { user } = await insertUserWithFallback(client, {
+        const { user } = await insertUser(client, {
           username_display: usernameDisplay,
           email: normalizedEmail,
           avatar_key,
@@ -68,21 +67,6 @@ export function registerAuthRegisterRoute(args: {
         });
         return res.status(201).json({ user });
       } catch (err) {
-        // If prod is on a legacy schema during a deploy, return a clear, directed
-        // message instead of a generic "Unexpected error".
-        if (
-          isMissingColumnError(err, "username") ||
-          isMissingColumnError(err, "handle") ||
-          isMissingColumnError(err, "is_admin") ||
-          isNotNullViolation(err, "display_name")
-        ) {
-          throw new AppError(
-            "SERVICE_UNAVAILABLE",
-            503,
-            "Registration is temporarily unavailable while we update the server. Please try again in a few minutes."
-          );
-        }
-
         const pgErr = err as {
           code?: string;
           table?: string;

@@ -40,40 +40,18 @@ export function requireAuth(secret: string) {
       const userId = sub ? Number(sub) : NaN;
       const db = (req.app as unknown as { locals?: { db?: unknown } })?.locals?.db;
       if (db && Number.isInteger(userId) && userId > 0) {
-        let rows: Array<{ id: number; is_admin: boolean; admin_role?: string | null }> =
-          [];
-        try {
-          const res = await query<{
-            id: number;
-            is_admin: boolean;
-            admin_role: string | null;
-          }>(
-            db as never,
-            `SELECT id::int, is_admin, admin_role
-             FROM app_user
-             WHERE id = $1
-               AND deleted_at IS NULL`,
-            [userId]
-          );
-          rows = res.rows;
-        } catch (err) {
-          const pgErr = err as { code?: string; message?: string };
-          const missingAdminRole =
-            pgErr.code === "42703" &&
-            String(pgErr.message ?? "")
-              .toLowerCase()
-              .includes("admin_role");
-          if (!missingAdminRole) throw err;
-          const res = await query<{ id: number; is_admin: boolean }>(
-            db as never,
-            `SELECT id::int, is_admin
-             FROM app_user
-             WHERE id = $1
-               AND deleted_at IS NULL`,
-            [userId]
-          );
-          rows = res.rows;
-        }
+        const { rows } = await query<{
+          id: number;
+          is_admin: boolean;
+          admin_role: string | null;
+        }>(
+          db as never,
+          `SELECT id::int, is_admin, admin_role
+           FROM app_user
+           WHERE id = $1
+             AND deleted_at IS NULL`,
+          [userId]
+        );
 
         if (!rows[0]) {
           // Clear auth cookie if present; bearer-token callers can ignore.

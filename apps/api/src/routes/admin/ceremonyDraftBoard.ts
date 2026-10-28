@@ -3,7 +3,7 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
-import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
+import { getDraftBoardForCeremony } from "../../services/drafting/draftBoard.js";
 
 export function registerAdminCeremonyDraftBoardRoute(args: {
   router: Router;

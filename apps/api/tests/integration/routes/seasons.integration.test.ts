@@ -157,7 +157,7 @@ describe("seasons integration", () => {
     expect(seasonRes.status).toBe(201);
 
     const cancelRes = await post<{ season: { id: number; status: string } }>(
-      `/seasons/seasons/${seasonRes.json.season.id}/cancel`,
+      `/seasons/${seasonRes.json.season.id}/cancel`,
       {},
       token
     );
@@ -200,7 +200,7 @@ describe("seasons integration", () => {
     expect(draftRes.status).toBe(201);
 
     const updateRes = await post<{ season: { scoring_strategy_name: string } }>(
-      `/seasons/seasons/${seasonId}/scoring`,
+      `/seasons/${seasonId}/scoring`,
       { scoring_strategy_name: "negative" },
       token
     );
@@ -272,7 +272,7 @@ describe("seasons integration", () => {
     );
 
     const updateRes = await post<{ error: { code: string } }>(
-      `/seasons/seasons/${seasonRes.json.season.id}/scoring`,
+      `/seasons/${seasonRes.json.season.id}/scoring`,
       { scoring_strategy_name: "negative" },
       token
     );

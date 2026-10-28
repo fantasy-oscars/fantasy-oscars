@@ -2,7 +2,7 @@ import type express from "express";
 import type { DbClient } from "../../data/db.js";
 import { buildSeasonSettingsScoringHandler } from "./settingsScoringHandler.js";
 
-export function registerSeasonSettingsScoringLegacyRoute(args: {
+export function registerSeasonSettingsScoringRoute(args: {
   router: express.Router;
   client: DbClient;
 }): void {

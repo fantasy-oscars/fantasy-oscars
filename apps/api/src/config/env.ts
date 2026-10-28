@@ -55,6 +55,34 @@ export function parseTrustProxy(
   );
 }
 
+export type PgPoolConfig = {
+  max: number;
+  connectionTimeoutMillis: number;
+  idleTimeoutMillis: number;
+};
+
+function parsePositiveIntEnv(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  fallback: number
+): number {
+  const value = env[key];
+  if (value === undefined || value.trim() === "") return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new ConfigError(`${key} must be a positive integer, received: ${value}`);
+  }
+  return parsed;
+}
+
+export function parsePgPoolConfig(env: NodeJS.ProcessEnv = process.env): PgPoolConfig {
+  return {
+    max: parsePositiveIntEnv(env, "PG_POOL_MAX", 10),
+    connectionTimeoutMillis: parsePositiveIntEnv(env, "PG_CONNECTION_TIMEOUT_MS", 5000),
+    idleTimeoutMillis: parsePositiveIntEnv(env, "PG_IDLE_TIMEOUT_MS", 30000)
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const port = parsePort(requireEnv(env, "PORT"));
   const authSecret = requireEnv(env, "AUTH_SECRET");

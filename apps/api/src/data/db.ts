@@ -1,9 +1,10 @@
+import { parsePgPoolConfig } from "../config/env.js";
 import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 export type DbClient = Pool | PoolClient;
 
-export function createPool(connectionString: string) {
-  return new Pool({ connectionString });
+export function createPool(connectionString: string, poolConfig = parsePgPoolConfig()) {
+  return new Pool({ connectionString, ...poolConfig });
 }
 
 export async function runInTransaction<T>(

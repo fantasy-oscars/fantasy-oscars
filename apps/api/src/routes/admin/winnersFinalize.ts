@@ -65,21 +65,9 @@ export function registerAdminWinnersFinalizeRoute(args: {
             );
           }
 
-          try {
-            await query(tx, `UPDATE ceremony SET status = 'COMPLETE' WHERE id = $1`, [
-              ceremonyId
-            ]);
-          } catch (err) {
-            const code = (err as { code?: string } | null)?.code;
-            if (code === "23514" || code === "42P01") {
-              throw new AppError(
-                "MIGRATION_REQUIRED",
-                409,
-                "Database schema is out of date. Apply migrations and restart the API."
-              );
-            }
-            throw err;
-          }
+          await query(tx, `UPDATE ceremony SET status = 'COMPLETE' WHERE id = $1`, [
+            ceremonyId
+          ]);
           return {
             id: ceremonyId,
             status: "COMPLETE",

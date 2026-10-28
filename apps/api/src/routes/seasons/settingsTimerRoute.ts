@@ -2,7 +2,7 @@ import type express from "express";
 import type { DbClient } from "../../data/db.js";
 import { buildSeasonSettingsTimerHandler } from "./settingsTimerHandler.js";
 
-export function registerSeasonSettingsTimerLegacyRoute(args: {
+export function registerSeasonSettingsTimerRoute(args: {
   router: express.Router;
   client: DbClient;
 }): void {

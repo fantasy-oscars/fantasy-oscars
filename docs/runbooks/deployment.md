@@ -29,6 +29,9 @@ No separate CDN or multi-region topology in MVP; single Render region.
 | `NODE_ENV` | API | Must be `production` in prod | Render API service env |
 | `REALTIME_ENABLED` | API | Optional kill switch for Socket.IO (`true`/`false`, default `true`) | Render API service env |
 | `TRUST_PROXY` | API | Express `trust proxy` setting: hop count, `true`/`false`. Defaults to `1` when `NODE_ENV=production`, otherwise `false`. Must equal the number of proxies in front of the API on any new host; too low makes all users share one rate-limit key, too high lets clients spoof their IP | Render API service env |
+| `PG_POOL_MAX` | API | Max Postgres connections per API instance (positive integer, default `10`). Keep instances x max below the database connection limit | Render API service env |
+| `PG_CONNECTION_TIMEOUT_MS` | API | Milliseconds to wait for a pooled connection before failing (default `5000`) | Render API service env |
+| `PG_IDLE_TIMEOUT_MS` | API | Milliseconds an idle pooled connection is kept before closing (default `30000`) | Render API service env |
 | `PORT` | API | Provided by Render; do not override | Render API service env |
 | `ADMIN_BOOTSTRAP_SECRET` | API | One-time secret to run admin bootstrap script | Render API service env |
 | `VITE_API_BASE` | Web | Points frontend to prod API (`https://fantasy-oscars-api-prod.onrender.com`) | Render web service env |
