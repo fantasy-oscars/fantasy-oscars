@@ -1,5 +1,5 @@
-import { query, type DbClient } from "../data/db.js";
-import { listNominationsForCeremony } from "../data/repositories/nominationRepository.js";
+import { query, type DbClient } from "../../data/db.js";
+import { listNominationsForCeremony } from "../../data/repositories/nominationRepository.js";
 
 export type DraftBoardCategory = {
   id: number;

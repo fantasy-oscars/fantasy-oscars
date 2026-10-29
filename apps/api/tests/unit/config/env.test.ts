@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, loadConfig } from "../../../src/config/env.js";
+import { ConfigError, loadConfig, parsePgPoolConfig } from "../../../src/config/env.js";
 
 function withEnv(env: Record<string, string>, fn: () => void) {
   const prev = { ...process.env };
@@ -85,5 +85,33 @@ describe("TRUST_PROXY and CORS config", () => {
       "http://localhost:5173",
       "http://127.0.0.1:5173"
     ]);
+  });
+});
+
+describe("parsePgPoolConfig", () => {
+  it("uses defaults when unset or blank", () => {
+    const defaults = {
+      max: 10,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000
+    };
+    expect(parsePgPoolConfig({})).toEqual(defaults);
+    expect(parsePgPoolConfig({ PG_POOL_MAX: "  " })).toEqual(defaults);
+  });
+
+  it("reads overrides from the environment", () => {
+    expect(
+      parsePgPoolConfig({
+        PG_POOL_MAX: "25",
+        PG_CONNECTION_TIMEOUT_MS: "1500",
+        PG_IDLE_TIMEOUT_MS: "60000"
+      })
+    ).toEqual({ max: 25, connectionTimeoutMillis: 1500, idleTimeoutMillis: 60000 });
+  });
+
+  it("rejects non-positive or non-integer values", () => {
+    for (const bad of ["0", "-3", "abc", "2.5"]) {
+      expect(() => parsePgPoolConfig({ PG_POOL_MAX: bad })).toThrow(ConfigError);
+    }
   });
 });

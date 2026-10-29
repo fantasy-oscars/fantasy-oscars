@@ -2,7 +2,7 @@ import type express from "express";
 import type { DbClient } from "../../data/db.js";
 import { buildSeasonSettingsCancelHandler } from "./settingsCancelHandler.js";
 
-export function registerSeasonSettingsCancelLegacyRoute(args: {
+export function registerSeasonSettingsCancelRoute(args: {
   router: express.Router;
   client: DbClient;
 }): void {

@@ -1,7 +1,6 @@
 import type { DbClient } from "../db.js";
 import { query, runInTransaction } from "../db.js";
 import type { Pool, PoolClient } from "pg";
-import { AppError } from "../../errors.js";
 
 export type CmsStaticKey =
   | "about"
@@ -41,32 +40,15 @@ export type CmsDynamicContentRow = {
   published_by_user_id: number | null;
 };
 
-function translateCmsDbError(err: unknown): never {
-  const code = (err as { code?: string })?.code;
-  // 42P01 = undefined_table (migration not applied)
-  if (code === "42P01") {
-    throw new AppError(
-      "MIGRATION_REQUIRED",
-      500,
-      "CMS tables are missing in this database. Run migrations for this environment and restart the API."
-    );
-  }
-  throw err as Error;
-}
-
 export async function getStaticContentByKey(client: DbClient, key: string) {
-  try {
-    const { rows } = await query<CmsStaticContentRow>(
-      client,
-      `SELECT key, title, body_markdown, updated_at, updated_by_user_id
-       FROM cms_static_content
-       WHERE key = $1`,
-      [key]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsStaticContentRow>(
+    client,
+    `SELECT key, title, body_markdown, updated_at, updated_by_user_id
+     FROM cms_static_content
+     WHERE key = $1`,
+    [key]
+  );
+  return rows[0] ?? null;
 }
 
 export async function upsertStaticContent(
@@ -79,117 +61,101 @@ export async function upsertStaticContent(
   }
 ) {
   const { key, title, body_markdown, actor_user_id = null } = input;
-  try {
-    const { rows } = await query<CmsStaticContentRow>(
-      client,
-      `INSERT INTO cms_static_content (key, title, body_markdown, updated_by_user_id)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (key)
-       DO UPDATE SET
-         title = EXCLUDED.title,
-         body_markdown = EXCLUDED.body_markdown,
-         updated_at = now(),
-         updated_by_user_id = EXCLUDED.updated_by_user_id
-       RETURNING key, title, body_markdown, updated_at, updated_by_user_id`,
-      [key, title, body_markdown, actor_user_id]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsStaticContentRow>(
+    client,
+    `INSERT INTO cms_static_content (key, title, body_markdown, updated_by_user_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (key)
+     DO UPDATE SET
+       title = EXCLUDED.title,
+       body_markdown = EXCLUDED.body_markdown,
+       updated_at = now(),
+       updated_by_user_id = EXCLUDED.updated_by_user_id
+     RETURNING key, title, body_markdown, updated_at, updated_by_user_id`,
+    [key, title, body_markdown, actor_user_id]
+  );
+  return rows[0] ?? null;
 }
 
 export async function listDynamicContentByKey(client: DbClient, key: string) {
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `SELECT
-         id::int,
-         key,
-         title,
-         body_markdown,
-         status,
-         variant,
-         dismissible,
-         starts_at,
-         ends_at,
-         created_at,
-         updated_at,
-         published_at,
-         created_by_user_id,
-         updated_by_user_id,
-         published_by_user_id
-       FROM cms_dynamic_content
-       WHERE key = $1
-       ORDER BY created_at DESC`,
-      [key]
-    );
-    return rows;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `SELECT
+       id::int,
+       key,
+       title,
+       body_markdown,
+       status,
+       variant,
+       dismissible,
+       starts_at,
+       ends_at,
+       created_at,
+       updated_at,
+       published_at,
+       created_by_user_id,
+       updated_by_user_id,
+       published_by_user_id
+     FROM cms_dynamic_content
+     WHERE key = $1
+     ORDER BY created_at DESC`,
+    [key]
+  );
+  return rows;
 }
 
 export async function getPublishedDynamicContent(client: DbClient, key: string) {
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `SELECT
-         id::int,
-         key,
-         title,
-         body_markdown,
-         status,
-         variant,
-         dismissible,
-         starts_at,
-         ends_at,
-         created_at,
-         updated_at,
-         published_at,
-         created_by_user_id,
-         updated_by_user_id,
-         published_by_user_id
-       FROM cms_dynamic_content
-       WHERE key = $1 AND status = 'PUBLISHED'
-       LIMIT 1`,
-      [key]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `SELECT
+       id::int,
+       key,
+       title,
+       body_markdown,
+       status,
+       variant,
+       dismissible,
+       starts_at,
+       ends_at,
+       created_at,
+       updated_at,
+       published_at,
+       created_by_user_id,
+       updated_by_user_id,
+       published_by_user_id
+     FROM cms_dynamic_content
+     WHERE key = $1 AND status = 'PUBLISHED'
+     LIMIT 1`,
+    [key]
+  );
+  return rows[0] ?? null;
 }
 
 export async function listPublishedDynamicContentByKey(client: DbClient, key: string) {
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `SELECT
-         id::int,
-         key,
-         title,
-         body_markdown,
-         status,
-         variant,
-         dismissible,
-         starts_at,
-         ends_at,
-         created_at,
-         updated_at,
-         published_at,
-         created_by_user_id,
-         updated_by_user_id,
-         published_by_user_id
-       FROM cms_dynamic_content
-       WHERE key = $1 AND status = 'PUBLISHED'
-       ORDER BY published_at DESC NULLS LAST, id DESC`,
-      [key]
-    );
-    return rows;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `SELECT
+       id::int,
+       key,
+       title,
+       body_markdown,
+       status,
+       variant,
+       dismissible,
+       starts_at,
+       ends_at,
+       created_at,
+       updated_at,
+       published_at,
+       created_by_user_id,
+       updated_by_user_id,
+       published_by_user_id
+     FROM cms_dynamic_content
+     WHERE key = $1 AND status = 'PUBLISHED'
+     ORDER BY published_at DESC NULLS LAST, id DESC`,
+    [key]
+  );
+  return rows;
 }
 
 export async function createDynamicDraft(
@@ -215,21 +181,17 @@ export async function createDynamicDraft(
     ends_at = null,
     actor_user_id = null
   } = input;
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `INSERT INTO cms_dynamic_content
-         (key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_by_user_id, updated_by_user_id)
-       VALUES ($1, $2, $3, 'DRAFT', $4, $5, $6, $7, $8, $8)
-       RETURNING
-         id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
-         created_by_user_id, updated_by_user_id, published_by_user_id`,
-      [key, title, body_markdown, variant, dismissible, starts_at, ends_at, actor_user_id]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `INSERT INTO cms_dynamic_content
+       (key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_by_user_id, updated_by_user_id)
+     VALUES ($1, $2, $3, 'DRAFT', $4, $5, $6, $7, $8, $8)
+     RETURNING
+       id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
+       created_by_user_id, updated_by_user_id, published_by_user_id`,
+    [key, title, body_markdown, variant, dismissible, starts_at, ends_at, actor_user_id]
+  );
+  return rows[0] ?? null;
 }
 
 export async function updateDynamicDraft(
@@ -255,37 +217,33 @@ export async function updateDynamicDraft(
     ends_at,
     actor_user_id = null
   } = input;
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `UPDATE cms_dynamic_content
-       SET title = $1,
-           body_markdown = $2,
-           variant = COALESCE($3, variant),
-           dismissible = COALESCE($4, dismissible),
-           starts_at = COALESCE($5, starts_at),
-           ends_at = COALESCE($6, ends_at),
-           updated_at = now(),
-           updated_by_user_id = $7
-       WHERE id = $8
-       RETURNING
-         id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
-         created_by_user_id, updated_by_user_id, published_by_user_id`,
-      [
-        title,
-        body_markdown,
-        variant ?? null,
-        typeof dismissible === "boolean" ? dismissible : null,
-        typeof starts_at === "undefined" ? null : starts_at,
-        typeof ends_at === "undefined" ? null : ends_at,
-        actor_user_id,
-        id
-      ]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `UPDATE cms_dynamic_content
+     SET title = $1,
+         body_markdown = $2,
+         variant = COALESCE($3, variant),
+         dismissible = COALESCE($4, dismissible),
+         starts_at = COALESCE($5, starts_at),
+         ends_at = COALESCE($6, ends_at),
+         updated_at = now(),
+         updated_by_user_id = $7
+     WHERE id = $8
+     RETURNING
+       id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
+       created_by_user_id, updated_by_user_id, published_by_user_id`,
+    [
+      title,
+      body_markdown,
+      variant ?? null,
+      typeof dismissible === "boolean" ? dismissible : null,
+      typeof starts_at === "undefined" ? null : starts_at,
+      typeof ends_at === "undefined" ? null : ends_at,
+      actor_user_id,
+      id
+    ]
+  );
+  return rows[0] ?? null;
 }
 
 export async function publishDynamicContent(
@@ -337,11 +295,7 @@ export async function publishDynamicContent(
   const isPool = (c: DbClient): c is Pool => typeof (c as Pool).connect === "function";
 
   if (isPool(client)) {
-    try {
-      return await runInTransaction<CmsDynamicContentRow | null>(client, runTx);
-    } catch (err) {
-      translateCmsDbError(err);
-    }
+    return await runInTransaction<CmsDynamicContentRow | null>(client, runTx);
   }
 
   // Already inside a transaction-capable client.
@@ -352,7 +306,7 @@ export async function publishDynamicContent(
     return out;
   } catch (err) {
     await query(client, "ROLLBACK");
-    translateCmsDbError(err);
+    throw err;
   }
 }
 
@@ -361,23 +315,19 @@ export async function unpublishDynamicContent(
   input: { key: string; actor_user_id?: number | null }
 ) {
   const { key, actor_user_id = null } = input;
-  try {
-    const { rows } = await query<CmsDynamicContentRow>(
-      client,
-      `UPDATE cms_dynamic_content
-       SET status = 'DRAFT',
-           published_at = NULL,
-           published_by_user_id = NULL,
-           updated_at = now(),
-           updated_by_user_id = $1
-       WHERE key = $2 AND status = 'PUBLISHED'
-       RETURNING
-         id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
-         created_by_user_id, updated_by_user_id, published_by_user_id`,
-      [actor_user_id, key]
-    );
-    return rows[0] ?? null;
-  } catch (err) {
-    translateCmsDbError(err);
-  }
+  const { rows } = await query<CmsDynamicContentRow>(
+    client,
+    `UPDATE cms_dynamic_content
+     SET status = 'DRAFT',
+         published_at = NULL,
+         published_by_user_id = NULL,
+         updated_at = now(),
+         updated_by_user_id = $1
+     WHERE key = $2 AND status = 'PUBLISHED'
+     RETURNING
+       id::int, key, title, body_markdown, status, variant, dismissible, starts_at, ends_at, created_at, updated_at, published_at,
+       created_by_user_id, updated_by_user_id, published_by_user_id`,
+    [actor_user_id, key]
+  );
+  return rows[0] ?? null;
 }

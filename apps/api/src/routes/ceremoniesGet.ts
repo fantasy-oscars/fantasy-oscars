@@ -1,7 +1,7 @@
 import type { Router } from "express";
 import type { DbClient } from "../data/db.js";
 import { query } from "../data/db.js";
-import { getDraftBoardForCeremony } from "../domain/draftBoard.js";
+import { getDraftBoardForCeremony } from "../services/drafting/draftBoard.js";
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import { AppError } from "../errors.js";
 

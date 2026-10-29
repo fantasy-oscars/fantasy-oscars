@@ -17,7 +17,7 @@ import {
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getSeasonMember } from "../../data/repositories/seasonMemberRepository.js";
 import { listWinnersByCeremony } from "../../data/repositories/winnerRepository.js";
-import { getDraftBoardForCeremony } from "../../domain/draftBoard.js";
+import { getDraftBoardForCeremony } from "./draftBoard.js";
 import { computePickAssignment } from "../../domain/draftOrder.js";
 import {
   resolvePicksPerSeat,

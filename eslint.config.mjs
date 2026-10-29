@@ -85,6 +85,44 @@ export default [
     }
   },
   {
+    // API layering: lower layers never import higher ones (docs/architecture/atomization.md).
+    files: ["apps/api/src/services/**/*.ts", "apps/api/src/data/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/routes/**", "**/routes"],
+              message: "services/ and data/ must not import from routes/."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["apps/api/src/domain/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/routes/**", "**/routes"],
+              message: "domain/ must not import from routes/."
+            },
+            {
+              group: ["**/services/**", "**/services", "**/data/**", "**/data"],
+              allowTypeImports: true,
+              message: "domain/ is pure: no runtime imports from data/ or services/."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     // Scripts/tests commonly use console output intentionally; forbid inline suppressions
     // but allow console in these contexts to keep lint output clean.
     files: [
