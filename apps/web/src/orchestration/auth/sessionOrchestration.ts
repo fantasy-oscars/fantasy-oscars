@@ -11,6 +11,7 @@ export type AuthUser = {
   is_admin?: boolean;
   admin_role?: "NONE" | "OPERATOR" | "SUPER_ADMIN";
   avatar_key?: string;
+  brand_preference?: string | null;
 };
 
 export type AuthSessionOrchestration = {
