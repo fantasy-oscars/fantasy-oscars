@@ -32,6 +32,11 @@ No separate CDN or multi-region topology in MVP; single Render region.
 | `PG_POOL_MAX` | API | Max Postgres connections per API instance (positive integer, default `10`). Keep instances x max below the database connection limit | Render API service env |
 | `PG_CONNECTION_TIMEOUT_MS` | API | Milliseconds to wait for a pooled connection before failing (default `5000`) | Render API service env |
 | `PG_IDLE_TIMEOUT_MS` | API | Milliseconds an idle pooled connection is kept before closing (default `30000`) | Render API service env |
+| `MIGRATE_ON_START` | API | Run the migrator before booting (`true`/`false`, default `true`). Set `false` when migrations run as a separate release step; the API then refuses to start if the database is behind | Render API service env |
+| `SHUTDOWN_TIMEOUT_MS` | API | Milliseconds to wait for in-flight HTTP requests on SIGTERM/SIGINT before connections are force-closed (default `10000`) | Render API service env |
+| `SENTRY_DSN` | API | Enables error tracking (5xx errors and unhandled rejections) when set; unset means Sentry is off. Request bodies, cookies and auth headers are stripped | Render API service env |
+| `SENTRY_ENVIRONMENT` | API | Optional environment label for Sentry events (defaults to `NODE_ENV`) | Render API service env |
+| `MIGRATIONS_DIR` | API | Optional override for the migrations directory; set by the Docker image | Image / host env |
 | `PORT` | API | Provided by Render; do not override | Render API service env |
 | `ADMIN_BOOTSTRAP_SECRET` | API | One-time secret to run admin bootstrap script | Render API service env |
 | `VITE_API_BASE` | Web | Points frontend to prod API (`https://fantasy-oscars-api-prod.onrender.com`) | Render web service env |
@@ -79,7 +84,7 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 
 ### Verification (post-deploy)
 
-1. Health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health` should return `{ ok: true, service: "api", status: "healthy" }`.
+1. Health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health` should return `{ ok: true, service: "api", status: "healthy" }` (liveness, no DB). `curl -sS .../health/ready` should return HTTP 200 with `{ ok: true, db: "up", migrations: { applied, expected } }`; it returns 503 when the database is unreachable or behind. Use `/health/ready` as the load balancer readiness check.
 2. HTTP session: from browser, visit web app, sign in, confirm `GET /auth/me` succeeds (200) and CORS/cookies work (no console CORS errors).
 3. Socket.IO auth:
    - Open a draft room as an authorized user: websocket connects (Network tab shows `socket.io/?EIO=4...` 200/101), and events stream.
@@ -113,3 +118,56 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 1. DNS: `dig +short app.example.com` and `dig +short api.example.com` return Render-provided CNAME/A records.
 2. TLS: `curl -I https://app.example.com` and `curl -I https://api.example.com/health` succeed with valid certs.
 3. CORS/cookies: open the web app on the custom domain, sign in, refresh, and confirm `/auth/me` succeeds without CORS errors; logout clears the session. Confirm Socket.IO connects from the custom domain (Network → websocket upgrade 101).
+
+## Migrations: on start vs release step
+
+By default the API runs the migrator on every start (`MIGRATE_ON_START=true`, the Render behaviour). The migrator holds a Postgres advisory lock, so concurrent instances are safe.
+
+On hosts with a release phase (pre-deploy command, Fly `release_command`, Kubernetes job), run migrations there instead and set `MIGRATE_ON_START=false`:
+
+```bash
+pnpm --filter @fantasy-oscars/api run migrate     # from the repo
+node scripts/db-migrate.mjs                       # inside the Docker image (WORKDIR /app)
+```
+
+The same check runs in `pnpm dev`: either run `pnpm run db:migrate` first, or keep `MIGRATE_ON_START` at its default when using `pnpm start`.
+
+At boot the API always compares `migration_history` with the migrations shipped in the build. If the database is behind it logs `migrations_check_failed` and exits non-zero, so a deploy that skipped the release step fails fast instead of serving errors.
+
+## Running the API in Docker
+
+Build from the repository root (the image bundles `database/migrations`):
+
+```bash
+pnpm run docker:build:api          # docker build -f apps/api/Dockerfile -t fantasy-oscars-api .
+docker run --rm -p 4000:4000 \
+  -e DATABASE_URL=postgres://user:pass@host:5432/db \
+  -e AUTH_SECRET=change-me \
+  -e CORS_ALLOWED_ORIGINS=https://app.example.com \
+  fantasy-oscars-api
+```
+
+- Node 24, production dependencies only, runs as the non-root `node` user, `NODE_ENV=production`, listens on `PORT` (default `4000`).
+- The default command is the same start path as Render: migrate (unless `MIGRATE_ON_START=false`), then the API.
+- `HEALTHCHECK` calls `/health` (liveness, no DB) so the container probe does not keep a suspend-on-idle database awake. Use `/health/ready` for load-balancer/orchestrator readiness.
+- On SIGTERM the API stops accepting connections, stops the draft sweeper, closes Socket.IO (clients reconnect to another instance), waits up to `SHUTDOWN_TIMEOUT_MS` for in-flight requests, closes the Postgres pool and exits 0. Set the host's stop grace period above `SHUTDOWN_TIMEOUT_MS` plus about 7 seconds (pool end up to 5 s, Sentry flush up to 2 s).
+- Set `TRUST_PROXY` to the number of proxies in front of the container.
+
+## Draft sweeper
+
+The sweeper issues no queries while no timed draft is in progress. It checks once at start, then sleeps until the earliest `pick_deadline_at` (between `DRAFT_SWEEPER_INTERVAL_MS` and 30 seconds) and goes idle when none remain. Starting, resuming or advancing a timed draft wakes it. This lets a managed Postgres that suspends when idle actually suspend. `DRAFT_SWEEPER_ENABLED=false` still disables it. With several API instances, each instance wakes for drafts changed through it; the advisory lock keeps expiry processing single-worker. To cover a draft advanced by an old instance during a deploy overlap, an idle sweeper also polls every `DRAFT_SWEEPER_IDLE_POLL_MS` (default `600000`, 10 minutes; `0` disables). Trade-off: a suspend-on-idle database may wake every 10 minutes; set `0` if relying on client ticks is acceptable.
+
+## Recommended response headers
+
+The API sets security headers itself (`helmet`). Render static sites take headers from the dashboard (Static Site → Settings → Headers), so add these for the web app. Replace the API origin if it changes.
+
+| Path | Header | Value |
+| --- | --- | --- |
+| `/*` | `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://fantasy-oscars-api-prod.onrender.com wss://fantasy-oscars-api-prod.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` |
+| `/*` | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `/*` | `X-Content-Type-Options` | `nosniff` |
+| `/*` | `X-Frame-Options` | `DENY` |
+| `/*` | `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `/*` | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
+
+Why these sources: scripts are the bundled Vite output only (`script-src 'self'`); Mantine injects inline styles, hence `'unsafe-inline'` for styles; `index.html` loads the Material Symbols stylesheet from `fonts.googleapis.com` and its font files from `fonts.gstatic.com`; text fonts are bundled through `@fontsource`; nominee posters come from `image.tmdb.org`; `connect-src` needs the `VITE_API_BASE` origin over both `https` (fetch) and `wss` (Socket.IO). If `VITE_API_BASE` changes, change both `connect-src` entries. Roll out the CSP as `Content-Security-Policy-Report-Only` first and check the browser console on the login, league and draft room pages before enforcing.

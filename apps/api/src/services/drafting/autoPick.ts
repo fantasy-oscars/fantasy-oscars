@@ -25,6 +25,7 @@ import {
 } from "../../data/repositories/draftAutodraftRepository.js";
 import { getWisdomBenchmarkForCeremony } from "../../data/repositories/wisdomBenchmarkRepository.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
+import { wakeDraftSweeper } from "../draftSweeperWake.js";
 import { computePickAssignment } from "../../domain/draftOrder.js";
 import {
   resolvePicksPerSeat,
@@ -318,6 +319,7 @@ export async function autoPickOne(options: {
     }
   });
   emitDraftEvent(event);
+  if (nextDraft.pick_deadline_at) wakeDraftSweeper(nextDraft.pick_deadline_at);
 
   if (nextDraft.status === "COMPLETED") {
     // Best-effort: recompute ceremony benchmark for wisdom-of-crowds.
@@ -361,6 +363,7 @@ export async function autoPickIfExpired(options: {
         }
       });
       emitDraftEvent(event);
+      wakeDraftSweeper(nextDraft.pick_deadline_at);
     }
     return nextDraft;
   }

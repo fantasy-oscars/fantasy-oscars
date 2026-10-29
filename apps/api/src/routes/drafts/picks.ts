@@ -2,6 +2,7 @@ import express from "express";
 import type { Pool } from "pg";
 import { AppError, validationError } from "../../errors.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
+import { wakeDraftSweeper } from "../../services/draftSweeperWake.js";
 import { recomputeWisdomBenchmarkForCeremony } from "../../services/benchmarking/wisdomOfCrowds.js";
 import {
   completeDraftIfReady,
@@ -330,13 +331,15 @@ export function buildSubmitPickHandler(pool: Pool) {
           reused: false,
           event,
           completed: draft.status === "COMPLETED",
-          ceremonyId: season.ceremony_id
+          ceremonyId: season.ceremony_id,
+          pickDeadlineAt: draft.pick_deadline_at ?? null
         };
       });
 
       const status = result?.reused ? 200 : 201;
       if (result?.event) {
         emitDraftEvent(result.event);
+        wakeDraftSweeper(result.pickDeadlineAt);
       }
       if (result?.completed) {
         void recomputeWisdomBenchmarkForCeremony({

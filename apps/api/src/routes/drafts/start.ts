@@ -25,6 +25,7 @@ import { revokePendingInvitesForSeason } from "../../data/repositories/seasonInv
 import { computeDeadline } from "../../domain/draftPickRules.js";
 import { transitionDraftState } from "../../domain/draftState.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
+import { wakeDraftSweeper } from "../../services/draftSweeperWake.js";
 import { runImmediateAutodraftIfEnabled } from "../../services/drafting/autoPick.js";
 
 type RemainderStrategy = "UNDRAFTED" | "FULL_POOL";
@@ -188,6 +189,7 @@ export function buildStartDraftHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
+      wakeDraftSweeper(result.draft.pick_deadline_at);
       // If the next (or subsequent) seat has user-enabled auto-draft, schedule it.
       await runImmediateAutodraftIfEnabled({ pool, draftId: result.draft.id });
       return res.status(200).json({ draft: result.draft });
