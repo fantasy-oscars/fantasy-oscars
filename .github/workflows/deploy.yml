@@ -1,0 +1,207 @@
+name: Deploy
+
+# Inert until the repository variable DEPLOY_ENABLED is set to 'true'.
+# Required secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+# (the server's host key line(s), e.g. from `ssh-keyscan -t ed25519 <host>`).
+# Runbook: docs/runbooks/deployment.md
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing image tag to deploy (rollback). Leave empty to build and deploy the current commit.
+        required: false
+        type: string
+      force:
+        description: Deploy even while drafts are IN_PROGRESS
+        required: false
+        type: boolean
+        default: false
+
+# Deploys never overlap; a running deploy is allowed to finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/fantasy-oscars/fantasy-oscars-api
+  WEB_IMAGE: ghcr.io/fantasy-oscars/fantasy-oscars-web
+  DEPLOY_DIR: /srv/fantasy-oscars
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'))
+    steps:
+      - name: Require main for manual runs
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "Manual deploys must run from refs/heads/main (got ${GITHUB_REF})." >&2
+          exit 1
+
+      - name: Resolve tag
+        id: ref
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+            build=false
+          else
+            tag="${RUN_SHA:-$EVENT_SHA}"
+            build=true
+          fi
+          if ! printf '%s' "$tag" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'; then
+            echo "Invalid tag: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+          echo "build=$build" >>"$GITHUB_OUTPUT"
+
+      # Deploy the infra scripts from the same commit the images are built from
+      # (rollbacks use the dispatch ref, normally current main).
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: docker/setup-buildx-action@v4
+        if: steps.ref.outputs.build == 'true'
+
+      - uses: docker/login-action@v4
+        if: steps.ref.outputs.build == 'true'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        if: steps.ref.outputs.build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ env.API_IMAGE }}:${{ steps.ref.outputs.tag }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build and push web image
+        if: steps.ref.outputs.build == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ env.WEB_IMAGE }}:${{ steps.ref.outputs.tag }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Configure SSH (pinned host key)
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" >~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" >~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync infra scripts
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh_opts=(-i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
+          # Extract next to the target, then swap, so files deleted from the repo do
+          # not linger. A running deploy keeps its open script files across the swap.
+          tar -C infra -cf - . |
+            ssh "${ssh_opts[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "D='${DEPLOY_DIR}'; "'
+              set -e
+              # Same lock deploy.sh holds: never swap scripts under a running deploy.
+              exec 9>"$D/.deploy.lock"
+              if ! flock -n 9; then echo "deploy lock is held by a running deploy; not replacing infra/" >&2; exit 1; fi
+              n="$(mktemp -d "$D/.infra-new.XXXXXX")"
+              tar -xf - -C "$n"
+              chmod 755 "$n"
+              chmod +x "$n"/*.sh "$n"/lib/*.sh
+              rm -rf "$D/infra.old"
+              if [ -d "$D/infra" ]; then mv "$D/infra" "$D/infra.old"; fi
+              mv "$n" "$D/infra"
+              rm -rf "$D/infra.old"
+            '
+
+      - name: Deploy (detached on the server) and follow the log
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          TAG: ${{ steps.ref.outputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          ssh_opts=(-i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
+          target="${DEPLOY_USER}@${DEPLOY_HOST}"
+          force_flag=""
+          if [ "$FORCE" = "true" ]; then
+            force_flag="--force"
+          fi
+          started="$(ssh "${ssh_opts[@]}" "$target" "'${DEPLOY_DIR}/infra/deploy-detached.sh' ${force_flag} '${TAG}'")"
+          printf '%s\n' "$started"
+          log_path="$(printf '%s\n' "$started" | sed -n 's/^LOG=//p')"
+          status_path="$(printf '%s\n' "$started" | sed -n 's/^STATUS=//p')"
+          if [ -z "$log_path" ] || [ -z "$status_path" ]; then
+            echo "Could not start the deploy" >&2
+            exit 1
+          fi
+
+          # The deploy runs on the server regardless of this connection. Follow it
+          # with short polls (tolerating dropped connections) until it writes its status.
+          offset=0
+          started_at=$SECONDS
+          deadline=$((SECONDS + 30 * 60))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            status="$(ssh "${ssh_opts[@]}" "$target" "cat '${status_path}' 2>/dev/null || true" || true)"
+            if ssh "${ssh_opts[@]}" "$target" "tail -c +$((offset + 1)) '${log_path}'" >"$RUNNER_TEMP/chunk" 2>/dev/null; then
+              cat "$RUNNER_TEMP/chunk"
+              offset=$((offset + $(wc -c <"$RUNNER_TEMP/chunk")))
+            fi
+            if [ -z "$status" ] && [ "$SECONDS" -gt $((started_at + 60)) ]; then
+              # No status yet. If the deploy lock is free the deploy process is gone.
+              if ssh "${ssh_opts[@]}" "$target" "exec 9>'${DEPLOY_DIR}/.deploy.lock'; flock -n 9" 2>/dev/null; then
+                sleep 3
+                status="$(ssh "${ssh_opts[@]}" "$target" "cat '${status_path}' 2>/dev/null || true" || true)"
+                if [ -z "$status" ]; then
+                  echo "Deploy exited without a status (killed?); see ${log_path} on the server" >&2
+                  exit 1
+                fi
+              fi
+            fi
+            if [ -n "$status" ]; then
+              echo "Deploy finished with exit code ${status} (server log: ${log_path})"
+              [ "$status" = "0" ]
+              exit $?
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for the deploy; it may still be running (server log: ${log_path})" >&2
+          exit 1
+
+      - name: Remove SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts

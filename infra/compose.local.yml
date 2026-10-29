@@ -1,0 +1,25 @@
+# Local verification of the production stack on localhost, using locally built images
+# and Caddy's internal CA (no public certificates). Usage from the repository root:
+#
+#   docker build -f apps/api/Dockerfile -t fo-local-api:test .
+#   docker build -f apps/web/Dockerfile -t fo-local-web:test .
+#   docker compose -p fo-local-stack \
+#     -f infra/compose.prod.yml -f infra/compose.local.yml \
+#     --env-file <env-file> up -d
+#   curl -k https://localhost/api/health/ready
+#   docker compose -p fo-local-stack -f infra/compose.prod.yml -f infra/compose.local.yml \
+#     --env-file <env-file> down -v
+#
+# a throwaway env file (any path) needs POSTGRES_PASSWORD and AUTH_SECRET (any throwaway values).
+services:
+  api:
+    image: fo-local-api:${IMAGE_TAG:-test}
+  web:
+    image: fo-local-web:${IMAGE_TAG:-test}
+    environment:
+      SITE_HOST: localhost
+      APEX_HOST: apex.localhost
+      API_ALIAS_HOST: api.localhost
+      CADDY_LOCAL_CERTS: "true"
+  migrate:
+    image: fo-local-api:${IMAGE_TAG:-test}

@@ -1,0 +1,152 @@
+# Production stack for the single 1 GB VPS (Ubuntu 24.04, 2 GB swap).
+# deploy.sh copies this file to /srv/fantasy-oscars/compose.yaml and always runs:
+#   docker compose -p fantasy-oscars --env-file .env --env-file .env-deploy ...
+# Secrets live in .env (mode 600); the image tag (IMAGE_TAG) lives in .env-deploy.
+#
+# PORTS: only `web` publishes ports (80 and 443). Docker inserts its own iptables rules
+# that BYPASS ufw, so never add a `ports:` entry to db or api; reach them over the
+# compose network (or `docker compose exec`) instead.
+name: fantasy-oscars
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:18.6
+    restart: unless-stopped
+    # NO published ports.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fantasy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-fantasy_oscars}
+    # Tuned for ~1 GB total RAM shared with the API and Caddy.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=30
+      - -c
+      - wal_compression=on
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - max_wal_size=512MB
+    # Postgres 18 images keep data under a versioned subdirectory of /var/lib/postgresql.
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    shm_size: 128mb
+    stop_grace_period: 30s
+    mem_limit: 400m
+    mem_reservation: 256m
+    logging: *default-logging
+
+  api:
+    image: ghcr.io/fantasy-oscars/fantasy-oscars-api:${IMAGE_TAG:-unset}
+    restart: unless-stopped
+    # NO published ports: Caddy (web) reaches it as api:4000.
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgres://${POSTGRES_USER:-fantasy}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fantasy_oscars}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      # Migrations run as the explicit `migrate` step in deploy.sh.
+      MIGRATE_ON_START: "false"
+      # Same-origin: browser and API share the site origin, so cookies can be Lax.
+      AUTH_COOKIE_SAMESITE: lax
+      # Caddy is the only proxy in front of the API.
+      TRUST_PROXY: "1"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${SITE_HOST:-www.fantasy-oscars.com}}
+      PG_POOL_MAX: "8"
+      NODE_OPTIONS: --max-old-space-size=192
+      # Optional pass-through: omitted entirely when not set in .env.
+      ADMIN_BOOTSTRAP_SECRET:
+      TMDB_API_TOKEN:
+      TMDB_READ_ACCESS_TOKEN:
+      SENTRY_DSN:
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+    healthcheck:
+      # Readiness (database reachable and migrations applied), not just liveness.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 20s
+    mem_limit: 320m
+    mem_reservation: 128m
+    logging: *default-logging
+
+  web:
+    image: ghcr.io/fantasy-oscars/fantasy-oscars-web:${IMAGE_TAG:-unset}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # The ONLY published ports in this stack (see the note at the top).
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST:-www.fantasy-oscars.com}
+      # Optional: set empty (e.g. for a temporary <ip>.sslip.io staging host) to disable.
+      APEX_HOST: ${APEX_HOST-fantasy-oscars.com}
+      API_ALIAS_HOST: ${API_ALIAS_HOST-api.fantasy-oscars.com}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CADDY_LOCAL_CERTS: ${CADDY_LOCAL_CERTS:-false}
+      API_UPSTREAM: api:4000
+      # Keep the Go runtime under the 96m container limit.
+      GOMEMLIMIT: 72MiB
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 96m
+    mem_reservation: 32m
+    logging: *default-logging
+
+  # One-shot migrator (same image as the API): `docker compose run --rm migrate`.
+  migrate:
+    image: ghcr.io/fantasy-oscars/fantasy-oscars-api:${IMAGE_TAG:-unset}
+    profiles: ["tools"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["node", "scripts/db-migrate.mjs"]
+    environment:
+      NODE_ENV: production
+      # Fail fast instead of queueing behind long-held locks or runaway statements.
+      PGOPTIONS: "-c lock_timeout=30s -c statement_timeout=10min"
+      DATABASE_URL: postgres://${POSTGRES_USER:-fantasy}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fantasy_oscars}
+    mem_limit: 256m
+    logging: *default-logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,58 @@
+# Edge for the single-VPS deployment: serves the built SPA, proxies /api/* to the API
+# (stripping the /api prefix) and obtains TLS certificates automatically.
+#
+# Environment (infra/docker-entrypoint.sh generates the optional pieces):
+#   SITE_HOST       primary host (required), e.g. www.fantasy-oscars.com
+#   APEX_HOST       optional, redirects to SITE_HOST
+#   API_ALIAS_HOST  optional, proxies straight to the API with no prefix
+#   ACME_EMAIL      optional, certificate expiry contact
+#   API_UPSTREAM    API address (default api:4000)
+#   CADDY_LOCAL_CERTS=true  use Caddy's internal CA (local verification only)
+{
+	# HTTP/1.1 + HTTP/2 only so the host needs just 80/tcp and 443/tcp.
+	servers {
+		protocols h1 h2
+	}
+	import /etc/caddy/global.d/*
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+{$SITE_HOST} {
+	import security_headers
+	encode zstd gzip
+
+	# The browser calls /api/*; the API itself serves routes (and Socket.IO at
+	# /socket.io) without the prefix. Websocket upgrades are proxied automatically.
+	handle_path /api/* {
+		reverse_proxy {$API_UPSTREAM:api:4000}
+	}
+
+	# Fingerprinted build output: plain file_server, so a missing asset is a real 404
+	# (never the SPA shell). Immutable caching applies only to files that exist.
+	handle /assets/* {
+		root * /srv
+		@exists file {path}
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else: the SPA, with index.html always revalidated.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+import /etc/caddy/sites.d/*
