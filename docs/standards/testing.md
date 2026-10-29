@@ -27,6 +27,7 @@
 - Tests only: `pnpm run ci:tests`
 - Docs only: `pnpm run ci:docs`
 - Non-Docker checks: `pnpm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`).
+- Web bundle size budget (run after `pnpm run build`; budgets in `apps/web/bundle-budget.json`): `pnpm run bundle:check`
 - Integration tests only (Docker required): `pnpm run test:integration`
 - Integration tests (bail early): `pnpm run test:integration:bail`
 - E2E smoke tests: `pnpm run test:e2e`
