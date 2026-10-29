@@ -7,6 +7,7 @@ import type { DraftEventMessage, Snapshot } from "../../lib/types";
 import { getAuthToken } from "../../lib/authToken";
 import { API_BASE, describeNomination } from "./helpers";
 import { buildNominationLabelById } from "../../decisions/draft";
+import type { DraftConnectionEvent } from "../../decisions/draft/connection";
 
 export function useDraftSocket(args: {
   disabled?: boolean;
@@ -18,6 +19,8 @@ export function useDraftSocket(args: {
   setSnapshot: Dispatch<SetStateAction<Snapshot | null>>;
   setError: (msg: string | null) => void;
   onRemoteCursor?: (cursor: { userId: number; x: number; y: number; ts: number }) => void;
+  onConnectionEvent: (event: DraftConnectionEvent) => void;
+  recordServerTime: (args: { serverTime: string | null | undefined }) => void;
 }) {
   const {
     disabled,
@@ -28,7 +31,9 @@ export function useDraftSocket(args: {
     loadSnapshot,
     setSnapshot,
     setError,
-    onRemoteCursor
+    onRemoteCursor,
+    onConnectionEvent,
+    recordServerTime
   } = args;
   const queryClient = useQueryClient();
 
@@ -39,6 +44,7 @@ export function useDraftSocket(args: {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+      onConnectionEvent("stop");
       return;
     }
 
@@ -62,8 +68,10 @@ export function useDraftSocket(args: {
       }
     });
     socketRef.current = socket;
+    onConnectionEvent("start");
 
     const onDraftEvent = (event: DraftEventMessage) => {
+      recordServerTime({ serverTime: event.server_time });
       const current = snapshotRef.current;
       const currentVersion = lastVersionRef.current;
       if (!current || currentVersion === null) return;
@@ -270,10 +278,24 @@ export function useDraftSocket(args: {
     socket.on("ceremony:winners.updated", onWinnersUpdated);
     socket.on("ceremony:finalized", onCeremonyFinalized);
     socket.on("draft:cursor", onDraftCursor);
-    socket.on("connect", () => {
+    const onConnect = () => {
+      onConnectionEvent("connect");
       // Always resync on (re)connect to avoid drift if we missed events while disconnected.
       void loadSnapshot({ preserveSnapshot: true });
-    });
+    };
+    const onDisconnect = (reason: string) => {
+      // "io server disconnect" / "io client disconnect" are final; everything else
+      // (transport close, ping timeout, ...) is retried automatically.
+      const final =
+        reason === "io server disconnect" || reason === "io client disconnect";
+      onConnectionEvent(final ? "disconnect_final" : "disconnect_transient");
+    };
+    const onConnectError = () => onConnectionEvent("connect_error");
+    const onReconnectAttempt = () => onConnectionEvent("reconnect_attempt");
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.io.on("reconnect_attempt", onReconnectAttempt);
     socket.connect();
 
     return () => {
@@ -281,14 +303,20 @@ export function useDraftSocket(args: {
       socket.off("ceremony:winners.updated", onWinnersUpdated);
       socket.off("ceremony:finalized", onCeremonyFinalized);
       socket.off("draft:cursor", onDraftCursor);
-      socket.off("connect");
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.io.off("reconnect_attempt", onReconnectAttempt);
       socket.disconnect();
       socketRef.current = null;
+      onConnectionEvent("stop");
     };
   }, [
     disabled,
     lastVersionRef,
     loadSnapshot,
+    onConnectionEvent,
+    recordServerTime,
     setError,
     setSnapshot,
     onRemoteCursor,

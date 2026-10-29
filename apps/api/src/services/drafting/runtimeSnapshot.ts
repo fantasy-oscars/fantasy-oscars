@@ -282,6 +282,8 @@ export async function getDraftRuntimeSnapshot(args: {
     auto_pick_strategy: draft.auto_pick_strategy ?? null,
     pick_timer_seconds: draft.pick_timer_seconds ?? null,
     pick_deadline_at: draft.pick_deadline_at ?? null,
+    // Lets clients correct for local clock skew when counting down to pick_deadline_at.
+    server_time: new Date().toISOString(),
     pick_timer_remaining_ms: draft.pick_timer_remaining_ms ?? null,
     nominee_pool_size: nomineePoolSize,
     turn,

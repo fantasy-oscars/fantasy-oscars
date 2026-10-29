@@ -50,7 +50,7 @@ export function DraftHeaderLeftWing(props: {
           opened={props.compactMenuOpen}
           onClose={() => props.setCompactMenuOpen(false)}
           position="left"
-          title=" "
+          title="Draft menu"
         >
           <Stack gap="md">
             <Button

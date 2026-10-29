@@ -6,6 +6,8 @@ import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
 import { useAuthContext } from "@/auth/context";
 import { RuntimeBannerStack } from "@/notifications";
 import { playTurnStartChime } from "@/lib/draftAudio";
+import { DraftConnectionIndicator } from "@/features/draft/ui/DraftConnectionIndicator";
+import { DraftLiveRegion } from "@/features/draft/ui/DraftLiveRegion";
 import { DraftBoardHeader } from "./DraftBoardHeader";
 import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
@@ -22,6 +24,7 @@ import {
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
+import { buildDraftAnnouncement } from "@/decisions/draft/announcements";
 
 function DraftCursorGhost(props: {
   x: number;
@@ -49,8 +52,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
   const isPreview = props.o.myRoster.pickDisabledReason === "Preview mode";
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [cursorSpyUserEnabled, setCursorSpyUserEnabled] = useState(true);
+  const { value: preferences, update: updatePreferences } = props.o.preferences;
+  const soundEnabled = preferences.soundEnabled;
+  const cursorSpyUserEnabled = preferences.cursorSpyEnabled;
   const draftStatus = props.o.header.status ?? null;
   const isPre = draftStatus === "PENDING";
   const isPaused = draftStatus === "PAUSED";
@@ -131,8 +135,38 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     !isPaused &&
     !isPre &&
     !isCompleted &&
+    !props.o.connection.pickBlockedReason &&
+    !props.o.myRoster.pickPending &&
     (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
+
+  // Screen-reader announcement of the latest pick and whose turn it is. Derived from
+  // the ledger, so an optimistic pick and its server echo produce the same text.
+  const liveMessage = useMemo(() => {
+    if (isPreview) return "";
+    let latestPick: {
+      pickNumber: number;
+      seatLabel: string;
+      nomineeLabel: string;
+    } | null = null;
+    for (const row of props.o.ledger.rows) {
+      // Optimistic rows are not announced until the server confirms them.
+      if (row.nominationId == null || row.pending) continue;
+      if (!latestPick || row.pickNumber > latestPick.pickNumber) {
+        latestPick = {
+          pickNumber: row.pickNumber,
+          seatLabel: row.seatLabel || "Unknown drafter",
+          nomineeLabel: row.label
+        };
+      }
+    }
+    return buildDraftAnnouncement({
+      status: draftStatus,
+      latestPick,
+      activeSeatLabel: participants.find((p) => p.active)?.label ?? null,
+      isMyTurn
+    });
+  }, [draftStatus, isMyTurn, isPreview, participants, props.o.ledger.rows]);
 
   const flushCursorEmit = useCallback(() => {
     cursorEmitRafRef.current = null;
@@ -298,35 +332,45 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     return <PageError message={props.o.state.error} />;
   }
 
+  const statusChrome = (
+    <>
+      <DraftLiveRegion message={liveMessage} />
+      <DraftConnectionIndicator connection={props.o.connection} />
+    </>
+  );
+
   if (isMobile) {
     return (
-      <MobileDraftRoom
-        o={props.o}
-        isPreview={isPreview}
-        isPre={isPre}
-        isPaused={isPaused}
-        isCompleted={isCompleted}
-        isFinalResults={isFinalResults}
-        isMyTurnStyling={isMyTurnStyling}
-        isMyTurn={isMyTurn}
-        previewUser={previewUser}
-        categories={categories}
-        nomineeById={nomineeById}
-        draftedNominationIds={draftedNominationIds}
-        avatarKeyBySeat={avatarKeyBySeat}
-        canDraftAction={canDraftAction}
-        audioController={audioControllerRef.current}
-        audioUnlocked={audioUnlocked}
-        showDrafted={props.o.header.poolMode === "ALL_MUTED"}
-        onToggleShowDrafted={(next) =>
-          props.o.header.setPoolMode(next ? "ALL_MUTED" : "UNDRAFTED_ONLY")
-        }
-        showDraftedVisible={
-          !isCompleted && (isPre ? true : props.o.header.view === "draft")
-        }
-        themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
-        onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
-      />
+      <>
+        {statusChrome}
+        <MobileDraftRoom
+          o={props.o}
+          isPreview={isPreview}
+          isPre={isPre}
+          isPaused={isPaused}
+          isCompleted={isCompleted}
+          isFinalResults={isFinalResults}
+          isMyTurnStyling={isMyTurnStyling}
+          isMyTurn={isMyTurn}
+          previewUser={previewUser}
+          categories={categories}
+          nomineeById={nomineeById}
+          draftedNominationIds={draftedNominationIds}
+          avatarKeyBySeat={avatarKeyBySeat}
+          canDraftAction={canDraftAction}
+          audioController={audioControllerRef.current}
+          audioUnlocked={audioUnlocked}
+          showDrafted={props.o.header.poolMode === "ALL_MUTED"}
+          onToggleShowDrafted={(next) =>
+            props.o.header.setPoolMode(next ? "ALL_MUTED" : "UNDRAFTED_ONLY")
+          }
+          showDraftedVisible={
+            !isCompleted && (isPre ? true : props.o.header.view === "draft")
+          }
+          themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
+          onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
+        />
+      </>
     );
   }
 
@@ -339,6 +383,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       data-results={isFinalResults ? "final" : "live"}
       onPointerMove={onDraftPointerMove}
     >
+      {statusChrome}
       <DraftBoardHeader
         backHref={props.o.nav.backToSeasonHref}
         participants={participants}
@@ -372,11 +417,13 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         audioController={audioControllerRef.current}
         audioUnlocked={audioUnlocked}
         soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((v) => !v)}
+        onToggleSound={() => updatePreferences({ soundEnabled: !soundEnabled })}
         isMyTurn={isMyTurn}
         showCursorSpyToggle={!isCompleted && !isPre}
         cursorSpyUserEnabled={cursorSpyUserEnabled}
-        onToggleCursorSpy={() => setCursorSpyUserEnabled((v) => !v)}
+        onToggleCursorSpy={() =>
+          updatePreferences({ cursorSpyEnabled: !cursorSpyUserEnabled })
+        }
         userLabel={previewUser.label}
         userAvatarKey={previewUser.avatarKey}
         onParticipantHoverSeat={setHoveredSeatNumber}
@@ -412,6 +459,10 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
               props.o.myRoster.clearSelection();
               props.o.myRoster.submitPickNomination(id);
             }}
+            railPreferences={preferences.rails}
+            onRailOpenChange={(rail, open) =>
+              updatePreferences({ rails: { [rail]: open } })
+            }
           />
         )}
       </Box>

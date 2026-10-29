@@ -9,6 +9,8 @@ import {
   type DraftRoomView,
   type PoolMode
 } from "../../decisions/draft";
+import { describeConnection } from "../../decisions/draft/connection";
+import { DEFAULT_DRAFT_ROOM_PREFERENCES } from "../../decisions/draft/preferences";
 import type { DraftRoomOrchestration } from "./orchestration";
 
 type DraftBoardCategory = NonNullable<Snapshot["categories"]>[number];
@@ -279,6 +281,7 @@ export function useDraftPreviewOrchestration(args: {
       canPick: false,
       pickDisabledReason: "Preview mode",
       pickLoading: false,
+      pickPending: false,
       pickState: null,
       submitPick: () => {},
       submitPickNomination: () => {}
@@ -307,6 +310,8 @@ export function useDraftPreviewOrchestration(args: {
       cursors: [],
       emit: () => {}
     },
+    connection: describeConnection("idle"),
+    preferences: { value: DEFAULT_DRAFT_ROOM_PREFERENCES, update: () => {} },
     refresh
   };
 }

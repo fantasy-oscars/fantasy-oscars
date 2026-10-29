@@ -1,4 +1,4 @@
-import { Box, Button, Text, Tooltip, UnstyledButton } from "@ui";
+import { Box, Button, Text, Tooltip, UnstyledButton, VisuallyHidden } from "@ui";
 import type { RefObject } from "react";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
@@ -110,7 +110,9 @@ export function CategoryCard(props: {
                 ref={idx === 0 ? (props.firstPillRef ?? undefined) : undefined}
                 aria-disabled={!props.canDraftAction}
                 aria-label={`${props.title}: ${n.label}`}
-                aria-keyshortcuts="Shift+Enter"
+                aria-keyshortcuts="Enter Space Shift+Enter Escape"
+                aria-pressed={isArmed}
+                aria-describedby={isArmed ? `dr-pill-hint-${n.id}` : undefined}
                 tabIndex={props.isKeyboardMode ? 0 : -1}
                 onClick={(e) => {
                   e.preventDefault();
@@ -126,6 +128,13 @@ export function CategoryCard(props: {
                   props.onNomineeDoubleClick(Number(n.id));
                 }}
                 onKeyDown={(e) => {
+                  // Held keys (OS auto-repeat) never act.
+                  if (e.repeat) {
+                    if (["Enter", " ", "Escape"].includes(e.key)) e.preventDefault();
+                    return;
+                  }
+                  // Confirming is its own chord: Shift+Enter. Plain Enter/Space only
+                  // arm or disarm, so a double-tap can never draft by accident.
                   if (e.shiftKey && e.key === "Enter") {
                     if (!props.canDraftAction) return;
                     e.preventDefault();
@@ -133,7 +142,26 @@ export function CategoryCard(props: {
                     props.onNomineeDoubleClick(Number(n.id));
                     return;
                   }
-                  if (e.key !== "Enter" && e.key !== " ") return;
+                  if (e.key === "Escape" && isArmed) {
+                    // Disarm (a click on a selected nominee toggles it off).
+                    e.preventDefault();
+                    e.stopPropagation();
+                    props.onNomineeClick(Number(n.id), n.label);
+                    return;
+                  }
+                  // Space acts on keyup (see onKeyUp) so it fires exactly once per press.
+                  if (e.key === " ") {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  props.onNomineeClick(Number(n.id), n.label);
+                }}
+                onKeyUp={(e) => {
+                  if (e.key !== " ") return;
+                  // preventDefault stops browsers that synthesize a click from Space keyup.
                   e.preventDefault();
                   e.stopPropagation();
                   props.onNomineeClick(Number(n.id), n.label);
@@ -142,6 +170,11 @@ export function CategoryCard(props: {
                 <Text component="span" className="dr-pill-text">
                   {n.label}
                 </Text>
+                {isArmed ? (
+                  <VisuallyHidden id={`dr-pill-hint-${n.id}`}>
+                    Selected. Press Shift+Enter to draft, Escape to cancel.
+                  </VisuallyHidden>
+                ) : null}
               </UnstyledButton>
             );
 

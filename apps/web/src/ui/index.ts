@@ -39,6 +39,7 @@ export * from "./Textarea";
 export * from "./Title";
 export * from "./Tooltip";
 export * from "./UnstyledButton";
+export * from "./VisuallyHidden";
 export * from "./useMantineColorScheme";
 export * from "./List";
 export * from "./Blockquote";

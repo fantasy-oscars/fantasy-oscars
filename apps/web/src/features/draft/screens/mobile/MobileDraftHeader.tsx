@@ -259,7 +259,12 @@ export function MobileDraftHeader(props: {
         </Stack>
       ) : null}
 
-      <Drawer opened={props.open} onClose={props.onClose} title=" " position="left">
+      <Drawer
+        opened={props.open}
+        onClose={props.onClose}
+        title="Draft menu"
+        position="left"
+      >
         <Stack gap="md">
           <Group justify="space-between" wrap="nowrap">
             <Button component={Link} to={props.backHref} variant="outline" fullWidth>

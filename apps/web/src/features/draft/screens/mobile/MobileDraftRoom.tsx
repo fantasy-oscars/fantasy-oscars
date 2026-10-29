@@ -294,6 +294,10 @@ export function MobileDraftRoom(props: {
         onClose={closeNomineeCard}
         centered
         withCloseButton={false}
+        title="Nominee details"
+        classNames={{ title: "fo-visuallyHidden", header: "fo-modalHeaderCollapsed" }}
+        trapFocus
+        returnFocus
         overlayProps={{
           opacity: FO_MODAL_OVERLAY_OPACITY,
           blur: FO_MODAL_OVERLAY_BLUR_PX

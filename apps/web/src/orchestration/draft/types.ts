@@ -1,5 +1,7 @@
 import type { ApiResult, Snapshot } from "../../lib/types";
 import type { DraftRoomView, PoolMode } from "../../decisions/draft";
+import type { DraftConnectionView } from "../../decisions/draft/connection";
+import type { DraftRoomPreferences } from "../../decisions/draft/preferences";
 
 export type DraftRoomOrchestration = {
   state: {
@@ -91,6 +93,8 @@ export type DraftRoomOrchestration = {
       label: string;
       active: boolean;
       winner: boolean;
+      /** Submitted by this user, not yet confirmed by the server. */
+      pending?: boolean;
     }>;
   };
   pool: {
@@ -138,12 +142,16 @@ export type DraftRoomOrchestration = {
       icon: string | null;
       label: string;
       winner: boolean;
+      /** Submitted by this user, not yet confirmed by the server. */
+      pending?: boolean;
     }>;
     selected: { id: number; icon: string | null; label: string } | null;
     clearSelection: () => void;
     canPick: boolean;
     pickDisabledReason: string | null;
     pickLoading: boolean;
+    /** A submitted pick is awaiting server confirmation; further picks are held back. */
+    pickPending: boolean;
     pickState: ApiResult | null;
     submitPick: () => void;
     submitPickNomination: (nominationId: number) => void;
@@ -189,6 +197,16 @@ export type DraftRoomOrchestration = {
       y: number;
     }>;
     emit: (x: number, y: number) => void;
+  };
+  connection: DraftConnectionView;
+  preferences: {
+    value: DraftRoomPreferences;
+    update: (patch: {
+      poolMode?: PoolMode;
+      soundEnabled?: boolean;
+      cursorSpyEnabled?: boolean;
+      rails?: Partial<DraftRoomPreferences["rails"]>;
+    }) => void;
   };
   refresh: () => void;
 };

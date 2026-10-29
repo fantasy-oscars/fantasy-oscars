@@ -87,7 +87,11 @@ export function DraftRoomScaffold(props: {
   canDraftAction: boolean;
   onNomineeClick: (nominationId: number, label: string) => void;
   onNomineeDoubleClick: (nominationId: number) => void;
+  /** Remembered open/closed choice per rail (null: no stored choice). */
+  railPreferences: DraftRoomOrchestration["preferences"]["value"]["rails"];
+  onRailOpenChange: (rail: "ledger" | "roster" | "autodraft", open: boolean) => void;
 }) {
+  const { onRailOpenChange } = props;
   const isPre = props.draftStatus === "PENDING";
   const isLiveOrPaused =
     props.draftStatus === "IN_PROGRESS" || props.draftStatus === "PAUSED";
@@ -117,29 +121,65 @@ export function DraftRoomScaffold(props: {
 
   const unitDivisor = useMemo(() => pickDraftDivisor(viewportWidthPx), [viewportWidthPx]);
 
-  const [ledgerOpen, setLedgerOpen] = useState(!isPre);
-  const [myRosterOpen, setMyRosterOpen] = useState(!isPre);
-  const [autoDraftOpen, setAutoDraftOpen] = useState(true);
+  const [ledgerOpen, setLedgerOpenState] = useState(
+    props.railPreferences.ledger ?? !isPre
+  );
+  const [myRosterOpen, setMyRosterOpenState] = useState(
+    props.railPreferences.roster ?? !isPre
+  );
+  const [autoDraftOpen, setAutoDraftOpenState] = useState(
+    props.railPreferences.autodraft ?? true
+  );
 
   // Stopgap: narrow desktop keeps board visible but prevents "all rails open" squeeze.
   // (Mobile uses a separate layout path.)
   const compactRails = viewportWidthPx > 0 && viewportWidthPx < 665;
 
+  // Only deliberate toggles on a regular layout are remembered; the forced states
+  // (pre-draft, compact exclusivity) are layout constraints, not preferences.
+  const rememberRail = useCallback(
+    (rail: "ledger" | "roster" | "autodraft", open: boolean) => {
+      if (!isPre && !compactRails) onRailOpenChange(rail, open);
+    },
+    [compactRails, isPre, onRailOpenChange]
+  );
+  const setLedgerOpen = useCallback(
+    (open: boolean) => {
+      setLedgerOpenState(open);
+      rememberRail("ledger", open);
+    },
+    [rememberRail]
+  );
+  const setMyRosterOpen = useCallback(
+    (open: boolean) => {
+      setMyRosterOpenState(open);
+      rememberRail("roster", open);
+    },
+    [rememberRail]
+  );
+  const setAutoDraftOpen = useCallback(
+    (open: boolean) => {
+      setAutoDraftOpenState(open);
+      rememberRail("autodraft", open);
+    },
+    [rememberRail]
+  );
+
   const openRailExclusive = useCallback(
     (rail: "ledger" | "roster" | "auto") => {
       if (!compactRails) return;
-      setLedgerOpen(rail === "ledger");
-      setMyRosterOpen(rail === "roster");
-      setAutoDraftOpen(rail === "auto");
+      setLedgerOpenState(rail === "ledger");
+      setMyRosterOpenState(rail === "roster");
+      setAutoDraftOpenState(rail === "auto");
     },
     [compactRails]
   );
 
   useEffect(() => {
     if (isPre) {
-      setLedgerOpen(false);
-      setMyRosterOpen(false);
-      setAutoDraftOpen(true);
+      setLedgerOpenState(false);
+      setMyRosterOpenState(false);
+      setAutoDraftOpenState(true);
       return;
     }
     if (isLiveOrPaused) {

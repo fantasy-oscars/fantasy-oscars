@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "../../lib/api";
 import type { Snapshot } from "../../lib/types";
+import { estimateServerOffsetMs } from "../../decisions/draft/clockSkew";
 
 export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) {
   const { draftId, disabled } = args;
@@ -8,6 +9,24 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+
+  // Server clock minus local clock, in ms. Zero until the server has stamped something.
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const serverOffsetRef = useRef(0);
+
+  const recordServerTime = useCallback(
+    (args: { serverTime: string | null | undefined; sentAtMs?: number }) => {
+      const offset = estimateServerOffsetMs({
+        serverTime: args.serverTime,
+        receivedAtMs: Date.now(),
+        sentAtMs: args.sentAtMs
+      });
+      if (offset === null) return;
+      serverOffsetRef.current = offset;
+      setServerOffsetMs(offset);
+    },
+    []
+  );
 
   const snapshotRef = useRef<Snapshot | null>(null);
   const lastVersionRef = useRef<number | null>(null);
@@ -28,10 +47,12 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
       const shouldClear = !options?.preserveSnapshot && !snapshotRef.current;
       if (shouldClear) setSnapshot(null);
 
+      const sentAtMs = Date.now();
       const res = await fetchJson<Snapshot>(`/drafts/${draftId}/snapshot`, {
         method: "GET"
       });
       if (res.ok && res.data) {
+        recordServerTime({ serverTime: res.data.server_time, sentAtMs });
         setSnapshot(res.data);
         setLoading(false);
         return true;
@@ -40,7 +61,7 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
       setLoading(false);
       return false;
     },
-    [draftId]
+    [draftId, recordServerTime]
   );
 
   const refresh = useCallback(() => {
@@ -56,6 +77,9 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
     loading,
     error,
     snapshot,
+    serverOffsetMs,
+    serverOffsetRef,
+    recordServerTime,
     setSnapshot,
     snapshotRef,
     lastVersionRef,

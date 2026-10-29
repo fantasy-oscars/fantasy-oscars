@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateCeremonyAndDraftData } from "../query/invalidate";
 import type { Socket } from "socket.io-client";
@@ -12,6 +12,7 @@ import { useDraftRoomActions } from "./useDraftRoomActions";
 import { useDraftCursorSpy } from "./useDraftCursorSpy";
 import { useDraftDerivedData } from "./useDraftDerivedData";
 import { useDraftBoards } from "./useDraftBoards";
+import { useDraftRoomPreferences } from "./useDraftRoomPreferences";
 import type { DraftRoomOrchestration } from "./types";
 import {
   computeDraftBoardCols,
@@ -23,6 +24,13 @@ import {
 } from "../../decisions/draft";
 import { computeAutodraftNominationIdOrder } from "../../decisions/draft/autodraftOrder";
 import {
+  describeConnection,
+  nextConnectionState,
+  type DraftConnectionEvent,
+  type DraftConnectionState
+} from "../../decisions/draft/connection";
+import { applyPendingPick } from "../../decisions/draft/optimisticPick";
+import {
   buildRosterBoardSeats,
   computeTimerRemainingMs
 } from "../../decisions/draft/scoring";
@@ -33,6 +41,8 @@ export function useDraftRoomOrchestration(args: {
   initialDraftId?: string | number;
   disabled?: boolean;
   disableCursorSpy?: boolean;
+  /** Identifies whose stored presentation preferences to use (e.g. the user id). */
+  preferencesUserKey?: string | number | null;
 }): DraftRoomOrchestration {
   const { initialDraftId, disabled } = args;
 
@@ -55,13 +65,32 @@ export function useDraftRoomOrchestration(args: {
 
   const [view, setView] = useState<DraftRoomView>("draft");
   // Default: show all nominees but mute drafted ones (better situational awareness).
-  const [poolMode, setPoolMode] = useState<PoolMode>("ALL_MUTED");
+  const { preferences, updatePreferences } = useDraftRoomPreferences(
+    args.preferencesUserKey
+  );
+  const [poolMode, setPoolModeState] = useState<PoolMode>(preferences.poolMode);
+  const setPoolMode = useCallback(
+    (mode: PoolMode) => {
+      setPoolModeState(mode);
+      updatePreferences({ poolMode: mode });
+    },
+    [updatePreferences]
+  );
   const [ledgerCollapsed, setLedgerCollapsed] = useState(false);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
   const [autodraftCollapsed, setAutodraftCollapsed] = useState(false);
 
   const [selectedNominationId, setSelectedNominationId] = useState<number | null>(null);
-  const nowTs = useDraftClock();
+  const nowTs = useDraftClock(snapshotState.serverOffsetMs);
+
+  const [connectionState, setConnectionState] = useState<DraftConnectionState>("idle");
+  const onConnectionEvent = useCallback((event: DraftConnectionEvent) => {
+    setConnectionState((prev) => nextConnectionState(prev, event));
+  }, []);
+  const connection = useMemo(
+    () => describeConnection(connectionState),
+    [connectionState]
+  );
 
   const socketRef = useRef<Socket | null>(null);
   const snapshotRef = snapshotState.snapshotRef;
@@ -85,10 +114,26 @@ export function useDraftRoomOrchestration(args: {
     draftId: snapshot?.draft?.id ?? null,
     snapshotRef,
     socketRef,
-    loadSnapshot
+    loadSnapshot,
+    serverOffsetRef: snapshotState.serverOffsetRef
   });
 
-  const derived = useDraftDerivedData(snapshot);
+  const actions = useDraftRoomActions({
+    snapshot,
+    selectedNominationId,
+    setSelectedNominationId,
+    loadSnapshot,
+    connectionBlockedReason: connection.pickBlockedReason
+  });
+  const { pendingPick } = actions;
+
+  // What the board shows: the server snapshot plus the user's not-yet-confirmed pick.
+  const displaySnapshot = useMemo(
+    () => applyPendingPick(snapshot, pendingPick),
+    [pendingPick, snapshot]
+  );
+
+  const derived = useDraftDerivedData(displaySnapshot);
   const {
     drafted,
     winnerCountBySeat,
@@ -104,7 +149,10 @@ export function useDraftRoomOrchestration(args: {
     resultsWinnerLabel
   } = derived;
 
-  const turn = useMemo(() => (snapshot ? computeTurn(snapshot) : null), [snapshot]);
+  const turn = useMemo(
+    () => (displaySnapshot ? computeTurn(displaySnapshot) : null),
+    [displaySnapshot]
+  );
   const activeSeatNumber = turn?.seat_number ?? null;
   const mySeatNumber = snapshot?.my_seat_number ?? null;
 
@@ -142,19 +190,21 @@ export function useDraftRoomOrchestration(args: {
         activeSeatNumber,
         mySeatNumber,
         selectedNominationId,
-        drafted
+        drafted,
+        connectionBlockedReason: connection.pickBlockedReason
       }),
-    [activeSeatNumber, disabled, drafted, mySeatNumber, selectedNominationId, snapshot]
+    [
+      activeSeatNumber,
+      connection.pickBlockedReason,
+      disabled,
+      drafted,
+      mySeatNumber,
+      selectedNominationId,
+      snapshot
+    ]
   );
 
   const canPick = Boolean(snapshot && !pickDisabledReason);
-
-  const actions = useDraftRoomActions({
-    snapshot,
-    selectedNominationId,
-    setSelectedNominationId,
-    loadSnapshot
-  });
 
   const draftStatus = snapshot?.draft.status ?? null;
   const { upsertRemoteCursor, ...cursorSpy } = useDraftCursorSpy({
@@ -172,7 +222,9 @@ export function useDraftRoomOrchestration(args: {
     loadSnapshot,
     setSnapshot,
     setError,
-    onRemoteCursor: upsertRemoteCursor
+    onRemoteCursor: upsertRemoteCursor,
+    onConnectionEvent,
+    recordServerTime: snapshotState.recordServerTime
   });
 
   const canManageDraft = Boolean(snapshot?.can_manage_draft);
@@ -233,7 +285,32 @@ export function useDraftRoomOrchestration(args: {
     rosterPicksBySeat,
     maxRows,
     participants
-  } = useDraftBoards({ snapshot, turn, mySeatNumber, selectedNominationId, derived });
+  } = useDraftBoards({
+    snapshot: displaySnapshot,
+    turn,
+    mySeatNumber,
+    selectedNominationId,
+    derived
+  });
+
+  const ledgerRowsWithPending = useMemo(
+    () =>
+      pendingPick
+        ? ledgerRows.map((r) =>
+            r.nominationId === pendingPick.nominationId ? { ...r, pending: true } : r
+          )
+        : ledgerRows,
+    [ledgerRows, pendingPick]
+  );
+  const myPicksWithPending = useMemo(
+    () =>
+      pendingPick
+        ? myPicks.map((p) =>
+            p.nominationId === pendingPick.nominationId ? { ...p, pending: true } : p
+          )
+        : myPicks,
+    [myPicks, pendingPick]
+  );
 
   const clockText = snapshot ? computeDraftClockText(snapshot, nowTs) : "—";
   const timerRemainingMs = useMemo(
@@ -330,18 +407,19 @@ export function useDraftRoomOrchestration(args: {
         }
       }
     },
-    ledger: { rows: ledgerRows },
+    ledger: { rows: ledgerRowsWithPending },
     pool: {
       categories: poolCategories,
       onSelectNomination: (id) => setSelectedNominationId(id)
     },
     myRoster: {
       seatNumber: mySeatNumber,
-      picks: myPicks,
+      picks: myPicksWithPending,
       selected,
       clearSelection: () => setSelectedNominationId(null),
       canPick,
       pickDisabledReason,
+      pickPending: Boolean(pendingPick),
       ...actions.myRoster
     },
     rosterBoard: {
@@ -373,6 +451,8 @@ export function useDraftRoomOrchestration(args: {
       error: autodraftState.error
     },
     cursorSpy,
+    connection,
+    preferences: { value: preferences, update: updatePreferences },
     refresh
   };
 }

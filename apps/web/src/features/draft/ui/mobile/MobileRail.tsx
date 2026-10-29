@@ -51,13 +51,18 @@ export function MobileRail(props: {
                   "dr-pill",
                   "dr-pill-static",
                   r.label === "—" ? "is-muted" : "",
-                  r.winner ? "is-winner" : ""
+                  r.winner ? "is-winner" : "",
+                  r.pending ? "is-pending" : ""
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 tabIndex={nominee ? 0 : undefined}
                 role={nominee ? "group" : undefined}
-                aria-label={nominee ? `${nominee.categoryName}: ${r.label}` : undefined}
+                aria-label={
+                  nominee
+                    ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
+                    : undefined
+                }
               >
                 {nominee ? (
                   <DraftCategoryIcon
@@ -142,13 +147,18 @@ export function MobileRail(props: {
                   "dr-pill",
                   "dr-pill-static",
                   r.label === "—" ? "is-muted" : "",
-                  r.winner ? "is-winner" : ""
+                  r.winner ? "is-winner" : "",
+                  r.pending ? "is-pending" : ""
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 tabIndex={nominee ? 0 : undefined}
                 role={nominee ? "group" : undefined}
-                aria-label={nominee ? `${nominee.categoryName}: ${r.label}` : undefined}
+                aria-label={
+                  nominee
+                    ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
+                    : undefined
+                }
               >
                 {nominee ? (
                   <DraftCategoryIcon
