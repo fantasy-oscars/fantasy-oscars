@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
+import { authTokenFromResponse } from "../../support/session.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -119,19 +120,30 @@ describe("auth integration", () => {
       password: "pw123456"
     };
     await post("/auth/register", payload);
-    const res = await post<{ user: { username: string }; token: string }>("/auth/login", {
+    const res = await post<{ user: { username: string } }>("/auth/login", {
       username: payload.username,
       password: payload.password
     });
     expect(res.status).toBe(200);
     expect(res.json.user.username).toBe(payload.username);
-    expect(res.json.token).toBeDefined();
+    expect(res.json).not.toHaveProperty("token");
 
-    const me = await getJson<{ user: { sub: string; username: string } }>("/auth/me", {
-      Authorization: `Bearer ${res.json.token}`
+    // The session lives in the cookie only; Bearer stays accepted for scripts.
+    const token = authTokenFromResponse(res.headers);
+    const viaBearer = await getJson<{ user: { sub: string; username: string } }>(
+      "/auth/me",
+      { Authorization: `Bearer ${token}` }
+    );
+    expect(viaBearer.status).toBe(200);
+    expect(viaBearer.json.user.username).toBe(payload.username);
+    expect(viaBearer.json).not.toHaveProperty("token");
+
+    const viaCookie = await getJson<{ user: { username: string } }>("/auth/me", {
+      Cookie: `auth_token=${token}`
     });
-    expect(me.status).toBe(200);
-    expect(me.json.user.username).toBe(payload.username);
+    expect(viaCookie.status).toBe(200);
+    expect(viaCookie.json.user.username).toBe(payload.username);
+    expect(viaCookie.json).not.toHaveProperty("token");
   });
 
   it("logs in with username case-insensitively and returns stored username casing", async () => {
@@ -142,13 +154,10 @@ describe("auth integration", () => {
     };
     await post("/auth/register", payload);
 
-    const res = await post<{ user: { username: string; email: string }; token: string }>(
-      "/auth/login",
-      {
-        username: "CASEUSER",
-        password: payload.password
-      }
-    );
+    const res = await post<{ user: { username: string; email: string } }>("/auth/login", {
+      username: "CASEUSER",
+      password: payload.password
+    });
     expect(res.status).toBe(200);
     expect(res.json.user.username).toBe("CaseUser");
     expect(res.json.user.email).toBe("caseemail@example.com");
@@ -176,7 +185,7 @@ describe("auth integration", () => {
       password: "pw123456"
     };
     await post("/auth/register", payload);
-    const res = await post<{ user: { username: string }; token: string }>("/auth/login", {
+    const res = await post<{ user: { username: string } }>("/auth/login", {
       username: payload.username,
       password: payload.password
     });
@@ -217,7 +226,7 @@ describe("auth integration", () => {
       password: "pw123456"
     };
     await post("/auth/register", payload);
-    const res = await post<{ token: string }>("/auth/login", {
+    const res = await post<unknown>("/auth/login", {
       username: payload.username,
       password: payload.password
     });

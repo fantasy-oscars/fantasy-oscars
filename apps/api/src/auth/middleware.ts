@@ -11,7 +11,7 @@ import {
   AUTH_SESSION_TTL_MS,
   shouldRenewAuthSession
 } from "../domain/authSession.js";
-import { clearAuthCookie, setAuthCookie } from "./cookie.js";
+import { clearAuthCookie, parseCookies, setAuthCookie } from "./cookie.js";
 import { TokenClaims, signSessionToken, verifyToken } from "./token.js";
 import { hasOperatorAccess, hasSuperAdminAccess, normalizeAdminRole } from "./roles.js";
 
@@ -20,18 +20,6 @@ export type AuthedRequest = Request & {
   /** The validated server-side session behind `auth` (set when a DB is attached). */
   authSession?: { id: string; expires_at: Date };
 };
-
-function parseCookies(header: string | undefined): Record<string, string> {
-  if (!header) return {};
-  return header.split(";").reduce<Record<string, string>>((acc, part) => {
-    const [k, ...rest] = part.split("=");
-    if (!k) return acc;
-    const key = k.trim();
-    if (!key) return acc;
-    acc[key] = rest.join("=").trim();
-    return acc;
-  }, {});
-}
 
 /** Both credential transports; either may be absent. */
 function extractTokens(req: Request): { bearer: string | null; cookie: string | null } {

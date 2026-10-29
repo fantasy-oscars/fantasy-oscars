@@ -1,4 +1,5 @@
 import type { Namespace, Server, Socket } from "socket.io";
+import { parseCookies } from "../auth/cookie.js";
 import { verifyToken } from "../auth/token.js";
 import { getActiveSessionUser } from "../data/repositories/authSessionRepository.js";
 import { AUTH_SESSION_MAX_AGE_MS } from "../domain/authSession.js";
@@ -30,25 +31,24 @@ function parseDraftId(socket: Socket): number {
   return num;
 }
 
+/**
+ * The session credential for a socket handshake. Browsers send the HttpOnly
+ * `auth_token` cookie on the same-origin websocket upgrade; that is the only
+ * credential the web app uses. Bearer is for non-browser clients (same as
+ * HTTP). The `auth` payload is a transition path for tabs opened before the
+ * cookie-only change and for the api.fantasy-oscars.com alias; remove it when
+ * that alias is retired.
+ */
 function parseToken(socket: Socket): string | null {
   const authHeader = socket.handshake.headers?.authorization;
   if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
     return authHeader.slice("Bearer ".length);
   }
-  const cookieHeader =
-    typeof socket.handshake.headers?.cookie === "string"
-      ? socket.handshake.headers.cookie
-      : "";
-  const cookies = cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
-    const [k, ...rest] = part.split("=");
-    if (!k) return acc;
-    acc[k.trim()] = rest.join("=").trim();
-    return acc;
-  }, {});
-  if (cookies.auth_token) return cookies.auth_token;
-  const authDraft =
-    (socket.handshake.auth as { token?: unknown } | undefined)?.token ??
-    (socket.handshake.auth as { Authorization?: unknown } | undefined)?.Authorization;
+  const cookie = parseCookies(socket.handshake.headers?.cookie).auth_token;
+  if (cookie) return cookie;
+  const authPayload = socket.handshake.auth as
+    { token?: unknown; Authorization?: unknown } | undefined;
+  const authDraft = authPayload?.token ?? authPayload?.Authorization;
   if (typeof authDraft === "string" && authDraft.startsWith("Bearer "))
     return authDraft.slice("Bearer ".length);
   if (typeof authDraft === "string" && authDraft) return authDraft;

@@ -17,6 +17,7 @@ import {
   insertSeasonMember,
   insertUser
 } from "../../factories/db.js";
+import { authTokenFromResponse } from "../../support/session.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -26,12 +27,12 @@ async function post<T>(
   path: string,
   body?: Record<string, unknown>,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Record<string, unknown> }> {
   const res = await api
     .post(path)
     .set({ "content-type": "application/json", ...headers })
     .send(body ?? {});
-  return { status: res.status, json: res.body as T };
+  return { status: res.status, json: res.body as T, headers: res.headers };
 }
 
 /** Register and elevate a SUPER_ADMIN user; return their bearer token. */
@@ -50,16 +51,16 @@ async function makeAdmin(): Promise<{ userId: number; token: string }> {
     `UPDATE app_user SET is_admin = TRUE, admin_role = 'SUPER_ADMIN' WHERE id = $1`,
     [reg.user.id]
   );
-  const { status: loginStatus, json: login } = await post<{ token: string }>(
-    "/auth/login",
-    {
-      username: `admin-${suffix}`,
-      password: "secret123"
-    }
-  );
+  const {
+    status: loginStatus,
+    json: login,
+    headers: loginHeaders
+  } = await post<unknown>("/auth/login", {
+    username: `admin-${suffix}`,
+    password: "secret123"
+  });
   expect(loginStatus, JSON.stringify(login)).toBe(200);
-  expect(login.token).toEqual(expect.any(String));
-  return { userId: reg.user.id, token: login.token };
+  return { userId: reg.user.id, token: authTokenFromResponse(loginHeaders) };
 }
 
 describe("admin users delete route", () => {
@@ -1048,14 +1049,14 @@ describe("admin users delete route", () => {
       `UPDATE app_user SET is_admin = TRUE, admin_role = 'OPERATOR' WHERE id = $1`,
       [reg.user.id]
     );
-    const { json: login } = await post<{ token: string }>("/auth/login", {
+    const { headers: loginHeaders } = await post<unknown>("/auth/login", {
       username: `operator-${suffix}`,
       password: "secret123"
     });
 
     const res = await api
       .delete(`/admin/users/${target.id}`)
-      .set({ Authorization: `Bearer ${login.token}` });
+      .set({ Authorization: `Bearer ${authTokenFromResponse(loginHeaders)}` });
     expect(res.status).toBe(403);
   });
 });

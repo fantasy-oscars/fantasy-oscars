@@ -9,6 +9,9 @@ import "@fontsource/cinzel/700.css";
 import { App } from "./app/App";
 import "./styles.css";
 import { AppProviders } from "./ui/AppProviders";
+import { removeLegacyAuthTokens } from "./lib/legacyAuthStorage";
+
+removeLegacyAuthTokens();
 
 // Ensure `data-mantine-color-scheme` is set before the first paint.
 // Our token bindings in `apps/web/src/styles.css` depend on this attribute.
