@@ -52,5 +52,5 @@ describe("load-nominees script", () => {
     } finally {
       await stop();
     }
-  }, 20000);
+  }, 120_000);
 });

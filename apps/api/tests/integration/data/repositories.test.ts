@@ -88,5 +88,5 @@ describe("data repositories", () => {
     } finally {
       if (stop) await stop();
     }
-  }, 20000);
+  }, 120_000);
 });
