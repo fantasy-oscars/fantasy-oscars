@@ -51,6 +51,9 @@ export function createServer(deps?: { db?: Pool }): Express {
   const app = express();
   const config = loadConfig();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");
+  // Behind a reverse proxy (Render) req.ip must come from X-Forwarded-For, otherwise
+  // every client shares the proxy's address for rate limiting.
+  app.set("trust proxy", config.trustProxy);
   app.use(express.json());
   app.locals.db = pool;
 
@@ -65,13 +68,7 @@ export function createServer(deps?: { db?: Pool }): Express {
   // Minimal CORS for local dev and web preview
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    const allowlist =
-      process.env.CORS_ALLOWED_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173";
-    const allowedOrigins = allowlist
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const isAllowed = origin ? allowedOrigins.some((o) => origin.startsWith(o)) : false;
+    const isAllowed = origin ? config.corsAllowedOrigins.includes(origin) : false;
 
     if (isAllowed && origin) {
       res.header("Access-Control-Allow-Origin", origin);

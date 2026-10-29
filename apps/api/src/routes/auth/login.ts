@@ -18,175 +18,179 @@ export function registerAuthLoginRoute(args: {
   authSecret: string;
   authCookieMaxAgeMs: number;
   cookieConfig: AuthCookieConfig;
-  authLimiter: { middleware: express.RequestHandler };
+  loginLimiters: Array<{ middleware: express.RequestHandler }>;
 }) {
-  const { router, client, authSecret, authCookieMaxAgeMs, cookieConfig, authLimiter } =
+  const { router, client, authSecret, authCookieMaxAgeMs, cookieConfig, loginLimiters } =
     args;
 
-  router.post("/login", authLimiter.middleware, async (req, res, next) => {
-    try {
-      const { username, handle, password } = req.body ?? {};
-      const rawUsername = username ?? handle;
-      if (!rawUsername || !password) {
-        throw validationError("Missing required fields", ["username", "password"]);
-      }
-      if (typeof rawUsername !== "string" || typeof password !== "string") {
-        throw validationError("Invalid field types", ["username", "password"]);
-      }
-      const usernameIssues = validateUsername(rawUsername).filter(
-        (i) => i.code !== "REQUIRED"
-      );
-      const passwordIssues = validatePassword(password).filter(
-        (i) => i.code !== "REQUIRED"
-      );
-      if (usernameIssues.length || passwordIssues.length) {
-        throw validationError("Invalid credentials", ["username", "password"]);
-      }
+  router.post(
+    "/login",
+    ...loginLimiters.map((l) => l.middleware),
+    async (req, res, next) => {
+      try {
+        const { username, handle, password } = req.body ?? {};
+        const rawUsername = username ?? handle;
+        if (!rawUsername || !password) {
+          throw validationError("Missing required fields", ["username", "password"]);
+        }
+        if (typeof rawUsername !== "string" || typeof password !== "string") {
+          throw validationError("Invalid field types", ["username", "password"]);
+        }
+        const usernameIssues = validateUsername(rawUsername).filter(
+          (i) => i.code !== "REQUIRED"
+        );
+        const passwordIssues = validatePassword(password).filter(
+          (i) => i.code !== "REQUIRED"
+        );
+        if (usernameIssues.length || passwordIssues.length) {
+          throw validationError("Invalid credentials", ["username", "password"]);
+        }
 
-      const normalizedUsername = normalizeUsername(rawUsername);
-      const tryQueries: Array<() => Promise<unknown[]>> = [
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, p.password_hash, p.password_algo
+        const normalizedUsername = normalizeUsername(rawUsername);
+        const tryQueries: Array<() => Promise<unknown[]>> = [
+          async () =>
+            (
+              await query(
+                client,
+                `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.username) = $1
                  AND u.deleted_at IS NULL`,
-              [normalizedUsername]
-            )
-          ).rows as unknown[],
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT u.id, u.username, u.email, false AS is_admin, NULL::text AS admin_role, u.avatar_key, p.password_hash, p.password_algo
+                [normalizedUsername]
+              )
+            ).rows as unknown[],
+          async () =>
+            (
+              await query(
+                client,
+                `SELECT u.id, u.username, u.email, false AS is_admin, NULL::text AS admin_role, u.avatar_key, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.username) = $1
                  AND u.deleted_at IS NULL`,
-              [normalizedUsername]
-            )
-          ).rows as unknown[],
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT u.id, u.handle AS username, u.email, u.is_admin, u.admin_role, p.password_hash, p.password_algo
+                [normalizedUsername]
+              )
+            ).rows as unknown[],
+          async () =>
+            (
+              await query(
+                client,
+                `SELECT u.id, u.handle AS username, u.email, u.is_admin, u.admin_role, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.handle) = $1
                  AND u.deleted_at IS NULL`,
-              [normalizedUsername]
-            )
-          ).rows as unknown[],
-        async () =>
-          (
-            await query(
-              client,
-              `SELECT u.id, u.handle AS username, u.email, false AS is_admin, NULL::text AS admin_role, p.password_hash, p.password_algo
+                [normalizedUsername]
+              )
+            ).rows as unknown[],
+          async () =>
+            (
+              await query(
+                client,
+                `SELECT u.id, u.handle AS username, u.email, false AS is_admin, NULL::text AS admin_role, p.password_hash, p.password_algo
                FROM app_user u
                JOIN auth_password p ON p.user_id = u.id
                WHERE lower(u.handle) = $1
                  AND u.deleted_at IS NULL`,
-              [normalizedUsername]
-            )
-          ).rows as unknown[]
-      ];
+                [normalizedUsername]
+              )
+            ).rows as unknown[]
+        ];
 
-      let rows: unknown[] | undefined;
-      let lastErr: unknown = undefined;
-      for (const run of tryQueries) {
-        try {
-          rows = await run();
-          break;
-        } catch (err) {
-          lastErr = err;
-          // Only continue retrying on missing-column errors.
-          if (
-            !isMissingColumnError(err, "is_admin") &&
-            !isMissingColumnError(err, "admin_role") &&
-            !isMissingColumnError(err, "username") &&
-            !isMissingColumnError(err, "handle") &&
-            !isMissingColumnError(err, "avatar_key")
-          ) {
+        let rows: unknown[] | undefined;
+        let lastErr: unknown = undefined;
+        for (const run of tryQueries) {
+          try {
+            rows = await run();
             break;
+          } catch (err) {
+            lastErr = err;
+            // Only continue retrying on missing-column errors.
+            if (
+              !isMissingColumnError(err, "is_admin") &&
+              !isMissingColumnError(err, "admin_role") &&
+              !isMissingColumnError(err, "username") &&
+              !isMissingColumnError(err, "handle") &&
+              !isMissingColumnError(err, "avatar_key")
+            ) {
+              break;
+            }
           }
         }
-      }
-      if (!rows) {
-        if (
-          isMissingColumnError(lastErr, "username") ||
-          isMissingColumnError(lastErr, "handle") ||
-          isMissingColumnError(lastErr, "is_admin") ||
-          isMissingColumnError(lastErr, "admin_role") ||
-          isMissingColumnError(lastErr, "avatar_key")
-        ) {
-          throw new AppError(
-            "SERVICE_UNAVAILABLE",
-            503,
-            "Login is temporarily unavailable while we update the server. Please try again in a few minutes."
-          );
+        if (!rows) {
+          if (
+            isMissingColumnError(lastErr, "username") ||
+            isMissingColumnError(lastErr, "handle") ||
+            isMissingColumnError(lastErr, "is_admin") ||
+            isMissingColumnError(lastErr, "admin_role") ||
+            isMissingColumnError(lastErr, "avatar_key")
+          ) {
+            throw new AppError(
+              "SERVICE_UNAVAILABLE",
+              503,
+              "Login is temporarily unavailable while we update the server. Please try again in a few minutes."
+            );
+          }
+          throw lastErr;
         }
-        throw lastErr;
+
+        const user = rows[0] as {
+          id: string | number;
+          username: string;
+          email: string;
+          is_admin: boolean;
+          admin_role?: string | null;
+          avatar_key?: string | null;
+          password_hash: string;
+          password_algo: string;
+        };
+        if (!user) throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
+
+        const isValid = await verifyPassword(
+          password,
+          user.password_hash,
+          user.password_algo
+        );
+        if (!isValid) {
+          throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
+        }
+
+        // Skeleton: return placeholder token (non-secure) for v0.
+        const avatarKey = String(user.avatar_key ?? "monkey");
+        const adminRole = normalizeAdminRole(user.admin_role, Boolean(user.is_admin));
+        const token = signToken(
+          {
+            sub: String(user.id),
+            username: user.username,
+            is_admin: adminRole !== "NONE",
+            admin_role: adminRole,
+            avatar_key: avatarKey
+          },
+          authSecret,
+          Math.floor(authCookieMaxAgeMs / 1000)
+        );
+        res.cookie(cookieConfig.name, token, {
+          httpOnly: cookieConfig.httpOnly,
+          sameSite: cookieConfig.sameSite,
+          secure: cookieConfig.secure,
+          maxAge: authCookieMaxAgeMs,
+          path: cookieConfig.path
+        });
+        return res.json({
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            is_admin: adminRole !== "NONE",
+            admin_role: adminRole,
+            avatar_key: avatarKey
+          },
+          token
+        });
+      } catch (err) {
+        next(err);
       }
-
-      const user = rows[0] as {
-        id: string | number;
-        username: string;
-        email: string;
-        is_admin: boolean;
-        admin_role?: string | null;
-        avatar_key?: string | null;
-        password_hash: string;
-        password_algo: string;
-      };
-      if (!user) throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
-
-      const isValid = await verifyPassword(
-        password,
-        user.password_hash,
-        user.password_algo
-      );
-      if (!isValid) {
-        throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
-      }
-
-      // Skeleton: return placeholder token (non-secure) for v0.
-      const avatarKey = String(user.avatar_key ?? "monkey");
-      const adminRole = normalizeAdminRole(user.admin_role, Boolean(user.is_admin));
-      const token = signToken(
-        {
-          sub: String(user.id),
-          username: user.username,
-          is_admin: adminRole !== "NONE",
-          admin_role: adminRole,
-          avatar_key: avatarKey
-        },
-        authSecret,
-        Math.floor(authCookieMaxAgeMs / 1000)
-      );
-      res.cookie(cookieConfig.name, token, {
-        httpOnly: cookieConfig.httpOnly,
-        sameSite: cookieConfig.sameSite,
-        secure: cookieConfig.secure,
-        maxAge: authCookieMaxAgeMs,
-        path: cookieConfig.path
-      });
-      return res.json({
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          is_admin: adminRole !== "NONE",
-          admin_role: adminRole,
-          avatar_key: avatarKey
-        },
-        token
-      });
-    } catch (err) {
-      next(err);
     }
-  });
+  );
 }

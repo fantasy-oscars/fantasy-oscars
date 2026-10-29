@@ -16,11 +16,8 @@ export function createRateLimitGuard(options: GuardOptions) {
   registerLimiter(limiter);
 
   const middleware = (req: Request, _res: Response, next: NextFunction) => {
-    const key =
-      (options.key ? options.key(req) : undefined) ??
-      req.ip ??
-      req.headers["x-forwarded-for"]?.toString() ??
-      "unknown";
+    // req.ip honours the `trust proxy` setting; the raw header is client-controlled.
+    const key = (options.key ? options.key(req) : undefined) ?? req.ip ?? "unknown";
     if (!limiter.allow(key)) {
       return next(new AppError("RATE_LIMITED", 429, "Too many requests"));
     }

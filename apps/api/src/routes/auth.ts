@@ -1,6 +1,7 @@
 import express from "express";
 import type { Router } from "express";
 import type { DbClient } from "../data/db.js";
+import { loginUserRateKey } from "./auth/loginRateKey.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 import { registerAuthDeleteMeRoute } from "./auth/deleteMe.js";
 import { registerAuthLoginRoute } from "./auth/login.js";
@@ -9,9 +10,21 @@ import { registerAuthLogoutRoute } from "./auth/logout.js";
 import { registerAuthMeRoute } from "./auth/me.js";
 import { registerAuthRegisterRoute } from "./auth/register.js";
 
-const authLimiter = createRateLimitGuard({
+// Register: per client IP.
+const registerLimiter = createRateLimitGuard({
   windowMs: 60_000,
   max: 8
+});
+
+// Login: per client IP (broad) and per IP + username (tight, slows guessing a single account).
+const loginIpLimiter = createRateLimitGuard({
+  windowMs: 60_000,
+  max: 30
+});
+const loginUserLimiter = createRateLimitGuard({
+  windowMs: 60_000,
+  max: 8,
+  key: loginUserRateKey
 });
 
 export function createAuthRouter(client: DbClient, opts: { authSecret: string }): Router {
@@ -39,14 +52,14 @@ export function createAuthRouter(client: DbClient, opts: { authSecret: string })
   registerAuthMeRoute({ router, client, authSecret });
   registerAuthLogoutRoute({ router, cookieConfig });
   registerAuthDeleteMeRoute({ router, client, authSecret, cookieConfig });
-  registerAuthRegisterRoute({ router, client, authLimiter });
+  registerAuthRegisterRoute({ router, client, authLimiter: registerLimiter });
   registerAuthLoginRoute({
     router,
     client,
     authSecret,
     authCookieMaxAgeMs,
     cookieConfig,
-    authLimiter
+    loginLimiters: [loginIpLimiter, loginUserLimiter]
   });
 
   return router;
