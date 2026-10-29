@@ -40,3 +40,28 @@ When changing or adding frontend code, keep responsibilities separated:
 - **UI:** rendering-only; no rules, no API calls, no orchestration imports
 
 This keeps presentation swappable without changing behavior.
+
+## Request validation
+
+- **One schema per request shape**, defined with zod in `packages/shared/src/schemas/`
+  and exported from the `@fantasy-oscars/shared/schemas` entry point. Zod is a
+  dependency of `packages/shared` only; the API gets `z` and the schemas through that
+  entry point. It is kept out of the main entry so code that only needs the plain
+  validators or types does not pull zod into the web bundle.
+- **Rules are not duplicated.** Where a schema needs an existing rule (for example
+  username or password), it calls the `validate*` function from
+  `packages/shared/src/auth` inside `.superRefine`, so the function and the schema
+  cannot drift apart.
+- **Routes parse at the boundary** with the helpers in `apps/api/src/utils/validate.ts`:
+  `parseBody(schema, req.body)`, `parseParams(schema, req.params)` and
+  `parseQuery(schema, req.query)`. They return the parsed, normalised value; routes
+  do not hand-check `typeof` or `Number.isNaN` on request input. Numeric path ids
+  use the shared `idParam` (positive integer from a string).
+- **Errors map to the existing shape.** A failed parse throws
+  `validationError(message, fields)`: HTTP 400, code `VALIDATION_ERROR`, and
+  `details.fields` listing the offending fields. The message is the first issue's
+  message (write the user-facing text in the schema) and the fields are the first
+  path segment of each issue. A route can pass `{ message, fields }` to override
+  either, and a custom issue can carry its own list via `params: { fields }`.
+- Schemas strip unknown keys. Business checks that need the database (existence,
+  permissions, state) stay in the route or service and keep their own `AppError`s.

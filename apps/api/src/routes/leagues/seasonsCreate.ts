@@ -1,6 +1,8 @@
 import type express from "express";
+import { idParam, seasonCreateBodySchema } from "@fantasy-oscars/shared/schemas";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
@@ -26,49 +28,21 @@ export function registerLeagueSeasonsCreateRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const leagueId = Number(req.params.id);
-        if (Number.isNaN(leagueId)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid league id"
+        });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        const ceremonyIdRaw = req.body?.ceremony_id;
-        const ceremonyId =
-          ceremonyIdRaw === undefined || ceremonyIdRaw === null
-            ? null
-            : Number(ceremonyIdRaw);
-
-        const scoringRaw = req.body?.scoring_strategy_name;
-        const scoringStrategy =
-          scoringRaw === undefined || scoringRaw === null ? "fixed" : String(scoringRaw);
-        if (!["fixed", "negative", "category_weighted"].includes(scoringStrategy)) {
-          throw validationError("Invalid scoring_strategy_name", [
-            "scoring_strategy_name"
-          ]);
-        }
-
-        const remainderRaw = req.body?.remainder_strategy;
-        const remainderStrategy =
-          remainderRaw === undefined || remainderRaw === null
-            ? "UNDRAFTED"
-            : String(remainderRaw);
-        if (!["UNDRAFTED", "FULL_POOL"].includes(remainderStrategy)) {
-          throw validationError("Invalid remainder_strategy", ["remainder_strategy"]);
-        }
-
-        const timerRaw = req.body?.pick_timer_seconds;
-        const pickTimerSeconds =
-          timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
-        if (
-          pickTimerSeconds !== null &&
-          (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
-        ) {
-          throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
-        }
+        const {
+          ceremony_id: ceremonyId,
+          scoring_strategy_name: scoringStrategy,
+          remainder_strategy: remainderStrategy,
+          pick_timer_seconds: pickTimerSeconds
+        } = parseBody(seasonCreateBodySchema, req.body);
 
         // Multi-ceremony: season creation must explicitly choose a ceremony.
-        if (!ceremonyId || Number.isNaN(Number(ceremonyId))) {
+        if (!ceremonyId) {
           throw new AppError(
             "CEREMONY_REQUIRED",
             409,
@@ -148,9 +122,8 @@ export function registerLeagueSeasonsCreateRoute(args: {
             `UPDATE season SET scoring_strategy_name = $2, remainder_strategy = $3 WHERE id = $1`,
             [season.id, scoringStrategy, remainderStrategy]
           );
-          season.scoring_strategy_name = scoringStrategy as
-            "fixed" | "negative" | "category_weighted";
-          season.remainder_strategy = remainderStrategy as "UNDRAFTED" | "FULL_POOL";
+          season.scoring_strategy_name = scoringStrategy;
+          season.remainder_strategy = remainderStrategy;
 
           const existingDraft = await getDraftBySeasonId(tx, season.id);
           if (existingDraft) {
@@ -166,7 +139,7 @@ export function registerLeagueSeasonsCreateRoute(args: {
             current_pick_number: null,
             started_at: null,
             completed_at: null,
-            remainder_strategy: remainderStrategy as "UNDRAFTED" | "FULL_POOL",
+            remainder_strategy: remainderStrategy,
             pick_timer_seconds:
               pickTimerSeconds && pickTimerSeconds > 0
                 ? Math.floor(pickTimerSeconds)

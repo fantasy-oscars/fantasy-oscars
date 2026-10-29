@@ -1,6 +1,8 @@
 import express from "express";
 import type { Router } from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { getLeagueMember } from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
@@ -19,10 +21,9 @@ export function registerSeasonInvitesListRoute(args: {
     "/:id/invites",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
-        if (Number.isNaN(seasonId)) {
-          throw validationError("Invalid season id", ["id"]);
-        }
+        const { id: seasonId } = parseParams(idParam, req.params, {
+          message: "Invalid season id"
+        });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 

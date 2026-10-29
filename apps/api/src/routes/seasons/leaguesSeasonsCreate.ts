@@ -1,6 +1,8 @@
 import type express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, seasonCreateLegacyBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { getActiveCeremonyId } from "../../data/repositories/appConfigRepository.js";
 import {
@@ -25,18 +27,16 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
     "/leagues/:id/seasons",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const leagueId = Number(req.params.id);
-        if (Number.isNaN(leagueId)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid league id"
+        });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        const ceremonyIdRaw = req.body?.ceremony_id;
-        const ceremonyId =
-          ceremonyIdRaw === undefined || ceremonyIdRaw === null
-            ? null
-            : Number(ceremonyIdRaw);
+        const { ceremony_id: ceremonyId } = parseBody(
+          seasonCreateLegacyBodySchema,
+          req.body
+        );
 
         // Back-compat: if no ceremony_id provided, fall back to the legacy single-active ceremony.
         const fallbackActiveCeremonyId = ceremonyId

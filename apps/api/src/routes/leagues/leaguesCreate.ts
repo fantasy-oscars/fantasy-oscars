@@ -1,8 +1,10 @@
 import type express from "express";
 import type { Pool } from "pg";
 import { randomBytes } from "crypto";
+import { leagueCreateBodySchema } from "@fantasy-oscars/shared/schemas";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody } from "../../utils/validate.js";
 import { runInTransaction } from "../../data/db.js";
 import type { DbClient } from "../../data/db.js";
 import {
@@ -44,20 +46,12 @@ export function registerLeaguesCreateRoute(args: {
 
   router.post("/", requireAuth(authSecret), async (req: AuthedRequest, res, next) => {
     try {
-      const { name } = req.body ?? {};
       const creator = req.auth;
       if (!creator?.sub) {
         throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
       }
 
-      if (!name) {
-        throw validationError("Missing required fields", ["name"]);
-      }
-
-      const nameStr = String(name).trim();
-      if (nameStr.length === 0) {
-        throw validationError("Invalid name", ["name"]);
-      }
+      const { name: nameStr } = parseBody(leagueCreateBodySchema, req.body);
 
       const maxMembersNum = DEFAULT_LEAGUE_MAX_MEMBERS;
 

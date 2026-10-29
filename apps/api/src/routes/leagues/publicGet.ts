@@ -1,6 +1,8 @@
 import type express from "express";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
-import { AppError, validationError } from "../../errors.js";
+import { idParam } from "@fantasy-oscars/shared/schemas";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { getLeagueById } from "../../data/repositories/leagueRepository.js";
 import { listSeasonsForLeague } from "../../data/repositories/seasonRepository.js";
@@ -18,10 +20,7 @@ export function registerLeaguePublicGetRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const id = Number(req.params.id);
-        if (Number.isNaN(id)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
+        const { id } = parseParams(idParam, req.params, { message: "Invalid league id" });
         const league = await getLeagueById(client, id);
         if (!league || !league.is_public) {
           throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");

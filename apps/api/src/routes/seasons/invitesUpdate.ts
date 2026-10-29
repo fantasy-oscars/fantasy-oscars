@@ -1,6 +1,11 @@
 import express from "express";
 import type { Router } from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import {
+  idAndInviteIdParams,
+  seasonLabelBodySchema
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
@@ -19,16 +24,13 @@ export function registerSeasonInvitesUpdateRoute(args: {
     "/:id/invites/:inviteId",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
-        const inviteId = Number(req.params.inviteId);
+        const { id: seasonId, inviteId } = parseParams(idAndInviteIdParams, req.params, {
+          message: "Invalid ids",
+          fields: ["id", "inviteId"]
+        });
         const actorId = Number(req.auth?.sub);
-        const { label } = req.body ?? {};
-        if (Number.isNaN(seasonId) || Number.isNaN(inviteId) || !actorId) {
-          throw validationError("Invalid ids", ["id", "inviteId"]);
-        }
-        if (label !== undefined && typeof label !== "string") {
-          throw validationError("Invalid label", ["label"]);
-        }
+        if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        const { label } = parseBody(seasonLabelBodySchema, req.body);
 
         const season = await getSeasonById(client, seasonId);
         if (!season || season.status !== "EXTANT") {

@@ -1,6 +1,8 @@
 import type express from "express";
+import { idAndUserIdParams } from "@fantasy-oscars/shared/schemas";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
@@ -23,16 +25,12 @@ export function registerLeagueMembersDeleteMemberRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const leagueId = Number(req.params.id);
-        const targetUserId = Number(req.params.userId);
+        const { id: leagueId, userId: targetUserId } = parseParams(
+          idAndUserIdParams,
+          req.params,
+          { message: "Invalid ids", fields: ["id", "userId"] }
+        );
         const actorId = Number(req.auth?.sub);
-        if (
-          Number.isNaN(leagueId) ||
-          Number.isNaN(targetUserId) ||
-          Number.isNaN(actorId)
-        ) {
-          throw validationError("Invalid ids", ["id", "userId"]);
-        }
         const result = await runInTransaction(client as Pool, async (tx) => {
           const league = await getLeagueById(tx, leagueId);
           if (!league) return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");

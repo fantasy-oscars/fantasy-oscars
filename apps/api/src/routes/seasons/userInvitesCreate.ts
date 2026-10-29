@@ -1,6 +1,8 @@
 import express from "express";
 import type { Router } from "express";
 import { AppError, validationError } from "../../errors.js";
+import { idParam, seasonMemberRefBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { getLeagueMember } from "../../data/repositories/leagueRepository.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
@@ -25,19 +27,17 @@ export function registerSeasonUserInvitesCreateRoute(args: {
     "/:id/user-invites",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
+        const { id: seasonId } = parseParams(idParam, req.params, {
+          message: "Invalid payload"
+        });
         const actorId = Number(req.auth?.sub);
-        const { user_id, username } = req.body ?? {};
-        const targetUserId =
-          user_id === undefined || user_id === null ? NaN : Number(user_id);
-        const usernameStr = typeof username === "string" ? username : null;
-        if (Number.isNaN(seasonId) || !actorId) {
-          throw validationError("Invalid payload", ["id"]);
-        }
+        if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        const { user_id: targetUserId, username: usernameStr } = parseBody(
+          seasonMemberRefBodySchema,
+          req.body
+        );
 
-        let resolvedUserId: number | null = Number.isFinite(targetUserId)
-          ? targetUserId
-          : null;
+        let resolvedUserId: number | null = targetUserId;
         if (!resolvedUserId && usernameStr) {
           const u = await getUserByUsername(client, usernameStr);
           if (!u) throw new AppError("USER_NOT_FOUND", 404, "User not found");

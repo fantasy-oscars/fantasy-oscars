@@ -239,6 +239,15 @@ describe("seasons placeholder invites", () => {
     expect(res.status).toBe(200);
     expect(res.json.invite.label).toBe("Team A");
 
+    // The web client clears a label by sending null.
+    const cleared = await patchJson<{ invite: { label: string | null } }>(
+      `/seasons/${season.id}/invites/${created.json.invite.id}`,
+      { label: null },
+      ownerToken
+    );
+    expect(cleared.status).toBe(200);
+    expect(cleared.json.invite.label).toBeNull();
+
     await db.pool.query(`UPDATE season_invite SET status = 'CLAIMED' WHERE id = $1`, [
       created.json.invite.id
     ]);

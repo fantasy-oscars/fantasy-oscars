@@ -1,5 +1,7 @@
 import type express from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, userIdBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
@@ -19,12 +21,11 @@ export function registerSeasonMembersTransferOwnershipRoute(args: {
     "/:id/transfer-ownership",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
+        const opts = { message: "Invalid ids", fields: ["id", "user_id"] };
+        const { id: seasonId } = parseParams(idParam, req.params, opts);
+        const { user_id: targetUserId } = parseBody(userIdBodySchema, req.body, opts);
         const actorId = Number(req.auth?.sub);
-        const targetUserId = Number(req.body?.user_id);
-        if (Number.isNaN(seasonId) || !actorId || Number.isNaN(targetUserId)) {
-          throw validationError("Invalid ids", ["id", "user_id"]);
-        }
+        if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
         const season = await getSeasonById(client, seasonId);
         if (!season || season.status !== "EXTANT") {

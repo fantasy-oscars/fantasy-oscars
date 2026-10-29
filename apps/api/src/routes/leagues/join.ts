@@ -1,7 +1,9 @@
 import type express from "express";
+import { idParam } from "@fantasy-oscars/shared/schemas";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { requireAuth } from "../../auth/middleware.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import {
   createLeagueMember,
@@ -29,11 +31,10 @@ export function registerLeagueJoinRoutes(args: {
         if (!joinRateLimiter.allow(req.ip ?? "unknown")) {
           throw new AppError("RATE_LIMITED", 429, "Too many join attempts");
         }
-        const leagueId = Number(req.params.id);
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid league id"
+        });
         const userId = Number(req.auth?.sub);
-        if (Number.isNaN(leagueId) || Number.isNaN(userId)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
         const result = await runInTransaction(client as Pool, async (tx) => {
           const league = await getLeagueById(tx, leagueId);
           if (!league) return new AppError("LEAGUE_NOT_FOUND", 404, "League not found");

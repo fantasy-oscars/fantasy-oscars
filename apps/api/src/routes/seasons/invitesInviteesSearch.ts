@@ -1,6 +1,8 @@
 import express from "express";
 import type { Router } from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, inviteeSearchQuerySchema } from "@fantasy-oscars/shared/schemas";
+import { parseParams, parseQuery } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { query } from "../../data/db.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
@@ -23,13 +25,13 @@ export function registerSeasonInviteesSearchRoute(args: {
     "/:id/invitees",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
+        const { id: seasonId } = parseParams(idParam, req.params, {
+          message: "Invalid season id"
+        });
         const actorId = Number(req.auth?.sub);
-        const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        const { q: qRaw } = parseQuery(inviteeSearchQuerySchema, req.query);
         const q = normalizeForSearch(qRaw);
-        if (Number.isNaN(seasonId) || !actorId) {
-          throw validationError("Invalid season id", ["id"]);
-        }
         if (!q) return res.status(200).json({ users: [] });
 
         const season = await getSeasonById(client, seasonId);

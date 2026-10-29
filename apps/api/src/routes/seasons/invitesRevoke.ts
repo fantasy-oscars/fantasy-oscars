@@ -1,6 +1,8 @@
 import express from "express";
 import type { Router } from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idAndInviteIdParams } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
@@ -19,12 +21,12 @@ export function registerSeasonInvitesRevokeRoute(args: {
     "/:id/invites/:inviteId/revoke",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const seasonId = Number(req.params.id);
-        const inviteId = Number(req.params.inviteId);
+        const { id: seasonId, inviteId } = parseParams(idAndInviteIdParams, req.params, {
+          message: "Invalid ids",
+          fields: ["id", "inviteId"]
+        });
         const actorId = Number(req.auth?.sub);
-        if (Number.isNaN(seasonId) || Number.isNaN(inviteId) || !actorId) {
-          throw validationError("Invalid ids", ["id", "inviteId"]);
-        }
+        if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
         const season = await getSeasonById(client, seasonId);
         if (!season || season.status !== "EXTANT") {

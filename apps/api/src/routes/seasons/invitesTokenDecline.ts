@@ -2,7 +2,9 @@ import express from "express";
 import type { Router } from "express";
 import crypto from "crypto";
 import type { Pool } from "pg";
+import { inviteTokenParam } from "@fantasy-oscars/shared/schemas";
 import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import { query, runInTransaction } from "../../data/db.js";
 import type { DbClient } from "../../data/db.js";
 import { getDraftBySeasonId } from "../../data/repositories/draftRepository.js";
@@ -23,7 +25,7 @@ export function registerSeasonInvitesTokenDeclineRoute(args: {
     inviteClaimLimiter.middleware,
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const token = String(req.params.token ?? "").trim();
+        const { token } = parseParams(inviteTokenParam, req.params);
         const userId = Number(req.auth?.sub);
         if (!token || !userId) {
           throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
