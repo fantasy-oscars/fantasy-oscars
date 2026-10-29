@@ -1,6 +1,8 @@
 import type express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, seasonAllocationBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
@@ -22,15 +24,12 @@ export function buildSeasonSettingsAllocationHandler(client: DbClient) {
     next: express.NextFunction
   ) => {
     try {
-      const seasonId = Number(req.params.id);
-      const { remainder_strategy } = req.body ?? {};
+      const { id: seasonId } = parseParams(idParam, req.params, {
+        message: "Invalid season id"
+      });
       const actorId = Number(req.auth?.sub);
-      if (Number.isNaN(seasonId) || !actorId) {
-        throw validationError("Invalid season id", ["id"]);
-      }
-      if (!["UNDRAFTED", "FULL_POOL"].includes(remainder_strategy)) {
-        throw validationError("Invalid remainder_strategy", ["remainder_strategy"]);
-      }
+      if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+      const { remainder_strategy } = parseBody(seasonAllocationBodySchema, req.body);
 
       const result = await runInTransaction(client as Pool, async (tx) => {
         const season = await getSeasonById(tx, seasonId);
@@ -50,11 +49,8 @@ export function buildSeasonSettingsAllocationHandler(client: DbClient) {
         }
 
         const updated =
-          (await updateSeasonRemainderStrategy(
-            tx,
-            season.id,
-            remainder_strategy as "UNDRAFTED" | "FULL_POOL"
-          )) ?? season;
+          (await updateSeasonRemainderStrategy(tx, season.id, remainder_strategy)) ??
+          season;
         return { season: updated };
       });
 

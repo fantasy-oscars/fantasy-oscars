@@ -1,6 +1,8 @@
 import express from "express";
 import type { Router } from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { inviteIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 import type { DbClient } from "../../data/db.js";
 import { updateUserInviteStatus } from "../../data/repositories/seasonInviteRepository.js";
 import { sanitizeInvite } from "./helpers.js";
@@ -18,11 +20,11 @@ export function registerSeasonInvitesDeclineRoute(args: {
     inviteClaimLimiter.middleware,
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const inviteId = Number(req.params.inviteId);
+        const { inviteId } = parseParams(inviteIdParam, req.params, {
+          message: "Invalid invite id"
+        });
         const userId = Number(req.auth?.sub);
-        if (Number.isNaN(inviteId) || !userId) {
-          throw validationError("Invalid invite id", ["inviteId"]);
-        }
+        if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
         const updated = await updateUserInviteStatus(
           client,

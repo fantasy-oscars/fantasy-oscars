@@ -1,6 +1,8 @@
 import type express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, seasonTimerBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
@@ -19,20 +21,15 @@ export function buildSeasonSettingsTimerHandler(client: DbClient) {
     next: express.NextFunction
   ) => {
     try {
-      const seasonId = Number(req.params.id);
+      const { id: seasonId } = parseParams(idParam, req.params, {
+        message: "Invalid season id"
+      });
       const actorId = Number(req.auth?.sub);
-      const timerRaw = (req.body ?? {}).pick_timer_seconds;
-      const pickTimerSeconds =
-        timerRaw === undefined || timerRaw === null ? null : Number(timerRaw);
-      if (Number.isNaN(seasonId) || !actorId) {
-        throw validationError("Invalid season id", ["id"]);
-      }
-      if (
-        pickTimerSeconds !== null &&
-        (!Number.isFinite(pickTimerSeconds) || pickTimerSeconds < 0)
-      ) {
-        throw validationError("Invalid pick_timer_seconds", ["pick_timer_seconds"]);
-      }
+      if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+      const { pick_timer_seconds: pickTimerSeconds } = parseBody(
+        seasonTimerBodySchema,
+        req.body
+      );
 
       const result = await runInTransaction(client as Pool, async (tx) => {
         const season = await getSeasonById(tx, seasonId);

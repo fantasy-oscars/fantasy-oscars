@@ -1,12 +1,10 @@
 import type express from "express";
-import {
-  normalizeUsername,
-  validatePassword,
-  validateUsername
-} from "@fantasy-oscars/shared";
+import { normalizeUsername } from "@fantasy-oscars/shared";
+import { loginBodySchema } from "@fantasy-oscars/shared/schemas";
 import type { Pool } from "pg";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody } from "../../utils/validate.js";
 import { setAuthCookie, type AuthCookieConfig } from "../../auth/cookie.js";
 import { signSessionToken } from "../../auth/token.js";
 import { normalizeAdminRole } from "../../auth/roles.js";
@@ -28,25 +26,11 @@ export function registerAuthLoginRoute(args: {
     ...loginLimiters.map((l) => l.middleware),
     async (req, res, next) => {
       try {
-        const { username, handle, password } = req.body ?? {};
-        const rawUsername = username ?? handle;
-        if (!rawUsername || !password) {
-          throw validationError("Missing required fields", ["username", "password"]);
-        }
-        if (typeof rawUsername !== "string" || typeof password !== "string") {
-          throw validationError("Invalid field types", ["username", "password"]);
-        }
-        const usernameIssues = validateUsername(rawUsername).filter(
-          (i) => i.code !== "REQUIRED"
-        );
-        const passwordIssues = validatePassword(password).filter(
-          (i) => i.code !== "REQUIRED"
-        );
-        if (usernameIssues.length || passwordIssues.length) {
-          throw validationError("Invalid credentials", ["username", "password"]);
-        }
+        const { username, password } = parseBody(loginBodySchema, req.body, {
+          fields: ["username", "password"]
+        });
 
-        const normalizedUsername = normalizeUsername(rawUsername);
+        const normalizedUsername = normalizeUsername(username);
         const { rows } = await query(
           client,
           `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, p.password_hash, p.password_algo

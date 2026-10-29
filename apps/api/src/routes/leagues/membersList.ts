@@ -1,5 +1,7 @@
 import type express from "express";
-import { AppError, validationError } from "../../errors.js";
+import { idParam } from "@fantasy-oscars/shared/schemas";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import { hasSuperAdminAccess } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
@@ -21,11 +23,11 @@ export function registerLeagueMembersListRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const leagueId = Number(req.params.id);
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid league id"
+        });
         const userId = Number(req.auth?.sub);
-        if (Number.isNaN(leagueId) || !userId) {
-          throw validationError("Invalid league id", ["id"]);
-        }
+        if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
         const league = await getLeagueById(client, leagueId);
         if (!league) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");

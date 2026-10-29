@@ -1,5 +1,7 @@
 import type express from "express";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, includeCancelledQuerySchema } from "@fantasy-oscars/shared/schemas";
+import { parseParams, parseQuery } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { hasSuperAdminAccess } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
@@ -19,10 +21,9 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
     "/leagues/:id/seasons",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const leagueId = Number(req.params.id);
-        if (Number.isNaN(leagueId)) {
-          throw validationError("Invalid league id", ["id"]);
-        }
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid league id"
+        });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
@@ -35,9 +36,9 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
           if (!member) throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");
         }
 
+        const { include_cancelled } = parseQuery(includeCancelledQuerySchema, req.query);
         const includeCancelled =
-          req.query.include_cancelled === "true" &&
-          (req.auth as { is_admin?: boolean })?.is_admin === true;
+          include_cancelled && (req.auth as { is_admin?: boolean })?.is_admin === true;
         const seasons = await listSeasonsForLeague(client, leagueId, {
           includeCancelled
         });

@@ -1,6 +1,8 @@
 import type express from "express";
+import { idParam } from "@fantasy-oscars/shared/schemas";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { runInTransaction } from "../../data/db.js";
@@ -22,11 +24,10 @@ export function registerLeagueMembersDeleteLeagueRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const leagueId = Number(req.params.id);
+        const { id: leagueId } = parseParams(idParam, req.params, {
+          message: "Invalid ids"
+        });
         const actorId = Number(req.auth?.sub);
-        if (Number.isNaN(leagueId) || Number.isNaN(actorId)) {
-          throw validationError("Invalid ids", ["id"]);
-        }
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const league = await getLeagueById(tx, leagueId);

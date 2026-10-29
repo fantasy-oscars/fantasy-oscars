@@ -1,12 +1,10 @@
 import type express from "express";
 import crypto from "crypto";
-import {
-  ANIMAL_AVATAR_KEYS,
-  normalizeEmail,
-  validateRegisterInput
-} from "@fantasy-oscars/shared";
+import { ANIMAL_AVATAR_KEYS } from "@fantasy-oscars/shared";
+import { registerBodySchema } from "@fantasy-oscars/shared/schemas";
 import type { DbClient } from "../../data/db.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody } from "../../utils/validate.js";
 import { hashPassword } from "./password.js";
 import { insertUser } from "./users.js";
 
@@ -19,38 +17,9 @@ export function registerAuthRegisterRoute(args: {
 
   router.post("/register", authLimiter.middleware, async (req, res, next) => {
     try {
-      const { username, handle, email, password } = req.body ?? {};
-      const rawUsername = username ?? handle;
-      if (!rawUsername || !email || !password) {
-        throw validationError("Missing required fields", [
-          "username",
-          "email",
-          "password"
-        ]);
-      }
-      if (
-        typeof rawUsername !== "string" ||
-        typeof email !== "string" ||
-        typeof password !== "string"
-      ) {
-        throw validationError("Invalid field types", ["username", "email", "password"]);
-      }
-      const trimmedUsername = rawUsername.trim();
-      const trimmedEmail = email.trim();
-      const normalizedEmail = normalizeEmail(trimmedEmail);
-      const usernameDisplay = trimmedUsername;
-      const invalidFields = Array.from(
-        new Set(
-          validateRegisterInput({
-            username: trimmedUsername,
-            email: trimmedEmail,
-            password
-          }).map((i) => i.field)
-        )
-      );
-      if (invalidFields.length) {
-        throw validationError("Invalid field values", invalidFields);
-      }
+      const { username, email, password } = parseBody(registerBodySchema, req.body, {
+        fields: ["username", "email", "password"]
+      });
 
       const password_hash = await hashPassword(password);
       const password_algo = "scrypt";
@@ -59,8 +28,8 @@ export function registerAuthRegisterRoute(args: {
 
       try {
         const { user } = await insertUser(client, {
-          username_display: usernameDisplay,
-          email: normalizedEmail,
+          username_display: username,
+          email,
           avatar_key,
           password_hash,
           password_algo

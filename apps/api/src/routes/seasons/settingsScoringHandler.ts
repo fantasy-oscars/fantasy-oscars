@@ -1,6 +1,8 @@
 import type express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { idParam, seasonScoringBodySchema } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
@@ -23,15 +25,15 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
     next: express.NextFunction
   ) => {
     try {
-      const seasonId = Number(req.params.id);
-      const { scoring_strategy_name, category_weights } = req.body ?? {};
+      const { id: seasonId } = parseParams(idParam, req.params, {
+        message: "Invalid season id"
+      });
       const actorId = Number(req.auth?.sub);
-      if (Number.isNaN(seasonId) || !actorId) {
-        throw validationError("Invalid season id", ["id"]);
-      }
-      if (!["fixed", "negative", "category_weighted"].includes(scoring_strategy_name)) {
-        throw validationError("Invalid scoring_strategy_name", ["scoring_strategy_name"]);
-      }
+      if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+      const { scoring_strategy_name, category_weights } = parseBody(
+        seasonScoringBodySchema,
+        req.body
+      );
 
       const result = await runInTransaction(client as Pool, async (tx) => {
         const season = await getSeasonById(tx, seasonId);
@@ -50,30 +52,7 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
           );
         }
 
-        let weightsToWrite: Record<string, number> | null = null;
-        if (category_weights !== undefined) {
-          if (category_weights === null || typeof category_weights !== "object") {
-            throw validationError("Invalid category_weights", ["category_weights"]);
-          }
-          const next: Record<string, number> = {};
-          for (const [k, v] of Object.entries(
-            category_weights as Record<string, unknown>
-          )) {
-            const id = Number(k);
-            const n = Number(v);
-            if (!Number.isFinite(id) || id <= 0) {
-              throw validationError("Invalid category_weights key", ["category_weights"]);
-            }
-            if (!Number.isInteger(n) || n < -99 || n > 99) {
-              throw validationError(
-                "Category weight must be an integer between -99 and 99",
-                ["category_weights"]
-              );
-            }
-            next[String(id)] = n;
-          }
-          weightsToWrite = next;
-        }
+        let weightsToWrite: Record<string, number> | null = category_weights ?? null;
 
         // If switching into weighted scoring without an explicit weights payload, seed a safe default (1).
         if (scoring_strategy_name === "category_weighted" && weightsToWrite === null) {
@@ -88,11 +67,8 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
         }
 
         const updatedSeason =
-          (await updateSeasonScoringStrategy(
-            tx,
-            season.id,
-            scoring_strategy_name as "fixed" | "negative" | "category_weighted"
-          )) ?? season;
+          (await updateSeasonScoringStrategy(tx, season.id, scoring_strategy_name)) ??
+          season;
 
         const updated =
           weightsToWrite !== null
