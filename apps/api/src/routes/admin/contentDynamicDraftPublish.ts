@@ -4,8 +4,10 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { publishDynamicContent } from "../../data/repositories/cmsRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { assertDynamicContentAccess } from "./contentPermissions.js";
+import { adminContentKeyParams, adminDraftIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentDynamicDraftPublishRoute({
   router,
@@ -18,13 +20,9 @@ export function registerAdminContentDynamicDraftPublishRoute({
     "/content/dynamic/:key/drafts/:id/publish",
     async (req: AuthedRequest, res, next) => {
       try {
-        const key = String(req.params.key ?? "").trim();
-        const id = Number(req.params.id);
-        if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        const { key } = parseParams(adminContentKeyParams, req.params);
         assertDynamicContentAccess(req, key);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid draft id");
-        }
+        const { id } = parseParams(adminDraftIdParam, req.params);
         const actorId = Number(req.auth?.sub);
         const published = await publishDynamicContent(client, {
           id,
@@ -32,7 +30,7 @@ export function registerAdminContentDynamicDraftPublishRoute({
         });
         if (!published) throw new AppError("NOT_FOUND", 404, "Draft not found");
         if (published.key !== key) {
-          throw new AppError("VALIDATION_FAILED", 400, "Draft key mismatch");
+          throw validationError("Draft key mismatch", ["key"]);
         }
 
         if (actorId) {

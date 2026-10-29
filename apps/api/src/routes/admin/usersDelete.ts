@@ -10,6 +10,8 @@ import {
 } from "../../data/repositories/draftRepository.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 import { AppError } from "../../errors.js";
+import { adminUserIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 type UserDeletePreview = {
   leagues_removed: number;
@@ -104,10 +106,7 @@ export function registerAdminUsersDeleteRoute({
 }): void {
   router.get("/users/:id/delete-preview", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-      }
+      const { id } = parseParams(adminUserIdParam, req.params);
 
       const { rows: userRows } = await query<{ id: number; username: string }>(
         client,
@@ -132,11 +131,8 @@ export function registerAdminUsersDeleteRoute({
 
   router.delete("/users/:id", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
+      const { id } = parseParams(adminUserIdParam, req.params);
       const actorId = Number(req.auth?.sub);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-      }
       if (!Number.isInteger(actorId) || actorId <= 0) {
         throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
       }

@@ -5,6 +5,12 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import {
+  adminFilmConsolidatedQuery,
+  adminFilmDecoupleParams,
+  adminFilmIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseParams, parseQuery } from "../../utils/validate.js";
 
 export function registerAdminFilmConsolidationRoutes(args: {
   router: Router;
@@ -16,17 +22,11 @@ export function registerAdminFilmConsolidationRoutes(args: {
     "/films/:id/consolidated",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid film id");
-        }
-        const pageRaw = Number(req.query.page);
-        const pageSizeRaw = Number(req.query.page_size);
-        const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-        const pageSize =
-          Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
-            ? Math.min(pageSizeRaw, 100)
-            : 8;
+        const { id } = parseParams(adminFilmIdParam, req.params);
+        const { page, page_size: pageSize } = parseQuery(
+          adminFilmConsolidatedQuery,
+          req.query
+        );
         const offset = (page - 1) * pageSize;
 
         const { rows: canonicalRows } = await query<{ id: number }>(
@@ -105,14 +105,7 @@ export function registerAdminFilmConsolidationRoutes(args: {
     "/films/:canonicalId/consolidated/:filmId/decouple",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const canonicalId = Number(req.params.canonicalId);
-        const filmId = Number(req.params.filmId);
-        if (!Number.isInteger(canonicalId) || canonicalId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid canonical film id");
-        }
-        if (!Number.isInteger(filmId) || filmId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid film id");
-        }
+        const { canonicalId, filmId } = parseParams(adminFilmDecoupleParams, req.params);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: existingRows } = await query<{ id: number }>(

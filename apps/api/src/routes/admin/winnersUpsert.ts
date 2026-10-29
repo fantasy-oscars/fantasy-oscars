@@ -10,8 +10,10 @@ import {
 } from "../../data/repositories/ceremonyRepository.js";
 import { cancelDraftsForCeremony } from "../../data/repositories/draftRepository.js";
 import { setWinnersForCategoryEdition } from "../../data/repositories/winnerRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { emitCeremonyWinnersUpdated } from "../../realtime/ceremonyEvents.js";
+import { adminWinnerUpsertBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminWinnersUpsertRoute(args: {
   router: Router;
@@ -23,25 +25,8 @@ export function registerAdminWinnersUpsertRoute(args: {
     "/winners",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const categoryEditionId = Number(req.body?.category_edition_id);
-        const nominationIdsRaw = req.body?.nomination_ids;
-        const nominationId = Number(req.body?.nomination_id);
-        if (!Number.isFinite(categoryEditionId) || categoryEditionId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid category_edition_id");
-        }
-        const nominationIds = Array.isArray(nominationIdsRaw)
-          ? (nominationIdsRaw as unknown[])
-              .map((v) =>
-                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
-              )
-              .filter((n) => Number.isFinite(n) && n > 0)
-          : Number.isFinite(nominationId) && nominationId > 0
-            ? [nominationId]
-            : [];
-        if (nominationIds.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "nomination_ids is required");
-        }
-
+        const { category_edition_id: categoryEditionId, nomination_ids: nominationIds } =
+          parseBody(adminWinnerUpsertBody, req.body);
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: catRows } = await query<{
             ceremony_id: number;
@@ -60,11 +45,9 @@ export function registerAdminWinnersUpsertRoute(args: {
               [nid, categoryEditionId]
             );
             if (!nomRows[0]) {
-              throw new AppError(
-                "VALIDATION_FAILED",
-                400,
-                "Nomination does not belong to category edition"
-              );
+              throw validationError("Nomination does not belong to category edition", [
+                "nomination_ids"
+              ]);
             }
           }
 

@@ -6,6 +6,11 @@ import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.j
 import { createDynamicDraft } from "../../data/repositories/cmsRepository.js";
 import { AppError } from "../../errors.js";
 import { assertDynamicContentAccess } from "./contentPermissions.js";
+import {
+  adminContentDynamicBody,
+  adminContentKeyParams
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentDynamicDraftCreateRoute({
   router,
@@ -16,21 +21,9 @@ export function registerAdminContentDynamicDraftCreateRoute({
 }): void {
   router.post("/content/dynamic/:key/drafts", async (req: AuthedRequest, res, next) => {
     try {
-      const key = String(req.params.key ?? "").trim();
-      const title = typeof req.body?.title === "string" ? req.body.title : "";
-      const body_markdown =
-        typeof req.body?.body_markdown === "string" ? req.body.body_markdown : "";
-      const variant =
-        typeof req.body?.variant === "string"
-          ? String(req.body.variant).toLowerCase()
-          : undefined;
-      const dismissible =
-        typeof req.body?.dismissible === "boolean" ? req.body.dismissible : undefined;
-      const starts_at =
-        typeof req.body?.starts_at === "string" ? req.body.starts_at : undefined;
-      const ends_at =
-        typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
-      if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      const { key } = parseParams(adminContentKeyParams, req.params);
+      const { title, body_markdown, variant, dismissible, starts_at, ends_at } =
+        parseBody(adminContentDynamicBody, req.body);
       assertDynamicContentAccess(req, key);
       const actorId = Number(req.auth?.sub);
 

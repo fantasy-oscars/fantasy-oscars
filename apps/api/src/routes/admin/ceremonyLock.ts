@@ -10,6 +10,8 @@ import {
   lockCeremonyDraft
 } from "../../data/repositories/ceremonyRepository.js";
 import { AppError } from "../../errors.js";
+import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyLockRoute(args: {
   router: Router;
@@ -21,10 +23,7 @@ export function registerAdminCeremonyLockRoute(args: {
     "/ceremonies/:id/lock",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id } = parseParams(adminCeremonyIdParam, req.params);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: ceremonyRows } = await query<{ status: string }>(

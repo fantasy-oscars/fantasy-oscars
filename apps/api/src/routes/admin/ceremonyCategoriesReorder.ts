@@ -5,7 +5,12 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminCeremonyCategoryReorderBody,
+  adminCeremonyIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyCategoriesReorderRoute(args: {
   router: Router;
@@ -17,27 +22,12 @@ export function registerAdminCeremonyCategoriesReorderRoute(args: {
     "/ceremonies/:id/categories/reorder",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
-        const idsRaw = req.body?.category_ids;
-        const categoryIds = Array.isArray(idsRaw)
-          ? idsRaw
-              .map((v) =>
-                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
-              )
-              .filter((n) => Number.isInteger(n) && n > 0)
-          : [];
-
-        if (categoryIds.length < 1) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "category_ids must include at least one category id"
-          );
-        }
+        const { category_ids: categoryIds } = parseBody(
+          adminCeremonyCategoryReorderBody,
+          req.body
+        );
 
         // Deduplicate while preserving order.
         const seen = new Set<number>();
@@ -81,12 +71,9 @@ export function registerAdminCeremonyCategoriesReorderRoute(args: {
             [ceremonyId, uniqueIds]
           );
           if (existingRows.length !== uniqueIds.length) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "All category_ids must belong to the ceremony",
-              { fields: ["category_ids"] }
-            );
+            throw validationError("All category_ids must belong to the ceremony", [
+              "category_ids"
+            ]);
           }
 
           for (let i = 0; i < uniqueIds.length; i += 1) {

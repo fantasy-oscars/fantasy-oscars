@@ -7,3 +7,4 @@ export * from "./drafts.js";
 export * from "./draftPlans.js";
 export * from "./ceremonies.js";
 export * from "./content.js";
+export * from "./admin.js";

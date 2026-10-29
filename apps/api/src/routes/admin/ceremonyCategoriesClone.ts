@@ -4,7 +4,12 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminCeremonyCategoryCloneBody,
+  adminCeremonyIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyCategoriesCloneRoute(args: {
   router: Router;
@@ -16,20 +21,15 @@ export function registerAdminCeremonyCategoriesCloneRoute(args: {
     "/ceremonies/:id/categories/clone",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        const fromCeremonyId = Number(req.body?.from_ceremony_id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
-        if (!Number.isInteger(fromCeremonyId) || fromCeremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid from_ceremony_id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
+        const { from_ceremony_id: fromCeremonyId } = parseBody(
+          adminCeremonyCategoryCloneBody,
+          req.body
+        );
         if (ceremonyId === fromCeremonyId) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Cannot clone from the same ceremony"
-          );
+          throw validationError("Cannot clone from the same ceremony", [
+            "from_ceremony_id"
+          ]);
         }
 
         const result = await runInTransaction(client as Pool, async (tx) => {

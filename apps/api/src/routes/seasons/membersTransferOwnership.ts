@@ -1,5 +1,5 @@
 import type express from "express";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { idParam, userIdBodySchema } from "@fantasy-oscars/shared/schemas";
 import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
@@ -47,11 +47,7 @@ export function registerSeasonMembersTransferOwnershipRoute(args: {
 
         const ok = await transferSeasonOwnership(client, seasonId, targetUserId);
         if (!ok) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "User is not a season participant"
-          );
+          throw validationError("User is not a season participant", ["user_id"]);
         }
 
         return res.status(200).json({ ok: true });

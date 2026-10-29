@@ -9,6 +9,11 @@ import {
   updateNominationStatus
 } from "../../data/repositories/nominationRepository.js";
 import { AppError } from "../../errors.js";
+import {
+  adminNominationChangeBody,
+  adminNominationIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationChangeRoute(args: {
   router: Router;
@@ -20,37 +25,11 @@ export function registerAdminNominationChangeRoute(args: {
     "/nominations/:id/change",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const nominationId = Number(req.params.id);
-        if (!Number.isFinite(nominationId) || nominationId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
-        }
-        const {
-          action,
-          origin,
-          impact,
-          reason,
-          replacement_nomination_id
-        }: {
-          action?: "REVOKE" | "REPLACE" | "RESTORE";
-          origin?: "INTERNAL" | "EXTERNAL";
-          impact?: "CONSEQUENTIAL" | "BENIGN";
-          reason?: string;
-          replacement_nomination_id?: number | null;
-        } = req.body ?? {};
-
-        if (!action || !["REVOKE", "REPLACE", "RESTORE"].includes(action)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid action");
-        }
-        if (!origin || !["INTERNAL", "EXTERNAL"].includes(origin)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid origin");
-        }
-        if (!impact || !["CONSEQUENTIAL", "BENIGN"].includes(impact)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid impact");
-        }
-        if (!reason || typeof reason !== "string" || reason.trim().length < 5) {
-          throw new AppError("VALIDATION_FAILED", 400, "Reason required (min 5 chars)");
-        }
-
+        const { id: nominationId } = parseParams(adminNominationIdParam, req.params);
+        const { action, origin, impact, reason, replacement_nomination_id } = parseBody(
+          adminNominationChangeBody,
+          req.body
+        );
         await runInTransaction(client as Pool, async (tx) => {
           const { rows: nomRows } = await query<{ id: number }>(
             tx,
@@ -62,13 +41,6 @@ export function registerAdminNominationChangeRoute(args: {
           }
 
           if (action === "REPLACE") {
-            if (!replacement_nomination_id || Number.isNaN(replacement_nomination_id)) {
-              throw new AppError(
-                "VALIDATION_FAILED",
-                400,
-                "replacement_nomination_id required"
-              );
-            }
             const { rows: replRows } = await query<{ id: number }>(
               tx,
               `SELECT id FROM nomination WHERE id = $1`,

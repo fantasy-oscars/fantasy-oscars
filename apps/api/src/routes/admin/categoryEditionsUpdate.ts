@@ -3,6 +3,11 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import {
+  adminCategoryEditionIdParam,
+  adminCategoryEditionUpdateBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCategoryEditionsUpdateRoute(args: {
   router: Router;
@@ -14,10 +19,7 @@ export function registerAdminCategoryEditionsUpdateRoute(args: {
     "/category-editions/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid category edition id");
-        }
+        const { id } = parseParams(adminCategoryEditionIdParam, req.params);
 
         const { rows: ceRows } = await query<{ ceremony_id: number; status: string }>(
           client,
@@ -37,6 +39,8 @@ export function registerAdminCategoryEditionsUpdateRoute(args: {
           );
         }
 
+        const body = parseBody(adminCategoryEditionUpdateBody, req.body);
+
         const updates: string[] = [];
         const params: unknown[] = [id];
         function push(fieldSql: string, value: unknown) {
@@ -44,57 +48,25 @@ export function registerAdminCategoryEditionsUpdateRoute(args: {
           params.push(value);
         }
 
-        if (typeof req.body?.unit_kind === "string") {
-          const unitKind = String(req.body.unit_kind).toUpperCase();
-          if (!["FILM", "SONG", "PERFORMANCE"].includes(unitKind)) {
-            throw new AppError("VALIDATION_FAILED", 400, "Invalid unit_kind");
-          }
-          push(`unit_kind = $X`, unitKind);
-        }
-        if (typeof req.body?.icon === "string") {
-          const iconCode = req.body.icon.trim();
-          if (!iconCode) {
-            throw new AppError("VALIDATION_FAILED", 400, "Icon is required");
-          }
-          if (!/^[a-z0-9-]+$/.test(iconCode)) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "Icon must be lowercase letters/numbers/dashes only"
-            );
-          }
+        if (body.unit_kind !== undefined) push(`unit_kind = $X`, body.unit_kind);
+        if (body.icon !== undefined) {
           const { rows: iconRows } = await query<{ id: number }>(
             client,
             `INSERT INTO icon (code, name, asset_path)
              VALUES ($1, NULL, NULL)
              ON CONFLICT (code) DO UPDATE SET code = EXCLUDED.code
              RETURNING id::int`,
-            [iconCode]
+            [body.icon]
           );
           const iconId = iconRows[0]?.id;
           if (!iconId) {
             throw new AppError("INTERNAL_ERROR", 500, "Failed to resolve icon");
           }
           push(`icon_id = $X`, iconId);
-        } else if (req.body?.icon_id !== undefined) {
-          const iconIdRaw = req.body.icon_id;
-          const iconId = iconIdRaw === null ? null : Number(iconIdRaw);
-          if (iconId !== null && (!Number.isInteger(iconId) || iconId <= 0)) {
-            throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_id");
-          }
-          push(`icon_id = $X`, iconId);
+        } else if (body.icon_id !== undefined) {
+          push(`icon_id = $X`, body.icon_id);
         }
-        if (req.body?.sort_index !== undefined) {
-          const sortIndex = Number(req.body.sort_index);
-          if (!Number.isInteger(sortIndex) || sortIndex < 0) {
-            throw new AppError("VALIDATION_FAILED", 400, "Invalid sort_index");
-          }
-          push(`sort_index = $X`, sortIndex);
-        }
-
-        if (updates.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "No fields to update");
-        }
+        if (body.sort_index !== undefined) push(`sort_index = $X`, body.sort_index);
 
         const { rows } = await query(
           client,

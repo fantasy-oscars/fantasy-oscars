@@ -6,6 +6,8 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError } from "../../errors.js";
+import { adminNominationIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationDeleteRoute(args: {
   router: Router;
@@ -17,10 +19,7 @@ export function registerAdminNominationDeleteRoute(args: {
     "/nominations/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const nominationId = Number(req.params.id);
-        if (!Number.isInteger(nominationId) || nominationId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
-        }
+        const { id: nominationId } = parseParams(adminNominationIdParam, req.params);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: rows0 } = await query<{

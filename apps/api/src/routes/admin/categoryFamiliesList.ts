@@ -2,6 +2,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminCategoryFamiliesListRoute(args: {
   router: Router;
@@ -11,7 +13,7 @@ export function registerAdminCategoryFamiliesListRoute(args: {
 
   router.get("/category-families", async (req: AuthedRequest, res, next) => {
     try {
-      const qRaw = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const { q: qRaw } = parseQuery(adminSearchQuery, req.query);
       const q = normalizeForSearch(qRaw);
       const like = q ? `%${escapeLike(q)}%` : null;
       const { rows } = await query(

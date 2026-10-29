@@ -4,6 +4,8 @@ import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import { adminUserIdParam, adminUserUpdateBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminUsersUpdateRoute({
   router,
@@ -14,20 +16,8 @@ export function registerAdminUsersUpdateRoute({
 }): void {
   router.patch("/users/:id", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-      }
-      const roleRaw =
-        typeof req.body?.admin_role === "string" ? req.body.admin_role.trim() : "";
-      const role = roleRaw.toUpperCase();
-      if (!["NONE", "OPERATOR", "SUPER_ADMIN"].includes(role)) {
-        throw new AppError(
-          "VALIDATION_FAILED",
-          400,
-          "admin_role must be NONE, OPERATOR, or SUPER_ADMIN"
-        );
-      }
+      const { id } = parseParams(adminUserIdParam, req.params);
+      const { admin_role: role } = parseBody(adminUserUpdateBody, req.body);
       const isAdmin = role !== "NONE";
       const roleDb = role === "NONE" ? null : role;
 

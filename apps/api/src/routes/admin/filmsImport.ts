@@ -4,13 +4,14 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
 import {
   buildTmdbImageUrlFromConfig,
   fetchTmdbMovieDetailsWithCredits,
   getTmdbImageConfig,
   parseReleaseYear
 } from "../../lib/tmdb.js";
+import { adminFilmsImportBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminFilmImportRoute(args: { router: Router; client: DbClient }) {
   const { router, client } = args;
@@ -19,24 +20,7 @@ export function registerAdminFilmImportRoute(args: { router: Router; client: DbC
     "/films/import",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const body = req.body;
-        if (!body || typeof body !== "object") {
-          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
-            fields: ["body"]
-          });
-        }
-
-        const filmsRaw = (body as { films?: unknown }).films;
-        const films = Array.isArray(filmsRaw)
-          ? filmsRaw
-          : Array.isArray(body)
-            ? (body as unknown[])
-            : null;
-        if (!films) {
-          throw new AppError("VALIDATION_FAILED", 400, "Dataset must include films", {
-            fields: ["films"]
-          });
-        }
+        const films = parseBody(adminFilmsImportBody, req.body);
 
         // Best-effort hydration: if TMDB is configured, pull canonical film details (title/year/poster)
         // and store credits payload on the film. We intentionally do NOT hydrate individual people.

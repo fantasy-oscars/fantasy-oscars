@@ -3,7 +3,8 @@ import type { Pool } from "pg";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { adminIconCreateBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminIconsCreateRoute({
   router,
@@ -13,16 +14,9 @@ export function registerAdminIconsCreateRoute({
   client: DbClient;
 }): void {
   router.post("/icons", async (req: AuthedRequest, res, next) => {
+    let code = "";
     try {
-      const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-      if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
-      if (!/^[a-z0-9-]+$/.test(code)) {
-        throw new AppError(
-          "VALIDATION_FAILED",
-          400,
-          "Icon code must be lowercase letters/numbers/dashes only"
-        );
-      }
+      ({ code } = parseBody(adminIconCreateBody, req.body));
 
       // Find-or-create.
       const { rows: existingRows } = await query<{ id: number; code: string }>(
@@ -55,7 +49,6 @@ export function registerAdminIconsCreateRoute({
     } catch (err) {
       // Unique constraint violation on icon.code
       if ((err as { code?: string })?.code === "23505") {
-        const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
         const { rows } = await query<{ id: number; code: string }>(
           client,
           `SELECT id::int, code FROM icon WHERE code = $1`,

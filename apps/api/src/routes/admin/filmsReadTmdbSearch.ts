@@ -9,6 +9,8 @@ import {
   parseReleaseYear,
   searchTmdbMovies
 } from "../../lib/tmdb.js";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminFilmsTmdbSearchRoute(args: {
   router: Router;
@@ -20,7 +22,7 @@ export function registerAdminFilmsTmdbSearchRoute(args: {
     "/films/tmdb-search",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const { q } = parseQuery(adminSearchQuery, req.query);
         if (!q || q.length < 2) return res.status(200).json({ results: [] });
 
         const tmdbResults = (await searchTmdbMovies(q)).slice(0, 12);

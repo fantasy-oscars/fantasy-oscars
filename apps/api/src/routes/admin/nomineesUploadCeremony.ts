@@ -5,8 +5,13 @@ import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { loadNominees } from "../../scripts/load-nominees.js";
+import {
+  adminCeremonyIdParam,
+  adminNomineesUploadCeremonyBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNomineesUploadCeremonyRoute({
   router,
@@ -19,17 +24,11 @@ export function registerAdminNomineesUploadCeremonyRoute({
     "/ceremonies/:id/nominees/upload",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
+        // The dataset can be large: validate its top-level shape and keep using the
+        // original body so nothing is copied or re-parsed.
         const dataset = req.body;
-        if (!dataset || typeof dataset !== "object") {
-          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
-            fields: ["body"]
-          });
-        }
-
+        parseBody(adminNomineesUploadCeremonyBody, dataset);
         const { rows: ceremonyRows } = await query<{ status: string }>(
           client,
           `SELECT status FROM ceremony WHERE id = $1`,
@@ -54,28 +53,14 @@ export function registerAdminNomineesUploadCeremonyRoute({
           );
         }
 
-        // Basic shape validation: ensure ceremonies array has only this ceremony id.
-        const ceremonies = (dataset as { ceremonies?: unknown[] }).ceremonies;
-        if (!Array.isArray(ceremonies) || ceremonies.length === 0) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Dataset must include ceremonies",
-            {
-              fields: ["ceremonies"]
-            }
-          );
-        }
-        const ceremonyIds = ceremonies
+        const ceremonyIds = (dataset.ceremonies as unknown[])
           .map((c) => (c as { id?: number })?.id)
           .filter((v) => Number.isFinite(v))
           .map((v) => Number(v));
         if (ceremonyIds.length !== 1 || ceremonyIds[0] !== ceremonyId) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
+          throw validationError(
             "Dataset ceremonies must include only the selected ceremony",
-            { fields: ["ceremonies"] }
+            ["ceremonies"]
           );
         }
 

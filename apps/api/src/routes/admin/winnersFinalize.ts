@@ -6,6 +6,8 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 import { emitCeremonyFinalized } from "../../realtime/ceremonyEvents.js";
+import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminWinnersFinalizeRoute(args: {
   router: Router;
@@ -17,10 +19,7 @@ export function registerAdminWinnersFinalizeRoute(args: {
     "/ceremonies/:id/finalize-winners",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: ceremonyRows } = await query<{

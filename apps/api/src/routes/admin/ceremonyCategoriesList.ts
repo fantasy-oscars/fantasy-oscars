@@ -3,6 +3,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyCategoriesListRoute(args: {
   router: Router;
@@ -14,10 +16,7 @@ export function registerAdminCeremonyCategoriesListRoute(args: {
     "/ceremonies/:id/categories",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
         const { rows: ceremonyRows } = await query<{
           id: number;

@@ -58,3 +58,10 @@ export function parseQuery<S extends z.ZodType>(
 ): z.output<S> {
   return parseWith(schema, query ?? {}, opts);
 }
+
+/** Names of the fields a parsed partial update actually sets (for audit metadata). */
+export function definedKeys(parsed: object): string[] {
+  return Object.entries(parsed)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+}

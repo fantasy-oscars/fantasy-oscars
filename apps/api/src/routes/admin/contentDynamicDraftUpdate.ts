@@ -4,8 +4,14 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { updateDynamicDraft } from "../../data/repositories/cmsRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { assertDynamicContentAccess } from "./contentPermissions.js";
+import {
+  adminContentDynamicBody,
+  adminContentKeyParams,
+  adminDraftIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentDynamicDraftUpdateRoute({
   router,
@@ -18,26 +24,11 @@ export function registerAdminContentDynamicDraftUpdateRoute({
     "/content/dynamic/:key/drafts/:id",
     async (req: AuthedRequest, res, next) => {
       try {
-        const key = String(req.params.key ?? "").trim();
-        const id = Number(req.params.id);
-        const title = typeof req.body?.title === "string" ? req.body.title : "";
-        const body_markdown =
-          typeof req.body?.body_markdown === "string" ? req.body.body_markdown : "";
-        const variant =
-          typeof req.body?.variant === "string"
-            ? String(req.body.variant).toLowerCase()
-            : undefined;
-        const dismissible =
-          typeof req.body?.dismissible === "boolean" ? req.body.dismissible : undefined;
-        const starts_at =
-          typeof req.body?.starts_at === "string" ? req.body.starts_at : undefined;
-        const ends_at =
-          typeof req.body?.ends_at === "string" ? req.body.ends_at : undefined;
-        if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        const { key } = parseParams(adminContentKeyParams, req.params);
+        const { title, body_markdown, variant, dismissible, starts_at, ends_at } =
+          parseBody(adminContentDynamicBody, req.body);
         assertDynamicContentAccess(req, key);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid draft id");
-        }
+        const { id } = parseParams(adminDraftIdParam, req.params);
         const actorId = Number(req.auth?.sub);
 
         const updated = await updateDynamicDraft(client, {
@@ -54,7 +45,7 @@ export function registerAdminContentDynamicDraftUpdateRoute({
         });
         if (!updated) throw new AppError("NOT_FOUND", 404, "Draft not found");
         if (updated.key !== key) {
-          throw new AppError("VALIDATION_FAILED", 400, "Draft key mismatch");
+          throw validationError("Draft key mismatch", ["key"]);
         }
 
         if (actorId) {

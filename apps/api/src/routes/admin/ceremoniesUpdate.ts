@@ -4,7 +4,12 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminCeremonyIdParam,
+  adminCeremonyUpdateBody
+} from "@fantasy-oscars/shared/schemas";
+import { definedKeys, parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremoniesUpdateRoute(args: {
   router: Router;
@@ -16,48 +21,15 @@ export function registerAdminCeremoniesUpdateRoute(args: {
     "/ceremonies/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id } = parseParams(adminCeremonyIdParam, req.params);
 
-        const name =
-          typeof req.body?.name === "string" ? req.body.name.trim() : undefined;
-        const code =
-          typeof req.body?.code === "string" ? req.body.code.trim() : undefined;
-        const startsAtRaw = req.body?.starts_at;
-        const startsAt =
-          typeof startsAtRaw === "string" && startsAtRaw.trim()
-            ? new Date(startsAtRaw)
-            : startsAtRaw === null
-              ? null
-              : undefined;
-        const warningHoursRaw = req.body?.draft_warning_hours;
-        const warningHours =
-          warningHoursRaw === undefined ? undefined : Number(warningHoursRaw);
-
-        if (code !== undefined) {
-          if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
-          if (!/^[a-z0-9-]+$/.test(code)) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "Code must be lowercase letters/numbers/dashes only"
-            );
-          }
-        }
-        if (name !== undefined && !name) {
-          throw new AppError("VALIDATION_FAILED", 400, "Name is required");
-        }
-        if (startsAt && startsAt instanceof Date && Number.isNaN(startsAt.getTime())) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid starts_at timestamp");
-        }
-        if (
-          warningHours !== undefined &&
-          (!Number.isInteger(warningHours) || warningHours < 0 || warningHours > 24 * 14)
-        ) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid draft_warning_hours");
-        }
+        const body = parseBody(adminCeremonyUpdateBody, req.body);
+        const {
+          name,
+          code,
+          starts_at: startsAt,
+          draft_warning_hours: warningHours
+        } = body;
 
         const { rows: beforeRows } = await query<{ status: string }>(
           client,
@@ -84,16 +56,9 @@ export function registerAdminCeremoniesUpdateRoute(args: {
         if (code !== undefined) push(`code = $X`, code);
         if (name !== undefined) push(`name = $X`, name);
         if (startsAt !== undefined) {
-          push(
-            `starts_at = $X`,
-            startsAt instanceof Date ? startsAt.toISOString() : startsAt
-          );
+          push(`starts_at = $X`, startsAt === null ? null : startsAt.toISOString());
         }
         if (warningHours !== undefined) push(`draft_warning_hours = $X`, warningHours);
-
-        if (updates.length === 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "No fields to update");
-        }
 
         const { rows } = await query(
           client,
@@ -111,7 +76,7 @@ export function registerAdminCeremoniesUpdateRoute(args: {
             action: "update_ceremony",
             target_type: "ceremony",
             target_id: id,
-            meta: { fields: Object.keys(req.body ?? {}) }
+            meta: { fields: definedKeys(body) }
           });
         }
 
@@ -119,7 +84,7 @@ export function registerAdminCeremoniesUpdateRoute(args: {
       } catch (err) {
         // Unique constraint violation on ceremony.code
         if ((err as { code?: string })?.code === "23505") {
-          next(new AppError("VALIDATION_FAILED", 400, "Ceremony code already exists"));
+          next(validationError("Ceremony code already exists", ["code"]));
           return;
         }
         next(err);

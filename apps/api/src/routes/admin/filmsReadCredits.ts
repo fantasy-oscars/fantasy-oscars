@@ -2,7 +2,8 @@ import type express from "express";
 import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
-import { AppError } from "../../errors.js";
+import { adminFilmIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminFilmsCreditsRoute(args: {
   router: Router;
@@ -14,10 +15,7 @@ export function registerAdminFilmsCreditsRoute(args: {
     "/films/:id/credits",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid film id");
-        }
+        const { id } = parseParams(adminFilmIdParam, req.params);
         const { rows } = await query<{ tmdb_credits: unknown | null }>(
           client,
           `SELECT tmdb_credits FROM film WHERE id = $1`,

@@ -1,6 +1,8 @@
 import type { Router } from "express";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminPeopleListRoute({
   router,
@@ -11,7 +13,7 @@ export function registerAdminPeopleListRoute({
 }): void {
   router.get("/people", async (req: AuthedRequest, res, next) => {
     try {
-      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const { q } = parseQuery(adminSearchQuery, req.query);
       const like = q ? `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%` : null;
       const { rows } = await query(
         client,

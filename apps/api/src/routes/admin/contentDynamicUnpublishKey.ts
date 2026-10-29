@@ -4,8 +4,9 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { unpublishDynamicContent } from "../../data/repositories/cmsRepository.js";
-import { AppError } from "../../errors.js";
 import { assertDynamicContentAccess } from "./contentPermissions.js";
+import { adminContentKeyParams } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentDynamicUnpublishKeyRoute({
   router,
@@ -18,8 +19,7 @@ export function registerAdminContentDynamicUnpublishKeyRoute({
     "/content/dynamic/:key/unpublish",
     async (req: AuthedRequest, res, next) => {
       try {
-        const key = String(req.params.key ?? "").trim();
-        if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        const { key } = parseParams(adminContentKeyParams, req.params);
         assertDynamicContentAccess(req, key);
         const actorId = Number(req.auth?.sub);
         const updated = await unpublishDynamicContent(client, {

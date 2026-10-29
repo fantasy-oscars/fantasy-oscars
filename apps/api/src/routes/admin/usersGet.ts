@@ -2,6 +2,8 @@ import type { Router } from "express";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { adminUserIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminUsersGetRoute({
   router,
@@ -12,10 +14,7 @@ export function registerAdminUsersGetRoute({
 }): void {
   router.get("/users/:id", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid user id");
-      }
+      const { id } = parseParams(adminUserIdParam, req.params);
       const { rows } = await query(
         client,
         `SELECT id::int,

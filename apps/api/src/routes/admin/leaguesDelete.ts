@@ -7,6 +7,8 @@ import { query, runInTransaction } from "../../data/db.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import { adminLeagueIdParam, adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseParams, parseQuery } from "../../utils/validate.js";
 
 export function registerAdminLeagueDeleteRoutes(args: {
   router: Router;
@@ -21,7 +23,7 @@ export function registerAdminLeagueDeleteRoutes(args: {
         if (!hasSuperAdminAccess(req.auth)) {
           throw new AppError("FORBIDDEN", 403, "Super admin access required");
         }
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const { q } = parseQuery(adminSearchQuery, req.query);
         const like = `%${q.toLowerCase()}%`;
         const { rows } = await query<{ id: number; name: string; code: string }>(
           client,
@@ -47,10 +49,7 @@ export function registerAdminLeagueDeleteRoutes(args: {
         if (!hasSuperAdminAccess(req.auth)) {
           throw new AppError("FORBIDDEN", 403, "Super admin access required");
         }
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid league id");
-        }
+        const { id } = parseParams(adminLeagueIdParam, req.params);
 
         const { rows: leagueRows } = await query<{ id: number; name: string }>(
           client,
@@ -90,11 +89,8 @@ export function registerAdminLeagueDeleteRoutes(args: {
         if (!hasSuperAdminAccess(req.auth)) {
           throw new AppError("FORBIDDEN", 403, "Super admin access required");
         }
-        const id = Number(req.params.id);
+        const { id } = parseParams(adminLeagueIdParam, req.params);
         const actorId = Number(req.auth?.sub);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid league id");
-        }
         if (!Number.isInteger(actorId) || actorId <= 0) {
           throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
         }

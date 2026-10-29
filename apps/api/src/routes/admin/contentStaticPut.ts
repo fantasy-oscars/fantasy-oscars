@@ -4,8 +4,12 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { upsertStaticContent } from "../../data/repositories/cmsRepository.js";
-import { AppError } from "../../errors.js";
 import { assertStaticContentAccess } from "./contentPermissions.js";
+import {
+  adminContentKeyParams,
+  adminContentStaticBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentStaticPutRoute({
   router,
@@ -16,11 +20,8 @@ export function registerAdminContentStaticPutRoute({
 }): void {
   router.put("/content/static/:key", async (req: AuthedRequest, res, next) => {
     try {
-      const key = String(req.params.key ?? "").trim();
-      const title = typeof req.body?.title === "string" ? req.body.title : "";
-      const body_markdown =
-        typeof req.body?.body_markdown === "string" ? req.body.body_markdown : "";
-      if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+      const { key } = parseParams(adminContentKeyParams, req.params);
+      const { title, body_markdown } = parseBody(adminContentStaticBody, req.body);
       assertStaticContentAccess(req, key);
 
       const actorId = Number(req.auth?.sub);
