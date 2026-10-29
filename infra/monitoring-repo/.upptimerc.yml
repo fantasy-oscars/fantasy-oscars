@@ -1,0 +1,42 @@
+# Upptime configuration (https://upptime.js.org). Based on the upptime/upptime template.
+# Replace OWNER and REPO with this repository's owner and name before the first run.
+owner: OWNER
+repo: REPO
+
+sites:
+  - name: Fantasy Oscars
+    url: https://www.fantasy-oscars.com/api/health/ready
+    method: GET
+    expectedStatusCodes:
+      - 200
+    # Readiness checks the database and migrations, not just that the process is up.
+    maxResponseTime: 5000
+
+# Alerts are GitHub issues; assignees receive GitHub's own email/mobile notifications.
+assignees:
+  - OWNER
+
+# GitHub's scheduler is best-effort: "every 5 minutes" often runs a few minutes late.
+workflowSchedule:
+  uptime: "*/5 * * * *"
+  responseTime: "0 * * * *"
+  graphs: "0 0 * * *"
+  summary: "0 0 * * *"
+  staticSite: "0 1 * * *"
+  updates: "0 3 * * *"
+  updateTemplate: "0 4 * * 0"
+
+commitMessages:
+  readmeContent: ":pencil: Update summary in README [skip ci]"
+  summaryJson: ":card_file_box: Update status summary [skip ci]"
+  statusChange: "{{ emoji }} {{ site }} is {{ status }} ({{ statusCode }} in {{ responseTime }}ms) [skip ci]"
+
+status-website:
+  # No custom domain: served from https://OWNER.github.io/REPO
+  baseUrl: /REPO
+  name: Fantasy Oscars status
+  introTitle: "Fantasy Oscars uptime"
+  introMessage: Uptime checks for fantasy-oscars.com, run from GitHub Actions.
+  navbar:
+    - title: Status
+      href: /

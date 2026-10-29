@@ -1,0 +1,49 @@
+name: Heartbeat check
+
+# Opens (or updates) one issue when the server stops reporting in, and closes it when the
+# heartbeats are fresh again. Heartbeat files are written by the server through the Contents API.
+on:
+  schedule:
+    - cron: "17 9 * * *" # daily; GitHub's scheduler is best-effort and may run late
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check heartbeats
+        id: check
+        run: |
+          set +e
+          bash scripts/check-heartbeats.sh heartbeats > stale.txt
+          echo "stale=$?" >> "$GITHUB_OUTPUT"
+          cat stale.txt
+
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STALE: ${{ steps.check.outputs.stale }}
+        run: |
+          title="[alert] heartbeat-stale"
+          gh label create alert --color d73a4a --force >/dev/null
+          number="$(gh issue list --state open --label alert --search "\"$title\" in:title" \
+            --json number,title --jq "map(select(.title == \"$title\"))[0].number // empty")"
+          if [ "$STALE" != "0" ]; then
+            body="The server has stopped reporting in. See docs/runbooks/vps.md (Alerts) in the app repo.
+
+          $(cat stale.txt)"
+            if [ -z "$number" ]; then
+              gh issue create --title "$title" --label alert --body "$body"
+            else
+              gh issue comment "$number" --body "$body"
+            fi
+          elif [ -n "$number" ]; then
+            gh issue comment "$number" --body "All heartbeats are fresh again. Closing."
+            gh issue close "$number"
+          fi

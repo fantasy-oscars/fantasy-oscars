@@ -1,21 +1,23 @@
 import type { Response } from "express";
+import { parseAuthCookieSameSite, type AuthCookieSameSite } from "../config/env.js";
 
 export type AuthCookieConfig = {
   name: string;
-  sameSite: "lax" | "none";
+  sameSite: AuthCookieSameSite;
   httpOnly: boolean;
   secure: boolean;
   path: "/";
 };
 
-export function authCookieConfig(): AuthCookieConfig {
-  // In production, the web app and API are on different sites (e.g.
-  // https://www.fantasy-oscars.com -> https://fantasy-oscars-api-prod.onrender.com),
-  // so the auth cookie must be SameSite=None; Secure=true to be sent on fetch/XHR.
-  const isProd = process.env.NODE_ENV === "production";
+export function authCookieConfig(env: NodeJS.ProcessEnv = process.env): AuthCookieConfig {
+  // Cross-origin deployments (web and API on different sites, e.g.
+  // https://www.fantasy-oscars.com -> https://fantasy-oscars-api-prod.onrender.com)
+  // need SameSite=None; Secure=true, which is the production default. A same-origin
+  // deployment sets AUTH_COOKIE_SAMESITE=lax.
+  const isProd = env.NODE_ENV === "production";
   return {
     name: "auth_token",
-    sameSite: isProd ? "none" : "lax",
+    sameSite: parseAuthCookieSameSite(env.AUTH_COOKIE_SAMESITE, isProd),
     httpOnly: true,
     secure: isProd,
     path: "/"

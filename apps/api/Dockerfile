@@ -22,6 +22,7 @@ RUN pnpm --filter @fantasy-oscars/shared build \
  && rm -rf /out/dist && cp -r apps/api/dist /out/dist
 
 FROM node:24-slim AS runtime
+LABEL org.opencontainers.image.source="https://github.com/fantasy-oscars/fantasy-oscars"
 ENV NODE_ENV=production \
     PORT=4000 \
     MIGRATIONS_DIR=/app/database/migrations

@@ -1,12 +1,6 @@
 import type { Snapshot } from "../../lib/types";
 import { buildNominationLabelById } from "../../decisions/draft";
 
-type Env = { VITE_API_BASE?: string };
-
-export const API_BASE = (
-  (import.meta as unknown as { env: Env }).env.VITE_API_BASE ?? ""
-).trim();
-
 export function makeRequestId(): string {
   return (
     crypto?.randomUUID?.() ??

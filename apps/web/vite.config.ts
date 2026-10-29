@@ -13,6 +13,16 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173
+    port: 5173,
+    // Same-origin mode: set VITE_API_BASE=/api. Mirrors the production proxy,
+    // which strips the /api prefix before forwarding to the API.
+    proxy: {
+      "/api": {
+        target: "http://localhost:4010",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (p) => p.replace(/^\/api/, "")
+      }
+    }
   }
 });

@@ -1,0 +1,12 @@
+[Unit]
+Description=Fantasy Oscars: reboot when no draft is live
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=@DEPLOY_USER@
+WorkingDirectory=@INSTALL_DIR@
+ExecStart=@INSTALL_DIR@/infra/reboot-when-idle.sh
+Nice=10
+TimeoutStartSec=120

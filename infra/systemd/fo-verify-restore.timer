@@ -1,0 +1,9 @@
+[Unit]
+Description=Fantasy Oscars: monthly restore verification (schedule)
+
+[Timer]
+OnCalendar=*-*-02 05:30:00 America/Los_Angeles
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -19,6 +19,12 @@ No separate CDN or multi-region topology in MVP; single Render region.
 - **Credentials:** frontend uses `fetch` with `credentials: "include"`; API must have CORS allow-credentials enabled for the web origin.
 - **Cookies (auth):** issued by API. Attributes: `Secure`, `SameSite=None`, `HttpOnly`; domain defaults to `fantasy-oscars-api-prod.onrender.com` (no custom domain yet). Works cross-site with the allowed origin list above.
 
+## Hosting modes
+
+- **Cross-origin (current, Render):** web and API on separate origins. `VITE_API_BASE` is the absolute API origin, the auth cookie is `SameSite=None; Secure`, CORS must allow the web origin, and the localStorage bearer token covers browsers that block third-party cookies.
+- **Same-origin (VPS):** one reverse proxy serves the web build at `/` and proxies `/api/*` to the API with the `/api` prefix stripped (the API's routes and Socket.IO path are unchanged). Build the web app with `VITE_API_BASE=/api`: HTTP calls go to `/api/...` and the Socket.IO client connects to the page origin with `path: "/api/socket.io"`. Set `AUTH_COOKIE_SAMESITE=lax` on the API. Keep the web origin (`https://www.fantasy-oscars.com`) in `CORS_ALLOWED_ORIGINS` even though requests are same-origin: browsers still send `Origin` on websocket upgrades and on logout and account deletion, and the API rejects origins that aren't listed. `api.fantasy-oscars.com` may remain as an unprefixed alias during the transition.
+- Local dev can use same-origin mode too: set `VITE_API_BASE=/api` and the Vite dev server proxies `/api` to `http://localhost:4010`.
+
 ## Environment Variables (production)
 
 | Name | Used by | Purpose | Stored in |
@@ -26,6 +32,7 @@ No separate CDN or multi-region topology in MVP; single Render region.
 | `DATABASE_URL` | API | Postgres connection string (Render managed) | Render API service env |
 | `AUTH_SECRET` | API | Sign/verify auth tokens | Render API service env |
 | `CORS_ALLOWED_ORIGINS` | API | Comma-separated origins (set to `https://fantasy-oscars.onrender.com`) | Render API service env |
+| `AUTH_COOKIE_SAMESITE` | API | Auth cookie `SameSite`: `lax`, `strict` or `none`. Default is `none` when `NODE_ENV=production` (cross-origin Render setup) and `lax` otherwise. Set `lax` in same-origin mode. `none` is rejected unless `NODE_ENV=production` (the cookie must be Secure); unknown values fail startup | Render API service env |
 | `NODE_ENV` | API | Must be `production` in prod | Render API service env |
 | `REALTIME_ENABLED` | API | Optional kill switch for Socket.IO (`true`/`false`, default `true`) | Render API service env |
 | `TRUST_PROXY` | API | Express `trust proxy` setting: hop count, `true`/`false`. Defaults to `1` when `NODE_ENV=production`, otherwise `false`. Must equal the number of proxies in front of the API on any new host; too low makes all users share one rate-limit key, too high lets clients spoof their IP | Render API service env |
@@ -170,4 +177,4 @@ The API sets security headers itself (`helmet`). Render static sites take header
 | `/*` | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `/*` | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
 
-Why these sources: scripts are the bundled Vite output only (`script-src 'self'`); Mantine injects inline styles, hence `'unsafe-inline'` for styles; `index.html` loads the Material Symbols stylesheet from `fonts.googleapis.com` and its font files from `fonts.gstatic.com`; text fonts are bundled through `@fontsource`; nominee posters come from `image.tmdb.org`; `connect-src` needs the `VITE_API_BASE` origin over both `https` (fetch) and `wss` (Socket.IO). If `VITE_API_BASE` changes, change both `connect-src` entries. Roll out the CSP as `Content-Security-Policy-Report-Only` first and check the browser console on the login, league and draft room pages before enforcing.
+Why these sources: scripts are the bundled Vite output only (`script-src 'self'`); Mantine injects inline styles, hence `'unsafe-inline'` for styles; `index.html` loads the Material Symbols stylesheet from `fonts.googleapis.com` and its font files from `fonts.gstatic.com`; text fonts are bundled through `@fontsource`; nominee posters come from `image.tmdb.org`; `connect-src` needs the `VITE_API_BASE` origin over both `https` (fetch) and `wss` (Socket.IO). If `VITE_API_BASE` changes, change both `connect-src` entries. In same-origin mode, `'self'` covers fetch, but list `wss://www.fantasy-oscars.com` explicitly as well, because some older Safari versions don't match `wss:` against `'self'`. Roll out the CSP as `Content-Security-Policy-Report-Only` first and check the browser console on the login, league and draft room pages before enforcing.

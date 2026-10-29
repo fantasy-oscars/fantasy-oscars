@@ -1,0 +1,9 @@
+[Unit]
+Description=Fantasy Oscars: reboot when no draft is live (schedule)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 America/Los_Angeles
+Persistent=true
+
+[Install]
+WantedBy=timers.target

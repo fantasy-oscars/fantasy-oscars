@@ -1,25 +1,20 @@
 type ApiError = { code?: string; message?: string };
 
-type Env = { VITE_API_BASE?: string };
-
-const API_BASE = (
-  (import.meta as unknown as { env: Env }).env.VITE_API_BASE ?? ""
-).trim();
-
 import { getContentRevision } from "./revision";
 import { getAuthToken } from "./authToken";
+import { API_BASE, buildApiUrl } from "./apiBase";
 
 function buildUrl(path: string, init?: RequestInit) {
   const method = String(init?.method ?? "GET").toUpperCase();
   const isGet = method === "GET";
   const isPublicContent = path.startsWith("/content/");
 
-  if (!isGet || !isPublicContent) return `${API_BASE}${path}`;
+  if (!isGet || !isPublicContent) return buildApiUrl(API_BASE, path);
 
   const rev = getContentRevision();
   const sep = path.includes("?") ? "&" : "?";
   // Query param is intentionally generic; used only for cache-busting.
-  return `${API_BASE}${path}${sep}rev=${encodeURIComponent(String(rev))}`;
+  return buildApiUrl(API_BASE, `${path}${sep}rev=${encodeURIComponent(String(rev))}`);
 }
 
 function friendlyApiErrorMessage(input: {

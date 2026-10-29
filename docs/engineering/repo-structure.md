@@ -76,6 +76,10 @@ API is organized by layer:
 
 - `tooling/infra/`: local Docker compose (e.g. Postgres)
 
+## infra/
+
+- `infra/`: single-VPS production stack (`compose.prod.yml`, Caddyfile, deploy and rollback scripts); `compose.local.yml` runs it on localhost for verification
+
 ## tests/
 
 - `tests/e2e/`: Playwright smoke tests

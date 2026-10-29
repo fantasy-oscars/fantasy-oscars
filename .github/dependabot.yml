@@ -30,3 +30,38 @@ updates:
       actions:
         patterns:
           - "*"
+
+  # Base images and the pinned Postgres/Caddy tags.
+  - package-ecosystem: "docker"
+    directories:
+      - "/apps/api"
+      - "/apps/web"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+    ignore:
+      # Node tracks .nvmrc; bump it deliberately with the runtime upgrade.
+      - dependency-name: "node"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/infra"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      compose-images:
+        patterns:
+          - "*"
+    ignore:
+      # A Postgres major needs a dump/restore upgrade, never an automatic bump.
+      - dependency-name: "postgres"
+        update-types:
+          - "version-update:semver-major"
