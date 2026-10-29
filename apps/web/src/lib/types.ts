@@ -119,6 +119,8 @@ export type Snapshot = {
   }>;
   picks: Array<{ pick_number: number; seat_number: number; nomination_id: number }>;
   version: number;
+  /** Server clock when the snapshot was built (ISO); used to correct local clock skew. */
+  server_time?: string;
   picks_per_seat?: number | null;
   total_picks?: number | null;
   remainder_strategy?: string;
@@ -219,4 +221,6 @@ export type DraftEventMessage = {
     };
   };
   created_at: string;
+  /** Server clock when the event was emitted (ISO); used to correct local clock skew. */
+  server_time?: string;
 };

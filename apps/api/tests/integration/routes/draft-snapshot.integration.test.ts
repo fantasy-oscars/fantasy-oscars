@@ -95,9 +95,11 @@ describe("draft snapshot integration", () => {
       picks: unknown[];
       version: number;
       ceremony_starts_at: string | null;
+      server_time: string;
     }>(`/drafts/${draft.id}/snapshot`);
 
     expect(res.status).toBe(200);
+    expect(Math.abs(Date.parse(res.json.server_time) - Date.now())).toBeLessThan(60_000);
     expect(res.json.draft.status).toBe("PENDING");
     expect(res.json.picks.length).toBe(0);
     expect(res.json.seats.map((s) => s.seat_number)).toEqual([1, 2]);

@@ -31,10 +31,7 @@ async function registerAndSignIn(page: Page, username: string) {
 }
 
 async function newUserPage(browser: Browser, username: string) {
-  const context = await browser.newContext({
-    baseURL: E2E_WEB_ORIGIN,
-    viewport: { width: 1600, height: 1000 }
-  });
+  const context = await browser.newContext({ baseURL: E2E_WEB_ORIGIN });
   const page = await context.newPage();
   await registerAndSignIn(page, username);
   return page;

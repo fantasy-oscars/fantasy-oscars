@@ -8,6 +8,8 @@ export type DraftEventMessage = {
   event_type: string;
   payload: unknown;
   created_at: string;
+  /** Server clock at emit time; lets clients correct for local clock skew. */
+  server_time: string;
 };
 
 type DraftEventEmitter = (event: DraftEventMessage) => void;
@@ -31,6 +33,7 @@ export function emitDraftEvent(event: DraftEventRecord) {
     version: event.version,
     event_type: event.event_type,
     payload: event.payload,
-    created_at: event.created_at.toISOString()
+    created_at: event.created_at.toISOString(),
+    server_time: new Date().toISOString()
   });
 }

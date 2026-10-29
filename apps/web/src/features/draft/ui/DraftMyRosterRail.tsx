@@ -66,14 +66,17 @@ export function DraftMyRosterRail(props: {
                         props.hoveredNominationIds.has(p.nominationId)
                           ? "is-hoverMatch"
                           : "",
-                        p.winner ? "is-winner" : ""
+                        p.winner ? "is-winner" : "",
+                        p.pending ? "is-pending" : ""
                       ]
                         .filter(Boolean)
                         .join(" ")}
                       tabIndex={nominee ? 0 : undefined}
                       role={nominee ? "group" : undefined}
                       aria-label={
-                        nominee ? `${nominee.categoryName}: ${p.label}` : undefined
+                        nominee
+                          ? `${nominee.categoryName}: ${p.label}${p.pending ? " (pending)" : ""}`
+                          : undefined
                       }
                     >
                       {nominee ? (

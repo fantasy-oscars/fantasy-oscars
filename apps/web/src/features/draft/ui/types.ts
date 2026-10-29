@@ -34,6 +34,7 @@ export type DraftLedgerRow = {
   icon?: string | null;
   active?: boolean;
   winner?: boolean;
+  pending?: boolean;
 };
 
 export type DraftRosterPick = {
@@ -43,6 +44,7 @@ export type DraftRosterPick = {
   label: string;
   icon?: string | null;
   winner?: boolean;
+  pending?: boolean;
 };
 
 export type AutoDraftPlan = { id: number; name: string };

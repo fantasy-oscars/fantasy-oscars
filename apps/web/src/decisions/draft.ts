@@ -154,6 +154,8 @@ export function computePickDisabledReason(args: {
   mySeatNumber: number | null;
   selectedNominationId: number | null;
   drafted: Set<number>;
+  /** Set while the live connection is down; picks are blocked with this reason. */
+  connectionBlockedReason?: string | null;
 }) {
   const {
     snapshot,
@@ -161,7 +163,8 @@ export function computePickDisabledReason(args: {
     activeSeatNumber,
     mySeatNumber,
     selectedNominationId,
-    drafted
+    drafted,
+    connectionBlockedReason
   } = args;
 
   if (disabled) return "Sign in to make picks.";
@@ -172,6 +175,7 @@ export function computePickDisabledReason(args: {
   if (mySeatNumber === null) return "You are not seated in this draft.";
   if (activeSeatNumber !== mySeatNumber)
     return `Waiting for seat ${activeSeatNumber} to pick.`;
+  if (connectionBlockedReason) return connectionBlockedReason;
   if (!selectedNominationId) return "Select a nominee first.";
   if (drafted.has(selectedNominationId)) return "That nominee was already drafted.";
   return null;

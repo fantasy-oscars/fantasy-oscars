@@ -41,7 +41,7 @@ export function DraftHeaderRightWing(props: {
 
   return (
     <>
-      {!compactHeader && props.showDraftControls && props.canManageDraft ? (
+      {props.showDraftControls && props.canManageDraft ? (
         <Box className="drh-pauseWrap">
           <UnstyledButton
             type="button"
@@ -204,20 +204,15 @@ export function DraftHeaderRightWing(props: {
                   </Group>
                 </Menu.Item>
               ) : null}
-
-              {props.showDraftControls && props.canManageDraft ? (
-                props.isPre ? (
-                  <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
-                ) : props.isPaused ? (
-                  <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
-                ) : !props.isCompleted ? (
-                  <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
-                ) : null
-              ) : null}
             </Menu.Dropdown>
           </Menu>
 
-          <Box className="drh-userBadge">
+          <Box
+            className="drh-userBadge"
+            role="group"
+            aria-label={`Signed in as ${props.userLabel}`}
+            title={props.userLabel}
+          >
             <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>
           </Box>

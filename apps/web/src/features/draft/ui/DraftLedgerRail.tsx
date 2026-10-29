@@ -73,14 +73,17 @@ export function DraftLedgerRail(props: {
                         ? "is-hoverMatch"
                         : "",
                       r.label === "—" ? "is-muted" : "",
-                      r.winner ? "is-winner" : ""
+                      r.winner ? "is-winner" : "",
+                      r.pending ? "is-pending" : ""
                     ]
                       .filter(Boolean)
                       .join(" ")}
                     tabIndex={nominee ? 0 : undefined}
                     role={nominee ? "group" : undefined}
                     aria-label={
-                      nominee ? `${nominee.categoryName}: ${r.label}` : undefined
+                      nominee
+                        ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
+                        : undefined
                     }
                   >
                     {nominee ? (

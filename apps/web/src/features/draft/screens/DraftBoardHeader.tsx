@@ -261,6 +261,20 @@ export function DraftBoardHeader(props: {
     podiumPositions.length >= 3 ? [3, 1, 2] : podiumPositions.length === 2 ? [1, 2] : [1];
   const podiumByPlace = new Map(podiumPositions.map((p) => [p.place, p]));
 
+  // The buckle is absolutely positioned, so its wrapper has no box of its own. Measure the
+  // buckle element(s) themselves: how far they reach from the header's centre line.
+  const measureBuckleHalfWidth = (headerRect: DOMRect) => {
+    const wrapper = buckleRef.current;
+    if (!wrapper) return null;
+    const centerX = headerRect.left + headerRect.width / 2;
+    let half = 0;
+    for (const child of Array.from(wrapper.children)) {
+      const rect = child.getBoundingClientRect();
+      half = Math.max(half, centerX - rect.left, rect.right - centerX);
+    }
+    return half;
+  };
+
   useEffect(() => {
     const headerEl = headerRef.current;
     if (!headerEl) return;
@@ -269,15 +283,15 @@ export function DraftBoardHeader(props: {
       const headerRect = headerEl.getBoundingClientRect();
       const l = leftMeasureRef.current?.getBoundingClientRect();
       const r = rightMeasureRef.current?.getBoundingClientRect();
-      const b = buckleRef.current?.getBoundingClientRect();
-      if (!l || !r || !b) return;
+      const buckleHalf = measureBuckleHalfWidth(headerRect);
+      if (!l || !r || buckleHalf === null) return;
+      const buckleWidth = buckleHalf * 2;
 
       // Use a width-based model instead of bounding-box overlap. The buckle is centered,
       // so each "wing" must fit inside its half of the header.
       const headerPad = DRAFT_HEADER_SIDE_PADDING_PX * 2;
       const available = Math.max(0, headerRect.width - headerPad);
       const half = available / 2;
-      const buckleHalf = b.width / 2;
       const leftW = l.width;
       const rightW = r.width;
 
@@ -288,7 +302,7 @@ export function DraftBoardHeader(props: {
         const needsCompact = leftW > limit || rightW > limit;
         if (!prev) {
           nonCompactNeededWidthRef.current = Math.ceil(
-            leftW + rightW + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
+            leftW + rightW + buckleWidth + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
           );
           return needsCompact;
         }
@@ -312,20 +326,19 @@ export function DraftBoardHeader(props: {
       const headerRect = headerEl.getBoundingClientRect();
       const l = leftMeasureRef.current?.getBoundingClientRect();
       const r = rightMeasureRef.current?.getBoundingClientRect();
-      const b = buckleRef.current?.getBoundingClientRect();
-      if (!l || !r || !b) return;
+      const buckleHalf = measureBuckleHalfWidth(headerRect);
+      if (!l || !r || buckleHalf === null) return;
       setCompactHeader((prev) => {
         const headerPad = DRAFT_HEADER_SIDE_PADDING_PX * 2;
         const available = Math.max(0, headerRect.width - headerPad);
         const half = available / 2;
-        const buckleHalf = b.width / 2;
         const enterPad = DRAFT_HEADER_HYSTERESIS_ENTER_PX;
         const exitPad = DRAFT_HEADER_HYSTERESIS_EXIT_PX;
         const limit = half - buckleHalf - (prev ? exitPad : enterPad);
         const needsCompact = l.width > limit || r.width > limit;
         if (!prev) {
           nonCompactNeededWidthRef.current = Math.ceil(
-            l.width + r.width + b.width + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
+            l.width + r.width + buckleHalf * 2 + DRAFT_HEADER_NONCOMPACT_EXTRA_PX
           );
           return needsCompact;
         }

@@ -126,5 +126,9 @@ describe("draft event emission", () => {
       (entry) => (entry.args[0] as { version: number }).version
     );
     expect(versions).toEqual([1, 2]);
+    for (const entry of draftEvents) {
+      const serverTime = (entry.args[0] as { server_time: string }).server_time;
+      expect(Number.isFinite(Date.parse(serverTime))).toBe(true);
+    }
   });
 });

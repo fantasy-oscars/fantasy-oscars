@@ -1072,6 +1072,14 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   border-color: rgba(var(--fo-ivory-rgb), var(--fo-alpha-20));
 }
 
+/* Narrow desktop: keep the right wing clear of the centre buckle by showing only the
+   avatar (the badge keeps its name as a tooltip and accessible label). */
+@media (max-width: 1100px) {
+  .drh-right .drh-userText {
+    display: none;
+  }
+}
+
 .drh-userText {
   font-size: var(--fo-font-size-xs);
   font-weight: 700;
@@ -1701,6 +1709,11 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .dr-pill.is-muted {
   opacity: var(--fo-alpha-50);
+}
+
+.dr-pill.is-pending {
+  opacity: var(--fo-alpha-65);
+  border-style: dashed;
 }
 
 .dr-pill.is-hoverMatch {
@@ -4259,4 +4272,44 @@ select {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Live-connection chip: only rendered while connecting, reconnecting or disconnected. */
+.dr-connection {
+  position: fixed;
+  left: var(--fo-space-xs);
+  bottom: var(--fo-space-xs);
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  padding: var(--fo-space-4) var(--fo-space-xs);
+  border-radius: var(--fo-radius-pill);
+  border: var(--fo-border-width) solid var(--fo-border);
+  background: var(--fo-surface-card-primary);
+  color: var(--fo-text-primary);
+  font-size: var(--fo-font-size-sm);
+  pointer-events: none;
+}
+
+.dr-connection[data-state="disconnected"] {
+  border-color: var(--fo-text-deemphasized);
+}
+
+/* Visually hidden but still exposed to assistive tech (e.g. dialog titles). */
+.fo-visuallyHidden {
+  position: absolute;
+  width: var(--fo-space-hairline);
+  height: var(--fo-space-hairline);
+  margin: calc(-1 * var(--fo-space-hairline));
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.fo-modalHeaderCollapsed {
+  min-height: 0;
+  padding: 0;
 }

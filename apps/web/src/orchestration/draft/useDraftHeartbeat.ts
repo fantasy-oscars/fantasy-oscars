@@ -2,6 +2,7 @@ import type { Socket } from "socket.io-client";
 import { useEffect, type RefObject } from "react";
 import { fetchJson } from "../../lib/api";
 import type { Snapshot } from "../../lib/types";
+import { toServerNowMs } from "../../decisions/draft/clockSkew";
 
 // Keeps the client from getting "stuck" if timer expiry happens and/or if the websocket
 // disconnects and misses events (e.g. short timers, flaky networks).
@@ -11,8 +12,11 @@ export function useDraftHeartbeat(args: {
   snapshotRef: RefObject<Snapshot | null>;
   socketRef: RefObject<Socket | null>;
   loadSnapshot: (options?: { preserveSnapshot?: boolean }) => Promise<boolean>;
+  /** Server clock minus local clock; deadlines are in server time. */
+  serverOffsetRef: RefObject<number>;
 }) {
-  const { disabled, draftId, snapshotRef, socketRef, loadSnapshot } = args;
+  const { disabled, draftId, snapshotRef, socketRef, loadSnapshot, serverOffsetRef } =
+    args;
 
   // Heartbeat: if a pick timer expires, trigger an auto-pick on the server.
   // We only call the endpoint when the local view believes the deadline has passed.
@@ -34,13 +38,13 @@ export function useDraftHeartbeat(args: {
         void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
         return;
       }
-      if (Date.now() <= deadlineMs) return;
+      if (toServerNowMs(Date.now(), serverOffsetRef.current) <= deadlineMs) return;
 
       void fetchJson(`/drafts/${d.id}/tick`, { method: "POST" });
     }, 1000);
 
     return () => window.clearInterval(intervalId);
-  }, [disabled, draftId, snapshotRef]);
+  }, [disabled, draftId, serverOffsetRef, snapshotRef]);
 
   // Safety resync: if the websocket is disconnected during a live/paused draft,
   // periodically refresh the snapshot so the UI doesn't get stuck on stale turns.
