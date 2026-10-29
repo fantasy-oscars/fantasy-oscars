@@ -12,11 +12,13 @@ import type {
 import {
   ApiQueryError,
   errorCode,
+  errorFailure,
   errorMessage,
   errorRequestId,
   unwrap
 } from "../query/errors";
 import { queryKeys } from "../query/keys";
+import { useFieldErrors } from "../useFieldErrors";
 import {
   leagueMembersQuery,
   leagueQuery,
@@ -60,6 +62,8 @@ export function useLeaguesIndexOrchestration() {
 export function useLeagueCreateOrchestration() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
 
   const mutation = useMutation({
     mutationFn: async (input: { name: string }) =>
@@ -79,19 +83,27 @@ export function useLeagueCreateOrchestration() {
   const create = useCallback(
     async (input: { name: string }) => {
       setError(null);
+      resetFieldErrors();
       try {
         const data = await mutation.mutateAsync(input);
         return { ok: true as const, league: data?.league };
       } catch (err) {
         const message = errorMessage(err, "Could not create league");
-        setError(message);
+        // A message on the input replaces the separate banner.
+        if (!applyFailure(errorFailure(err))) setError(message);
         return { ok: false as const, error: message };
       }
     },
-    [mutation]
+    [mutation, applyFailure, resetFieldErrors]
   );
 
-  return { creating: mutation.isPending, error, create };
+  return {
+    creating: mutation.isPending,
+    error,
+    fieldErrors: fieldErrors.errors,
+    onFormInput: fieldErrors.onFormInput,
+    create
+  };
 }
 
 export type LeagueDetailView =

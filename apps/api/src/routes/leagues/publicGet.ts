@@ -20,7 +20,9 @@ export function registerLeaguePublicGetRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const { id } = parseParams(idParam, req.params, { message: "Invalid league id" });
+        const { id } = parseParams(idParam, req.params, {
+          message: "That link doesn't look right"
+        });
         const league = await getLeagueById(client, id);
         if (!league || !league.is_public) {
           throw new AppError("LEAGUE_NOT_FOUND", 404, "League not found");

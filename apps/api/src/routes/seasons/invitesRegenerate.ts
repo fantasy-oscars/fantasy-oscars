@@ -30,7 +30,7 @@ export function registerSeasonInvitesRegenerateRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { id: seasonId, inviteId } = parseParams(idAndInviteIdParams, req.params, {
-          message: "Invalid ids",
+          message: "That link doesn't look right",
           fields: ["id", "inviteId"]
         });
         const actorId = Number(req.auth?.sub);

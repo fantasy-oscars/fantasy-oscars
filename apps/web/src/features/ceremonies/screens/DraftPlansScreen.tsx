@@ -350,8 +350,8 @@ export function DraftPlansScreen(props: {
                     if (value.startsWith("create:")) {
                       const name = value.slice("create:".length);
                       if (!name.trim()) return;
-                      await o.createPlan(name.trim());
-                      setPlanQuery("");
+                      // Keep the typed name when the server rejects it.
+                      if (await o.createPlan(name.trim())) setPlanQuery("");
                       combobox.closeDropdown();
                       return;
                     }
@@ -365,9 +365,11 @@ export function DraftPlansScreen(props: {
                     <TextInput
                       label="Plan name"
                       placeholder="Choose a plan..."
+                      error={o.fieldErrors.name}
                       value={o.selectedPlanName ?? planQuery}
                       onChange={(e) => {
                         const v = e.currentTarget.value;
+                        o.clearFieldError("name");
                         setPlanQuery(v);
                         // Editing the input implies selecting/searching.
                         o.setSelectedPlanId(null);

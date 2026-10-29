@@ -142,6 +142,7 @@ export function LeagueSeasonCreateScreen(props: {
             <Stack gap="sm">
               <Select
                 label="Ceremony"
+                error={view.fieldErrors.ceremony_id}
                 placeholder="Select ceremony…"
                 value={view.ceremonyId ? String(view.ceremonyId) : null}
                 onChange={(v) => actions.setCeremonyId(v ? Number(v) : null)}
@@ -159,6 +160,7 @@ export function LeagueSeasonCreateScreen(props: {
 
               <Select
                 label="Scoring strategy"
+                error={view.fieldErrors.scoring_strategy_name}
                 value={view.scoringStrategy}
                 onChange={(v) =>
                   actions.setScoringStrategy(
@@ -175,6 +177,7 @@ export function LeagueSeasonCreateScreen(props: {
 
               <Select
                 label="Leftover picks"
+                error={view.fieldErrors.remainder_strategy}
                 value={view.remainderStrategy}
                 onChange={(v) =>
                   actions.setRemainderStrategy(
@@ -197,6 +200,7 @@ export function LeagueSeasonCreateScreen(props: {
                 />
                 <NumberInput
                   label="Seconds per pick"
+                  error={view.fieldErrors.pick_timer_seconds}
                   value={view.pickTimerSeconds}
                   onChange={(v) => actions.setPickTimerSeconds(Number(v) || 0)}
                   min={0}

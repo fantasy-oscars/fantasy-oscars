@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../../lib/api";
+import { useFieldErrors } from "../useFieldErrors";
 
 export type DraftPlanSummary = { id: number; name: string; updated_at?: string };
 
@@ -20,6 +21,12 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
   const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
   const [order, setOrder] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+  const fieldErrors = useFieldErrors();
+  const {
+    applyFailure,
+    setErrors: setFieldErrors,
+    reset: resetFieldErrors
+  } = fieldErrors;
 
   const hasRenderedRef = useRef(false);
   useEffect(() => {
@@ -78,6 +85,7 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
       if (!ceremonyId) return false;
       const trimmed = name.trim();
       if (!trimmed) return false;
+      resetFieldErrors();
       setSaving(true);
       const res = await fetchJson<{
         plan: { id: number; name: string };
@@ -89,7 +97,10 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
       });
       setSaving(false);
       if (!res.ok || !res.data?.plan?.id) {
-        setError(res.error ?? "Failed to create plan");
+        if (!applyFailure(res)) {
+          // Show it on the name input; typing clears it.
+          setFieldErrors({ name: res.error ?? "Failed to create plan" });
+        }
         return false;
       }
       // Refresh list and select the created plan.
@@ -99,7 +110,7 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
       setOrder(res.data.nomination_ids ?? []);
       return true;
     },
-    [ceremonyId, refreshPlans]
+    [ceremonyId, refreshPlans, applyFailure, setFieldErrors, resetFieldErrors]
   );
 
   const saveOrder = useCallback(async (planId: number, nominationIds: number[]) => {
@@ -126,6 +137,8 @@ export function useDraftPlansOrchestration(args: { ceremonyId: number | null }) 
   return {
     state,
     error,
+    fieldErrors: fieldErrors.errors,
+    clearFieldError: fieldErrors.clear,
     plans,
     selectedPlanId,
     selectedPlanName,

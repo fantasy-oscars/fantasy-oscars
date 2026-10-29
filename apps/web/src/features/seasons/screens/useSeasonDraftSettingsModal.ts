@@ -7,9 +7,9 @@ export function useSeasonDraftSettingsModal(args: {
   pickTimerSeconds: number | null;
   updateScoring: (
     strategy: "fixed" | "negative" | "category_weighted"
-  ) => Promise<unknown>;
-  updateAllocation: (strategy: "UNDRAFTED" | "FULL_POOL") => Promise<unknown>;
-  updateTimerWith: (seconds: number | null) => Promise<unknown>;
+  ) => Promise<boolean>;
+  updateAllocation: (strategy: "UNDRAFTED" | "FULL_POOL") => Promise<boolean>;
+  updateTimerWith: (seconds: number | null) => Promise<boolean>;
 }) {
   const {
     scoringStrategy,
@@ -60,17 +60,18 @@ export function useSeasonDraftSettingsModal(args: {
         return;
       }
 
+      // On a failed save the modal stays open so the message shows on its input.
       if (draft.scoringStrategy !== draftDefaults.scoring) {
-        await updateScoring(draft.scoringStrategy);
+        if (!(await updateScoring(draft.scoringStrategy))) return;
       }
       if (draft.allocationStrategy !== draftDefaults.allocation) {
-        await updateAllocation(draft.allocationStrategy);
+        if (!(await updateAllocation(draft.allocationStrategy))) return;
       }
       const currentTimerSeconds = draftDefaults.timerEnabled
         ? draftDefaults.pickTimerSeconds
         : null;
       if (nextTimerSeconds !== currentTimerSeconds) {
-        await updateTimerWith(nextTimerSeconds);
+        if (!(await updateTimerWith(nextTimerSeconds))) return;
       }
 
       setSettingsOpen(false);

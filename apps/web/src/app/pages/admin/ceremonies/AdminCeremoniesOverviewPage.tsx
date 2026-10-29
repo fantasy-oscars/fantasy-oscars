@@ -20,6 +20,8 @@ export function AdminCeremoniesOverviewPage() {
       stats={o.stats}
       form={o.form}
       setForm={o.setForm}
+      fieldErrors={o.fieldErrors}
+      onEditField={o.clearFieldError}
       readOnly={o.readOnly}
       onSave={() => {
         void o.actions.save().then(async () => {

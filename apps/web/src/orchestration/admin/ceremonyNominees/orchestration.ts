@@ -13,6 +13,15 @@ import { useCandidateUpload } from "./useCandidateUpload";
 import { usePeopleSearch } from "./usePeopleSearch";
 import { useNomineeFilmEntry } from "./useNomineeFilmEntry";
 import { useCeremonyNominations } from "./useCeremonyNominations";
+import { useFieldErrors } from "../../useFieldErrors";
+
+/** API field -> create-nomination input, where the two differ. */
+const NOMINATION_FIELD_INPUTS = {
+  category_edition_id: "category",
+  film_id: "film",
+  film_title: "film",
+  song_title: "songTitle"
+} as const;
 
 export function useAdminCeremonyNomineesOrchestration(args: {
   ceremonyId: number | null;
@@ -25,6 +34,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const [manualLoading, setManualLoading] = useState(false);
   const [manualState, setManualState] = useState<ApiResult | null>(null);
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
   const [categories, setCategories] = useState<CeremonyCategory[]>([]);
   const [films, setFilms] = useState<CandidateFilm[]>([]);
 
@@ -108,10 +119,11 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
   const resetManual = useCallback(() => {
     setManualState(null);
+    resetFieldErrors();
     setSelectedCategoryId(null);
     setSongTitle("");
     resetFilmEntry();
-  }, [resetFilmEntry]);
+  }, [resetFilmEntry, resetFieldErrors]);
 
   const categoryLabelById = useMemo(
     () => buildCategoryLabelById(categories),
@@ -151,6 +163,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
     setManualLoading(true);
     setManualState(null);
+    resetFieldErrors();
     const res = await fetchJson<{ nomination_id: number; film_id?: number | null }>(
       `/admin/ceremonies/${ceremonyId}/nominations`,
       {
@@ -171,6 +184,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     );
     setManualLoading(false);
     if (!res.ok) {
+      applyFailure(res, NOMINATION_FIELD_INPUTS);
       setManualState({ ok: false, message: res.error ?? "Failed to create nomination" });
       return;
     }
@@ -189,6 +203,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     loadManualContext,
     loadNominations,
     onWorksheetChange,
+    applyFailure,
+    resetFieldErrors,
     resetFilmEntry,
     selectedCategory?.unit_kind,
     selectedCategoryId,
@@ -254,6 +270,8 @@ export function useAdminCeremonyNomineesOrchestration(args: {
 
     manualLoading,
     manualState,
+    fieldErrors: fieldErrors.errors,
+    clearFieldError: fieldErrors.clear,
 
     categories,
     films,

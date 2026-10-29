@@ -4,12 +4,15 @@ import { optionalNumberLike } from "./common.js";
 export const SCORING_STRATEGY_NAMES = ["fixed", "negative", "category_weighted"] as const;
 export const REMAINDER_STRATEGIES = ["UNDRAFTED", "FULL_POOL"] as const;
 
-const scoringStrategy = z.enum(SCORING_STRATEGY_NAMES, "Invalid scoring_strategy_name");
-const remainderStrategy = z.enum(REMAINDER_STRATEGIES, "Invalid remainder_strategy");
+const scoringStrategy = z.enum(SCORING_STRATEGY_NAMES, "Choose a valid scoring strategy");
+const remainderStrategy = z.enum(
+  REMAINDER_STRATEGIES,
+  "Choose a valid remainder strategy"
+);
 
 export const pickTimerSeconds = optionalNumberLike.refine(
   (v) => v === null || (Number.isFinite(v) && v >= 0),
-  "Invalid pick_timer_seconds"
+  "Pick timer must be zero or a positive number of seconds"
 );
 
 /** Create a season inside a league. Absent or null settings take their defaults. */
@@ -30,7 +33,7 @@ export const seasonCreateLegacyBodySchema = z.object({
 });
 
 export const seasonLabelBodySchema = z.object({
-  label: z.string("Invalid label").nullish()
+  label: z.string("Label must be text").nullish()
 });
 
 /** Add or invite a member by id or username; the handler requires at least one. */
@@ -49,13 +52,16 @@ export const seasonMemberRefBodySchema = z.object({
 export const seasonScoringBodySchema = z.object({
   scoring_strategy_name: scoringStrategy,
   category_weights: z
-    .record(z.string(), z.unknown(), "Invalid category_weights")
+    .record(z.string(), z.unknown(), "Category weights are not valid")
     .transform((weights, ctx) => {
       const normalized: Record<string, number> = {};
       for (const [key, raw] of Object.entries(weights)) {
         const id = Number(key);
         if (!Number.isFinite(id) || id <= 0) {
-          ctx.addIssue({ code: "custom", message: "Invalid category_weights key" });
+          ctx.addIssue({
+            code: "custom",
+            message: "Category weights refer to an unknown category"
+          });
           return z.NEVER;
         }
         const weight = Number(raw);

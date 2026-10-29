@@ -3,7 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../query/keys";
 import { fetchJson } from "../../lib/api";
 import { notify } from "../../notifications";
-import type { ApiResult, CeremonySummary, LeagueDetail } from "../../lib/types";
+import type {
+  ApiResult,
+  CeremonySummary,
+  FieldErrors,
+  LeagueDetail
+} from "../../lib/types";
+import { useFieldErrors } from "../useFieldErrors";
 
 export type LeagueSeasonCreateView =
   | { state: "loading" }
@@ -15,6 +21,7 @@ export type LeagueSeasonCreateView =
       ceremonies: CeremonySummary[];
       working: boolean;
       status: ApiResult | null;
+      fieldErrors: FieldErrors;
       ceremonyId: number | null;
       scoringStrategy: "fixed" | "negative" | "category_weighted";
       remainderStrategy: "UNDRAFTED" | "FULL_POOL";
@@ -36,15 +43,58 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
   const [status, setStatus] = useState<ApiResult | null>(null);
 
   const queryClient = useQueryClient();
-  const [ceremonyId, setCeremonyId] = useState<number | null>(null);
-  const [scoringStrategy, setScoringStrategy] = useState<
+  const {
+    errors: fieldErrors,
+    applyFailure,
+    clear,
+    reset: resetFieldErrors
+  } = useFieldErrors();
+  const [ceremonyId, setCeremonyIdState] = useState<number | null>(null);
+  const [scoringStrategy, setScoringStrategyState] = useState<
     "fixed" | "negative" | "category_weighted"
   >("fixed");
-  const [remainderStrategy, setRemainderStrategy] = useState<"UNDRAFTED" | "FULL_POOL">(
-    "UNDRAFTED"
+  const [remainderStrategy, setRemainderStrategyState] = useState<
+    "UNDRAFTED" | "FULL_POOL"
+  >("UNDRAFTED");
+  const [timerEnabled, setTimerEnabledState] = useState(true);
+  const [pickTimerSeconds, setPickTimerSecondsState] = useState(60);
+
+  // Editing an input clears the server's message for it.
+  const setCeremonyId = useCallback(
+    (v: number | null) => {
+      clear("ceremony_id");
+      setCeremonyIdState(v);
+    },
+    [clear]
   );
-  const [timerEnabled, setTimerEnabled] = useState(true);
-  const [pickTimerSeconds, setPickTimerSeconds] = useState(60);
+  const setScoringStrategy = useCallback(
+    (v: "fixed" | "negative" | "category_weighted") => {
+      clear("scoring_strategy_name");
+      setScoringStrategyState(v);
+    },
+    [clear]
+  );
+  const setRemainderStrategy = useCallback(
+    (v: "UNDRAFTED" | "FULL_POOL") => {
+      clear("remainder_strategy");
+      setRemainderStrategyState(v);
+    },
+    [clear]
+  );
+  const setTimerEnabled = useCallback(
+    (v: boolean) => {
+      clear("pick_timer_seconds");
+      setTimerEnabledState(v);
+    },
+    [clear]
+  );
+  const setPickTimerSeconds = useCallback(
+    (v: number) => {
+      clear("pick_timer_seconds");
+      setPickTimerSecondsState(v);
+    },
+    [clear]
+  );
 
   const refresh = useCallback(async () => {
     if (!Number.isFinite(leagueId) || leagueId <= 0) {
@@ -94,6 +144,7 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
 
     setWorking(true);
     setStatus(null);
+    resetFieldErrors();
     const res = await fetchJson<{ season: { id: number } }>(
       `/leagues/${leagueId}/seasons`,
       {
@@ -110,6 +161,7 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
     setWorking(false);
 
     if (!res.ok) {
+      applyFailure(res);
       setStatus({ ok: false, message: res.error ?? "Failed to create season" });
       return { ok: false as const };
     }
@@ -138,6 +190,8 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
     return { ok: true as const, seasonId };
   }, [
     queryClient,
+    applyFailure,
+    resetFieldErrors,
     ceremonyId,
     leagueId,
     pickTimerSeconds,
@@ -147,13 +201,14 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
   ]);
 
   const reset = useCallback(() => {
-    setCeremonyId(null);
-    setScoringStrategy("fixed");
-    setRemainderStrategy("UNDRAFTED");
-    setTimerEnabled(true);
-    setPickTimerSeconds(60);
+    setCeremonyIdState(null);
+    setScoringStrategyState("fixed");
+    setRemainderStrategyState("UNDRAFTED");
+    setTimerEnabledState(true);
+    setPickTimerSecondsState(60);
     setStatus(null);
-  }, []);
+    resetFieldErrors();
+  }, [resetFieldErrors]);
 
   const view: LeagueSeasonCreateView =
     state === "loading"
@@ -168,6 +223,7 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
               ceremonies,
               working,
               status,
+              fieldErrors,
               ceremonyId,
               scoringStrategy,
               remainderStrategy,

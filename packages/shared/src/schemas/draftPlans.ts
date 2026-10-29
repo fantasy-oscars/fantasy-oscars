@@ -3,12 +3,12 @@ import { idOrInvalid, positiveIdString } from "./common.js";
 
 /** `/draft-plans/ceremonies/:ceremonyId` */
 export const draftPlanCeremonyParams = z.object({
-  ceremonyId: positiveIdString("Invalid ceremony id")
+  ceremonyId: positiveIdString("That link doesn't look right")
 });
 
 /** `/draft-plans/:planId...` */
 export const draftPlanIdParams = z.object({
-  planId: positiveIdString("Invalid plan id")
+  planId: positiveIdString("That link doesn't look right")
 });
 
 export const draftPlanCreateBodySchema = z.object({
@@ -21,6 +21,12 @@ export const draftPlanCreateBodySchema = z.object({
 
 export const draftPlanItemsBodySchema = z.object({
   nomination_ids: z
-    .array(idOrInvalid("Invalid nomination_ids"), "nomination_ids must be an array")
-    .refine((ids) => new Set(ids).size === ids.length, "Duplicate nomination_ids")
+    .array(
+      idOrInvalid("Some of the selected nominees are not valid"),
+      "Nominees must be a list"
+    )
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Each nominee can only be listed once"
+    )
 });

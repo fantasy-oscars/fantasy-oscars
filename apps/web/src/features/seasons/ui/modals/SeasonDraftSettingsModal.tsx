@@ -9,6 +9,7 @@ import {
   Switch,
   Text
 } from "@ui";
+import type { FieldErrors } from "@/lib/types";
 
 export type SeasonDraftSettingsDraft = {
   scoringStrategy: "fixed" | "negative" | "category_weighted";
@@ -35,6 +36,8 @@ export function SeasonDraftSettingsModal(props: {
   };
   settingsDraft: SeasonDraftSettingsDraft | null;
   setSettingsDraft: (next: SeasonDraftSettingsDraft | null) => void;
+  fieldErrors: FieldErrors;
+  onEditField: (name: string) => void;
   onOpenWeights: () => void | Promise<void>;
   onSave: (draft: SeasonDraftSettingsDraft) => void | Promise<void>;
 }) {
@@ -49,6 +52,8 @@ export function SeasonDraftSettingsModal(props: {
     draftDefaults,
     settingsDraft,
     setSettingsDraft,
+    fieldErrors,
+    onEditField,
     onOpenWeights,
     onSave
   } = props;
@@ -73,8 +78,11 @@ export function SeasonDraftSettingsModal(props: {
       <Stack gap="md">
         <Select
           label="Scoring"
+          error={fieldErrors.scoring_strategy_name ?? fieldErrors.category_weights}
           value={active.scoringStrategy}
           onChange={(v) => {
+            onEditField("scoring_strategy_name");
+            onEditField("category_weights");
             const next = (v ?? "fixed") as SeasonDraftSettingsDraft["scoringStrategy"];
             setSettingsDraft({ ...active, scoringStrategy: next });
           }}
@@ -112,8 +120,10 @@ export function SeasonDraftSettingsModal(props: {
 
         <Select
           label="Allocation"
+          error={fieldErrors.remainder_strategy}
           value={active.allocationStrategy}
           onChange={(v) => {
+            onEditField("remainder_strategy");
             const next = (v ??
               "UNDRAFTED") as SeasonDraftSettingsDraft["allocationStrategy"];
             setSettingsDraft({ ...active, allocationStrategy: next });
@@ -129,17 +139,20 @@ export function SeasonDraftSettingsModal(props: {
           <Switch
             label="Pick timer"
             checked={active.timerEnabled}
-            onChange={(e) =>
-              setSettingsDraft({ ...active, timerEnabled: e.currentTarget.checked })
-            }
+            onChange={(e) => {
+              onEditField("pick_timer_seconds");
+              setSettingsDraft({ ...active, timerEnabled: e.currentTarget.checked });
+            }}
             disabled={!canEdit || working || locked}
           />
           <NumberInput
             label="Seconds per pick"
+            error={fieldErrors.pick_timer_seconds}
             value={active.pickTimerSeconds}
-            onChange={(v) =>
-              setSettingsDraft({ ...active, pickTimerSeconds: Number(v) || 0 })
-            }
+            onChange={(v) => {
+              onEditField("pick_timer_seconds");
+              setSettingsDraft({ ...active, pickTimerSeconds: Number(v) || 0 });
+            }}
             min={0}
             step={5}
             disabled={!canEdit || working || locked || !active.timerEnabled}

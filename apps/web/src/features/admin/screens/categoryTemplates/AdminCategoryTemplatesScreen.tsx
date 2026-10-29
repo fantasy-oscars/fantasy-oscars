@@ -142,6 +142,8 @@ export function AdminCategoryTemplatesScreen(props: {
         value={o.editorValue}
         setValue={o.setEditorValue}
         status={o.status}
+        fieldErrors={o.fieldErrors}
+        onEditField={o.clearFieldError}
         onSave={() => void o.save()}
       />
     </Stack>

@@ -32,7 +32,7 @@ export function registerLeagueJoinRoutes(args: {
           throw new AppError("RATE_LIMITED", 429, "Too many join attempts");
         }
         const { id: leagueId } = parseParams(idParam, req.params, {
-          message: "Invalid league id"
+          message: "That link doesn't look right"
         });
         const userId = Number(req.auth?.sub);
         const result = await runInTransaction(client as Pool, async (tx) => {

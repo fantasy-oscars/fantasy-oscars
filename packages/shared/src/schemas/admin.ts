@@ -216,40 +216,44 @@ function dateFromText(v: unknown): Date | undefined {
 
 const namedId = (message: string) => z.object({ id: positiveIdString(message) });
 
-export const adminCeremonyIdParam = namedId("Invalid ceremony id");
-export const adminCategoryEditionIdParam = namedId("Invalid category edition id");
-export const adminCategoryFamilyDeleteParam = namedId("Invalid category template id");
-export const adminCategoryFamilyUpdateParam = namedId("Invalid category id");
-export const adminFilmIdParam = namedId("Invalid film id");
-export const adminNominationIdParam = namedId("Invalid nomination id");
-export const adminPersonIdParam = namedId("Invalid person id");
-export const adminUserIdParam = namedId("Invalid user id");
-export const adminSeasonIdParam = namedId("Invalid season id");
-export const adminLeagueIdParam = namedId("Invalid league id");
+export const adminCeremonyIdParam = namedId("That link doesn't look right");
+export const adminCategoryEditionIdParam = namedId("That link doesn't look right");
+export const adminCategoryFamilyDeleteParam = namedId("That link doesn't look right");
+export const adminCategoryFamilyUpdateParam = namedId("That link doesn't look right");
+export const adminFilmIdParam = namedId("That link doesn't look right");
+export const adminNominationIdParam = namedId("That link doesn't look right");
+export const adminPersonIdParam = namedId("That link doesn't look right");
+export const adminUserIdParam = namedId("That link doesn't look right");
+export const adminSeasonIdParam = namedId("That link doesn't look right");
+export const adminLeagueIdParam = namedId("That link doesn't look right");
 
 export const adminFilmDecoupleParams = z.object({
-  canonicalId: positiveIdString("Invalid canonical film id"),
-  filmId: positiveIdString("Invalid film id")
+  canonicalId: positiveIdString("That link doesn't look right"),
+  filmId: positiveIdString("That link doesn't look right")
 });
 
 export const adminFilmMergeParams = z.object({
-  canonicalId: positiveIdString("Invalid canonical film id")
+  canonicalId: positiveIdString("That link doesn't look right")
 });
 
 export const adminFilmTmdbParams = z.object({
-  tmdbId: positiveIdString("tmdbId must be a positive integer")
+  tmdbId: positiveIdString("TMDB ID must be a positive whole number")
 });
 
 export const adminContributorParams = z.object({
-  id: positiveIdString("Invalid nomination id"),
-  contributorId: positiveIdString("Invalid contributor id")
+  id: positiveIdString("That link doesn't look right"),
+  contributorId: positiveIdString("That link doesn't look right")
 });
 
 /** `/content/.../:key`; the key is checked before the caller's access, so it parses on its own. */
 export const adminContentKeyParams = contentStaticParams;
 
-export const adminDraftIdParam = z.object({ id: positiveIdString("Invalid draft id") });
-export const adminEntryIdParam = z.object({ id: positiveIdString("Invalid entry id") });
+export const adminDraftIdParam = z.object({
+  id: positiveIdString("That link doesn't look right")
+});
+export const adminEntryIdParam = z.object({
+  id: positiveIdString("That link doesn't look right")
+});
 
 // ---------------------------------------------------------------------------
 // Query strings
@@ -320,7 +324,7 @@ export const adminCeremonyCreateBody = z.object({
   name: requiredText("Name is required"),
   year: optionalNumberLike.refine(
     (v) => v === null || (Number.isInteger(v) && v >= 1900 && v <= 3000),
-    "Invalid year"
+    "Enter a valid year"
   ),
   starts_at: z
     .unknown()
@@ -329,7 +333,7 @@ export const adminCeremonyCreateBody = z.object({
       const date = dateFromText(v);
       if (!date) return null;
       if (Number.isNaN(date.getTime())) {
-        ctx.addIssue({ code: "custom", message: "Invalid starts_at timestamp" });
+        ctx.addIssue({ code: "custom", message: "Enter a valid start date and time" });
         return z.NEVER;
       }
       return date;
@@ -348,7 +352,7 @@ export const adminCeremonyUpdateBody = z
         const date = dateFromText(v);
         if (!date) return undefined;
         if (Number.isNaN(date.getTime())) {
-          ctx.addIssue({ code: "custom", message: "Invalid starts_at timestamp" });
+          ctx.addIssue({ code: "custom", message: "Enter a valid start date and time" });
           return z.NEVER;
         }
         return date;
@@ -360,7 +364,10 @@ export const adminCeremonyUpdateBody = z
         if (v === undefined) return undefined;
         const n = Number(v);
         if (!Number.isInteger(n) || n < 0 || n > 24 * 14) {
-          ctx.addIssue({ code: "custom", message: "Invalid draft_warning_hours" });
+          ctx.addIssue({
+            code: "custom",
+            message: "Draft warning must be a whole number of hours, up to 336"
+          });
           return z.NEVER;
         }
         return n;
@@ -379,7 +386,7 @@ export const adminCeremonyNameBody = z.object({
 });
 
 export const adminActiveCeremonyBody = z.object({
-  ceremony_id: idOrInvalid("Invalid ceremony id")
+  ceremony_id: idOrInvalid("Choose a ceremony")
 });
 
 // ---------------------------------------------------------------------------
@@ -388,11 +395,11 @@ export const adminActiveCeremonyBody = z.object({
 
 export const adminCeremonyCategoryAddBody = z
   .object({
-    family_id: idOrInvalid("family_id is required"),
-    unit_kind: stringUpperEnum(UNIT_KINDS, "Invalid unit_kind"),
+    family_id: idOrInvalid("Choose a category family"),
+    unit_kind: stringUpperEnum(UNIT_KINDS, "Choose a valid unit type"),
     icon: trimmedOrEmpty,
     icon_id: z.unknown().optional(),
-    sort_index: nonNegativeIntOrNull("Invalid sort_index")
+    sort_index: nonNegativeIntOrNull("Sort position must be a whole number")
   })
   .transform((v, ctx) => {
     if (v.icon) {
@@ -407,22 +414,20 @@ export const adminCeremonyCategoryAddBody = z
       return { ...v, icon_id: null };
     }
     if (v.icon_id === undefined || v.icon_id === null) return { ...v, icon_id: null };
-    const parsed = idOrInvalid("Invalid icon_id").safeParse(v.icon_id);
+    const parsed = idOrInvalid("Choose a valid icon").safeParse(v.icon_id);
     if (!parsed.success) {
-      ctx.addIssue({ code: "custom", message: "Invalid icon_id", path: ["icon_id"] });
+      ctx.addIssue({ code: "custom", message: "Choose a valid icon", path: ["icon_id"] });
       return z.NEVER;
     }
     return { ...v, icon_id: parsed.data as number };
   });
 
 export const adminCeremonyCategoryCloneBody = z.object({
-  from_ceremony_id: idOrInvalid("Invalid from_ceremony_id")
+  from_ceremony_id: idOrInvalid("Choose a ceremony to copy from")
 });
 
 export const adminCeremonyCategoryReorderBody = z.object({
-  category_ids: idList.pipe(
-    z.array(z.number()).min(1, "category_ids must include at least one category id")
-  )
+  category_ids: idList.pipe(z.array(z.number()).min(1, "Select at least one category"))
 });
 
 // ---------------------------------------------------------------------------
@@ -431,7 +436,7 @@ export const adminCeremonyCategoryReorderBody = z.object({
 
 export const adminCategoryEditionUpdateBody = z
   .object({
-    unit_kind: stringUpperEnum(UNIT_KINDS, "Invalid unit_kind"),
+    unit_kind: stringUpperEnum(UNIT_KINDS, "Choose a valid unit type"),
     icon: z
       .unknown()
       .optional()
@@ -449,7 +454,7 @@ export const adminCategoryEditionUpdateBody = z
         return text;
       }),
     icon_id: z.unknown().optional(),
-    sort_index: optionalNonNegativeInt("Invalid sort_index")
+    sort_index: optionalNonNegativeInt("Sort position must be a whole number")
   })
   .transform((v, ctx) => {
     let iconId: number | null | undefined;
@@ -457,11 +462,11 @@ export const adminCategoryEditionUpdateBody = z
       if (v.icon_id === null) {
         iconId = null;
       } else {
-        const parsed = idOrInvalid("Invalid icon_id").safeParse(v.icon_id);
+        const parsed = idOrInvalid("Choose a valid icon").safeParse(v.icon_id);
         if (!parsed.success) {
           ctx.addIssue({
             code: "custom",
-            message: "Invalid icon_id",
+            message: "Choose a valid icon",
             path: ["icon_id"]
           });
           return z.NEVER;
@@ -490,12 +495,12 @@ export const adminCategoryFamilyCreateBody = z
   .object({
     code: requiredText("Code is required", CODE_PATTERN),
     name: requiredText("Name is required"),
-    default_unit_kind: requiredUpperEnum(UNIT_KINDS, "Invalid default_unit_kind"),
+    default_unit_kind: requiredUpperEnum(UNIT_KINDS, "Choose a valid unit type"),
     icon_variant: z
       .unknown()
       .optional()
       .transform((v) => (typeof v === "string" ? v.trim() : "default"))
-      .pipe(z.enum(ICON_VARIANTS, "Invalid icon_variant")),
+      .pipe(z.enum(ICON_VARIANTS, "Choose a valid icon style")),
     icon: z
       .unknown()
       .optional()
@@ -515,9 +520,9 @@ export const adminCategoryFamilyCreateBody = z
       ctx.addIssue({ code: "custom", message: "Icon is required", path: ["icon"] });
       return z.NEVER;
     }
-    const parsed = idOrInvalid("Invalid icon_id").safeParse(v.icon_id);
+    const parsed = idOrInvalid("Choose a valid icon").safeParse(v.icon_id);
     if (!parsed.success) {
-      ctx.addIssue({ code: "custom", message: "Invalid icon_id", path: ["icon_id"] });
+      ctx.addIssue({ code: "custom", message: "Choose a valid icon", path: ["icon_id"] });
       return z.NEVER;
     }
     return { ...v, icon_id: parsed.data as number | null };
@@ -527,14 +532,14 @@ export const adminCategoryFamilyUpdateBody = z
   .object({
     code: optionalText("Code is required", CODE_PATTERN),
     name: optionalText("Name is required"),
-    default_unit_kind: optionalUpperEnum(UNIT_KINDS, "Invalid default_unit_kind"),
+    default_unit_kind: optionalUpperEnum(UNIT_KINDS, "Choose a valid unit type"),
     icon_variant: z
       .unknown()
       .optional()
       .transform((v) =>
         v === undefined ? undefined : typeof v === "string" ? v.trim() : ""
       )
-      .pipe(z.enum(ICON_VARIANTS, "Invalid icon_variant").optional()),
+      .pipe(z.enum(ICON_VARIANTS, "Choose a valid icon style").optional()),
     icon: optionalText("Icon is required", ICON_UNDERSCORE_PATTERN)
   })
   .transform((v, ctx) => {
@@ -561,7 +566,7 @@ export const adminIconCreateBody = z.object({
 // ---------------------------------------------------------------------------
 
 export const adminNominationCreateBody = z.object({
-  category_edition_id: idOrInvalid("category_edition_id is required"),
+  category_edition_id: idOrInvalid("Choose a category"),
   film_id: looseNumber,
   film_title: trimmedOrEmpty,
   song_title: trimmedOrEmpty,
@@ -578,20 +583,18 @@ export const adminNominationCreateBody = z.object({
 });
 
 export const adminNominationReorderBody = z.object({
-  category_edition_id: idOrInvalid("category_edition_id is required"),
-  nomination_ids: idList.pipe(
-    z.array(z.number()).min(1, "nomination_ids must include at least one nomination id")
-  )
+  category_edition_id: idOrInvalid("Choose a category"),
+  nomination_ids: idList.pipe(z.array(z.number()).min(1, "Select at least one nominee"))
 });
 
 export const adminNominationChangeBody = z
   .object({
-    action: z.enum(NOMINATION_ACTIONS, "Invalid action"),
-    origin: z.enum(NOMINATION_ORIGINS, "Invalid origin"),
-    impact: z.enum(NOMINATION_IMPACTS, "Invalid impact"),
+    action: z.enum(NOMINATION_ACTIONS, "Choose a valid action"),
+    origin: z.enum(NOMINATION_ORIGINS, "Choose a valid origin"),
+    impact: z.enum(NOMINATION_IMPACTS, "Choose a valid impact"),
     reason: z
-      .string("Reason required (min 5 chars)")
-      .refine((v) => v.trim().length >= 5, "Reason required (min 5 chars)"),
+      .string("Enter a reason of at least 5 characters")
+      .refine((v) => v.trim().length >= 5, "Enter a reason of at least 5 characters"),
     replacement_nomination_id: z
       .unknown()
       .optional()
@@ -604,7 +607,7 @@ export const adminNominationChangeBody = z
     if (v.action === "REPLACE" && v.replacement_nomination_id === null) {
       ctx.addIssue({
         code: "custom",
-        message: "replacement_nomination_id required",
+        message: "Choose a replacement nominee",
         path: ["replacement_nomination_id"]
       });
       return z.NEVER;
@@ -620,13 +623,13 @@ export const adminContributorAddBody = z
   .object({
     person_id: looseNumber,
     name: trimmedOrEmpty,
-    tmdb_id: positiveIntOrNull("tmdb_id must be a positive integer")
+    tmdb_id: positiveIntOrNull("TMDB ID must be a positive whole number")
   })
   .transform((v, ctx) => {
     if (!v.person_id && !v.name) {
       ctx.addIssue({
         code: "custom",
-        message: "person_id or name is required",
+        message: "Choose a person or enter a name",
         params: { fields: ["person_id", "name"] }
       });
       return z.NEVER;
@@ -643,9 +646,7 @@ export const adminContributorUpdateBody = z.object({
     .unknown()
     .optional()
     .transform((v) => (typeof v === "string" ? v.trim() : null)),
-  avatar_person_id_override: positiveIntOrNull(
-    "avatar_person_id_override must be a positive integer or null"
-  )
+  avatar_person_id_override: positiveIntOrNull("Avatar person must be a valid person")
 });
 
 // ---------------------------------------------------------------------------
@@ -700,7 +701,7 @@ export const adminFilmsImportBody = z.unknown().transform((body, ctx): unknown[]
 // ---------------------------------------------------------------------------
 
 export const adminFilmLinkBody = z.object({
-  tmdb_id: positiveIntOrNull("tmdb_id must be a positive integer")
+  tmdb_id: positiveIntOrNull("TMDB ID must be a positive whole number")
 });
 
 export const adminPersonUpdateBody = adminFilmLinkBody;
@@ -715,13 +716,16 @@ export function adminFilmMergeBody(canonicalId: number) {
         if (!Array.isArray(v) || v.length === 0) {
           ctx.addIssue({
             code: "custom",
-            message: "duplicate_ids must be a non-empty array"
+            message: "Select at least one duplicate film"
           });
           return z.NEVER;
         }
         const ids = Array.from(new Set(toIdList(v))).filter((id) => id !== canonicalId);
         if (ids.length === 0) {
-          ctx.addIssue({ code: "custom", message: "No valid duplicate_ids provided" });
+          ctx.addIssue({
+            code: "custom",
+            message: "Select at least one valid duplicate film"
+          });
           return z.NEVER;
         }
         return ids;
@@ -735,7 +739,7 @@ export function adminFilmMergeBody(canonicalId: number) {
 
 export const adminWinnerUpsertBody = z
   .object({
-    category_edition_id: idOrInvalid("Invalid category_edition_id"),
+    category_edition_id: idOrInvalid("Choose a category"),
     nomination_ids: z.unknown().optional(),
     nomination_id: z.unknown().optional()
   })
@@ -746,7 +750,7 @@ export const adminWinnerUpsertBody = z
     if (ids.length === 0) {
       ctx.addIssue({
         code: "custom",
-        message: "nomination_ids is required",
+        message: "Select at least one nominee",
         path: ["nomination_ids"]
       });
       return z.NEVER;
@@ -763,7 +767,7 @@ export const adminUserUpdateBody = z.object({
     .unknown()
     .optional()
     .transform((v) => (typeof v === "string" ? v.trim().toUpperCase() : ""))
-    .pipe(z.enum(ADMIN_ROLES, "admin_role must be NONE, OPERATOR, or SUPER_ADMIN"))
+    .pipe(z.enum(ADMIN_ROLES, "Admin role must be none, operator or super admin"))
 });
 
 // ---------------------------------------------------------------------------

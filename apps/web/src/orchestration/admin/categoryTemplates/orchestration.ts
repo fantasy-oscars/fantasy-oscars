@@ -3,6 +3,7 @@ import { includesNormalized } from "@fantasy-oscars/shared";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
+import { useFieldErrors } from "../../useFieldErrors";
 
 export type CategoryTemplate = {
   id: number;
@@ -24,6 +25,8 @@ export type CategoryTemplateDraft = {
 };
 
 export function useAdminCategoryTemplatesOrchestration() {
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [working, setWorking] = useState(false);
@@ -65,6 +68,7 @@ export function useAdminCategoryTemplatesOrchestration() {
 
   const openCreate = useCallback(() => {
     setStatus(null);
+    resetFieldErrors();
     setEditorValue({
       code: "",
       name: "",
@@ -75,18 +79,22 @@ export function useAdminCategoryTemplatesOrchestration() {
     setEditorOpen(true);
   }, []);
 
-  const openEdit = useCallback((t: CategoryTemplate) => {
-    setStatus(null);
-    setEditorValue({
-      id: t.id,
-      code: t.code,
-      name: t.name,
-      default_unit_kind: t.default_unit_kind,
-      icon: t.icon_code ?? "",
-      icon_variant: t.icon_variant ?? "default"
-    });
-    setEditorOpen(true);
-  }, []);
+  const openEdit = useCallback(
+    (t: CategoryTemplate) => {
+      setStatus(null);
+      resetFieldErrors();
+      setEditorValue({
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        default_unit_kind: t.default_unit_kind,
+        icon: t.icon_code ?? "",
+        icon_variant: t.icon_variant ?? "default"
+      });
+      setEditorOpen(true);
+    },
+    [resetFieldErrors]
+  );
 
   const closeEditor = useCallback(() => {
     setEditorOpen(false);
@@ -97,6 +105,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     if (!editorValue) return false;
     setWorking(true);
     setStatus(null);
+    resetFieldErrors();
 
     const payload = {
       code: editorValue.code,
@@ -123,6 +132,7 @@ export function useAdminCategoryTemplatesOrchestration() {
 
     setWorking(false);
     if (!res.ok) {
+      applyFailure(res);
       setStatus({ ok: false, message: res.error ?? "Save failed" });
       return false;
     }
@@ -142,7 +152,7 @@ export function useAdminCategoryTemplatesOrchestration() {
     closeEditor();
     void load();
     return true;
-  }, [closeEditor, editorValue, load]);
+  }, [closeEditor, editorValue, load, applyFailure, resetFieldErrors]);
 
   const remove = useCallback(
     async (id: number) => {
@@ -191,6 +201,8 @@ export function useAdminCategoryTemplatesOrchestration() {
     editorOpen,
     editorValue,
     setEditorValue,
+    fieldErrors: fieldErrors.errors,
+    clearFieldError: fieldErrors.clear,
     isEditing,
     openCreate,
     openEdit,

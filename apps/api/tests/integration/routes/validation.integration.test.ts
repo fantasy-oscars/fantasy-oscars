@@ -61,7 +61,7 @@ describe("request validation", () => {
     it("register: missing, mistyped and invalid values", async () => {
       expectValidation(
         await call("post", "/auth/register", { username: "alice" }, false),
-        "Missing required fields",
+        "Please fill in all required fields",
         ["username", "email", "password"]
       );
       expectValidation(
@@ -71,7 +71,7 @@ describe("request validation", () => {
           { username: 5, email: "a@b.co", password: "password1" },
           false
         ),
-        "Invalid field types",
+        "Please check your entries and try again",
         ["username", "email", "password"]
       );
       expectValidation(
@@ -81,7 +81,7 @@ describe("request validation", () => {
           { username: "a b", email: "nope", password: "password1" },
           false
         ),
-        "Invalid field values",
+        "Some of the details you entered are not valid",
         ["username", "email"]
       );
       expectValidation(
@@ -91,7 +91,7 @@ describe("request validation", () => {
           { username: "alice", email: "a@b.co", password: "short" },
           false
         ),
-        "Invalid field values",
+        "Some of the details you entered are not valid",
         ["password"]
       );
     });
@@ -99,7 +99,7 @@ describe("request validation", () => {
     it("login: missing, mistyped and malformed credentials", async () => {
       expectValidation(
         await call("post", "/auth/login", { username: "alice" }, false),
-        "Missing required fields",
+        "Please fill in all required fields",
         ["username", "password"]
       );
       expectValidation(
@@ -109,7 +109,7 @@ describe("request validation", () => {
           { username: ["a"], password: "password1" },
           false
         ),
-        "Invalid field types",
+        "Please check your entries and try again",
         ["username", "password"]
       );
       expectValidation(
@@ -127,55 +127,73 @@ describe("request validation", () => {
 
   describe("leagues", () => {
     it("rejects blank and missing names", async () => {
-      expectValidation(await call("post", "/leagues", {}), "Missing required fields", [
-        "name"
-      ]);
-      expectValidation(await call("post", "/leagues", { name: "   " }), "Invalid name", [
-        "name"
-      ]);
+      expectValidation(
+        await call("post", "/leagues", {}),
+        "Please fill in all required fields",
+        ["name"]
+      );
+      expectValidation(
+        await call("post", "/leagues", { name: "   " }),
+        "League name is required",
+        ["name"]
+      );
     });
 
     it("rejects non-numeric league ids", async () => {
-      expectValidation(await call("get", "/leagues/abc"), "Invalid league id", ["id"]);
-      expectValidation(await call("get", "/leagues/abc/seasons"), "Invalid league id", [
-        "id"
-      ]);
-      expectValidation(await call("post", "/leagues/abc/join"), "Invalid league id", [
-        "id"
-      ]);
-      expectValidation(await call("delete", "/leagues/abc"), "Invalid ids", ["id"]);
+      expectValidation(
+        await call("get", "/leagues/abc"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("get", "/leagues/abc/seasons"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("post", "/leagues/abc/join"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("delete", "/leagues/abc"),
+        "That link doesn't look right",
+        ["id"]
+      );
     });
 
     it("rejects bad ids on member routes", async () => {
-      expectValidation(await call("delete", "/leagues/1/members/zzz"), "Invalid ids", [
-        "id",
-        "userId"
-      ]);
+      expectValidation(
+        await call("delete", "/leagues/1/members/zzz"),
+        "That link doesn't look right",
+        ["id", "userId"]
+      );
       expectValidation(
         await call("post", "/leagues/1/transfer", { user_id: "nope" }),
-        "Invalid payload",
+        "Please check your entries and try again",
         ["id", "user_id"]
       );
-      expectValidation(await call("post", "/leagues/1/transfer", {}), "Invalid payload", [
-        "id",
-        "user_id"
-      ]);
+      expectValidation(
+        await call("post", "/leagues/1/transfer", {}),
+        "Please check your entries and try again",
+        ["id", "user_id"]
+      );
     });
 
     it("rejects invalid season settings on create", async () => {
       expectValidation(
         await call("post", "/leagues/1/seasons", { scoring_strategy_name: "bogus" }),
-        "Invalid scoring_strategy_name",
+        "Choose a valid scoring strategy",
         ["scoring_strategy_name"]
       );
       expectValidation(
         await call("post", "/leagues/1/seasons", { remainder_strategy: "x" }),
-        "Invalid remainder_strategy",
+        "Choose a valid remainder strategy",
         ["remainder_strategy"]
       );
       expectValidation(
         await call("post", "/leagues/1/seasons", { pick_timer_seconds: -5 }),
-        "Invalid pick_timer_seconds",
+        "Pick timer must be zero or a positive number of seconds",
         ["pick_timer_seconds"]
       );
     });
@@ -189,26 +207,34 @@ describe("request validation", () => {
 
   describe("seasons", () => {
     it("rejects non-numeric season ids", async () => {
-      expectValidation(await call("get", "/seasons/abc/members"), "Invalid season id", [
-        "id"
-      ]);
-      expectValidation(await call("get", "/seasons/abc/invites"), "Invalid season id", [
-        "id"
-      ]);
-      expectValidation(await call("post", "/seasons/abc/leave"), "Invalid season id", [
-        "id"
-      ]);
-      expectValidation(await call("post", "/seasons/abc/cancel"), "Invalid season id", [
-        "id"
-      ]);
+      expectValidation(
+        await call("get", "/seasons/abc/members"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("get", "/seasons/abc/invites"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("post", "/seasons/abc/leave"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("post", "/seasons/abc/cancel"),
+        "That link doesn't look right",
+        ["id"]
+      );
       expectValidation(
         await call("post", "/seasons/invites/abc/accept"),
-        "Invalid invite id",
+        "That link doesn't look right",
         ["inviteId"]
       );
       expectValidation(
         await call("post", "/seasons/1/invites/abc/revoke"),
-        "Invalid ids",
+        "That link doesn't look right",
         ["id", "inviteId"]
       );
     });
@@ -216,12 +242,12 @@ describe("request validation", () => {
     it("rejects a non-string invite label", async () => {
       expectValidation(
         await call("post", "/seasons/1/invites", { label: 5 }),
-        "Invalid label",
+        "Label must be text",
         ["label"]
       );
       expectValidation(
         await call("patch", "/seasons/1/invites/2", { label: 5 }),
-        "Invalid label",
+        "Label must be text",
         ["label"]
       );
     });
@@ -229,7 +255,7 @@ describe("request validation", () => {
     it("rejects invalid season settings", async () => {
       expectValidation(
         await call("post", "/seasons/1/scoring", { scoring_strategy_name: "bogus" }),
-        "Invalid scoring_strategy_name",
+        "Choose a valid scoring strategy",
         ["scoring_strategy_name"]
       );
       expectValidation(
@@ -242,12 +268,12 @@ describe("request validation", () => {
       );
       expectValidation(
         await call("post", "/seasons/1/allocation", { remainder_strategy: "nope" }),
-        "Invalid remainder_strategy",
+        "Choose a valid remainder strategy",
         ["remainder_strategy"]
       );
       expectValidation(
         await call("post", "/seasons/1/timer", { pick_timer_seconds: "abc" }),
-        "Invalid pick_timer_seconds",
+        "Pick timer must be zero or a positive number of seconds",
         ["pick_timer_seconds"]
       );
     });
@@ -255,7 +281,7 @@ describe("request validation", () => {
     it("rejects a bad ownership transfer payload", async () => {
       expectValidation(
         await call("post", "/seasons/1/transfer-ownership", {}),
-        "Invalid ids",
+        "Please check your entries and try again",
         ["id", "user_id"]
       );
     });

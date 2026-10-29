@@ -5,7 +5,7 @@ import { LoginScreen } from "@/features/auth/screens/LoginScreen";
 
 export function LoginPage() {
   const { login } = useAuthContext();
-  const { errors, result, loading, onSubmit } = useLoginOrchestration({ login });
+  const { errors, result, loading, onSubmit, onInput } = useLoginOrchestration({ login });
   const navigate = useNavigate();
   const location = useLocation();
   const search = new URLSearchParams(location.search);
@@ -28,6 +28,7 @@ export function LoginPage() {
       result={result}
       loading={loading}
       registerHref={registerHref}
+      onInput={onInput}
       onSubmit={onSubmitAndRedirect}
     />
   );

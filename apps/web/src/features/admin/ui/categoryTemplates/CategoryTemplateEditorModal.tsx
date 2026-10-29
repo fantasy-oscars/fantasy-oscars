@@ -1,4 +1,4 @@
-import type { ApiResult } from "@/lib/types";
+import type { ApiResult, FieldErrors } from "@/lib/types";
 import type { Dispatch, SetStateAction } from "react";
 import { Box, Button, Group, Modal, Select, Stack, TextInput } from "@ui";
 
@@ -17,6 +17,8 @@ export function CategoryTemplateEditorModal(props: {
   value: CategoryTemplateDraft | null;
   setValue: Dispatch<SetStateAction<CategoryTemplateDraft | null>>;
   status: ApiResult | null;
+  fieldErrors: FieldErrors;
+  onEditField: (name: string) => void;
   onClose: () => void;
   onSave: () => void | Promise<void>;
 }) {
@@ -31,8 +33,10 @@ export function CategoryTemplateEditorModal(props: {
       <Stack gap="sm">
         <TextInput
           label="Code"
+          error={props.fieldErrors.code}
           value={props.value?.code ?? ""}
           onChange={(e) => {
+            props.onEditField("code");
             const v = e.currentTarget.value;
             props.setValue((p) => (p ? { ...p, code: v } : p));
           }}
@@ -41,8 +45,10 @@ export function CategoryTemplateEditorModal(props: {
         />
         <TextInput
           label="Name"
+          error={props.fieldErrors.name}
           value={props.value?.name ?? ""}
           onChange={(e) => {
+            props.onEditField("name");
             const v = e.currentTarget.value;
             props.setValue((p) => (p ? { ...p, name: v } : p));
           }}
@@ -51,8 +57,10 @@ export function CategoryTemplateEditorModal(props: {
         />
         <Select
           label="Default nominee type"
+          error={props.fieldErrors.default_unit_kind}
           value={props.value?.default_unit_kind ?? "FILM"}
-          onChange={(v) =>
+          onChange={(v) => {
+            props.onEditField("default_unit_kind");
             props.setValue((p) =>
               p
                 ? {
@@ -61,8 +69,8 @@ export function CategoryTemplateEditorModal(props: {
                       "FILM") as CategoryTemplateDraft["default_unit_kind"]
                   }
                 : p
-            )
-          }
+            );
+          }}
           disabled={props.working}
           data={[
             { value: "FILM", label: "Film" },
@@ -72,8 +80,10 @@ export function CategoryTemplateEditorModal(props: {
         />
         <TextInput
           label="Icon"
+          error={props.fieldErrors.icon}
           value={props.value?.icon ?? ""}
           onChange={(e) => {
+            props.onEditField("icon");
             const v = e.currentTarget.value;
             props.setValue((p) => (p ? { ...p, icon: v } : p));
           }}
@@ -82,8 +92,10 @@ export function CategoryTemplateEditorModal(props: {
         />
         <Select
           label="Icon variant"
+          error={props.fieldErrors.icon_variant}
           value={props.value?.icon_variant ?? "default"}
-          onChange={(v) =>
+          onChange={(v) => {
+            props.onEditField("icon_variant");
             props.setValue((p) =>
               p
                 ? {
@@ -91,8 +103,8 @@ export function CategoryTemplateEditorModal(props: {
                     icon_variant: (v ?? "default") as "default" | "inverted"
                   }
                 : p
-            )
-          }
+            );
+          }}
           disabled={props.working}
           data={[
             { value: "default", label: "Default" },

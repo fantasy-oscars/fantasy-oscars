@@ -65,3 +65,12 @@ This keeps presentation swappable without changing behavior.
   either, and a custom issue can carry its own list via `params: { fields }`.
 - Schemas strip unknown keys. Business checks that need the database (existence,
   permissions, state) stay in the route or service and keep their own `AppError`s.
+- **Messages are for people.** Write schema messages as a sentence an end user can act
+  on ("Choose a league", "That link doesn't look right"), not as a field name or
+  developer note. Do not change the code or `fields` when rewording.
+- **The web app shows them on the input.** A failed submit with `VALIDATION_ERROR` and
+  `fields` is mapped to per-input errors by `decisions/fieldErrors.ts`; forms hold that
+  state with `useFieldErrors` (`orchestration/useFieldErrors.ts`), pass `errors[name]`
+  to the input's `error` prop, and call `clear(name)` when the input is edited. The
+  web app never imports the schemas entry or zod; client-side pre-checks use the plain
+  `validate*` functions from the main shared entry.

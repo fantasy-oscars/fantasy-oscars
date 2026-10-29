@@ -19,6 +19,7 @@ import { FilmsFilterMenu } from "../../ui/films/FilmsFilterMenu";
 import { GroupedRecordsModal } from "../../ui/films/GroupedRecordsModal";
 import { MergeConflictModal } from "../../ui/films/MergeConflictModal";
 import { TmdbLinkModal } from "../../ui/films/TmdbLinkModal";
+import type { FieldFailure } from "@/decisions/fieldErrors";
 import { useConsolidatedFilms } from "./useConsolidatedFilms";
 import { useFilmGroups } from "./useFilmGroups";
 import { useFilmMerge } from "./useFilmMerge";
@@ -50,7 +51,10 @@ export function AdminFilmsIndexScreen(props: {
   setPage: (page: number) => void;
   linkWorkingFilmId: number | null;
   onReload: () => void;
-  onSaveTmdbId: (filmId: number, tmdbId: number | null) => Promise<{ ok: boolean }>;
+  onSaveTmdbId: (
+    filmId: number,
+    tmdbId: number | null
+  ) => Promise<{ ok: boolean } & FieldFailure>;
   onSearchTmdb: (
     q: string
   ) => Promise<

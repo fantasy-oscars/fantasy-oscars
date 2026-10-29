@@ -130,7 +130,12 @@ export function useAdminFilmsIndexOrchestration() {
           title: tmdbId ? "Could not link film" : "Could not unlink film",
           message: res.error ?? "Request failed."
         });
-        return { ok: false as const, error: res.error ?? "Request failed." };
+        return {
+          ok: false as const,
+          error: res.error ?? "Request failed.",
+          errorCode: res.errorCode,
+          errorFields: res.errorFields
+        };
       }
 
       notify({

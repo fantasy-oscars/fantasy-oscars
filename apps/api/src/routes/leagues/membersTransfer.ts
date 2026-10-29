@@ -24,7 +24,10 @@ export function registerLeagueMembersTransferRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const opts = { message: "Invalid payload", fields: ["id", "user_id"] };
+        const opts = {
+          message: "Please check your entries and try again",
+          fields: ["id", "user_id"]
+        };
         const { id: leagueId } = parseParams(idParam, req.params, opts);
         const { user_id: targetUserId } = parseBody(userIdBodySchema, req.body, opts);
         const actorId = Number(req.auth?.sub);

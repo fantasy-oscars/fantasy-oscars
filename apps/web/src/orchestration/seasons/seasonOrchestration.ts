@@ -4,6 +4,7 @@ import { fetchJson } from "../../lib/api";
 import { ApiQueryError, unwrap } from "../query/errors";
 import { queryKeys } from "../query/keys";
 import { notify } from "../../notifications";
+import { useFieldErrors } from "../useFieldErrors";
 import { formatLocalDateTime } from "./seasonFormat";
 import { copySeasonInviteLink } from "./seasonInviteLinks";
 import {
@@ -146,7 +147,17 @@ export function useSeasonOrchestration(
     Array<{ id: number; username: string }>
   >([]);
   const [userInviteSearching, setUserInviteSearching] = useState(false);
-  const [placeholderLabel, setPlaceholderLabel] = useState("");
+  const [placeholderLabel, setPlaceholderLabelState] = useState("");
+  const settingsErrors = useFieldErrors();
+  const inviteErrors = useFieldErrors();
+  const { clear: clearInviteError } = inviteErrors;
+  const setPlaceholderLabel = useCallback(
+    (next: string) => {
+      clearInviteError("label");
+      setPlaceholderLabelState(next);
+    },
+    [clearInviteError]
+  );
   const [labelDrafts, setLabelDrafts] = useState<Record<number, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
 
@@ -291,11 +302,32 @@ export function useSeasonOrchestration(
     });
   }
 
+  // The settings modals stay open on failure: a message for a field shows on its
+  // input, anything else (server error, forbidden, conflict) shows as a toast.
+  function reportSettingsFailure(res: {
+    error?: string;
+    errorCode?: string;
+    errorFields?: string[];
+  }) {
+    if (settingsErrors.applyFailure(res)) return;
+    notify({
+      id: "season.settings.update.error",
+      severity: "error",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      title: "Could not update settings",
+      message: res.error ?? "Update failed"
+    });
+  }
+
   async function updateScoring(
     strategy: string,
     opts?: { categoryWeights?: Record<string, number> | null }
   ) {
     setScoringState(null);
+    settingsErrors.reset();
     setWorking(true);
     const res = await fetchJson<{ season: SeasonMeta }>(`/seasons/${seasonId}/scoring`, {
       method: "POST",
@@ -329,13 +361,16 @@ export function useSeasonOrchestration(
         message: "Scoring updated"
       });
       setScoringState(null);
-    } else {
-      setScoringState({ ok: false, message: res.error ?? "Update failed" });
+      return true;
     }
+    reportSettingsFailure(res);
+    setScoringState({ ok: false, message: res.error ?? "Update failed" });
+    return false;
   }
 
   async function updateAllocation(strategy: string) {
     setAllocationState(null);
+    settingsErrors.reset();
     setWorking(true);
     const res = await fetchJson<{ season: SeasonMeta }>(
       `/seasons/${seasonId}/allocation`,
@@ -365,13 +400,16 @@ export function useSeasonOrchestration(
         message: "Allocation updated"
       });
       setAllocationState(null);
-    } else {
-      setAllocationState({ ok: false, message: res.error ?? "Update failed" });
+      return true;
     }
+    reportSettingsFailure(res);
+    setAllocationState({ ok: false, message: res.error ?? "Update failed" });
+    return false;
   }
 
   async function updateTimerWith(pick_timer_seconds: number | null) {
     setTimerState(null);
+    settingsErrors.reset();
     setWorking(true);
     const res = await fetchJson<{
       draft: {
@@ -406,9 +444,11 @@ export function useSeasonOrchestration(
         message: "Timer updated"
       });
       setTimerState(null);
-    } else {
-      setTimerState({ ok: false, message: res.error ?? "Update failed" });
+      return true;
     }
+    reportSettingsFailure(res);
+    setTimerState({ ok: false, message: res.error ?? "Update failed" });
+    return false;
   }
 
   async function updateTimer() {
@@ -597,6 +637,7 @@ export function useSeasonOrchestration(
   async function createPlaceholderInvite() {
     setWorking(true);
     setInviteResult(null);
+    inviteErrors.reset();
     const res = await postSeasonInvite(
       seasonId,
       placeholderLabel.trim() ? { label: placeholderLabel.trim() } : {}
@@ -620,6 +661,7 @@ export function useSeasonOrchestration(
       });
       setInviteResult(null);
     } else {
+      inviteErrors.applyFailure(res);
       setInviteResult({ ok: false, message: res.error ?? "Invite failed" });
     }
   }
@@ -816,6 +858,9 @@ export function useSeasonOrchestration(
     setUserInviteSelectedUserId,
     placeholderLabel,
     setPlaceholderLabel,
+    inviteFieldErrors: inviteErrors.errors,
+    settingsFieldErrors: settingsErrors.errors,
+    clearSettingsFieldError: settingsErrors.clear,
     labelDrafts,
     setLabelDrafts,
     userId,

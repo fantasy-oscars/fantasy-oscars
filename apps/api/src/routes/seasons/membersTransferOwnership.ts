@@ -21,7 +21,10 @@ export function registerSeasonMembersTransferOwnershipRoute(args: {
     "/:id/transfer-ownership",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const opts = { message: "Invalid ids", fields: ["id", "user_id"] };
+        const opts = {
+          message: "Please check your entries and try again",
+          fields: ["id", "user_id"]
+        };
         const { id: seasonId } = parseParams(idParam, req.params, opts);
         const { user_id: targetUserId } = parseBody(userIdBodySchema, req.body, opts);
         const actorId = Number(req.auth?.sub);

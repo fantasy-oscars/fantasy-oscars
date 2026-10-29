@@ -1,3 +1,4 @@
+import type { FieldErrors } from "@/lib/types";
 import { FormField } from "@/shared/forms";
 import { Box, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
@@ -8,9 +9,11 @@ import classes from "./LeagueCreateScreen.module.css";
 export function LeagueCreateScreen(props: {
   creating: boolean;
   error: string | null;
+  fieldErrors: FieldErrors;
+  onInput: (e: React.FormEvent<HTMLElement>) => void;
   onCreate: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
-  const { creating, error, onCreate } = props;
+  const { creating, error, fieldErrors, onInput, onCreate } = props;
 
   return (
     <Box className="baseline-page">
@@ -31,8 +34,9 @@ export function LeagueCreateScreen(props: {
               // Keep the existing layout composition (single column, sensible width).
               className={classes.form}
               onSubmit={onCreate}
+              onInput={onInput}
             >
-              <FormField label="Name" name="name" />
+              <FormField label="Name" name="name" error={fieldErrors.name} />
               <Group wrap="wrap" justify="flex-start">
                 <Button type="submit" disabled={creating} variant="primary">
                   {creating ? "Creating..." : "Create league"}
