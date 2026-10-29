@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run the infra tests inside a throwaway ubuntu:24.04 container (GNU userland, like the VPS).
+# Run the infra tests inside a throwaway Ubuntu container (GNU userland, like the VPS).
+# UBUNTU_IMAGE selects the release; production runs 26.04.
 #
 #   infra/tests/run-in-container.sh tests       heartbeat-check, healthcheck, backup/restore round trip
 #   infra/tests/run-in-container.sh provision   provision.sh twice in a clean container
@@ -8,6 +9,7 @@
 # Everything it creates is named fo-ops-* and removed afterwards.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+UBUNTU_IMAGE="${UBUNTU_IMAGE:-ubuntu:26.04}"
 MODE="${1:-tests}"
 NAME="fo-ops-test-$$"
 trap 'docker rm -f -v "$NAME" >/dev/null 2>&1 || true' EXIT
@@ -15,7 +17,7 @@ trap 'docker rm -f -v "$NAME" >/dev/null 2>&1 || true' EXIT
 case "$MODE" in
   tests)
     docker run --name "$NAME" -v "$ROOT:/w:ro" -v /var/run/docker.sock:/var/run/docker.sock \
-      ubuntu:24.04 bash -c '
+      "$UBUNTU_IMAGE" bash -c '
         set -euo pipefail
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
@@ -27,7 +29,7 @@ case "$MODE" in
       '
     ;;
   health)
-    docker run --name "$NAME" -v "$ROOT:/w:ro" ubuntu:24.04 bash -c '
+    docker run --name "$NAME" -v "$ROOT:/w:ro" "$UBUNTU_IMAGE" bash -c '
         set -euo pipefail
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
@@ -38,7 +40,7 @@ case "$MODE" in
     ;;
   calendar)
     # Validate the OnCalendar expressions with the real systemd-analyze.
-    docker run --name "$NAME" -v "$ROOT/infra/systemd:/u:ro" ubuntu:24.04 bash -c '
+    docker run --name "$NAME" -v "$ROOT/infra/systemd:/u:ro" "$UBUNTU_IMAGE" bash -c '
         set -euo pipefail
         apt-get update -qq
         apt-get install -y -qq --no-install-recommends systemd tzdata >/dev/null 2>&1
@@ -53,7 +55,7 @@ case "$MODE" in
       '
     ;;
   provision)
-    docker run --name "$NAME" -v "$ROOT/infra:/src/infra:ro" ubuntu:24.04 bash -c '
+    docker run --name "$NAME" -v "$ROOT/infra:/src/infra:ro" "$UBUNTU_IMAGE" bash -c '
         set -euo pipefail
         apt-get update -qq
         apt-get install -y -qq --no-install-recommends ca-certificates curl openssh-client >/dev/null
