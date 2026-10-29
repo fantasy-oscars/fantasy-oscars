@@ -2,6 +2,8 @@ import type express from "express";
 import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminCeremoniesListRoute(args: {
   router: Router;
@@ -13,7 +15,7 @@ export function registerAdminCeremoniesListRoute(args: {
     "/ceremonies",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const { q } = parseQuery(adminSearchQuery, req.query);
         const like = `%${q.toLowerCase()}%`;
         const { rows } = await query(
           client,

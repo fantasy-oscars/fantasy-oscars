@@ -7,6 +7,8 @@ import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.j
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError } from "../../errors.js";
 import { loadNominees } from "../../scripts/load-nominees.js";
+import { adminNomineesUploadBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminNomineesUploadLegacyRoute({
   router,
@@ -19,13 +21,9 @@ export function registerAdminNomineesUploadLegacyRoute({
     "/nominees/upload",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
+        // Large dataset: only check that a body was sent; loadNominees does the rest.
         const dataset = req.body;
-        if (!dataset || typeof dataset !== "object") {
-          throw new AppError("VALIDATION_FAILED", 400, "Missing JSON body", {
-            fields: ["body"]
-          });
-        }
-
+        parseBody(adminNomineesUploadBody, dataset);
         const activeCeremonyRows = await query<{ active_ceremony_id: number | null }>(
           client,
           `SELECT active_ceremony_id FROM app_config WHERE id = TRUE`

@@ -3,6 +3,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminFilmDuplicatesListRoute(args: {
   router: Router;
@@ -14,7 +16,7 @@ export function registerAdminFilmDuplicatesListRoute(args: {
     "/films/duplicates",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const { q } = parseQuery(adminSearchQuery, req.query);
         const likeRaw = q ? `%${escapeLike(q)}%` : null;
         const likeNorm = q ? `%${escapeLike(normalizeForSearch(q))}%` : null;
 

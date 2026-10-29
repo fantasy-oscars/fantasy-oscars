@@ -3,6 +3,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { sqlNorm } from "../../domain/search.js";
+import { adminFilmsListQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 
 export function registerAdminFilmsListRoute(args: {
   router: Router;
@@ -14,30 +16,15 @@ export function registerAdminFilmsListRoute(args: {
     "/films",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+        const {
+          q,
+          year,
+          linked: linkedFilter,
+          nominated: nominatedFilter,
+          page,
+          page_size: pageSize
+        } = parseQuery(adminFilmsListQuery, req.query);
         const like = q ? `%${q.replace(/%/g, "\\%").replace(/_/g, "\\_")}%` : null;
-        const yearRaw = typeof req.query.year === "string" ? req.query.year.trim() : "";
-        const yearNum = yearRaw ? Number(yearRaw) : null;
-        const year = Number.isInteger(yearNum) ? yearNum : null;
-        const linked =
-          typeof req.query.linked === "string"
-            ? req.query.linked.trim().toLowerCase()
-            : "";
-        const nominated =
-          typeof req.query.nominated === "string"
-            ? req.query.nominated.trim().toLowerCase()
-            : "";
-        const linkedFilter =
-          linked === "linked" || linked === "unlinked" ? linked : "all";
-        const nominatedFilter =
-          nominated === "nominated" || nominated === "not_nominated" ? nominated : "all";
-        const pageRaw = Number(req.query.page);
-        const pageSizeRaw = Number(req.query.page_size);
-        const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
-        const pageSize =
-          Number.isInteger(pageSizeRaw) && pageSizeRaw > 0
-            ? Math.min(pageSizeRaw, 100)
-            : 50;
         const offset = (page - 1) * pageSize;
 
         const distinctYearsRes = await query<{ release_year: number }>(

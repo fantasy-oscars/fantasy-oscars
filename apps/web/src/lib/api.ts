@@ -36,6 +36,8 @@ function friendlyApiErrorMessage(input: {
     case "USER_EXISTS":
       return "That username or email is already in use.";
     case "VALIDATION_ERROR":
+      // Server validation messages are written for people; keep them.
+      if (message && message.trim() && message !== "Unexpected error") return message;
       return "Please check the highlighted fields and try again.";
     case "UNAUTHORIZED":
     case "INVALID_TOKEN":

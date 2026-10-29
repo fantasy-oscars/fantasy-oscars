@@ -4,6 +4,11 @@ import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import {
+  adminCeremonyIdParam,
+  adminCeremonyNameBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyNameUpdateRoute({
   router,
@@ -14,15 +19,8 @@ export function registerAdminCeremonyNameUpdateRoute({
 }): void {
   router.post("/ceremonies/:id/name", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-      }
-      if (!name) {
-        throw new AppError("VALIDATION_FAILED", 400, "Name is required");
-      }
-
+      const { id } = parseParams(adminCeremonyIdParam, req.params);
+      const { name } = parseBody(adminCeremonyNameBody, req.body);
       const { rows } = await query(
         client,
         `UPDATE ceremony SET name = $1

@@ -11,6 +11,8 @@ import {
   getTmdbImageConfig,
   parseReleaseYear
 } from "../../lib/tmdb.js";
+import { adminFilmIdParam, adminFilmLinkBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminFilmLinkRoutes(args: { router: Router; client: DbClient }) {
   const { router, client } = args;
@@ -19,31 +21,9 @@ export function registerAdminFilmLinkRoutes(args: { router: Router; client: DbCl
     "/films/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid film id");
-        }
+        const { id } = parseParams(adminFilmIdParam, req.params);
 
-        const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
-        const tmdbId =
-          tmdbIdRaw === null || tmdbIdRaw === undefined
-            ? null
-            : typeof tmdbIdRaw === "number"
-              ? tmdbIdRaw
-              : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
-                ? Number(tmdbIdRaw)
-                : NaN;
-
-        if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "tmdb_id must be a positive integer",
-            {
-              fields: ["tmdb_id"]
-            }
-          );
-        }
+        const { tmdb_id: tmdbId } = parseBody(adminFilmLinkBody, req.body);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: existingRows } = await query<{

@@ -5,6 +5,11 @@ import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 import { buildTmdbImageUrl, fetchTmdbPersonDetails } from "../../lib/tmdb.js";
+import {
+  adminPersonIdParam,
+  adminPersonUpdateBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminPeopleUpdateRoute({
   router,
@@ -15,32 +20,9 @@ export function registerAdminPeopleUpdateRoute({
 }): void {
   router.patch("/people/:id", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid person id");
-      }
+      const { id } = parseParams(adminPersonIdParam, req.params);
 
-      const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
-      const tmdbId =
-        tmdbIdRaw === null || tmdbIdRaw === undefined
-          ? null
-          : typeof tmdbIdRaw === "number"
-            ? tmdbIdRaw
-            : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
-              ? Number(tmdbIdRaw)
-              : NaN;
-
-      if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-        throw new AppError(
-          "VALIDATION_FAILED",
-          400,
-          "tmdb_id must be a positive integer",
-          {
-            fields: ["tmdb_id"]
-          }
-        );
-      }
-
+      const { tmdb_id: tmdbId } = parseBody(adminPersonUpdateBody, req.body);
       const result = await runInTransaction(client as Pool, async (tx) => {
         const { rows: existingRows } = await query<{
           id: number;

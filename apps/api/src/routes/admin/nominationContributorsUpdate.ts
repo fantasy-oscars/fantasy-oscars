@@ -6,6 +6,11 @@ import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError } from "../../errors.js";
+import {
+  adminContributorParams,
+  adminContributorUpdateBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationContributorsUpdateRoute({
   router,
@@ -18,58 +23,16 @@ export function registerAdminNominationContributorsUpdateRoute({
     "/nominations/:id/contributors/:contributorId",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const nominationId = Number(req.params.id);
-        const contributorId = Number(req.params.contributorId);
-        if (!Number.isInteger(nominationId) || nominationId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
-        }
-        if (!Number.isInteger(contributorId) || contributorId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid contributor id");
-        }
+        const { id: nominationId, contributorId } = parseParams(
+          adminContributorParams,
+          req.params
+        );
 
-        const displayNameRaw = (
-          req.body as { display_name_override?: unknown } | undefined
-        )?.display_name_override;
-        const displayRoleRaw = (
-          req.body as { display_role_override?: unknown } | undefined
-        )?.display_role_override;
-        const avatarPersonIdRaw = (
-          req.body as { avatar_person_id_override?: unknown } | undefined
-        )?.avatar_person_id_override;
-
-        const displayName =
-          displayNameRaw === null
-            ? null
-            : typeof displayNameRaw === "string"
-              ? displayNameRaw.trim()
-              : null;
-        const displayRole =
-          displayRoleRaw === null
-            ? null
-            : typeof displayRoleRaw === "string"
-              ? displayRoleRaw.trim()
-              : null;
-        const avatarPersonId =
-          avatarPersonIdRaw === null || avatarPersonIdRaw === undefined
-            ? null
-            : typeof avatarPersonIdRaw === "number"
-              ? avatarPersonIdRaw
-              : typeof avatarPersonIdRaw === "string" && avatarPersonIdRaw.trim()
-                ? Number(avatarPersonIdRaw)
-                : NaN;
-
-        if (
-          avatarPersonId !== null &&
-          (!Number.isInteger(avatarPersonId) || avatarPersonId <= 0)
-        ) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "avatar_person_id_override must be a positive integer or null",
-            { fields: ["avatar_person_id_override"] }
-          );
-        }
-
+        const {
+          display_name_override: displayName,
+          display_role_override: displayRole,
+          avatar_person_id_override: avatarPersonId
+        } = parseBody(adminContributorUpdateBody, req.body);
         await runInTransaction(client as Pool, async (tx) => {
           const { rows: metaRows } = await query<{ ceremony_id: number; status: string }>(
             tx,

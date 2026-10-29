@@ -5,7 +5,12 @@ import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminContributorAddBody,
+  adminNominationIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationContributorsAddRoute({
   router,
@@ -18,44 +23,13 @@ export function registerAdminNominationContributorsAddRoute({
     "/nominations/:id/contributors",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const nominationId = Number(req.params.id);
-        if (!Number.isInteger(nominationId) || nominationId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid nomination id");
-        }
+        const { id: nominationId } = parseParams(adminNominationIdParam, req.params);
 
-        const personIdRaw = (req.body as { person_id?: unknown } | undefined)?.person_id;
-        const personId =
-          typeof personIdRaw === "number"
-            ? personIdRaw
-            : typeof personIdRaw === "string" && personIdRaw.trim()
-              ? Number(personIdRaw)
-              : null;
-        const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-        const tmdbIdRaw = (req.body as { tmdb_id?: unknown } | undefined)?.tmdb_id;
-        const tmdbId =
-          typeof tmdbIdRaw === "number"
-            ? tmdbIdRaw
-            : typeof tmdbIdRaw === "string" && tmdbIdRaw.trim()
-              ? Number(tmdbIdRaw)
-              : null;
-
-        if (tmdbId !== null && (!Number.isInteger(tmdbId) || tmdbId <= 0)) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "tmdb_id must be a positive integer",
-            {
-              fields: ["tmdb_id"]
-            }
-          );
-        }
-
-        if (!personId && !name) {
-          throw new AppError("VALIDATION_FAILED", 400, "person_id or name is required", {
-            fields: ["person_id", "name"]
-          });
-        }
-
+        const {
+          person_id: personId,
+          name,
+          tmdb_id: tmdbId
+        } = parseBody(adminContributorAddBody, req.body);
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: metaRows } = await query<{ ceremony_id: number; status: string }>(
             tx,
@@ -96,12 +70,7 @@ export function registerAdminNominationContributorsAddRoute({
             resolvedPersonId = personRows[0].id;
           } else if (tmdbId && Number.isFinite(tmdbId)) {
             if (!name) {
-              throw new AppError(
-                "VALIDATION_FAILED",
-                400,
-                "name is required when providing tmdb_id",
-                { fields: ["name"] }
-              );
+              throw validationError("name is required when providing tmdb_id", ["name"]);
             }
             const { rows: personRows } = await query<{ id: number }>(
               tx,

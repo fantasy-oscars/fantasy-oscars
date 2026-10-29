@@ -3,6 +3,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { adminFilmTmdbParams } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminFilmsGetByTmdbRoute(args: {
   router: Router;
@@ -14,14 +16,7 @@ export function registerAdminFilmsGetByTmdbRoute(args: {
     "/films/by-tmdb/:tmdbId",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const tmdbId = Number(req.params.tmdbId);
-        if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "tmdbId must be a positive integer"
-          );
-        }
+        const { tmdbId } = parseParams(adminFilmTmdbParams, req.params);
         const { rows } = await query<{ id: number; title: string; tmdb_id: number }>(
           client,
           `SELECT id::int, title, tmdb_id::int

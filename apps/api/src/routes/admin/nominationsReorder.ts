@@ -5,7 +5,12 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminCeremonyIdParam,
+  adminNominationReorderBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationReorderRoute(args: {
   router: Router;
@@ -17,32 +22,10 @@ export function registerAdminNominationReorderRoute(args: {
     "/ceremonies/:id/nominations/reorder",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
-        const categoryEditionId = Number(req.body?.category_edition_id);
-        if (!Number.isInteger(categoryEditionId) || categoryEditionId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "category_edition_id is required");
-        }
-
-        const idsRaw = req.body?.nomination_ids;
-        const nominationIds = Array.isArray(idsRaw)
-          ? idsRaw
-              .map((v) =>
-                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
-              )
-              .filter((n) => Number.isInteger(n) && n > 0)
-          : [];
-
-        if (nominationIds.length < 1) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "nomination_ids must include at least one nomination id"
-          );
-        }
+        const { category_edition_id: categoryEditionId, nomination_ids: nominationIds } =
+          parseBody(adminNominationReorderBody, req.body);
 
         await runInTransaction(client as Pool, async (tx) => {
           const { rows: ceremonyRows } = await query<{ status: string }>(
@@ -89,11 +72,9 @@ export function registerAdminNominationReorderRoute(args: {
             [categoryEditionId, nominationIds]
           );
           if (existingRows.length !== nominationIds.length) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
+            throw validationError(
               "All nomination_ids must belong to the selected category",
-              { fields: ["nomination_ids"] }
+              ["nomination_ids"]
             );
           }
 

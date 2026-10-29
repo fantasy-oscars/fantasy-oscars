@@ -3,6 +3,8 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { adminCategoryEditionIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminCategoryEditionsDeleteRoute(args: {
   router: Router;
@@ -14,10 +16,7 @@ export function registerAdminCategoryEditionsDeleteRoute(args: {
     "/category-editions/:id",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid category edition id");
-        }
+        const { id } = parseParams(adminCategoryEditionIdParam, req.params);
 
         const { rows: ceRows } = await query<{ ceremony_id: number; status: string }>(
           client,

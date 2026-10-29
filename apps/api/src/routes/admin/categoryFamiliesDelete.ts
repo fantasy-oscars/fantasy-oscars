@@ -4,6 +4,8 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import { adminCategoryFamilyDeleteParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminCategoryFamiliesDeleteRoute(args: {
   router: Router;
@@ -13,10 +15,7 @@ export function registerAdminCategoryFamiliesDeleteRoute(args: {
 
   router.delete("/category-families/:id", async (req: AuthedRequest, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid category template id");
-      }
+      const { id } = parseParams(adminCategoryFamilyDeleteParam, req.params);
 
       const { rows } = await query<{ id: number; code: string; name: string }>(
         client,

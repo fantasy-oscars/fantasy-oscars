@@ -3,7 +3,9 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { validationError } from "../../errors.js";
+import { adminCategoryFamilyCreateBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminCategoryFamiliesCreateRoute(args: {
   router: Router;
@@ -13,44 +15,17 @@ export function registerAdminCategoryFamiliesCreateRoute(args: {
 
   router.post("/category-families", async (req: AuthedRequest, res, next) => {
     try {
-      const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-      const unitKindRaw = req.body?.default_unit_kind;
-      const default_unit_kind =
-        typeof unitKindRaw === "string" ? String(unitKindRaw).toUpperCase() : "";
-      const iconCode = typeof req.body?.icon === "string" ? req.body.icon.trim() : "";
-      const iconVariantRaw = req.body?.icon_variant;
-      const icon_variant =
-        typeof iconVariantRaw === "string" ? iconVariantRaw.trim() : "default";
-      const iconIdRaw = req.body?.icon_id;
-      const icon_id =
-        iconIdRaw === undefined || iconIdRaw === null ? null : Number(iconIdRaw);
+      const {
+        code,
+        name,
+        default_unit_kind,
+        icon: iconCode,
+        icon_id,
+        icon_variant
+      } = parseBody(adminCategoryFamilyCreateBody, req.body);
 
-      if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
-      if (!/^[a-z0-9-]+$/.test(code)) {
-        throw new AppError(
-          "VALIDATION_FAILED",
-          400,
-          "Code must be lowercase letters/numbers/dashes only"
-        );
-      }
-      if (!name) throw new AppError("VALIDATION_FAILED", 400, "Name is required");
-      if (!["FILM", "SONG", "PERFORMANCE"].includes(default_unit_kind)) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid default_unit_kind");
-      }
-      if (!["default", "inverted"].includes(icon_variant)) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_variant");
-      }
-
-      let resolvedIconId: number | null = null;
+      let resolvedIconId: number | null = icon_id;
       if (iconCode) {
-        if (!/^[a-z0-9-_]+$/.test(iconCode)) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Icon must be lowercase letters/numbers/dashes/underscores only"
-          );
-        }
         const { rows: iconRows } = await query<{ id: number }>(
           client,
           `INSERT INTO icon (code, name, asset_path)
@@ -60,13 +35,6 @@ export function registerAdminCategoryFamiliesCreateRoute(args: {
           [iconCode]
         );
         resolvedIconId = iconRows[0]?.id ?? null;
-      } else if (icon_id !== null) {
-        if (!Number.isInteger(icon_id) || icon_id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_id");
-        }
-        resolvedIconId = icon_id;
-      } else {
-        throw new AppError("VALIDATION_FAILED", 400, "Icon is required");
       }
 
       const { rows } = await query(
@@ -98,7 +66,7 @@ export function registerAdminCategoryFamiliesCreateRoute(args: {
     } catch (err) {
       // Unique constraint violation on category_family.code
       if ((err as { code?: string })?.code === "23505") {
-        next(new AppError("VALIDATION_FAILED", 400, "Category code already exists"));
+        next(validationError("Category code already exists", ["code"]));
         return;
       }
       next(err);

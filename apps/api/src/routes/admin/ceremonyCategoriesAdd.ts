@@ -4,7 +4,12 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import {
+  adminCeremonyCategoryAddBody,
+  adminCeremonyIdParam
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminCeremonyCategoriesAddRoute(args: {
   router: Router;
@@ -16,17 +21,15 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
     "/ceremonies/:id/categories",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
-        const familyIdRaw = req.body?.family_id;
-        const familyId =
-          familyIdRaw === undefined || familyIdRaw === null ? null : Number(familyIdRaw);
-        if (!familyId || !Number.isInteger(familyId) || familyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "family_id is required");
-        }
+        const {
+          family_id: familyId,
+          unit_kind: unitKind,
+          icon: iconCode,
+          icon_id: iconId,
+          sort_index: sortIndex
+        } = parseBody(adminCeremonyCategoryAddBody, req.body);
 
         const { rows: ceremonyRows } = await query<{ status: string }>(
           client,
@@ -42,20 +45,6 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
             "Categories can only be edited while the ceremony is in draft"
           );
         }
-
-        const unitKind =
-          typeof req.body?.unit_kind === "string"
-            ? String(req.body.unit_kind).toUpperCase()
-            : null;
-        const iconCode = typeof req.body?.icon === "string" ? req.body.icon.trim() : "";
-        const iconIdRaw = req.body?.icon_id;
-        const iconId =
-          iconIdRaw === undefined || iconIdRaw === null ? null : Number(iconIdRaw);
-        const sortIndexRaw = req.body?.sort_index;
-        const sortIndex =
-          sortIndexRaw === undefined || sortIndexRaw === null
-            ? null
-            : Number(sortIndexRaw);
 
         const { rows: familyRows } = await query<{
           code: string;
@@ -74,18 +63,8 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
         if (!fam) throw new AppError("NOT_FOUND", 404, "Category template not found");
 
         const finalUnitKind = unitKind ?? String(fam.default_unit_kind).toUpperCase();
-        if (!["FILM", "SONG", "PERFORMANCE"].includes(finalUnitKind)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid unit_kind");
-        }
         let resolvedIconId = fam.icon_id;
         if (iconCode) {
-          if (!/^[a-z0-9-]+$/.test(iconCode)) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "Icon must be lowercase letters/numbers/dashes only"
-            );
-          }
           const { rows: iconRows } = await query<{ id: number }>(
             client,
             `INSERT INTO icon (code, name, asset_path)
@@ -96,16 +75,10 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
           );
           resolvedIconId = iconRows[0]?.id ?? fam.icon_id;
         } else if (iconId !== null) {
-          if (!Number.isInteger(iconId) || iconId <= 0) {
-            throw new AppError("VALIDATION_FAILED", 400, "Invalid icon_id");
-          }
           resolvedIconId = iconId;
         }
         let resolvedSortIndex = 0;
         if (sortIndex !== null) {
-          if (!Number.isInteger(sortIndex) || sortIndex < 0) {
-            throw new AppError("VALIDATION_FAILED", 400, "Invalid sort_index");
-          }
           resolvedSortIndex = sortIndex;
         } else {
           const { rows: sortRows } = await query<{ next_sort: number }>(
@@ -159,9 +132,7 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
       } catch (err) {
         // Unique constraint violation on (ceremony_id, family_id)
         if ((err as { code?: string })?.code === "23505") {
-          next(
-            new AppError("VALIDATION_FAILED", 400, "Category already exists in ceremony")
-          );
+          next(validationError("Category already exists in ceremony", ["family_id"]));
           return;
         }
         next(err);

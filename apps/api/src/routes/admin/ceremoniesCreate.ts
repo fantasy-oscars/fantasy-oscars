@@ -4,7 +4,9 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { validationError } from "../../errors.js";
+import { adminCeremonyCreateBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminCeremoniesCreateRoute(args: {
   router: Router;
@@ -16,31 +18,12 @@ export function registerAdminCeremoniesCreateRoute(args: {
     "/ceremonies",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-        const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-        const yearRaw = req.body?.year;
-        const year = yearRaw === undefined || yearRaw === null ? null : Number(yearRaw);
-        const startsAtRaw = req.body?.starts_at;
-        const startsAt =
-          typeof startsAtRaw === "string" && startsAtRaw.trim()
-            ? new Date(startsAtRaw)
-            : null;
-
-        if (!code) throw new AppError("VALIDATION_FAILED", 400, "Code is required");
-        if (!/^[a-z0-9-]+$/.test(code)) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "Code must be lowercase letters/numbers/dashes only"
-          );
-        }
-        if (!name) throw new AppError("VALIDATION_FAILED", 400, "Name is required");
-        if (year !== null && (!Number.isInteger(year) || year < 1900 || year > 3000)) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid year");
-        }
-        if (startsAt && Number.isNaN(startsAt.getTime())) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid starts_at timestamp");
-        }
+        const {
+          code,
+          name,
+          year,
+          starts_at: startsAt
+        } = parseBody(adminCeremonyCreateBody, req.body);
 
         const { rows } = await query(
           client,
@@ -65,7 +48,7 @@ export function registerAdminCeremoniesCreateRoute(args: {
       } catch (err) {
         // Unique constraint violation on ceremony.code
         if ((err as { code?: string })?.code === "23505") {
-          next(new AppError("VALIDATION_FAILED", 400, "Ceremony code already exists"));
+          next(validationError("Ceremony code already exists", ["code"]));
           return;
         }
         next(err);

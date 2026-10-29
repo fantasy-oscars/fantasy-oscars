@@ -5,6 +5,8 @@ import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 import { assertDynamicContentAccess } from "./contentPermissions.js";
+import { adminContentKeyParams, adminEntryIdParam } from "@fantasy-oscars/shared/schemas";
+import { parseParams } from "../../utils/validate.js";
 
 export function registerAdminContentDynamicEntryDeleteRoute({
   router,
@@ -17,13 +19,9 @@ export function registerAdminContentDynamicEntryDeleteRoute({
     "/content/dynamic/:key/entries/:id",
     async (req: AuthedRequest, res, next) => {
       try {
-        const key = String(req.params.key ?? "").trim();
-        const id = Number(req.params.id);
-        if (!key) throw new AppError("VALIDATION_FAILED", 400, "Key is required");
+        const { key } = parseParams(adminContentKeyParams, req.params);
         assertDynamicContentAccess(req, key);
-        if (!Number.isInteger(id) || id <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid entry id");
-        }
+        const { id } = parseParams(adminEntryIdParam, req.params);
         const actorId = Number(req.auth?.sub);
 
         const { rows: deletedRows } = await query<{ id: number }>(

@@ -1,4 +1,6 @@
 import type { Router } from "express";
+import { adminSearchQuery } from "@fantasy-oscars/shared/schemas";
+import { parseQuery } from "../../utils/validate.js";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query } from "../../data/db.js";
 import { escapeLike, normalizeForSearch, sqlNorm } from "../../domain/search.js";
@@ -12,7 +14,7 @@ export function registerAdminUsersListRoute({
 }): void {
   router.get("/users", async (req: AuthedRequest, res, next) => {
     try {
-      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const { q } = parseQuery(adminSearchQuery, req.query);
       if (!q) return res.status(200).json({ users: [] });
 
       const likeRaw = `%${escapeLike(q)}%`;

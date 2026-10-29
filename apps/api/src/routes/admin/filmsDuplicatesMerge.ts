@@ -4,7 +4,9 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
+import { adminFilmMergeBody, adminFilmMergeParams } from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminFilmDuplicatesMergeRoute(args: {
   router: Router;
@@ -16,43 +18,11 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
     "/films/:canonicalId/merge",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const canonicalId = Number(req.params.canonicalId);
-        if (!Number.isInteger(canonicalId) || canonicalId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid canonical film id");
-        }
-
-        const duplicateIdsRaw = (req.body as { duplicate_ids?: unknown } | undefined)
-          ?.duplicate_ids;
-        if (!Array.isArray(duplicateIdsRaw) || duplicateIdsRaw.length === 0) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "duplicate_ids must be a non-empty array",
-            {
-              fields: ["duplicate_ids"]
-            }
-          );
-        }
-        const duplicateIds = Array.from(
-          new Set(
-            duplicateIdsRaw
-              .map((v) =>
-                typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN
-              )
-              .filter((v) => Number.isInteger(v) && v > 0)
-              .map((v) => Number(v))
-          )
-        ).filter((id) => id !== canonicalId);
-        if (duplicateIds.length === 0) {
-          throw new AppError(
-            "VALIDATION_FAILED",
-            400,
-            "No valid duplicate_ids provided",
-            {
-              fields: ["duplicate_ids"]
-            }
-          );
-        }
+        const { canonicalId } = parseParams(adminFilmMergeParams, req.params);
+        const { duplicate_ids: duplicateIds } = parseBody(
+          adminFilmMergeBody(canonicalId),
+          req.body
+        );
 
         const actorId = Number(req.auth?.sub) || null;
 
@@ -73,9 +43,7 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           if (!canonical)
             throw new AppError("NOT_FOUND", 404, "Canonical film not found");
           if (canonical.consolidated_into_film_id) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
+            throw validationError(
               "Cannot merge into a film that is already consolidated"
             );
           }
@@ -108,10 +76,9 @@ export function registerAdminFilmDuplicatesMergeRoute(args: {
           }
 
           if (dupRows.some((row) => Boolean(row.consolidated_into_film_id))) {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "One or more selected duplicate films are already consolidated"
+            throw validationError(
+              "One or more selected duplicate films are already consolidated",
+              ["duplicate_ids"]
             );
           }
 

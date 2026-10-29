@@ -5,6 +5,8 @@ import { type DbClient, query } from "../../data/db.js";
 import { setActiveCeremonyId } from "../../data/repositories/appConfigRepository.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
+import { adminActiveCeremonyBody } from "@fantasy-oscars/shared/schemas";
+import { parseBody } from "../../utils/validate.js";
 
 export function registerAdminActiveCeremonySetRoute({
   router,
@@ -15,11 +17,7 @@ export function registerAdminActiveCeremonySetRoute({
 }): void {
   router.post("/ceremony/active", async (req: AuthedRequest, res, next) => {
     try {
-      const ceremonyIdRaw = req.body?.ceremony_id;
-      const ceremonyId = Number(ceremonyIdRaw);
-      if (!ceremonyIdRaw || Number.isNaN(ceremonyId)) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-      }
+      const { ceremony_id: ceremonyId } = parseBody(adminActiveCeremonyBody, req.body);
 
       const { rows } = await query(
         client,

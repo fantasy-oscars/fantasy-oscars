@@ -5,8 +5,13 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
-import { AppError } from "../../errors.js";
+import { AppError, validationError } from "../../errors.js";
 import { buildTmdbImageUrl, fetchTmdbPersonDetails } from "../../lib/tmdb.js";
+import {
+  adminCeremonyIdParam,
+  adminNominationCreateBody
+} from "@fantasy-oscars/shared/schemas";
+import { parseBody, parseParams } from "../../utils/validate.js";
 
 export function registerAdminNominationCreateRoute(args: {
   router: Router;
@@ -18,34 +23,15 @@ export function registerAdminNominationCreateRoute(args: {
     "/ceremonies/:id/nominations",
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
-        const ceremonyId = Number(req.params.id);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-        }
+        const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
 
-        const categoryEditionId = Number(req.body?.category_edition_id);
-        if (!Number.isInteger(categoryEditionId) || categoryEditionId <= 0) {
-          throw new AppError("VALIDATION_FAILED", 400, "category_edition_id is required");
-        }
-
-        const filmIdRaw = req.body?.film_id;
-        const filmId =
-          typeof filmIdRaw === "number"
-            ? filmIdRaw
-            : typeof filmIdRaw === "string" && filmIdRaw.trim()
-              ? Number(filmIdRaw)
-              : null;
-        const filmTitle =
-          typeof req.body?.film_title === "string" ? req.body.film_title.trim() : "";
-        const songTitle =
-          typeof req.body?.song_title === "string" ? req.body.song_title.trim() : "";
-
-        const contributorsRaw = req.body?.contributors;
-        const contributors = Array.isArray(contributorsRaw)
-          ? (contributorsRaw as unknown[])
-              .filter((c) => c && typeof c === "object")
-              .map((c) => c as Record<string, unknown>)
-          : [];
+        const {
+          category_edition_id: categoryEditionId,
+          film_id: filmId,
+          film_title: filmTitle,
+          song_title: songTitle,
+          contributors
+        } = parseBody(adminNominationCreateBody, req.body);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const { rows: ceremonyRows } = await query<{ status: string }>(
@@ -100,12 +86,10 @@ export function registerAdminNominationCreateRoute(args: {
             );
             resolvedFilmId = rows[0]?.id ?? null;
           } else {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
-              "film_id or film_title is required",
-              { fields: ["film_id", "film_title"] }
-            );
+            throw validationError("film_id or film_title is required", [
+              "film_id",
+              "film_title"
+            ]);
           }
 
           if (!resolvedFilmId)
@@ -123,9 +107,7 @@ export function registerAdminNominationCreateRoute(args: {
 
           if (unitKind === "SONG") {
             if (!songTitle) {
-              throw new AppError("VALIDATION_FAILED", 400, "song_title is required", {
-                fields: ["song_title"]
-              });
+              throw validationError("song_title is required", ["song_title"]);
             }
             const { rows: songRows } = await query<{ id: number }>(
               tx,
@@ -148,11 +130,9 @@ export function registerAdminNominationCreateRoute(args: {
             // Performance-style categories are film-scoped, but the nominees are people pulled from
             // the film's credits. A single nomination can include multiple people (ties / duos / groups).
             if (contributors.length < 1) {
-              throw new AppError(
-                "VALIDATION_FAILED",
-                400,
+              throw validationError(
                 "Performance categories require at least one contributor",
-                { fields: ["contributors"] }
+                ["contributors"]
               );
             }
             const { rows: nomRows } = await query<{ id: number }>(
@@ -320,11 +300,9 @@ export function registerAdminNominationCreateRoute(args: {
               sort += 1;
             }
           } else if (unitKind === "PERFORMANCE") {
-            throw new AppError(
-              "VALIDATION_FAILED",
-              400,
+            throw validationError(
               "Performance categories require at least one contributor",
-              { fields: ["contributors"] }
+              ["contributors"]
             );
           }
 
