@@ -1,7 +1,9 @@
 name: Deploy
 
 # Inert until the repository variable DEPLOY_ENABLED is set to 'true'.
-# Required secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+# Required secrets: DEPLOY_HOST, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS. The SSH user is `deploy`
+# (repository variable DEPLOY_USER overrides it); it is not a secret, because a secret named
+# "deploy" would mask that word in every log line.
 # (the server's host key line(s), e.g. from `ssh-keyscan -t ed25519 <host>`).
 # Runbook: docs/runbooks/deployment.md
 
@@ -127,7 +129,7 @@ jobs:
       - name: Sync infra scripts
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
         run: |
           ssh_opts=(-i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
           # Extract next to the target, then swap, so files deleted from the repo do
@@ -151,7 +153,7 @@ jobs:
       - name: Deploy (detached on the server) and follow the log
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
           TAG: ${{ steps.ref.outputs.tag }}
           FORCE: ${{ inputs.force }}
         run: |

@@ -1,6 +1,6 @@
 # Runbook: VPS (single-host production)
 
-Production runs on one Vultr Cloud Compute instance (Ubuntu 24.04 LTS, 1 GB RAM, US West, about $5–6/month) with Docker Compose. Host provisioning, backups, health checks and alerting live in `infra/`; the compose stack, Caddy config, images and `deploy.sh` come from the runtime package. Alerts are GitHub issues in a separate **public** monitoring repository that GitHub emails and pushes to the owner. No paid service is used beyond the VPS.
+Production runs on one Vultr Cloud Compute instance (Ubuntu 26.04 LTS, 1 GB RAM, US West, about $5–6/month) with Docker Compose. Host provisioning, backups, health checks and alerting live in `infra/`; the compose stack, Caddy config, images and `deploy.sh` come from the runtime package. Alerts are GitHub issues in a separate **public** monitoring repository that GitHub emails and pushes to the owner. No paid service is used beyond the VPS.
 
 ## Architecture
 
@@ -74,7 +74,7 @@ Do these in order. Nothing here needs a paid service other than the server.
 1. **Vultr instance.** Deploy a new server with:
    - **Type:** Cloud Compute, shared CPU. Either _High Performance_ (1 vCPU / 1 GB / 25 GB NVMe, about $6) or _Regular Performance_ (1 vCPU / 1 GB / 25 GB SSD, about $5); the stack idles at about 110 MB of memory and either is enough.
    - **Location:** Silicon Valley or Seattle (closest to the old Render region, US West).
-   - **Image:** Ubuntu 24.04 LTS x64. No Marketplace app.
+   - **Image:** Ubuntu 26.04 LTS x64 (24.04 LTS also works). Never an interim release such as 26.10, which loses security updates after nine months. No Marketplace app.
    - **SSH key:** add your personal public key (it logs in as `root` only for the one-time provisioning step). Vultr also shows a root password on the server page; it stops working for SSH once `provision.sh` disables password and root logins, but keep it for the web console.
    - **Auto backups:** off (see "Monthly cost"). IPv6 optional. Note the public IPv4 address.
    - **Vultr Firewall (free, recommended):** Network, Firewall, add a group with inbound rules TCP 22, 80 and 443 (IPv4 and IPv6) and link the instance to it. It filters traffic before it reaches the server, so it also backs up the fact that Docker bypasses ufw. Leave 22 open to all addresses: GitHub Actions deploys from changing IPs, and SSH is key-only with fail2ban.
@@ -97,7 +97,7 @@ Do these in order. Nothing here needs a paid service other than the server.
 4. **Backup bucket (free tier).** Recommended: **Backblaze B2** (10 GB free, no per-request fees at this size). Create a private bucket and an application key restricted to that bucket (read, write, list, delete). Alternative: **Cloudflare R2** (10 GB-month, 1M Class A and 10M Class B operations free, free egress): create a bucket and an R2 API token with Object Read & Write on that bucket; the endpoint is shown on the bucket page. See "What was verified" below. Encrypted dumps are about 0.1 MB each now, so 40 or so objects are far below 10 GB either way.
 5. **Monitoring repo.** See "Monitoring repository setup" below, then create the fine-grained token for it.
 6. **GitHub (app repo) settings:**
-   - Create an **environment** named `production` (Settings, Environments) and put these secrets in it: `DEPLOY_HOST` (server IP or host name), `DEPLOY_USER` (`deploy`), `DEPLOY_SSH_KEY` (private key from step 2), `DEPLOY_KNOWN_HOSTS` (output of `ssh-keyscan -t ed25519 <host>`, verified against the server's own fingerprint: open the instance's web console in Vultr (View Console), log in as root and run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`).
+   - Create an **environment** named `production` (Settings, Environments) and put these secrets in it: `DEPLOY_HOST` (server IP or host name), `DEPLOY_SSH_KEY` (private key from step 2), `DEPLOY_KNOWN_HOSTS` (output of `ssh-keyscan -t ed25519 <host>`, verified against the server's own fingerprint: open the instance's web console in Vultr (View Console), log in as root and run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`).
    - Repository variable `DEPLOY_ENABLED` = `true` **only after** the server is provisioned and `.env` is filled in (until then pushes to `main` skip the deploy).
    - Images are pushed to GHCR with the workflow's own `GITHUB_TOKEN`; no registry secret is needed. After the **first** image push, set both packages (`fantasy-oscars-api`, `fantasy-oscars-web`) to **Public** once (GitHub profile, Packages, package settings, Change visibility) so the server can pull without credentials.
 
@@ -143,15 +143,13 @@ systemctl list-timers 'fo-*'
 
 ### 5. Phase E: test restore with the real private key (required, then quarterly)
 
-On your laptop (needs bash 4+, GNU coreutils, `age`, `rclone`, `jq`, Docker) or on the server with the key copied over temporarily and deleted afterwards. The script reads the bucket settings from `FO_ENV_FILE` (default `/srv/fantasy-oscars/.env`); on a laptop point it at a file containing just the `BACKUP_*` keys:
+Run this **on your laptop**, from the app repo. It needs only `ssh` (with the `admin` key) and Docker; the private key never leaves the laptop:
 
 ```bash
-export FO_ENV_FILE=~/fo-backup.env
-infra/restore.sh list
-infra/restore.sh restore --identity ~/fantasy-oscars-backup.agekey      # latest daily, into a scratch container
+infra/restore-local.sh            # newest daily backup -> throwaway postgres:18.6 container, prints row counts
 ```
 
-It decrypts the newest daily backup, restores it into a throwaway `postgres:18.6` container and prints row counts. The automated monthly job cannot decrypt (no private key on the server), so this manual restore is the only proof that the key in your password manager really opens the backups. Repeat it every three months and after any key rotation.
+The server streams the encrypted object over SSH; decryption (`age`, in a throwaway container) and the restore happen locally. Defaults: host `FO_HOST` (the server IP), SSH key `~/.ssh/fo_admin`, age identity `~/.ssh/fo_backup_age.key` (recreate that file from the password manager entry if needed: one line, `AGE-SECRET-KEY-...`, mode 600). `--file daily/<name>` picks a specific backup. The automated monthly job cannot decrypt (no private key on the server), so this manual restore is the only proof that the key in your password manager really opens the backups. Repeat it every three months and after any key rotation.
 
 ## Monitoring repository setup
 
@@ -199,12 +197,11 @@ Dumps are `pg_dump -Fc` taken inside the `db` container, encrypted with age to `
 
 ## Restore
 
-Run restores as the `deploy` user (it owns `.env` and talks to Docker), from the install directory because `deploy` cannot enter `admin`'s home: `cd /srv/fantasy-oscars && sudo -u deploy infra/restore.sh ...`. For anything that touches production, start a `tmux` session first (or prefix the command with `nohup` and read `nohup.out`) so a dropped SSH connection cannot kill it halfway; the script restarts `api` and re-enables connections on exit either way. The age private key file is passed as an argument each time and is never stored on the server; copy it to a path `deploy` can read (for example `scp key admin@host:/dev/shm/key`, `sudo chown deploy /dev/shm/key`, `chmod 600`) and `shred -u` it afterwards.
+Run restores as the `deploy` user (it owns `.env` and talks to Docker), from the install directory because `deploy` cannot enter `admin`'s home: `cd /srv/fantasy-oscars && sudo -u deploy infra/restore.sh ...`. For anything that touches production, start a `tmux` session first (or prefix the command with `nohup` and read `nohup.out`) so a dropped SSH connection cannot kill it halfway; the script restarts `api` and re-enables connections on exit either way. The age private key is never copied to the server. Decrypt on your laptop with `infra/restore-local.sh` and hand the server a plaintext dump for `--local-dump` (below).
 
 ```bash
-infra/restore.sh list
-# Verify only (default): restore into a throwaway postgres:18.6 container and print row counts
-infra/restore.sh restore --identity /path/to/fantasy-oscars-backup.agekey [--from weekly|hourly|pre-deploy] [--file daily/fo-scheduled-<stamp>.dump.age]
+infra/restore.sh list                              # on the server: what is in the bucket
+infra/restore-local.sh [--file weekly/<name>]      # on your laptop: decrypt + verify in a throwaway container
 ```
 
 Row counts printed: `app_user league season draft draft_pick draft_seat ceremony category_edition nomination film person`.
@@ -212,10 +209,17 @@ Row counts printed: `app_user league season draft draft_pick draft_seat ceremony
 **Into production** (replaces the live database; run on the server as `deploy`; add `--force` to proceed while drafts are in progress, which you almost never want):
 
 ```bash
-infra/restore.sh restore --identity /path/to/key --file pre-deploy/fo-pre-deploy-<stamp>.dump.age --into-production --i-understand
+# 1. Laptop: decrypt the chosen backup to a plaintext dump
+infra/restore-local.sh --file pre-deploy/fo-pre-deploy-<stamp>.dump.age --output ~/restore.dump
+# 2. Laptop: copy it to the server where deploy can read it
+scp -i ~/.ssh/fo_admin ~/restore.dump admin@<server-ip>:/tmp/restore.dump
+ssh -i ~/.ssh/fo_admin admin@<server-ip> 'sudo install -o deploy -m 600 /tmp/restore.dump /var/lib/fantasy-oscars/restore.dump && rm /tmp/restore.dump'
+# 3. Server (as admin, inside tmux): restore it, then delete the plaintext copies
+sudo -u deploy bash -c 'cd /srv/fantasy-oscars && infra/restore.sh restore --local-dump /var/lib/fantasy-oscars/restore.dump --into-production --i-understand'
+sudo rm /var/lib/fantasy-oscars/restore.dump   # and on the laptop: rm ~/restore.dump
 ```
 
-A plaintext `pg_dump -Fc` file can be restored by the same procedure with `--local-dump FILE` instead of `--identity` (used for the Render cutover).
+This is the procedure that was used for the Render cutover.
 
 The procedure is all-or-nothing:
 
@@ -231,9 +235,9 @@ If it fails before the swap, production is untouched and `api` is restarted. Aft
 ## Rebuild the server from scratch
 
 1. Create a new Vultr instance (steps 1 and 2 of first-time setup) and run `provision.sh` with the same admin and deploy keys. Point `DEPLOY_HOST` (and `DEPLOY_KNOWN_HOSTS`) at it.
-2. Restore `/srv/fantasy-oscars/.env`: from your password manager copy, or decrypt the newest `config/` object on your laptop (`rclone cat ... | age -d -i key`) and `scp` it over (mode 600).
+2. Restore `/srv/fantasy-oscars/.env`: from your password manager copy, or decrypt the newest `config/` object on your laptop (`infra/restore-local.sh --file config/<name> --output ~/fo.env`, run against any server that still has the bucket settings, or with rclone directly) and `scp` it over (mode 600).
 3. Run the deploy workflow. It brings up an empty database with migrations applied.
-4. Restore the data as `deploy`: copy the private key over temporarily and run `infra/restore.sh restore ... --into-production --i-understand --force` with the newest `daily/` file (`--force` because the empty database cannot answer the active-drafts query); delete the key.
+4. Restore the data: decrypt the newest `daily/` file on your laptop (`infra/restore-local.sh --output ~/restore.dump`), copy it over and run `infra/restore.sh restore --local-dump ... --into-production --i-understand --force` as in "Into production" above (`--force` because the empty database cannot answer the active-drafts query); delete the plaintext copies.
 5. Move DNS to the new IP (TTL 600 s keeps the switch fast). Caddy obtains a certificate once DNS points at the new host.
 6. Run the ops jobs once (first-time setup step 4).
 

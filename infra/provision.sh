@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision (or re-provision) the production VPS. Ubuntu 24.04 LTS, run as root. Idempotent.
+# Provision (or re-provision) the production VPS. Ubuntu 26.04 or 24.04 LTS, run as root. Idempotent.
 #
 #   sudo infra/provision.sh --admin-key "ssh-ed25519 AAAA... me@laptop" \
 #                           --deploy-key "ssh-ed25519 AAAA... github-actions" [--site-host HOST]
@@ -95,7 +95,10 @@ done <<<"${DEPLOY_SSH_KEYS:-}"
 os_field() { sed -n "s/^$1=//p" /etc/os-release 2>/dev/null | head -1 | tr -d '"'; }
 if [ -r /etc/os-release ]; then
   [ "$(os_field ID)" = ubuntu ] || die "expected Ubuntu, found $(os_field ID)"
-  [ "$(os_field VERSION_ID)" = "24.04" ] || echo "WARNING: tested on Ubuntu 24.04, found $(os_field VERSION_ID)" >&2
+  case "$(os_field VERSION_ID)" in
+    26.04 | 24.04) ;;
+    *) echo "WARNING: tested on Ubuntu 26.04 and 24.04 LTS, found $(os_field VERSION_ID)" >&2 ;;
+  esac
 fi
 UBUNTU_CODENAME="$(os_field UBUNTU_CODENAME)"
 
