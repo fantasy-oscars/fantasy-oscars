@@ -12,6 +12,7 @@ import {
 } from "../../../src/realtime/draftNamespace.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
+import { authTokenFromResponse } from "../../support/session.js";
 import {
   ListenPermissionError,
   startSocketTestServer,
@@ -57,7 +58,9 @@ async function register(username: string, password = "secret123") {
 
 async function login(username: string, password = "secret123") {
   const res = await request(app).post("/auth/login").send({ username, password });
-  return { status: res.status, token: res.body.token as string, headers: res.headers };
+  expect(res.body).not.toHaveProperty("token");
+  const token = res.status === 200 ? authTokenFromResponse(res.headers) : "";
+  return { status: res.status, token, headers: res.headers };
 }
 
 async function me(token: string) {
@@ -83,14 +86,19 @@ async function sessionRow(id: string) {
 }
 
 /** Resolves with the handshake error message, or "connected". */
-async function socketHandshake(token: string): Promise<string> {
+async function socketHandshake(
+  token: string,
+  via: "cookie" | "bearer" | "auth-payload" = "cookie"
+): Promise<string> {
   if (!socketServer) throw new Error("socket server not started");
   const socket: Socket = createClient(`${socketServer.url}${DRAFT_NAMESPACE}`, {
     transports: ["websocket"],
     forceNew: true,
     reconnection: false,
     query: { draftId: "424242" },
-    extraHeaders: { Authorization: `Bearer ${token}` }
+    ...(via === "cookie" ? { extraHeaders: { Cookie: `auth_token=${token}` } } : {}),
+    ...(via === "bearer" ? { extraHeaders: { Authorization: `Bearer ${token}` } } : {}),
+    ...(via === "auth-payload" ? { auth: { Authorization: `Bearer ${token}` } } : {})
   });
   try {
     return await new Promise<string>((resolve, reject) => {
@@ -222,6 +230,18 @@ describe("auth sessions", () => {
     }
   });
 
+  it("authenticates the socket handshake from the cookie, and still accepts Bearer", async () => {
+    if (!socketServer) return;
+    await register("sess-sock");
+    const res = await login("sess-sock");
+    expect(await socketHandshake(res.token, "cookie")).toMatch(/Draft not found/i);
+    // Non-browser clients and stale tabs that still send an explicit credential.
+    expect(await socketHandshake(res.token, "bearer")).toMatch(/Draft not found/i);
+    expect(await socketHandshake(res.token, "auth-payload")).toMatch(/Draft not found/i);
+    expect(await socketHandshake("not-a-token", "cookie")).toMatch(/invalid token/i);
+    expect(await socketHandshake("", "cookie")).toMatch(/missing auth token/i);
+  });
+
   it("rejects tokens whose session expired and tokens without a session id", async () => {
     const user = await register("sess3");
     const res = await login("sess3");
@@ -289,8 +309,8 @@ describe("auth sessions", () => {
       29.9 * DAY_MS
     );
     expect(Date.now() - new Date(row.last_seen_at).getTime()).toBeLessThan(60_000);
-    // The body token (Bearer fallback) carries the same session and the new expiry.
-    const refreshed = decodeClaims(renewed.body.token as string);
+    // The re-issued cookie carries the same session and the new expiry.
+    const refreshed = decodeClaims(authTokenFromResponse(renewed.headers));
     expect(refreshed.sid).toBe(sid);
     expect(
       Math.abs(Number(refreshed.exp) * 1000 - new Date(row.expires_at).getTime())
@@ -431,7 +451,7 @@ describe("auth sessions", () => {
     const remaining = new Date(row.expires_at).getTime() - Date.now();
     expect(remaining).toBeGreaterThan(0.9 * DAY_MS);
     expect(remaining).toBeLessThan(1.1 * DAY_MS);
-    const refreshed = decodeClaims(renewed.body.token as string);
+    const refreshed = decodeClaims(authTokenFromResponse(renewed.headers));
     expect(Number(refreshed.exp) * 1000).toBeLessThanOrEqual(
       new Date(row.expires_at).getTime() + 1000
     );

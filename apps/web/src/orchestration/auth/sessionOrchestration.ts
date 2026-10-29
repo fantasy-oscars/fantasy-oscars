@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
-import { clearAuthToken, setAuthToken } from "../../lib/authToken";
 import { ApiQueryError, errorMessage } from "../query/errors";
 import { queryKeys } from "../query/keys";
 
@@ -46,18 +45,14 @@ export type AuthSessionOrchestration = {
 const SIGNED_OUT_CODES = new Set(["UNAUTHORIZED", "INVALID_TOKEN", "TOKEN_EXPIRED"]);
 
 async function loadSession(): Promise<AuthUser | null> {
-  const res = await fetchJson<{ user: AuthUser; token?: string }>("/auth/me", {
+  const res = await fetchJson<{ user: AuthUser }>("/auth/me", {
     method: "GET"
   });
   if (res.ok) {
-    // Keep the Bearer fallback token in step with the sliding session expiry.
-    if (res.data?.token) setAuthToken(res.data.token);
     return res.data?.user ?? null;
   }
   // Missing/expired/invalid token is a normal "signed out" state.
   if (res.errorCode && SIGNED_OUT_CODES.has(res.errorCode)) {
-    // Drop a stored token the server no longer accepts (revoked/expired).
-    clearAuthToken();
     return null;
   }
   throw new ApiQueryError(res.error ?? "Unable to verify session", {
@@ -118,23 +113,20 @@ export function useAuthSessionOrchestration(): AuthSessionOrchestration {
 
   const logout = useCallback(async () => {
     await fetchJson("/auth/logout", { method: "POST" });
-    clearAuthToken();
     resetUserData(null);
   }, [resetUserData]);
 
   const login = useCallback(
     async (input: { username: string; password: string }) => {
-      const res = await fetchJson<{ user: AuthUser; token?: string }>("/auth/login", {
+      const res = await fetchJson<{ user: AuthUser }>("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
       });
       if (res.ok && res.data?.user) {
-        setAuthToken(res.data.token);
         resetUserData(res.data.user);
         return { ok: true as const };
       }
-      clearAuthToken();
       resetUserData(null);
       return {
         ok: false as const,

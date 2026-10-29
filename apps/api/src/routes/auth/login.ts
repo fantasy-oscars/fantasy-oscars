@@ -140,8 +140,7 @@ export function registerAuthLoginRoute(args: {
             is_admin: adminRole !== "NONE",
             admin_role: adminRole,
             avatar_key: avatarKey
-          },
-          token
+          }
         });
       } catch (err) {
         next(err);

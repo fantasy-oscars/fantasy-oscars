@@ -25,12 +25,23 @@ async function postJson<T>(path: string, body: unknown, token?: string): Promise
   return json;
 }
 
+/**
+ * Logs the seed admin in and returns the session token from the auth cookie
+ * (the API no longer returns it in the body); it is used as a Bearer credential
+ * for the seeding calls, which are not made from a browser.
+ */
 export async function adminLogin(): Promise<string> {
-  const login = await postJson<{ token: string }>("/auth/login", {
-    username: ADMIN_USERNAME,
-    password: ADMIN_PASSWORD
+  const res = await fetch(`${E2E_API_ORIGIN}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: ADMIN_USERNAME, password: ADMIN_PASSWORD })
   });
-  return login.token;
+  if (!res.ok) throw new Error(`POST /auth/login -> ${res.status}`);
+  for (const cookie of res.headers.getSetCookie()) {
+    const match = /^auth_token=([^;]+)/.exec(cookie);
+    if (match?.[1]) return match[1];
+  }
+  throw new Error("login did not set an auth_token cookie");
 }
 
 /**

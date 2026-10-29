@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { invalidateCeremonyAndDraftData } from "../query/invalidate";
 import { notify } from "../../notifications";
 import type { DraftEventMessage, Snapshot } from "../../lib/types";
-import { getAuthToken } from "../../lib/authToken";
 import { API_BASE, buildSocketTarget } from "../../lib/apiBase";
 import { describeNomination } from "./helpers";
 import { buildNominationLabelById } from "../../decisions/draft";
@@ -60,11 +59,7 @@ export function useDraftSocket(args: {
       transports: ["websocket"],
       autoConnect: false,
       auth: {
-        draftId: Number(draftIdForSocket),
-        Authorization: (() => {
-          const token = getAuthToken();
-          return token ? `Bearer ${token}` : undefined;
-        })()
+        draftId: Number(draftIdForSocket)
       }
     });
     socketRef.current = socket;

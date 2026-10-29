@@ -9,7 +9,7 @@ import {
   insertNomination
 } from "../../factories/db.js";
 import crypto from "crypto";
-import { testSessionId } from "../../support/session.js";
+import { authTokenFromResponse, testSessionId } from "../../support/session.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -19,10 +19,10 @@ async function post<T>(
   path: string,
   body?: Record<string, unknown>,
   headers: Record<string, string> = {}
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Record<string, unknown> }> {
   const req = api.post(path).set({ "content-type": "application/json", ...headers });
   const res = await req.send(body ?? {});
-  return { status: res.status, json: res.body as T };
+  return { status: res.status, json: res.body as T, headers: res.headers };
 }
 
 async function getJson<T>(
@@ -129,7 +129,7 @@ describe("ceremony routes", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin-w",
       password: "secret123"
     });
@@ -139,7 +139,7 @@ describe("ceremony routes", () => {
     }>(
       "/admin/winners",
       { category_edition_id: category.id, nomination_id: nomination.id },
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
     expect(upsert.status).toBe(200);
 

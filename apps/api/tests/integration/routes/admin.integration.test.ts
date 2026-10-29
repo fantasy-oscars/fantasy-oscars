@@ -8,6 +8,7 @@ import {
   insertCeremony,
   insertUser
 } from "../../factories/db.js";
+import { authTokenFromResponse } from "../../support/session.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -59,7 +60,7 @@ describe("admin routes", () => {
       email: "user1@example.com",
       password: "secret123"
     });
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "user1",
       password: "secret123"
     });
@@ -67,7 +68,7 @@ describe("admin routes", () => {
     const res = await post<{ error: { code: string } }>(
       `/admin/ceremonies/${ceremonyId}/name`,
       { name: "New Name" },
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
     expect(res.status).toBe(403);
     expect(res.json.error.code).toBe("FORBIDDEN");
@@ -88,7 +89,7 @@ describe("admin routes", () => {
       reg.user.id
     ]);
 
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin1",
       password: "secret123"
     });
@@ -96,7 +97,7 @@ describe("admin routes", () => {
     const res = await post<{ ceremony: { id: number; name: string } }>(
       `/admin/ceremonies/${ceremonyId}/name`,
       { name: "Updated Oscars" },
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
 
     expect(res.status).toBe(200);
@@ -126,7 +127,7 @@ describe("admin routes", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin2",
       password: "secret123"
     });
@@ -140,7 +141,7 @@ describe("admin routes", () => {
         category_edition_id: category.id,
         nomination_id: nomination.id
       },
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
 
     expect(res.status).toBe(200);
@@ -179,7 +180,7 @@ describe("admin routes", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin3",
       password: "secret123"
     });
@@ -200,13 +201,13 @@ describe("admin routes", () => {
     };
 
     const first = await post<{ ok: boolean }>("/admin/nominees/upload", dataset, {
-      Authorization: `Bearer ${login.json.token}`
+      Authorization: `Bearer ${authTokenFromResponse(login.headers)}`
     });
     expect(first.status).toBe(200);
     expect(first.json.ok).toBe(true);
 
     const second = await post<{ ok: boolean }>("/admin/nominees/upload", dataset, {
-      Authorization: `Bearer ${login.json.token}`
+      Authorization: `Bearer ${authTokenFromResponse(login.headers)}`
     });
     expect(second.status).toBe(200);
 
@@ -252,7 +253,7 @@ describe("admin routes", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin5",
       password: "secret123"
     });
@@ -275,7 +276,7 @@ describe("admin routes", () => {
     const res = await post<{ error: { code: string } }>(
       "/admin/nominees/upload",
       dataset,
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
     expect(res.status).toBe(409);
     expect(res.json.error.code).toBe("DRAFTS_LOCKED");
@@ -298,7 +299,7 @@ describe("admin routes", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       reg.user.id
     ]);
-    const login = await post<{ token: string }>("/auth/login", {
+    const login = await post<unknown>("/auth/login", {
       username: "admin4",
       password: "secret123"
     });
@@ -319,7 +320,7 @@ describe("admin routes", () => {
     const res = await post<{ error: { code: string; details?: unknown } }>(
       "/admin/nominees/upload",
       badDataset,
-      { Authorization: `Bearer ${login.json.token}` }
+      { Authorization: `Bearer ${authTokenFromResponse(login.headers)}` }
     );
     expect(res.status).toBe(200);
   });

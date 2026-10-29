@@ -3,6 +3,7 @@ import { createServer } from "../../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
 import { insertCeremony } from "../../factories/db.js";
+import { authTokenFromResponse } from "../../support/session.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -12,11 +13,11 @@ async function postJson<T>(
   path: string,
   body: Record<string, unknown>,
   token?: string
-): Promise<{ status: number; json: T }> {
+): Promise<{ status: number; json: T; headers: Record<string, unknown> }> {
   const req = api.post(path).set("content-type", "application/json").send(body);
   if (token) req.set("Authorization", `Bearer ${token}`);
   const res = await req;
-  return { status: res.status, json: res.body as T };
+  return { status: res.status, json: res.body as T, headers: res.headers };
 }
 
 async function getJson<T>(
@@ -58,7 +59,7 @@ describe("MVP end-to-end flow", () => {
     await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
       adminReg.json.user.id
     ]);
-    const adminLogin = await postJson<{ token: string }>("/auth/login", {
+    const adminLogin = await postJson<unknown>("/auth/login", {
       username: "admin-e2e",
       password: "secret123"
     });
@@ -75,7 +76,7 @@ describe("MVP end-to-end flow", () => {
     const setActive = await postJson(
       "/admin/ceremony/active",
       { ceremony_id: ceremony.id },
-      adminLogin.json.token
+      authTokenFromResponse(adminLogin.headers)
     );
     expect(setActive.status).toBe(200);
 
@@ -127,7 +128,7 @@ describe("MVP end-to-end flow", () => {
     const uploadRes = await postJson<{ ok: boolean }>(
       "/admin/nominees/upload",
       dataset,
-      adminLogin.json.token
+      authTokenFromResponse(adminLogin.headers)
     );
     expect(uploadRes.status).toBe(200);
 
@@ -137,20 +138,17 @@ describe("MVP end-to-end flow", () => {
       email: "commish@example.com",
       password: "secret123"
     });
-    const commishLogin = await postJson<{ token: string; user: { id: number } }>(
-      "/auth/login",
-      {
-        username: "commish",
-        password: "secret123"
-      }
-    );
+    const commishLogin = await postJson<{ user: { id: number } }>("/auth/login", {
+      username: "commish",
+      password: "secret123"
+    });
 
     const memberReg = await postJson<{ user: { id: number } }>("/auth/register", {
       username: "member",
       email: "member@example.com",
       password: "secret123"
     });
-    const memberLogin = await postJson<{ token: string }>("/auth/login", {
+    const memberLogin = await postJson<unknown>("/auth/login", {
       username: "member",
       password: "secret123"
     });
@@ -159,7 +157,7 @@ describe("MVP end-to-end flow", () => {
     const leagueRes = await postJson<{
       league: { id: number; ceremony_id: number | null };
       season: null;
-    }>("/leagues", { name: "E2E League" }, commishLogin.json.token);
+    }>("/leagues", { name: "E2E League" }, authTokenFromResponse(commishLogin.headers));
     expect(leagueRes.status).toBe(201);
     const leagueId = leagueRes.json.league.id;
     expect(leagueRes.json.league.ceremony_id).toBeNull();
@@ -167,7 +165,7 @@ describe("MVP end-to-end flow", () => {
     const seasonRes = await postJson<{ season: { id: number; ceremony_id: number } }>(
       `/seasons/leagues/${leagueId}/seasons`,
       {},
-      commishLogin.json.token
+      authTokenFromResponse(commishLogin.headers)
     );
     expect(seasonRes.status).toBe(201);
     const seasonId = seasonRes.json.season.id;
@@ -199,14 +197,14 @@ describe("MVP end-to-end flow", () => {
     }>(
       `/seasons/${seasonId}/user-invites`,
       { user_id: memberReg.json.user.id },
-      commishLogin.json.token
+      authTokenFromResponse(commishLogin.headers)
     );
     // Include response payload in assertion failure output without emitting logs during passing runs.
     expect([200, 201], JSON.stringify(inviteRes.json)).toContain(inviteRes.status);
     const acceptRes = await postJson(
       `/seasons/invites/${inviteRes.json.invite.id}/accept`,
       {},
-      memberLogin.json.token
+      authTokenFromResponse(memberLogin.headers)
     );
     expect(acceptRes.status).toBe(200);
 
@@ -214,7 +212,7 @@ describe("MVP end-to-end flow", () => {
     const draftCreate = await postJson<{ draft: { id: number } }>(
       "/drafts",
       { league_id: leagueId, season_id: seasonId, draft_order_type: "SNAKE" },
-      commishLogin.json.token
+      authTokenFromResponse(commishLogin.headers)
     );
     expect(draftCreate.status).toBe(201);
     const draftId = draftCreate.json.draft.id;
@@ -223,7 +221,7 @@ describe("MVP end-to-end flow", () => {
     const startRes = await postJson(
       `/drafts/${draftId}/start`,
       {},
-      commishLogin.json.token
+      authTokenFromResponse(commishLogin.headers)
     );
     expect(startRes.status).toBe(200);
 
@@ -243,12 +241,12 @@ describe("MVP end-to-end flow", () => {
     expect(seatOneUser).toBeDefined();
     const seatOneToken =
       seatOneUser === commishReg.json.user.id
-        ? commishLogin.json.token
-        : memberLogin.json.token;
+        ? authTokenFromResponse(commishLogin.headers)
+        : authTokenFromResponse(memberLogin.headers);
     const otherToken =
-      seatOneToken === commishLogin.json.token
-        ? memberLogin.json.token
-        : commishLogin.json.token;
+      seatOneToken === authTokenFromResponse(commishLogin.headers)
+        ? authTokenFromResponse(memberLogin.headers)
+        : authTokenFromResponse(commishLogin.headers);
 
     // First pick
     const pickRes = await postJson<{ pick: { nomination_id: number } }>(
@@ -265,7 +263,7 @@ describe("MVP end-to-end flow", () => {
     }>(
       "/admin/winners",
       { category_edition_id: 1, nomination_id: 1 },
-      adminLogin.json.token
+      authTokenFromResponse(adminLogin.headers)
     );
     expect(winnerRes.status).toBe(200);
 
@@ -287,7 +285,7 @@ describe("MVP end-to-end flow", () => {
         picks: Array<{ nomination_id: number }>;
       }>;
       results: Array<{ nomination_id: number; won: boolean }>;
-    }>(`/drafts/${draftId}/standings`, commishLogin.json.token);
+    }>(`/drafts/${draftId}/standings`, authTokenFromResponse(commishLogin.headers));
     expect(standingsRes.status).toBe(200);
     const seatOne = standingsRes.json.standings.find((s) => s.seat_number === 1)!;
     expect(seatOne.points).toBe(0);

@@ -6,13 +6,15 @@
   `user_id`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`) and returns an
   HS256 JWT whose `sid` claim is that session id.
 - The JWT is set as the HttpOnly `auth_token` cookie (SameSite=None + Secure in
-  production, Lax in dev) and also returned as `{ user, token }`.
+  production unless `AUTH_COOKIE_SAMESITE` says otherwise, Lax in dev). The response
+  body is `{ user }` only: the token is never returned in JSON, so page scripts
+  cannot read it.
 - Every authenticated request (`requireAuth`) and every `/drafts` Socket.IO handshake
   verifies the JWT signature, then loads the user through its session in one query.
   The request is rejected with 401 `UNAUTHORIZED` when the session is missing,
   revoked or expired, when the user is deleted, or when the token has no `sid`
   (tokens issued before sessions existed). The web treats that as a normal
-  signed-out state and drops its stored token.
+  signed-out state.
 - Lifetime: 30 days, sliding. When a request arrives and the session's
   `last_seen_at` is more than 24 h old, `expires_at` moves to now + 30 days,
   `last_seen_at` is updated and a fresh cookie (new JWT, same `sid`) is set. At most
@@ -24,10 +26,6 @@
 - A rejected cookie is cleared (`Set-Cookie: auth_token=; Max-Age=0`) only when the
   cookie was the credential used; a rejected Bearer token leaves the cookie alone.
 - Every `/auth/*` response is sent with `Cache-Control: no-store`.
-- `GET /auth/me` also returns `token`: a JWT for the same live session with the
-  current expiry. The web stores it so the Bearer fallback (below) follows the
-  sliding expiry. It is only issued for a live session, so a revoked session never
-  gets a token back.
 
 ## Revocation
 
@@ -45,6 +43,12 @@
 
 ## CSRF guard
 
+Overall posture: the cookie is `SameSite=Lax` in production, so browsers do not send it
+on cross-site `POST`/`PUT`/`PATCH`/`DELETE`; no `GET` route changes state; JSON bodies
+need a CORS preflight, which only `CORS_ALLOWED_ORIGINS` passes; and the two routes
+that a cookie alone can drive also check `Origin` (below). Login CSRF and other hosts on
+the same site (`*.fantasy-oscars.com`) are out of scope.
+
 `POST /auth/logout` and `DELETE /auth/me` can be driven by the cookie alone, so
 they refuse (403 `FORBIDDEN`) a request whose `Origin` header is present and not in
 `CORS_ALLOWED_ORIGINS`. Requests without `Origin` (non-browser clients) are allowed.
@@ -59,23 +63,27 @@ they refuse (403 `FORBIDDEN`) a request whose `Origin` header is present and not
   revokes the session the login created. Remaining legacy rows
   are cleared by the next login or an admin reset; nobody is forced to reset.
 
-## Bearer fallback and the single-site follow-up
+## Credential transports
 
-The web app and API currently run on different sites, and some browsers (notably
-iOS Safari) block the third-party `auth_token` cookie. The web therefore keeps the
-token from login (and `/auth/me`) in `localStorage` and sends it as
-`Authorization: Bearer <token>`; the API prefers the header over the cookie.
+- **Browser (the web app):** the HttpOnly `auth_token` cookie only, over HTTP and on
+  the `/drafts` Socket.IO handshake (browsers send cookies on the same-origin
+  websocket upgrade). The web keeps nothing in `localStorage` and sends no
+  `Authorization` header; on load it deletes the `fo_auth_token` key left by older
+  builds. This needs a first-party cookie, i.e. same-origin hosting (see
+  [deployment.md](deployment.md#hosting-modes)).
+- **Non-browser clients (scripts, tests, e2e seeding):** `Authorization: Bearer
+<token>` is still accepted on HTTP and on the socket handshake and wins over the
+  cookie. Take the token from the `Set-Cookie: auth_token=...` header of
+  `POST /auth/login`; it is no longer in the body.
+- **Transition only:** the socket handshake also accepts the token in the Socket.IO
+  `auth` payload (`auth.token` or `auth.Authorization`). Tabs opened before the
+  cookie-only change send it, and they keep working through the
+  `api.fantasy-oscars.com` alias. Remove it with the alias.
 
-Once web and API share a site (same registrable domain):
-
-- the cookie becomes first-party, so it can move to `SameSite=Lax` (or `Strict`);
-- the API can stop returning `token` from `/auth/login` and `/auth/me`, and the web
-  can drop `lib/authToken.ts` and the Bearer header, leaving the token readable
-  only by the browser's cookie jar (no exposure to page scripts).
-
-Until then the fallback stays; server-side revocation applies to both transports.
+Server-side revocation applies to every transport.
 
 ## Dev flow
 
 Set `AUTH_SECRET`, register via `POST /auth/register`, log in, then call protected
-routes with either the `Authorization` header or the `auth_token` cookie.
+routes with either the `Authorization` header (token from the login `Set-Cookie`) or
+the `auth_token` cookie.
