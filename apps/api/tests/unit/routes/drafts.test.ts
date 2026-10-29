@@ -701,10 +701,7 @@ describe("GET /drafts/:id/standings", () => {
   const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
   const getSeasonByIdSpy = vi.spyOn(seasonRepo, "getSeasonById");
   const listWinnersByCeremonySpy = vi.spyOn(winnerRepo, "listWinnersByCeremony");
-  const getNominationWithStatusSpy = vi.spyOn(
-    nominationRepo,
-    "getNominationWithStatus" as never
-  );
+  const getNominationWithStatusSpy = vi.spyOn(nominationRepo, "getNominationWithStatus");
   const handler = buildDraftStandingsHandler({} as unknown as Pool);
 
   beforeEach(() => {
