@@ -27,9 +27,7 @@ export function useSeasonDraftSettingsModal(args: {
 
   const draftDefaults = useMemo(() => {
     const scoring = (scoringStrategy ?? "fixed") as
-      | "fixed"
-      | "negative"
-      | "category_weighted";
+      "fixed" | "negative" | "category_weighted";
     const allocation = (allocationStrategy ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL";
     const timerEnabled = Boolean(pickTimerSeconds);
     const resolvedTimerSeconds = pickTimerSeconds ? Number(pickTimerSeconds) : 60;

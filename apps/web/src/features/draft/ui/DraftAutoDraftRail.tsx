@@ -65,11 +65,8 @@ export function DraftAutoDraftRail(props: {
                 onChange={(v) =>
                   props.autodraft.setStrategy(
                     (v as
-                      | "random"
-                      | "by_category"
-                      | "alphabetical"
-                      | "wisdom"
-                      | "custom") ?? "random"
+                      "random" | "by_category" | "alphabetical" | "wisdom" | "custom") ??
+                      "random"
                   )
                 }
                 data={[

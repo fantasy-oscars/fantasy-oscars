@@ -1,18 +1,10 @@
 export type CeremonyStatus = "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
 
 export type CeremonyWorkflowStepId =
-  | "initialize"
-  | "structure"
-  | "populate"
-  | "publish"
-  | "results"
-  | "archive";
+  "initialize" | "structure" | "populate" | "publish" | "results" | "archive";
 
 export type CeremonyWorkflowStepStatus =
-  | "NOT_STARTED"
-  | "IN_PROGRESS"
-  | "COMPLETE"
-  | "LOCKED";
+  "NOT_STARTED" | "IN_PROGRESS" | "COMPLETE" | "LOCKED";
 
 export type CeremonyWorkflowStepMeta = {
   id: CeremonyWorkflowStepId;

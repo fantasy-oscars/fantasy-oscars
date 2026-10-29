@@ -3,11 +3,7 @@ import { fetchJson } from "../../lib/api";
 import type { Snapshot } from "../../lib/types";
 
 export type DraftAutodraftStrategy =
-  | "random"
-  | "by_category"
-  | "alphabetical"
-  | "wisdom"
-  | "custom";
+  "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
 
 export function useDraftAutodraft(args: {
   disabled: boolean;

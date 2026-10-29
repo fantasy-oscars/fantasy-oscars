@@ -18,8 +18,7 @@ type RuntimeBannerApi = {
 const RuntimeBannerContext = createContext<RuntimeBannerApi | null>(null);
 
 let globalPushRuntimeBanner:
-  | ((b: Omit<RuntimeBanner, "id"> & { id?: string }) => void)
-  | null = null;
+  ((b: Omit<RuntimeBanner, "id"> & { id?: string }) => void) | null = null;
 
 export function pushRuntimeBanner(input: {
   id?: string;
