@@ -1,6 +1,8 @@
 import express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
+import { draftIdParam } from "@fantasy-oscars/shared/schemas";
 import { runInTransaction } from "../../data/db.js";
 import {
   createDraftEvent,
@@ -37,8 +39,7 @@ export function buildPauseDraftHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const { id: draftId } = parseParams(draftIdParam, req.params);
       const userId = Number((req as AuthedRequest).auth?.sub);
 
       const result = await runInTransaction(pool, async (tx) => {
@@ -136,8 +137,7 @@ export function buildResumeDraftHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
+      const { id: draftId } = parseParams(draftIdParam, req.params);
       const userId = Number((req as AuthedRequest).auth?.sub);
 
       const result = await runInTransaction(pool, async (tx) => {

@@ -1,6 +1,8 @@
 import express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import { draftIdParam, draftPickBodySchema } from "@fantasy-oscars/shared/schemas";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 import { wakeDraftSweeper } from "../../services/draftSweeperWake.js";
 import { recomputeWisdomBenchmarkForCeremony } from "../../services/benchmarking/wisdomOfCrowds.js";
@@ -56,29 +58,14 @@ export function buildSubmitPickHandler(pool: Pool) {
     let requestId: string | null = null;
     let draftId: number | null = null;
     try {
-      draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
-      const draftIdNum = draftId;
+      const draftIdNum = parseParams(draftIdParam, req.params).id;
+      draftId = draftIdNum;
 
-      const { nomination_id, request_id } = req.body ?? {};
       const userId = Number(req.auth?.sub);
       if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
-      if (!nomination_id) {
-        throw validationError("Missing nomination_id", ["nomination_id"]);
-      }
-      const nominationIdNum = Number(nomination_id);
-      if (Number.isNaN(nominationIdNum)) {
-        throw validationError("Invalid nomination_id", ["nomination_id"]);
-      }
-      requestId = String(request_id ?? "").trim();
-      if (!requestId) {
-        throw validationError("Missing request_id", ["request_id"]);
-      }
-      if (requestId.length > 128) {
-        throw validationError("request_id too long", ["request_id"]);
-      }
+      const body = parseBody(draftPickBodySchema, req.body);
+      const nominationIdNum = body.nomination_id;
+      requestId = body.request_id;
       const requestIdVal = requestId;
 
       const rateKey = `${draftIdNum}:${userId}`;

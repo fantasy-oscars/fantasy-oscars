@@ -2,6 +2,11 @@ import type express from "express";
 import type { Pool } from "pg";
 import { query, runInTransaction } from "../../data/db.js";
 import { AppError, validationError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import {
+  draftPlanIdParams,
+  draftPlanItemsBodySchema
+} from "@fantasy-oscars/shared/schemas";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 
 export function registerDraftPlanItemsRoutes(args: {
@@ -17,27 +22,14 @@ export function registerDraftPlanItemsRoutes(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const planId = Number(req.params.planId);
-        if (!Number.isInteger(planId) || planId <= 0) {
-          throw validationError("Invalid plan id", ["planId"]);
-        }
+        const { planId } = parseParams(draftPlanIdParams, req.params);
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        const ids = req.body?.nomination_ids;
-        if (!Array.isArray(ids)) {
-          throw validationError("nomination_ids must be an array", ["nomination_ids"]);
-        }
-        const nominationIds = ids
-          .map((v: unknown) => Number(v))
-          .filter((n: number) => Number.isInteger(n) && n > 0);
-        if (nominationIds.length !== ids.length) {
-          throw validationError("Invalid nomination_ids", ["nomination_ids"]);
-        }
-        const uniq = new Set(nominationIds);
-        if (uniq.size !== nominationIds.length) {
-          throw validationError("Duplicate nomination_ids", ["nomination_ids"]);
-        }
+        const { nomination_ids: nominationIds } = parseBody(
+          draftPlanItemsBodySchema,
+          req.body
+        );
 
         await runInTransaction(pool, async (tx) => {
           const { rows: planRows } = await query<{
