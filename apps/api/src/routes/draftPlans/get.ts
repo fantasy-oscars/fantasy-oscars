@@ -1,7 +1,9 @@
 import type express from "express";
 import type { Pool } from "pg";
 import { query, runInTransaction } from "../../data/db.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseParams } from "../../utils/validate.js";
+import { draftPlanIdParams } from "@fantasy-oscars/shared/schemas";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import { listDefaultNominationIdsForCeremony } from "./helpers.js";
 
@@ -18,10 +20,7 @@ export function registerDraftPlanGetRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const planId = Number(req.params.planId);
-        if (!Number.isInteger(planId) || planId <= 0) {
-          throw validationError("Invalid plan id", ["planId"]);
-        }
+        const { planId } = parseParams(draftPlanIdParams, req.params);
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 

@@ -7,7 +7,7 @@ export const REMAINDER_STRATEGIES = ["UNDRAFTED", "FULL_POOL"] as const;
 const scoringStrategy = z.enum(SCORING_STRATEGY_NAMES, "Invalid scoring_strategy_name");
 const remainderStrategy = z.enum(REMAINDER_STRATEGIES, "Invalid remainder_strategy");
 
-const pickTimerSeconds = optionalNumberLike.refine(
+export const pickTimerSeconds = optionalNumberLike.refine(
   (v) => v === null || (Number.isFinite(v) && v >= 0),
   "Invalid pick_timer_seconds"
 );

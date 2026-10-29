@@ -1,6 +1,8 @@
 import type { NextFunction, Response } from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import { draftAutodraftBodySchema, draftIdParam } from "@fantasy-oscars/shared/schemas";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import type { DbClient } from "../../data/db.js";
 import { query, runInTransaction } from "../../data/db.js";
@@ -23,10 +25,7 @@ export function buildGetDraftAutodraftHandler(client: DbClient) {
     next: NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
       const userId = Number(req.auth?.sub);
       if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
@@ -56,34 +55,15 @@ export function buildUpsertDraftAutodraftHandler(pool: Pool) {
     next: NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
       const userId = Number(req.auth?.sub);
       if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-      const enabled = Boolean(req.body?.enabled);
-      const strategyRaw = String(req.body?.strategy ?? "RANDOM").toUpperCase();
-      if (
-        strategyRaw !== "RANDOM" &&
-        strategyRaw !== "PLAN" &&
-        strategyRaw !== "BY_CATEGORY" &&
-        strategyRaw !== "ALPHABETICAL" &&
-        strategyRaw !== "WISDOM"
-      ) {
-        throw validationError("Invalid strategy", ["strategy"]);
-      }
-      const strategy = strategyRaw as
-        "RANDOM" | "PLAN" | "BY_CATEGORY" | "ALPHABETICAL" | "WISDOM";
-      const planIdRaw = req.body?.plan_id;
-      const planId =
-        planIdRaw === null || planIdRaw === undefined || planIdRaw === ""
-          ? null
-          : Number(planIdRaw);
-      if (planId !== null && (!Number.isFinite(planId) || planId <= 0)) {
-        throw validationError("Invalid plan_id", ["plan_id"]);
-      }
+      const {
+        enabled,
+        strategy,
+        plan_id: planId
+      } = parseBody(draftAutodraftBodySchema, req.body);
 
       const result = await runInTransaction(pool, async (tx) => {
         const draft = await getDraftByIdForUpdate(tx, draftId);

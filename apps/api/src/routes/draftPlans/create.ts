@@ -1,7 +1,12 @@
 import type express from "express";
 import type { Pool } from "pg";
 import { query, runInTransaction } from "../../data/db.js";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import {
+  draftPlanCeremonyParams,
+  draftPlanCreateBodySchema
+} from "@fantasy-oscars/shared/schemas";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import {
   listDefaultNominationIdsForCeremony,
@@ -21,16 +26,11 @@ export function registerDraftPlanCreateRoute(args: {
     requireAuth(authSecret),
     async (req: AuthedRequest, res, next) => {
       try {
-        const ceremonyId = Number(req.params.ceremonyId);
-        if (!Number.isInteger(ceremonyId) || ceremonyId <= 0) {
-          throw validationError("Invalid ceremony id", ["ceremonyId"]);
-        }
+        const { ceremonyId } = parseParams(draftPlanCeremonyParams, req.params);
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        const name = String(req.body?.name ?? "").trim();
-        if (!name) throw validationError("Plan name is required", ["name"]);
-        if (name.length > 80) throw validationError("Plan name is too long", ["name"]);
+        const { name } = parseBody(draftPlanCreateBodySchema, req.body);
         const nameNormalized = normalizeDraftPlanName(name);
 
         const result = await runInTransaction(pool, async (tx) => {

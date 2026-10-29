@@ -1,6 +1,8 @@
 import express from "express";
 import type { Pool } from "pg";
 import { AppError, validationError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import { draftIdParam, draftResultsBodySchema } from "@fantasy-oscars/shared/schemas";
 import { query } from "../../data/db.js";
 import {
   getDraftById,
@@ -21,10 +23,7 @@ export function buildExportDraftHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
@@ -74,32 +73,8 @@ export function buildDraftResultsHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
-      const { results } = req.body ?? {};
-      if (!Array.isArray(results)) {
-        throw validationError("Missing results array", ["results"]);
-      }
-      const parsed = results.map((entry) => ({
-        nomination_id: Number(entry?.nomination_id),
-        won: entry?.won,
-        points:
-          entry?.points === undefined || entry?.points === null
-            ? null
-            : Number(entry.points)
-      }));
-      const invalid = parsed.some(
-        (entry) =>
-          !Number.isFinite(entry.nomination_id) ||
-          entry.nomination_id <= 0 ||
-          typeof entry.won !== "boolean" ||
-          (entry.points !== null && !Number.isFinite(entry.points))
-      );
-      if (invalid) {
-        throw validationError("Invalid results payload", ["results"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
+      const { results: parsed } = parseBody(draftResultsBodySchema, req.body);
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
@@ -134,10 +109,7 @@ export function buildDraftStandingsHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");

@@ -48,3 +48,34 @@ export const optionalNumberLike = z
 
 /** Optional free-text query value; repeated or absent values are ignored. */
 export const optionalTrimmedQuery = z.string().trim().optional().catch(undefined);
+
+/**
+ * Required positive integer sent as a number or numeric string. Absent and null
+ * values (and, with `falsyIsMissing`, any falsy value such as 0 or "") report
+ * `missing`; any other bad value reports `invalid`.
+ */
+export const requiredIdValue = (opts: {
+  missing: string;
+  invalid: string;
+  falsyIsMissing?: boolean;
+}) =>
+  z.unknown().transform((v, ctx) => {
+    const isMissing = opts.falsyIsMissing ? !v : v === undefined || v === null;
+    if (isMissing) {
+      ctx.addIssue({ code: "custom", message: opts.missing });
+      return z.NEVER;
+    }
+    const parsed = positiveIdValue(opts.invalid).safeParse(v);
+    if (!parsed.success) {
+      ctx.addIssue({ code: "custom", message: opts.invalid });
+      return z.NEVER;
+    }
+    return parsed.data;
+  });
+
+/**
+ * Like `positiveIdValue`, but any bad value (including a non-numeric string)
+ * reports exactly `message`.
+ */
+export const idOrInvalid = (message: string) =>
+  requiredIdValue({ missing: message, invalid: message });

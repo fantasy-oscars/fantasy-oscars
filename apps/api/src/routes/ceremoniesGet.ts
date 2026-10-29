@@ -4,6 +4,8 @@ import { query } from "../data/db.js";
 import { getDraftBoardForCeremony } from "../services/drafting/draftBoard.js";
 import { listWinnersByCeremony } from "../data/repositories/winnerRepository.js";
 import { AppError } from "../errors.js";
+import { parseParams } from "../utils/validate.js";
+import { ceremonyDetailParams } from "@fantasy-oscars/shared/schemas";
 
 export function registerCeremoniesGetRoute({
   router,
@@ -15,10 +17,7 @@ export function registerCeremoniesGetRoute({
   // User-visible ceremony detail (nominees + winners).
   router.get("/:id", async (req, res, next) => {
     try {
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) {
-        throw new AppError("VALIDATION_FAILED", 400, "Invalid ceremony id");
-      }
+      const { id } = parseParams(ceremonyDetailParams, req.params);
 
       const { rows } = await query<{
         id: number;

@@ -1,6 +1,11 @@
 import express from "express";
 import type { Pool } from "pg";
-import { AppError, validationError } from "../../errors.js";
+import { AppError } from "../../errors.js";
+import { parseBody, parseParams } from "../../utils/validate.js";
+import {
+  draftIdParam,
+  draftOverrideLockBodySchema
+} from "@fantasy-oscars/shared/schemas";
 import { runInTransaction } from "../../data/db.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { hasSuperAdminAccess } from "../../auth/roles.js";
@@ -38,12 +43,8 @@ export function buildOverrideDraftLockHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) throw validationError("Invalid draft id", ["id"]);
-      const allow = (req.body ?? {}).allow;
-      if (typeof allow !== "boolean") {
-        throw validationError("Invalid override flag", ["allow"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
+      const { allow } = parseBody(draftOverrideLockBodySchema, req.body);
       const userId = Number((req as AuthedRequest).auth?.sub);
 
       const result = await runInTransaction(pool, async (tx) => {
@@ -100,10 +101,7 @@ export function buildSnapshotDraftHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
 
       const snapshot = await getDraftRuntimeSnapshot({
         pool,
@@ -125,10 +123,7 @@ export function buildTickDraftHandler(pool: Pool) {
     next: express.NextFunction
   ) {
     try {
-      const draftId = Number(req.params.id);
-      if (Number.isNaN(draftId)) {
-        throw validationError("Invalid draft id", ["id"]);
-      }
+      const { id: draftId } = parseParams(draftIdParam, req.params);
 
       const updatedDraft = await tickDraft(pool, draftId);
 
