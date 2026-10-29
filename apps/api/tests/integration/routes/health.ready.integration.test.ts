@@ -17,18 +17,15 @@ describe("GET /health/ready (database)", () => {
     await db?.stop();
   });
 
-  it("is 503 until the migration history is complete, then 200", async () => {
+  it("is 503 while a migration is pending, then 200", async () => {
     const app = createServer({ db: db.pool });
+    const latest = listExpectedMigrations().at(-1);
+    await db.pool.query(`DELETE FROM migration_history WHERE filename = $1`, [latest]);
     const before = await request(app).get("/health/ready");
     expect(before.status).toBe(503);
     expect(before.body.db).toBe("up");
 
-    await db.pool.query(
-      `CREATE TABLE IF NOT EXISTS migration_history (filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`
-    );
-    for (const f of listExpectedMigrations()) {
-      await db.pool.query(`INSERT INTO migration_history (filename) VALUES ($1)`, [f]);
-    }
+    await db.pool.query(`INSERT INTO migration_history (filename) VALUES ($1)`, [latest]);
     const after = await request(app).get("/health/ready");
     expect(after.status).toBe(200);
     expect(after.body.ok).toBe(true);

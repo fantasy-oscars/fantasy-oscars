@@ -50,10 +50,19 @@ function getSortedMigrationFiles() {
   return migrations.map((m) => m.file);
 }
 
+// Mirrors scripts/db-migrate.mjs, including the history rows the API's boot
+// check reads, so a test database looks like a migrated production one.
 async function applyMigrations(pool: Pool) {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS migration_history (
+       filename text PRIMARY KEY,
+       applied_at timestamptz NOT NULL DEFAULT now()
+     )`
+  );
   for (const file of getSortedMigrationFiles()) {
     const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
     await pool.query(sql);
+    await pool.query(`INSERT INTO migration_history (filename) VALUES ($1)`, [file]);
   }
 }
 
