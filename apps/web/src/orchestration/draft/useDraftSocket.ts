@@ -1,5 +1,7 @@
 import { useEffect, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { io, type Socket } from "socket.io-client";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateCeremonyAndDraftData } from "../query/invalidate";
 import { notify } from "../../notifications";
 import type { DraftEventMessage, Snapshot } from "../../lib/types";
 import { getAuthToken } from "../../lib/authToken";
@@ -28,6 +30,7 @@ export function useDraftSocket(args: {
     setError,
     onRemoteCursor
   } = args;
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const draftIdForSocket = snapshot?.draft.id;
@@ -109,6 +112,12 @@ export function useDraftSocket(args: {
         });
       }
 
+      // Draft status changes (start, pause/resume, complete) alter what season,
+      // league and ceremony pages show; mark those reads stale.
+      if (event.payload?.draft?.status || event.event_type === "draft.started") {
+        void invalidateCeremonyAndDraftData(queryClient);
+      }
+
       // Draft start creates the real seat order (which is intentionally hidden pre-start).
       // Even if the pre-start snapshot includes "display seats", we must refresh so the UI
       // reflects the authoritative seat assignment for picks/turns.
@@ -179,6 +188,7 @@ export function useDraftSocket(args: {
       category_edition_id: number;
       nomination_ids: number[];
     }) => {
+      void invalidateCeremonyAndDraftData(queryClient);
       const current = snapshotRef.current;
       if (!current) return;
       // Update winners in-place for this ceremony/category.
@@ -220,6 +230,7 @@ export function useDraftSocket(args: {
     };
 
     const onCeremonyFinalized = (msg: { ceremony_id: number; status: "COMPLETE" }) => {
+      void invalidateCeremonyAndDraftData(queryClient);
       const current = snapshotRef.current;
       if (!current) return;
       // Keep the local snapshot in sync for results presentation without a full resync.
@@ -281,6 +292,7 @@ export function useDraftSocket(args: {
     setError,
     setSnapshot,
     onRemoteCursor,
+    queryClient,
     snapshot?.draft.id,
     snapshotRef,
     socketRef

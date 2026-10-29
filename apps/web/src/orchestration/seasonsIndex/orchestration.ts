@@ -1,61 +1,66 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchJson } from "../../lib/api";
-import type { CeremonySummary, LeagueSummary, SeasonSummary } from "../../lib/types";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CeremonySummary } from "../../lib/types";
 import {
   buildSeasonIndexCards,
   type SeasonIndexCard
 } from "../../decisions/seasons/seasonIndexCards";
+import { errorMessage, errorRequestId } from "../query/errors";
+import { queryKeys } from "../query/keys";
+import {
+  ceremoniesListQuery,
+  leagueSeasonsQuery,
+  leaguesListQuery
+} from "../query/queries";
 
 export type SeasonsIndexView =
   | { state: "loading" }
-  | { state: "error"; message: string }
+  | { state: "error"; message: string; requestId?: string }
   | { state: "ready"; seasons: SeasonIndexCard[] };
 
 export function useSeasonsIndexOrchestration() {
-  const [view, setView] = useState<SeasonsIndexView>({ state: "loading" });
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(async () => {
-    setView({ state: "loading" });
+  const query = useQuery({
+    queryKey: queryKeys.seasons.index(),
+    queryFn: async (): Promise<SeasonIndexCard[]> => {
+      const [leagues, ceremonies] = await Promise.all([
+        queryClient.fetchQuery(leaguesListQuery()),
+        queryClient.fetchQuery(ceremoniesListQuery())
+      ]);
 
-    const [leaguesRes, ceremoniesRes] = await Promise.all([
-      fetchJson<{ leagues: LeagueSummary[] }>("/leagues"),
-      fetchJson<{ ceremonies: CeremonySummary[] }>("/ceremonies")
-    ]);
+      const ceremonyById = new Map<number, CeremonySummary>();
+      for (const c of ceremonies) ceremonyById.set(c.id, c);
 
-    if (!leaguesRes.ok) {
-      setView({ state: "error", message: leaguesRes.error ?? "Failed to load leagues" });
-      return;
+      const seasonResults = await Promise.all(
+        leagues.map(async (league) => ({
+          league,
+          seasons: await queryClient
+            .fetchQuery(leagueSeasonsQuery(league.id))
+            .catch(() => [])
+        }))
+      );
+
+      return buildSeasonIndexCards({ seasonResults, ceremonyById });
     }
-    if (!ceremoniesRes.ok) {
-      setView({
+  });
+
+  const view = useMemo<SeasonsIndexView>(() => {
+    if (query.data) return { state: "ready", seasons: query.data };
+    if (query.isError) {
+      return {
         state: "error",
-        message: ceremoniesRes.error ?? "Failed to load ceremonies"
-      });
-      return;
+        message: errorMessage(query.error, "Failed to load seasons"),
+        requestId: errorRequestId(query.error)
+      };
     }
+    return { state: "loading" };
+  }, [query.data, query.isError, query.error]);
 
-    const leagues = leaguesRes.data?.leagues ?? [];
-    const ceremonies = ceremoniesRes.data?.ceremonies ?? [];
-    const ceremonyById = new Map<number, CeremonySummary>();
-    for (const c of ceremonies) ceremonyById.set(c.id, c);
-
-    const seasonResults = await Promise.all(
-      leagues.map(async (league) => {
-        const res = await fetchJson<{ seasons: SeasonSummary[] }>(
-          `/leagues/${league.id}/seasons`
-        );
-        return { league, seasons: res.ok ? (res.data?.seasons ?? []) : [] };
-      })
-    );
-
-    const all = buildSeasonIndexCards({ seasonResults, ceremonyById });
-
-    setView({ state: "ready", seasons: all });
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const { refetch } = query;
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return useMemo(() => ({ view, refresh }), [view, refresh]);
 }

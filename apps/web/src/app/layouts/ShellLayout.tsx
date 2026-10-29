@@ -14,7 +14,7 @@ import { ShellPrimaryNav } from "@/app/chrome/ui/ShellPrimaryNav";
 import { useShellNavMode } from "./useShellNavMode";
 
 export function ShellLayout() {
-  const { user, loading, sessionError, logout } = useAuthContext();
+  const { user, loading, sessionError, sessionRequestId, logout } = useAuthContext();
   const location = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -83,7 +83,12 @@ export function ShellLayout() {
           onLogout={logout}
         />
 
-        {sessionError && <PageError message={`Session error: ${sessionError}`} />}
+        {sessionError && (
+          <PageError
+            message={`Session error: ${sessionError}`}
+            requestId={sessionRequestId}
+          />
+        )}
 
         <ShellPrimaryNav
           navMode={navMode}

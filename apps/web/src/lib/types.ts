@@ -1,4 +1,4 @@
-export type ApiResult = { ok: boolean; message: string };
+export type ApiResult = { ok: boolean; message: string; requestId?: string };
 
 export type FieldErrors = Partial<Record<string, string>>;
 

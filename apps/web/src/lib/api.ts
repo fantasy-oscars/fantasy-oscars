@@ -58,6 +58,29 @@ function friendlyApiErrorMessage(input: {
   return status ? `Request failed (HTTP ${status}).` : "Request failed.";
 }
 
+type WriteListener = (info: { path: string; method: string }) => void;
+const writeListeners = new Set<WriteListener>();
+
+/** Subscribe to successful non-GET requests (used to keep cached reads fresh). */
+export function onSuccessfulWrite(listener: WriteListener): () => void {
+  writeListeners.add(listener);
+  return () => {
+    writeListeners.delete(listener);
+  };
+}
+
+function announceWrite(path: string, init?: RequestInit) {
+  const method = String(init?.method ?? "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD") return;
+  for (const listener of writeListeners) {
+    try {
+      listener({ path, method });
+    } catch {
+      // A listener must never break the request that triggered it.
+    }
+  }
+}
+
 function normalizeHeaders(init?: HeadersInit): Record<string, string> {
   const out: Record<string, string> = {};
   if (!init) return out;
@@ -93,6 +116,8 @@ export async function fetchJson<T>(
   errorFields?: string[];
   errorDetails?: Record<string, unknown>;
   requestId?: string;
+  /** HTTP status of the response (absent when the request never completed). */
+  status?: number;
 }> {
   try {
     const token = getAuthToken();
@@ -175,10 +200,12 @@ export async function fetchJson<T>(
         errorCode: code,
         errorFields: fields,
         errorDetails: details,
-        requestId
+        requestId,
+        status: res.status
       };
     }
-    return { ok: true, data: json as T, requestId };
+    announceWrite(path, init);
+    return { ok: true, data: json as T, requestId, status: res.status };
   } catch (err) {
     // Never leak low-level runtime errors to users. Convert to actionable messages.
     const raw = err instanceof Error ? err.message : "Request failed";

@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Stack, Text, Title } from "@ui";
+import { Box, Stack, Title } from "@ui";
 import { useAuthContext } from "@/auth/context";
 import { useSeasonOrchestration } from "@/orchestration/seasons";
+import { useSeasonRouteOrchestration } from "@/orchestration/seasons/seasonRouteOrchestration";
 import { SeasonScreen } from "@/features/seasons/screens/SeasonScreen";
-import { fetchJson } from "@/lib/api";
-import type { SeasonSummary } from "@/lib/types";
-import {
-  ceremonyCodeSlug,
-  leaguePath,
-  parsePositiveIntParam,
-  seasonPath
-} from "@/lib/routes";
-import { PageLoader } from "@/shared/page-state";
+import { leaguePath, parsePositiveIntParam, seasonPath } from "@/lib/routes";
+import { PageError, PageLoader } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
 function ResolvedSeasonPage(props: {
@@ -77,66 +71,12 @@ export function SeasonPage() {
 
   const seasonIdFromLegacy = parsePositiveIntParam(id);
   const leagueId = parsePositiveIntParam(leagueIdRaw);
-  const ceremonySlug = useMemo(() => ceremonyCodeSlug(ceremonyCode), [ceremonyCode]);
-  const [resolvedSeasonId, setResolvedSeasonId] = useState<number | null>(
-    seasonIdFromLegacy
-  );
-  const [resolveError, setResolveError] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
-
-  useEffect(() => {
-    if (seasonIdFromLegacy) {
-      setResolvedSeasonId(seasonIdFromLegacy);
-      setResolveError(null);
-      return;
-    }
-    if (!leagueId || !ceremonyCode) {
-      setResolveError("Invalid season route");
-      setResolvedSeasonId(null);
-      return;
-    }
-
-    let cancelled = false;
-    async function resolveSeasonId() {
-      setResolving(true);
-      setResolveError(null);
-      const res = await fetchJson<{ seasons: SeasonSummary[] }>(
-        `/leagues/${leagueId}/seasons`,
-        {
-          method: "GET"
-        }
-      );
-      if (cancelled) return;
-      setResolving(false);
-      if (!res.ok) {
-        setResolveError(res.error ?? "Could not load season");
-        setResolvedSeasonId(null);
-        return;
-      }
-
-      const matches = (res.data?.seasons ?? []).filter(
-        (s) => ceremonyCodeSlug(s.ceremony_code ?? String(s.ceremony_id)) === ceremonySlug
-      );
-      if (matches.length === 0) {
-        setResolveError("Season not found");
-        setResolvedSeasonId(null);
-        return;
-      }
-
-      const extant = matches.find((s) => s.status === "EXTANT");
-      const chosen =
-        extant ??
-        [...matches].sort(
-          (a, b) => Date.parse(b.created_at ?? "") - Date.parse(a.created_at ?? "")
-        )[0];
-      setResolvedSeasonId(chosen?.id ?? null);
-    }
-
-    void resolveSeasonId();
-    return () => {
-      cancelled = true;
-    };
-  }, [ceremonyCode, ceremonySlug, leagueId, seasonIdFromLegacy]);
+  const { resolvedSeasonId, resolving, resolveError, resolveRequestId } =
+    useSeasonRouteOrchestration({
+      seasonIdFromLegacy,
+      leagueId,
+      ceremonyCode
+    });
 
   if (resolving && !resolvedSeasonId) {
     return <PageLoader label="Loading season..." />;
@@ -151,10 +91,11 @@ export function SeasonPage() {
               <Title order={2} className="baseline-textHeroTitle">
                 Season
               </Title>
-              <Text className="baseline-textBody">
-                {resolveError ?? "Could not resolve season route."}
-              </Text>
             </Box>
+            <PageError
+              message={resolveError ?? "Could not resolve season route."}
+              requestId={resolveRequestId}
+            />
           </Stack>
         </Box>
       </Box>

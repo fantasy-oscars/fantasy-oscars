@@ -1,6 +1,7 @@
 import { Box, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 import type { CeremonyIndexRow } from "@/orchestration/ceremonies";
 
@@ -14,10 +15,11 @@ function yearFromIso(iso: string | null): string {
 export function CeremoniesIndexScreen(props: {
   state: "loading" | "error" | "ready";
   error: string | null;
+  requestId?: string | null;
   active: CeremonyIndexRow[];
   archived: CeremonyIndexRow[];
 }) {
-  const { state, error, active, archived } = props;
+  const { state, error, requestId, active, archived } = props;
 
   return (
     <Box className="baseline-page">
@@ -48,9 +50,10 @@ export function CeremoniesIndexScreen(props: {
             </Stack>
           ) : state === "error" ? (
             <StandardCard>
-              <Text className="baseline-textBody">
-                {error ?? "Failed to load ceremonies."}
-              </Text>
+              <PageError
+                message={error ?? "Failed to load ceremonies."}
+                requestId={requestId}
+              />
             </StandardCard>
           ) : (
             <Stack gap="lg">

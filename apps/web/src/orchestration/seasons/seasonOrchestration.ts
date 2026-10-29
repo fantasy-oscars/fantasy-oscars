@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
+import { ApiQueryError, unwrap } from "../query/errors";
+import { queryKeys } from "../query/keys";
 import { notify } from "../../notifications";
 import { formatLocalDateTime } from "./seasonFormat";
 import { copySeasonInviteLink } from "./seasonInviteLinks";
@@ -34,18 +37,96 @@ type LeagueContext = {
 
 type TokenMap = Record<number, string>;
 
+type SeasonDetailData = {
+  members: SeasonMember[];
+  invites: SeasonInvite[];
+  leagueContext: LeagueContext | null;
+  ceremonyStatus: string | null;
+};
+
+const NO_MEMBERS: SeasonMember[] = [];
+const NO_INVITES: SeasonInvite[] = [];
+
+function requestIdOf(err: unknown): string | undefined {
+  return err instanceof ApiQueryError ? err.requestId : undefined;
+}
+
 export function useSeasonOrchestration(
   seasonId: number,
   userSub?: string,
   opts?: { leagueIdHint?: number | null }
 ) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [members, setMembers] = useState<SeasonMember[]>([]);
-  const [invites, setInvites] = useState<SeasonInvite[]>([]);
+  const queryClient = useQueryClient();
+  const leagueIdHint = opts?.leagueIdHint ?? null;
+  const detailKey = queryKeys.seasons.detail(seasonId, leagueIdHint);
+
+  const detailQuery = useQuery({
+    queryKey: detailKey,
+    queryFn: async (): Promise<SeasonDetailData> => {
+      const memberData = unwrap(
+        await fetchJson<{ members: SeasonMember[] }>(`/seasons/${seasonId}/members`, {
+          method: "GET"
+        }),
+        "Could not load season"
+      );
+      const found = await loadLeagueContextForSeason(queryClient, seasonId, {
+        leagueIdHint
+      });
+      const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
+        `/seasons/${seasonId}/invites`,
+        { method: "GET" }
+      );
+      return {
+        members: memberData?.members ?? [],
+        leagueContext: found
+          ? {
+              league: found.league,
+              season: found.season,
+              leagueMembers: found.leagueMembers
+            }
+          : null,
+        ceremonyStatus: found?.ceremonyStatus ?? null,
+        invites: invitesRes.ok ? (invitesRes.data?.invites ?? []) : []
+      };
+    }
+  });
+
+  const detail = detailQuery.data;
+  const loading = detailQuery.isPending;
+  const error = detail ? null : detailQuery.isError ? detailQuery.error.message : null;
+  const errorRequestId = detail ? undefined : requestIdOf(detailQuery.error);
+  const members = detail?.members ?? NO_MEMBERS;
+  const invites = detail?.invites ?? NO_INVITES;
+  const leagueContext = detail?.leagueContext ?? null;
+  const ceremonyStatus = detail?.ceremonyStatus ?? null;
   const [inviteTokens, setInviteTokens] = useState<TokenMap>({});
-  const [leagueContext, setLeagueContext] = useState<LeagueContext | null>(null);
-  const [ceremonyStatus, setCeremonyStatus] = useState<string | null>(null);
+
+  // Local edits are written straight to the cached detail so the screen updates
+  // immediately; `syncSeasonData` then marks related queries stale so the
+  // server's view wins.
+  const patchDetail = useCallback(
+    (fn: (d: SeasonDetailData) => SeasonDetailData) => {
+      queryClient.setQueryData<SeasonDetailData>(detailKey, (d) => (d ? fn(d) : d));
+    },
+    [queryClient, detailKey]
+  );
+  const setMembers = (fn: (prev: SeasonMember[]) => SeasonMember[]) =>
+    patchDetail((d) => ({ ...d, members: fn(d.members) }));
+  const setInvites = (fn: (prev: SeasonInvite[]) => SeasonInvite[]) =>
+    patchDetail((d) => ({ ...d, invites: fn(d.invites) }));
+  const setLeagueContext = (
+    next: LeagueContext | null | ((prev: LeagueContext | null) => LeagueContext | null)
+  ) =>
+    patchDetail((d) => ({
+      ...d,
+      leagueContext: typeof next === "function" ? next(d.leagueContext) : next
+    }));
+  const syncSeasonData = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagues.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.invites.all })
+    ]);
   const [scoringState, setScoringState] = useState<ApiResult | null>(null);
   const [allocationState, setAllocationState] = useState<ApiResult | null>(null);
   const [timerState, setTimerState] = useState<ApiResult | null>(null);
@@ -96,54 +177,6 @@ export function useSeasonOrchestration(
   });
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-
-      const memberRes = await fetchJson<{ members: SeasonMember[] }>(
-        `/seasons/${seasonId}/members`,
-        { method: "GET" }
-      );
-      if (!memberRes.ok) {
-        if (!cancelled) {
-          setError(memberRes.error ?? "Could not load season");
-          setLoading(false);
-        }
-        return;
-      }
-      if (!cancelled) setMembers(memberRes.data?.members ?? []);
-
-      const found = await loadLeagueContextForSeason(seasonId, {
-        leagueIdHint: opts?.leagueIdHint ?? null
-      });
-      if (!cancelled && found) {
-        setLeagueContext({
-          league: found.league,
-          season: found.season,
-          leagueMembers: found.leagueMembers
-        });
-        setCeremonyStatus(found.ceremonyStatus);
-      }
-
-      const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
-        `/seasons/${seasonId}/invites`,
-        { method: "GET" }
-      );
-      if (!cancelled && invitesRes.ok) {
-        setInvites(invitesRes.data?.invites ?? []);
-      }
-      if (!cancelled) setLoading(false);
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [opts?.leagueIdHint, seasonId]);
-
-  useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
     return () => window.clearInterval(id);
   }, []);
@@ -191,6 +224,7 @@ export function useSeasonOrchestration(
     setSelectedLeagueMember("");
     setManualUsername("");
     setAddMemberResult(null);
+    void syncSeasonData();
     notify({
       id: "season.members.added",
       severity: "success",
@@ -219,6 +253,7 @@ export function useSeasonOrchestration(
       return;
     }
     setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+    void syncSeasonData();
     notify({
       id: "season.members.leave.success",
       severity: "success",
@@ -244,6 +279,7 @@ export function useSeasonOrchestration(
     }
     setMembers((prev) => prev.filter((m) => m.user_id !== userIdToRemove));
     setAddMemberResult(null);
+    void syncSeasonData();
     notify({
       id: "season.members.removed",
       severity: "success",
@@ -282,6 +318,7 @@ export function useSeasonOrchestration(
             null
         }
       });
+      void syncSeasonData();
       notify({
         id: "season.scoring.update.success",
         severity: "success",
@@ -317,6 +354,7 @@ export function useSeasonOrchestration(
           remainder_strategy: res.data.season.remainder_strategy
         }
       });
+      void syncSeasonData();
       notify({
         id: "season.allocation.update.success",
         severity: "success",
@@ -357,6 +395,7 @@ export function useSeasonOrchestration(
           pick_timer_seconds: res.data.draft.pick_timer_seconds ?? null
         }
       });
+      void syncSeasonData();
       notify({
         id: "season.timer.update.success",
         severity: "success",
@@ -420,6 +459,7 @@ export function useSeasonOrchestration(
           }
         : prev
     );
+    void syncSeasonData();
     notify({
       id: "season.draft.create.success",
       severity: "success",
@@ -455,6 +495,7 @@ export function useSeasonOrchestration(
           }
         : prev
     );
+    void syncSeasonData();
     notify({
       id: "season.delete.success",
       severity: "success",
@@ -498,6 +539,7 @@ export function useSeasonOrchestration(
       })
     );
 
+    void syncSeasonData();
     notify({
       id: "season.ownership.transfer.success",
       severity: "success",
@@ -523,6 +565,7 @@ export function useSeasonOrchestration(
     );
     setWorking(false);
     if (res.ok) {
+      void syncSeasonData();
       notify({
         id: "season.invite.create.success",
         severity: "success",
@@ -565,6 +608,7 @@ export function useSeasonOrchestration(
       setInvites((prev) => [invite, ...prev]);
       setInviteTokens((prev) => ({ ...prev, [invite.id]: token }));
       setPlaceholderLabel("");
+      void syncSeasonData();
       notify({
         id: "season.invite.link.generate.success",
         severity: "success",
@@ -600,6 +644,7 @@ export function useSeasonOrchestration(
     const failureCount = results.length - successCount;
 
     if (successCount > 0) {
+      void syncSeasonData();
       notify({
         id: "season.invite.bulk.create.success",
         severity: "success",
@@ -639,6 +684,7 @@ export function useSeasonOrchestration(
     const invite = res.data?.invite;
     if (res.ok && invite) {
       setInvites((prev) => prev.map((i) => (i.id === inviteId ? invite : i)));
+      void syncSeasonData();
     } else {
       setInviteResult({ ok: false, message: res.error ?? "Revoke failed" });
     }
@@ -653,6 +699,7 @@ export function useSeasonOrchestration(
     if (res.ok && invite && token) {
       setInvites((prev) => prev.map((i) => (i.id === inviteId ? invite : i)));
       setInviteTokens((prev) => ({ ...prev, [invite.id]: token }));
+      void syncSeasonData();
       notify({
         id: "season.invite.link.regenerate.success",
         severity: "success",
@@ -676,6 +723,7 @@ export function useSeasonOrchestration(
     const invite = res.data?.invite;
     if (res.ok && invite) {
       setInvites((prev) => prev.map((i) => (i.id === inviteId ? invite : i)));
+      void syncSeasonData();
       notify({
         id: "season.invite.label.save.success",
         severity: "success",
@@ -737,6 +785,7 @@ export function useSeasonOrchestration(
   return {
     loading,
     error,
+    errorRequestId,
     members,
     invites,
     inviteTokens,

@@ -1,11 +1,8 @@
+import { lazy, useEffect, useState } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/auth/context";
-import {
-  RedirectIfAuthed,
-  RequireAdmin,
-  RequireAuth,
-  RequireSuperAdmin
-} from "@/auth/guards";
+import { RedirectIfAuthed, RequireAdmin, RequireAuth } from "@/auth/guards";
 import { ShellLayout } from "./layouts/ShellLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { DraftLayout } from "./layouts/DraftLayout";
@@ -30,30 +27,25 @@ import { InvitesInboxPage } from "./pages/InvitesInboxPage";
 import { AccountPage } from "./pages/AccountPage";
 import { CeremoniesPage } from "./pages/CeremoniesPage";
 import { CeremonyPage } from "./pages/CeremonyPage";
-import { DraftPlansPage } from "./pages/DraftPlansPage";
 import { SeasonsIndexPage } from "./pages/SeasonsIndexPage";
 import { SeasonPage } from "./pages/SeasonPage";
-import { DraftRoomPage } from "./pages/DraftRoomPage";
-import { AdminLayout } from "./pages/admin/AdminLayout";
-import { AdminHomePage } from "./pages/admin/AdminHomePage";
-import { AdminCeremoniesLayout } from "./pages/admin/ceremonies/AdminCeremoniesLayout";
-import { AdminCeremoniesIndexPage } from "./pages/admin/ceremonies/AdminCeremoniesIndexPage";
-import { AdminCeremonyPreviewPage } from "./pages/admin/ceremonies/AdminCeremonyPreviewPage";
-import { AdminCeremonyWizardPage } from "./pages/admin/ceremonies/AdminCeremonyWizardPage";
-import { DraftCeremonyPreviewPage } from "./pages/draft/DraftCeremonyPreviewPage";
-import { AdminUsersLayout } from "./pages/admin/users/AdminUsersLayout";
-import { AdminUsersSearchPage } from "./pages/admin/users/AdminUsersSearchPage";
-import { AdminCategoryTemplatesPage } from "./pages/admin/categoryTemplates/AdminCategoryTemplatesPage";
-import { AdminFilmsPage } from "./pages/admin/films/AdminFilmsPage";
-import { AdminContentLayout } from "./pages/admin/content/AdminContentLayout";
-import { AdminContentHomePage } from "./pages/admin/content/AdminContentHomePage";
-import { AdminStaticContentEditorPage } from "./pages/admin/content/AdminStaticContentEditorPage";
-import { AdminDynamicContentLedgerPage } from "./pages/admin/content/AdminDynamicContentLedgerPage";
-import { AdminDynamicContentEditorPage } from "./pages/admin/content/AdminDynamicContentEditorPage";
-import { AdminSafeguardsPage } from "./pages/admin/safeguards/AdminSafeguardsPage";
-import { AdminSystemLayout } from "./pages/admin/system/AdminSystemLayout";
-import { AdminSystemAuditLogPage } from "./pages/admin/system/AdminSystemAuditLogPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { LazyRoute } from "./LazyRoute";
+import { createQueryClient } from "@/orchestration/query/client";
+import { registerWriteInvalidation } from "@/orchestration/query/invalidate";
+
+const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes"));
+const DraftRoomPage = lazy(() =>
+  import("./pages/DraftRoomPage").then((m) => ({ default: m.DraftRoomPage }))
+);
+const DraftCeremonyPreviewPage = lazy(() =>
+  import("./pages/draft/DraftCeremonyPreviewPage").then((m) => ({
+    default: m.DraftCeremonyPreviewPage
+  }))
+);
+const DraftPlansPage = lazy(() =>
+  import("./pages/DraftPlansPage").then((m) => ({ default: m.DraftPlansPage }))
+);
 
 function RoutesConfig() {
   return (
@@ -192,7 +184,9 @@ function RoutesConfig() {
           path="/ceremonies/:id/draft-plans"
           element={
             <RequireAuth>
-              <DraftPlansPage />
+              <LazyRoute>
+                <DraftPlansPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -205,62 +199,15 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <RequireAdmin>
-              <AdminLayout />
+              <LazyRoute>
+                <AdminRoutes />
+              </LazyRoute>
             </RequireAdmin>
           }
-        >
-          <Route index element={<AdminHomePage />} />
-          <Route path="ceremonies">
-            <Route index element={<AdminCeremoniesIndexPage />} />
-            <Route path=":ceremonyId" element={<AdminCeremoniesLayout />}>
-              <Route index element={<AdminCeremonyWizardPage />} />
-              <Route path="preview" element={<AdminCeremonyPreviewPage />} />
-              <Route path="*" element={<AdminCeremonyWizardPage />} />
-            </Route>
-          </Route>
-
-          <Route path="users" element={<AdminUsersLayout />}>
-            <Route
-              index
-              element={
-                <RequireSuperAdmin>
-                  <AdminUsersSearchPage />
-                </RequireSuperAdmin>
-              }
-            />
-          </Route>
-
-          <Route path="category-templates" element={<AdminCategoryTemplatesPage />} />
-
-          <Route path="films" element={<AdminFilmsPage />} />
-
-          <Route path="content" element={<AdminContentLayout />}>
-            <Route index element={<AdminContentHomePage />} />
-            <Route path="static/:key" element={<AdminStaticContentEditorPage />} />
-            <Route path="dynamic/:key" element={<AdminDynamicContentLedgerPage />} />
-            <Route
-              path="dynamic/:key/drafts/:id"
-              element={<AdminDynamicContentEditorPage />}
-            />
-          </Route>
-
-          <Route
-            path="destructive-actions"
-            element={
-              <RequireSuperAdmin>
-                <AdminSafeguardsPage />
-              </RequireSuperAdmin>
-            }
-          />
-
-          <Route path="system" element={<AdminSystemLayout />}>
-            <Route path="audit" element={<AdminSystemAuditLogPage />} />
-            <Route index element={<Navigate to="audit" replace />} />
-          </Route>
-        </Route>
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route element={<DraftLayout />}>
@@ -268,7 +215,9 @@ function RoutesConfig() {
           path="/drafts/preview/ceremonies/:ceremonyId"
           element={
             <RequireAdmin>
-              <DraftCeremonyPreviewPage />
+              <LazyRoute>
+                <DraftCeremonyPreviewPage />
+              </LazyRoute>
             </RequireAdmin>
           }
         />
@@ -276,7 +225,9 @@ function RoutesConfig() {
           path="/drafts/:id"
           element={
             <RequireAuth>
-              <DraftRoomPage />
+              <LazyRoute>
+                <DraftRoomPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -286,11 +237,15 @@ function RoutesConfig() {
 }
 
 export function App() {
+  const [queryClient] = useState(createQueryClient);
+  useEffect(() => registerWriteInvalidation(queryClient), [queryClient]);
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <RoutesConfig />
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RoutesConfig />
+        </AuthProvider>
+      </QueryClientProvider>
     </BrowserRouter>
   );
 }

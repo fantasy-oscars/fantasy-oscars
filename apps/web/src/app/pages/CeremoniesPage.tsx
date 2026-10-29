@@ -7,6 +7,7 @@ export function CeremoniesPage() {
     <CeremoniesIndexScreen
       state={o.state}
       error={o.error}
+      requestId={o.requestId}
       active={o.active}
       archived={o.archived}
     />

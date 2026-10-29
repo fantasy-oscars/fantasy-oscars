@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
 import { notify } from "../../notifications";
 import type {
@@ -8,66 +9,95 @@ import type {
   LeagueSummary,
   SeasonSummary
 } from "../../lib/types";
+import {
+  ApiQueryError,
+  errorCode,
+  errorMessage,
+  errorRequestId,
+  unwrap
+} from "../query/errors";
+import { queryKeys } from "../query/keys";
+import {
+  leagueMembersQuery,
+  leagueQuery,
+  leagueSeasonsQuery,
+  leaguesListQuery
+} from "../query/queries";
 
 export type LeaguesIndexView =
   | { state: "loading" }
   | { state: "empty" }
-  | { state: "error"; message: string }
+  | { state: "error"; message: string; requestId?: string }
   | { state: "ready"; leagues: LeagueSummary[] };
 
 export function useLeaguesIndexOrchestration() {
-  const [view, setView] = useState<LeaguesIndexView>({ state: "loading" });
+  const query = useQuery(leaguesListQuery());
 
-  const refresh = useCallback(async () => {
-    // Global refresh policy: keep the current view visible while refreshing.
-    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
-    const res = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
-    if (!res.ok) {
-      setView((prev) =>
-        prev.state === "ready"
-          ? prev
-          : { state: "error", message: res.error ?? "Failed to load leagues" }
-      );
-      return;
+  const view = useMemo<LeaguesIndexView>(() => {
+    if (query.data) {
+      return query.data.length
+        ? { state: "ready", leagues: query.data }
+        : { state: "empty" };
     }
-    const leagues = res.data?.leagues ?? [];
-    setView(leagues.length ? { state: "ready", leagues } : { state: "empty" });
-  }, []);
+    if (query.isError) {
+      return {
+        state: "error",
+        message: errorMessage(query.error, "Failed to load leagues"),
+        requestId: errorRequestId(query.error)
+      };
+    }
+    return { state: "loading" };
+  }, [query.data, query.isError, query.error]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const { refetch } = query;
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   return { view, refresh };
 }
 
 export function useLeagueCreateOrchestration() {
-  const [creating, setCreating] = useState(false);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  const create = useCallback(async (input: { name: string }) => {
-    setError(null);
-    setCreating(true);
-    const res = await fetchJson<{ league: LeagueSummary }>("/leagues", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input)
-    });
-    setCreating(false);
-    if (!res.ok) {
-      setError(res.error ?? "Could not create league");
-      return { ok: false as const, error: res.error ?? "Could not create league" };
+  const mutation = useMutation({
+    mutationFn: async (input: { name: string }) =>
+      unwrap(
+        await fetchJson<{ league: LeagueSummary }>("/leagues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input)
+        }),
+        "Could not create league"
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leagues.all });
     }
-    return { ok: true as const, league: res.data?.league };
-  }, []);
+  });
 
-  return { creating, error, create };
+  const create = useCallback(
+    async (input: { name: string }) => {
+      setError(null);
+      try {
+        const data = await mutation.mutateAsync(input);
+        return { ok: true as const, league: data?.league };
+      } catch (err) {
+        const message = errorMessage(err, "Could not create league");
+        setError(message);
+        return { ok: false as const, error: message };
+      }
+    },
+    [mutation]
+  );
+
+  return { creating: mutation.isPending, error, create };
 }
 
 export type LeagueDetailView =
   | { state: "loading" }
-  | { state: "forbidden"; message: string }
-  | { state: "error"; message: string }
+  | { state: "forbidden"; message: string; requestId?: string }
+  | { state: "error"; message: string; requestId?: string }
   | {
       state: "ready";
       league: LeagueDetail;
@@ -77,109 +107,143 @@ export type LeagueDetailView =
       isOwner: boolean;
     };
 
+type LeagueDetailData = {
+  league: LeagueDetail;
+  seasons: SeasonSummary[];
+  roster: LeagueMember[] | null;
+};
+
 export function useLeagueDetailOrchestration(input: {
   leagueId: number;
   userSub?: string;
 }) {
   const { leagueId, userSub } = input;
+  const queryClient = useQueryClient();
 
-  const [view, setView] = useState<LeagueDetailView>({ state: "loading" });
-  const [working, setWorking] = useState(false);
   const [rosterStatus, setRosterStatus] = useState<ApiResult | null>(null);
 
   const userId = useMemo(() => Number(userSub), [userSub]);
 
+  const query = useQuery({
+    queryKey: queryKeys.leagues.detail(leagueId),
+    enabled: !Number.isNaN(leagueId),
+    queryFn: async (): Promise<LeagueDetailData> => {
+      const [league, seasons, roster] = await Promise.all([
+        queryClient.fetchQuery(leagueQuery(leagueId)),
+        queryClient.fetchQuery(leagueSeasonsQuery(leagueId)).catch(() => []),
+        queryClient.fetchQuery(leagueMembersQuery(leagueId)).catch(() => null)
+      ]);
+      return { league, seasons, roster };
+    }
+  });
+
+  const view = useMemo<LeagueDetailView>(() => {
+    if (Number.isNaN(leagueId)) return { state: "error", message: "Invalid league id" };
+    if (query.data) {
+      const { league, seasons, roster } = query.data;
+      const isCommissioner =
+        Number.isFinite(userId) &&
+        !!roster?.some(
+          (m) => m.user_id === userId && (m.role === "OWNER" || m.role === "CO_OWNER")
+        );
+      const isOwner =
+        Number.isFinite(userId) &&
+        !!roster?.some((m) => m.user_id === userId && m.role === "OWNER");
+      return { state: "ready", league, seasons, roster, isCommissioner, isOwner };
+    }
+    if (query.isError) {
+      return {
+        state: errorCode(query.error) === "FORBIDDEN" ? "forbidden" : "error",
+        message: errorMessage(query.error, "Unable to load league"),
+        requestId: errorRequestId(query.error)
+      };
+    }
+    return { state: "loading" };
+  }, [leagueId, query.data, query.isError, query.error, userId]);
+
+  const { refetch } = query;
   const refresh = useCallback(async () => {
-    if (Number.isNaN(leagueId)) {
-      setView({ state: "error", message: "Invalid league id" });
-      return;
-    }
+    await refetch();
+  }, [refetch]);
 
-    // Global refresh policy: if the league is already rendered, refresh in-place.
-    setView((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
-    const [detail, seasonRes, rosterRes] = await Promise.all([
-      fetchJson<{ league: LeagueDetail }>(`/leagues/${leagueId}`),
-      fetchJson<{ seasons: SeasonSummary[] }>(`/leagues/${leagueId}/seasons`),
-      fetchJson<{ members: LeagueMember[] }>(`/leagues/${leagueId}/members`)
-    ]);
+  const transferMutation = useMutation({
+    mutationFn: async (vars: { leagueId: number; targetUserId: number }) =>
+      unwrap(
+        await fetchJson(`/leagues/${vars.leagueId}/transfer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: vars.targetUserId })
+        }),
+        "Transfer failed"
+      ),
+    // Season detail embeds league members (drives isCommissioner), so refresh seasons too.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.leagues.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all })
+      ])
+  });
 
-    if (!detail.ok || !detail.data?.league) {
-      setView((prev) => {
-        if (prev.state === "ready") return prev;
-        return {
-          state: detail.errorCode === "FORBIDDEN" ? "forbidden" : "error",
-          message: detail.error ?? "Unable to load league"
-        };
+  const deleteMutation = useMutation({
+    mutationFn: async (vars: { leagueId: number }) =>
+      unwrap(
+        await fetchJson(`/leagues/${vars.leagueId}`, { method: "DELETE" }),
+        "Delete failed"
+      ),
+    onSuccess: () => {
+      // The league is gone: mark everything stale without refetching the
+      // still-mounted detail page (it would only get a 404). Pages that mount
+      // next (the leagues index) refetch because their data is now stale.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.leagues.all,
+        refetchType: "none"
       });
-      return;
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.seasons.all,
+        refetchType: "none"
+      });
     }
+  });
 
-    const roster = rosterRes.ok ? (rosterRes.data?.members ?? []) : null;
-    const seasons = seasonRes.ok ? (seasonRes.data?.seasons ?? []) : [];
-
-    const isCommissioner =
-      Number.isFinite(userId) &&
-      !!roster?.some(
-        (m) => m.user_id === userId && (m.role === "OWNER" || m.role === "CO_OWNER")
-      );
-    const isOwner =
-      Number.isFinite(userId) &&
-      !!roster?.some((m) => m.user_id === userId && m.role === "OWNER");
-
-    setView({
-      state: "ready",
-      league: detail.data.league,
-      seasons,
-      roster,
-      isCommissioner,
-      isOwner
-    });
-  }, [leagueId, userId]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const working = transferMutation.isPending || deleteMutation.isPending;
 
   const transferOwnershipTo = useCallback(
     async (targetUserId: number) => {
       if (view.state !== "ready") return { ok: false as const };
       if (!Number.isFinite(targetUserId)) return { ok: false as const };
-      setWorking(true);
       setRosterStatus(null);
-      const res = await fetchJson(`/leagues/${view.league.id}/transfer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: targetUserId })
-      });
-      setWorking(false);
-      if (res.ok) {
-        notify({
-          id: "league.commissioner.transfer.success",
-          severity: "success",
-          trigger_type: "user_action",
-          scope: "local",
-          durability: "ephemeral",
-          requires_decision: false,
-          message: "Commissioner role transferred"
-        });
-        setRosterStatus(null);
-        await refresh();
-        return { ok: true as const };
+      try {
+        await transferMutation.mutateAsync({ leagueId: view.league.id, targetUserId });
+      } catch (err) {
+        setRosterStatus({ ok: false, message: errorMessage(err, "Transfer failed") });
+        return { ok: false as const };
       }
-      setRosterStatus({ ok: false, message: res.error ?? "Transfer failed" });
-      return { ok: false as const };
+      notify({
+        id: "league.commissioner.transfer.success",
+        severity: "success",
+        trigger_type: "user_action",
+        scope: "local",
+        durability: "ephemeral",
+        requires_decision: false,
+        message: "Commissioner role transferred"
+      });
+      setRosterStatus(null);
+      return { ok: true as const };
     },
-    [refresh, view]
+    [transferMutation, view]
   );
 
   const deleteLeague = useCallback(async () => {
     if (view.state !== "ready") return { ok: false as const };
-    setWorking(true);
     setRosterStatus(null);
-    const res = await fetchJson(`/leagues/${view.league.id}`, { method: "DELETE" });
-    setWorking(false);
-    if (!res.ok) {
-      setRosterStatus({ ok: false, message: res.error ?? "Delete failed" });
+    try {
+      await deleteMutation.mutateAsync({ leagueId: view.league.id });
+    } catch (err) {
+      setRosterStatus({
+        ok: false,
+        message:
+          err instanceof ApiQueryError ? err.message : errorMessage(err, "Delete failed")
+      });
       return { ok: false as const };
     }
     notify({
@@ -192,7 +256,7 @@ export function useLeagueDetailOrchestration(input: {
       message: "League deleted"
     });
     return { ok: true as const };
-  }, [view]);
+  }, [deleteMutation, view]);
 
   return {
     view,

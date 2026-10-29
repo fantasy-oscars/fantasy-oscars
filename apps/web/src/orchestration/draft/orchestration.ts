@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateCeremonyAndDraftData } from "../query/invalidate";
 import type { Socket } from "socket.io-client";
 import { notify } from "../../notifications";
 import type { ApiResult, Snapshot } from "../../lib/types";
@@ -234,6 +236,15 @@ export function useDraftRoomOrchestration(args: {
   const { initialDraftId, disabled } = args;
 
   const [draftId] = useState(String(initialDraftId ?? "1"));
+  const queryClient = useQueryClient();
+
+  // Leaving the draft room: whatever happened inside it may have changed the
+  // season/league/ceremony pages the user lands on next.
+  useEffect(() => {
+    return () => {
+      void invalidateCeremonyAndDraftData(queryClient);
+    };
+  }, [queryClient]);
   const snapshotState = useDraftSnapshot({ draftId, disabled });
   const loading = snapshotState.loading;
   const error = snapshotState.error;

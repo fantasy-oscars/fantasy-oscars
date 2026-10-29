@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "@/orchestration/leagueIndex";
 import { ActionCard, StandardCard } from "@/primitives";
 import { leaguePath } from "@/lib/routes";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
 export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
@@ -35,7 +36,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                 </Box>
               ) : view.state === "error" ? (
                 <StandardCard>
-                  <Text className="baseline-textBody">{view.message}</Text>
+                  <PageError message={view.message} requestId={view.requestId} />
                 </StandardCard>
               ) : view.leagues.length === 0 ? (
                 <StandardCard>

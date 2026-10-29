@@ -17,6 +17,7 @@ import { SeasonCategoryWeightsModal } from "@/features/seasons/ui/modals/SeasonC
 import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModal";
 import { useSeasonCategoryWeightsModal } from "./useSeasonCategoryWeightsModal";
 import { useSeasonDraftSettingsModal } from "./useSeasonDraftSettingsModal";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
 function SeasonScreenSkeleton() {
@@ -144,7 +145,7 @@ export function SeasonScreen(props: {
               </Title>
               <Text className="baseline-textBody">Could not load season data.</Text>
             </Box>
-            <Box className="status status-error">{s.error}</Box>
+            <PageError message={s.error} requestId={s.errorRequestId} />
           </Stack>
         </Box>
       </Box>

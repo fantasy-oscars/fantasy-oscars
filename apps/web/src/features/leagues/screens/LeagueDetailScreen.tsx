@@ -124,7 +124,7 @@ export function LeagueDetailScreen(props: {
               </Title>
               <Text className="baseline-textBody">Access denied.</Text>
             </Box>
-            <PageError message={view.message} />
+            <PageError message={view.message} requestId={view.requestId} />
           </Stack>
         </Box>
       </Box>
@@ -141,7 +141,7 @@ export function LeagueDetailScreen(props: {
               </Title>
               <Text className="baseline-textBody">Unable to load</Text>
             </Box>
-            <PageError message={view.message} />
+            <PageError message={view.message} requestId={view.requestId} />
           </Stack>
         </Box>
       </Box>

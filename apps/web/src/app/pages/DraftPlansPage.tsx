@@ -14,6 +14,7 @@ export function DraftPlansPage() {
     <DraftPlansScreen
       ceremonyState={o.state}
       ceremonyError={o.error}
+      ceremonyRequestId={o.requestId}
       detail={o.detail}
       plans={plans}
     />

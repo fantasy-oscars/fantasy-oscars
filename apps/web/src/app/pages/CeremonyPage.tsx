@@ -8,5 +8,12 @@ export function CeremonyPage() {
   const ceremonyId = Number.isFinite(idParsed) && idParsed > 0 ? idParsed : null;
 
   const o = useCeremonyDetailOrchestration({ ceremonyId });
-  return <CeremonyDetailScreen state={o.state} error={o.error} detail={o.detail} />;
+  return (
+    <CeremonyDetailScreen
+      state={o.state}
+      error={o.error}
+      requestId={o.requestId}
+      detail={o.detail}
+    />
+  );
 }

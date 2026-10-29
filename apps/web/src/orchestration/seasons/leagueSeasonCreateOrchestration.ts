@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/keys";
 import { fetchJson } from "../../lib/api";
 import { notify } from "../../notifications";
 import type { ApiResult, CeremonySummary, LeagueDetail } from "../../lib/types";
@@ -33,6 +35,7 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState<ApiResult | null>(null);
 
+  const queryClient = useQueryClient();
   const [ceremonyId, setCeremonyId] = useState<number | null>(null);
   const [scoringStrategy, setScoringStrategy] = useState<
     "fixed" | "negative" | "category_weighted"
@@ -127,8 +130,14 @@ export function useLeagueSeasonCreateOrchestration(input: { leagueId: number }) 
       message: "Season created"
     });
     setStatus(null);
+    // The new season must show up in league/season lists before we navigate to it.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.leagues.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all })
+    ]);
     return { ok: true as const, seasonId };
   }, [
+    queryClient,
     ceremonyId,
     leagueId,
     pickTimerSeconds,

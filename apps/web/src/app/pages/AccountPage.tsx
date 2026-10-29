@@ -1,17 +1,16 @@
 import { useAuthContext } from "@/auth/context";
 import { AccountScreen } from "@/features/account/screens/AccountScreen";
-import { fetchJson } from "@/lib/api";
+import { useAccountOrchestration } from "@/orchestration/account/orchestration";
 
 export function AccountPage() {
   const { user, logout } = useAuthContext();
+  const account = useAccountOrchestration();
 
   async function deleteAccount() {
-    const res = await fetchJson("/auth/me", { method: "DELETE" });
-    if (!res.ok) {
-      return { ok: false as const, error: res.error };
-    }
+    const res = await account.deleteAccount();
+    if (!res.ok) return res;
     await logout();
-    return { ok: true as const };
+    return res;
   }
 
   return (
