@@ -1,0 +1,5 @@
+external-sources=true
+source-path=SCRIPTDIR
+# SC2034: variables shared between sourced libs and entry points look unused per file.
+# SC2016: single quotes are intentional for commands evaluated inside containers.
+disable=SC2034,SC2016

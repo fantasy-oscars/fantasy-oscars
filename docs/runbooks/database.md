@@ -56,6 +56,14 @@
   - `psql "$DATABASE_URL" -c "SELECT count(*) FROM migration_history;"` confirms migrations ran.
   - From API shell: `psql "$DATABASE_URL" -c "SELECT 1;"` to confirm connectivity.
 
+## Production on the VPS
+
+After the cutover from Render the database is the `db` service (postgres 18, no published ports) in the compose project `fantasy-oscars` on the VPS. Backups, restores and the migration of data from Render are covered in [vps.md](vps.md):
+
+- Encrypted `pg_dump -Fc` backups go offsite nightly (hourly during awards season) and before every deploy; restore with `infra/restore.sh`.
+- Open a SQL shell on the server: `docker compose -p fantasy-oscars exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
+- The "Production" section above describes the previous Render setup and applies only until the cutover is complete.
+
 ## Links
 
 - Testing standard: [../standards/testing.md](../standards/testing.md)

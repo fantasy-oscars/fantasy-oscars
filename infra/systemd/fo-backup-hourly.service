@@ -1,0 +1,12 @@
+[Unit]
+Description=Fantasy Oscars: hourly database backup (awards season, Jan 15 to Mar 31)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=@DEPLOY_USER@
+WorkingDirectory=@INSTALL_DIR@
+ExecStart=@INSTALL_DIR@/infra/backup.sh --reason hourly
+Nice=10
+TimeoutStartSec=1800

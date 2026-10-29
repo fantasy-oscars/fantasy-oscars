@@ -1,0 +1,10 @@
+[Unit]
+Description=Fantasy Oscars: hourly database backup (awards season, Jan 15 to Mar 31) (schedule)
+
+[Timer]
+OnCalendar=*-01-15..31 *:17:00 America/Los_Angeles
+OnCalendar=*-02..03-* *:17:00 America/Los_Angeles
+Persistent=true
+
+[Install]
+WantedBy=timers.target
