@@ -11,7 +11,7 @@
 
 - Unit: pure functions, no IO.
 - Integration (API/DB): use Testcontainers Postgres; apply migrations from `database/migrations`; truncate + restart identities between tests.
-- E2E (web smoke): Playwright; runs against `apps/web` via `vite preview` to ensure the web app loads.
+- E2E: Playwright. Global setup starts a Postgres Testcontainer (needs Docker), the API, and a production web build pointed at it (ports 4173/4174, override with `E2E_WEB_PORT`/`E2E_API_PORT`). Tests: a web smoke check and a two-user flow (invite, draft, winners, standings).
 
 ## Where Tests Live
 
@@ -19,7 +19,7 @@
 - Web unit tests: `apps/web/tests/unit/`
 - API unit + integration tests: `apps/api/tests/unit/` and `apps/api/tests/integration/`
 - Shared package unit tests: `packages/shared/tests/unit/`
-- E2E smoke tests (Playwright): `tests/e2e/`
+- E2E tests (Playwright): `tests/e2e/` (linted via `pnpm run lint:e2e`)
 
 ## How to Run
 
@@ -30,7 +30,7 @@
 - Web bundle size budget (run after `pnpm run build`; budgets in `apps/web/bundle-budget.json`): `pnpm run bundle:check`
 - Integration tests only (Docker required): `pnpm run test:integration`
 - Integration tests (bail early): `pnpm run test:integration:bail`
-- E2E smoke tests: `pnpm run test:e2e`
+- E2E tests (requires Docker; `pnpm --filter @fantasy-oscars/shared build` first): `pnpm run test:e2e`
 - Install Playwright Chromium (one-time per machine): `pnpm run test:e2e:install`
 - API tests only: `pnpm run test --workspace @fantasy-oscars/api`
 - Web tests only: `pnpm run test --workspace @fantasy-oscars/web`
