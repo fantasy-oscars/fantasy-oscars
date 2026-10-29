@@ -70,6 +70,9 @@ export async function startTestDatabase() {
   const container = await new PostgreSqlContainer(postgresImage).start();
   const connectionString = container.getConnectionUri();
   const pool = new Pool({ connectionString });
+  // Stopping the container can terminate a connection that is still closing;
+  // without a listener pg rethrows that as an unhandled error.
+  pool.on("error", () => {});
   await applyMigrations(pool);
 
   async function stop() {

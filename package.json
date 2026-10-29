@@ -1,6 +1,7 @@
 {
   "name": "fantasy-oscars",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -32,8 +33,8 @@
     "render:preview:web": "pnpm run --filter @fantasy-oscars/web preview",
     "test:e2e": "pnpm exec playwright test",
     "test:e2e:install": "pnpm exec playwright install chromium",
-    "test:format": "pnpm run format:check",
-    "test:lint": "pnpm run lint && pnpm run tokens:check",
+    "test:format": "pnpm run format:check && pnpm run format:e2e:check",
+    "test:lint": "pnpm run lint && pnpm run lint:e2e && pnpm run tokens:check",
     "test:typecheck": "pnpm run typecheck",
     "db:migrate": "pnpm -C apps/api exec node ../../.github/scripts/db-migrate.mjs",
     "admin:bootstrap": "pnpm -C apps/api exec node ../../.github/scripts/bootstrap-admin.mjs",
@@ -44,9 +45,10 @@
     "test:integration": "pnpm -r --if-present test:integration",
     "test:integration:bail": "pnpm -r --if-present test:integration -- --bail=1",
     "test:build": "pnpm run build",
+    "bundle:check": "node .github/scripts/bundle-budget.mjs",
     "test:docs": "pnpm run docs:check",
     "ci:e2e": "pnpm run test:e2e",
-    "ci:tests": "pnpm run test:format && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit && pnpm run test:integration && pnpm run test:build && pnpm run test:e2e",
+    "ci:tests": "pnpm run test:format && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit && pnpm run test:integration && pnpm run test:build && pnpm run bundle:check && pnpm run test:e2e",
     "ci:docs": "pnpm run test:docs",
     "ci:all": "pnpm run ci",
     "dev": "pnpm -r --if-present dev",
@@ -75,6 +77,9 @@
     "ticket:deps": "node .github/scripts/ticket-deps.mjs",
     "ticket:link-linear": "node .github/scripts/ticket-link-linear.mjs",
     "test:scripts": "node --test tests/unit/tooling/*.test.mjs",
+    "lint:e2e": "pnpm exec eslint playwright.config.ts tests/e2e",
+    "format:e2e": "pnpm exec prettier -w playwright.config.ts tests/e2e",
+    "format:e2e:check": "pnpm exec prettier -c playwright.config.ts tests/e2e",
     "lint:scripts": "pnpm exec eslint .github/scripts",
     "format:check": "pnpm -r --if-present format:check"
   },
