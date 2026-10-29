@@ -1,18 +1,10 @@
 import type { CeremonyStatus } from "../ceremonyWorkflow";
 
 export type StepId =
-  | "initialize"
-  | "categories"
-  | "populate"
-  | "publish"
-  | "results"
-  | "archive";
+  "initialize" | "categories" | "populate" | "publish" | "results" | "archive";
 
 export type StepState =
-  | "INCOMPLETE_EDITABLE"
-  | "COMPLETE_EDITABLE"
-  | "COMPLETE_LOCKED"
-  | "GATED";
+  "INCOMPLETE_EDITABLE" | "COMPLETE_EDITABLE" | "COMPLETE_LOCKED" | "GATED";
 
 export const STEP_ORDER: Array<{ id: StepId; label: string }> = [
   { id: "initialize", label: "Initialize ceremony" },

@@ -647,8 +647,7 @@ export function useAdminCeremonyNomineesOrchestration(args: {
     });
     setCandidateUploading(false);
     const payload = res.data as
-      | { upserted?: number; hydrated?: number; tmdb_errors?: unknown[] }
-      | undefined;
+      { upserted?: number; hydrated?: number; tmdb_errors?: unknown[] } | undefined;
     const upserted = typeof payload?.upserted === "number" ? payload.upserted : undefined;
     const hydrated = typeof payload?.hydrated === "number" ? payload.hydrated : undefined;
     const tmdbErrorsCount = Array.isArray(payload?.tmdb_errors)

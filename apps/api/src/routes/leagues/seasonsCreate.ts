@@ -149,9 +149,7 @@ export function registerLeagueSeasonsCreateRoute(args: {
             [season.id, scoringStrategy, remainderStrategy]
           );
           season.scoring_strategy_name = scoringStrategy as
-            | "fixed"
-            | "negative"
-            | "category_weighted";
+            "fixed" | "negative" | "category_weighted";
           season.remainder_strategy = remainderStrategy as "UNDRAFTED" | "FULL_POOL";
 
           const existingDraft = await getDraftBySeasonId(tx, season.id);

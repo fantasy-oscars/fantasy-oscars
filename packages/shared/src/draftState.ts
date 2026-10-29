@@ -23,10 +23,7 @@ const allowedTransitions: DraftStateTransition[] = [
 ];
 
 export type DraftStateErrorCode =
-  | "INVALID_TRANSITION"
-  | "UNKNOWN_STATE"
-  | "SAME_STATE"
-  | "TRANSITION_NOT_ALLOWED";
+  "INVALID_TRANSITION" | "UNKNOWN_STATE" | "SAME_STATE" | "TRANSITION_NOT_ALLOWED";
 
 export class DraftStateError extends Error {
   constructor(

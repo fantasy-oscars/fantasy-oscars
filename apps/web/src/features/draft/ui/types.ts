@@ -54,11 +54,7 @@ export type AutoDraftListItem = {
 };
 
 export type AutoDraftStrategy =
-  | "random"
-  | "by_category"
-  | "alphabetical"
-  | "wisdom"
-  | "custom";
+  "random" | "by_category" | "alphabetical" | "wisdom" | "custom";
 
 export type AutoDraftState = {
   enabled: boolean;

@@ -75,11 +75,7 @@ export function buildUpsertDraftAutodraftHandler(pool: Pool) {
         throw validationError("Invalid strategy", ["strategy"]);
       }
       const strategy = strategyRaw as
-        | "RANDOM"
-        | "PLAN"
-        | "BY_CATEGORY"
-        | "ALPHABETICAL"
-        | "WISDOM";
+        "RANDOM" | "PLAN" | "BY_CATEGORY" | "ALPHABETICAL" | "WISDOM";
       const planIdRaw = req.body?.plan_id;
       const planId =
         planIdRaw === null || planIdRaw === undefined || planIdRaw === ""
