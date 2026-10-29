@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { AppError } from "../errors.js";
+import { secondsUntil } from "../domain/authSession.js";
 
 export type TokenClaims = {
   sub: string;
@@ -7,6 +8,7 @@ export type TokenClaims = {
   is_admin?: boolean;
   admin_role?: "NONE" | "OPERATOR" | "SUPER_ADMIN";
   avatar_key?: string;
+  sid?: string; // auth_session id; required by requireAuth and socket auth
   exp?: number; // unix seconds
 };
 
@@ -36,6 +38,15 @@ export function signToken(
   const data = `${encodedHeader}.${encodedPayload}`;
   const signature = crypto.createHmac("sha256", secret).update(data).digest("base64url");
   return `${data}.${signature}`;
+}
+
+/** Signs a token whose `exp` matches the session's `expires_at`. */
+export function signSessionToken(
+  claims: TokenClaims & { sid: string },
+  secret: string,
+  expiresAt: Date
+) {
+  return signToken(claims, secret, secondsUntil(expiresAt));
 }
 
 export function verifyToken(token: string, secret: string): TokenClaims {

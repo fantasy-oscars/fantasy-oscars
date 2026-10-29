@@ -18,6 +18,7 @@ import {
   buildSong,
   buildUser
 } from "./builders.js";
+import { testSessionId } from "../support/session.js";
 
 /**
  * These helpers insert deterministic rows into the database.
@@ -282,6 +283,11 @@ export async function insertUser(
     `INSERT INTO app_user (id, username, email, created_at)
      VALUES ($1, $2, $3, $4)`,
     [user.id, user.username, user.email, user.created_at]
+  );
+  await pool.query(
+    `INSERT INTO auth_session (id, user_id, expires_at)
+     VALUES ($1, $2, now() + interval '30 days')`,
+    [testSessionId(user.id), user.id]
   );
   return user;
 }

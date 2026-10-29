@@ -1,5 +1,7 @@
 import type { Namespace, Server, Socket } from "socket.io";
 import { verifyToken } from "../auth/token.js";
+import { getActiveSessionUser } from "../data/repositories/authSessionRepository.js";
+import { AUTH_SESSION_MAX_AGE_MS } from "../domain/authSession.js";
 import { getDraftById } from "../data/repositories/draftRepository.js";
 import { getLeagueMember } from "../data/repositories/leagueRepository.js";
 import { getSeasonMember } from "../data/repositories/seasonMemberRepository.js";
@@ -66,8 +68,22 @@ export function registerDraftNamespace(
       if (!token) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
       const claims = verifyToken(token, opts.authSecret);
       const userId = Number(claims.sub);
-      if (!Number.isFinite(userId))
+      if (!Number.isInteger(userId) || userId <= 0)
         throw new AppError("UNAUTHORIZED", 401, "Invalid token");
+      const session = claims.sid
+        ? await getActiveSessionUser(opts.db, {
+            sessionId: claims.sid,
+            userId,
+            maxAgeMs: AUTH_SESSION_MAX_AGE_MS
+          })
+        : null;
+      if (!session) {
+        throw new AppError(
+          "UNAUTHORIZED",
+          401,
+          "Your session has expired. Please log in again."
+        );
+      }
 
       const draft = await getDraftById(opts.db, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");

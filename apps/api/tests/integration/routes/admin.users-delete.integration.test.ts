@@ -37,19 +37,28 @@ async function post<T>(
 /** Register and elevate a SUPER_ADMIN user; return their bearer token. */
 async function makeAdmin(): Promise<{ userId: number; token: string }> {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const { json: reg } = await post<{ user: { id: number } }>("/auth/register", {
-    username: `admin-${suffix}`,
-    email: `admin-${suffix}@example.com`,
-    password: "secret123"
-  });
+  const { status: regStatus, json: reg } = await post<{ user: { id: number } }>(
+    "/auth/register",
+    {
+      username: `admin-${suffix}`,
+      email: `admin-${suffix}@example.com`,
+      password: "secret123"
+    }
+  );
+  expect(regStatus, JSON.stringify(reg)).toBe(201);
   await db.pool.query(
     `UPDATE app_user SET is_admin = TRUE, admin_role = 'SUPER_ADMIN' WHERE id = $1`,
     [reg.user.id]
   );
-  const { json: login } = await post<{ token: string }>("/auth/login", {
-    username: `admin-${suffix}`,
-    password: "secret123"
-  });
+  const { status: loginStatus, json: login } = await post<{ token: string }>(
+    "/auth/login",
+    {
+      username: `admin-${suffix}`,
+      password: "secret123"
+    }
+  );
+  expect(loginStatus, JSON.stringify(login)).toBe(200);
+  expect(login.token).toEqual(expect.any(String));
   return { userId: reg.user.id, token: login.token };
 }
 

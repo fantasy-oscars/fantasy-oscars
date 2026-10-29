@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import crypto from "crypto";
+import { testSessionId } from "../../support/session.js";
 import { createServer } from "../../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import {
@@ -20,7 +21,9 @@ let api: ApiAgent;
 function signToken(claims: Record<string, unknown>) {
   const header = { alg: "HS256", typ: "JWT" };
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
-  const encodedPayload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  const encodedPayload = Buffer.from(
+    JSON.stringify({ sid: testSessionId(claims.sub), ...claims })
+  ).toString("base64url");
   const data = `${encodedHeader}.${encodedPayload}`;
   const signature = crypto
     .createHmac("sha256", authSecret)

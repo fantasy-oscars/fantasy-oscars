@@ -29,7 +29,7 @@ import * as runtimeSnapshotSvc from "../../../src/services/drafting/runtimeSnaps
 const AUTH_SECRET = "test-secret";
 
 function authHeader() {
-  return `Bearer ${signToken({ sub: "1", username: "tester" }, AUTH_SECRET, 3600)}`;
+  return `Bearer ${signToken({ sub: "1", username: "tester", sid: "s1" }, AUTH_SECRET, 3600)}`;
 }
 
 function mockReq(opts: {

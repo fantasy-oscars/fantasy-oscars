@@ -9,6 +9,7 @@ import {
   insertNomination
 } from "../../factories/db.js";
 import crypto from "crypto";
+import { testSessionId } from "../../support/session.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -37,7 +38,12 @@ async function adminToken(): Promise<string> {
   const user = await insertUser(db.pool);
   await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [user.id]);
   const header = { alg: "HS256", typ: "JWT" };
-  const payload = { sub: String(user.id), username: user.username, is_admin: true };
+  const payload = {
+    sub: String(user.id),
+    username: user.username,
+    is_admin: true,
+    sid: testSessionId(user.id)
+  };
   const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const data = `${encodedHeader}.${encodedPayload}`;

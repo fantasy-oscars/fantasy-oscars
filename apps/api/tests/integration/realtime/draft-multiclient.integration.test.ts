@@ -3,7 +3,7 @@ import { createServer as createHttpServer, type Server as HttpServer } from "htt
 import { Server as SocketIOServer } from "socket.io";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createServer } from "../../../src/server.js";
-import { signToken } from "../../../src/auth/token.js";
+import { signTestToken as signToken } from "../../support/session.js";
 import {
   DRAFT_NAMESPACE,
   registerDraftNamespace

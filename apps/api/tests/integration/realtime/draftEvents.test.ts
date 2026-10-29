@@ -9,7 +9,7 @@ import {
   registerDraftEventEmitter
 } from "../../../src/realtime/draftEvents.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
-import { signToken } from "../../../src/auth/token.js";
+import { signTestToken as signToken } from "../../support/session.js";
 import { insertDraft, insertLeagueMember, insertSeason } from "../../factories/db.js";
 import {
   ListenPermissionError,

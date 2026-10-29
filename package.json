@@ -37,6 +37,7 @@
     "db:migrate": "pnpm -C apps/api exec node ../../.github/scripts/db-migrate.mjs",
     "admin:bootstrap": "pnpm -C apps/api exec node ../../.github/scripts/bootstrap-admin.mjs",
     "admin:promote": "pnpm -C apps/api exec node ../../.github/scripts/promote-admin.mjs",
+    "admin:reset-password": "pnpm -C apps/api exec node scripts/reset-password.mjs",
     "test:unit": "pnpm run test:scripts && pnpm -r --if-present test:unit",
     "test:migrations": "node --test tests/unit/tooling/migration-order.test.mjs",
     "test:integration": "pnpm -r --if-present test:integration",
