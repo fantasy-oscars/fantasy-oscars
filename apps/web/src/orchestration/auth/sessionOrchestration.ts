@@ -47,8 +47,12 @@ export function useAuthSessionOrchestration(): AuthSessionOrchestration {
   const refresh = useCallback(async () => {
     setLoading(true);
     setSessionError(null);
-    const res = await fetchJson<{ user: AuthUser }>("/auth/me", { method: "GET" });
+    const res = await fetchJson<{ user: AuthUser; token?: string }>("/auth/me", {
+      method: "GET"
+    });
     if (res.ok) {
+      // Keep the Bearer fallback token in step with the sliding session expiry.
+      if (res.data?.token) setAuthToken(res.data.token);
       setUser(res.data?.user ?? null);
     } else {
       setUser(null);
@@ -58,6 +62,8 @@ export function useAuthSessionOrchestration(): AuthSessionOrchestration {
         res.errorCode === "INVALID_TOKEN" ||
         res.errorCode === "TOKEN_EXPIRED"
       ) {
+        // Drop a stored token the server no longer accepts (revoked/expired).
+        clearAuthToken();
         setSessionError(null);
       } else {
         setSessionError(res.error ?? "Unable to verify session");

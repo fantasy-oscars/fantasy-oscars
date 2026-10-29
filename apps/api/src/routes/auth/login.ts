@@ -4,23 +4,24 @@ import {
   validatePassword,
   validateUsername
 } from "@fantasy-oscars/shared";
-import { query, type DbClient } from "../../data/db.js";
+import type { Pool } from "pg";
+import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { AppError, validationError } from "../../errors.js";
-import { signToken } from "../../auth/token.js";
+import { setAuthCookie, type AuthCookieConfig } from "../../auth/cookie.js";
+import { signSessionToken } from "../../auth/token.js";
 import { normalizeAdminRole } from "../../auth/roles.js";
-import { verifyPassword } from "./password.js";
-import type { AuthCookieConfig } from "./logout.js";
+import { createAuthSession } from "../../data/repositories/authSessionRepository.js";
+import { AUTH_SESSION_TTL_MS } from "../../domain/authSession.js";
+import { hashPassword, verifyPassword } from "./password.js";
 
 export function registerAuthLoginRoute(args: {
   router: express.Router;
   client: DbClient;
   authSecret: string;
-  authCookieMaxAgeMs: number;
   cookieConfig: AuthCookieConfig;
   loginLimiters: Array<{ middleware: express.RequestHandler }>;
 }) {
-  const { router, client, authSecret, authCookieMaxAgeMs, cookieConfig, loginLimiters } =
-    args;
+  const { router, client, authSecret, cookieConfig, loginLimiters } = args;
 
   router.post(
     "/login",
@@ -77,27 +78,76 @@ export function registerAuthLoginRoute(args: {
           throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
         }
 
-        // Skeleton: return placeholder token (non-secure) for v0.
+        // Hash outside the transaction; scrypt is slow.
+        const upgradedHash =
+          user.password_algo === "sha256" ? await hashPassword(password) : null;
+
+        const session = await runInTransaction(client as Pool, async (tx) => {
+          // Take the user row first so lock order matches account deletion
+          // (app_user, then auth_password); also refuses a login that races
+          // a deletion.
+          const { rows: liveUser } = await query(
+            tx,
+            `SELECT 1
+             FROM app_user
+             WHERE id = $1
+               AND deleted_at IS NULL
+             FOR KEY SHARE`,
+            [user.id]
+          );
+          if (!liveUser[0]) {
+            throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
+          }
+          // Lock the password row as verified. If a reset changed it meanwhile,
+          // refuse; if a reset starts after this, it waits for the commit and
+          // then revokes the session created here.
+          const { rows: locked } = await query(
+            tx,
+            `SELECT 1
+             FROM auth_password
+             WHERE user_id = $1
+               AND password_hash = $2
+             FOR UPDATE`,
+            [user.id, user.password_hash]
+          );
+          if (!locked[0]) {
+            throw new AppError("INVALID_CREDENTIALS", 401, "Invalid credentials");
+          }
+          // Upgrade legacy unsalted hashes now that we hold the plaintext.
+          if (upgradedHash) {
+            await query(
+              tx,
+              `UPDATE auth_password
+               SET password_hash = $3,
+                   password_algo = 'scrypt',
+                   password_set_at = now()
+               WHERE user_id = $1
+                 AND password_algo = 'sha256'
+                 AND password_hash = $2`,
+              [user.id, user.password_hash, upgradedHash]
+            );
+          }
+          return createAuthSession(tx, {
+            userId: Number(user.id),
+            ttlMs: AUTH_SESSION_TTL_MS
+          });
+        });
+        const expiresAt = new Date(session.expires_at);
         const avatarKey = String(user.avatar_key ?? "monkey");
         const adminRole = normalizeAdminRole(user.admin_role, Boolean(user.is_admin));
-        const token = signToken(
+        const token = signSessionToken(
           {
             sub: String(user.id),
             username: user.username,
             is_admin: adminRole !== "NONE",
             admin_role: adminRole,
-            avatar_key: avatarKey
+            avatar_key: avatarKey,
+            sid: session.id
           },
           authSecret,
-          Math.floor(authCookieMaxAgeMs / 1000)
+          expiresAt
         );
-        res.cookie(cookieConfig.name, token, {
-          httpOnly: cookieConfig.httpOnly,
-          sameSite: cookieConfig.sameSite,
-          secure: cookieConfig.secure,
-          maxAge: authCookieMaxAgeMs,
-          path: cookieConfig.path
-        });
+        setAuthCookie(res, token, expiresAt, cookieConfig);
         return res.json({
           user: {
             id: user.id,

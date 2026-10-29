@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../../src/server.js";
-import { signToken } from "../../../src/auth/token.js";
+import { signTestToken as signToken } from "../../support/session.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
 import {

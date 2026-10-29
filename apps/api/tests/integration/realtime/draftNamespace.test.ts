@@ -5,9 +5,14 @@ import {
   emitToDraft,
   registerDraftNamespace
 } from "../../../src/realtime/draftNamespace.js";
-import { signToken } from "../../../src/auth/token.js";
+import { signTestToken as signToken } from "../../support/session.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
-import { insertDraft, insertLeagueMember, insertSeason } from "../../factories/db.js";
+import {
+  insertDraft,
+  insertLeagueMember,
+  insertSeason,
+  insertUser
+} from "../../factories/db.js";
 import {
   ListenPermissionError,
   createTestClient,
@@ -306,7 +311,11 @@ describe("draft namespace routing", () => {
       throw err;
     }
 
-    const outsiderToken = signToken({ sub: "999", username: "outsider" }, authSecret);
+    const outsider = await insertUser(pool, { id: 999, username: "outsider" });
+    const outsiderToken = signToken(
+      { sub: String(outsider.id), username: outsider.username },
+      authSecret
+    );
     const socket = createClient(`${server.url}${DRAFT_NAMESPACE}`, {
       transports: ["websocket"],
       forceNew: true,

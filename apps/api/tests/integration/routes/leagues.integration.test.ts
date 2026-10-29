@@ -3,6 +3,7 @@ import { createServer } from "../../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import { insertCeremony, insertUser } from "../../factories/db.js";
 import crypto from "crypto";
+import { testSessionId } from "../../support/session.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -70,7 +71,9 @@ describe("leagues integration", () => {
   function signToken(claims: Record<string, unknown>) {
     const header = { alg: "HS256", typ: "JWT" };
     const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
-    const encodedPayload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+    const encodedPayload = Buffer.from(
+      JSON.stringify({ sid: testSessionId(claims.sub), ...claims })
+    ).toString("base64url");
     const data = `${encodedHeader}.${encodedPayload}`;
     const signature = crypto
       .createHmac("sha256", authSecret)

@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { revokeAllUserSessions } from "../../data/repositories/authSessionRepository.js";
 import {
   createDraftEvent,
   type DraftEventRecord
@@ -417,6 +418,7 @@ export function registerAdminUsersDeleteRoute({
             );
           }
 
+          await revokeAllUserSessions(tx, id);
           await query(tx, `DELETE FROM auth_password_reset WHERE user_id = $1`, [id]);
           await query(tx, `DELETE FROM auth_password WHERE user_id = $1`, [id]);
           await query(
