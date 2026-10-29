@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
 import {
   sortNewestFirst,
   splitActiveArchived
 } from "../../decisions/ceremonies/ceremonyIndex";
+import { ApiQueryError, errorMessage, errorRequestId, unwrap } from "../query/errors";
+import { queryKeys } from "../query/keys";
+import { ceremoniesListQuery } from "../query/queries";
 
 export type CeremonyIndexRow = {
   id: number;
@@ -16,46 +20,36 @@ export type CeremonyIndexRow = {
 type LoadState = "loading" | "error" | "ready";
 
 export function useCeremoniesIndexOrchestration() {
-  const [state, setState] = useState<LoadState>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<CeremonyIndexRow[]>([]);
+  const query = useQuery(ceremoniesListQuery());
 
-  const hasRenderedRef = useRef(false);
-  useEffect(() => {
-    if (state === "ready") hasRenderedRef.current = true;
-  }, [state]);
+  const rows = useMemo<CeremonyIndexRow[]>(
+    () =>
+      (query.data ?? []).map((c) => ({
+        id: c.id,
+        code: c.code ?? null,
+        name: c.name ?? null,
+        starts_at: c.starts_at ?? null,
+        status: c.status as CeremonyIndexRow["status"]
+      })),
+    [query.data]
+  );
 
+  const state: LoadState = query.data ? "ready" : query.isError ? "error" : "loading";
+  const error = query.isError
+    ? errorMessage(query.error, "Failed to load ceremonies")
+    : null;
+  const requestId = query.isError ? errorRequestId(query.error) : undefined;
+
+  const { refetch } = query;
   const refresh = useCallback(async () => {
-    // Global refresh policy: if we already have data on-screen, refresh in-place.
-    // Only enter "loading" when we have nothing rendered yet.
-    const canRefreshInPlace = hasRenderedRef.current;
-    if (!canRefreshInPlace) setState("loading");
-    setError(null);
-    const res = await fetchJson<{ ceremonies: CeremonyIndexRow[] }>("/ceremonies", {
-      method: "GET"
-    });
-    if (!res.ok) {
-      setError(res.error ?? "Failed to load ceremonies");
-      // Keep the last-known-good rows visible on background refresh failures.
-      if (!canRefreshInPlace) {
-        setRows([]);
-        setState("error");
-      }
-      return;
-    }
-    setRows(res.data?.ceremonies ?? []);
-    setState("ready");
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    await refetch();
+  }, [refetch]);
 
   const { active, archived } = useMemo(() => {
     return splitActiveArchived(sortNewestFirst(rows));
   }, [rows]);
 
-  return { state, error, active, archived, refresh };
+  return { state, error, requestId, active, archived, refresh };
 }
 
 export type CeremonyDetail = {
@@ -94,44 +88,46 @@ export type CeremonyDetail = {
 
 export function useCeremonyDetailOrchestration(args: { ceremonyId: number | null }) {
   const { ceremonyId } = args;
-  const [state, setState] = useState<LoadState>("loading");
-  const [error, setError] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CeremonyDetail | null>(null);
+  const validId = Boolean(ceremonyId && Number.isFinite(ceremonyId) && ceremonyId > 0);
 
-  const hasRenderedRef = useRef(false);
-  useEffect(() => {
-    if (state === "ready") hasRenderedRef.current = true;
-  }, [state]);
+  const query = useQuery({
+    queryKey: queryKeys.ceremonies.detail(ceremonyId ?? 0),
+    enabled: validId,
+    queryFn: async (): Promise<CeremonyDetail> => {
+      const data = unwrap(
+        await fetchJson<CeremonyDetail>(`/ceremonies/${ceremonyId}`, { method: "GET" }),
+        "Failed to load ceremony"
+      );
+      if (!data) throw new ApiQueryError("Failed to load ceremony");
+      return data;
+    }
+  });
 
+  let state: LoadState = "loading";
+  let error: string | null = null;
+  let requestId: string | undefined;
+  if (!validId) {
+    state = "error";
+    error = "Invalid ceremony id";
+  } else if (query.data) {
+    state = "ready";
+    if (query.isError) error = errorMessage(query.error, "Failed to load ceremony");
+  } else if (query.isError) {
+    state = "error";
+    error = errorMessage(query.error, "Failed to load ceremony");
+    requestId = errorRequestId(query.error);
+  }
+
+  const { refetch } = query;
   const refresh = useCallback(async () => {
-    if (!ceremonyId || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {
-      setState("error");
-      setError("Invalid ceremony id");
-      setDetail(null);
-      return;
-    }
-    // If we already have ceremony content rendered, refresh in-place.
-    const canRefreshInPlace = hasRenderedRef.current;
-    if (!canRefreshInPlace) setState("loading");
-    setError(null);
-    const res = await fetchJson<CeremonyDetail>(`/ceremonies/${ceremonyId}`, {
-      method: "GET"
-    });
-    if (!res.ok) {
-      setError(res.error ?? "Failed to load ceremony");
-      if (!canRefreshInPlace) {
-        setDetail(null);
-        setState("error");
-      }
-      return;
-    }
-    setDetail(res.data ?? null);
-    setState("ready");
-  }, [ceremonyId]);
+    await refetch();
+  }, [refetch]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  return { state, error, detail, refresh };
+  return {
+    state,
+    error,
+    requestId,
+    detail: validId ? (query.data ?? null) : null,
+    refresh
+  };
 }

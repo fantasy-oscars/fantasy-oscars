@@ -84,6 +84,7 @@ function parseCsv(text: string): string[][] {
 export function DraftPlansScreen(props: {
   ceremonyState: "loading" | "error" | "ready";
   ceremonyError: string | null;
+  ceremonyRequestId?: string | null;
   detail: CeremonyDetail | null;
   plans: ReturnType<typeof useDraftPlansOrchestration>;
 }) {
@@ -312,7 +313,12 @@ export function DraftPlansScreen(props: {
       </Box>
     );
   if (props.ceremonyState === "error")
-    return <PageError message={props.ceremonyError ?? "Failed to load"} />;
+    return (
+      <PageError
+        message={props.ceremonyError ?? "Failed to load"}
+        requestId={props.ceremonyRequestId}
+      />
+    );
   if (!props.detail) return <PageError message="Ceremony not found" />;
 
   return (

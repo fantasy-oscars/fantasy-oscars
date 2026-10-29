@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
+import { invitesInboxQuery } from "../query/queries";
 import { revisionFor } from "../../decisions/banners";
 import { useContentRevision } from "../../lib/useContentRevision";
 
@@ -102,53 +104,18 @@ export function useBannerOrchestration() {
 }
 
 export function useInviteCountOrchestration(userSub?: string) {
-  const [inviteCount, setInviteCount] = useState<number>(0);
-
+  // Shares the inbox query: refetches on window focus and whenever an invite
+  // action invalidates it (no polling).
+  const query = useQuery({
+    ...invitesInboxQuery(),
+    enabled: Boolean(userSub),
+    select: (invites) => invites.length
+  });
+  const inviteCount = userSub ? (query.data ?? 0) : 0;
+  const { refetch } = query;
   const refresh = useCallback(async () => {
-    if (!userSub) {
-      setInviteCount(0);
-      return;
-    }
-    const res = await fetchJson<{ invites: Array<{ id: number }> }>(
-      "/seasons/invites/inbox",
-      {
-        method: "GET"
-      }
-    );
-    if (!res.ok) {
-      setInviteCount(0);
-      return;
-    }
-    setInviteCount(Array.isArray(res.data?.invites) ? res.data!.invites.length : 0);
-  }, [userSub]);
-
-  useEffect(() => {
-    void refresh();
-
-    // Keep the chrome bell in sync:
-    // - immediately on local invite actions (accept/decline)
-    // - periodically, so invites sent from other users appear without a full refresh
-    const onInvitesChanged = () => void refresh();
-    const onFocus = () => void refresh();
-    const interval =
-      typeof window !== "undefined" ? window.setInterval(onInvitesChanged, 15_000) : null;
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("fo:invites-changed", onInvitesChanged as EventListener);
-      window.addEventListener("focus", onFocus);
-    }
-
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener(
-          "fo:invites-changed",
-          onInvitesChanged as EventListener
-        );
-        window.removeEventListener("focus", onFocus);
-        if (interval) window.clearInterval(interval);
-      }
-    };
-  }, [refresh]);
+    await refetch();
+  }, [refetch]);
 
   return { inviteCount, refresh };
 }

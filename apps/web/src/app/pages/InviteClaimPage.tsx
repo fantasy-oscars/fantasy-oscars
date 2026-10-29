@@ -17,18 +17,12 @@ export function InviteClaimPage() {
   const loginHref = `/login?next=${encodeURIComponent(returnTo)}`;
   const registerHref = `/register?next=${encodeURIComponent(returnTo)}`;
 
-  function notifyInvitesChanged() {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new Event("fo:invites-changed"));
-  }
-
   async function onAcceptInvite() {
     const res = await accept();
     if (!res.ok) {
       navigate("/invites", { replace: true, state: { inviteClaimError: res.error } });
       return;
     }
-    notifyInvitesChanged();
     notify({
       id: "invites.claim.accepted",
       severity: res.alreadyMember ? "info" : "success",
@@ -50,7 +44,6 @@ export function InviteClaimPage() {
       navigate("/invites", { replace: true, state: { inviteClaimError: res.error } });
       return;
     }
-    notifyInvitesChanged();
     notify({
       id: "invites.claim.declined",
       severity: "info",
@@ -147,7 +140,9 @@ export function InviteClaimPage() {
                     Accept this invite to join the season, or decline it.
                   </Text>
                 </Box>
-                {result && !result.ok ? <PageError message={result.message} /> : null}
+                {result && !result.ok ? (
+                  <PageError message={result.message} requestId={result.requestId} />
+                ) : null}
                 <Stack gap="xs">
                   <Button
                     type="button"

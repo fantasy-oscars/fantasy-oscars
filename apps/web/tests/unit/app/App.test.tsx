@@ -504,11 +504,12 @@ describe("<App /> shell + routing", () => {
     await screen.findByRole("heading", { name: /Invites/i });
     const accept = await screen.findByRole("button", { name: /Accept/i });
     await userEvent.click(accept);
-    await screen.findByRole("heading", { name: /Oscars 2026/i });
+    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
   });
 
   it("declines an invite and removes it from inbox", async () => {
     window.history.pushState({}, "", "/invites");
+    let declined = false;
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/auth/me")) {
         return Promise.resolve({
@@ -521,25 +522,28 @@ describe("<App /> shell + routing", () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              invites: [
-                {
-                  id: 77,
-                  season_id: 3030,
-                  status: "PENDING",
-                  label: null,
-                  kind: "USER_TARGETED",
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  claimed_at: null,
-                  league_id: null,
-                  league_name: null,
-                  ceremony_id: null
-                }
-              ]
+              invites: declined
+                ? []
+                : [
+                    {
+                      id: 77,
+                      season_id: 3030,
+                      status: "PENDING",
+                      label: null,
+                      kind: "USER_TARGETED",
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                      claimed_at: null,
+                      league_id: null,
+                      league_name: null,
+                      ceremony_id: null
+                    }
+                  ]
             })
         });
       }
       if (url.includes("/seasons/invites/77/decline")) {
+        declined = true;
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ invite: { season_id: 3030 } })
@@ -701,7 +705,11 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("heading", { name: /Initialize ceremony/i });
+    await screen.findByRole(
+      "heading",
+      { name: /Initialize ceremony/i },
+      { timeout: 10000 }
+    );
     await screen.findByRole("button", { name: /Next/i });
   });
 

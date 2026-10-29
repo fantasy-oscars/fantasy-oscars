@@ -3,6 +3,7 @@ import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui"
 import { Link } from "react-router-dom";
 import { StandardCard } from "@/primitives";
 import { seasonPath } from "@/lib/routes";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 import type { SeasonIndexCard, SeasonsIndexView } from "@/orchestration/seasonsIndex";
 import {
@@ -65,7 +66,7 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
             </Stack>
           ) : view.state === "error" ? (
             <StandardCard>
-              <Text className="baseline-textBody">{view.message}</Text>
+              <PageError message={view.message} requestId={view.requestId} />
             </StandardCard>
           ) : seasons.length === 0 ? (
             <StandardCard>

@@ -8,6 +8,7 @@ import "@/primitives/baseline.css";
 export function CeremonyDetailScreen(props: {
   state: "loading" | "error" | "ready";
   error: string | null;
+  requestId?: string | null;
   detail: CeremonyDetail | null;
 }) {
   if (props.state === "loading") {
@@ -44,7 +45,9 @@ export function CeremonyDetailScreen(props: {
     );
   }
   if (props.state === "error")
-    return <PageError message={props.error ?? "Failed to load"} />;
+    return (
+      <PageError message={props.error ?? "Failed to load"} requestId={props.requestId} />
+    );
   if (!props.detail) return <PageError message="Ceremony not found" />;
 
   const { ceremony, categories, nominations, winners } = props.detail;

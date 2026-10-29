@@ -9,10 +9,19 @@ export function PageLoader(props: { label?: string }) {
   );
 }
 
-export function PageError(props: { message: string }) {
+/**
+ * Standard error display. When the failed request carried an id, show it so
+ * users can quote it to support.
+ */
+export function PageError(props: { message: string; requestId?: string | null }) {
   return (
     <Alert className="page-state status status-error" color="red" role="alert">
       {props.message}
+      {props.requestId ? (
+        <Text size="xs" className="page-state-reference">
+          Reference: {props.requestId}
+        </Text>
+      ) : null}
     </Alert>
   );
 }

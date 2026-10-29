@@ -8,17 +8,11 @@ export function InvitesInboxPage() {
   const navigate = useNavigate();
   const { view, accept, decline, removeFromView } = useInvitesInboxOrchestration();
 
-  function notifyInvitesChanged() {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(new Event("fo:invites-changed"));
-  }
-
   async function acceptInvite(invite: InboxInvite) {
     const res = await accept(invite);
     if (!res.ok) {
       if (res.errorCode === "NOT_FOUND") {
         removeFromView(invite.id);
-        notifyInvitesChanged();
       }
       notify({
         id: "invites.inbox.accept.failed",
@@ -32,7 +26,6 @@ export function InvitesInboxPage() {
       return;
     }
     removeFromView(invite.id);
-    notifyInvitesChanged();
     notify({
       id: "invites.inbox.accepted",
       severity: "success",
@@ -50,7 +43,6 @@ export function InvitesInboxPage() {
     if (!res.ok) {
       if (res.errorCode === "NOT_FOUND") {
         removeFromView(invite.id);
-        notifyInvitesChanged();
       }
       notify({
         id: "invites.inbox.decline.failed",
@@ -64,7 +56,6 @@ export function InvitesInboxPage() {
       return;
     }
     removeFromView(invite.id);
-    notifyInvitesChanged();
     notify({
       id: "invites.inbox.declined",
       severity: "success",

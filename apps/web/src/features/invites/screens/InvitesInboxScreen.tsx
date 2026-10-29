@@ -1,8 +1,9 @@
 import type { InboxInvite } from "@/lib/types";
-import { Alert, Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
+import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { InvitesInboxView } from "@/orchestration/invites";
 import { inviteContextLine } from "@/decisions/invites";
 import { StandardCard } from "@/primitives";
+import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
 export function InvitesInboxScreen(props: {
@@ -60,7 +61,7 @@ export function InvitesInboxScreen(props: {
 
           <StandardCard component="section" aria-label="Pending invites">
             {view.state === "error" ? (
-              <Alert color="red">{view.message}</Alert>
+              <PageError message={view.message} requestId={view.requestId} />
             ) : view.invites.length === 0 ? (
               <Text className="baseline-textBody">No pending invites.</Text>
             ) : (
