@@ -21,6 +21,32 @@ function parsePort(portValue: string): number {
   return parsed;
 }
 
+export type AuthCookieSameSite = "lax" | "strict" | "none";
+
+/**
+ * SameSite for the auth cookie. Unset keeps the historical default: `none` in
+ * production (web and API on different sites), `lax` otherwise. `none` is only
+ * valid when the cookie is Secure, which is the case in production only.
+ */
+export function parseAuthCookieSameSite(
+  value: string | undefined,
+  isProduction: boolean
+): AuthCookieSameSite {
+  if (value === undefined || value.trim() === "") return isProduction ? "none" : "lax";
+  const normalized = value.trim().toLowerCase();
+  if (normalized !== "lax" && normalized !== "strict" && normalized !== "none") {
+    throw new ConfigError(
+      `AUTH_COOKIE_SAMESITE must be one of lax, strict, none, received: ${value}`
+    );
+  }
+  if (normalized === "none" && !isProduction) {
+    throw new ConfigError(
+      "AUTH_COOKIE_SAMESITE=none requires a Secure cookie, which is only issued when NODE_ENV=production"
+    );
+  }
+  return normalized;
+}
+
 export type ApiConfig = {
   port: number;
   authSecret: string;
@@ -89,6 +115,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const realtimeEnabled = parseOptionalBool(env.REALTIME_ENABLED, true);
   const corsAllowedOrigins = parseCorsAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
   const trustProxy = parseTrustProxy(env.TRUST_PROXY, env.NODE_ENV === "production");
+  // Fail fast on a bad value; the cookie module reads it again where it is used.
+  parseAuthCookieSameSite(env.AUTH_COOKIE_SAMESITE, env.NODE_ENV === "production");
   return { port, authSecret, realtimeEnabled, corsAllowedOrigins, trustProxy };
 }
 

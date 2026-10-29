@@ -5,7 +5,8 @@ import { invalidateCeremonyAndDraftData } from "../query/invalidate";
 import { notify } from "../../notifications";
 import type { DraftEventMessage, Snapshot } from "../../lib/types";
 import { getAuthToken } from "../../lib/authToken";
-import { API_BASE, describeNomination } from "./helpers";
+import { API_BASE, buildSocketTarget } from "../../lib/apiBase";
+import { describeNomination } from "./helpers";
 import { buildNominationLabelById } from "../../decisions/draft";
 import type { DraftConnectionEvent } from "../../decisions/draft/connection";
 
@@ -52,11 +53,10 @@ export function useDraftSocket(args: {
     // If we see any live activity while still on a PENDING snapshot, force a resync once.
     const resyncAfterStartRef = { current: false };
 
-    const socketBase = API_BASE
-      ? new URL(API_BASE, window.location.origin).origin
-      : window.location.origin;
+    const target = buildSocketTarget(API_BASE, "/drafts", window.location.origin);
 
-    const socket = io(`${socketBase}/drafts`, {
+    const socket = io(target.url, {
+      ...(target.path ? { path: target.path } : {}),
       transports: ["websocket"],
       autoConnect: false,
       auth: {
