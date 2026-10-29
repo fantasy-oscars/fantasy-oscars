@@ -26,6 +26,7 @@
     "render:install:api": "pnpm install --frozen-lockfile --filter @fantasy-oscars/api... --filter !fantasy-oscars",
     "render:build:api": "pnpm run --filter @fantasy-oscars/api build",
     "render:start:api": "pnpm run --filter @fantasy-oscars/api start",
+    "docker:build:api": "docker build -f apps/api/Dockerfile -t fantasy-oscars-api .",
     "render:install:web": "pnpm install --frozen-lockfile --filter @fantasy-oscars/web... --filter !fantasy-oscars",
     "render:build:web": "pnpm run --filter @fantasy-oscars/web build",
     "render:preview:web": "pnpm run --filter @fantasy-oscars/web preview",

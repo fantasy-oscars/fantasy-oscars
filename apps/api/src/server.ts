@@ -2,7 +2,8 @@ import express from "express";
 import type { Express } from "express";
 import type { Pool } from "pg";
 import crypto from "crypto";
-import { healthRouter } from "./routes/health.js";
+import helmet from "helmet";
+import { createHealthRouter } from "./routes/health.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createDraftsRouter } from "./routes/drafts.js";
 import { createLeaguesRouter } from "./routes/leagues.js";
@@ -17,6 +18,7 @@ import { createPool } from "./data/db.js";
 import { AppError, errorBody } from "./errors.js";
 import { buildRequestLog, deriveDraftContext, log } from "./logger.js";
 import { loadConfig } from "./config/env.js";
+import { captureServerError } from "./observability/sentry.js";
 
 function isTestRuntime(): boolean {
   return (
@@ -54,6 +56,7 @@ export function createServer(deps?: { db?: Pool }): Express {
   // Behind a reverse proxy (Render) req.ip must come from X-Forwarded-For, otherwise
   // every client shares the proxy's address for rate limiting.
   app.set("trust proxy", config.trustProxy);
+  app.use(helmet());
   app.use(express.json());
   app.locals.db = pool;
 
@@ -106,7 +109,7 @@ export function createServer(deps?: { db?: Pool }): Express {
     next();
   });
 
-  app.use("/health", healthRouter);
+  app.use("/health", createHealthRouter(pool));
   app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
   app.use("/seasons", createSeasonsRouter(pool, config.authSecret));
@@ -165,9 +168,7 @@ export function createServer(deps?: { db?: Pool }): Express {
             : undefined,
         ...context
       });
-      if (!appErr && err instanceof Error) {
-        // Stack logging is handled by the structured logger via error_stack.
-      }
+      if (status >= 500) captureServerError(err, requestId);
       res.status(status).json(errorBody(appErr ?? (err as Error), { requestId }));
     }
   );

@@ -16,6 +16,7 @@ import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { mapDraftStateError, transitionDraftState } from "../../domain/draftState.js";
 import { computeDeadline } from "../../domain/draftPickRules.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
+import { wakeDraftSweeper } from "../../services/draftSweeperWake.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
 
 function requireCommissionerOrOwner(
@@ -220,6 +221,7 @@ export function buildResumeDraftHandler(pool: Pool) {
       });
 
       emitDraftEvent(result.event);
+      wakeDraftSweeper(result.draft.pick_deadline_at);
       return res.status(200).json({ draft: result.draft });
     } catch (err) {
       next(err);

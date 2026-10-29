@@ -1,10 +1,19 @@
 import { parsePgPoolConfig } from "../config/env.js";
+import { log } from "../logger.js";
+import { captureServerError } from "../observability/sentry.js";
 import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 export type DbClient = Pool | PoolClient;
 
 export function createPool(connectionString: string, poolConfig = parsePgPoolConfig()) {
-  return new Pool({ connectionString, ...poolConfig });
+  const pool = new Pool({ connectionString, ...poolConfig });
+  // Idle clients emit 'error' when the backend goes away (restart, failover). Without a
+  // listener Node treats it as uncaught and kills the process; pg discards the client.
+  pool.on("error", (err) => {
+    log({ level: "error", msg: "pg_pool_error", error: err.message });
+    captureServerError(err);
+  });
+  return pool;
 }
 
 export async function runInTransaction<T>(
