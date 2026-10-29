@@ -3,7 +3,6 @@ import type { Router } from "express";
 import type { DbClient } from "../data/db.js";
 import { authCookieConfig } from "../auth/cookie.js";
 import { requireAllowedOrigin } from "../auth/middleware.js";
-import { parseCorsAllowedOrigins } from "../config/env.js";
 import { loginUserRateKey } from "./auth/loginRateKey.js";
 import { createRateLimitGuard } from "../utils/rateLimitMiddleware.js";
 import { registerAuthDeleteMeRoute } from "./auth/deleteMe.js";
@@ -31,15 +30,13 @@ const loginUserLimiter = createRateLimitGuard({
 
 export function createAuthRouter(
   client: DbClient,
-  opts: { authSecret: string; corsAllowedOrigins?: string[] }
+  opts: { authSecret: string; corsAllowedOrigins: string[] }
 ): Router {
   const router = express.Router();
   const { authSecret } = opts;
   const cookieConfig = authCookieConfig();
-  // Same allow-list the CORS middleware uses (CORS_ALLOWED_ORIGINS).
-  const originGuard = requireAllowedOrigin(
-    opts.corsAllowedOrigins ?? parseCorsAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS)
-  );
+  // Same allow-list the CORS middleware uses.
+  const originGuard = requireAllowedOrigin(opts.corsAllowedOrigins);
 
   // Auth responses carry credentials or session state; never cache them.
   router.use((_req, res, next) => {

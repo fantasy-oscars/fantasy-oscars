@@ -110,7 +110,13 @@ export function createServer(deps?: { db?: Pool }): Express {
   });
 
   app.use("/health", createHealthRouter(pool));
-  app.use("/auth", createAuthRouter(pool, { authSecret: config.authSecret }));
+  app.use(
+    "/auth",
+    createAuthRouter(pool, {
+      authSecret: config.authSecret,
+      corsAllowedOrigins: config.corsAllowedOrigins
+    })
+  );
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));
   app.use("/seasons", createSeasonsRouter(pool, config.authSecret));
   app.use("/drafts", createDraftsRouter(pool, config.authSecret));
