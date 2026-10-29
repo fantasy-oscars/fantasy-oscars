@@ -7,7 +7,7 @@
   ],
   "packageManager": "pnpm@9.12.3",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
@@ -55,6 +55,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
     "format": "pnpm -r --if-present format",
+    "clean": "node .github/scripts/clean.mjs",
     "tokens:check": "node .github/scripts/tokens-check.mjs",
     "docs:lint": "pnpm exec markdownlint-cli2 README.md docs/**/*.md",
     "docs:links": "pnpm exec remark --color README.md docs --use remark-validate-links --quiet --frail",

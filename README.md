@@ -1,17 +1,19 @@
 # Fantasy Oscars
 
-Starter monorepo for the Fantasy Oscars app.
+Fantasy league drafting for the Academy Awards. Users create leagues and seasons, run live real-time drafts of nominees, and follow scoring; admins manage ceremonies, nominees and scoring.
 
 ## Structure
 
 - `apps/web/` — Vite + React + TypeScript frontend
 - `apps/api/` — Node + TypeScript + Express API
 - `packages/shared/` — shared types/utilities (no runtime deps)
-- `infra/` — local infrastructure (e.g. Postgres via Docker Compose)
+- `database/` — numbered SQL migrations and fixtures
+- `tooling/infra/` — local infrastructure (Postgres via Docker Compose)
+- `docs/` — architecture, ADRs, runbooks, standards
 
 ## Prereqs
 
-- Node 20+ (enable Corepack: `corepack enable`)
+- Node 24 (see `.nvmrc`; enable Corepack: `corepack enable`)
 - pnpm 9 (handled by Corepack)
 - Docker (for DB-backed tests)
 
@@ -47,6 +49,8 @@ pnpm run dev:local
 - Run the full suite (matches CI): `pnpm run ci`
 - Run non-Docker checks only: `pnpm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`)
 - Requires Docker for database-backed tests (Testcontainers launches an isolated Postgres)
+
+Remove build outputs (`dist/` folders and `*.tsbuildinfo`): `pnpm run clean`
 
 ## Documentation
 

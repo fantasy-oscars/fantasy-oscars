@@ -14,7 +14,7 @@ pnpm run dev:local
 
 ## Prereqs
 
-- Node 20+
+- Node 24
 - Enable Corepack: `corepack enable`
 - Docker running (for integration tests)
 
