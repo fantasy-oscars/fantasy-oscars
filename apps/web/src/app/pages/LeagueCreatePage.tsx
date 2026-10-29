@@ -4,7 +4,8 @@ import { LeagueCreateScreen } from "@/features/leagues/screens/LeagueCreateScree
 import { leaguePath } from "@/lib/routes";
 
 export function LeagueCreatePage() {
-  const { creating, error, create } = useLeagueCreateOrchestration();
+  const { creating, error, fieldErrors, onFormInput, create } =
+    useLeagueCreateOrchestration();
   const navigate = useNavigate();
 
   async function onCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -19,5 +20,13 @@ export function LeagueCreatePage() {
     }
   }
 
-  return <LeagueCreateScreen creating={creating} error={error} onCreate={onCreate} />;
+  return (
+    <LeagueCreateScreen
+      creating={creating}
+      error={error}
+      fieldErrors={fieldErrors}
+      onInput={onFormInput}
+      onCreate={onCreate}
+    />
+  );
 }

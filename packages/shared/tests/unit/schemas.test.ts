@@ -20,9 +20,11 @@ describe("auth schemas", () => {
 
   it("login distinguishes missing from wrongly typed", () => {
     const missing = loginBodySchema.safeParse({ username: "alice" });
-    expect(missing.error?.issues[0]?.message).toBe("Missing required fields");
+    expect(missing.error?.issues[0]?.message).toBe("Please fill in all required fields");
     const typed = loginBodySchema.safeParse({ username: 5, password: "x" });
-    expect(typed.error?.issues[0]?.message).toBe("Invalid field types");
+    expect(typed.error?.issues[0]?.message).toBe(
+      "Please check your entries and try again"
+    );
   });
 
   it("login applies the shared username rules but lets blank names through", () => {
@@ -62,9 +64,9 @@ describe("league and season schemas", () => {
   it("league name: falsy is missing, blank is invalid, other values are stringified", () => {
     const msg = (body: unknown) =>
       leagueCreateBodySchema.safeParse(body).error?.issues[0]?.message;
-    expect(msg({})).toBe("Missing required fields");
-    expect(msg({ name: "" })).toBe("Missing required fields");
-    expect(msg({ name: "  " })).toBe("Invalid name");
+    expect(msg({})).toBe("Please fill in all required fields");
+    expect(msg({ name: "" })).toBe("Please fill in all required fields");
+    expect(msg({ name: "  " })).toBe("League name is required");
     expect(leagueCreateBodySchema.parse({ name: " Oscars " }).name).toBe("Oscars");
   });
 
@@ -78,7 +80,7 @@ describe("league and season schemas", () => {
     expect(
       seasonCreateBodySchema.safeParse({ remainder_strategy: "x" }).error?.issues[0]
         ?.message
-    ).toBe("Invalid remainder_strategy");
+    ).toBe("Choose a valid remainder strategy");
     expect(seasonCreateBodySchema.safeParse({ pick_timer_seconds: -1 }).success).toBe(
       false
     );

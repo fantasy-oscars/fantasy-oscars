@@ -26,7 +26,7 @@ export function buildSeasonSettingsScoringHandler(client: DbClient) {
   ) => {
     try {
       const { id: seasonId } = parseParams(idParam, req.params, {
-        message: "Invalid season id"
+        message: "That link doesn't look right"
       });
       const actorId = Number(req.auth?.sub);
       if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");

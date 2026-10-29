@@ -22,7 +22,7 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { id: leagueId } = parseParams(idParam, req.params, {
-          message: "Invalid league id"
+          message: "That link doesn't look right"
         });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");

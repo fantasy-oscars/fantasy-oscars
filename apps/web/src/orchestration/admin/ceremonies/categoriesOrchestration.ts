@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
+import { useFieldErrors } from "../../useFieldErrors";
 import type { CeremonyOption } from "./types";
 import { fetchAdminCeremonies, sortCeremonies } from "./fetchCeremonies";
 import type { CategoryRow, FamilyRow, IconRow } from "../ceremonyCategories/types";
@@ -15,6 +16,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
 
   const [ceremonyStatus, setCeremonyStatus] = useState<string>("DRAFT");
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -249,6 +252,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
 
     setWorking(true);
     setStatus(null);
+    resetFieldErrors();
     const res = await fetchJson<{ family: FamilyRow }>("/admin/category-families", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -262,6 +266,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     });
     setWorking(false);
     if (!res.ok) {
+      applyFailure(res, { icon: "icon_id" });
       setStatus({ ok: false, message: res.error ?? "Create failed" });
       return false;
     }
@@ -317,7 +322,7 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
       await load();
     }
     return true;
-  }, [canEdit, ceremonyId, load, newFamily]);
+  }, [canEdit, ceremonyId, load, newFamily, applyFailure, resetFieldErrors]);
 
   const saveTemplateEdits = useCallback(
     async (next: {
@@ -501,6 +506,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     setSelectedFamilyId,
     newFamily,
     setNewFamily,
+    newFamilyErrors: fieldErrors.errors,
+    clearNewFamilyError: fieldErrors.clear,
     cloneFromId,
     setCloneFromId,
     tab,

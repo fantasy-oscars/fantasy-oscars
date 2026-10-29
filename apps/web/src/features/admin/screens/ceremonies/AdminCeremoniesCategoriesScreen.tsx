@@ -249,6 +249,8 @@ export function AdminCeremoniesCategoriesScreen(props: {
           iconCodes={o.iconCodes}
           value={o.newFamily}
           onChange={o.setNewFamily}
+          fieldErrors={o.newFamilyErrors}
+          onEditField={o.clearNewFamilyError}
           onCancel={o.closeNewTemplate}
           onSubmit={async () => {
             const ok = await o.actions.createFamily();

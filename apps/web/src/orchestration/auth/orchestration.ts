@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useFieldErrors } from "../useFieldErrors";
 import type { ApiResult, FieldErrors } from "../../lib/types";
 import { getRequiredFieldErrors } from "../../decisions/forms";
 import {
@@ -34,7 +35,7 @@ type RegisterFn = (input: {
 
 export function useLoginOrchestration(deps: { login: LoginFn }) {
   const { login } = deps;
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const { errors, setErrors, onFormInput } = useFieldErrors();
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -73,15 +74,15 @@ export function useLoginOrchestration(deps: { login: LoginFn }) {
       setResult({ ok: true, message: "Logged in" });
       return { ok: true as const };
     },
-    [login]
+    [login, setErrors]
   );
 
-  return { errors, result, loading, onSubmit, setResult };
+  return { errors, result, loading, onSubmit, onInput: onFormInput, setResult };
 }
 
 export function useRegisterOrchestration(deps: { register: RegisterFn }) {
   const { register } = deps;
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const { errors, setErrors, onFormInput } = useFieldErrors();
   const [result, setResult] = useState<ApiResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -135,8 +136,8 @@ export function useRegisterOrchestration(deps: { register: RegisterFn }) {
       setResult({ ok: true, message: "Account created" });
       return { ok: true as const };
     },
-    [register]
+    [register, setErrors]
   );
 
-  return { errors, result, loading, onSubmit, setResult };
+  return { errors, result, loading, onSubmit, onInput: onFormInput, setResult };
 }

@@ -28,7 +28,7 @@ export function registerLeagueMembersDeleteMemberRoute(args: {
         const { id: leagueId, userId: targetUserId } = parseParams(
           idAndUserIdParams,
           req.params,
-          { message: "Invalid ids", fields: ["id", "userId"] }
+          { message: "That link doesn't look right", fields: ["id", "userId"] }
         );
         const actorId = Number(req.auth?.sub);
         const result = await runInTransaction(client as Pool, async (tx) => {

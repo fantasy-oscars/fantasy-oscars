@@ -33,7 +33,7 @@ export function registerSeasonInvitesAcceptRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { inviteId } = parseParams(inviteIdParam, req.params, {
-          message: "Invalid invite id"
+          message: "That link doesn't look right"
         });
         const userId = Number(req.auth?.sub);
         if (!userId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");

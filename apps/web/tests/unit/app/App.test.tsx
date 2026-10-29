@@ -117,7 +117,7 @@ describe("<App /> shell + routing", () => {
             Promise.resolve({
               error: {
                 code: "VALIDATION_ERROR",
-                message: "Invalid field values",
+                message: "Some of the details you entered are not valid",
                 details: { fields: ["username", "email"] }
               }
             })

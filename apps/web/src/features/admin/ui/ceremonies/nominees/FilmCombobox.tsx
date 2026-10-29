@@ -6,6 +6,7 @@ import { fetchJson } from "@/lib/api";
 
 export function FilmCombobox(props: {
   label: string;
+  error?: string;
   value: string;
   onChange: (v: string) => void;
   onCreateUnlinked: (title: string) => void;
@@ -29,6 +30,7 @@ export function FilmCombobox(props: {
 }) {
   const {
     label,
+    error,
     value,
     onChange,
     onCreateUnlinked,
@@ -223,6 +225,7 @@ export function FilmCombobox(props: {
       <Combobox.Target>
         <InputBase
           label={label}
+          error={error}
           component="input"
           value={value}
           onChange={(e) => {

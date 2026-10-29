@@ -63,6 +63,7 @@ export function SeasonParticipantsModal(props: {
   onInviteAllLeagueMembers: () => void | Promise<void>;
 
   placeholderLabel: string;
+  placeholderLabelError?: string;
   onChangePlaceholderLabel: (next: string) => void;
   onCreatePlaceholderInvite: () => void | Promise<void>;
 
@@ -91,6 +92,7 @@ export function SeasonParticipantsModal(props: {
     availableLeagueMemberCount,
     onInviteAllLeagueMembers,
     placeholderLabel,
+    placeholderLabelError,
     onChangePlaceholderLabel,
     onCreatePlaceholderInvite,
     invites,
@@ -145,6 +147,7 @@ export function SeasonParticipantsModal(props: {
               <TextInput
                 label="Placeholder invite label"
                 name="label"
+                error={placeholderLabelError}
                 value={placeholderLabel}
                 onChange={(e) => onChangePlaceholderLabel(e.currentTarget.value)}
                 disabled={working || locked}

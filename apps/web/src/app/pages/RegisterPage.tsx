@@ -5,7 +5,9 @@ import { RegisterScreen } from "@/features/auth/screens/RegisterScreen";
 
 export function RegisterPage() {
   const { register } = useAuthContext();
-  const { errors, result, loading, onSubmit } = useRegisterOrchestration({ register });
+  const { errors, result, loading, onSubmit, onInput } = useRegisterOrchestration({
+    register
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const search = new URLSearchParams(location.search);
@@ -29,6 +31,7 @@ export function RegisterPage() {
       result={result}
       loading={loading}
       loginHref={loginHref}
+      onInput={onInput}
       onSubmit={onSubmitAndRedirect}
     />
   );

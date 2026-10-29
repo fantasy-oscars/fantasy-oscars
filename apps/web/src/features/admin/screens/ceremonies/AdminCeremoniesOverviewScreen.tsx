@@ -14,7 +14,7 @@ import {
 } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
-import type { ApiResult } from "@/lib/types";
+import type { ApiResult, FieldErrors } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
@@ -46,6 +46,8 @@ export function AdminCeremoniesOverviewScreen(props: {
       warningHours: string;
     }>
   >;
+  fieldErrors: FieldErrors;
+  onEditField: (name: string) => void;
   readOnly: boolean;
   onSave: () => void;
 }) {
@@ -57,6 +59,8 @@ export function AdminCeremoniesOverviewScreen(props: {
     ceremony,
     form,
     setForm,
+    fieldErrors,
+    onEditField,
     readOnly,
     onSave
   } = props;
@@ -224,22 +228,26 @@ export function AdminCeremoniesOverviewScreen(props: {
             value={form.name}
             onChange={(e) => {
               const v = e.currentTarget.value;
+              onEditField("name");
               setForm((p) => ({ ...p, name: v }));
             }}
             onBlur={() => setTouched((p) => ({ ...p, name: true }))}
             disabled={readOnly}
-            error={showNameError ? "Name is required." : null}
+            error={showNameError ? "Name is required." : (fieldErrors.name ?? null)}
           />
           <TextInput
             label="Ceremony code"
             value={form.code}
             onChange={(e) => {
               const v = e.currentTarget.value;
+              onEditField("code");
               setForm((p) => ({ ...p, code: v }));
             }}
             onBlur={() => setTouched((p) => ({ ...p, code: true }))}
             disabled={readOnly}
-            error={showCodeError ? "Ceremony code is required." : null}
+            error={
+              showCodeError ? "Ceremony code is required." : (fieldErrors.code ?? null)
+            }
           />
           <TextInput
             label="Ceremony date & time"
@@ -247,9 +255,11 @@ export function AdminCeremoniesOverviewScreen(props: {
             value={form.startsAtLocal}
             onChange={(e) => {
               const v = e.currentTarget.value;
+              onEditField("startsAtLocal");
               setForm((p) => ({ ...p, startsAtLocal: v }));
             }}
             disabled={readOnly}
+            error={fieldErrors.startsAtLocal}
           />
           <TextInput
             label="Draft warning (hours)"
@@ -258,9 +268,11 @@ export function AdminCeremoniesOverviewScreen(props: {
             value={form.warningHours}
             onChange={(e) => {
               const v = e.currentTarget.value;
+              onEditField("warningHours");
               setForm((p) => ({ ...p, warningHours: v }));
             }}
             disabled={readOnly}
+            error={fieldErrors.warningHours}
           />
         </Box>
 

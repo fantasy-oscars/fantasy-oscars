@@ -24,7 +24,7 @@ export function registerSeasonMembersRemoveRoute(args: {
         const { id: seasonId, userId: targetUserId } = parseParams(
           idAndUserIdParams,
           req.params,
-          { message: "Invalid ids", fields: ["id", "userId"] }
+          { message: "That link doesn't look right", fields: ["id", "userId"] }
         );
         const actorId = Number(req.auth?.sub);
         if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");

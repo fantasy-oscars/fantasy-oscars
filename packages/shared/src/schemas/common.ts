@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Positive integer carried as a decimal string (path params). */
-export const positiveIdString = (message = "Invalid id") =>
+export const positiveIdString = (message = "That link doesn't look right") =>
   z
     .string(message)
     .regex(/^\d+$/, message)
@@ -9,7 +9,7 @@ export const positiveIdString = (message = "Invalid id") =>
     .pipe(z.number(message).int(message).positive(message).max(Number.MAX_SAFE_INTEGER));
 
 /** Positive integer sent in a body as a number or a numeric string. */
-export const positiveIdValue = (message = "Invalid id") =>
+export const positiveIdValue = (message = "Please check your entries and try again") =>
   z
     .union([z.number(), z.string().regex(/^\d+$/)], message)
     .transform(Number)
@@ -34,7 +34,7 @@ export const idAndInviteIdParams = z.object({
 export const inviteIdParam = z.object({ inviteId: positiveIdString() });
 
 /** A body carrying only `user_id`. */
-export const userIdBodySchema = z.object({ user_id: positiveIdValue() });
+export const userIdBodySchema = z.object({ user_id: positiveIdValue("Choose a member") });
 
 /**
  * Optional number sent as a number or numeric string. Null and absent become

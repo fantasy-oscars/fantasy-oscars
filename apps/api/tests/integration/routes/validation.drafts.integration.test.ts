@@ -77,14 +77,16 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
         ["post", "/drafts/1.5/start"]
       ];
       for (const [method, path] of routes) {
-        expectValidation(await call(method, path, {}), "Invalid draft id", ["id"]);
+        expectValidation(await call(method, path, {}), "That link doesn't look right", [
+          "id"
+        ]);
       }
     });
 
     it("rejects invalid create payloads", async () => {
       // The season is validated after the league lookup, so the league must exist.
       const league = await insertLeague(db.pool);
-      const missingLeague = "Missing or invalid league_id";
+      const missingLeague = "Something went wrong. Please reload and try again.";
       expectValidation(await call("post", "/drafts", {}), missingLeague, ["league_id"]);
       expectValidation(
         await call("post", "/drafts", { league_id: "x", season_id: 1 }),
@@ -96,7 +98,7 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
         missingLeague,
         ["league_id"]
       );
-      const orderMessage = "Invalid draft_order_type (MVP supports SNAKE only)";
+      const orderMessage = "Only snake drafts are supported right now";
       expectValidation(
         await call("post", "/drafts", {
           league_id: 1,
@@ -121,57 +123,59 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
           season_id: 1,
           pick_timer_seconds: -1
         }),
-        "Invalid pick_timer_seconds",
+        "Pick timer must be zero or a positive number of seconds",
         ["pick_timer_seconds"]
       );
       expectValidation(
         await call("post", "/drafts", { league_id: league.id, season_id: "abc" }),
-        "Invalid season_id",
+        "Something went wrong. Please reload and try again.",
         ["season_id"]
       );
       expectValidation(
         await call("post", "/drafts", { league_id: league.id, season_id: 0 }),
-        "Invalid season_id",
+        "Something went wrong. Please reload and try again.",
         ["season_id"]
       );
       expectValidation(
         await call("post", "/drafts", { league_id: league.id }),
-        "Missing season_id",
+        "Something went wrong. Please reload and try again.",
         ["season_id"]
       );
     });
 
     it("rejects invalid pick payloads", async () => {
       const pick = (body: unknown) => call("post", "/drafts/1/picks", body);
-      expectValidation(await pick({ request_id: "r" }), "Missing nomination_id", [
+      expectValidation(await pick({ request_id: "r" }), "Choose a nominee", [
         "nomination_id"
       ]);
       expectValidation(
         await pick({ nomination_id: 0, request_id: "r" }),
-        "Missing nomination_id",
+        "Choose a nominee",
         ["nomination_id"]
       );
       expectValidation(
         await pick({ nomination_id: "x", request_id: "r" }),
-        "Invalid nomination_id",
+        "Choose a nominee",
         ["nomination_id"]
       );
       expectValidation(
         await pick({ nomination_id: 1.5, request_id: "r" }),
-        "Invalid nomination_id",
+        "Choose a nominee",
         ["nomination_id"]
       );
-      expectValidation(await pick({ nomination_id: 1 }), "Missing request_id", [
-        "request_id"
-      ]);
+      expectValidation(
+        await pick({ nomination_id: 1 }),
+        "Something went wrong. Please reload and try again.",
+        ["request_id"]
+      );
       expectValidation(
         await pick({ nomination_id: 1, request_id: "   " }),
-        "Missing request_id",
+        "Something went wrong. Please reload and try again.",
         ["request_id"]
       );
       expectValidation(
         await pick({ nomination_id: 1, request_id: "x".repeat(129) }),
-        "request_id too long",
+        "Something went wrong. Please reload and try again.",
         ["request_id"]
       );
     });
@@ -179,12 +183,12 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
     it("rejects invalid override-lock payloads", async () => {
       expectValidation(
         await call("post", "/drafts/1/override-lock", {}),
-        "Invalid override flag",
+        "Override must be switched on or off",
         ["allow"]
       );
       expectValidation(
         await call("post", "/drafts/1/override-lock", { allow: "yes" }),
-        "Invalid override flag",
+        "Override must be switched on or off",
         ["allow"]
       );
     });
@@ -192,12 +196,12 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
     it("rejects invalid results payloads", async () => {
       expectValidation(
         await call("post", "/drafts/1/results", {}),
-        "Missing results array",
+        "No results were provided",
         ["results"]
       );
       expectValidation(
         await call("post", "/drafts/1/results", { results: "nope" }),
-        "Missing results array",
+        "No results were provided",
         ["results"]
       );
       for (const entry of [
@@ -208,7 +212,7 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
       ]) {
         expectValidation(
           await call("post", "/drafts/1/results", { results: [entry] }),
-          "Invalid results payload",
+          "Some results entries are incomplete or not valid",
           ["results"]
         );
       }
@@ -216,13 +220,15 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
 
     it("rejects invalid autodraft payloads", async () => {
       const autodraft = (body: unknown) => call("post", "/drafts/1/autodraft", body);
-      expectValidation(await autodraft({ strategy: "bogus" }), "Invalid strategy", [
-        "strategy"
-      ]);
+      expectValidation(
+        await autodraft({ strategy: "bogus" }),
+        "Choose a valid autodraft strategy",
+        ["strategy"]
+      );
       for (const plan_id of ["abc", -4, 1.5]) {
         expectValidation(
           await autodraft({ strategy: "PLAN", plan_id }),
-          "Invalid plan_id",
+          "Choose a valid draft plan",
           ["plan_id"]
         );
       }
@@ -259,20 +265,22 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
     it("rejects bad ceremony and plan ids", async () => {
       expectValidation(
         await call("get", "/draft-plans/ceremonies/abc"),
-        "Invalid ceremony id",
+        "That link doesn't look right",
         ["ceremonyId"]
       );
       expectValidation(
         await call("post", "/draft-plans/ceremonies/0", { name: "x" }),
-        "Invalid ceremony id",
+        "That link doesn't look right",
         ["ceremonyId"]
       );
-      expectValidation(await call("get", "/draft-plans/abc"), "Invalid plan id", [
-        "planId"
-      ]);
+      expectValidation(
+        await call("get", "/draft-plans/abc"),
+        "That link doesn't look right",
+        ["planId"]
+      );
       expectValidation(
         await call("put", "/draft-plans/-1/items", { nomination_ids: [] }),
-        "Invalid plan id",
+        "That link doesn't look right",
         ["planId"]
       );
     });
@@ -297,27 +305,25 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
 
     it("rejects invalid item orderings", async () => {
       const items = (body: unknown) => call("put", "/draft-plans/1/items", body);
-      expectValidation(await items({}), "nomination_ids must be an array", [
-        "nomination_ids"
-      ]);
+      expectValidation(await items({}), "Nominees must be a list", ["nomination_ids"]);
       expectValidation(
         await items({ nomination_ids: "1,2" }),
-        "nomination_ids must be an array",
+        "Nominees must be a list",
         ["nomination_ids"]
       );
       expectValidation(
         await items({ nomination_ids: [1, "x"] }),
-        "Invalid nomination_ids",
+        "Some of the selected nominees are not valid",
         ["nomination_ids"]
       );
       expectValidation(
         await items({ nomination_ids: [1, 0] }),
-        "Invalid nomination_ids",
+        "Some of the selected nominees are not valid",
         ["nomination_ids"]
       );
       expectValidation(
         await items({ nomination_ids: [1, 2, 1] }),
-        "Duplicate nomination_ids",
+        "Each nominee can only be listed once",
         ["nomination_ids"]
       );
     });
@@ -333,10 +339,16 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
 
   describe("ceremonies and content", () => {
     it("rejects bad ceremony ids", async () => {
-      expectValidation(await call("get", "/ceremonies/abc"), "Invalid ceremony id", [
-        "id"
-      ]);
-      expectValidation(await call("get", "/ceremonies/0"), "Invalid ceremony id", ["id"]);
+      expectValidation(
+        await call("get", "/ceremonies/abc"),
+        "That link doesn't look right",
+        ["id"]
+      );
+      expectValidation(
+        await call("get", "/ceremonies/0"),
+        "That link doesn't look right",
+        ["id"]
+      );
     });
 
     it("rejects the reserved banner key on dynamic content", async () => {

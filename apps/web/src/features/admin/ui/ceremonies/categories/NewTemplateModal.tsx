@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Box, Button, Checkbox, Group, Select, Stack, Text, TextInput, Title } from "@ui";
 import { StandardCard } from "@/primitives";
+import type { FieldErrors } from "@/lib/types";
 
 export type NewTemplateDraft = {
   code: string;
@@ -17,11 +18,22 @@ export function NewTemplateModal(props: {
   iconCodes: string[];
   value: NewTemplateDraft;
   onChange: Dispatch<SetStateAction<NewTemplateDraft>>;
+  fieldErrors: FieldErrors;
+  onEditField: (name: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
-  const { working, canAddToCeremony, iconCodes, value, onChange, onCancel, onSubmit } =
-    props;
+  const {
+    working,
+    canAddToCeremony,
+    iconCodes,
+    value,
+    onChange,
+    fieldErrors,
+    onEditField,
+    onCancel,
+    onSubmit
+  } = props;
   return (
     <Box className="modal-backdrop" role="presentation">
       <StandardCard
@@ -38,8 +50,10 @@ export function NewTemplateModal(props: {
         <Stack className="stack-sm" gap="sm" mt="sm">
           <TextInput
             label="Code"
+            error={fieldErrors.code}
             value={value.code}
             onChange={(e) => {
+              onEditField("code");
               const v = e.currentTarget.value;
               onChange((p) => ({ ...p, code: v }));
             }}
@@ -48,8 +62,10 @@ export function NewTemplateModal(props: {
           />
           <TextInput
             label="Name"
+            error={fieldErrors.name}
             value={value.name}
             onChange={(e) => {
+              onEditField("name");
               const v = e.currentTarget.value;
               onChange((p) => ({ ...p, name: v }));
             }}
@@ -58,13 +74,15 @@ export function NewTemplateModal(props: {
           />
           <Select
             label="Default nominee type"
+            error={fieldErrors.default_unit_kind}
             value={value.default_unit_kind}
-            onChange={(v) =>
+            onChange={(v) => {
+              onEditField("default_unit_kind");
               onChange((p) => ({
                 ...p,
                 default_unit_kind: (v ?? "FILM") as NewTemplateDraft["default_unit_kind"]
-              }))
-            }
+              }));
+            }}
             disabled={working}
             data={[
               { value: "FILM", label: "Film" },
@@ -75,20 +93,26 @@ export function NewTemplateModal(props: {
           <Select
             label="Icon"
             searchable
+            error={fieldErrors.icon_id}
             value={value.icon_id}
-            onChange={(v) => onChange((p) => ({ ...p, icon_id: v ?? "trophy" }))}
+            onChange={(v) => {
+              onEditField("icon_id");
+              onChange((p) => ({ ...p, icon_id: v ?? "trophy" }));
+            }}
             data={iconCodes.map((code) => ({ value: code, label: code }))}
             disabled={working}
           />
           <Select
             label="Icon variant"
+            error={fieldErrors.icon_variant}
             value={value.icon_variant}
-            onChange={(v) =>
+            onChange={(v) => {
+              onEditField("icon_variant");
               onChange((p) => ({
                 ...p,
                 icon_variant: (v ?? "default") as "default" | "inverted"
-              }))
-            }
+              }));
+            }}
             disabled={working}
             data={[
               { value: "default", label: "Default" },

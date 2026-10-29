@@ -263,6 +263,7 @@ export function SeasonScreen(props: {
             availableLeagueMemberCount={s.availableLeagueMembers.length}
             onInviteAllLeagueMembers={() => void s.inviteAllLeagueMembers()}
             placeholderLabel={s.placeholderLabel}
+            placeholderLabelError={s.inviteFieldErrors.label}
             onChangePlaceholderLabel={(next) => s.setPlaceholderLabel(next)}
             onCreatePlaceholderInvite={() => void s.createPlaceholderInvite()}
             invites={s.invites}
@@ -282,6 +283,8 @@ export function SeasonScreen(props: {
             draftDefaults={settings.draftDefaults}
             settingsDraft={settings.settingsDraft}
             setSettingsDraft={settings.setSettingsDraft}
+            fieldErrors={s.settingsFieldErrors}
+            onEditField={s.clearSettingsFieldError}
             onOpenWeights={weights.openWeightsModal}
             onSave={settings.saveDraftSettings}
           />
@@ -292,15 +295,18 @@ export function SeasonScreen(props: {
             locked={Boolean(isLocked)}
             canEdit={Boolean(s.canEdit)}
             working={Boolean(s.working)}
-            error={weights.weightsError}
+            error={weights.weightsError ?? s.settingsFieldErrors.category_weights ?? null}
             categories={weights.weightsCats}
             weights={weights.weightsDraft}
-            setWeights={weights.setWeightsDraft}
+            setWeights={(next) => {
+              s.clearSettingsFieldError("category_weights");
+              weights.setWeightsDraft(next);
+            }}
             onSave={async (nextWeights) => {
-              await s.updateScoring("category_weighted", {
+              const saved = await s.updateScoring("category_weighted", {
                 categoryWeights: nextWeights
               });
-              weights.setWeightsOpen(false);
+              if (saved) weights.setWeightsOpen(false);
             }}
           />
 

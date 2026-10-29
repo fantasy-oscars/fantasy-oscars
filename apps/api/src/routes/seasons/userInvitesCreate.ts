@@ -28,7 +28,7 @@ export function registerSeasonUserInvitesCreateRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { id: seasonId } = parseParams(idParam, req.params, {
-          message: "Invalid payload"
+          message: "Please check your entries and try again"
         });
         const actorId = Number(req.auth?.sub);
         if (!actorId) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");

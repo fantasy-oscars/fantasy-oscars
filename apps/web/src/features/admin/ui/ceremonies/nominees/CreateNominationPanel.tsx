@@ -1,5 +1,5 @@
 import { Box, Button, Group, Select, Stack, Text, TextInput } from "@ui";
-import type { ApiResult } from "@/lib/types";
+import type { ApiResult, FieldErrors } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import { FormStatus } from "@/shared/forms";
 import { FilmCombobox } from "./FilmCombobox";
@@ -43,6 +43,8 @@ export function CreateNominationPanel(props: {
   onRemoveSelectedContributor: (key: string) => void;
   manualLoading: boolean;
   manualState: ApiResult | null;
+  fieldErrors: FieldErrors;
+  onEditField: (name: string) => void;
   onCreateNomination: () => void;
   onReset: () => void;
   checkIconChar: string;
@@ -58,8 +60,12 @@ export function CreateNominationPanel(props: {
               label="Category"
               placeholder="Select…"
               searchable
+              error={props.fieldErrors.category}
               value={props.selectedCategoryId ? String(props.selectedCategoryId) : null}
-              onChange={(v) => props.setSelectedCategoryId(v ? Number(v) : null)}
+              onChange={(v) => {
+                props.onEditField("category");
+                props.setSelectedCategoryId(v ? Number(v) : null);
+              }}
               data={props.categories.map((c) => ({
                 value: String(c.id),
                 label: c.label
@@ -69,8 +75,12 @@ export function CreateNominationPanel(props: {
           <Box className="fo-flexField2Lg">
             <FilmCombobox
               label="Film"
+              error={props.fieldErrors.film}
               value={props.filmInput}
-              onChange={props.onFilmChange}
+              onChange={(next) => {
+                props.onEditField("film");
+                props.onFilmChange(next);
+              }}
               onCreateUnlinked={props.onCreateUnlinkedFilm}
               onSelectTmdbCandidate={props.onSelectTmdbFilmCandidate}
               onSelectFilm={props.onFilmPick}
@@ -82,8 +92,12 @@ export function CreateNominationPanel(props: {
         {props.unitKind === "SONG" ? (
           <TextInput
             label="Song title"
+            error={props.fieldErrors.songTitle}
             value={props.songTitle}
-            onChange={(e) => props.setSongTitle(e.currentTarget.value)}
+            onChange={(e) => {
+              props.onEditField("songTitle");
+              props.setSongTitle(e.currentTarget.value);
+            }}
           />
         ) : null}
 

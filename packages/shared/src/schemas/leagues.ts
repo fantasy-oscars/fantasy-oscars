@@ -5,7 +5,7 @@ export const leagueCreateBodySchema = z.object({
   name: z.preprocess(
     // Falsy counts as missing; anything else is stringified and trimmed.
     (v) => (v ? String(v).trim() : undefined),
-    z.string("Missing required fields").min(1, "Invalid name")
+    z.string("Please fill in all required fields").min(1, "League name is required")
   )
 });
 

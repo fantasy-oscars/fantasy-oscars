@@ -9,6 +9,7 @@ import {
   Text,
   type ComboboxStore
 } from "@ui";
+import type { FieldErrors } from "@/lib/types";
 import type { TmdbFilmSearchResult } from "@/orchestration/admin/filmsIndex/orchestration";
 import "@/primitives/baseline.css";
 
@@ -19,6 +20,7 @@ export type TmdbLinkEditorController = {
   searchLoading: boolean;
   searchResults: TmdbFilmSearchResult[];
   tmdbInput: string;
+  fieldErrors: FieldErrors;
   close: () => void;
   changeSearchQuery: (value: string) => void;
   pickResult: (value: string) => void;
@@ -56,6 +58,7 @@ export function TmdbLinkModal(props: {
           <Combobox.Target>
             <InputBase
               label="TMDB search or id"
+              error={editor.fieldErrors.search}
               component="input"
               placeholder="Search TMDB films or type id"
               value={editor.searchQuery}

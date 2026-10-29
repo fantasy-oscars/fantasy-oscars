@@ -160,6 +160,8 @@ export function AdminCeremoniesNomineesScreen(props: {
         onRemoveSelectedContributor={removeSelectedContributor}
         manualLoading={manualLoading}
         manualState={manualState}
+        fieldErrors={o.fieldErrors}
+        onEditField={o.clearFieldError}
         onCreateNomination={() => void createNomination()}
         onReset={resetManual}
         checkIconChar={giconCheck}

@@ -6,8 +6,8 @@ import {
   validateUsername
 } from "../auth/validation.js";
 
-const MISSING = "Missing required fields";
-const BAD_TYPE = "Invalid field types";
+const MISSING = "Please fill in all required fields";
+const BAD_TYPE = "Please check your entries and try again";
 
 // A falsy value counts as missing; anything else of the wrong type is a type error.
 const requiredString = {
@@ -64,7 +64,7 @@ export const registerBodySchema = z.preprocess(
       if (fields.length) {
         ctx.addIssue({
           code: "custom",
-          message: "Invalid field values",
+          message: "Some of the details you entered are not valid",
           params: { fields }
         });
       }

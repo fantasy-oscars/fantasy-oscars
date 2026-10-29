@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
+import { useFieldErrors } from "../../useFieldErrors";
 import {
   isoToLocalInput,
   localInputToIso
@@ -11,6 +12,12 @@ import type {
   CeremonyOverviewFormState,
   CeremonyStats
 } from "./overview/types";
+
+/** API field -> form input, where the two differ. */
+const CEREMONY_FIELD_INPUTS = {
+  starts_at: "startsAtLocal",
+  draft_warning_hours: "warningHours"
+} as const;
 
 export function useAdminCeremonyOverviewOrchestration(args: {
   ceremonyId: number | null;
@@ -22,6 +29,8 @@ export function useAdminCeremonyOverviewOrchestration(args: {
   const [publishing, setPublishing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
 
   const [ceremony, setCeremony] = useState<CeremonyDetail | null>(null);
   const [stats, setStats] = useState<CeremonyStats | null>(null);
@@ -83,6 +92,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     if (!ceremony) return;
     setSaving(true);
     setStatus(null);
+    resetFieldErrors();
     const res = await fetchJson<{ ceremony: CeremonyDetail }>(
       `/admin/ceremonies/${ceremony.id}`,
       {
@@ -98,6 +108,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     );
     setSaving(false);
     if (!res.ok) {
+      applyFailure(res, CEREMONY_FIELD_INPUTS);
       setStatus({ ok: false, message: res.error ?? "Save failed" });
       return;
     }
@@ -112,7 +123,16 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     });
     setStatus(null);
     await load();
-  }, [ceremony, form.code, form.name, form.startsAtLocal, form.warningHours, load]);
+  }, [
+    ceremony,
+    form.code,
+    form.name,
+    form.startsAtLocal,
+    form.warningHours,
+    load,
+    applyFailure,
+    resetFieldErrors
+  ]);
 
   const publish = useCallback(async () => {
     if (!ceremony) return;
@@ -153,6 +173,8 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     stats,
     form,
     setForm,
+    fieldErrors: fieldErrors.errors,
+    clearFieldError: fieldErrors.clear,
     completeness,
     readOnly,
     actions: { save, publish }

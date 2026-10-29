@@ -25,7 +25,7 @@ export function registerLeagueMembersDeleteLeagueRoute(args: {
     async (req: AuthedRequest, res, next) => {
       try {
         const { id: leagueId } = parseParams(idParam, req.params, {
-          message: "Invalid ids"
+          message: "That link doesn't look right"
         });
         const actorId = Number(req.auth?.sub);
 

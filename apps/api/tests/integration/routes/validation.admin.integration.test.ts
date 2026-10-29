@@ -66,93 +66,163 @@ describe("request validation: admin routes", () => {
   describe("path ids", () => {
     it("rejects bad ids on every admin route that takes one", async () => {
       const cases: Array<[Method, string, string, string]> = [
-        ["get", "/admin/ceremonies/abc", "Invalid ceremony id", "id"],
-        ["patch", "/admin/ceremonies/0", "Invalid ceremony id", "id"],
-        ["delete", "/admin/ceremonies/-1", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/1.5/delete-preview", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/abc/draft-board", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/abc/lock", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/lock", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/publish", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/archive", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/name", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/abc/categories", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/categories", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/categories/clone", "Invalid ceremony id", "id"],
-        ["put", "/admin/ceremonies/abc/categories/reorder", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/abc/nominations", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/nominations", "Invalid ceremony id", "id"],
-        ["put", "/admin/ceremonies/abc/nominations/reorder", "Invalid ceremony id", "id"],
-        ["get", "/admin/ceremonies/abc/winners", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/finalize-winners", "Invalid ceremony id", "id"],
-        ["post", "/admin/ceremonies/abc/nominees/upload", "Invalid ceremony id", "id"],
-        ["patch", "/admin/category-editions/abc", "Invalid category edition id", "id"],
-        ["delete", "/admin/category-editions/abc", "Invalid category edition id", "id"],
-        ["patch", "/admin/category-families/abc", "Invalid category id", "id"],
-        ["delete", "/admin/category-families/abc", "Invalid category template id", "id"],
-        ["delete", "/admin/nominations/abc", "Invalid nomination id", "id"],
-        ["post", "/admin/nominations/abc/change", "Invalid nomination id", "id"],
-        ["post", "/admin/nominations/abc/contributors", "Invalid nomination id", "id"],
+        ["get", "/admin/ceremonies/abc", "That link doesn't look right", "id"],
+        ["patch", "/admin/ceremonies/0", "That link doesn't look right", "id"],
+        ["delete", "/admin/ceremonies/-1", "That link doesn't look right", "id"],
+        [
+          "get",
+          "/admin/ceremonies/1.5/delete-preview",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "get",
+          "/admin/ceremonies/abc/draft-board",
+          "That link doesn't look right",
+          "id"
+        ],
+        ["get", "/admin/ceremonies/abc/lock", "That link doesn't look right", "id"],
+        ["post", "/admin/ceremonies/abc/lock", "That link doesn't look right", "id"],
+        ["post", "/admin/ceremonies/abc/publish", "That link doesn't look right", "id"],
+        ["post", "/admin/ceremonies/abc/archive", "That link doesn't look right", "id"],
+        ["post", "/admin/ceremonies/abc/name", "That link doesn't look right", "id"],
+        ["get", "/admin/ceremonies/abc/categories", "That link doesn't look right", "id"],
+        [
+          "post",
+          "/admin/ceremonies/abc/categories",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "post",
+          "/admin/ceremonies/abc/categories/clone",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "put",
+          "/admin/ceremonies/abc/categories/reorder",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "get",
+          "/admin/ceremonies/abc/nominations",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "post",
+          "/admin/ceremonies/abc/nominations",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "put",
+          "/admin/ceremonies/abc/nominations/reorder",
+          "That link doesn't look right",
+          "id"
+        ],
+        ["get", "/admin/ceremonies/abc/winners", "That link doesn't look right", "id"],
+        [
+          "post",
+          "/admin/ceremonies/abc/finalize-winners",
+          "That link doesn't look right",
+          "id"
+        ],
+        [
+          "post",
+          "/admin/ceremonies/abc/nominees/upload",
+          "That link doesn't look right",
+          "id"
+        ],
+        ["patch", "/admin/category-editions/abc", "That link doesn't look right", "id"],
+        ["delete", "/admin/category-editions/abc", "That link doesn't look right", "id"],
+        ["patch", "/admin/category-families/abc", "That link doesn't look right", "id"],
+        ["delete", "/admin/category-families/abc", "That link doesn't look right", "id"],
+        ["delete", "/admin/nominations/abc", "That link doesn't look right", "id"],
+        ["post", "/admin/nominations/abc/change", "That link doesn't look right", "id"],
+        [
+          "post",
+          "/admin/nominations/abc/contributors",
+          "That link doesn't look right",
+          "id"
+        ],
         [
           "patch",
           "/admin/nominations/1/contributors/abc",
-          "Invalid contributor id",
+          "That link doesn't look right",
           "contributorId"
         ],
         [
           "delete",
           "/admin/nominations/abc/contributors/1",
-          "Invalid nomination id",
+          "That link doesn't look right",
           "id"
         ],
-        ["patch", "/admin/people/abc", "Invalid person id", "id"],
-        ["get", "/admin/users/abc", "Invalid user id", "id"],
-        ["patch", "/admin/users/abc", "Invalid user id", "id"],
-        ["get", "/admin/users/abc/delete-preview", "Invalid user id", "id"],
-        ["delete", "/admin/users/abc", "Invalid user id", "id"],
-        ["get", "/admin/seasons/abc/delete-preview", "Invalid season id", "id"],
-        ["delete", "/admin/seasons/abc", "Invalid season id", "id"],
-        ["get", "/admin/leagues/abc/delete-preview", "Invalid league id", "id"],
-        ["delete", "/admin/leagues/abc", "Invalid league id", "id"],
-        ["get", "/admin/films/abc/credits", "Invalid film id", "id"],
-        ["get", "/admin/films/abc/consolidated", "Invalid film id", "id"],
-        ["patch", "/admin/films/abc", "Invalid film id", "id"],
-        ["post", "/admin/films/abc/merge", "Invalid canonical film id", "canonicalId"],
+        ["patch", "/admin/people/abc", "That link doesn't look right", "id"],
+        ["get", "/admin/users/abc", "That link doesn't look right", "id"],
+        ["patch", "/admin/users/abc", "That link doesn't look right", "id"],
+        ["get", "/admin/users/abc/delete-preview", "That link doesn't look right", "id"],
+        ["delete", "/admin/users/abc", "That link doesn't look right", "id"],
+        [
+          "get",
+          "/admin/seasons/abc/delete-preview",
+          "That link doesn't look right",
+          "id"
+        ],
+        ["delete", "/admin/seasons/abc", "That link doesn't look right", "id"],
+        [
+          "get",
+          "/admin/leagues/abc/delete-preview",
+          "That link doesn't look right",
+          "id"
+        ],
+        ["delete", "/admin/leagues/abc", "That link doesn't look right", "id"],
+        ["get", "/admin/films/abc/credits", "That link doesn't look right", "id"],
+        ["get", "/admin/films/abc/consolidated", "That link doesn't look right", "id"],
+        ["patch", "/admin/films/abc", "That link doesn't look right", "id"],
+        ["post", "/admin/films/abc/merge", "That link doesn't look right", "canonicalId"],
         [
           "post",
           "/admin/films/abc/consolidated/1/decouple",
-          "Invalid canonical film id",
+          "That link doesn't look right",
           "canonicalId"
         ],
-        ["post", "/admin/films/1/consolidated/0/decouple", "Invalid film id", "filmId"],
+        [
+          "post",
+          "/admin/films/1/consolidated/0/decouple",
+          "That link doesn't look right",
+          "filmId"
+        ],
         [
           "get",
           "/admin/films/by-tmdb/abc",
-          "tmdbId must be a positive integer",
+          "TMDB ID must be a positive whole number",
           "tmdbId"
         ],
         [
           "patch",
           "/admin/content/dynamic/home_main/drafts/abc",
-          "Invalid draft id",
+          "That link doesn't look right",
           "id"
         ],
         [
           "post",
           "/admin/content/dynamic/home_main/drafts/abc/publish",
-          "Invalid draft id",
+          "That link doesn't look right",
           "id"
         ],
         [
           "delete",
           "/admin/content/dynamic/home_main/entries/abc",
-          "Invalid entry id",
+          "That link doesn't look right",
           "id"
         ],
         [
           "post",
           "/admin/content/dynamic/home_main/entries/abc/unpublish",
-          "Invalid entry id",
+          "That link doesn't look right",
           "id"
         ]
       ];
@@ -177,17 +247,17 @@ describe("request validation: admin routes", () => {
       expectValidation(await create({ code: "ok" }), "Name is required", ["name"]);
       expectValidation(
         await create({ code: "ok", name: "x", year: 1800 }),
-        "Invalid year",
+        "Enter a valid year",
         ["year"]
       );
       expectValidation(
         await create({ code: "ok", name: "x", year: "soon" }),
-        "Invalid year",
+        "Enter a valid year",
         ["year"]
       );
       expectValidation(
         await create({ code: "ok", name: "x", starts_at: "not a date" }),
-        "Invalid starts_at timestamp",
+        "Enter a valid start date and time",
         ["starts_at"]
       );
     });
@@ -221,22 +291,22 @@ describe("request validation: admin routes", () => {
       expectValidation(await update({ name: "  " }), "Name is required", ["name"]);
       expectValidation(
         await update({ starts_at: "garbage" }),
-        "Invalid starts_at timestamp",
+        "Enter a valid start date and time",
         ["starts_at"]
       );
       expectValidation(
         await update({ draft_warning_hours: 400 }),
-        "Invalid draft_warning_hours",
+        "Draft warning must be a whole number of hours, up to 336",
         ["draft_warning_hours"]
       );
       expectValidation(
         await update({ draft_warning_hours: 1.5 }),
-        "Invalid draft_warning_hours",
+        "Draft warning must be a whole number of hours, up to 336",
         ["draft_warning_hours"]
       );
       expectValidation(
         await update({ draft_warning_hours: "soon" }),
-        "Invalid draft_warning_hours",
+        "Draft warning must be a whole number of hours, up to 336",
         ["draft_warning_hours"]
       );
     });
@@ -255,7 +325,7 @@ describe("request validation: admin routes", () => {
       for (const body of [{}, { ceremony_id: "x" }, { ceremony_id: 0 }]) {
         expectValidation(
           await call("post", "/admin/ceremony/active", body),
-          "Invalid ceremony id",
+          "Choose a ceremony",
           ["ceremony_id"]
         );
       }
@@ -265,16 +335,16 @@ describe("request validation: admin routes", () => {
   describe("ceremony categories", () => {
     it("rejects invalid add payloads", async () => {
       const add = (body: unknown) => call("post", "/admin/ceremonies/1/categories", body);
-      expectValidation(await add({}), "family_id is required", ["family_id"]);
-      expectValidation(await add({ family_id: "x" }), "family_id is required", [
+      expectValidation(await add({}), "Choose a category family", ["family_id"]);
+      expectValidation(await add({ family_id: "x" }), "Choose a category family", [
         "family_id"
       ]);
-      expectValidation(await add({ family_id: 0 }), "family_id is required", [
+      expectValidation(await add({ family_id: 0 }), "Choose a category family", [
         "family_id"
       ]);
       expectValidation(
         await add({ family_id: 1, unit_kind: "MOVIE" }),
-        "Invalid unit_kind",
+        "Choose a valid unit type",
         ["unit_kind"]
       );
       expectValidation(
@@ -282,17 +352,17 @@ describe("request validation: admin routes", () => {
         "Icon must be lowercase letters/numbers/dashes only",
         ["icon"]
       );
-      expectValidation(await add({ family_id: 1, icon_id: "x" }), "Invalid icon_id", [
+      expectValidation(await add({ family_id: 1, icon_id: "x" }), "Choose a valid icon", [
         "icon_id"
       ]);
       expectValidation(
         await add({ family_id: 1, sort_index: -1 }),
-        "Invalid sort_index",
+        "Sort position must be a whole number",
         ["sort_index"]
       );
       expectValidation(
         await add({ family_id: 1, sort_index: 1.5 }),
-        "Invalid sort_index",
+        "Sort position must be a whole number",
         ["sort_index"]
       );
     });
@@ -300,12 +370,12 @@ describe("request validation: admin routes", () => {
     it("rejects invalid clone and reorder payloads", async () => {
       const clone = (id: number, body: unknown) =>
         call("post", `/admin/ceremonies/${id}/categories/clone`, body);
-      expectValidation(await clone(1, {}), "Invalid from_ceremony_id", [
+      expectValidation(await clone(1, {}), "Choose a ceremony to copy from", [
         "from_ceremony_id"
       ]);
       expectValidation(
         await clone(1, { from_ceremony_id: "x" }),
-        "Invalid from_ceremony_id",
+        "Choose a ceremony to copy from",
         ["from_ceremony_id"]
       );
       expectValidation(
@@ -316,7 +386,7 @@ describe("request validation: admin routes", () => {
 
       const reorder = (body: unknown) =>
         call("put", "/admin/ceremonies/1/categories/reorder", body);
-      const message = "category_ids must include at least one category id";
+      const message = "Select at least one category";
       expectValidation(await reorder({}), message, ["category_ids"]);
       expectValidation(await reorder({ category_ids: [] }), message, ["category_ids"]);
       expectValidation(await reorder({ category_ids: "1" }), message, ["category_ids"]);
@@ -330,7 +400,7 @@ describe("request validation: admin routes", () => {
       const update = (body: unknown) =>
         call("patch", `/admin/category-editions/${category.id}`, body);
       expectValidation(await update({}), "No fields to update");
-      expectValidation(await update({ unit_kind: "MOVIE" }), "Invalid unit_kind", [
+      expectValidation(await update({ unit_kind: "MOVIE" }), "Choose a valid unit type", [
         "unit_kind"
       ]);
       expectValidation(await update({ icon: "  " }), "Icon is required", ["icon"]);
@@ -339,11 +409,15 @@ describe("request validation: admin routes", () => {
         "Icon must be lowercase letters/numbers/dashes only",
         ["icon"]
       );
-      expectValidation(await update({ icon_id: "x" }), "Invalid icon_id", ["icon_id"]);
-      expectValidation(await update({ icon_id: 0 }), "Invalid icon_id", ["icon_id"]);
-      expectValidation(await update({ sort_index: -1 }), "Invalid sort_index", [
-        "sort_index"
+      expectValidation(await update({ icon_id: "x" }), "Choose a valid icon", [
+        "icon_id"
       ]);
+      expectValidation(await update({ icon_id: 0 }), "Choose a valid icon", ["icon_id"]);
+      expectValidation(
+        await update({ sort_index: -1 }),
+        "Sort position must be a whole number",
+        ["sort_index"]
+      );
     });
 
     it("accepts lower-case unit kinds and numeric-string sort_index on category edition updates", async () => {
@@ -382,17 +456,17 @@ describe("request validation: admin routes", () => {
       ]);
       expectValidation(
         await create({ ...base, default_unit_kind: "MOVIE" }),
-        "Invalid default_unit_kind",
+        "Choose a valid unit type",
         ["default_unit_kind"]
       );
       expectValidation(
         await create({ ...base, default_unit_kind: undefined }),
-        "Invalid default_unit_kind",
+        "Choose a valid unit type",
         ["default_unit_kind"]
       );
       expectValidation(
         await create({ ...base, icon_variant: "sepia" }),
-        "Invalid icon_variant",
+        "Choose a valid icon style",
         ["icon_variant"]
       );
       expectValidation(
@@ -415,7 +489,7 @@ describe("request validation: admin routes", () => {
       ]);
       expectValidation(
         await create({ ...base, icon: undefined, icon_id: "x" }),
-        "Invalid icon_id",
+        "Choose a valid icon",
         ["icon_id"]
       );
     });
@@ -432,17 +506,19 @@ describe("request validation: admin routes", () => {
       expectValidation(await update({ name: "" }), "Name is required", ["name"]);
       expectValidation(
         await update({ default_unit_kind: "MOVIE" }),
-        "Invalid default_unit_kind",
+        "Choose a valid unit type",
         ["default_unit_kind"]
       );
       expectValidation(
         await update({ default_unit_kind: null }),
-        "Invalid default_unit_kind",
+        "Choose a valid unit type",
         ["default_unit_kind"]
       );
-      expectValidation(await update({ icon_variant: "sepia" }), "Invalid icon_variant", [
-        "icon_variant"
-      ]);
+      expectValidation(
+        await update({ icon_variant: "sepia" }),
+        "Choose a valid icon style",
+        ["icon_variant"]
+      );
       expectValidation(await update({ icon: " " }), "Icon is required", ["icon"]);
       expectValidation(
         await update({ icon: "Star" }),
@@ -472,29 +548,23 @@ describe("request validation: admin routes", () => {
     it("rejects invalid create payloads", async () => {
       const create = (body: unknown) =>
         call("post", "/admin/ceremonies/1/nominations", body);
-      expectValidation(await create({}), "category_edition_id is required", [
+      expectValidation(await create({}), "Choose a category", ["category_edition_id"]);
+      expectValidation(await create({ category_edition_id: "x" }), "Choose a category", [
         "category_edition_id"
       ]);
-      expectValidation(
-        await create({ category_edition_id: "x" }),
-        "category_edition_id is required",
-        ["category_edition_id"]
-      );
-      expectValidation(
-        await create({ category_edition_id: 0 }),
-        "category_edition_id is required",
-        ["category_edition_id"]
-      );
+      expectValidation(await create({ category_edition_id: 0 }), "Choose a category", [
+        "category_edition_id"
+      ]);
     });
 
     it("rejects invalid reorder payloads", async () => {
       const reorder = (body: unknown) =>
         call("put", "/admin/ceremonies/1/nominations/reorder", body);
-      expectValidation(await reorder({}), "category_edition_id is required", [
+      expectValidation(await reorder({}), "Choose a category", [
         "category_edition_id",
         "nomination_ids"
       ]);
-      const message = "nomination_ids must include at least one nomination id";
+      const message = "Select at least one nominee";
       expectValidation(await reorder({ category_edition_id: 1 }), message, [
         "nomination_ids"
       ]);
@@ -513,34 +583,42 @@ describe("request validation: admin routes", () => {
         impact: "BENIGN",
         reason: "duplicate entry"
       };
-      expectValidation(await change({ ...ok, action: undefined }), "Invalid action", [
-        "action"
+      expectValidation(
+        await change({ ...ok, action: undefined }),
+        "Choose a valid action",
+        ["action"]
+      );
+      expectValidation(
+        await change({ ...ok, action: "revoke" }),
+        "Choose a valid action",
+        ["action"]
+      );
+      expectValidation(
+        await change({ ...ok, origin: "OUTER" }),
+        "Choose a valid origin",
+        ["origin"]
+      );
+      expectValidation(await change({ ...ok, impact: 3 }), "Choose a valid impact", [
+        "impact"
       ]);
-      expectValidation(await change({ ...ok, action: "revoke" }), "Invalid action", [
-        "action"
-      ]);
-      expectValidation(await change({ ...ok, origin: "OUTER" }), "Invalid origin", [
-        "origin"
-      ]);
-      expectValidation(await change({ ...ok, impact: 3 }), "Invalid impact", ["impact"]);
       expectValidation(
         await change({ ...ok, reason: "no" }),
-        "Reason required (min 5 chars)",
+        "Enter a reason of at least 5 characters",
         ["reason"]
       );
       expectValidation(
         await change({ ...ok, reason: undefined }),
-        "Reason required (min 5 chars)",
+        "Enter a reason of at least 5 characters",
         ["reason"]
       );
       expectValidation(
         await change({ ...ok, action: "REPLACE" }),
-        "replacement_nomination_id required",
+        "Choose a replacement nominee",
         ["replacement_nomination_id"]
       );
       expectValidation(
         await change({ ...ok, action: "REPLACE", replacement_nomination_id: "x" }),
-        "replacement_nomination_id required",
+        "Choose a replacement nominee",
         ["replacement_nomination_id"]
       );
     });
@@ -548,29 +626,29 @@ describe("request validation: admin routes", () => {
     it("rejects invalid contributor payloads", async () => {
       const add = (body: unknown) =>
         call("post", "/admin/nominations/1/contributors", body);
-      expectValidation(await add({}), "person_id or name is required", [
+      expectValidation(await add({}), "Choose a person or enter a name", [
         "person_id",
         "name"
       ]);
-      expectValidation(await add({ name: "  " }), "person_id or name is required", [
+      expectValidation(await add({ name: "  " }), "Choose a person or enter a name", [
         "person_id",
         "name"
       ]);
       expectValidation(
         await add({ name: "A", tmdb_id: "abc" }),
-        "tmdb_id must be a positive integer",
+        "TMDB ID must be a positive whole number",
         ["tmdb_id"]
       );
       expectValidation(
         await add({ name: "A", tmdb_id: -4 }),
-        "tmdb_id must be a positive integer",
+        "TMDB ID must be a positive whole number",
         ["tmdb_id"]
       );
       expectValidation(
         await call("patch", "/admin/nominations/1/contributors/1", {
           avatar_person_id_override: "x"
         }),
-        "avatar_person_id_override must be a positive integer or null",
+        "Avatar person must be a valid person",
         ["avatar_person_id_override"]
       );
     });
@@ -579,27 +657,25 @@ describe("request validation: admin routes", () => {
   describe("winners", () => {
     it("rejects invalid payloads", async () => {
       const upsert = (body: unknown) => call("post", "/admin/winners", body);
-      expectValidation(await upsert({}), "Invalid category_edition_id", [
-        "category_edition_id"
-      ]);
+      expectValidation(await upsert({}), "Choose a category", ["category_edition_id"]);
       expectValidation(
         await upsert({ category_edition_id: "x", nomination_ids: [1] }),
-        "Invalid category_edition_id",
+        "Choose a category",
         ["category_edition_id"]
       );
       expectValidation(
         await upsert({ category_edition_id: 1 }),
-        "nomination_ids is required",
+        "Select at least one nominee",
         ["nomination_ids"]
       );
       expectValidation(
         await upsert({ category_edition_id: 1, nomination_ids: [] }),
-        "nomination_ids is required",
+        "Select at least one nominee",
         ["nomination_ids"]
       );
       expectValidation(
         await upsert({ category_edition_id: 1, nomination_ids: ["x", 0] }),
-        "nomination_ids is required",
+        "Select at least one nominee",
         ["nomination_ids"]
       );
     });
@@ -607,7 +683,7 @@ describe("request validation: admin routes", () => {
 
   describe("people and films", () => {
     it("rejects invalid tmdb ids", async () => {
-      const message = "tmdb_id must be a positive integer";
+      const message = "TMDB ID must be a positive whole number";
       for (const path of ["/admin/people/1", "/admin/films/1"]) {
         for (const tmdb_id of ["abc", 0, -1, 1.5, true]) {
           expectValidation(await call("patch", path, { tmdb_id }), message, ["tmdb_id"]);
@@ -617,18 +693,18 @@ describe("request validation: admin routes", () => {
 
     it("rejects invalid merge payloads", async () => {
       const merge = (body: unknown) => call("post", "/admin/films/5/merge", body);
-      const empty = "duplicate_ids must be a non-empty array";
+      const empty = "Select at least one duplicate film";
       expectValidation(await merge({}), empty, ["duplicate_ids"]);
       expectValidation(await merge({ duplicate_ids: [] }), empty, ["duplicate_ids"]);
       expectValidation(await merge({ duplicate_ids: "5" }), empty, ["duplicate_ids"]);
       expectValidation(
         await merge({ duplicate_ids: ["x", 0] }),
-        "No valid duplicate_ids provided",
+        "Select at least one valid duplicate film",
         ["duplicate_ids"]
       );
       expectValidation(
         await merge({ duplicate_ids: [5, "5"] }),
-        "No valid duplicate_ids provided",
+        "Select at least one valid duplicate film",
         ["duplicate_ids"]
       );
     });
@@ -681,7 +757,7 @@ describe("request validation: admin routes", () => {
 
   describe("users and search", () => {
     it("rejects invalid admin role updates", async () => {
-      const message = "admin_role must be NONE, OPERATOR, or SUPER_ADMIN";
+      const message = "Admin role must be none, operator or super admin";
       for (const body of [
         {},
         { admin_role: "ROOT" },

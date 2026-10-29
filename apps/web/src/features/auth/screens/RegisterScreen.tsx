@@ -9,10 +9,11 @@ export function RegisterScreen(props: {
   errors: FieldErrors;
   result: ApiResult | null;
   loading: boolean;
+  onInput: (e: React.FormEvent<HTMLElement>) => void;
   loginHref?: string;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
-  const { errors, result, loading, onSubmit, loginHref = "/login" } = props;
+  const { errors, result, loading, onInput, onSubmit, loginHref = "/login" } = props;
   return (
     <Grid className="card-grid" gutter="lg">
       <Grid.Col span={{ base: 12, md: 6 }}>
@@ -21,7 +22,7 @@ export function RegisterScreen(props: {
             <Title variant="page">Create account</Title>
             <Text variant="helper">Pick a username and join a league.</Text>
           </Box>
-          <Box component="form" onSubmit={onSubmit} mt="md">
+          <Box component="form" onSubmit={onSubmit} onInput={onInput} mt="md">
             <Stack gap="sm">
               <FormField label="Username" name="username" error={errors.username} />
               <FormField label="Email" name="email" error={errors.email} />

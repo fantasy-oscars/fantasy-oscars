@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useCombobox } from "@ui";
 import { notify } from "@/notifications";
+import type { FieldFailure } from "@/decisions/fieldErrors";
+import { useFieldErrors } from "@/orchestration/useFieldErrors";
 import { normalizeFilmTitleForTmdbQuery } from "@/lib/films";
 import { isSearchableTmdbQuery, parseTmdbIdInput } from "@/decisions/films/filmGroups";
 import type {
@@ -21,9 +23,14 @@ export function useTmdbLinkEditor(args: {
   ) => Promise<
     { ok: true; results: TmdbFilmSearchResult[] } | { ok: false; error: string }
   >;
-  onSaveTmdbId: (filmId: number, tmdbId: number | null) => Promise<{ ok: boolean }>;
+  onSaveTmdbId: (
+    filmId: number,
+    tmdbId: number | null
+  ) => Promise<{ ok: boolean } & FieldFailure>;
 }) {
   const { onSearchTmdb, onSaveTmdbId } = args;
+  const fieldErrors = useFieldErrors();
+  const { applyFailure, clear: clearFieldError, reset: resetFieldErrors } = fieldErrors;
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption()
@@ -69,15 +76,18 @@ export function useTmdbLinkEditor(args: {
     setEditingFilm({ id: film.id, title: film.title, tmdb_id: film.tmdb_id });
     setTmdbInput(film.tmdb_id ? String(film.tmdb_id) : "");
     setSearchQuery(normalizeFilmTitleForTmdbQuery(film.title));
+    resetFieldErrors();
   };
 
   const close = () => {
     setEditingFilm(null);
     setSearchQuery("");
     setSearchResults([]);
+    resetFieldErrors();
   };
 
   const changeSearchQuery = (next: string) => {
+    clearFieldError("search");
     setSearchQuery(next);
     const trimmed = next.trim();
     if (/^[0-9]+$/.test(trimmed)) {
@@ -115,8 +125,11 @@ export function useTmdbLinkEditor(args: {
     combobox.closeDropdown();
   };
 
-  const afterSave = (res: { ok: boolean }) => {
-    if (!res.ok) return;
+  const afterSave = (res: { ok: boolean } & FieldFailure) => {
+    if (!res.ok) {
+      applyFailure(res, { tmdb_id: "search" });
+      return;
+    }
     setEditingFilm(null);
     setTmdbInput("");
     setSearchQuery("");
@@ -154,6 +167,7 @@ export function useTmdbLinkEditor(args: {
     searchQuery,
     searchLoading,
     searchResults,
+    fieldErrors: fieldErrors.errors,
     openFor,
     close,
     changeSearchQuery,

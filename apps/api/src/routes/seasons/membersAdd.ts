@@ -29,7 +29,7 @@ export function registerSeasonMembersAddRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { id: seasonId } = parseParams(idParam, req.params, {
-          message: "Invalid payload"
+          message: "Please check your entries and try again"
         });
         const { user_id: userId, username: usernameStr } = parseBody(
           seasonMemberRefBodySchema,
