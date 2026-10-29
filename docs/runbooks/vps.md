@@ -1,6 +1,6 @@
 # Runbook: VPS (single-host production)
 
-Production runs on one DigitalOcean droplet (Ubuntu 24.04 LTS, 1 GB RAM, SFO3, about $6/month) with Docker Compose. Host provisioning, backups, health checks and alerting live in `infra/`; the compose stack, Caddy config, images and `deploy.sh` come from the runtime package. Alerts are GitHub issues in a separate **public** monitoring repository that GitHub emails and pushes to the owner. No paid service is used beyond the VPS.
+Production runs on one Vultr Cloud Compute instance (Ubuntu 24.04 LTS, 1 GB RAM, US West, about $5–6/month) with Docker Compose. Host provisioning, backups, health checks and alerting live in `infra/`; the compose stack, Caddy config, images and `deploy.sh` come from the runtime package. Alerts are GitHub issues in a separate **public** monitoring repository that GitHub emails and pushes to the owner. No paid service is used beyond the VPS.
 
 ## Architecture
 
@@ -67,11 +67,17 @@ Keep `LOG_FORMAT` unset (or `json`) on the API: the health check counts 5xx resp
 
 ## First-time setup
 
-Do these in order. Nothing here needs a paid service other than the droplet.
+Do these in order. Nothing here needs a paid service other than the server.
 
 ### 1. Accounts and keys the owner creates
 
-1. **DigitalOcean droplet.** Ubuntu 24.04 LTS, Basic, 1 GB / 1 vCPU / 25 GB, region SFO3, no add-ons, authenticate with your SSH key (that key logs in as `root` only for the one-time provisioning step). Note the public IPv4 address.
+1. **Vultr instance.** Deploy a new server with:
+   - **Type:** Cloud Compute, shared CPU. Either _High Performance_ (1 vCPU / 1 GB / 25 GB NVMe, about $6) or _Regular Performance_ (1 vCPU / 1 GB / 25 GB SSD, about $5); the stack idles at about 110 MB of memory and either is enough.
+   - **Location:** Silicon Valley or Seattle (closest to the old Render region, US West).
+   - **Image:** Ubuntu 24.04 LTS x64. No Marketplace app.
+   - **SSH key:** add your personal public key (it logs in as `root` only for the one-time provisioning step). Vultr also shows a root password on the server page; it stops working for SSH once `provision.sh` disables password and root logins, but keep it for the web console.
+   - **Auto backups:** off (see "Monthly cost"). IPv6 optional. Note the public IPv4 address.
+   - **Vultr Firewall (free, recommended):** Network, Firewall, add a group with inbound rules TCP 22, 80 and 443 (IPv4 and IPv6) and link the instance to it. It filters traffic before it reaches the server, so it also backs up the fact that Docker bypasses ufw. Leave 22 open to all addresses: GitHub Actions deploys from changing IPs, and SSH is key-only with fail2ban.
 2. **SSH keys.** Two separate roles. Your personal key(s) become the `admin` user (full sudo, used for everything privileged). A **separate** key pair belongs to GitHub Actions and becomes the `deploy` user (runs the app, the timers and deploys; no sudo except `systemctl reboot`):
 
    ```bash
@@ -91,7 +97,7 @@ Do these in order. Nothing here needs a paid service other than the droplet.
 4. **Backup bucket (free tier).** Recommended: **Backblaze B2** (10 GB free, no per-request fees at this size). Create a private bucket and an application key restricted to that bucket (read, write, list, delete). Alternative: **Cloudflare R2** (10 GB-month, 1M Class A and 10M Class B operations free, free egress): create a bucket and an R2 API token with Object Read & Write on that bucket; the endpoint is shown on the bucket page. See "What was verified" below. Encrypted dumps are about 0.1 MB each now, so 40 or so objects are far below 10 GB either way.
 5. **Monitoring repo.** See "Monitoring repository setup" below, then create the fine-grained token for it.
 6. **GitHub (app repo) settings:**
-   - Create an **environment** named `production` (Settings, Environments) and put these secrets in it: `DEPLOY_HOST` (droplet IP or host name), `DEPLOY_USER` (`deploy`), `DEPLOY_SSH_KEY` (private key from step 2), `DEPLOY_KNOWN_HOSTS` (output of `ssh-keyscan -t ed25519 <host>`, verified against the host key fingerprint shown in the DigitalOcean droplet console).
+   - Create an **environment** named `production` (Settings, Environments) and put these secrets in it: `DEPLOY_HOST` (server IP or host name), `DEPLOY_USER` (`deploy`), `DEPLOY_SSH_KEY` (private key from step 2), `DEPLOY_KNOWN_HOSTS` (output of `ssh-keyscan -t ed25519 <host>`, verified against the server's own fingerprint: open the instance's web console in Vultr (View Console), log in as root and run `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`).
    - Repository variable `DEPLOY_ENABLED` = `true` **only after** the server is provisioned and `.env` is filled in (until then pushes to `main` skip the deploy).
    - Images are pushed to GHCR with the workflow's own `GITHUB_TOKEN`; no registry secret is needed. After the **first** image push, set both packages (`fantasy-oscars-api`, `fantasy-oscars-web`) to **Public** once (GitHub profile, Packages, package settings, Change visibility) so the server can pull without credentials.
 
@@ -100,14 +106,14 @@ Do these in order. Nothing here needs a paid service other than the droplet.
 From a checkout on your laptop:
 
 ```bash
-scp -r infra root@<droplet-ip>:/root/infra
-ssh root@<droplet-ip> 'bash /root/infra/provision.sh \
+scp -r infra root@<server-ip>:/root/infra
+ssh root@<server-ip> 'bash /root/infra/provision.sh \
   --admin-key "$(cat ~/.ssh/id_ed25519.pub)" \
   --deploy-key "$(cat ~/.ssh/fo_deploy.pub)" \
   --site-host www.fantasy-oscars.com'
 ```
 
-The script is idempotent; re-run it any time (for example after pulling new `infra/` changes) and read the summary it prints. It refuses to harden sshd unless `admin` has at least one key. Before closing the root session, open a second terminal and check `ssh admin@<droplet-ip> sudo whoami` prints `root`; from then on root cannot log in. Later re-runs: `ssh admin@<droplet-ip>`, then `sudo /srv/fantasy-oscars/infra/provision.sh --admin-key ... --deploy-key ...` (keys already installed are left alone; pass at least the admin key).
+The script is idempotent; re-run it any time (for example after pulling new `infra/` changes) and read the summary it prints. It refuses to harden sshd unless `admin` has at least one key. Before closing the root session, open a second terminal and check `ssh admin@<server-ip> sudo whoami` prints `root`; from then on root cannot log in. Later re-runs: `ssh admin@<server-ip>`, then `sudo /srv/fantasy-oscars/infra/provision.sh --admin-key ... --deploy-key ...` (keys already installed are left alone; pass at least the admin key).
 
 What it configures: two users, `admin` (your keys, NOPASSWD sudo, `docker`, `adm` and `systemd-journal` groups) and `deploy` (CI key, `docker` group), key-only SSH restricted to those two users with no root login (`/etc/ssh/sshd_config.d/00-fantasy-oscars.conf`, checked with `sshd -t` before reload), ufw (deny incoming; allow 22/tcp, 80/tcp, 443/tcp; HTTP/3 is off in Caddy, so no UDP), fail2ban for sshd, unattended security upgrades with automatic reboot **off**, 2 GB swap with `vm.swappiness=10`, UTC with systemd-timesyncd, Docker Engine and the compose plugin from Docker's apt repository (the repository key is only trusted if its fingerprint is `9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88`) with json-file log rotation (10 MB x 3), rclone (pinned version; the signed `SHA256SUMS` must verify against one of two pinned rclone release-key fingerprints, then the `.deb` is checked against it; note the key file itself is fetched from rclone.org, so the pinned fingerprints, recorded on 2026-10-29, are the trust anchor), age, jq, `/srv/fantasy-oscars` (the `infra/` copy there mirrors the repo exactly and is replaced by each deploy; nothing else lives in it, state is in `/var/lib/fantasy-oscars`), the `.env` template, a sudoers rule that lets `deploy` run exactly `systemctl reboot`, and the five systemd timers.
 
@@ -118,7 +124,7 @@ Note: Docker publishes container ports by writing iptables rules that bypass ufw
 ### 3. Fill in `.env`
 
 ```bash
-ssh admin@<droplet-ip>
+ssh admin@<server-ip>
 sudo -u deploy nano /srv/fantasy-oscars/.env      # owner deploy, mode 600; fill every key
 ```
 
@@ -126,7 +132,7 @@ The template lists every key with a comment (see the application key table above
 
 ### 4. First deploy, then first runs of the ops jobs
 
-The first deploy's health check needs working DNS and a Let's Encrypt certificate, which you do not have before cutover. So deploy first to a **staging** host: set `SITE_HOST=<droplet-ip>.sslip.io` (for example `203.0.113.7.sslip.io`, which resolves to that IP), leave `APEX_HOST=` and `API_ALIAS_HOST=` empty, set `ACME_EMAIL`, set `DEPLOY_ENABLED=true` and run the deploy workflow (manual dispatch). At cutover switch `.env` to the real hosts (`SITE_HOST=www.fantasy-oscars.com`, `APEX_HOST=fantasy-oscars.com`, `API_ALIAS_HOST=api.fantasy-oscars.com`) and deploy again. Then, as `admin` on the server, prove each job works and seed the heartbeats so the monitoring repo does not alert about files that do not exist yet:
+The first deploy's health check needs working DNS and a Let's Encrypt certificate, which you do not have before cutover. So deploy first to a **staging** host: set `SITE_HOST=<server-ip>.sslip.io` (for example `203.0.113.7.sslip.io`, which resolves to that IP), leave `APEX_HOST=` and `API_ALIAS_HOST=` empty, set `ACME_EMAIL`, set `DEPLOY_ENABLED=true` and run the deploy workflow (manual dispatch). At cutover switch `.env` to the real hosts (`SITE_HOST=www.fantasy-oscars.com`, `APEX_HOST=fantasy-oscars.com`, `API_ALIAS_HOST=api.fantasy-oscars.com`) and deploy again. Then, as `admin` on the server, prove each job works and seed the heartbeats so the monitoring repo does not alert about files that do not exist yet:
 
 ```bash
 sudo systemctl start fo-backup.service && journalctl -u fo-backup.service -n 20 --no-pager
@@ -224,7 +230,7 @@ If it fails before the swap, production is untouched and `api` is restarted. Aft
 
 ## Rebuild the server from scratch
 
-1. Create a new droplet (steps 1 and 2 of first-time setup) and run `provision.sh` with the same admin and deploy keys. Point `DEPLOY_HOST` (and `DEPLOY_KNOWN_HOSTS`) at it.
+1. Create a new Vultr instance (steps 1 and 2 of first-time setup) and run `provision.sh` with the same admin and deploy keys. Point `DEPLOY_HOST` (and `DEPLOY_KNOWN_HOSTS`) at it.
 2. Restore `/srv/fantasy-oscars/.env`: from your password manager copy, or decrypt the newest `config/` object on your laptop (`rclone cat ... | age -d -i key`) and `scp` it over (mode 600).
 3. Run the deploy workflow. It brings up an empty database with migrations applied.
 4. Restore the data as `deploy`: copy the private key over temporarily and run `infra/restore.sh restore ... --into-production --i-understand --force` with the newest `daily/` file (`--force` because the empty database cannot answer the active-drafts query); delete the key.
@@ -248,18 +254,18 @@ If it fails before the swap, production is untouched and `api` is restarted. Aft
 
 Run the commands below as `admin` over SSH (`admin` is in the `docker` group; use `sudo` for systemd and system files). Server alerts are issues titled `[alert] <key>` with label `alert`. One issue per key; it is commented on at most every 6 hours while it persists and is closed automatically with a comment when the condition clears.
 
-| Issue                                                | Meaning                                                                                                       | First response                                                                                                                                                                                                                                              |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `[alert] disk-usage`                                 | `/` or Docker data above 80%                                                                                  | `ssh`, `df -h`, `docker system df`. Safe cleanup: `docker image prune -f` (dangling only), `journalctl --vacuum-time=7d`, `sudo apt-get clean`. Do not prune volumes. If it keeps growing, find the cause (log volume, dumps in `/var/lib/fantasy-oscars`). |
-| `[alert] memory-pressure`                            | MemAvailable below 10% for 3 runs (30 min), or swap above 50%                                                 | `free -m`, `docker stats --no-stream`. Restart the heaviest service (`docker compose -p fantasy-oscars restart api`). If recurring, check for a leak in the API logs or upsize the droplet.                                                                 |
-| `[alert] container-health`                           | A container is unhealthy, restarting, missing, or its restart count rose                                      | `docker compose -p fantasy-oscars ps -a`, `docker compose -p fantasy-oscars logs --tail 100 <service>`. If `db` is down, do not delete its volume; restore from backup only after checking the logs. Redeploy the previous image if a release broke `api`.  |
-| `[alert] tls-expiry`                                 | Certificate for `SITE_HOST` expires in under 14 days (or cannot be read)                                      | Caddy renews automatically at 30 days left; renewal is failing. Check `docker compose -p fantasy-oscars logs web`, that ports 80/443 are open (`sudo ufw status`), and that DNS still points at this host.                                                  |
-| `[alert] api-5xx`                                    | More than 5 API responses with 5xx status in 10 minutes                                                       | `docker compose -p fantasy-oscars logs --since 15m api` and look for `request_error` lines with their `error` field. Check `/api/health/ready`. If it followed a deploy, roll back.                                                                         |
-| `[alert] reboot-pending`                             | Security updates need a reboot that has been waiting more than 3 days (live drafts kept blocking it)          | When no draft is live, run `sudo systemctl reboot`. Containers use a restart policy and return on their own; confirm `/api/health/ready`.                                                                                                                   |
-| `[alert] backup-retention`                           | A backup was uploaded, but the weekly copy, encrypted `.env` upload or old-backup pruning failed              | The backup itself is safe. `journalctl -u fo-backup.service -n 80`; usually bucket credentials or a transient outage. Fix, then `sudo systemctl start fo-backup.service`; the issue closes after the next clean nightly run.                                |
-| `[alert] old-database` (label `low-priority`)        | A `<db>_old_<stamp>` database kept by a production restore is more than 14 days old                           | Reminder only. If the restored data is fine, drop it: `cd /srv/fantasy-oscars && docker compose -p fantasy-oscars exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE \"<db>_old_<stamp>\""'`.                                         |
-| `[alert] heartbeat-stale` (monitoring repo workflow) | `backup` or `healthcheck` heartbeat older than 26 h, or `restore-verify` older than 35 days; or never written | The server may be down or the job is failing. `systemctl list-timers 'fo-*'`, `journalctl -u fo-backup.service -n 50`. A failed backup run exits non-zero and shows in the journal. Run the job by hand once the cause is fixed.                            |
-| Downtime issue (Upptime)                             | `/api/health/ready` returned non-200 or timed out                                                             | Open the site, `ssh` in, `docker compose -p fantasy-oscars ps`, then logs. 503 means the database is unreachable or migrations are behind. If SSH also fails, use the DigitalOcean console and reboot the droplet from the control panel.                   |
+| Issue                                                | Meaning                                                                                                       | First response                                                                                                                                                                                                                                               |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `[alert] disk-usage`                                 | `/` or Docker data above 80%                                                                                  | `ssh`, `df -h`, `docker system df`. Safe cleanup: `docker image prune -f` (dangling only), `journalctl --vacuum-time=7d`, `sudo apt-get clean`. Do not prune volumes. If it keeps growing, find the cause (log volume, dumps in `/var/lib/fantasy-oscars`).  |
+| `[alert] memory-pressure`                            | MemAvailable below 10% for 3 runs (30 min), or swap above 50%                                                 | `free -m`, `docker stats --no-stream`. Restart the heaviest service (`docker compose -p fantasy-oscars restart api`). If recurring, check for a leak in the API logs or upgrade the plan in Vultr (Settings, Change Plan).                                   |
+| `[alert] container-health`                           | A container is unhealthy, restarting, missing, or its restart count rose                                      | `docker compose -p fantasy-oscars ps -a`, `docker compose -p fantasy-oscars logs --tail 100 <service>`. If `db` is down, do not delete its volume; restore from backup only after checking the logs. Redeploy the previous image if a release broke `api`.   |
+| `[alert] tls-expiry`                                 | Certificate for `SITE_HOST` expires in under 14 days (or cannot be read)                                      | Caddy renews automatically at 30 days left; renewal is failing. Check `docker compose -p fantasy-oscars logs web`, that ports 80/443 are open (`sudo ufw status`), and that DNS still points at this host.                                                   |
+| `[alert] api-5xx`                                    | More than 5 API responses with 5xx status in 10 minutes                                                       | `docker compose -p fantasy-oscars logs --since 15m api` and look for `request_error` lines with their `error` field. Check `/api/health/ready`. If it followed a deploy, roll back.                                                                          |
+| `[alert] reboot-pending`                             | Security updates need a reboot that has been waiting more than 3 days (live drafts kept blocking it)          | When no draft is live, run `sudo systemctl reboot`. Containers use a restart policy and return on their own; confirm `/api/health/ready`.                                                                                                                    |
+| `[alert] backup-retention`                           | A backup was uploaded, but the weekly copy, encrypted `.env` upload or old-backup pruning failed              | The backup itself is safe. `journalctl -u fo-backup.service -n 80`; usually bucket credentials or a transient outage. Fix, then `sudo systemctl start fo-backup.service`; the issue closes after the next clean nightly run.                                 |
+| `[alert] old-database` (label `low-priority`)        | A `<db>_old_<stamp>` database kept by a production restore is more than 14 days old                           | Reminder only. If the restored data is fine, drop it: `cd /srv/fantasy-oscars && docker compose -p fantasy-oscars exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE \"<db>_old_<stamp>\""'`.                                          |
+| `[alert] heartbeat-stale` (monitoring repo workflow) | `backup` or `healthcheck` heartbeat older than 26 h, or `restore-verify` older than 35 days; or never written | The server may be down or the job is failing. `systemctl list-timers 'fo-*'`, `journalctl -u fo-backup.service -n 50`. A failed backup run exits non-zero and shows in the journal. Run the job by hand once the cause is fixed.                             |
+| Downtime issue (Upptime)                             | `/api/health/ready` returned non-200 or timed out                                                             | Open the site, `ssh` in, `docker compose -p fantasy-oscars ps`, then logs. 503 means the database is unreachable or migrations are behind. If SSH also fails, use the Vultr web console (View Console) or restart the instance from the Vultr control panel. |
 
 A silent server cannot raise its own alerts; that is why the heartbeat check and Upptime run from GitHub.
 
@@ -299,16 +305,16 @@ DNS is at GoDaddy. Email forwarding runs on ImprovMX: **never edit or delete the
 
 ## Monthly cost
 
-| Item                                                                                      | Cost            |
-| ----------------------------------------------------------------------------------------- | --------------- |
-| DigitalOcean droplet, 1 GB / 1 vCPU / 25 GB, SFO3                                         | $6.00           |
-| Backup storage (B2 or R2 free tier, well under 10 GB)                                     | $0              |
-| GitHub (public monitoring repo, Actions, notifications)                                   | $0              |
-| GHCR images                                                                               | $0              |
-| Domain renewal (GoDaddy, already paid separately)                                         | existing        |
-| Optional DigitalOcean backups add-on: weekly +20% (about $1.20), daily +30% (about $1.80) | not recommended |
+| Item                                                                           | Cost            |
+| ------------------------------------------------------------------------------ | --------------- |
+| Vultr Cloud Compute, 1 GB / 1 vCPU / 25 GB (Regular $5 or High Performance $6) | $5.00–6.00      |
+| Backup storage (B2 or R2 free tier, well under 10 GB)                          | $0              |
+| GitHub (public monitoring repo, Actions, notifications)                        | $0              |
+| GHCR images                                                                    | $0              |
+| Domain renewal (GoDaddy, already paid separately)                              | existing        |
+| Optional Vultr automatic backups add-on (about 20% of the plan, about $1–1.20) | not recommended |
 
-DigitalOcean backups are recommended **against**: they are whole-disk snapshots of a live database (crash-consistent only), weekly or daily at best, restorable only into DigitalOcean, and they die with the account. The encrypted nightly (and hourly in season) dumps cover data loss more precisely and portably, and the server is rebuildable from the runbook above in under an hour. If you want an extra safety net during awards season for $1.20, the weekly add-on is reasonable, but it is optional.
+Vultr automatic backups are recommended **against**: they are whole-disk snapshots of a live database (crash-consistent only), daily or weekly at best, restorable only into Vultr, and they die with the account. The encrypted nightly (and hourly in season) dumps cover data loss more precisely and portably, and the server is rebuildable from the runbook above in under an hour. If you want an extra safety net during awards season for $1.20, the weekly add-on is reasonable, but it is optional.
 
 ## What was verified and what was not
 
@@ -318,8 +324,8 @@ Checked against vendor pages while writing this (October 2026):
 - Backblaze B2: first 10 GB free, then about $6.95 per TB-month; egress free up to 3x stored data. Whether a credit card is needed to sign up for the free tier could **not** be confirmed from the pages available. This is why B2 is the first choice (you can try it with no commitment) and R2 the fallback; if both demand a card, a card on file is fine as long as usage stays inside the free tier.
 - Docker apt key: fingerprint `9DC858229FC7DD38854AE2D88D81803C0EBFCD88` read from download.docker.com and pinned in `provision.sh`; apt also verifies Docker's repository metadata with it.
 - rclone: its `SHA256SUMS` is PGP-clearsigned; `provision.sh` accepts it only when signed by one of two pinned fingerprints (`FBF737EC...54FA`, `E3B358DC...C81D`, observed in rclone.org/KEYS on 2026-10-29), then checks the `.deb` against it. This protects against a tampered download, not against a compromise of the fingerprints' real owner, and the pins themselves were recorded over TLS from rclone.org (not cross-checked against a second source). The signature uses an old DSA-1024/SHA-1 key.
-- DigitalOcean: $6.00 for the 1 GB droplet; backups add-on 20% weekly, 30% daily.
+- Vultr: 1 GB Cloud Compute at $5 (Regular) and $6 (High Performance) per month, per third-party listings in October 2026; check the plan page when ordering. The automatic backups add-on is about 20% of the plan price. Vultr Firewall groups are free. Vultr's own guides describe ufw on its Ubuntu images as installed but inactive; `provision.sh` adds its rules before enabling ufw, so it works either way.
 - GitHub: scheduled workflows in public repos are disabled after 60 days without repository activity; the docs do not define "activity" (see above).
 - Upptime: option names (`sites`, `expectedStatusCodes`, `maxResponseTime`, `assignees`, `workflowSchedule`, `commitMessages`, `status-website.baseUrl`), the `GH_PAT` secret and "Include all branches" were read from upptime.js.org. There is no documented option to turn the status website off, so it is published at `https://<owner>.github.io/<repo>`.
 
-Not verified: behaviour on a real droplet (systemd timers, ufw, sshd reload, swapon, sysctl, docker restart) and live GitHub/R2/B2 calls; these were exercised only against a container and a fake GitHub API (see the tests in `infra/tests/`). Run through first-time setup step 4 on the real host and watch the journal.
+Not verified: behaviour on a real server (systemd timers, ufw, sshd reload, swapon, sysctl, docker restart) and live GitHub/R2/B2 calls; these were exercised only against a container and a fake GitHub API (see the tests in `infra/tests/`). Run through first-time setup step 4 on the real host and watch the journal.
