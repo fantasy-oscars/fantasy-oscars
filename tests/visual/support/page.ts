@@ -67,13 +67,51 @@ export async function setColorScheme(context: BrowserContext, mode: Mode) {
   );
 }
 
-/** Freezes Date so relative and absolute times render the same on every run. */
+/**
+ * Makes time deterministic: Date is frozen at FIXED_NOW, and setInterval never fires.
+ * Every interval in the app is a live-update loop (draft clock tick, podium name
+ * cycling on ties, heartbeats, cursor spy, countdown beeps) whose firing count would
+ * otherwise depend on how long the capture took. One-shot timeouts (debounces,
+ * react-query, sockets) still run in real time so the app loads normally.
+ * Must run before navigation.
+ */
 export async function freezeClock(page: Page) {
   await page.clock.setFixedTime(new Date(FIXED_NOW));
+  await page.addInitScript(() => {
+    window.setInterval = (() => 0) as unknown as typeof window.setInterval;
+    // Counts DOM changes so settle() can wait for the UI to stop re-rendering.
+    const w = window as unknown as { __visualMutations: number };
+    w.__visualMutations = 0;
+    new MutationObserver((records) => {
+      w.__visualMutations += records.length;
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      characterData: true
+    });
+  });
 }
 
-/** Waits until the page can no longer change under the screenshot. */
-export async function settle(page: Page) {
+/** Counts API/asset requests that have started but not finished. */
+export function trackInFlight(page: Page) {
+  const pending = new Set<unknown>();
+  page.on("request", (r) => pending.add(r));
+  page.on("requestfinished", (r) => pending.delete(r));
+  page.on("requestfailed", (r) => pending.delete(r));
+  return () => pending.size;
+}
+
+const POLL_MS = 100;
+const QUIET_POLLS = 10;
+const MAX_POLLS = 200;
+
+/**
+ * Waits until the page can no longer change under the screenshot: no requests in
+ * flight, fonts and images loaded, and no DOM mutation for QUIET_POLLS polls in a
+ * row (late data fetches and state updates re-render shortly after network idle).
+ */
+export async function settle(page: Page, inFlight: () => number) {
   await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -87,20 +125,25 @@ export async function settle(page: Page) {
             })
       )
     );
-    // Late data fetches and client-side layout settle shortly after network idle:
-    // require the page height and text to hold still for 1s before capturing.
-    let stableFor = 0;
-    let last = "";
-    for (let i = 0; stableFor < 10; i++) {
-      if (i > 150)
-        throw new Error("page never stopped changing (live timer or animation?)");
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
-      const sig = `${document.documentElement.scrollHeight}:${document.body.innerText.length}`;
-      stableFor = sig === last ? stableFor + 1 : 0;
-      last = sig;
-    }
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-    );
   });
+  let quiet = 0;
+  for (let i = 0; quiet < QUIET_POLLS; i++) {
+    if (i > MAX_POLLS) {
+      throw new Error("page never settled (requests in flight or DOM still changing)");
+    }
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    const mutations = await page.evaluate(() => {
+      const w = window as unknown as { __visualMutations: number };
+      const n = w.__visualMutations;
+      w.__visualMutations = 0;
+      return n;
+    });
+    quiet = mutations === 0 && inFlight() === 0 ? quiet + 1 : 0;
+  }
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      )
+  );
 }

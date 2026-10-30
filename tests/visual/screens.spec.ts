@@ -14,6 +14,7 @@ import {
   readSeed,
   setColorScheme,
   settle,
+  trackInFlight,
   signIn
 } from "./support/page";
 
@@ -33,6 +34,7 @@ for (const brand of BRANDS) {
             await setColorScheme(context, mode);
             // Brands: select the brand here (as setColorScheme does) once they exist.
             if (screen.persona) await signIn(context, seed.tokens[screen.persona]);
+            const inFlight = trackInFlight(page);
             await freezeClock(page);
 
             await page.goto(screen.path(seed));
@@ -42,7 +44,7 @@ for (const brand of BRANDS) {
                 : page.locator(screen.ready.selector).first();
             await expect(marker).toBeVisible();
             await screen.prepare?.(page);
-            await settle(page);
+            await settle(page, inFlight);
             expect(blocked, "requests that left the machine").toEqual([]);
 
             const height = await page.evaluate(
