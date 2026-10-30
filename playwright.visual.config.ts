@@ -25,7 +25,7 @@ export default defineConfig({
   // Chromium runs emulated (linux/amd64) on Apple silicon, so leave generous headroom.
   timeout: 120_000,
   expect: {
-    timeout: 10_000,
+    timeout: 30_000,
     toHaveScreenshot: {
       animations: "disabled",
       caret: "hide",
