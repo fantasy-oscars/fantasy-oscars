@@ -103,22 +103,13 @@ export function AdminCeremoniesNomineesScreen(props: {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   );
+  // Only sections the admin has toggled are stored; the rest stay collapsed exactly while
+  // they are empty. Seeding a value per category on first sight froze "collapsed" whenever
+  // categories loaded before their nominations.
   const [collapsedByCategoryId, setCollapsedByCategoryId] = useState<
     Record<number, boolean>
   >({});
   const [editingNominationId, setEditingNominationId] = useState<number | null>(null);
-
-  useEffect(() => {
-    setCollapsedByCategoryId((prev) => {
-      const next = { ...prev };
-      for (const c of categories) {
-        if (Object.prototype.hasOwnProperty.call(next, c.id)) continue;
-        const count = nominations.filter((n) => n.category_edition_id === c.id).length;
-        next[c.id] = count === 0;
-      }
-      return next;
-    });
-  }, [categories, nominations]);
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
