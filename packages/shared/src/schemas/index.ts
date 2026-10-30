@@ -1,6 +1,7 @@
 export { z } from "zod";
 export * from "./common.js";
 export * from "./auth.js";
+export * from "./account.js";
 export * from "./leagues.js";
 export * from "./seasons.js";
 export * from "./drafts.js";

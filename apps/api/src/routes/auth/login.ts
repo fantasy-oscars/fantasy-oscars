@@ -33,7 +33,7 @@ export function registerAuthLoginRoute(args: {
         const normalizedUsername = normalizeUsername(username);
         const { rows } = await query(
           client,
-          `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, p.password_hash, p.password_algo
+          `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, u.brand_preference, p.password_hash, p.password_algo
            FROM app_user u
            JOIN auth_password p ON p.user_id = u.id
            WHERE lower(u.username) = $1
@@ -48,6 +48,7 @@ export function registerAuthLoginRoute(args: {
           is_admin: boolean;
           admin_role?: string | null;
           avatar_key?: string | null;
+          brand_preference?: string | null;
           password_hash: string;
           password_algo: string;
         };
@@ -135,11 +136,13 @@ export function registerAuthLoginRoute(args: {
         return res.json({
           user: {
             id: user.id,
+            sub: String(user.id),
             username: user.username,
             email: user.email,
             is_admin: adminRole !== "NONE",
             admin_role: adminRole,
-            avatar_key: avatarKey
+            avatar_key: avatarKey,
+            brand_preference: user.brand_preference ?? null
           }
         });
       } catch (err) {

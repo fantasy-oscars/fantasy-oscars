@@ -2,6 +2,7 @@ import { lazy, useEffect, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/auth/context";
+import { BrandProvider } from "@/brand/context";
 import { RedirectIfAuthed, RequireAdmin, RequireAuth } from "@/auth/guards";
 import { ShellLayout } from "./layouts/ShellLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
@@ -243,7 +244,9 @@ export function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <RoutesConfig />
+          <BrandProvider>
+            <RoutesConfig />
+          </BrandProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>

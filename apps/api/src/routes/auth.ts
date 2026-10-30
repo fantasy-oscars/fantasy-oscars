@@ -9,6 +9,7 @@ import { registerAuthDeleteMeRoute } from "./auth/deleteMe.js";
 import { registerAuthLoginRoute } from "./auth/login.js";
 import { registerAuthLogoutRoute } from "./auth/logout.js";
 import { registerAuthMeRoute } from "./auth/me.js";
+import { registerAuthPreferencesRoute } from "./auth/preferences.js";
 import { registerAuthRegisterRoute } from "./auth/register.js";
 
 // Register: per client IP.
@@ -45,6 +46,7 @@ export function createAuthRouter(
   });
 
   registerAuthMeRoute({ router, client, authSecret });
+  registerAuthPreferencesRoute({ router, client, authSecret, originGuard });
   registerAuthLogoutRoute({ router, client, authSecret, cookieConfig, originGuard });
   registerAuthDeleteMeRoute({ router, client, authSecret, cookieConfig, originGuard });
   registerAuthRegisterRoute({ router, client, authLimiter: registerLimiter });

@@ -18,7 +18,7 @@ export function registerAuthMeRoute(args: {
 
       const { rows } = await query(
         client,
-        `SELECT id::text AS sub, username, email, is_admin, admin_role, avatar_key
+        `SELECT id::text AS sub, username, email, is_admin, admin_role, avatar_key, brand_preference
          FROM app_user
          WHERE id = $1
            AND deleted_at IS NULL`,
@@ -33,6 +33,7 @@ export function registerAuthMeRoute(args: {
             is_admin?: boolean;
             admin_role?: string | null;
             avatar_key?: string | null;
+            brand_preference?: string | null;
           };
 
       if (!user) return res.json({ user: req.auth });
@@ -47,7 +48,8 @@ export function registerAuthMeRoute(args: {
           email: user.email,
           is_admin: adminRole !== "NONE",
           admin_role: adminRole,
-          avatar_key: avatarKey
+          avatar_key: avatarKey,
+          brand_preference: user.brand_preference ?? null
         }
       });
     } catch (err) {
