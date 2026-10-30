@@ -132,7 +132,8 @@ export default [
       "apps/api/src/logger.ts",
       "apps/web/src/notifications/**/*.{ts,tsx}",
       "apps/web/src/vitest.setup.ts",
-      "e2e/**/*.{ts,tsx}"
+      "e2e/**/*.{ts,tsx}",
+      "tests/visual/**/*.{mjs,ts}"
     ],
     rules: {
       "no-console": "off"

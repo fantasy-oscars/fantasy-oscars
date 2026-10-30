@@ -1,0 +1,9 @@
+/* Applied to every screenshot: no motion, no caret, no focus ring flicker. */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  caret-color: transparent !important;
+  scroll-behavior: auto !important;
+}

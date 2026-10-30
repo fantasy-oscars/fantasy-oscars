@@ -42,3 +42,38 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Docs Check
         run: pnpm run ci:docs
+  visual:
+    # Pixel-compares the screen matrix against tests/visual/__screenshots__. Chromium runs
+    # in the pinned Playwright Docker image (see docs/standards/testing.md), so the runner
+    # needs no browser install. Not part of `pnpm run ci`: it needs the Docker daemon on
+    # the host and takes minutes on a laptop; it is a PR gate here instead.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.3 --activate
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @fantasy-oscars/shared build
+      - name: Visual regression
+        run: pnpm run test:visual
+        env:
+          VISUAL_WORKERS: 2
+      - name: Upload visual diff report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-report
+          path: |
+            playwright-report/visual
+            test-results/visual
+          retention-days: 7
