@@ -13,6 +13,8 @@ Use this as the map. Start with the section that matches your intent.
   - [Linting & Formatting](standards/linting-formatting.md)
   - [Ticket Format](standards/tickets.md)
   - [Dependency Updates](standards/dependencies.md)
+- **Design**
+  - [App inventory](design/app-inventory.md)
 - **Runbooks**
   - [Local Development](runbooks/local-dev.md)
   - [Database](runbooks/database.md)
