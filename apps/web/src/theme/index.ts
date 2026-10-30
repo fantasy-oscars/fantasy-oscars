@@ -2,15 +2,14 @@ import type { CSSVariablesResolver, MantineThemeOverride } from "@mantine/core";
 import { foTokens } from "./tokens";
 
 // Theme-first architecture:
-// - All raw visual literals live in theme/ (this folder).
+// - All raw visual literals live in theme/brands/ (one definition per brand).
 // - The app consumes CSS variables only (Mantine vars + our fo vars).
 
 export const appTheme: MantineThemeOverride = {
   // Two-font system: serif for headings/titles, sans for everything else.
-  fontFamily:
-    '"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  fontFamily: "var(--brand-font-body)",
   headings: {
-    fontFamily: '"Cinzel", ui-serif, Georgia, "Times New Roman", serif',
+    fontFamily: "var(--brand-font-display)",
     fontWeight: "var(--fo-font-weight-bold)"
   },
 

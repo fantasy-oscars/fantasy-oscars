@@ -7,6 +7,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/cinzel/400.css";
 import "@fontsource/cinzel/700.css";
 import { App } from "./app/App";
+import "virtual:fo-brand.css";
 import "./styles.css";
 import { AppProviders } from "./ui/AppProviders";
 import { removeLegacyAuthTokens } from "./lib/legacyAuthStorage";

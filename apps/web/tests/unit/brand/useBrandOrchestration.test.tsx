@@ -65,6 +65,15 @@ describe("useBrandOrchestration", () => {
     expect(result.current.preference).toBe("rotate");
   });
 
+  it("caches the resolved brand for signed-in users and clears it on logout", async () => {
+    const { result, rerender } = setup({ user: user() });
+    await waitFor(() => expect(result.current.brand).not.toBeNull());
+    const cached = JSON.parse(window.localStorage.getItem("fo:brand-last") ?? "null");
+    expect(cached).toMatchObject({ brand: result.current.brand });
+    rerender({ user: null });
+    await waitFor(() => expect(window.localStorage.getItem("fo:brand-last")).toBeNull());
+  });
+
   it("pins the brand for the session: a clock past 04:00 does not restyle", async () => {
     let clock = NOON;
     const { result, rerender } = setup({ now: () => clock });

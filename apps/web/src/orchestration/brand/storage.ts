@@ -1,9 +1,15 @@
-import { isBrandPreference, type BrandPreference } from "@fantasy-oscars/shared";
-import { parseBrandPin, type BrandPin } from "../../decisions/brand";
+import { isBrandPreference, type BrandPreference } from "@fantasy-oscars/shared/brands";
+import {
+  parseBrandPin,
+  parseLastBrand,
+  type BrandPin,
+  type LastBrand
+} from "../../decisions/brand";
 
 const LOCAL_PREFERENCE_KEY = "fo:brand-preference";
 const ANON_ID_KEY = "fo:anon-id";
 const SESSION_PIN_KEY = "fo:brand-session";
+const LAST_BRAND_KEY = "fo:brand-last";
 
 function local(): Storage | null {
   try {
@@ -78,6 +84,30 @@ export function loadBrandPin(): BrandPin | null {
 export function saveBrandPin(pin: BrandPin): void {
   try {
     session()?.setItem(SESSION_PIN_KEY, JSON.stringify(pin));
+  } catch {
+    // Best effort.
+  }
+}
+
+export function loadLastBrand(): LastBrand | null {
+  try {
+    return parseLastBrand(local()?.getItem(LAST_BRAND_KEY) ?? null);
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastBrand(last: LastBrand): void {
+  try {
+    local()?.setItem(LAST_BRAND_KEY, JSON.stringify(last));
+  } catch {
+    // Best effort.
+  }
+}
+
+export function clearLastBrand(): void {
+  try {
+    local()?.removeItem(LAST_BRAND_KEY);
   } catch {
     // Best effort.
   }

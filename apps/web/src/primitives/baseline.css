@@ -86,7 +86,7 @@
 }
 
 .baseline-textHeroTitle {
-  font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
+  font-family: var(--brand-font-display);
   font-size: var(--fo-font-size-hero-title);
   line-height: 1.05;
   font-weight: var(--fo-font-weight-bold);
@@ -94,7 +94,7 @@
 }
 
 .baseline-textSectionHeader {
-  font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
+  font-family: var(--brand-font-display);
   font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 600;
@@ -103,37 +103,21 @@
 }
 
 .baseline-textCardTitle {
-  font-family: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
+  font-family: var(--brand-font-display);
   font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 650;
 }
 
 .baseline-textBody {
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  font-family: var(--fo-font-system);
   font-size: var(--fo-font-size-sm);
   line-height: var(--fo-line-height-body);
   font-weight: var(--fo-font-weight-regular);
 }
 
 .baseline-textMeta {
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  font-family: var(--fo-font-system);
   font-size: var(--fo-font-size-xs);
   line-height: var(--fo-line-height-meta);
   font-weight: var(--fo-font-weight-regular);
@@ -212,15 +196,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 /* Button labels must be sans under the new baseline. */
 .baseline-pageInner button,
 .baseline-landing button {
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  font-family: var(--fo-font-system);
 }
 
 .baseline-page {

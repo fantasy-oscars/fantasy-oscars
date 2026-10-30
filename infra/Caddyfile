@@ -46,6 +46,14 @@
 		file_server
 	}
 
+	# Pre-paint brand script. The name is fixed (not fingerprinted), so it is always
+	# revalidated like index.html, and a missing file is a real 404, never the SPA shell.
+	handle /brand-init.js {
+		root * /srv
+		header Cache-Control "no-cache"
+		file_server
+	}
+
 	# Everything else: the SPA, with index.html always revalidated.
 	handle {
 		root * /srv
