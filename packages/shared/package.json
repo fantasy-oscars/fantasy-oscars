@@ -7,6 +7,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
+    "./brands": {
+      "types": "./dist/brands.d.ts",
+      "import": "./dist/brands.js",
+      "require": "./dist/brands.js"
+    },
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
       "import": "./dist/schemas/index.js",

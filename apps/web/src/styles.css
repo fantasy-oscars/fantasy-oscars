@@ -1,19 +1,19 @@
 /* NOTE: fo tokens are now defined by the theme cssVariablesResolver. */
-/* Token bindings via surface role inversion (dark/light). */
+/* Back-compat aliases: legacy short names, each pointing at a brand contract slot. */
+:root {
+  --bg: var(--brand-page);
+  --panel: var(--brand-raised);
+  --text: var(--brand-text);
+  --muted: var(--brand-muted);
+  --accent: var(--brand-primary);
+  --border: var(--brand-rule);
+  --error: var(--brand-text);
+  --success: var(--brand-text);
+}
+
+/* Mode bindings for Mantine's internal colours. The fo tokens themselves are mode-aware through the brand slots. */
 :root[data-mantine-color-scheme="dark"],
 body[data-mantine-color-scheme="dark"] {
-  --fo-surface-page: var(--fo-charcoal-9);
-  --fo-surface-card-hero: var(--fo-charcoal-8);
-  --fo-surface-card-primary: var(--fo-charcoal-7);
-  --fo-surface-pill: var(--fo-charcoal-7);
-
-  --fo-text-primary: var(--fo-ivory);
-  --fo-text-primary-rgb: var(--fo-ivory-rgb);
-  --fo-text-deemphasized: rgba(var(--fo-ivory-rgb), var(--fo-alpha-60));
-  --fo-text-onGold: var(--fo-charcoal-9);
-
-  --fo-border: rgba(var(--fo-ivory-rgb), var(--fo-alpha-12));
-
   /* Ensure Mantine's internal "body" color aligns with our token surface. */
   --mantine-color-body: var(--fo-surface-page);
   --mantine-color-text: var(--fo-text-primary);
@@ -30,33 +30,10 @@ body[data-mantine-color-scheme="dark"] {
   --mantine-color-blue-filled-hover: var(--fo-button-primary-hover);
   --mantine-color-blue-outline: var(--fo-border);
   --mantine-color-blue-outline-hover: var(--fo-surface-pill);
-
-  /* Back-compat aliases (keep values token-derived while we migrate CSS). */
-  --bg: var(--fo-surface-page);
-  --panel: var(--fo-surface-card-primary);
-  --text: var(--fo-text-primary);
-  --muted: var(--fo-text-deemphasized);
-  --accent: var(--fo-gold-primary);
-  --border: var(--fo-border);
-  --error: var(--fo-text-primary);
-  --success: var(--fo-text-primary);
 }
 
 :root[data-mantine-color-scheme="light"],
 body[data-mantine-color-scheme="light"] {
-  --fo-surface-page: var(--fo-ivory-warm);
-  /* Page -> hero wrapper -> cards -> pills/nested. */
-  --fo-surface-card-hero: var(--fo-ivory-step-1);
-  --fo-surface-card-primary: var(--fo-ivory-step-2);
-  --fo-surface-pill: var(--fo-ivory-step-3);
-
-  --fo-text-primary: var(--fo-charcoal-9);
-  --fo-text-primary-rgb: var(--fo-charcoal-rgb);
-  --fo-text-deemphasized: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-60));
-  --fo-text-onGold: var(--fo-charcoal-9);
-
-  --fo-border: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-12));
-
   /* Ensure Mantine's internal "body" color aligns with our token surface. */
   --mantine-color-body: var(--fo-surface-page);
   --mantine-color-text: var(--fo-text-primary);
@@ -78,16 +55,6 @@ body[data-mantine-color-scheme="light"] {
   --mantine-primary-color-outline: var(--fo-border);
   --mantine-primary-color-outline-hover: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-06));
   --mantine-primary-color-contrast: var(--fo-text-onGold);
-
-  /* Back-compat aliases (keep values token-derived while we migrate CSS). */
-  --bg: var(--fo-surface-page);
-  --panel: var(--fo-surface-card-primary);
-  --text: var(--fo-text-primary);
-  --muted: var(--fo-text-deemphasized);
-  --accent: var(--fo-gold-primary);
-  --border: var(--fo-border);
-  --error: var(--fo-text-primary);
-  --success: var(--fo-text-primary);
 }
 
 * {
@@ -381,9 +348,10 @@ body {
   justify-content: center;
   box-shadow:
     0 var(--fo-space-2) calc(var(--fo-space-4) + var(--fo-space-2))
-      rgba(0, 0, 0, var(--fo-alpha-18)),
-    inset 0 var(--fo-border-width) 0 rgba(255, 255, 255, var(--fo-alpha-14)),
-    inset 0 calc(-1 * var(--fo-border-width)) 0 rgba(0, 0, 0, var(--fo-alpha-10));
+      rgba(var(--fo-black-rgb), var(--fo-alpha-18)),
+    inset 0 var(--fo-border-width) 0 rgba(var(--fo-white-rgb), var(--fo-alpha-14)),
+    inset 0 calc(-1 * var(--fo-border-width)) 0
+      rgba(var(--fo-black-rgb), var(--fo-alpha-10));
 }
 
 .drm-podiumBar.is-gold {
@@ -397,16 +365,16 @@ body {
 .drm-podiumBar.is-silver {
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, #bcc2cc 92%, white),
-    color-mix(in oklab, #bcc2cc 86%, black)
+    color-mix(in oklab, var(--fo-medal-silver) 92%, white),
+    color-mix(in oklab, var(--fo-medal-silver) 86%, black)
   );
 }
 
 .drm-podiumBar.is-bronze {
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, #b07a3f 92%, white),
-    color-mix(in oklab, #b07a3f 86%, black)
+    color-mix(in oklab, var(--fo-medal-bronze) 92%, white),
+    color-mix(in oklab, var(--fo-medal-bronze) 86%, black)
   );
 }
 
@@ -705,15 +673,16 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   --drh-buckle-top: color-mix(in oklab, var(--drh-buckle-base) 92%, white);
   --drh-buckle-bottom: color-mix(in oklab, var(--drh-buckle-base) 86%, black);
   --drh-buckle-highlight: color-mix(in oklab, var(--drh-buckle-base) 55%, white);
-  --drh-buckle-contact: rgba(0, 0, 0, var(--fo-alpha-22));
+  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-22));
 
   background: linear-gradient(to bottom, var(--drh-buckle-top), var(--drh-buckle-bottom));
   /* Tight contact shadow (not a floating/elevation shadow). */
   box-shadow:
     0 var(--fo-space-2) calc(var(--fo-space-4) + var(--fo-space-2))
       var(--drh-buckle-contact),
-    inset 0 var(--fo-border-width) 0 rgba(255, 255, 255, var(--fo-alpha-14)),
-    inset 0 calc(-1 * var(--fo-border-width)) 0 rgba(0, 0, 0, var(--fo-alpha-10));
+    inset 0 var(--fo-border-width) 0 rgba(var(--fo-white-rgb), var(--fo-alpha-14)),
+    inset 0 calc(-1 * var(--fo-border-width)) 0
+      rgba(var(--fo-black-rgb), var(--fo-alpha-10));
 }
 
 .drh-buckle.is-fixed {
@@ -745,20 +714,20 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 
 .dr-frame[data-turn="mine"] .drh-buckle {
   --drh-buckle-base: var(--fo-gold);
-  --drh-buckle-contact: rgba(0, 0, 0, var(--fo-alpha-18));
+  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-18));
 }
 
 .dr-frame[data-results="final"] .drh-buckle {
   --drh-buckle-base: var(--fo-gold);
-  --drh-buckle-contact: rgba(0, 0, 0, var(--fo-alpha-18));
+  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-18));
 }
 
 .dr-frame[data-results="final"] .drh-buckle.is-silver {
-  --drh-buckle-base: #bcc2cc;
+  --drh-buckle-base: var(--fo-medal-silver);
 }
 
 .dr-frame[data-results="final"] .drh-buckle.is-bronze {
-  --drh-buckle-base: #b07a3f;
+  --drh-buckle-base: var(--fo-medal-bronze);
 }
 
 .drh-buckle.is-podium-side {
@@ -782,7 +751,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-buckle.is-countdown.pulse-red {
   /* Restrained red that still reads as urgency against our neutral palette. */
   --drh-buckle-base: var(--fo-danger);
-  --drh-buckle-contact: rgba(0, 0, 0, var(--fo-alpha-26));
+  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-26));
 }
 
 .drh-buckle.is-countdown.pulse-red .drh-buckleCenter,
@@ -2944,7 +2913,7 @@ small.error {
 }
 
 .prose a {
-  color: var(--text);
+  color: var(--brand-link);
 }
 
 .status {

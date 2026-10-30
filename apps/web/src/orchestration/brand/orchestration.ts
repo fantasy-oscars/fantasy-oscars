@@ -8,17 +8,21 @@ import {
   type BrandPreference
 } from "@fantasy-oscars/shared";
 import {
+  anonymousIdentity,
   brandPinKey,
   effectiveBrandPreference,
   isPinReusable,
-  shouldAdoptLocalPreference
+  shouldAdoptLocalPreference,
+  userIdentity
 } from "../../decisions/brand";
 import { fetchJson } from "../../lib/api";
 import {
+  clearLastBrand,
   getAnonymousId,
   loadBrandPin,
   loadLocalBrandPreference,
   saveBrandPin,
+  saveLastBrand,
   saveLocalBrandPreference
 } from "./storage";
 
@@ -68,7 +72,7 @@ export function useBrandOrchestration(
     serverPreference,
     localPreference
   });
-  const identity = user ? `user:${user.sub}` : `anon:${getAnonymousId()}`;
+  const identity = user ? userIdentity(user.sub) : anonymousIdentity(getAnonymousId());
 
   useEffect(() => {
     if (authLoading) return;
@@ -76,14 +80,19 @@ export function useBrandOrchestration(
     const day = brandDayNumber(now);
     const key = brandPinKey(identity, preference);
     const pin = loadBrandPin();
+    let next: BrandId;
     if (pin && isPinReusable(pin, key, day)) {
-      setBrand(pin.brand);
-      return;
+      next = pin.brand;
+    } else {
+      next = resolveBrand({ preference, now, identity });
+      saveBrandPin({ brand: next, day, key });
     }
-    const resolved = resolveBrand({ preference, now, identity });
-    saveBrandPin({ brand: resolved, day, key });
-    setBrand(resolved);
-  }, [authLoading, identity, preference]);
+    // Signed-in users keep the last brand so the next page load can paint it
+    // before the session check finishes; signed-out users resolve locally.
+    if (signedIn) saveLastBrand({ brand: next, day });
+    else clearLastBrand();
+    setBrand(next);
+  }, [authLoading, identity, preference, signedIn]);
 
   useEffect(() => {
     if (brand) document.documentElement.dataset.brand = brand;

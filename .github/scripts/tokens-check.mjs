@@ -164,6 +164,68 @@ if (fs.existsSync(WEB_CSS)) {
   }
 }
 
+// Raw colour / font / radius literals may appear only in brand definition files
+// (apps/web/src/theme/brands/). Everything else must reference contract (or
+// derived) tokens. Checked across every ts, tsx and css file in the web app.
+const BRAND_DIR = "theme/brands/";
+// Icon fonts are not part of a brand's typography.
+const ALLOWED_FONT_FAMILIES = ["Material Symbols Outlined"];
+
+const brandLiteralPatterns = [
+  {
+    name: "raw-hex-colour",
+    re: /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![\w-])/g,
+    hint: "Reference a brand slot (var(--brand-*)) or a shared token (var(--fo-*)); raw colours live in theme/brands/."
+  },
+  {
+    name: "raw-rgb-colour",
+    re: /\b(?:rgba?|hsla?)\(\s*\d/g,
+    hint: "Use rgba(var(--brand-<slot>-rgb), alpha) or a shared channel token such as --fo-black-rgb."
+  },
+  {
+    name: "raw-font-family",
+    re: /(?:font-family|fontFamily)["']?\s*:\s*(?![`'"]?var\()(?:[`'"]|[A-Za-z])/g,
+    hint: "Use var(--brand-font-*) or var(--fo-font-system); font stacks live in theme/brands/."
+  },
+  {
+    name: "raw-radius",
+    re: /(?:border-radius|[-\w]*radius[-\w]*)["'`]?\s*:\s*[`'"]?\d+(?:\.\d+)?px/g,
+    hint: "Use var(--brand-radius-*) / --fo-radius-* tokens; radius values live in theme/brands/."
+  }
+];
+
+function isCommentLine(line) {
+  const t = line.trim();
+  return t.startsWith("//") || t.startsWith("/*") || t.startsWith("*");
+}
+
+for (const file of walk(WEB_SRC)) {
+  if (!(isTsOrTsx(file) || file.endsWith(".css"))) continue;
+  const relFromWebSrc = path.relative(WEB_SRC, file).replaceAll(path.sep, "/");
+  if (relFromWebSrc.startsWith(BRAND_DIR)) continue;
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isCommentLine(line)) continue;
+    for (const p of brandLiteralPatterns) {
+      if (!p.re.test(line)) continue;
+      p.re.lastIndex = 0;
+      if (
+        p.name === "raw-font-family" &&
+        ALLOWED_FONT_FAMILIES.some((f) => line.includes(`"${f}"`))
+      )
+        continue;
+      violations.push({
+        file: path.relative(ROOT, file),
+        line: i + 1,
+        pattern: p.name,
+        snippet: line.trim(),
+        hint: p.hint
+      });
+    }
+  }
+}
+
 if (violations.length > 0) {
   console.error("Token check failed:\n");
   for (const v of violations) {

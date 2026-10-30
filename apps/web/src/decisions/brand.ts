@@ -1,9 +1,12 @@
 import {
+  brandDayNumber,
   isBrandId,
   isBrandPreference,
+  resolveBrand,
   type BrandId,
-  type BrandPreference
-} from "@fantasy-oscars/shared";
+  type BrandPreference,
+  type LocalDateTime
+} from "@fantasy-oscars/shared/brands";
 
 /**
  * Effective preference: a signed-in user's saved preference wins; if they have
@@ -58,4 +61,54 @@ export function parseBrandPin(raw: string | null): BrandPin | null {
 /** A pin is reused only for the same inputs on the same brand day. */
 export function isPinReusable(pin: BrandPin | null, key: string, day: number): boolean {
   return pin !== null && pin.key === key && pin.day === day;
+}
+
+/** Identity strings fed to the resolver; the pre-paint script and the app must agree. */
+export function userIdentity(userId: string): string {
+  return `user:${userId}`;
+}
+
+export function anonymousIdentity(anonId: string): string {
+  return `anon:${anonId}`;
+}
+
+/** The last brand resolved for a signed-in user, cached in localStorage. */
+export type LastBrand = { brand: BrandId; day: number };
+
+export function parseLastBrand(raw: string | null): LastBrand | null {
+  if (!raw) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return null;
+    const { brand, day } = value as Record<string, unknown>;
+    if (!isBrandId(brand)) return null;
+    if (typeof day !== "number" || !Number.isFinite(day)) return null;
+    return { brand, day };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Best guess for the brand before the session check finishes, so the first
+ * paint is already right. Order: this tab's pin, the cached last brand of a
+ * signed-in user, then the signed-out resolution. The app corrects it after the
+ * session check if the guess was wrong (for example a changed account preference).
+ * A pin or cache from an earlier brand day is ignored.
+ */
+export function resolvePrepaintBrand(input: {
+  pin: BrandPin | null;
+  last: LastBrand | null;
+  localPreference: BrandPreference | null;
+  anonId: string;
+  now: LocalDateTime;
+}): BrandId {
+  const day = brandDayNumber(input.now);
+  if (input.pin && input.pin.day === day) return input.pin.brand;
+  if (input.last && input.last.day === day) return input.last.brand;
+  return resolveBrand({
+    preference: input.localPreference,
+    now: input.now,
+    identity: anonymousIdentity(input.anonId)
+  });
 }
