@@ -167,12 +167,27 @@ call sites did not change. Mapping, for reference: `--fo-surface-page` is `page`
 1. Copy `refined-gold.ts` to `<slug>.ts` in `theme/brands/` and change the values.
    The compiler rejects a missing slot; the unit tests check both modes, enums and
    colour formats.
-2. Add it to `BRAND_DEFINITIONS` in `theme/brands/index.ts`.
+2. Fill in `fonts` (see Fonts) and add it to `BRAND_DEFINITIONS` in `theme/brands/index.ts`.
 3. Run `pnpm --filter @fantasy-oscars/web run test:unit` and
    `pnpm run test:visual`. Add visual coverage for the new brand to the matrix and
    commit its baselines; the other brands' baselines must not change.
 
 Slots are added to the contract only together with a value for every brand.
+
+## Fonts
+
+Text fonts are self-hosted from `@fontsource` packages (dependencies of `apps/web`; they are font files, not JS). No text font request leaves the origin. Only Material Symbols (icons) still comes from Google Fonts.
+
+A brand declares what it renders in `fonts` on its definition (`FontSlots` in `theme/brands/contract.ts`):
+
+- `faces`: a list of `{ family, weights, styles }`. Families must exist in `theme/brands/fontCatalog.ts`, which maps each to its package and says whether it is `static` (one file per weight, for example Cinzel, Inter, Barlow Condensed, IBM Plex Mono) or `variable` (one file per style covering the weight axis: Playfair Display, Bodoni Moda, Archivo, Fraunces, DM Sans, Instrument Sans). To add a family, add the package to `apps/web` and one catalog line.
+- `preload`: the two faces (`display` and `body`, each `{ family, weight, style }`) that must be ready for first paint. They must be among `faces`.
+
+Build (`vite/fonts.ts`, `vite/brandInit.ts`): the declared faces of all brands are merged into one generated stylesheet (`virtual:fo-fonts.css`, imported in `main.tsx`). Each face is a `@font-face` with `font-display: swap`, woff2 only, and every subset the package ships (latin, latin-ext, cyrillic, greek, vietnamese, ...), each its own rule with the package's `unicode-range`, so user content such as usernames and film titles in those scripts still renders in the brand font. A page only downloads the subset files its text uses; Latin-only pages pay nothing for the rest. All brands' faces are declared, but a browser fetches a face only when text actually uses it, so a session downloads just its own brand's fonts. Add a font by editing the brand's `fonts.faces`; the face must exist in the package or the build fails.
+
+Preload: the build resolves each brand's two preload faces (latin subset) to their hashed asset urls and bakes the map into `/brand-init.js`. After setting `data-brand` the script appends `<link rel="preload" as="font" type="font/woff2" crossorigin="anonymous">` for that brand's two files (`preloadBrandFonts` in `orchestration/brand/prepaint.ts`; unknown brands use the default's). In the dev server the map is empty and nothing is preloaded. If the app later corrects the brand, the preloaded files are simply unused.
+
+Tests (`apps/web/tests/unit/brand/fonts.test.ts`): every declared weight and style has `@font-face` coverage (latin at minimum), preload faces are declared, and a real build's preload links all point at emitted files.
 
 ## Before a second brand changes any pixels
 

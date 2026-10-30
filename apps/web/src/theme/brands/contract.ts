@@ -4,6 +4,7 @@
 // properties (see css.ts). Raw colours, fonts and radii are allowed only in
 // this folder (enforced by .github/scripts/tokens-check.mjs).
 import type { BrandId } from "@fantasy-oscars/shared/brands";
+import type { FontSlots } from "./fontCatalog";
 
 export const MODES = ["light", "dark"] as const;
 export type Mode = (typeof MODES)[number];
@@ -102,6 +103,8 @@ export type BrandDefinition = {
   /** Colours and shadows, one set per mode. */
   modes: Record<Mode, ModeSlots>;
   type: TypeSlots;
+  /** Font files this brand needs; see fontCatalog.ts. */
+  fonts: FontSlots;
   wordmark: WordmarkSlots;
   shape: ShapeSlots;
   navigation: NavigationSlots;

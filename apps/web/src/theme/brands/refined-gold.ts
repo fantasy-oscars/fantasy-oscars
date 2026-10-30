@@ -67,6 +67,16 @@ export const refinedGold: BrandDefinition = {
     h3Size: "18px",
     bodySize: "14px"
   },
+  fonts: {
+    faces: [
+      { family: "Cinzel", weights: [400, 700], styles: ["normal"] },
+      { family: "Inter", weights: [400, 700], styles: ["normal"] }
+    ],
+    preload: {
+      display: { family: "Cinzel", weight: 700, style: "normal" },
+      body: { family: "Inter", weight: 400, style: "normal" }
+    }
+  },
   wordmark: {
     font: SERIF,
     weight: "700",

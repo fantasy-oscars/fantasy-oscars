@@ -14,3 +14,4 @@ export function getBrandDefinition(id: BrandId): BrandDefinition {
 export * from "./contract";
 export { sharedByMode, sharedConstants } from "./shared";
 export { generateBrandCss } from "./css";
+export * from "./fontCatalog";
