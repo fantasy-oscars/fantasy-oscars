@@ -40,7 +40,7 @@ const light: ColorSlots = {
   accent: "#efe6d0",
   link: "#0d0d0d",
   linkHover: "#8a6d12",
-  focusRing: "#d4af37"
+  focusRing: "#8a6d12"
 };
 
 const shadows = {

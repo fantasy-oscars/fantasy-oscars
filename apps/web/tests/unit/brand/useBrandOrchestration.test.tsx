@@ -31,6 +31,7 @@ function setup(initial: Partial<BrandOrchestrationInput> & { now?: () => Date })
         authLoading: false,
         refreshAuth,
         now: () => NOON,
+        enabled: BRAND_IDS,
         ...props
       }),
     { initialProps: initial }
@@ -109,6 +110,21 @@ describe("useBrandOrchestration", () => {
     );
     const second = setup({});
     await waitFor(() => expect(second.result.current.brand).toBe(other));
+  });
+
+  it("renders the default brand for a stored or pinned brand that is not enabled", async () => {
+    window.localStorage.setItem("fo:brand-preference", "noir");
+    const stored = setup({ enabled: ["refined-gold"] });
+    await waitFor(() => expect(stored.result.current.brand).toBe("refined-gold"));
+    stored.unmount();
+
+    const pin = parseBrandPin(window.sessionStorage.getItem("fo:brand-session"))!;
+    window.sessionStorage.setItem(
+      "fo:brand-session",
+      JSON.stringify({ ...pin, brand: "noir" })
+    );
+    const pinned = setup({ enabled: ["refined-gold"] });
+    await waitFor(() => expect(pinned.result.current.brand).toBe("refined-gold"));
   });
 
   it("uses a locally stored preference when logged out", async () => {
@@ -265,9 +281,10 @@ describe("brand decisions", () => {
     expect(parseBrandPin(JSON.stringify({ brand: "x", day: 1, key: "k" }))).toBeNull();
     const pin = parseBrandPin(JSON.stringify({ brand: "noir", day: 5, key: "k" }));
     expect(pin).toEqual({ brand: "noir", day: 5, key: "k" });
-    expect(isPinReusable(pin, "k", 5)).toBe(true);
+    expect(isPinReusable(pin, "k", 5, BRAND_IDS)).toBe(true);
     expect(isPinReusable(pin, "k", 6)).toBe(false);
     expect(isPinReusable(pin, "other", 5)).toBe(false);
+    expect(isPinReusable(pin, "k", 5)).toBe(false);
     expect(isPinReusable(null, "k", 5)).toBe(false);
   });
 });

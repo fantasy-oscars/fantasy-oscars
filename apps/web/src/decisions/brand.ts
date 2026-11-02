@@ -1,6 +1,9 @@
 import {
+  BRAND_IDS,
+  ENABLED_BRAND_IDS,
   brandDayNumber,
   isBrandId,
+  isEnabledBrandId,
   isBrandPreference,
   resolveBrand,
   type BrandId,
@@ -58,9 +61,27 @@ export function parseBrandPin(raw: string | null): BrandPin | null {
   }
 }
 
-/** A pin is reused only for the same inputs on the same brand day. */
-export function isPinReusable(pin: BrandPin | null, key: string, day: number): boolean {
-  return pin !== null && pin.key === key && pin.day === day;
+/**
+ * A pin is reused only for the same inputs on the same brand day, and only
+ * while its brand is enabled.
+ */
+export function isPinReusable(
+  pin: BrandPin | null,
+  key: string,
+  day: number,
+  enabled: readonly BrandId[] = ENABLED_BRAND_IDS
+): boolean {
+  return (
+    pin !== null &&
+    pin.key === key &&
+    pin.day === day &&
+    isEnabledBrandId(pin.brand, enabled)
+  );
+}
+
+/** The brands in play: the released set, or every brand when the test flag is on. */
+export function enabledBrandIds(enableAll: boolean): readonly BrandId[] {
+  return enableAll ? BRAND_IDS : ENABLED_BRAND_IDS;
 }
 
 /** Identity strings fed to the resolver; the pre-paint script and the app must agree. */
@@ -102,13 +123,24 @@ export function resolvePrepaintBrand(input: {
   localPreference: BrandPreference | null;
   anonId: string;
   now: LocalDateTime;
+  enabled?: readonly BrandId[];
 }): BrandId {
+  const enabled = input.enabled ?? ENABLED_BRAND_IDS;
   const day = brandDayNumber(input.now);
-  if (input.pin && input.pin.day === day) return input.pin.brand;
-  if (input.last && input.last.day === day) return input.last.brand;
+  if (input.pin && input.pin.day === day && isEnabledBrandId(input.pin.brand, enabled)) {
+    return input.pin.brand;
+  }
+  if (
+    input.last &&
+    input.last.day === day &&
+    isEnabledBrandId(input.last.brand, enabled)
+  ) {
+    return input.last.brand;
+  }
   return resolveBrand({
     preference: input.localPreference,
     now: input.now,
-    identity: anonymousIdentity(input.anonId)
+    identity: anonymousIdentity(input.anonId),
+    enabled
   });
 }

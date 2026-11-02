@@ -10,6 +10,7 @@ import {
 import {
   anonymousIdentity,
   brandPinKey,
+  enabledBrandIds,
   effectiveBrandPreference,
   isPinReusable,
   shouldAdoptLocalPreference,
@@ -34,7 +35,19 @@ export type BrandOrchestrationInput = {
   refreshAuth: () => Promise<void>;
   /** Injectable for tests. */
   now?: () => Date;
+  /** Injectable for tests; defaults to the released brands (or all, in a test build). */
+  enabled?: readonly BrandId[];
 };
+
+/**
+ * Test builds set VITE_FO_ENABLE_ALL_BRANDS=1 to exercise unreleased brands. The flag
+ * is ignored in a production bundle (the build also refuses it, see vite/brandInit.ts).
+ */
+function buildEnabledBrands(): readonly BrandId[] {
+  return enabledBrandIds(
+    !import.meta.env.PROD && import.meta.env.VITE_FO_ENABLE_ALL_BRANDS === "1"
+  );
+}
 
 export type BrandOrchestration = {
   /** Brand in effect for this session; null until the session check finishes. */
@@ -61,6 +74,7 @@ export function useBrandOrchestration(
   const { user, authLoading, refreshAuth } = input;
   const nowRef = useRef(input.now ?? (() => new Date()));
   nowRef.current = input.now ?? (() => new Date());
+  const [enabled] = useState(() => input.enabled ?? buildEnabledBrands());
 
   const [localPreference, setLocalPreference] = useState(loadLocalBrandPreference);
   const [brand, setBrand] = useState<BrandId | null>(null);
@@ -81,10 +95,10 @@ export function useBrandOrchestration(
     const key = brandPinKey(identity, preference);
     const pin = loadBrandPin();
     let next: BrandId;
-    if (pin && isPinReusable(pin, key, day)) {
+    if (pin && isPinReusable(pin, key, day, enabled)) {
       next = pin.brand;
     } else {
-      next = resolveBrand({ preference, now, identity });
+      next = resolveBrand({ preference, now, identity, enabled });
       saveBrandPin({ brand: next, day, key });
     }
     // Signed-in users keep the last brand so the next page load can paint it
@@ -92,7 +106,7 @@ export function useBrandOrchestration(
     if (signedIn) saveLastBrand({ brand: next, day });
     else clearLastBrand();
     setBrand(next);
-  }, [authLoading, identity, preference, signedIn]);
+  }, [authLoading, enabled, identity, preference, signedIn]);
 
   useEffect(() => {
     if (brand) document.documentElement.dataset.brand = brand;

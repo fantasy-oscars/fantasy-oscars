@@ -42,7 +42,8 @@ removed locally. If that copy fails the local value stays and is retried later.
 
 ## Resolution
 
-`resolveBrand` is pure (`packages/shared/src/brands.ts`).
+`resolveBrand` is pure (`packages/shared/src/brands.ts`). The rules below describe
+resolution over all seven brands; see Enabled brands for what is released.
 
 - The brand day starts at 04:00 in the viewer's local time. Before 04:00 the
   previous calendar date counts. The day number is the count of local calendar
@@ -52,6 +53,34 @@ removed locally. If that copy fails the local value stays and is retried later.
   user id (signed in) or the anonymous browser id. If that equals the hash for
   the previous day it advances by a hash-derived 1 to 6 steps. The check looks
   one day back only, so an occasional repeat is possible.
+
+## Enabled brands
+
+Not every defined brand is released. `ENABLED_BRAND_IDS` in
+`packages/shared/src/brands.ts` lists the brands users can actually get, in rotation
+order. It must be a non-empty subsequence of `BRAND_IDS`; a unit test checks this.
+Today it holds `refined-gold` only.
+
+`resolveBrand` takes an optional `enabled` list that defaults to `ENABLED_BRAND_IDS`:
+
+- A brand slug preference that is not enabled behaves like `rotate`. Stored
+  preferences are still validated against `BRAND_IDS`, so slugs stay storable.
+- `rotate` is `enabled[dayNumber mod enabled.length]`.
+- `random` hashes over `enabled`. With fewer than two enabled brands the
+  yesterday-avoidance step is skipped.
+- With all seven enabled the results are the ones described under Resolution.
+- A pin (`fo:brand-session`) or cached brand (`fo:brand-last`) is accepted only when
+  its brand is enabled (`isEnabledBrandId`).
+
+To release a brand, append it to `ENABLED_BRAND_IDS` in rotation order.
+
+Test builds can enable every brand with `VITE_FO_ENABLE_ALL_BRANDS=1`. The flag is
+read in orchestration (`useBrandOrchestration`) and in `vite/brandInit.ts`, which
+bakes it into `/brand-init.js`, and is passed to the pure decisions as the `enabled`
+list. It is never on in production: `vite/brandInit.ts` throws when the flag is set
+with `mode === "production"`, orchestration ignores it in a production bundle
+(`import.meta.env.PROD`), and a unit test checks that the production `brand-init.js`
+renders only enabled brands whatever is stored.
 
 ## Pinning
 
@@ -135,11 +164,10 @@ Not per brand (defined once in `shared.ts`, emitted as `--fo-*`, with separate l
 and dark values from the design source): win gold (`--fo-win-gold` `#d4af37` light /
 `#e2c25a` dark, `--fo-win-gold-on`, `--fo-win-gold-text`), status colours
 (`--fo-status-complete`, `-live`, `-drafting`); plus mode-independent
-`--fo-danger`, podium metals, the black and white shadow channels, the pill radius
-and a system font stack. Nothing renders the win gold or status tokens yet:
-`--fo-gold` still resolves to the primary action colour (#d4af37 in both modes),
-which differs from the dark win gold. Moving gold consumers onto the shared tokens
-is a visual change to resolve in the visual phase.
+`--fo-danger` with its `--fo-danger-on` text colour, podium metals, the black and
+white shadow channels, the pill radius and a system font stack. Win gold is rendered
+by winning pills, the final-results buckle and podium first place; status colours are
+not rendered yet.
 
 Generated CSS (`virtual:fo-brand.css`, imported in `main.tsx` before
 `styles.css`): the unscoped `:root` blocks carry the default brand (refined-gold),
@@ -154,13 +182,13 @@ call sites did not change. Mapping, for reference: `--fo-surface-page` is `page`
 `--fo-surface-card-hero` is `surface`; `--fo-surface-card-primary` is `raised`;
 `--fo-surface-pill` is `sunken`; `--fo-text-primary` is `text`;
 `--fo-text-deemphasized` is `muted`; `--fo-border` is `rule`;
-`--fo-gold-primary`, `--fo-gold-rgb` are `primary`; `--fo-text-onGold` is
-`onPrimary`; `--fo-gold-wash` is `accent`; `--fo-radius-small/medium/large` are
-`radius-sm/md/lg`; `--fo-heading-h1/h2/h3-size` are `h1/h2/h3-size`;
-`--fo-shadow-card` and `--fo-shadow-card-hover` are `shadow-card` and
-`shadow-raised`; `--fo-gold` follows `primary` for now (see above). `--fo-charcoal-*` and
-`--fo-ivory*` are the explicit dark/light slots of the same names (for example
-`--fo-charcoal-9` is the dark `page`).
+`--fo-radius-small/medium/large` are `radius-sm/md/lg`;
+`--fo-heading-h1/h2/h3-size` are `h1/h2/h3-size`; `--fo-shadow-card` and
+`--fo-shadow-card-hover` are `shadow-card` and `shadow-raised`. The old `--fo-gold*`,
+`--fo-charcoal-*`, `--fo-ivory*` and `--fo-text-onGold` aliases are gone: styles read
+`--brand-primary`, `--brand-on-primary`, `--brand-text-rgb` and the explicit
+`--brand-dark-*` / `--brand-light-*` slots directly, and "this pick won" reads the
+shared `--fo-win-gold*` tokens.
 
 ### Adding a brand
 
@@ -191,11 +219,10 @@ Tests (`apps/web/tests/unit/brand/fonts.test.ts`): every declared weight and sty
 
 ## Before a second brand changes any pixels
 
-The contract is in place, but refined-gold still reaches a few values through shortcuts that only work while it is the only brand. Fix these before another brand renders:
+The contract is in place, but refined-gold still reached a few values through shortcuts that only worked while it was the only brand. The spec for fixing them is `docs/design/prescriptions/01-structural-prerequisites.md`.
 
-1. **Win gold versus primary.** `--fo-gold`, `--fo-gold-primary` and `--fo-gold-rgb` follow `--brand-primary`, and they colour both primary actions and "this pick won" (win pills, podium, draft glows and focus rings built from `rgba(var(--fo-gold-rgb), …)`). Sort each consumer into primary or win, and move the win ones to the shared `--fo-win-gold*` tokens. This also brings dark-mode win gold to the design's `#e2c25a`.
-2. **Mode-agnostic ink.** `--fo-charcoal-rgb`, `--fo-charcoal-9` and `--fo-ivory` alias the dark `page` and `text` slots but are used as fixed ink, for example in light-mode shadows and Mantine's outline hover. Switch them to `--brand-text-rgb` or add a shadow-tint slot.
-3. **Values outside the contract.** These are still hard-coded and invisible to `tokens:check`:
-   - Mantine named colours (`color="blue"`, `color="red"`).
-   - Raw `font-size`, `letter-spacing` and `text-transform` values.
-   - The `theme-color` meta, the web manifest and the icon.
+1. **Win gold versus primary. Done.** Each former `--fo-gold*` consumer is now primary (`--brand-primary`), win (`--fo-win-gold*`, shared) or a new non-gold pill treatment. Dark-mode win gold is `#e2c25a`, and the legacy tokens are removed.
+2. **Mode-agnostic ink. Done.** `--fo-charcoal-*`, `--fo-ivory*` and `--fo-text-onGold` are removed. Ink reads `--brand-text-rgb`, an explicit-mode slot or a shared token, and fixed shadows read `--fo-black-rgb`.
+3. **Values outside the contract. Partly done.**
+   - Done: `text-transform` reads `--brand-label-case`; Mantine's `blue` is fully rebound to `--brand-primary` (and commented in `ui/Button.tsx` and `ui/ActionIcon.tsx`); Mantine's focus outline reads `--brand-focus-ring`.
+   - Left on purpose (decisions in the prescription, section 4.3): Mantine `red`, `yellow`, `teal`, `gray` and `green`, the label letter-spacing scale, raw font sizes, and the `theme-color` meta, web manifest and icon.

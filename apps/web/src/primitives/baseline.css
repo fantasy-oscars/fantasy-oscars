@@ -90,7 +90,7 @@
   font-size: var(--fo-font-size-hero-title);
   line-height: 1.05;
   font-weight: var(--fo-font-weight-bold);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--fo-letterSpacing-tight);
 }
 
 .baseline-textSectionHeader {
@@ -137,7 +137,7 @@
 
 .baseline-statusPill.isUrgent {
   background: var(--accent);
-  color: var(--fo-text-onGold);
+  color: var(--brand-on-primary);
 }
 
 .baseline-updates-prose p {
@@ -171,12 +171,12 @@ body[data-mantine-color-scheme="light"] .baseline-heroCard {
   /* Radial spotlight: warm, lit core slightly off-center; neutral charcoal falloff. */
   background: radial-gradient(
     circle at 33% -10%,
-    color-mix(in srgb, var(--fo-charcoal-8) 70%, var(--fo-gold-primary) 30%) 0%,
-    var(--fo-charcoal-8) 65%,
-    color-mix(in srgb, var(--fo-charcoal-8) 60%, var(--fo-charcoal-9) 40%) 100%
+    color-mix(in srgb, var(--brand-dark-surface) 70%, var(--brand-primary) 30%) 0%,
+    var(--brand-dark-surface) 65%,
+    color-mix(in srgb, var(--brand-dark-surface) 60%, var(--brand-dark-page) 40%) 100%
   );
-  color: var(--fo-ivory);
-  --fo-typo-muted: rgba(var(--fo-ivory-rgb), var(--fo-alpha-75));
+  color: var(--brand-dark-text);
+  --fo-typo-muted: rgba(var(--brand-dark-text-rgb), var(--fo-alpha-75));
   box-shadow: var(--fo-shadow-hero-light);
 }
 
@@ -184,12 +184,12 @@ body[data-mantine-color-scheme="light"] .baseline-heroCard {
 body[data-mantine-color-scheme="dark"] .baseline-heroCard {
   background: radial-gradient(
     circle at 33% -10%,
-    color-mix(in srgb, var(--fo-ivory) 70%, var(--fo-gold-primary) 30%) 0%,
-    var(--fo-ivory) 65%,
-    color-mix(in srgb, var(--fo-ivory) 60%, var(--fo-gold-wash) 40%) 100%
+    color-mix(in srgb, var(--brand-light-page) 70%, var(--brand-primary) 30%) 0%,
+    var(--brand-light-page) 65%,
+    color-mix(in srgb, var(--brand-light-page) 60%, var(--brand-accent) 40%) 100%
   );
-  color: var(--fo-charcoal-9);
-  --fo-typo-muted: rgba(var(--fo-charcoal-rgb), var(--fo-alpha-75));
+  color: var(--brand-light-text);
+  --fo-typo-muted: rgba(var(--brand-light-text-rgb), var(--fo-alpha-75));
   box-shadow: var(--fo-shadow-hero-dark);
 }
 

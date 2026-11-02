@@ -51,7 +51,7 @@ export function AdminCeremonyWizardScreen(props: {
   } = props;
 
   return (
-    <Group align="start" wrap="nowrap" className="wizard-shell">
+    <Box className="wizard-shell">
       <Box className="wizard-stepper">
         <Stepper
           active={active}
@@ -164,6 +164,6 @@ export function AdminCeremonyWizardScreen(props: {
           </Box>
         </Stack>
       </Box>
-    </Group>
+    </Box>
   );
 }

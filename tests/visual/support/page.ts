@@ -147,3 +147,40 @@ export async function settle(page: Page, inFlight: () => number) {
       )
   );
 }
+
+/**
+ * Waits until every running animation and transition has finished, then two frames,
+ * so a state raised by a dispatched event (hover, focus, arm) is fully painted.
+ */
+export async function waitForAnimationsIdle(page: Page) {
+  await page.evaluate(async () => {
+    for (let i = 0; i < 50; i++) {
+      const running = document
+        .getAnimations()
+        .filter((a) => a.playState === "running" || a.playState === "pending");
+      if (running.length === 0) break;
+      await Promise.allSettled(running.map((a) => a.finished));
+    }
+    const frame = () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    // The header buckle is positioned from measured widths; wait for them to hold
+    // still for several frames so its edge is not captured mid-layout.
+    const rectKey = () =>
+      Array.from(document.querySelectorAll(".drh-buckle, .drh-tokenWrap"))
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return `${r.left}|${r.top}|${r.width}|${r.height}`;
+        })
+        .join(";");
+    let last = rectKey();
+    let steady = 0;
+    for (let i = 0; i < 120 && steady < 6; i++) {
+      await frame();
+      const next = rectKey();
+      steady = next === last ? steady + 1 : 0;
+      last = next;
+    }
+    await frame();
+    await frame();
+  });
+}

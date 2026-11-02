@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   BRANDS,
+  KNOWN_PHONE_OVERFLOW,
   MAX_PAGE_HEIGHT,
   MODES,
   SCREENS,
@@ -28,6 +29,7 @@ for (const brand of BRANDS) {
         });
 
         for (const screen of SCREENS) {
+          if (screen.viewports && !screen.viewports.includes(viewportName)) continue;
           test(screen.id, async ({ page, context }) => {
             const seed = readSeed();
             const blocked = await installNetworkGuards(context);
@@ -47,16 +49,29 @@ for (const brand of BRANDS) {
             await settle(page, inFlight);
             expect(blocked, "requests that left the machine").toEqual([]);
 
+            if (viewportName === "mobile" && !KNOWN_PHONE_OVERFLOW.includes(screen.id)) {
+              const scrollWidth = await page.evaluate(
+                () => document.documentElement.scrollWidth
+              );
+              expect(scrollWidth, "horizontal overflow at 390px").toBeLessThanOrEqual(
+                VIEWPORTS.mobile.width
+              );
+            }
+
             const height = await page.evaluate(
               () => document.documentElement.scrollHeight
             );
             const fullPage =
               screen.fullPage === true && height > VIEWPORTS[viewportName].height;
+            const mask = (screen.maskSelectors ?? []).map((selector) =>
+              page.locator(selector)
+            );
             await expect(page).toHaveScreenshot(
               [screen.id, `${snapshotName(brand, mode, viewportName)}.png`],
               fullPage
                 ? {
                     fullPage: true,
+                    mask,
                     clip: {
                       x: 0,
                       y: 0,
@@ -64,7 +79,7 @@ for (const brand of BRANDS) {
                       height: Math.min(height, MAX_PAGE_HEIGHT)
                     }
                   }
-                : {}
+                : { mask }
             );
           });
         }

@@ -298,7 +298,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
 
   if (props.o.state.loadingInitial) {
     return (
-      <Box className="baseline-page">
+      <Box component="main" id="main-content" tabIndex={-1} className="baseline-page">
         <Box className="baseline-pageInner">
           <Stack gap="md" role="status" aria-label="Loading draft board">
             <Skeleton height="96px" width="100%" />
@@ -329,7 +329,11 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   }
 
   if (!props.o.header.status && props.o.state.error) {
-    return <PageError message={props.o.state.error} />;
+    return (
+      <Box component="main" id="main-content" tabIndex={-1}>
+        <PageError message={props.o.state.error} />
+      </Box>
+    );
   }
 
   const statusChrome = (
@@ -429,7 +433,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         onParticipantHoverSeat={setHoveredSeatNumber}
       />
       <RuntimeBannerStack />
-      <Box className="dr-body">
+      <Box component="main" id="main-content" tabIndex={-1} className="dr-body">
         {isCompleted || props.o.header.view === "roster" ? (
           <RosterBoardScaffold o={props.o} nomineeById={nomineeById} />
         ) : (
@@ -466,7 +470,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
           />
         )}
       </Box>
-      <Box className="dr-footer">
+      <Box component="footer" className="dr-footer">
         <SiteFooterFineprintOnly />
       </Box>
       {remoteCursors.length ? (

@@ -7,6 +7,8 @@
 export const sharedConstants = {
   // Destructive / error accent.
   "--fo-danger": "#b34b42",
+  // Text and glyphs on the danger fill (the red countdown pulse).
+  "--fo-danger-on": "#f7f8fc",
   // Podium metals (gold is the win gold below).
   "--fo-medal-silver": "#bcc2cc",
   "--fo-medal-bronze": "#b07a3f",
@@ -20,9 +22,8 @@ export const sharedConstants = {
 } as const;
 
 // Win gold ("this pick won") and status colours, from the design source.
-// Nothing renders these yet: today's UI uses the primary action colour where it
-// shows gold (`--fo-gold` still resolves to #d4af37 in both modes). Moving those
-// consumers onto these tokens is a visual change, to be done in the visual phase.
+// Win gold is rendered by winning pills, the final-results buckle and podium
+// first place. Status colours are not rendered yet.
 export const sharedByMode = {
   light: {
     "--fo-win-gold": "#d4af37",
@@ -35,7 +36,7 @@ export const sharedByMode = {
   dark: {
     "--fo-win-gold": "#e2c25a",
     "--fo-win-gold-on": "#0d0d0d",
-    "--fo-win-gold-text": "#8a6a14",
+    "--fo-win-gold-text": "#e2c25a",
     "--fo-status-complete": "#4fbf8a",
     "--fo-status-live": "#f0566a",
     "--fo-status-drafting": "#3fc1be"

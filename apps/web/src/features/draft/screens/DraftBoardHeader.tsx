@@ -356,7 +356,7 @@ export function DraftBoardHeader(props: {
   ]);
 
   return (
-    <Box className="dr-header">
+    <Box component="header" className="dr-header">
       <Box className="drh-row" ref={headerRef}>
         <Box className="drh-left" ref={leftRef}>
           <Box className="drh-wing" ref={leftWingRef}>

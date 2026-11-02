@@ -24,16 +24,33 @@ export const DEFAULT_PRELOAD_KEY = "*";
 /** Preload urls (display, then body) per brand id, plus `*` for the default brand. */
 export type FontPreloadMap = Record<string, string[]>;
 
+/**
+ * Whether unreleased brands are enabled for this build. Only test builds may turn
+ * them on: a production build with the flag set is refused, so it cannot ship.
+ */
+export function resolveEnableAllBrands(mode: string, flag: string | undefined): boolean {
+  if (flag !== "1") return false;
+  if (mode === "production")
+    throw new Error(
+      "VITE_FO_ENABLE_ALL_BRANDS=1 is not allowed in a production build: it would release unfinished brands."
+    );
+  return true;
+}
+
 /** Bundles src/brand-init.ts into one dependency-free classic script. */
 export async function buildBrandInitScript(
-  preloads: FontPreloadMap = {}
+  preloads: FontPreloadMap = {},
+  enableAllBrands = false
 ): Promise<string> {
   const result = await build({
     root: webRoot,
     configFile: false,
     publicDir: false,
     logLevel: "silent",
-    define: { __FO_FONT_PRELOADS__: JSON.stringify(preloads) },
+    define: {
+      __FO_FONT_PRELOADS__: JSON.stringify(preloads),
+      __FO_ENABLE_ALL_BRANDS__: JSON.stringify(enableAllBrands)
+    },
     build: {
       write: false,
       minify: true,
@@ -63,11 +80,16 @@ export async function buildBrandInitScript(
  */
 export function brandPlugin(): Plugin {
   let config: ResolvedConfig;
+  let enableAllBrands = false;
   let devScript: Promise<string> | null = null;
   return {
     name: "fo-brand",
     configResolved(resolved) {
       config = resolved;
+      enableAllBrands = resolveEnableAllBrands(
+        resolved.mode,
+        resolved.env.VITE_FO_ENABLE_ALL_BRANDS
+      );
     },
     resolveId(id) {
       if (id === CSS_ID) return RESOLVED_CSS_ID;
@@ -92,7 +114,7 @@ export function brandPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.split("?")[0] !== SCRIPT_URL) return next();
         res.setHeader("Content-Type", "text/javascript");
-        res.end(await (devScript ??= buildBrandInitScript()));
+        res.end(await (devScript ??= buildBrandInitScript({}, enableAllBrands)));
       });
     },
     async generateBundle(_options, bundle) {
@@ -120,7 +142,7 @@ export function brandPlugin(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "brand-init.js",
-        source: await buildBrandInitScript(preloads)
+        source: await buildBrandInitScript(preloads, enableAllBrands)
       });
     }
   };

@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { waitForAnimationsIdle } from "./support/page";
 import type { PersonaKey, VisualSeed } from "./support/seed";
 
 /**
@@ -23,6 +24,13 @@ export type ScreenDef = {
    * draft room) are captured at viewport size.
    */
   fullPage?: boolean;
+  /** Viewports to capture; defaults to both. */
+  viewports?: readonly ViewportName[];
+  /**
+   * Regions painted over before comparing. For a capture whose subject is elsewhere
+   * but whose layout puts half-pixel edges in the frame (see draft-live-hover-match).
+   */
+  maskSelectors?: readonly string[];
 };
 
 export const SCREENS: ScreenDef[] = [
@@ -116,6 +124,62 @@ export const SCREENS: ScreenDef[] = [
     ready: { selector: "main" }
   },
   {
+    id: "draft-live-armed",
+    persona: "avery",
+    path: (s) => `/drafts/${s.drafts.live}`,
+    ready: { selector: "main" },
+    viewports: ["desktop"],
+    prepare: async (page) => {
+      // Dispatch the click instead of moving the mouse: pointer moves are broadcast as
+      // a live cursor that the other personas' captures of this draft would show.
+      await page
+        .locator('.dr-pill-btn[aria-label^="Best Picture: "]:not(.is-muted)')
+        .first()
+        .dispatchEvent("click");
+      await expect(
+        page.getByRole("button", { name: "Confirm draft pick" })
+      ).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
+    id: "draft-live-hover-match",
+    persona: "blake",
+    path: (s) => `/drafts/${s.drafts.live}`,
+    ready: { selector: "main" },
+    viewports: ["desktop"],
+    // Blake's narrower header shows the token strip; its avatars and the buckle sit on
+    // half-pixel offsets and rasterise to one of two anti-aliased results per load.
+    maskSelectors: [".dr-header"],
+    prepare: async (page) => {
+      // The participant strip is hidden in avery's wider header, so blake views and
+      // hovers avery's token. A dispatched mouseover raises the participant hover without a pointer move
+      // (see draft-live-armed).
+      await page
+        .locator('.drh-tokenWrap[aria-label="avery"]')
+        .first()
+        .dispatchEvent("mouseover");
+      await expect(page.locator(".dr-pill.is-hoverMatch").first()).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
+    id: "draft-live-focus-disabled",
+    persona: "blake",
+    path: (s) => `/drafts/${s.drafts.live}`,
+    ready: { selector: "main" },
+    viewports: ["desktop"],
+    maskSelectors: [".dr-header"],
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Category: Best Picture" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(
+        page.locator('.dr-pill-btn[aria-label^="Best Picture: "]').first()
+      ).toBeFocused();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
     id: "draft-completed",
     persona: "jo",
     path: (s) => `/drafts/${s.drafts.completed}`,
@@ -199,6 +263,18 @@ export const VIEWPORTS = {
   mobile: { width: 390, height: 844 }
 } as const;
 export type ViewportName = keyof typeof VIEWPORTS;
+
+/**
+ * Screens that overflow a 390px viewport horizontally today and are not fixed by
+ * this work. The phone guard skips them so the rest stay protected; remove an id
+ * once its overflow is fixed.
+ */
+export const KNOWN_PHONE_OVERFLOW: readonly string[] = [
+  // Draft-plan rows are wider than the viewport (scrollWidth 577).
+  "draft-plans",
+  // The very long username in the account page is not wrapped (scrollWidth 538).
+  "account"
+];
 
 /** Brands multiply the matrix. Only the current look exists today. */
 export const BRANDS = [{ id: "default" }] as const;
