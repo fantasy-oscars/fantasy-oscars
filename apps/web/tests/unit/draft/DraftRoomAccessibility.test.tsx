@@ -186,6 +186,58 @@ function expectEveryButtonNamed(root: ParentNode) {
 describe("draft room accessibility", () => {
   afterEach(() => cleanup());
 
+  it("renders exactly one main landmark, with header and footer outside it", () => {
+    const { container } = renderScreen(makeOrchestration());
+    const mains = container.querySelectorAll("main#main-content");
+    expect(mains).toHaveLength(1);
+    expect(container.querySelectorAll("main")).toHaveLength(1);
+    const header = container.querySelector("header.dr-header");
+    const footer = container.querySelector("footer.dr-footer");
+    expect(header).not.toBeNull();
+    expect(footer).not.toBeNull();
+    expect(mains[0]?.contains(header)).toBe(false);
+    expect(mains[0]?.contains(footer)).toBe(false);
+    expect(container.querySelectorAll("footer")).toHaveLength(1);
+  });
+
+  it("renders one main landmark while loading and on a load error", () => {
+    const base = makeOrchestration();
+    const loading = renderScreen({
+      ...base,
+      state: { ...base.state, loadingInitial: true }
+    });
+    expect(loading.container.querySelectorAll("main#main-content")).toHaveLength(1);
+    cleanup();
+    const failed = renderScreen({
+      ...base,
+      header: { ...base.header, status: null },
+      state: { ...base.state, error: "Could not load the draft" }
+    });
+    expect(failed.container.querySelectorAll("main#main-content")).toHaveLength(1);
+  });
+
+  it("renders one main landmark and no banner role on mobile", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false
+    }));
+    try {
+      const { container } = renderScreen(makeOrchestration());
+      expect(container.querySelectorAll("main#main-content")).toHaveLength(1);
+      expect(container.querySelector("header.dr-mobileHeader")).not.toBeNull();
+      expect(container.querySelector("footer.dr-footer")).not.toBeNull();
+      expect(container.querySelector("[role='banner']")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("names every button in the draft room", () => {
     const { container } = renderScreen(makeOrchestration());
     expectEveryButtonNamed(container);

@@ -175,7 +175,7 @@ export function MobileDraftRoom(props: {
 
       <RuntimeBannerStack />
 
-      <Box className="dr-body">
+      <Box component="main" id="main-content" tabIndex={-1} className="dr-body">
         <Box className="dr-mobileScroll">
           {isCompleted || o.header.view === "roster" ? (
             <MobileRosterBoard o={o} nomineeById={props.nomineeById} />
@@ -285,7 +285,7 @@ export function MobileDraftRoom(props: {
         </Box>
       ) : null}
 
-      <Box className="dr-footer">
+      <Box component="footer" className="dr-footer">
         <SiteFooterFineprintOnly />
       </Box>
 

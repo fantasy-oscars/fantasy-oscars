@@ -95,8 +95,9 @@ export function SiteFooter() {
 }
 
 export function SiteFooterFineprintOnly() {
+  // Rendered inside the draft room's own footer landmark, so no second one here.
   return (
-    <Box component="footer" className="site-footer">
+    <Box className="site-footer">
       <Text variant="chromeFineprint" className="footer-fineprint" ta="center">
         © 2026 Fantasy Oscars · Fan-run. Not affiliated with AMPAS.
       </Text>

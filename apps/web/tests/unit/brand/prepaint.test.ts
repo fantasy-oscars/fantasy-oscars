@@ -6,6 +6,7 @@ import {
   BRAND_PREFERENCES,
   brandDayNumber,
   localDateTimeFromDate,
+  ENABLED_BRAND_IDS,
   resolveBrand
 } from "@fantasy-oscars/shared/brands";
 import { buildBrandInitScript } from "../../../vite/brandInit";
@@ -55,14 +56,45 @@ function expected(preference: unknown, now: Date): string {
   return resolveBrand({
     preference,
     now: localDateTimeFromDate(now),
-    identity: `anon:${ANON}`
+    identity: `anon:${ANON}`,
+    enabled: BRAND_IDS
   });
 }
 
-describe("pre-paint brand script", () => {
+describe("pre-paint brand script (production build)", () => {
   let code = "";
   beforeAll(async () => {
     code = await buildBrandInitScript();
+  });
+
+  it("does not enable other brands", () => {
+    const only = ENABLED_BRAND_IDS[0];
+    for (let day = 0; day < 14; day += 1) {
+      const now = new Date(2035, 1, 10 + day, 12, 0);
+      for (const preference of [null, "rotate", "random", ...BRAND_IDS]) {
+        const local: Record<string, string> = { ...LOCAL };
+        if (typeof preference === "string") local["fo:brand-preference"] = preference;
+        expect(runScript(code, now, { local })).toBe(only);
+      }
+    }
+  });
+
+  it("ignores a pinned or cached brand that is not enabled", () => {
+    const now = new Date(2035, 1, 10, 12, 0);
+    const day = brandDayNumber(localDateTimeFromDate(now));
+    const session = {
+      "fo:brand-session": JSON.stringify({ brand: "noir", day, key: "k" })
+    };
+    const last = { ...LOCAL, "fo:brand-last": JSON.stringify({ brand: "noir", day }) };
+    expect(runScript(code, now, { local: LOCAL, session })).toBe("refined-gold");
+    expect(runScript(code, now, { local: last })).toBe("refined-gold");
+  });
+});
+
+describe("pre-paint brand script (all brands enabled)", () => {
+  let code = "";
+  beforeAll(async () => {
+    code = await buildBrandInitScript({}, true);
   });
 
   it("is small and self-contained", () => {

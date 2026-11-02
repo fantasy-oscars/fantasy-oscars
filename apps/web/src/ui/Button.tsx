@@ -31,6 +31,11 @@ export function Button<C = "button">(props: PolymorphicComponentProps<C, ButtonP
     MantineButtonProps
   >;
 
+  // Mantine's `blue` is its primaryColor and is fully rebound to the brand
+  // primary (`--brand-primary` / `--brand-on-primary`) in the token layer, so
+  // `color="blue"` renders the brand colour in every brand. `red` is Mantine's
+  // own mode-aware palette and is left as is.
+  //
   // Semantic variants only (finite vocabulary). Internals can change without
   // rewriting feature code.
   switch (variant) {

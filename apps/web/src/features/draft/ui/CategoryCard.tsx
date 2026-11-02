@@ -167,6 +167,15 @@ export function CategoryCard(props: {
                   props.onNomineeClick(Number(n.id), n.label);
                 }}
               >
+                {isArmed ? (
+                  <Text
+                    component="span"
+                    className="mi-icon mi-icon-tiny dr-pill-armedMark"
+                    aria-hidden="true"
+                  >
+                    check
+                  </Text>
+                ) : null}
                 <Text component="span" className="dr-pill-text">
                   {n.label}
                 </Text>

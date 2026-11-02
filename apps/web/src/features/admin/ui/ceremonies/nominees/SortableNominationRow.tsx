@@ -87,7 +87,7 @@ export function SortableNominationRow(props: {
         </Box>
       </Group>
 
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xs" wrap="nowrap" className="nomination-actions">
         <Tooltip label="Edit nomination" withArrow>
           <ActionIcon
             type="button"

@@ -134,6 +134,7 @@ export function MobileDraftHeader(props: {
 
   return (
     <Box
+      component="header"
       className={[
         "dr-header",
         "dr-mobileHeader",
@@ -146,7 +147,6 @@ export function MobileDraftHeader(props: {
           countdownActive ? "is-countdown" : "",
           countdownActive ? (countdownPhase === "red" ? "pulse-red" : "pulse-gold") : ""
         ].join(" ")}
-        role="banner"
       >
         <ActionIcon
           variant="subtle"

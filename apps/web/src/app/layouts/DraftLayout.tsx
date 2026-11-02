@@ -9,7 +9,7 @@ export function DraftLayout() {
         <a className="skip-link" href="#main-content">
           Skip to content
         </a>
-        <Box component="main" id="main-content" tabIndex={-1} className="draftLayoutMain">
+        <Box className="draftLayoutMain">
           <Outlet />
         </Box>
       </Box>

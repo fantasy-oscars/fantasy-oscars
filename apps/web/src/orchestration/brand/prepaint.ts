@@ -1,4 +1,4 @@
-import { localDateTimeFromDate } from "@fantasy-oscars/shared/brands";
+import { localDateTimeFromDate, type BrandId } from "@fantasy-oscars/shared/brands";
 import { resolvePrepaintBrand } from "../../decisions/brand";
 import {
   getAnonymousId,
@@ -13,14 +13,19 @@ import {
  * vite/brandInit.ts) and loaded from index.html; the same decision and storage
  * code as the app is used, so the two cannot drift.
  */
-export function applyPrepaintBrand(root: HTMLElement, now: Date): string | undefined {
+export function applyPrepaintBrand(
+  root: HTMLElement,
+  now: Date,
+  enabled?: readonly BrandId[]
+): string | undefined {
   try {
     const brand = resolvePrepaintBrand({
       pin: loadBrandPin(),
       last: loadLastBrand(),
       localPreference: loadLocalBrandPreference(),
       anonId: getAnonymousId(),
-      now: localDateTimeFromDate(now)
+      now: localDateTimeFromDate(now),
+      enabled
     });
     root.dataset.brand = brand;
     return brand;
