@@ -110,6 +110,8 @@ export const foTokens = {
   "--fo-line-height-h4": `1.25`,
   "--fo-line-height-meta": `1.3`,
   "--fo-line-height-tight": `1.1`,
+  "--fo-line-height-snap-body": `24px`,
+  "--fo-line-height-snap-label": `22px`,
   "--fo-opacity-muted-1": `0.92`,
   "--fo-opacity-muted-2": `0.85`,
   "--fo-pill-padding-x": `6px`,

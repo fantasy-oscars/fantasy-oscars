@@ -2166,13 +2166,13 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
    boundaries; the fractional defaults (24.8px body, 21.7px labels) put them on half pixels
    and the corners rasterised differently from load to load. */
 .wizard-panel.is-primary {
-  --mantine-line-height: 24px;
-  --mantine-line-height-md: 24px;
-  line-height: 24px;
+  --mantine-line-height: var(--fo-line-height-snap-body);
+  --mantine-line-height-md: var(--fo-line-height-snap-body);
+  line-height: var(--fo-line-height-snap-body);
 }
 
 .wizard-panel.is-primary .mantine-InputWrapper-label {
-  line-height: 22px;
+  line-height: var(--fo-line-height-snap-label);
 }
 
 .wizard-inline-check {
