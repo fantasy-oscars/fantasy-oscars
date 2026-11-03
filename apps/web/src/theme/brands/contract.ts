@@ -72,8 +72,12 @@ export type TypeSlots = {
   displayWeight: string;
   /** Text case of titles (`--brand-display-case`); the draft room overrides it to none. */
   displayCase: TextCase;
-  /** Letter-spacing of card titles (`--brand-display-tracking`); each display face needs its own. */
+  /** Letter-spacing of display titles (`--brand-display-tracking`); each display face needs its own. */
   displayTracking: string;
+  /** Letter-spacing of the page hero title (`--brand-hero-tracking`); large sizes can want a different value than card titles. */
+  heroTracking: string;
+  /** Word-spacing of display titles (`--brand-display-word-spacing`); faces with a narrow space glyph need more. */
+  displayWordSpacing: string;
   h1Size: string;
   h2Size: string;
   h3Size: string;

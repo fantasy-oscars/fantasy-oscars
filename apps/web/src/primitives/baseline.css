@@ -92,7 +92,8 @@
   line-height: 1.05;
   font-weight: var(--brand-display-weight);
   text-transform: var(--brand-display-case);
-  letter-spacing: var(--fo-letterSpacing-tight);
+  letter-spacing: var(--brand-hero-tracking);
+  word-spacing: var(--brand-display-word-spacing);
 }
 
 .baseline-textSectionHeader {
@@ -100,7 +101,8 @@
   font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 600;
-  letter-spacing: 0;
+  letter-spacing: var(--brand-display-tracking);
+  word-spacing: var(--brand-display-word-spacing);
   text-transform: var(--brand-display-case);
 }
 
@@ -110,7 +112,16 @@
   line-height: 1.2;
   font-weight: 650;
   letter-spacing: var(--brand-display-tracking);
+  word-spacing: var(--brand-display-word-spacing);
   text-transform: var(--brand-display-case);
+}
+
+/* League index card text lays out on fractional column widths, and the last glyph of a
+   line rasterised differently from load to load; geometric precision pins it. Scoped to
+   those cards so text elsewhere keeps its default rendering. */
+.baseline-leagueTile,
+.baseline-stickyCol .baseline-card {
+  text-rendering: geometricPrecision;
 }
 
 .baseline-textBody {

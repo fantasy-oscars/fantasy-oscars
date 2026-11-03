@@ -32,7 +32,7 @@ export function RegisterScreen(props: {
                 type="password"
                 error={errors.password}
               />
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} variant="primary">
                 {loading ? "Creating..." : "Create account"}
               </Button>
               <FormStatus loading={loading} result={result} />

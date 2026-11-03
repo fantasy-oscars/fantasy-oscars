@@ -130,7 +130,9 @@ not the SPA shell). It is render-blocking by design and about 3 KB.
 Each brand is one typed definition in `apps/web/src/theme/brands/` filling the
 same slots, for both modes. `contract.ts` is the type and the slot lists,
 `refined-gold.ts` is today's look, `shared.ts` holds values common to all brands,
-`css.ts` generates the stylesheet, `index.ts` registers brands. Raw colours,
+`css.ts` generates the stylesheet, `index.ts` registers brands. Defined so far:
+`refined-gold`, `red-carpet`, `ballot`, `noir` and `festival` (technicolor and
+lightbox render as the default until their definitions land). Raw colours,
 fonts and radii may appear only in this folder; `pnpm run tokens:check` fails
 anywhere else in `apps/web/src`. Everything else reads CSS custom properties.
 
@@ -172,9 +174,12 @@ Slot roles and rules (values and contrast checks are in
 - `focusRing` is `text`: a 2 px ink ring with a 2 px gap.
 - `displayWeight` and `displayCase` style Mantine titles and the baseline titles; the
   draft room overrides the case to `none` because it renders titles in the body font.
-- `displayTracking` is the letter-spacing of baseline card titles. `normal` for Cinzel and
-  Barlow Condensed; Playfair Display at small sizes closes its word spaces, so red carpet adds a
-  little positive tracking.
+- `displayTracking` and `displayWordSpacing` are the letter- and word-spacing of display
+  titles (hero, page, section and card titles, Mantine titles other than the wordmark; the
+  draft room resets both to `normal`). `heroTracking` is the hero title only (refined gold and noir keep their 0.01em there).
+  `normal` for Cinzel, Barlow Condensed, Bodoni Moda and
+  Archivo; Playfair Display at small sizes closes its word spaces, so red carpet adds a little
+  positive tracking and word spacing.
 
 Shadow rings: baseline cards have no border, so a flat brand writes its card edge as a
 ring (`0 0 0 1px <colour>`) in `shadow-card`. "No shadow" is always written

@@ -73,6 +73,13 @@ body {
   text-transform: var(--brand-display-case);
 }
 
+/* Display titles take the brand's tracking and word spacing; the wordmark does not.
+   :where keeps this a default that the baseline title classes can override. */
+:where(.mantine-Title-root:not(.site-title)) {
+  letter-spacing: var(--brand-display-tracking);
+  word-spacing: var(--brand-display-word-spacing);
+}
+
 /* Typography variants (semantic roles only; no ad-hoc sizing in feature code). */
 .mantine-Title-root[data-fo-typo="brand"] {
   font-size: var(--fo-heading-h2-size);
@@ -288,7 +295,7 @@ body {
 }
 
 .dr-mobileBar.is-countdown.pulse-red .drm-miniLabel {
-  color: color-mix(in srgb, var(--fo-danger-on) 78%, transparent);
+  color: var(--fo-danger-on);
 }
 
 .dr-mobileIconBtn {
@@ -342,7 +349,22 @@ body {
 }
 
 .dr-frame[data-turn="mine"] .drm-miniLabel {
-  color: rgba(var(--brand-on-primary-rgb), var(--fo-alpha-72));
+  color: var(--brand-on-primary);
+}
+
+.dr-frame[data-turn="mine"] .dr-mobileIconBtn {
+  --ai-color: var(--brand-on-primary);
+  color: var(--brand-on-primary);
+}
+
+.dr-frame .dr-mobileBar.is-countdown.pulse-red .dr-mobileIconBtn {
+  --ai-color: var(--fo-danger-on);
+  color: var(--fo-danger-on);
+}
+
+.dr-frame[data-turn="mine"] .dr-mobileIconBtn .mi-icon,
+.dr-frame .dr-mobileBar.is-countdown.pulse-red .dr-mobileIconBtn .mi-icon {
+  color: inherit;
 }
 
 .drm-podiumStack {
@@ -828,6 +850,16 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   color: var(--fo-text-deemphasized);
 }
 
+/* On a primary fill the kicker uses the fill's ink; the muted grey misses 4.5:1 there
+   in every brand. */
+.dr-frame[data-turn="mine"] .drh-buckleCenterType {
+  color: var(--brand-on-primary);
+}
+
+.drh-buckle.is-countdown.pulse-red .drh-buckleCenterType {
+  color: var(--fo-danger-on);
+}
+
 /* On the winner buckle the kicker sits on gold: use the gold's ink. */
 .dr-frame[data-results="final"] .drh-buckleCenterType {
   color: var(--fo-win-gold-on);
@@ -865,7 +897,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .dr-frame[data-turn="mine"] .drh-buckleLabel {
-  color: rgba(var(--brand-on-primary-rgb), var(--fo-alpha-72));
+  color: var(--brand-on-primary);
 }
 
 .dr-frame[data-results="final"] .drh-buckleLabel {
@@ -1927,7 +1959,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-PasswordInput-input,
 .mantine-Textarea-input,
 .mantine-Select-input,
-.mantine-MultiSelect-input {
+.mantine-MultiSelect-input,
+.mantine-NumberInput-input,
+.mantine-InputBase-input,
+.mantine-Autocomplete-input {
   background: var(--fo-surface-pill);
   border: var(--fo-border-width) solid var(--brand-rule-strong);
   color: var(--fo-text-primary);
@@ -1938,7 +1973,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-PasswordInput-input:focus,
 .mantine-Textarea-input:focus,
 .mantine-Select-input:focus,
-.mantine-MultiSelect-input:focus {
+.mantine-MultiSelect-input:focus,
+.mantine-NumberInput-input:focus,
+.mantine-InputBase-input:focus,
+.mantine-Autocomplete-input:focus {
   outline: none;
   box-shadow: 0 0 0 1px var(--brand-focus-ring);
 }
@@ -1947,7 +1985,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-PasswordInput-input:focus:not([data-error]),
 .mantine-Textarea-input:focus:not([data-error]),
 .mantine-Select-input:focus:not([data-error]),
-.mantine-MultiSelect-input:focus:not([data-error]) {
+.mantine-MultiSelect-input:focus:not([data-error]),
+.mantine-NumberInput-input:focus:not([data-error]),
+.mantine-InputBase-input:focus:not([data-error]),
+.mantine-Autocomplete-input:focus:not([data-error]) {
   border-color: var(--brand-focus-ring);
 }
 
@@ -2280,6 +2321,10 @@ body[data-mantine-color-scheme="dark"] .nomination-group-header:focus-visible {
   line-height: 1;
 }
 
+.nomination-text {
+  flex: 1 1 auto;
+}
+
 .nomination-subtitle {
   color: var(--fo-text-deemphasized);
   margin-top: var(--fo-space-2);
@@ -2289,12 +2334,20 @@ body[data-mantine-color-scheme="dark"] .nomination-group-header:focus-visible {
   color: var(--fo-text-deemphasized);
 }
 
-/* Edit + remove sit in a fixed-width column so rows line up: two md action icons
-   (1.75rem each) and the Group gap. */
+/* Status, edit and remove sit in one fixed-width column so rows line up: three md
+   action-sized slots (1.75rem each) and the Group gaps. */
 .nomination-actions {
   flex: 0 0 auto;
-  width: calc(3.5rem * var(--mantine-scale) + var(--mantine-spacing-xs));
+  width: calc(5.25rem * var(--mantine-scale) + 2 * var(--mantine-spacing-xs));
   justify-content: flex-end;
+}
+
+.nomination-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(1.75rem * var(--mantine-scale));
+  height: calc(1.75rem * var(--mantine-scale));
 }
 
 .nomination-row:hover .nomination-trash {
@@ -2305,7 +2358,7 @@ body[data-mantine-color-scheme="dark"] .nomination-group-header:focus-visible {
    of the title squeezing into a one-word column beside the handle and three icons. */
 @media (max-width: 500px) {
   .nomination-row.nomination-row-compact {
-    flex-wrap: wrap !important;
+    flex-wrap: wrap;
   }
 
   .nomination-row.nomination-row-compact > :first-child {
@@ -2565,7 +2618,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 
 .fo-tip-attribution {
   font-size: var(--fo-font-size-xs);
-  color: rgba(var(--fo-text-primary-rgb), 0.6);
+  color: var(--fo-text-deemphasized);
   line-height: 1.2;
 }
 

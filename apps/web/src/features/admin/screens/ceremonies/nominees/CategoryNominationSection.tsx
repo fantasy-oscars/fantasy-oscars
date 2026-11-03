@@ -147,35 +147,32 @@ export function CategoryNominationSection(props: {
                 <SortableNominationRow
                   key={n.id}
                   id={n.id}
-                  primary={
-                    <Group gap="var(--fo-space-8)" wrap="nowrap">
-                      <Text component="span" inherit>
-                        {nominationPrimaryLabel({
-                          unit_kind: c.unit_kind,
-                          film_title: n.film_title ?? null,
-                          song_title: n.song_title ?? null,
-                          performer_name: n.performer_name ?? null,
-                          contributors: n.contributors?.map((x) => ({
-                            full_name: x.full_name,
-                            sort_order: x.sort_order
-                          })),
-                          fallbackId: n.id
-                        })}
+                  primary={nominationPrimaryLabel({
+                    unit_kind: c.unit_kind,
+                    film_title: n.film_title ?? null,
+                    song_title: n.song_title ?? null,
+                    performer_name: n.performer_name ?? null,
+                    contributors: n.contributors?.map((x) => ({
+                      full_name: x.full_name,
+                      sort_order: x.sort_order
+                    })),
+                    fallbackId: n.id
+                  })}
+                  status={
+                    n.display_film_id &&
+                    !n.display_film_tmdb_id &&
+                    (c.unit_kind === "FILM" ||
+                      c.unit_kind === "PERFORMANCE" ||
+                      c.unit_kind === "SONG") ? (
+                      <Text
+                        component="span"
+                        role="img"
+                        className="gicon muted"
+                        aria-label="Film not linked to TMDB"
+                      >
+                        link_off
                       </Text>
-                      {n.display_film_id &&
-                      !n.display_film_tmdb_id &&
-                      (c.unit_kind === "FILM" ||
-                        c.unit_kind === "PERFORMANCE" ||
-                        c.unit_kind === "SONG") ? (
-                        <Text
-                          component="span"
-                          className="gicon muted"
-                          aria-label="Film not linked to TMDB"
-                        >
-                          link_off
-                        </Text>
-                      ) : null}
-                    </Group>
+                    ) : null
                   }
                   secondary={nominationSecondaryLabel({
                     unit_kind: c.unit_kind,

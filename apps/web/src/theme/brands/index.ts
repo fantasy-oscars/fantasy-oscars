@@ -1,5 +1,7 @@
 import type { BrandId } from "@fantasy-oscars/shared/brands";
 import type { BrandDefinition } from "./contract";
+import { ballot } from "./ballot";
+import { festival } from "./festival";
 import { noir } from "./noir";
 import { redCarpet } from "./red-carpet";
 import { refinedGold } from "./refined-gold";
@@ -8,7 +10,9 @@ import { refinedGold } from "./refined-gold";
 export const BRAND_DEFINITIONS: readonly BrandDefinition[] = [
   refinedGold,
   redCarpet,
-  noir
+  ballot,
+  noir,
+  festival
 ];
 
 export const DEFAULT_BRAND: BrandDefinition = refinedGold;

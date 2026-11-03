@@ -72,6 +72,8 @@ function commonDeclarations(brand: BrandDefinition): Declarations {
     ["--brand-display-weight", type.displayWeight],
     ["--brand-display-case", type.displayCase],
     ["--brand-display-tracking", type.displayTracking],
+    ["--brand-hero-tracking", type.heroTracking],
+    ["--brand-display-word-spacing", type.displayWordSpacing],
     ["--brand-h1-size", type.h1Size],
     ["--brand-h2-size", type.h2Size],
     ["--brand-h3-size", type.h3Size],
