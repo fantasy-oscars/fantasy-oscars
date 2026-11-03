@@ -3,6 +3,7 @@ import type { RefObject } from "react";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import {
+  NOMINEE_CARD_TOOLTIP_ARMED_STYLES,
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
@@ -197,7 +198,11 @@ export function CategoryCard(props: {
                 position="bottom-start"
                 multiline
                 offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                styles={NOMINEE_CARD_TOOLTIP_STYLES}
+                styles={
+                  isArmed
+                    ? NOMINEE_CARD_TOOLTIP_ARMED_STYLES
+                    : NOMINEE_CARD_TOOLTIP_STYLES
+                }
                 opened={isArmed ? true : undefined}
                 label={
                   <NomineeTooltipCard

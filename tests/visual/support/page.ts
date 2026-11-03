@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BrowserContext, Page } from "@playwright/test";
+import type { BrandId } from "@fantasy-oscars/shared/brands";
 import type { Mode } from "../matrix";
 import { FIXED_NOW, type VisualSeed } from "./seed";
 import { E2E_API_ORIGIN } from "../../e2e/support/stack";
@@ -65,6 +66,46 @@ export async function setColorScheme(context: BrowserContext, mode: Mode) {
     },
     [COLOR_SCHEME_KEY, mode]
   );
+}
+
+const BRAND_PREFERENCE_KEY = "fo:brand-preference";
+
+/**
+ * Pins the brand a capture renders. The browser value covers first paint and signed-out
+ * screens; for signed-in personas `/auth/me` is answered with the same brand as the
+ * account's saved preference, so the app never copies the browser value to the account
+ * (that write would change the shared seed database under parallel captures). Any
+ * attempt to save a preference is aborted and recorded; the test asserts the list is
+ * empty. Must run before navigation.
+ */
+export async function selectBrand(context: BrowserContext, brand: BrandId) {
+  await context.addInitScript(
+    ([key, value]) => {
+      window.localStorage.setItem(key!, value!);
+    },
+    [BRAND_PREFERENCE_KEY, brand]
+  );
+  await context.route("**/auth/me", async (route) => {
+    const response = await route.fetch();
+    if (response.status() !== 200) {
+      await route.fulfill({ response });
+      return;
+    }
+    const body = (await response.json()) as { user?: Record<string, unknown> };
+    if (body.user) body.user.brand_preference = brand;
+    const headers = Object.fromEntries(
+      Object.entries(response.headers()).filter(
+        ([name]) => name !== "content-length" && name !== "content-encoding"
+      )
+    );
+    await route.fulfill({ status: 200, headers, json: body });
+  });
+  const preferenceWrites: string[] = [];
+  await context.route("**/auth/me/preferences", async (route) => {
+    preferenceWrites.push(`${route.request().method()} ${route.request().url()}`);
+    await route.abort();
+  });
+  return preferenceWrites;
 }
 
 /**

@@ -76,9 +76,10 @@
 }
 
 .baseline-card.isInteractive:focus-visible {
-  outline: none;
-  /* Keyboard focus ring: visible but consistent with the baseline palette. */
-  box-shadow: var(--fo-shadow-card-focus);
+  /* One focus language: ink ring with a gap. 4px clears a 2px outline-style card ring. */
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: 4px;
+  box-shadow: var(--fo-shadow-card);
 }
 
 .baseline-card.isInteractive:active {
@@ -89,7 +90,8 @@
   font-family: var(--brand-font-display);
   font-size: var(--fo-font-size-hero-title);
   line-height: 1.05;
-  font-weight: var(--fo-font-weight-bold);
+  font-weight: var(--brand-display-weight);
+  text-transform: var(--brand-display-case);
   letter-spacing: var(--fo-letterSpacing-tight);
 }
 
@@ -99,7 +101,7 @@
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0;
-  text-transform: none;
+  text-transform: var(--brand-display-case);
 }
 
 .baseline-textCardTitle {
@@ -107,17 +109,19 @@
   font-size: var(--fo-font-size-sm);
   line-height: 1.2;
   font-weight: 650;
+  letter-spacing: var(--brand-display-tracking);
+  text-transform: var(--brand-display-case);
 }
 
 .baseline-textBody {
-  font-family: var(--fo-font-system);
+  font-family: var(--brand-font-body);
   font-size: var(--fo-font-size-sm);
   line-height: var(--fo-line-height-body);
   font-weight: var(--fo-font-weight-regular);
 }
 
 .baseline-textMeta {
-  font-family: var(--fo-font-system);
+  font-family: var(--brand-font-body);
   font-size: var(--fo-font-size-xs);
   line-height: var(--fo-line-height-meta);
   font-weight: var(--fo-font-weight-regular);
@@ -135,8 +139,9 @@
   white-space: nowrap;
 }
 
-.baseline-statusPill.isUrgent {
-  background: var(--accent);
+/* Beats the meta variant's muted colour (same specificity, later in the cascade). */
+.baseline-statusPill.isUrgent[data-fo-typo] {
+  background: var(--brand-primary);
   color: var(--brand-on-primary);
 }
 
@@ -162,7 +167,7 @@
 
 .baseline-updatesCard {
   padding: var(--fo-space-xs);
-  box-shadow: var(--fo-shadow-updates);
+  box-shadow: var(--brand-shadow-card);
 }
 
 /* HeroCard inverted surface */
@@ -177,7 +182,7 @@ body[data-mantine-color-scheme="light"] .baseline-heroCard {
   );
   color: var(--brand-dark-text);
   --fo-typo-muted: rgba(var(--brand-dark-text-rgb), var(--fo-alpha-75));
-  box-shadow: var(--fo-shadow-hero-light);
+  box-shadow: var(--brand-shadow-raised);
 }
 
 :root[data-mantine-color-scheme="dark"] .baseline-heroCard,
@@ -190,13 +195,13 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
   );
   color: var(--brand-light-text);
   --fo-typo-muted: rgba(var(--brand-light-text-rgb), var(--fo-alpha-75));
-  box-shadow: var(--fo-shadow-hero-dark);
+  box-shadow: var(--brand-shadow-raised);
 }
 
-/* Button labels must be sans under the new baseline. */
+/* Button labels must be sans under the new baseline; every brand body face is sans. */
 .baseline-pageInner button,
 .baseline-landing button {
-  font-family: var(--fo-font-system);
+  font-family: var(--brand-font-body);
 }
 
 .baseline-page {

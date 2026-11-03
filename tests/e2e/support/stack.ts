@@ -92,8 +92,12 @@ export type E2eStack = {
 /**
  * Boots a throwaway Postgres container, the API against it, and a production
  * build of the web app pointed at that API. Everything is torn down by `stop`.
+ * `webMode` builds with a named Vite mode; `enableAllBrands` turns on unreleased brands
+ * and needs a non-production mode (the build refuses the flag in production).
  */
-export async function startStack(): Promise<E2eStack> {
+export async function startStack(
+  opts: { webMode?: string; enableAllBrands?: boolean } = {}
+): Promise<E2eStack> {
   const processes: Running[] = [];
   let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
   let webDist: string | null = null;
@@ -128,8 +132,22 @@ export async function startStack(): Promise<E2eStack> {
     const build = run(
       "web build",
       process.execPath,
-      [viteBin, "build", "--outDir", webDist, "--emptyOutDir"],
-      { cwd: webDir, env: { ...baseEnv, VITE_API_BASE: E2E_API_ORIGIN } }
+      [
+        viteBin,
+        "build",
+        "--outDir",
+        webDist,
+        "--emptyOutDir",
+        ...(opts.webMode ? ["--mode", opts.webMode] : [])
+      ],
+      {
+        cwd: webDir,
+        env: {
+          ...baseEnv,
+          VITE_API_BASE: E2E_API_ORIGIN,
+          ...(opts.enableAllBrands ? { VITE_FO_ENABLE_ALL_BRANDS: "1" } : {})
+        }
+      }
     );
     await runToCompletion(build);
 

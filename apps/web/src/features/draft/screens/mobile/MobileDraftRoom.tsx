@@ -295,7 +295,11 @@ export function MobileDraftRoom(props: {
         centered
         withCloseButton={false}
         title="Nominee details"
-        classNames={{ title: "fo-visuallyHidden", header: "fo-modalHeaderCollapsed" }}
+        classNames={{
+          title: "fo-visuallyHidden",
+          header: "fo-modalHeaderCollapsed",
+          content: "fo-nomineeModalContent"
+        }}
         trapFocus
         returnFocus
         overlayProps={{

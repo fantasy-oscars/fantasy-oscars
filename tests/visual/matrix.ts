@@ -1,11 +1,12 @@
 import { expect, type Page } from "@playwright/test";
+import type { BrandId } from "@fantasy-oscars/shared/brands";
 import { waitForAnimationsIdle } from "./support/page";
 import type { PersonaKey, VisualSeed } from "./support/seed";
 
 /**
  * The visual matrix is data: screens x modes x viewports x brands. Add a row to
- * SCREENS for a new screen; add an entry to BRANDS when a brand lands (select it in
- * screens.spec.ts next to the colour scheme) and every screen is captured for it too.
+ * SCREENS for a new screen; add an entry to BRANDS when a brand lands (screens.spec.ts
+ * selects it next to the colour scheme) and its screens are captured too.
  */
 
 export type ScreenDef = {
@@ -276,9 +277,37 @@ export const KNOWN_PHONE_OVERFLOW: readonly string[] = [
   "account"
 ];
 
-/** Brands multiply the matrix. Only the current look exists today. */
-export const BRANDS = [{ id: "default" }] as const;
-export type Brand = (typeof BRANDS)[number];
+/**
+ * The screens captured for brands other than the default: enough to pin each palette's
+ * surfaces, type, primary, draft states (including the armed pill) and floating layers.
+ */
+export const KEY_SCREENS = [
+  "home-logged-out",
+  "home-logged-in",
+  "league-detail",
+  "season-live",
+  "draft-live-your-turn",
+  "draft-completed",
+  "ceremony-detail-results",
+  "account",
+  "login",
+  "draft-live-armed"
+] as const;
+
+export type Brand = {
+  /** Used in baseline file names; `default` keeps the unprefixed names. */
+  id: string;
+  slug: BrandId;
+  /** Screens to capture; all of them when absent. */
+  screens?: readonly string[];
+};
+
+/** Brands multiply the matrix. The default brand takes the full matrix. */
+export const BRANDS: readonly Brand[] = [
+  { id: "default", slug: "refined-gold" },
+  { id: "red-carpet", slug: "red-carpet", screens: KEY_SCREENS },
+  { id: "noir", slug: "noir", screens: KEY_SCREENS }
+];
 
 /** Tall pages are cut here so one long screen cannot dominate baseline size. */
 export const MAX_PAGE_HEIGHT = 2400;

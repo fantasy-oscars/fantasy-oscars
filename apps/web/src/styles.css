@@ -17,6 +17,7 @@ body[data-mantine-color-scheme="dark"] {
   /* Ensure Mantine's internal "body" color aligns with our token surface. */
   --mantine-color-body: var(--fo-surface-page);
   --mantine-color-text: var(--fo-text-primary);
+  --mantine-color-dimmed: var(--brand-muted);
 
   /*
     Mantine defaults many interactive states (especially "subtle") to blue via
@@ -37,6 +38,7 @@ body[data-mantine-color-scheme="light"] {
   /* Ensure Mantine's internal "body" color aligns with our token surface. */
   --mantine-color-body: var(--fo-surface-page);
   --mantine-color-text: var(--fo-text-primary);
+  --mantine-color-dimmed: var(--brand-muted);
 
   /* Same palette leak prevention in light mode. */
   --mantine-color-blue-light-hover: rgba(var(--brand-text-rgb), var(--fo-alpha-06));
@@ -65,6 +67,10 @@ body {
   margin: 0;
   background: var(--fo-surface-page);
   color: var(--fo-text-primary);
+}
+
+.mantine-Title-root {
+  text-transform: var(--brand-display-case);
 }
 
 /* Typography variants (semantic roles only; no ad-hoc sizing in feature code). */
@@ -105,7 +111,8 @@ body {
 }
 
 .mantine-Text-root[data-fo-typo="danger"] {
-  color: var(--fo-danger);
+  /* Text needs its own per-mode value; --fo-danger is the fill colour. */
+  color: var(--fo-danger-text);
 }
 
 .mantine-Text-root[data-fo-typo="success"] {
@@ -186,7 +193,9 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Clip (not hidden) so header focus rings may extend past the frame edge. */
+  overflow: clip;
+  overflow-clip-margin: var(--fo-space-8);
   background: var(--fo-surface-page);
 }
 
@@ -817,6 +826,11 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   letter-spacing: var(--fo-letterSpacing-tracked);
   text-transform: var(--brand-label-case);
   color: var(--fo-text-deemphasized);
+}
+
+/* On the winner buckle the kicker sits on gold: use the gold's ink. */
+.dr-frame[data-results="final"] .drh-buckleCenterType {
+  color: var(--fo-win-gold-on);
 }
 
 .drh-buckleCenter.is-rolling {
@@ -1587,9 +1601,7 @@ body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
   align-items: center;
   overflow: hidden;
   cursor: default;
-  box-shadow:
-    var(--dr-pill-focus, 0 0 transparent), var(--dr-pill-ring, 0 0 transparent),
-    var(--dr-pill-lift, 0 0 transparent);
+  box-shadow: var(--dr-pill-ring, 0 0 transparent), var(--dr-pill-lift, 0 0 transparent);
 }
 
 .dr-pill-btn {
@@ -1636,7 +1648,8 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   winner, winner combinations, focus. The three box-shadow layers (focus ring,
   inset state ring, hover lift) are separate variables so states combine
   without overriding each other; every ring is inset or outer, so a 22px pill
-  never changes size. A solid fill is reserved for a win.
+  never changes size. Win is the gold fill; armed is an ink inversion with a
+  check; hover and focus never change hue.
 */
 .dr-pill.is-muted {
   opacity: var(--fo-alpha-50);
@@ -1670,7 +1683,6 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
     .dr-card-pills
     .dr-pill-btn:not(.is-muted):not([aria-disabled="true"])
 ):is(:hover, :active) {
-  background: rgba(var(--brand-primary-rgb), 0.1);
   border-color: var(--brand-rule-strong);
   transform: translateY(calc(var(--fo-space-0) - var(--fo-space-hairline)));
   --dr-pill-lift: var(--fo-shadow-draft-pillHover);
@@ -1714,13 +1726,13 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 }
 
 .dr-pill.is-armed {
-  background: rgba(var(--brand-primary-rgb), 0.22);
-  --dr-pill-ring: inset 0 0 0 2px var(--brand-text);
+  background: var(--brand-text);
+  border-color: var(--brand-text);
 }
 
 .dr-pill.is-armed .dr-pill-text,
 .dr-pill.is-armed .dr-pill-points {
-  color: var(--brand-text);
+  color: var(--brand-page);
   font-weight: var(--fo-font-weight-semibold);
 }
 
@@ -1730,7 +1742,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   padding: 0;
   margin-right: var(--fo-space-4);
   flex: 0 0 auto;
-  color: var(--brand-text);
+  color: var(--brand-page);
   user-select: none;
 }
 
@@ -1756,7 +1768,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 }
 
 .dr-pill.is-winner.is-armed .dr-pill-text {
-  font-weight: var(--fo-font-weight-semibold);
+  font-weight: var(--fo-font-weight-bold);
 }
 
 .dr-pill.is-winner .dr-pill-armedMark.mi-icon.mi-icon-tiny {
@@ -1765,18 +1777,23 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .dr-pill-btn:focus-visible,
 .dr-pill-static:focus-visible {
-  outline: none;
-  --dr-pill-focus: var(--fo-shadow-focusRing);
+  /* Ink ring with a gap, so it reads against ink (armed) and gold (won) fills. */
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-width);
 }
 
 /* Default link styling: token-bound and never blue by default. */
 .mantine-Anchor-root {
-  color: var(--fo-text-primary);
+  color: var(--brand-link);
+}
+
+.mantine-Anchor-root:hover {
+  color: var(--brand-link-hover);
 }
 
 .mantine-Anchor-root[data-underline="always"],
 .mantine-Anchor-root[data-underline="hover"] {
-  text-decoration-color: var(--fo-border);
+  text-decoration-color: currentColor;
 }
 
 .link-plain {
@@ -1786,7 +1803,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .link-plain:hover {
   text-decoration: underline;
-  text-decoration-color: var(--fo-border);
+  text-decoration-color: currentColor;
 }
 
 /* Mantine component skins bound to tokens (no per-component color logic). */
@@ -1852,10 +1869,17 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .mantine-Button-root:disabled,
 .mantine-Button-root[data-disabled] {
-  opacity: var(--fo-alpha-60);
+  /* A neutral well with muted text for every variant; no faded call to action. */
+  opacity: 1;
   cursor: not-allowed;
-  color: var(--fo-text-deemphasized);
-  --button-color: var(--fo-text-deemphasized) !important;
+  background: var(--brand-sunken);
+  border-color: var(--brand-rule);
+  box-shadow: none;
+  color: var(--brand-muted);
+  --button-bg: var(--brand-sunken) !important;
+  --button-hover: var(--brand-sunken) !important;
+  --button-color: var(--brand-muted) !important;
+  --button-bd: var(--fo-border-width) solid var(--brand-rule) !important;
 }
 
 .mantine-Checkbox-root {
@@ -1864,10 +1888,35 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   --checkbox-icon-color: var(--brand-on-primary) !important;
 }
 
-.mantine-Menu-dropdown {
+/* Floating layers share one skin: raised fill, brand overlay edge. */
+.mantine-Menu-dropdown,
+.mantine-Popover-dropdown {
   background: var(--fo-surface-card-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
-  box-shadow: none;
+  border: 0;
+  box-shadow: var(--brand-shadow-overlay);
+}
+
+.mantine-Modal-content,
+.mantine-Modal-header,
+.mantine-Drawer-content,
+.mantine-Drawer-header {
+  background: var(--brand-raised);
+}
+
+.mantine-Modal-content,
+.mantine-Drawer-content {
+  box-shadow: var(--brand-shadow-overlay);
+}
+
+.mantine-Notification-root {
+  background: var(--brand-raised);
+  color: var(--brand-text);
+  border: 0;
+  box-shadow: var(--brand-shadow-overlay);
+}
+
+.mantine-Notification-title {
+  color: var(--brand-text);
 }
 
 .mantine-Menu-item {
@@ -1880,7 +1929,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-Select-input,
 .mantine-MultiSelect-input {
   background: var(--fo-surface-pill);
-  border: var(--fo-border-width) solid var(--fo-border);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
   color: var(--fo-text-primary);
   border-radius: var(--fo-radius-small);
 }
@@ -1891,8 +1940,15 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-Select-input:focus,
 .mantine-MultiSelect-input:focus {
   outline: none;
-  box-shadow: none;
-  border-color: var(--fo-border);
+  box-shadow: 0 0 0 1px var(--brand-focus-ring);
+}
+
+.mantine-TextInput-input:focus:not([data-error]),
+.mantine-PasswordInput-input:focus:not([data-error]),
+.mantine-Textarea-input:focus:not([data-error]),
+.mantine-Select-input:focus:not([data-error]),
+.mantine-MultiSelect-input:focus:not([data-error]) {
+  border-color: var(--brand-focus-ring);
 }
 
 .mantine-TextInput-label,
@@ -1908,8 +1964,8 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-Select-dropdown,
 .mantine-MultiSelect-dropdown {
   background: var(--fo-surface-card-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
-  box-shadow: none;
+  border: 0;
+  box-shadow: var(--brand-shadow-overlay);
   max-height: min(320px, calc(100vh - 180px));
   overflow: hidden;
 }
@@ -1936,8 +1992,9 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .mantine-Checkbox-input {
   background: var(--fo-surface-pill);
-  border: var(--fo-border-width) solid var(--fo-border);
-  border-radius: var(--fo-radius-small);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
+  /* The box is ~20px: a large brand control radius would turn it into a circle. */
+  border-radius: min(var(--fo-radius-small), 4px);
 }
 
 .mantine-Checkbox-input:checked {
@@ -2105,9 +2162,15 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   border-color: rgba(var(--brand-text-rgb), var(--fo-alpha-18));
 }
 
+/* Paint on a pixel-snapped layer: the panel sits on fractional line-height offsets, and
+   its rounded input corners rasterised two different ways from load to load. */
+.wizard-panel.is-primary {
+  transform: translateZ(0);
+}
+
 .wizard-inline-check {
   font-size: var(--fo-icon-size-md);
-  color: var(--brand-primary);
+  color: var(--brand-text);
   line-height: 1;
 }
 
@@ -2186,7 +2249,7 @@ body[data-mantine-color-scheme="dark"] .nomination-group-header:focus-visible {
 }
 
 .nomination-row.is-drop-target {
-  box-shadow: inset 0 var(--fo-border-width-strong) 0 var(--brand-primary);
+  box-shadow: inset 0 var(--fo-border-width-strong) 0 var(--brand-text);
 }
 
 .nomination-drag-handle-button {
@@ -2229,6 +2292,23 @@ body[data-mantine-color-scheme="dark"] .nomination-group-header:focus-visible {
 
 .nomination-row:hover .nomination-trash {
   color: var(--fo-text-primary);
+}
+
+/* Phone: the title takes the whole row and the actions drop to their own line, instead
+   of the title squeezing into a one-word column beside the handle and three icons. */
+@media (max-width: 500px) {
+  .nomination-row.nomination-row-compact {
+    flex-wrap: wrap !important;
+  }
+
+  .nomination-row.nomination-row-compact > :first-child {
+    flex: 1 1 100%;
+  }
+
+  .nomination-row.nomination-row-compact .nomination-actions {
+    width: auto;
+    margin-left: auto;
+  }
 }
 
 /* Admin Results: sticky save bar + category winner marker */
@@ -2282,7 +2362,8 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   position: relative;
   background: var(--fo-surface-card-primary);
   color: var(--fo-text-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
+  border: 0;
+  box-shadow: var(--brand-shadow-overlay);
   border-radius: var(--fo-tip-radius);
   overflow: visible;
 }
@@ -2767,6 +2848,13 @@ h1 {
   margin-top: var(--fo-card-gap);
 }
 
+/* Forms whose fields need the full width on a phone instead of sharing one row. */
+@media (max-width: 500px) {
+  .grid.grid-stackOnPhone {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .card {
   background: var(--panel);
   border: var(--fo-border-width) solid var(--border);
@@ -2909,6 +2997,15 @@ small.error {
 
 .prose a {
   color: var(--brand-link);
+  text-decoration: underline;
+  text-decoration-thickness: var(--fo-border-width);
+  text-underline-offset: 0.15em;
+  text-decoration-color: currentColor;
+}
+
+.prose a:hover {
+  color: var(--brand-link-hover);
+  text-decoration-thickness: var(--fo-border-width-strong);
 }
 
 .status {
@@ -4298,6 +4395,21 @@ select {
   padding: 0;
 }
 
+/* Phone nominee modal: the card is the framed surface; the modal only positions it. */
+.mantine-Modal-content.fo-nomineeModalContent {
+  background: transparent;
+  box-shadow: none;
+}
+
+.fo-nomineeModalContent .mantine-Modal-body {
+  padding: 0;
+}
+
+.fo-nomineeModalContent .fo-tip {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Mantine's own focus outline follows the brand focus ring. */
 .mantine-focus-auto:focus-visible,
 .mantine-focus-always:focus {
@@ -4313,4 +4425,9 @@ select {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Admin ceremony row: the title block takes the row; actions drop below when it would be crushed. */
+.fo-adminCeremonyMain {
+  flex: 1 1 14rem;
 }

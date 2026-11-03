@@ -12,3 +12,11 @@ export const NOMINEE_CARD_TOOLTIP_STYLES = {
     boxShadow: "none"
   }
 } as const;
+
+/**
+ * An armed nominee's card holds the confirm button, so it must take the pointer
+ * (Mantine tooltips ignore it by default). Other cards stay click-through.
+ */
+export const NOMINEE_CARD_TOOLTIP_ARMED_STYLES = {
+  tooltip: { ...NOMINEE_CARD_TOOLTIP_STYLES.tooltip, pointerEvents: "auto" }
+} as const;

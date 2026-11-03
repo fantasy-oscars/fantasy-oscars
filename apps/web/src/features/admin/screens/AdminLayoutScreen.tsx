@@ -49,6 +49,9 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
                   onMouseLeave={() => setIsGameContentOpen(false)}
                   onFocus={() => setIsGameContentOpen(true)}
                   onBlur={handleGameContentBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setIsGameContentOpen(false);
+                  }}
                 >
                   <NavLink
                     to="/admin/ceremonies"

@@ -14,6 +14,7 @@ import {
   installNetworkGuards,
   readSeed,
   setColorScheme,
+  selectBrand,
   settle,
   trackInFlight,
   signIn
@@ -30,11 +31,12 @@ for (const brand of BRANDS) {
 
         for (const screen of SCREENS) {
           if (screen.viewports && !screen.viewports.includes(viewportName)) continue;
+          if (brand.screens && !brand.screens.includes(screen.id)) continue;
           test(screen.id, async ({ page, context }) => {
             const seed = readSeed();
             const blocked = await installNetworkGuards(context);
             await setColorScheme(context, mode);
-            // Brands: select the brand here (as setColorScheme does) once they exist.
+            const preferenceWrites = await selectBrand(context, brand.slug);
             if (screen.persona) await signIn(context, seed.tokens[screen.persona]);
             const inFlight = trackInFlight(page);
             await freezeClock(page);
@@ -48,6 +50,7 @@ for (const brand of BRANDS) {
             await screen.prepare?.(page);
             await settle(page, inFlight);
             expect(blocked, "requests that left the machine").toEqual([]);
+            expect(preferenceWrites, "brand preference writes").toEqual([]);
 
             if (viewportName === "mobile" && !KNOWN_PHONE_OVERFLOW.includes(screen.id)) {
               const scrollWidth = await page.evaluate(

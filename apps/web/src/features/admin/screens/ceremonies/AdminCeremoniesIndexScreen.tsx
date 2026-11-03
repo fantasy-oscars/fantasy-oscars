@@ -131,10 +131,16 @@ export function AdminCeremoniesIndexScreen(props: {
                 <Group
                   justify="space-between"
                   align="center"
-                  wrap="nowrap"
+                  wrap="wrap"
                   gap="var(--fo-space-dense-2)"
                 >
-                  <Group gap="sm" align="center" wrap="nowrap" miw="var(--fo-space-0)">
+                  <Group
+                    gap="sm"
+                    align="center"
+                    wrap="nowrap"
+                    miw="var(--fo-space-0)"
+                    className="fo-adminCeremonyMain"
+                  >
                     <Box miw="var(--fo-space-0)">
                       <Text
                         fw="var(--fo-font-weight-bold)"

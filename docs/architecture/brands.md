@@ -78,8 +78,9 @@ Test builds can enable every brand with `VITE_FO_ENABLE_ALL_BRANDS=1`. The flag 
 read in orchestration (`useBrandOrchestration`) and in `vite/brandInit.ts`, which
 bakes it into `/brand-init.js`, and is passed to the pure decisions as the `enabled`
 list. It is never on in production: `vite/brandInit.ts` throws when the flag is set
-with `mode === "production"`, orchestration ignores it in a production bundle
-(`import.meta.env.PROD`), and a unit test checks that the production `brand-init.js`
+with `mode === "production"`, orchestration ignores it unless `import.meta.env.MODE` is
+something other than `production` (`PROD` is true in every `vite build`, so the visual
+suite builds with `--mode visual`), and a unit test checks that the production `brand-init.js`
 renders only enabled brands whatever is stored.
 
 ## Pinning
@@ -136,15 +137,15 @@ anywhere else in `apps/web/src`. Everything else reads CSS custom properties.
 Per mode (light and dark), the colour slots (`--brand-<slot>`, plus
 `--brand-<slot>-rgb` channels for alpha use): `page`, `surface`, `raised`,
 `sunken`, `text`, `muted`, `faint`, `rule`, `ruleStrong`, `primary`, `onPrimary`,
-`accent`, `link`, `linkHover`, `focusRing`; and two shadows, `shadow-card` and
-`shadow-raised`. Every slot is also emitted under an explicit mode name
+`accent`, `link`, `linkHover`, `focusRing`; and three shadows, `shadow-card`,
+`shadow-raised` and `shadow-overlay`. Every slot is also emitted under an explicit mode name
 (`--brand-dark-page`, `--brand-light-text-rgb`, ...) for tokens that mean one
 specific mode regardless of the active one.
 
 The same in both modes:
 
 - Type: `font-display`, `font-body`, `font-numeral`, `font-label`, `label-case`,
-  `label-letter-spacing`, `h1-size`, `h2-size`, `h3-size`, `body-size`.
+  `label-letter-spacing`, `display-weight`, `display-case`, `display-tracking`, `h1-size`, `h2-size`, `h3-size`, `body-size`.
 - Wordmark: `wordmark-font`, `-weight`, `-case`, `-letter-spacing`, `-two-tone`
   (`colour | italic | weight`).
 - Shape: `radius-sm/md/lg`, `button-shape` (`pill | rounded | square`) and the
@@ -156,15 +157,42 @@ The same in both modes:
 
 Enums are emitted as plain custom-property values; no component reads them yet.
 
-Provisional slots: `faint`, `ruleStrong`, `link`, `linkHover` and `accent` have no
-counterpart in the pre-brand UI. Their refined-gold values were invented to fill the
-contract and will be set from the design in the visual phase.
+Slot roles and rules (values and contrast checks are in
+`docs/design/prescriptions/02-brand-tokens.md`):
+
+- `faint` is decorative only, never text. `rule` is a decorative hairline.
+- `ruleStrong` is a boundary that must be seen (input borders, pill hover border, card
+  hover ring, overlay rings): at least 3:1 on `page`, `surface`, `raised` and `sunken`.
+- `sunken` is the chip and hover-well colour and must differ from both `raised` and
+  `page` by at least 1.07:1. It never carries a state alone.
+- `primary` is a fill first. Where a rule paints it as text, an icon or a thin line it
+  must reach 4.5 (text) or 3.0 (non-text) on its background; the readers that cannot
+  use `text` instead (the admin done check and drop line).
+- `accent` and `link` pass 4.5 on every background, except an accent marked fill-only.
+- `focusRing` is `text`: a 2 px ink ring with a 2 px gap.
+- `displayWeight` and `displayCase` style Mantine titles and the baseline titles; the
+  draft room overrides the case to `none` because it renders titles in the body font.
+- `displayTracking` is the letter-spacing of baseline card titles. `normal` for Cinzel and
+  Barlow Condensed; Playfair Display at small sizes closes its word spaces, so red carpet adds a
+  little positive tracking.
+
+Shadow rings: baseline cards have no border, so a flat brand writes its card edge as a
+ring (`0 0 0 1px <colour>`) in `shadow-card`. "No shadow" is always written
+`0 0 0 0 transparent`, never `none`, because the slot is concatenated into lists.
+
+Floating layers (modals including the phone nominee card, the nav drawer, toasts, menus,
+dropdowns, Mantine tooltips and the nominee card) share one skin: the `raised` fill and
+`shadow-overlay`, with no border. The overlay value is a ring that reaches 3:1 on
+`page`, `raised` and `sunken`, plus the brand's own depth. Mantine's own rules are
+single-class selectors, so the skin wins by load order (`styles.css` loads after
+Mantine's CSS); a visual check on `draft-live-armed` catches a reorder.
 
 Not per brand (defined once in `shared.ts`, emitted as `--fo-*`, with separate light
 and dark values from the design source): win gold (`--fo-win-gold` `#d4af37` light /
 `#e2c25a` dark, `--fo-win-gold-on`, `--fo-win-gold-text`), status colours
-(`--fo-status-complete`, `-live`, `-drafting`); plus mode-independent
-`--fo-danger` with its `--fo-danger-on` text colour, podium metals, the black and
+(`--fo-status-complete`, `-live`, `-drafting`); the per-mode danger text colour
+`--fo-danger-text` (error text; the fill `--fo-danger` misses 4.5 as text); plus
+mode-independent `--fo-danger` with its `--fo-danger-on` text colour, podium metals, the black and
 white shadow channels, the pill radius and a system font stack. Win gold is rendered
 by winning pills, the final-results buckle and podium first place; status colours are
 not rendered yet.
@@ -195,10 +223,20 @@ shared `--fo-win-gold*` tokens.
 1. Copy `refined-gold.ts` to `<slug>.ts` in `theme/brands/` and change the values.
    The compiler rejects a missing slot; the unit tests check both modes, enums and
    colour formats.
-2. Fill in `fonts` (see Fonts) and add it to `BRAND_DEFINITIONS` in `theme/brands/index.ts`.
+2. Put its font stacks in `stacks.ts` if new, fill in `fonts` (see Fonts) and add it to `BRAND_DEFINITIONS` in `theme/brands/index.ts`.
 3. Run `pnpm --filter @fantasy-oscars/web run test:unit` and
    `pnpm run test:visual`. Add visual coverage for the new brand to the matrix and
    commit its baselines; the other brands' baselines must not change.
+
+The visual matrix has a brand dimension (`BRANDS` in `tests/visual/matrix.ts`). The
+default brand (`default`, refined-gold) takes every screen and keeps unprefixed file
+names; other brands list the screens they capture (`KEY_SCREENS`, ten screens) and
+write `<brand>-<mode>-<viewport>.png`. The suite builds the web app with
+`--mode visual` and `VITE_FO_ENABLE_ALL_BRANDS=1` so every defined brand can be
+selected. Each capture pins its brand through `localStorage`, answers `/auth/me`
+with the same `brand_preference` and aborts `/auth/me/preferences`, and the test
+asserts that no preference was written (a write would change the shared seed
+database under parallel captures).
 
 Slots are added to the contract only together with a value for every brand.
 
