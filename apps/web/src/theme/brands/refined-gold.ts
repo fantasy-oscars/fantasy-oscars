@@ -71,6 +71,8 @@ export const refinedGold: BrandDefinition = {
     displayWeight: "700",
     displayCase: "none",
     displayTracking: "normal",
+    heroTracking: "0.01em",
+    displayWordSpacing: "normal",
     h1Size: "32px",
     h2Size: "24px",
     h3Size: "18px",

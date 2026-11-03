@@ -67,6 +67,8 @@ export const noir: BrandDefinition = {
     displayWeight: "700",
     displayCase: "uppercase",
     displayTracking: "normal",
+    heroTracking: "0.01em",
+    displayWordSpacing: "normal",
     h1Size: "40px",
     h2Size: "32px",
     h3Size: "22px",

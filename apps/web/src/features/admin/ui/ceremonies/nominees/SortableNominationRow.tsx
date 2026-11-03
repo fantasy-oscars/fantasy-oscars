@@ -9,12 +9,15 @@ export function SortableNominationRow(props: {
   id: number;
   primary: ReactNode;
   secondary: ReactNode;
+  /** A status glyph shown with the row's actions (for example an unlinked film). */
+  status?: ReactNode;
   onRemove: () => void;
   onEdit: () => void;
   removing: boolean;
   isDropTarget: boolean;
 }) {
-  const { id, primary, secondary, onRemove, onEdit, removing, isDropTarget } = props;
+  const { id, primary, secondary, status, onRemove, onEdit, removing, isDropTarget } =
+    props;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
@@ -71,12 +74,8 @@ export function SortableNominationRow(props: {
             drag_indicator
           </Text>
         </Box>
-        <Box className="fo-minw0">
-          <Text
-            className="nomination-title"
-            fw="var(--fo-font-weight-bold)"
-            lineClamp={1}
-          >
+        <Box className="fo-minw0 nomination-text">
+          <Text className="nomination-title" fw="var(--fo-font-weight-bold)">
             {primary}
           </Text>
           {secondary ? (
@@ -88,6 +87,7 @@ export function SortableNominationRow(props: {
       </Group>
 
       <Group gap="xs" wrap="nowrap" className="nomination-actions">
+        {status ? <Box className="nomination-status">{status}</Box> : null}
         <Tooltip label="Edit nomination" withArrow>
           <ActionIcon
             type="button"

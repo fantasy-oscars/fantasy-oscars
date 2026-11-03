@@ -56,7 +56,7 @@ export function LeagueSeasonsSection(props: {
                   <Box miw="var(--fo-space-0)">
                     <Text className="baseline-textCardTitle">{s.ceremonyLabel}</Text>
                   </Box>
-                  <StatusPill>{s.statusLabel.toUpperCase()}</StatusPill>
+                  <StatusPill>{s.statusLabel}</StatusPill>
                 </Group>
               </StandardCard>
             </Box>

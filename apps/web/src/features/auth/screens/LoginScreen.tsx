@@ -38,7 +38,7 @@ export function LoginScreen(props: {
                 type="password"
                 error={errors.password}
               />
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} variant="primary">
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
               <FormStatus loading={loading} result={result} />

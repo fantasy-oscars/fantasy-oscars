@@ -6,6 +6,8 @@
   /* Draft board rule: force headings to use sans (override global serif headings). */
   --mantine-font-family-headings: var(--brand-font-body);
   --brand-display-case: none;
+  --brand-display-tracking: normal;
+  --brand-display-word-spacing: normal;
 
   min-height: 100vh;
   display: flex;
