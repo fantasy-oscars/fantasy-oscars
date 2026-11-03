@@ -2162,10 +2162,17 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   border-color: rgba(var(--brand-text-rgb), var(--fo-alpha-18));
 }
 
-/* Paint on a pixel-snapped layer: the panel sits on fractional line-height offsets, and
-   its rounded input corners rasterised two different ways from load to load. */
+/* Whole-pixel line boxes keep the rounded input and button edges in this panel on pixel
+   boundaries; the fractional defaults (24.8px body, 21.7px labels) put them on half pixels
+   and the corners rasterised differently from load to load. */
 .wizard-panel.is-primary {
-  transform: translateZ(0);
+  --mantine-line-height: 24px;
+  --mantine-line-height-md: 24px;
+  line-height: 24px;
+}
+
+.wizard-panel.is-primary .mantine-InputWrapper-label {
+  line-height: 22px;
 }
 
 .wizard-inline-check {
