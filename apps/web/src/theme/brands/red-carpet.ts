@@ -69,7 +69,7 @@ export const redCarpet: BrandDefinition = {
     displayCase: "none",
     displayTracking: "0.01em",
     heroTracking: "0.01em",
-    displayWordSpacing: "0.08em",
+    displayWordSpacing: "0.12em",
     h1Size: "36px",
     h2Size: "28px",
     h3Size: "20px",

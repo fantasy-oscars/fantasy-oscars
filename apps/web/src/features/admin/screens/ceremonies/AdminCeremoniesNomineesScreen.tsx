@@ -110,6 +110,8 @@ export function AdminCeremoniesNomineesScreen(props: {
     Record<number, boolean>
   >({});
   const [editingNominationId, setEditingNominationId] = useState<number | null>(null);
+  // The modal is mounted from the start so every open, including the first, records the trigger for focus return.
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <Stack className="stack-lg" mt="md" gap="lg">
@@ -191,7 +193,10 @@ export function AdminCeremoniesNomineesScreen(props: {
                   sensors={sensors}
                   nominationsLoading={nominationsLoading}
                   onRemoveNomination={(id) => void deleteNomination(id)}
-                  onEditNomination={(id) => setEditingNominationId(id)}
+                  onEditNomination={(id) => {
+                    setEditingNominationId(id);
+                    setEditOpen(true);
+                  }}
                   onReorder={(categoryId, ids) =>
                     void reorderNominationsInCategory(categoryId, ids)
                   }
@@ -202,75 +207,78 @@ export function AdminCeremoniesNomineesScreen(props: {
         </Stack>
       </StandardCard>
 
-      {editingNominationId ? (
-        <NominationEditModal
-          nomination={nominations.find((n) => n.id === editingNominationId) ?? null}
-          films={films}
-          setPeopleQuery={o.setPeopleQuery}
-          people={o.peopleResults}
-          peopleLoading={o.peopleLoading}
-          onClose={() => {
-            o.setPeopleQuery("");
-            setEditingNominationId(null);
-          }}
-          onLinkFilm={linkFilmTmdb}
-          onLinkPerson={linkPersonTmdb}
-          getFilmCredits={(filmId) => o.actions.getFilmCredits(filmId)}
-          onAddContributor={async (nominationId, input) => {
-            const ok = await addNominationContributor(nominationId, input);
-            if (ok) {
-              notify({
-                id: "admin.nominees.contributor.add.success",
-                severity: "success",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                message: "Contributor added"
-              });
-            }
-          }}
-          onRemoveContributor={async (nominationId, nominationContributorId) => {
-            const ok = await removeNominationContributor(
-              nominationId,
-              nominationContributorId
-            );
-            if (ok) {
-              notify({
-                id: "admin.nominees.contributor.remove.success",
-                severity: "success",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                message: "Contributor removed"
-              });
-            }
-          }}
-          onUpdateContributorDisplay={async (
+      <NominationEditModal
+        opened={editOpen}
+        nomination={
+          editingNominationId
+            ? (nominations.find((n) => n.id === editingNominationId) ?? null)
+            : null
+        }
+        films={films}
+        setPeopleQuery={o.setPeopleQuery}
+        people={o.peopleResults}
+        peopleLoading={o.peopleLoading}
+        onClose={() => {
+          o.setPeopleQuery("");
+          setEditOpen(false);
+        }}
+        onLinkFilm={linkFilmTmdb}
+        onLinkPerson={linkPersonTmdb}
+        getFilmCredits={(filmId) => o.actions.getFilmCredits(filmId)}
+        onAddContributor={async (nominationId, input) => {
+          const ok = await addNominationContributor(nominationId, input);
+          if (ok) {
+            notify({
+              id: "admin.nominees.contributor.add.success",
+              severity: "success",
+              trigger_type: "user_action",
+              scope: "local",
+              durability: "ephemeral",
+              requires_decision: false,
+              message: "Contributor added"
+            });
+          }
+        }}
+        onRemoveContributor={async (nominationId, nominationContributorId) => {
+          const ok = await removeNominationContributor(
+            nominationId,
+            nominationContributorId
+          );
+          if (ok) {
+            notify({
+              id: "admin.nominees.contributor.remove.success",
+              severity: "success",
+              trigger_type: "user_action",
+              scope: "local",
+              durability: "ephemeral",
+              requires_decision: false,
+              message: "Contributor removed"
+            });
+          }
+        }}
+        onUpdateContributorDisplay={async (
+          nominationId,
+          nominationContributorId,
+          input
+        ) => {
+          const ok = await updateNominationContributorDisplay(
             nominationId,
             nominationContributorId,
             input
-          ) => {
-            const ok = await updateNominationContributorDisplay(
-              nominationId,
-              nominationContributorId,
-              input
-            );
-            if (ok) {
-              notify({
-                id: "admin.nominees.contributor.display.update.success",
-                severity: "success",
-                trigger_type: "user_action",
-                scope: "local",
-                durability: "ephemeral",
-                requires_decision: false,
-                message: "Contributor display updated"
-              });
-            }
-          }}
-        />
-      ) : null}
+          );
+          if (ok) {
+            notify({
+              id: "admin.nominees.contributor.display.update.success",
+              severity: "success",
+              trigger_type: "user_action",
+              scope: "local",
+              durability: "ephemeral",
+              requires_decision: false,
+              message: "Contributor display updated"
+            });
+          }
+        }}
+      />
     </Stack>
   );
 }

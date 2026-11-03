@@ -131,8 +131,8 @@ Each brand is one typed definition in `apps/web/src/theme/brands/` filling the
 same slots, for both modes. `contract.ts` is the type and the slot lists,
 `refined-gold.ts` is today's look, `shared.ts` holds values common to all brands,
 `css.ts` generates the stylesheet, `index.ts` registers brands. Defined so far:
-`refined-gold`, `red-carpet`, `ballot`, `noir` and `festival` (technicolor and
-lightbox render as the default until their definitions land). Raw colours,
+`refined-gold`, `red-carpet`, `ballot`, `noir`, `festival`, `technicolor` and
+`lightbox`. Raw colours,
 fonts and radii may appear only in this folder; `pnpm run tokens:check` fails
 anywhere else in `apps/web/src`. Everything else reads CSS custom properties.
 
