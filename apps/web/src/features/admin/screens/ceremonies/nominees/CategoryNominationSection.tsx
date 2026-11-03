@@ -108,7 +108,7 @@ export function CategoryNominationSection(props: {
             >
               {materialGlyph(iconCode || "trophy")}
             </Text>
-            <Text className="nomination-group-title" component="h3" lineClamp={1}>
+            <Text className="nomination-group-title" component="h3">
               {label}{" "}
               <Text component="span" className="nomination-group-count">
                 ({items.length})

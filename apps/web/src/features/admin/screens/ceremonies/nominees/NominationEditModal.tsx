@@ -5,6 +5,7 @@ import { NominationEditPeopleSection } from "./NominationEditPeopleSection";
 import { useFilmCredits } from "./useFilmCredits";
 
 export function NominationEditModal(props: {
+  opened: boolean;
   nomination: null | {
     id: number;
     display_film_id?: number | null;
@@ -78,6 +79,7 @@ export function NominationEditModal(props: {
   getFilmCredits: (filmId: number) => Promise<unknown | null>;
 }) {
   const {
+    opened,
     nomination,
     films,
     setPeopleQuery,
@@ -92,6 +94,8 @@ export function NominationEditModal(props: {
     getFilmCredits
   } = props;
 
+  // The modal is always mounted (nomination may be null) so Mantine records the trigger
+  // element on every open, including the first, and can return focus to it on close.
   const filmId = nomination?.display_film_id ?? null;
   const film = filmId
     ? (() => {
@@ -125,41 +129,41 @@ export function NominationEditModal(props: {
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [nomination?.contributors]);
 
-  if (!nomination) return null;
-
   return (
     <Modal
-      opened
+      opened={opened}
       onClose={onClose}
       title="Edit nomination"
       centered
       size="lg"
       overlayProps={{ opacity: 0.35, blur: 2 }}
     >
-      <Stack gap="sm">
-        <NominationEditFilmSection
-          nominationFilmTitle={nomination.film_title ?? "—"}
-          film={film}
-          onLinkFilm={onLinkFilm}
-          onAfterLinkChange={() => {
-            // Ensure contributor pickers don't show stale credits after unlinking/relinking.
-            setFilmCredits(null);
-          }}
-        />
+      {nomination ? (
+        <Stack gap="sm">
+          <NominationEditFilmSection
+            nominationFilmTitle={nomination.film_title ?? "—"}
+            film={film}
+            onLinkFilm={onLinkFilm}
+            onAfterLinkChange={() => {
+              // Ensure contributor pickers don't show stale credits after unlinking/relinking.
+              setFilmCredits(null);
+            }}
+          />
 
-        <NominationEditPeopleSection
-          nominationId={nomination.id}
-          contributors={contributorRows}
-          onPeopleQueryChange={setPeopleQuery}
-          people={people}
-          peopleLoading={peopleLoading}
-          filmCredits={filmCredits}
-          onLinkPerson={onLinkPerson}
-          onAddContributor={onAddContributor}
-          onRemoveContributor={onRemoveContributor}
-          onUpdateContributorDisplay={onUpdateContributorDisplay}
-        />
-      </Stack>
+          <NominationEditPeopleSection
+            nominationId={nomination.id}
+            contributors={contributorRows}
+            onPeopleQueryChange={setPeopleQuery}
+            people={people}
+            peopleLoading={peopleLoading}
+            filmCredits={filmCredits}
+            onLinkPerson={onLinkPerson}
+            onAddContributor={onAddContributor}
+            onRemoveContributor={onRemoveContributor}
+            onUpdateContributorDisplay={onUpdateContributorDisplay}
+          />
+        </Stack>
+      ) : null}
     </Modal>
   );
 }

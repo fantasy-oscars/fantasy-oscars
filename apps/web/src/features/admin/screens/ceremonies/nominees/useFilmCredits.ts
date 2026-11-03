@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type CreditPerson = {
   tmdb_id?: number;
@@ -31,12 +31,22 @@ export function useFilmCredits(args: {
   getFilmCredits: (filmId: number) => Promise<unknown | null>;
 }) {
   const { filmId, filmLinked, getFilmCredits } = args;
-  const [filmCredits, setFilmCredits] = useState<FilmCredits | null>(null);
+  // Credits are tagged with the film they were fetched for so a different film never
+  // sees the previous film's cast and crew while its own fetch is in flight.
+  const [loaded, setLoaded] = useState<{
+    filmId: number | null;
+    credits: FilmCredits | null;
+  }>({ filmId: null, credits: null });
+  const filmCredits = loaded.filmId === filmId ? loaded.credits : null;
+  const setFilmCredits = useCallback(
+    (credits: FilmCredits | null) => setLoaded({ filmId, credits }),
+    [filmId]
+  );
 
   useEffect(() => {
     // When the film is TMDB-linked, load credits so contributor pickers can use cast/crew.
     if (!filmId || !filmLinked) {
-      setFilmCredits(null);
+      setLoaded({ filmId, credits: null });
       return;
     }
 
@@ -44,7 +54,7 @@ export function useFilmCredits(args: {
     void (async () => {
       const creditsUnknown = await getFilmCredits(filmId);
       if (cancelled) return;
-      setFilmCredits(coerceFilmCredits(creditsUnknown));
+      setLoaded({ filmId, credits: coerceFilmCredits(creditsUnknown) });
     })();
 
     return () => {

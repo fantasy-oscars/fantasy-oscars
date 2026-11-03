@@ -308,7 +308,9 @@ export const BRANDS: readonly Brand[] = [
   { id: "red-carpet", slug: "red-carpet", screens: KEY_SCREENS },
   { id: "noir", slug: "noir", screens: KEY_SCREENS },
   { id: "ballot", slug: "ballot", screens: KEY_SCREENS },
-  { id: "festival", slug: "festival", screens: KEY_SCREENS }
+  { id: "festival", slug: "festival", screens: KEY_SCREENS },
+  { id: "technicolor", slug: "technicolor", screens: KEY_SCREENS },
+  { id: "lightbox", slug: "lightbox", screens: KEY_SCREENS }
 ];
 
 /** Tall pages are cut here so one long screen cannot dominate baseline size. */

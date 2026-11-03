@@ -2229,6 +2229,14 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   font-weight: var(--fo-font-weight-bold);
   letter-spacing: var(--fo-letterSpacing-eyebrow);
   text-transform: var(--brand-label-case);
+  overflow-wrap: break-word;
+}
+
+/* Phone: the category name wraps instead of truncating, with lighter tracking. */
+@media (max-width: 500px) {
+  .nomination-group-title {
+    letter-spacing: var(--fo-letterSpacing-meta);
+  }
 }
 
 .nomination-group-count {
@@ -4461,8 +4469,9 @@ select {
   box-shadow: none;
 }
 
+/* Room inside the scroll box so the overlay ring and its offset are not clipped. */
 .fo-nomineeModalContent .mantine-Modal-body {
-  padding: 0;
+  padding: var(--fo-tip-overlayRoom);
 }
 
 .fo-nomineeModalContent .fo-tip {

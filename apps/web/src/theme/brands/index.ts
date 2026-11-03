@@ -2,9 +2,11 @@ import type { BrandId } from "@fantasy-oscars/shared/brands";
 import type { BrandDefinition } from "./contract";
 import { ballot } from "./ballot";
 import { festival } from "./festival";
+import { lightbox } from "./lightbox";
 import { noir } from "./noir";
 import { redCarpet } from "./red-carpet";
 import { refinedGold } from "./refined-gold";
+import { technicolor } from "./technicolor";
 
 /** Brands that have a definition. A brand without one renders as DEFAULT_BRAND. */
 export const BRAND_DEFINITIONS: readonly BrandDefinition[] = [
@@ -12,7 +14,9 @@ export const BRAND_DEFINITIONS: readonly BrandDefinition[] = [
   redCarpet,
   ballot,
   noir,
-  festival
+  festival,
+  technicolor,
+  lightbox
 ];
 
 export const DEFAULT_BRAND: BrandDefinition = refinedGold;
