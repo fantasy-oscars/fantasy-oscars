@@ -41,11 +41,14 @@ export type BrandOrchestrationInput = {
 
 /**
  * Test builds set VITE_FO_ENABLE_ALL_BRANDS=1 to exercise unreleased brands. The flag
- * is ignored in a production bundle (the build also refuses it, see vite/brandInit.ts).
+ * is ignored in a production-mode build (the build also refuses it, see
+ * vite/brandInit.ts). `import.meta.env.PROD` is true in every `vite build`, so the
+ * gate is the build mode: the visual suite builds with `--mode visual`.
  */
 function buildEnabledBrands(): readonly BrandId[] {
   return enabledBrandIds(
-    !import.meta.env.PROD && import.meta.env.VITE_FO_ENABLE_ALL_BRANDS === "1"
+    import.meta.env.MODE !== "production" &&
+      import.meta.env.VITE_FO_ENABLE_ALL_BRANDS === "1"
   );
 }
 

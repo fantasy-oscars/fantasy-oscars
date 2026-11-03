@@ -222,7 +222,7 @@ export function AdminCeremoniesOverviewScreen(props: {
           </Box>
         ) : null}
 
-        <Box className="grid">
+        <Box className="grid grid-stackOnPhone">
           <TextInput
             label="Name"
             value={form.name}

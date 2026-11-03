@@ -1,67 +1,76 @@
-import type { BrandDefinition, ColorSlots } from "./contract";
+import type { BrandDefinition, ColorSlots, ShadowSlots } from "./contract";
+import { CINZEL, FRAUNCES, INTER } from "./stacks";
 
-const SANS =
-  '"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-const SERIF = '"Cinzel", ui-serif, Georgia, "Times New Roman", serif';
-
-// PROVISIONAL slots (no counterpart in the pre-brand UI; invented to fill the
-// contract, to be set from the design in the visual phase): faint, ruleStrong,
-// accent (reuses the old gold wash), link, linkHover. The rest are today's values.
+// Warm editorial look: ivory paper, warm ink, one metal. Values follow
+// docs/design/prescriptions/02-brand-tokens.md (3.4, option 1).
 const dark: ColorSlots = {
-  page: "#0d0d0d",
-  surface: "#171717",
-  raised: "#222222",
-  sunken: "#222222",
-  text: "#f7f8fc",
-  muted: "rgba(247, 248, 252, 0.6)",
-  faint: "rgba(247, 248, 252, 0.4)",
-  rule: "rgba(247, 248, 252, 0.12)",
-  ruleStrong: "rgba(247, 248, 252, 0.24)",
-  primary: "#d4af37",
-  onPrimary: "#0d0d0d",
-  accent: "#efe6d0",
-  link: "#f7f8fc",
-  linkHover: "#d4af37",
-  focusRing: "#d4af37"
+  page: "#12110f",
+  surface: "#26231f",
+  raised: "#1c1a17",
+  sunken: "#26231f",
+  text: "#f3eee3",
+  muted: "#a89f8e",
+  faint: "#4a443a",
+  rule: "#36312a",
+  ruleStrong: "#716e68",
+  primary: "#e2c25a",
+  onPrimary: "#12110f",
+  accent: "#e2c25a",
+  link: "#e2c25a",
+  linkHover: "#f0d67e",
+  focusRing: "#f3eee3"
 };
 
 const light: ColorSlots = {
-  page: "#f7f8fc",
-  surface: "#f2f3f7",
-  raised: "#eeeff2",
-  sunken: "#e9eaee",
-  text: "#0d0d0d",
-  muted: "rgba(13, 13, 13, 0.6)",
-  faint: "rgba(13, 13, 13, 0.4)",
-  rule: "rgba(13, 13, 13, 0.12)",
-  ruleStrong: "rgba(13, 13, 13, 0.24)",
+  page: "#fbf8f1",
+  surface: "#f3eee2",
+  raised: "#ffffff",
+  sunken: "#f3eee2",
+  text: "#1c1a16",
+  muted: "#6a6252",
+  faint: "#d9cfb8",
+  rule: "#e5ddcb",
+  ruleStrong: "#898781",
   primary: "#d4af37",
-  onPrimary: "#0d0d0d",
-  accent: "#efe6d0",
-  link: "#0d0d0d",
-  linkHover: "#8a6d12",
-  focusRing: "#8a6d12"
+  onPrimary: "#1c1a16",
+  accent: "#7f6111",
+  link: "#7f6111",
+  linkHover: "#5e480c",
+  focusRing: "#1c1a16"
 };
 
-const shadows = {
-  card: "0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 24px rgba(0, 0, 0, 0.22)",
-  raised: "0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 14px 34px rgba(0, 0, 0, 0.28)"
+const lightShadows: ShadowSlots = {
+  card: "0 0 0 1px #e5ddcb, 0 1px 2px rgba(60, 45, 10, 0.05), 0 6px 16px rgba(60, 45, 10, 0.05)",
+  raised:
+    "0 0 0 1px #d9cfb8, 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08)",
+  overlay:
+    "0 0 0 1px #898781, 0 2px 6px rgba(60, 45, 10, 0.08), 0 16px 40px rgba(60, 45, 10, 0.16)"
 };
 
-/** Today's look. */
+const darkShadows: ShadowSlots = {
+  card: "0 0 0 1px #36312a, 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28)",
+  raised:
+    "0 0 0 1px #4a443a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35)",
+  overlay: "0 0 0 1px #716e68, 0 16px 40px rgba(0, 0, 0, 0.5)"
+};
+
+/** The original brand and the default. */
 export const refinedGold: BrandDefinition = {
   id: "refined-gold",
   modes: {
-    light: { colors: light, shadows },
-    dark: { colors: dark, shadows }
+    light: { colors: light, shadows: lightShadows },
+    dark: { colors: dark, shadows: darkShadows }
   },
   type: {
-    displayFont: SERIF,
-    bodyFont: SANS,
-    numeralFont: SANS,
-    labelFont: SANS,
+    displayFont: CINZEL,
+    bodyFont: INTER,
+    numeralFont: FRAUNCES,
+    labelFont: INTER,
     labelCase: "uppercase",
-    labelLetterSpacing: "0.04em",
+    labelLetterSpacing: "0.1em",
+    displayWeight: "700",
+    displayCase: "none",
+    displayTracking: "normal",
     h1Size: "32px",
     h2Size: "24px",
     h3Size: "18px",
@@ -70,7 +79,8 @@ export const refinedGold: BrandDefinition = {
   fonts: {
     faces: [
       { family: "Cinzel", weights: [400, 700], styles: ["normal"] },
-      { family: "Inter", weights: [400, 700], styles: ["normal"] }
+      { family: "Inter", weights: [400, 500, 600, 700], styles: ["normal"] },
+      { family: "Fraunces", weights: [600], styles: ["normal"] }
     ],
     preload: {
       display: { family: "Cinzel", weight: 700, style: "normal" },
@@ -78,25 +88,25 @@ export const refinedGold: BrandDefinition = {
     }
   },
   wordmark: {
-    font: SERIF,
+    font: CINZEL,
     weight: "700",
     case: "none",
-    letterSpacing: "normal",
+    letterSpacing: "0.02em",
     twoTone: "colour"
   },
   shape: {
-    radiusSm: "6px",
-    radiusMd: "8px",
-    radiusLg: "12px",
+    radiusSm: "10px",
+    radiusMd: "12px",
+    radiusLg: "14px",
     buttonShape: "rounded",
     borderWidth: "1px",
     ruleStyle: "solid"
   },
   navigation: {
     activeTab: "underline",
-    font: SANS,
+    font: INTER,
     case: "none",
-    size: "16px"
+    size: "15px"
   },
   decorations: {
     doubleRules: false,

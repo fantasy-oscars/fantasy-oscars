@@ -13,6 +13,7 @@ import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
+import { useEscapeClearsSelection } from "./useEscapeClearsSelection";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import { PageError } from "@/shared/page-state";
 import { useCssVars } from "@/shared/dom/useCssVars";
@@ -207,6 +208,10 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   useEffect(() => {
     if (!canDraftAction) props.o.myRoster.clearSelection();
   }, [canDraftAction, props.o.myRoster]);
+  useEscapeClearsSelection(
+    props.o.myRoster.selected?.id ?? null,
+    props.o.myRoster.clearSelection
+  );
   const draftedNominationIds = useMemo(
     () => buildDraftedNominationIds(props.o.ledger.rows),
     [props.o.ledger.rows]

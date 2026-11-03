@@ -31,7 +31,7 @@ export type ColorSlot = (typeof COLOR_SLOTS)[number];
 export type ColorSlots = Record<ColorSlot, string>;
 
 /** Shadow slots, filled per brand and per mode. Values are CSS box-shadow lists. */
-export const SHADOW_SLOTS = ["card", "raised"] as const;
+export const SHADOW_SLOTS = ["card", "raised", "overlay"] as const;
 export type ShadowSlot = (typeof SHADOW_SLOTS)[number];
 export type ShadowSlots = Record<ShadowSlot, string>;
 
@@ -68,6 +68,12 @@ export type TypeSlots = {
   labelFont: string;
   labelCase: TextCase;
   labelLetterSpacing: string;
+  /** Font weight of titles and the hero title (`--brand-display-weight`). */
+  displayWeight: string;
+  /** Text case of titles (`--brand-display-case`); the draft room overrides it to none. */
+  displayCase: TextCase;
+  /** Letter-spacing of card titles (`--brand-display-tracking`); each display face needs its own. */
+  displayTracking: string;
   h1Size: string;
   h2Size: string;
   h3Size: string;

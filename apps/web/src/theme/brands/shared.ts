@@ -29,6 +29,8 @@ export const sharedByMode = {
     "--fo-win-gold": "#d4af37",
     "--fo-win-gold-on": "#0d0d0d",
     "--fo-win-gold-text": "#8a6a14",
+    // Danger as text: the fill colour misses 4.5:1 on several surfaces.
+    "--fo-danger-text": "#a8443c",
     "--fo-status-complete": "#1f6b4a",
     "--fo-status-live": "#c8243b",
     "--fo-status-drafting": "#0f7b7b"
@@ -37,6 +39,7 @@ export const sharedByMode = {
     "--fo-win-gold": "#e2c25a",
     "--fo-win-gold-on": "#0d0d0d",
     "--fo-win-gold-text": "#e2c25a",
+    "--fo-danger-text": "#e8766c",
     "--fo-status-complete": "#4fbf8a",
     "--fo-status-live": "#f0566a",
     "--fo-status-drafting": "#3fc1be"

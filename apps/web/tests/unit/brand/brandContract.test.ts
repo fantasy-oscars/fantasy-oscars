@@ -61,6 +61,7 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
         }
       }
       expect(TEXT_CASES).toContain(brand.type.labelCase);
+      expect(TEXT_CASES).toContain(brand.type.displayCase);
       expect(TEXT_CASES).toContain(brand.wordmark.case);
       expect(TEXT_CASES).toContain(brand.navigation.case);
       expect(TWO_TONE_METHODS).toContain(brand.wordmark.twoTone);
@@ -72,6 +73,53 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
     it("sets every decoration to a boolean", () => {
       expect(Object.keys(brand.decorations).sort()).toEqual([...DECORATIONS].sort());
       for (const d of DECORATIONS) expect(typeof brand.decorations[d]).toBe("boolean");
+    });
+  }
+);
+
+function luminance(value: string): number {
+  const [r, g, b] = colorChannels(value)
+    .split(",")
+    .map((c) => {
+      const v = Number(c) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
+  "brand contrast floors %s",
+  (_id, brand) => {
+    describe.each(MODES)("%s", (mode) => {
+      const { colors } = brand.modes[mode];
+
+      it("keeps text, muted and link readable on every background", () => {
+        for (const bg of [colors.page, colors.surface, colors.raised, colors.sunken]) {
+          expect(contrast(colors.text, bg)).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(colors.muted, bg)).toBeGreaterThanOrEqual(4.5);
+          expect(contrast(colors.link, bg)).toBeGreaterThanOrEqual(4.5);
+        }
+      });
+
+      it("draws input and hover boundaries (ruleStrong) at 3:1", () => {
+        for (const bg of [colors.page, colors.surface, colors.raised, colors.sunken]) {
+          expect(contrast(colors.ruleStrong, bg)).toBeGreaterThanOrEqual(3);
+        }
+      });
+
+      it("keeps the hover well (sunken) distinguishable from page and raised", () => {
+        expect(contrast(colors.sunken, colors.raised)).toBeGreaterThanOrEqual(1.07);
+        expect(contrast(colors.sunken, colors.page)).toBeGreaterThanOrEqual(1.07);
+      });
+
+      it("keeps the action label readable on the primary fill", () => {
+        expect(contrast(colors.onPrimary, colors.primary)).toBeGreaterThanOrEqual(4.5);
+      });
     });
   }
 );

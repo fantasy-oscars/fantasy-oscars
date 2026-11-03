@@ -5,6 +5,7 @@
 .draftLayoutRoot {
   /* Draft board rule: force headings to use sans (override global serif headings). */
   --mantine-font-family-headings: var(--brand-font-body);
+  --brand-display-case: none;
 
   min-height: 100vh;
   display: flex;

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import { afterAll, describe, expect, it } from "vitest";
+import { ENABLED_BRAND_IDS } from "@fantasy-oscars/shared/brands";
 import { build } from "vite";
 import {
   BRAND_DEFINITIONS,
@@ -104,7 +105,7 @@ describe("brand fonts", () => {
       expect(subsets.has(s), s).toBe(true);
   });
 
-  it("refined-gold loads the same latin files it bundled before", () => {
+  it("refined-gold loads its Cinzel, Fraunces and Inter latin files, with every rendered Inter weight", () => {
     const files = collectFontFaces([DEFAULT_BRAND])
       .filter((b) => b.subset === "latin" || b.subset === "latin-ext")
       .map((b) => path.basename(b.file))
@@ -114,9 +115,15 @@ describe("brand fonts", () => {
       "cinzel-latin-700-normal.woff2",
       "cinzel-latin-ext-400-normal.woff2",
       "cinzel-latin-ext-700-normal.woff2",
+      "fraunces-latin-ext-wght-normal.woff2",
+      "fraunces-latin-wght-normal.woff2",
       "inter-latin-400-normal.woff2",
+      "inter-latin-500-normal.woff2",
+      "inter-latin-600-normal.woff2",
       "inter-latin-700-normal.woff2",
       "inter-latin-ext-400-normal.woff2",
+      "inter-latin-ext-500-normal.woff2",
+      "inter-latin-ext-600-normal.woff2",
       "inter-latin-ext-700-normal.woff2"
     ]);
     expect(path.basename(preloadFace(DEFAULT_BRAND.fonts.preload.display).file)).toBe(
@@ -173,7 +180,12 @@ describe("built font preload map", () => {
       };
       sandbox.window = sandbox;
       vm.runInNewContext(code, sandbox);
-      expect(documentElement.dataset.brand).toBe(brand.id);
+      // The production script renders only enabled brands, whatever is stored: a
+      // defined but unreleased brand falls back to the default.
+      const expectedBrand = ENABLED_BRAND_IDS.includes(brand.id)
+        ? brand.id
+        : DEFAULT_BRAND.id;
+      expect(documentElement.dataset.brand).toBe(expectedBrand);
       expect(links).toHaveLength(2);
       for (const link of links) {
         expect(link).toMatchObject({

@@ -10,7 +10,7 @@ export const appTheme: MantineThemeOverride = {
   fontFamily: "var(--brand-font-body)",
   headings: {
     fontFamily: "var(--brand-font-display)",
-    fontWeight: "var(--fo-font-weight-bold)"
+    fontWeight: "var(--brand-display-weight)"
   },
 
   // Preserve existing breakpoints (px) and centralize them here.
@@ -79,7 +79,8 @@ export const appTheme: MantineThemeOverride = {
         tooltip: {
           backgroundColor: "var(--fo-tooltip-bg)",
           color: "var(--fo-tooltip-color)",
-          border: "1px solid var(--fo-tooltip-border)"
+          border: 0,
+          boxShadow: "var(--brand-shadow-overlay)"
         },
         arrow: {
           "--tooltip-bg": "var(--fo-tooltip-bg)"
@@ -94,17 +95,11 @@ export const appTheme: MantineThemeOverride = {
 // the theme remain the single source of truth.
 export const appCssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
-    ...foTokens
+    ...foTokens,
+    // Tooltips are floating layers: the raised fill with the overlay edge (styles above).
+    "--fo-tooltip-bg": "var(--brand-raised)",
+    "--fo-tooltip-color": "var(--brand-text)"
   },
-  // No component-scoped vars yet; keep all tokens at the root for predictability.
-  light: {
-    "--fo-tooltip-bg": "var(--mantine-color-gray-0)",
-    "--fo-tooltip-color": "var(--mantine-color-dark-9)",
-    "--fo-tooltip-border": "var(--mantine-color-gray-4)"
-  },
-  dark: {
-    "--fo-tooltip-bg": "var(--mantine-color-dark-6)",
-    "--fo-tooltip-color": "var(--mantine-color-gray-0)",
-    "--fo-tooltip-border": "var(--mantine-color-dark-4)"
-  }
+  light: {},
+  dark: {}
 });
