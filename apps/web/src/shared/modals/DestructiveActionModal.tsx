@@ -71,7 +71,11 @@ export function DestructiveActionModal(props: {
           <Button variant="subtle" onClick={onClose} disabled={Boolean(loading)}>
             Cancel
           </Button>
-          <Button color="red" onClick={() => void onConfirm()} disabled={!canConfirm}>
+          <Button
+            variant="destructive"
+            onClick={() => void onConfirm()}
+            disabled={!canConfirm}
+          >
             {loading ? "Working..." : confirmLabel}
           </Button>
         </Group>

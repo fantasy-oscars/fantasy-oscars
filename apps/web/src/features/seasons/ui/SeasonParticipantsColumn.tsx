@@ -17,7 +17,9 @@ export function SeasonParticipantsColumn(props: {
   const { confirm } = useConfirm();
   return (
     <Stack gap="sm">
-      <Title order={3}>Participants</Title>
+      <Title order={3} variant="section">
+        Participants
+      </Title>
       <Divider />
       {members.length === 0 ? (
         <Text className="muted">No participants.</Text>
@@ -37,8 +39,7 @@ export function SeasonParticipantsColumn(props: {
         <>
           <Divider />
           <Button
-            color="red"
-            variant="outline"
+            variant="danger"
             disabled={Boolean(working)}
             onClick={async () => {
               const ok = await confirm({

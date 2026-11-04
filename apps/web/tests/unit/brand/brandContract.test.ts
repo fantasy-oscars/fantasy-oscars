@@ -9,11 +9,13 @@ import {
   DECORATIONS,
   DEFAULT_BRAND,
   MODES,
+  NAV_ACTIVE_COLORS,
   NAV_TREATMENTS,
   RULE_STYLES,
   SHADOW_SLOTS,
   TEXT_CASES,
   TWO_TONE_METHODS,
+  WORDMARK_TONE_COLORS,
   generateBrandCss,
   sharedByMode,
   sharedConstants,
@@ -68,6 +70,13 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
       expect(BUTTON_SHAPES).toContain(brand.shape.buttonShape);
       expect(RULE_STYLES).toContain(brand.shape.ruleStyle);
       expect(NAV_TREATMENTS).toContain(brand.navigation.activeTab);
+      expect(NAV_ACTIVE_COLORS).toContain(brand.navigation.activeColor);
+      expect(WORDMARK_TONE_COLORS).toContain(brand.wordmark.toneColor);
+    });
+
+    it("gives pill navigation an indicator whose on-colour passes 4.5", () => {
+      if (brand.navigation.activeTab !== "pill") return;
+      expect(["text", "primary", "accent"]).toContain(brand.navigation.activeColor);
     });
 
     it("sets every decoration to a boolean", () => {
@@ -137,8 +146,149 @@ describe("brand registry", () => {
   });
 });
 
+/** The §3.2 table of the component-treatments prescription, one row per brand. */
+const DERIVED: Record<string, Record<string, string>> = {
+  "refined-gold": {
+    "--brand-nav-pill": "0",
+    "--brand-nav-indicator": "var(--brand-accent)",
+    "--brand-nav-active-bg": "transparent",
+    "--brand-nav-active-fg": "var(--brand-text)",
+    "--brand-nav-active-border": "var(--brand-accent)",
+    "--brand-nav-border-width": "0 0 2px",
+    "--brand-nav-letter-spacing": "normal",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
+    "--brand-nav-rule": "var(--brand-section-rule)",
+    "--brand-wordmark-tone-color": "var(--brand-accent)",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "inherit",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--brand-accent)"
+  },
+  "red-carpet": {
+    "--brand-nav-pill": "0",
+    "--brand-nav-indicator": "var(--fo-win-gold-text)",
+    "--brand-nav-active-bg": "transparent",
+    "--brand-nav-active-fg": "var(--brand-text)",
+    "--brand-nav-active-border": "var(--fo-win-gold-text)",
+    "--brand-nav-border-width": "0 0 2px",
+    "--brand-nav-letter-spacing": "0.12em",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
+    "--brand-nav-rule": "var(--brand-section-rule)",
+    "--brand-wordmark-tone-color": "var(--fo-win-gold-text)",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "inherit",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--fo-win-gold-text)"
+  },
+  ballot: {
+    "--brand-nav-pill": "0",
+    "--brand-nav-indicator": "var(--fo-win-gold-text)",
+    "--brand-nav-active-bg": "transparent",
+    "--brand-nav-active-fg": "var(--brand-text)",
+    "--brand-nav-active-border": "var(--fo-win-gold-text)",
+    "--brand-nav-border-width": "0 0 2px",
+    "--brand-nav-letter-spacing": "0.08em",
+    "--brand-section-rule": "3px double var(--brand-text)",
+    "--brand-nav-rule": "var(--brand-section-rule)",
+    "--brand-wordmark-tone-color": "inherit",
+    "--brand-wordmark-tone-style": "italic",
+    "--brand-wordmark-tone-weight": "400",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--brand-accent)"
+  },
+  noir: {
+    "--brand-nav-pill": "0",
+    "--brand-nav-indicator": "var(--brand-text)",
+    "--brand-nav-active-bg": "transparent",
+    "--brand-nav-active-fg": "var(--brand-text)",
+    "--brand-nav-active-border": "var(--brand-text)",
+    "--brand-nav-border-width": "0 0 2px",
+    "--brand-nav-letter-spacing": "0.12em",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
+    "--brand-nav-rule": "var(--brand-section-rule)",
+    "--brand-wordmark-tone-color": "var(--fo-win-gold-text)",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "inherit",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--fo-win-gold-text)"
+  },
+  festival: {
+    "--brand-nav-pill": "1",
+    "--brand-nav-indicator": "var(--brand-text)",
+    "--brand-nav-active-bg": "var(--brand-text)",
+    "--brand-nav-active-fg": "var(--brand-page)",
+    "--brand-nav-active-border": "var(--brand-text)",
+    "--brand-nav-border-width": "var(--brand-border-width)",
+    "--brand-nav-letter-spacing": "normal",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
+    "--brand-nav-rule": "0 solid transparent",
+    "--brand-wordmark-tone-color": "inherit",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "inherit",
+    "--brand-wordmark-stop-display": "inline",
+    "--brand-wordmark-stop-color": "var(--fo-win-gold-text)"
+  },
+  technicolor: {
+    "--brand-nav-pill": "1",
+    "--brand-nav-indicator": "var(--brand-primary)",
+    "--brand-nav-active-bg": "var(--brand-primary)",
+    "--brand-nav-active-fg": "var(--brand-on-primary)",
+    "--brand-nav-active-border": "var(--brand-text)",
+    "--brand-nav-border-width": "var(--brand-border-width)",
+    "--brand-nav-letter-spacing": "normal",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
+    "--brand-nav-rule": "0 solid transparent",
+    "--brand-wordmark-tone-color": "var(--brand-accent)",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "inherit",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--brand-accent)"
+  },
+  lightbox: {
+    "--brand-nav-pill": "0",
+    "--brand-nav-indicator": "var(--brand-accent)",
+    "--brand-nav-active-bg": "transparent",
+    "--brand-nav-active-fg": "var(--brand-text)",
+    "--brand-nav-active-border": "var(--brand-accent)",
+    "--brand-nav-border-width": "0 0 2px",
+    "--brand-nav-letter-spacing": "normal",
+    "--brand-section-rule": "var(--brand-border-width) solid var(--brand-text)",
+    "--brand-nav-rule": "var(--brand-section-rule)",
+    "--brand-wordmark-tone-color": "inherit",
+    "--brand-wordmark-tone-style": "normal",
+    "--brand-wordmark-tone-weight": "400",
+    "--brand-wordmark-stop-display": "none",
+    "--brand-wordmark-stop-color": "var(--brand-accent)"
+  }
+};
+
 describe("generated brand CSS", () => {
   const css = generateBrandCss(BRAND_DEFINITIONS, DEFAULT_BRAND);
+
+  // Vitest's snapshot client is not available in this setup, so the stored copy is
+  // compared by hand. Refresh it with UPDATE_BRAND_CSS=1 after an intended change.
+  it("matches the stored snapshot", () => {
+    const file = path.resolve(__dirname, "brands.css.snapshot");
+    if (process.env.UPDATE_BRAND_CSS === "1") fs.writeFileSync(file, css);
+    expect(css).toBe(fs.readFileSync(file, "utf8"));
+  });
+
+  it.each(BRAND_DEFINITIONS.map((b) => [b.id] as const))(
+    "derives the chrome properties for %s as the prescription table says",
+    (id) => {
+      const expected = DERIVED[id]!;
+      const common = css
+        .split("\n\n")
+        .find((b) => b.startsWith(`:root[data-brand="${id}"] {`))!;
+      const declared = Object.fromEntries(
+        [...common.matchAll(/^ {2}(--[\w-]+): (.+);$/gm)].map((m) => [m[1], m[2]])
+      );
+      for (const [name, value] of Object.entries(expected)) {
+        expect(declared[name], name).toBe(value);
+      }
+      expect(Object.keys(expected)).toHaveLength(14);
+    }
+  );
 
   it("is deterministic", () => {
     expect(generateBrandCss(BRAND_DEFINITIONS, DEFAULT_BRAND)).toBe(css);

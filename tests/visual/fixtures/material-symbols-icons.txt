@@ -27,6 +27,7 @@ link_off
 lock
 lock_open
 logout
+mail
 menu
 mic
 military_tech

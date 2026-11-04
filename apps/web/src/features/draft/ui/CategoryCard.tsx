@@ -225,6 +225,7 @@ export function CategoryCard(props: {
                       isArmed ? (
                         <Button
                           variant="filled"
+                          className="dr-confirmPick"
                           fullWidth
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={(e) => {

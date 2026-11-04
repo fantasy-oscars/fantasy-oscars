@@ -40,8 +40,17 @@ export type ModeSlots = { colors: ColorSlots; shadows: ShadowSlots };
 export const TEXT_CASES = ["none", "uppercase", "lowercase", "capitalize"] as const;
 export type TextCase = (typeof TEXT_CASES)[number];
 
-export const TWO_TONE_METHODS = ["colour", "italic", "weight"] as const;
+/** How the second word of the wordmark differs: `stop` keeps both words alike and adds a trailing full stop. */
+export const TWO_TONE_METHODS = ["colour", "italic", "weight", "stop"] as const;
 export type TwoToneMethod = (typeof TWO_TONE_METHODS)[number];
+
+/** Colours the active nav indicator may take; `gold` is the shared win-gold text colour. */
+export const NAV_ACTIVE_COLORS = ["primary", "accent", "text", "gold"] as const;
+export type NavActiveColor = (typeof NAV_ACTIVE_COLORS)[number];
+
+/** Colours the wordmark's second word (or full stop) may take. */
+export const WORDMARK_TONE_COLORS = ["primary", "accent", "gold"] as const;
+export type WordmarkToneColor = (typeof WORDMARK_TONE_COLORS)[number];
 
 export const BUTTON_SHAPES = ["pill", "rounded", "square"] as const;
 export type ButtonShape = (typeof BUTTON_SHAPES)[number];
@@ -90,6 +99,8 @@ export type WordmarkSlots = {
   case: TextCase;
   letterSpacing: string;
   twoTone: TwoToneMethod;
+  /** Colour of the second word (`colour`) or of the full stop (`stop`); still required when unused. */
+  toneColor: WordmarkToneColor;
 };
 
 export type ShapeSlots = {
@@ -103,6 +114,8 @@ export type ShapeSlots = {
 
 export type NavigationSlots = {
   activeTab: NavTreatment;
+  /** Colour of the active underline, or the fill of the active pill (must be text, primary or accent for pills). */
+  activeColor: NavActiveColor;
   font: string;
   case: TextCase;
   size: string;

@@ -51,14 +51,22 @@ export function AccountScreen(props: {
                 </Text>
               </Group>
 
-              <Group justify="space-between" wrap="nowrap" mt="xs">
-                <Button type="button" variant="outline" onClick={() => void onLogout()}>
-                  Logout
+              <Group justify="space-between" wrap="wrap" mt="xs">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  leftSection={
+                    <Text component="span" className="mi-icon" aria-hidden="true">
+                      logout
+                    </Text>
+                  }
+                  onClick={() => void onLogout()}
+                >
+                  Log out
                 </Button>
                 <Button
                   type="button"
-                  variant="subtle"
-                  color="red"
+                  variant="danger"
                   onClick={() => {
                     setDeleteError(null);
                     setDeleteOpen(true);

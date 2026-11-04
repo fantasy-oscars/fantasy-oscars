@@ -118,7 +118,9 @@ export function AdminCeremoniesWinnersScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Results</Title>
+            <Title order={3} variant="section">
+              Results
+            </Title>
             <Text className="muted">Select one or more winners per category.</Text>
           </Box>
           <Group className="pill-list" wrap="wrap">

@@ -69,13 +69,7 @@ export function DynamicContentEditorHeader(props: {
               </Button>
             )}
             {!isActive ? (
-              <Button
-                type="button"
-                color="red"
-                variant="outline"
-                onClick={onDelete}
-                disabled={busy}
-              >
+              <Button type="button" variant="danger" onClick={onDelete} disabled={busy}>
                 Delete
               </Button>
             ) : null}

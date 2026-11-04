@@ -9,7 +9,9 @@ export function SeasonRulesColumn(props: {
   const { scoringLabel, allocationLabel, draftTimerLabel, ceremonyTimeLabel } = props;
   return (
     <Stack gap="sm">
-      <Title order={3}>Rules</Title>
+      <Title order={3} variant="section">
+        Rules
+      </Title>
       <Divider />
       <Stack gap="var(--fo-space-8)">
         <Text>

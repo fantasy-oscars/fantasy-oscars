@@ -19,13 +19,16 @@ export function ShellLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const navLinksRef = useRef<HTMLDivElement | null>(null);
+  const headerRowRef = useRef<HTMLDivElement | null>(null);
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const themeToggleIcon = colorScheme === "dark" ? "\ue518" : "\ue51c";
   const { inviteCount } = useInviteCountOrchestration(user?.sub);
 
   const { navMode } = useShellNavMode({
     navLinksRef,
-    userIsAdmin: hasOperatorAccess(user)
+    headerRowRef,
+    userIsAdmin: hasOperatorAccess(user),
+    sessionKey: loading ? "loading" : user ? "in" : "out"
   });
 
   useEffect(() => {
@@ -53,6 +56,8 @@ export function ShellLayout() {
         </a>
         <ShellHeader
           navMode={navMode}
+          rowRef={headerRowRef}
+          navDrawerOpen={navOpen}
           onOpenNavDrawer={() => setNavOpen(true)}
           user={
             user

@@ -42,7 +42,9 @@ export function NewTemplateModal(props: {
         aria-modal="true"
         aria-label="New template"
       >
-        <Title order={4}>New template</Title>
+        <Title order={4} variant="section">
+          New template
+        </Title>
         <Text className="muted">
           Create a category template, then add it to ceremonies as needed.
         </Text>

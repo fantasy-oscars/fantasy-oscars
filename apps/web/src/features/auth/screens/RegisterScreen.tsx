@@ -19,7 +19,9 @@ export function RegisterScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard component="section">
           <Box component="header">
-            <Title variant="page">Create account</Title>
+            <Title variant="page" className="baseline-textHeroTitle">
+              Create account
+            </Title>
             <Text variant="helper">Pick a username and join a league.</Text>
           </Box>
           <Box component="form" onSubmit={onSubmit} onInput={onInput} mt="md">
@@ -32,7 +34,7 @@ export function RegisterScreen(props: {
                 type="password"
                 error={errors.password}
               />
-              <Button type="submit" disabled={loading} variant="primary">
+              <Button type="submit" loading={loading} variant="primary">
                 {loading ? "Creating..." : "Create account"}
               </Button>
               <FormStatus loading={loading} result={result} />

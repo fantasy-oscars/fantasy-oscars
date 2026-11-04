@@ -92,7 +92,8 @@ export const technicolor: BrandDefinition = {
     weight: "900",
     case: "none",
     letterSpacing: "normal",
-    twoTone: "colour"
+    twoTone: "colour",
+    toneColor: "accent"
   },
   shape: {
     radiusSm: "12px",
@@ -104,6 +105,7 @@ export const technicolor: BrandDefinition = {
   },
   navigation: {
     activeTab: "pill",
+    activeColor: "primary",
     font: DMSANS,
     case: "none",
     size: "15px"

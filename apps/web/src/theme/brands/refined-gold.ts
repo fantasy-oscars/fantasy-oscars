@@ -94,7 +94,8 @@ export const refinedGold: BrandDefinition = {
     weight: "700",
     case: "none",
     letterSpacing: "0.02em",
-    twoTone: "colour"
+    twoTone: "colour",
+    toneColor: "accent"
   },
   shape: {
     radiusSm: "10px",
@@ -106,6 +107,7 @@ export const refinedGold: BrandDefinition = {
   },
   navigation: {
     activeTab: "underline",
+    activeColor: "accent",
     font: INTER,
     case: "none",
     size: "15px"

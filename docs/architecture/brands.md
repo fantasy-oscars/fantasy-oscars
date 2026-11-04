@@ -149,15 +149,44 @@ The same in both modes:
 - Type: `font-display`, `font-body`, `font-numeral`, `font-label`, `label-case`,
   `label-letter-spacing`, `display-weight`, `display-case`, `display-tracking`, `h1-size`, `h2-size`, `h3-size`, `body-size`.
 - Wordmark: `wordmark-font`, `-weight`, `-case`, `-letter-spacing`, `-two-tone`
-  (`colour | italic | weight`).
+  (`colour | italic | weight | stop`; `stop` keeps both words alike and adds a
+  trailing full stop). The contract slot `toneColor` (`primary | accent | gold`) is the
+  colour of the second word (`colour`) or the full stop (`stop`). It is required for
+  every brand, even where the method does not use it.
 - Shape: `radius-sm/md/lg`, `button-shape` (`pill | rounded | square`) and the
   derived `button-radius`, `border-width`, `rule-style` (`solid | double`).
 - Navigation: `nav-active` (`pill | underline`), `nav-font`, `nav-case`, `nav-size`.
+  The contract slot `activeColor` (`primary | accent | text | gold`) is the colour of
+  the active underline, or the fill of the active pill. `gold` is the shared
+  `--fo-win-gold-text`, never the fill. A pill brand must use `text`, `primary` or
+  `accent`, because each has an on-colour that passes 4.5:1 (enforced by a unit test).
 - Decorations (closed list, `1` or `0`): `deco-double-rules`, `deco-offset-shadow`,
   `deco-frame-borders`, `deco-grease-pencil`.
 - `home-layout`: one of the brand slugs.
 
-Enums are emitted as plain custom-property values; no component reads them yet.
+Enums are emitted as plain custom-property values for reference. Components read the
+derived properties below, never the enums. `css.ts` computes them per brand, in the
+brand's common block. "Colour of X" is the string `var(--brand-accent)`,
+`var(--brand-primary)`, `var(--brand-text)` or `var(--fo-win-gold-text)`, so it
+resolves per mode.
+
+- `nav-pill` (`1` or `0`), `nav-indicator` (colour of `activeColor`).
+- `nav-active-bg` (pill: the indicator; underline: `transparent`), `nav-active-fg`
+  (pill: the on-colour; underline: `text`), `nav-active-border` (pill: `text`;
+  underline: the indicator), `nav-border-width` (pill: `border-width`; underline:
+  `0 0 2px`).
+- `nav-letter-spacing`: `label-letter-spacing` when `nav-case` is uppercase, else
+  `normal`.
+- `section-rule` (`3px double` ink for double rules; ink frame for frame borders;
+  otherwise a hairline in `rule`) and `nav-rule` (underline brands: the section
+  rule; pill brands: `0 solid transparent`).
+- `wordmark-tone-color` (`colour`: colour of `toneColor`; else `inherit`),
+  `wordmark-tone-style` (`italic` or `normal`), `wordmark-tone-weight` (`400` for
+  `italic` and `weight`; else `inherit`), `wordmark-stop-display` (`inline` for
+  `stop`, else `none`), `wordmark-stop-color` (colour of `toneColor`).
+
+Decoration values are unitless `1` or `0`; use them as multipliers inside `calc()`,
+never as conditions.
 
 Slot roles and rules (values and contrast checks are in
 `docs/design/prescriptions/02-brand-tokens.md`):

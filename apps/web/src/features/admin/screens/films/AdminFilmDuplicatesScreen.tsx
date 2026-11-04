@@ -110,8 +110,7 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
                   </Radio.Group>
                   <Group justify="flex-end">
                     <Button
-                      color="red"
-                      variant="outline"
+                      variant="danger"
                       onClick={() => onMergeGroup(g)}
                       disabled={g.films.length < 2}
                     >

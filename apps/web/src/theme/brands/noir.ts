@@ -89,7 +89,8 @@ export const noir: BrandDefinition = {
     weight: "700",
     case: "uppercase",
     letterSpacing: "0.02em",
-    twoTone: "colour"
+    twoTone: "colour",
+    toneColor: "gold"
   },
   shape: {
     radiusSm: "0",
@@ -101,6 +102,7 @@ export const noir: BrandDefinition = {
   },
   navigation: {
     activeTab: "underline",
+    activeColor: "text",
     font: BARLOW,
     case: "uppercase",
     size: "20px"

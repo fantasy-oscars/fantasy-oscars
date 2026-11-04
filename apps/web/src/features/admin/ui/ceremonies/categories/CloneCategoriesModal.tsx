@@ -21,7 +21,9 @@ export function CloneCategoriesModal(props: {
         aria-modal="true"
         aria-label="Clone from ceremony"
       >
-        <Title order={4}>Clone from ceremony</Title>
+        <Title order={4} variant="section">
+          Clone from ceremony
+        </Title>
         <Text className="muted">Copy the category structure (no linkage).</Text>
         <Box className="status status-warning" role="status" mt="sm">
           This will replace all categories for the current ceremony.

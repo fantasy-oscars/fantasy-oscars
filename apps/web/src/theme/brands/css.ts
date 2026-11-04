@@ -6,7 +6,9 @@ import {
   MODES,
   SHADOW_SLOTS,
   type BrandDefinition,
-  type Mode
+  type Mode,
+  type NavActiveColor,
+  type WordmarkToneColor
 } from "./contract";
 import { sharedByMode, sharedConstants } from "./shared";
 
@@ -41,6 +43,63 @@ function buttonRadius(shape: BrandDefinition["shape"]["buttonShape"]): string {
   if (shape === "pill") return "var(--fo-radius-pill)";
   if (shape === "rounded") return "var(--brand-radius-sm)";
   return "0";
+}
+
+/** The custom-property value that resolves, per mode, to a contract colour name. */
+function colorRef(name: NavActiveColor | WordmarkToneColor): string {
+  if (name === "gold") return "var(--fo-win-gold-text)";
+  return `var(--brand-${name})`;
+}
+
+function navPillForeground(color: NavActiveColor): string {
+  // Each of these pairs passes 4.5:1 in every palette (see the brand contract test).
+  if (color === "primary") return "var(--brand-on-primary)";
+  return "var(--brand-page)";
+}
+
+/**
+ * Values components read instead of the enum slots, so a component never
+ * branches on a brand's choice. `--brand-deco-*` style multipliers stay unitless.
+ */
+function derivedDeclarations(brand: BrandDefinition): Declarations {
+  const { type, wordmark, shape, navigation, decorations } = brand;
+  const pill = navigation.activeTab === "pill";
+  const indicator = colorRef(navigation.activeColor);
+  const sectionRule =
+    shape.ruleStyle === "double"
+      ? "3px double var(--brand-text)"
+      : decorations.frameBorders
+        ? "var(--brand-border-width) solid var(--brand-text)"
+        : "var(--brand-border-width) solid var(--brand-rule)";
+  const tone = wordmark.twoTone;
+  return [
+    ["--brand-nav-pill", pill ? "1" : "0"],
+    ["--brand-nav-indicator", indicator],
+    ["--brand-nav-active-bg", pill ? indicator : "transparent"],
+    [
+      "--brand-nav-active-fg",
+      pill ? navPillForeground(navigation.activeColor) : "var(--brand-text)"
+    ],
+    ["--brand-nav-active-border", pill ? "var(--brand-text)" : indicator],
+    ["--brand-nav-border-width", pill ? "var(--brand-border-width)" : "0 0 2px"],
+    [
+      "--brand-nav-letter-spacing",
+      navigation.case === "uppercase" ? type.labelLetterSpacing : "normal"
+    ],
+    ["--brand-section-rule", sectionRule],
+    ["--brand-nav-rule", pill ? "0 solid transparent" : "var(--brand-section-rule)"],
+    [
+      "--brand-wordmark-tone-color",
+      tone === "colour" ? colorRef(wordmark.toneColor) : "inherit"
+    ],
+    ["--brand-wordmark-tone-style", tone === "italic" ? "italic" : "normal"],
+    [
+      "--brand-wordmark-tone-weight",
+      tone === "italic" || tone === "weight" ? "400" : "inherit"
+    ],
+    ["--brand-wordmark-stop-display", tone === "stop" ? "inline" : "none"],
+    ["--brand-wordmark-stop-color", colorRef(wordmark.toneColor)]
+  ];
 }
 
 function modeDeclarations(
@@ -98,6 +157,7 @@ function commonDeclarations(brand: BrandDefinition): Declarations {
   for (const d of DECORATIONS) {
     out.push([`--brand-deco-${kebab(d)}`, brand.decorations[d] ? "1" : "0"]);
   }
+  out.push(...derivedDeclarations(brand));
   out.push(["--brand-home-layout", brand.homeLayout]);
   // Both modes are always addressable by name, for tokens that mean "the dark
   // page" regardless of the active mode.

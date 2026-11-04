@@ -67,7 +67,9 @@ export function AdminCeremonyHomeScreen(props: {
       </Box>
 
       <Box className="admin-next-step" component="section">
-        <Title order={3}>Next step: {next.nextLabel}</Title>
+        <Title order={3} variant="section">
+          Next step: {next.nextLabel}
+        </Title>
         <Text className="muted">{next.description}</Text>
         <Button
           mt="sm"
@@ -81,7 +83,9 @@ export function AdminCeremonyHomeScreen(props: {
       </Box>
 
       <Box component="section">
-        <Title order={3}>Workflow</Title>
+        <Title order={3} variant="section">
+          Workflow
+        </Title>
         <Divider my="sm" />
         <Stack gap="xs">
           {steps.map((s) => {
@@ -116,7 +120,9 @@ export function AdminCeremonyHomeScreen(props: {
       <Divider my="lg" />
 
       <Box component="section">
-        <Title order={3}>Preview draft board</Title>
+        <Title order={3} variant="section">
+          Preview draft board
+        </Title>
         <Text className="muted">
           Validate draft board rendering before and after publishing.
         </Text>
@@ -133,7 +139,9 @@ export function AdminCeremonyHomeScreen(props: {
       <Divider my="lg" />
 
       <Box component="section" className="admin-archive">
-        <Title order={3}>Archive ceremony</Title>
+        <Title order={3} variant="section">
+          Archive ceremony
+        </Title>
         <Text className="muted">
           Archiving marks the ceremony inactive and removes it from current views. This is
           available only after winners are finalized.
@@ -141,8 +149,7 @@ export function AdminCeremonyHomeScreen(props: {
         <Button
           mt="sm"
           type="button"
-          variant="subtle"
-          color="red"
+          variant="danger"
           onClick={archive.onArchive}
           disabled={archive.saving || ceremony.status === "ARCHIVED" || !canArchive}
         >

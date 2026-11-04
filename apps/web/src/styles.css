@@ -86,12 +86,17 @@ body {
 }
 
 .mantine-Title-root[data-fo-typo="hero"] {
-  font-size: var(--fo-font-size-hero-title);
+  font-size: var(--fo-heading-h1-size);
   line-height: 1.1;
 }
 
 .mantine-Title-root[data-fo-typo="page"] {
   font-size: var(--fo-heading-h2-size);
+}
+
+/* Page titles use the baseline hero class on a "page" Title; they read h1Size. */
+.mantine-Title-root[data-fo-typo].baseline-textHeroTitle {
+  font-size: var(--fo-heading-h1-size);
 }
 
 .mantine-Title-root[data-fo-typo="section"] {
@@ -150,7 +155,8 @@ body {
   background: var(--fo-surface-card-primary);
   color: var(--fo-text-primary);
   border: var(--fo-border-width) solid var(--fo-border);
-  box-shadow: var(--fo-db-skipLink-shadow);
+  /* No shadow while hidden: the translated link would paint its blur into the corner. */
+  box-shadow: none;
   transform: translateY(-160%);
   transition: transform 120ms ease;
   z-index: 10000;
@@ -160,6 +166,7 @@ body {
 .skip-link:focus {
   transform: translateY(0);
   outline: none;
+  box-shadow: var(--fo-db-skipLink-shadow);
 }
 
 .skip-link:focus-visible {
@@ -1849,69 +1856,206 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-Button-root {
   box-shadow: none;
   /* Override Mantine's inline color resolver vars (default is "blue"). */
+  --button-radius: var(--brand-button-radius) !important;
   --button-bg: var(--fo-surface-card-primary) !important;
   --button-hover: var(--fo-surface-pill) !important;
   --button-color: var(--fo-text-primary) !important;
   --button-bd: var(--fo-border-width) solid var(--fo-border) !important;
+  font-family: var(--brand-font-body);
+  font-weight: 600;
+  font-size: var(--fo-font-size-sm);
 }
 
-.mantine-Button-root[data-variant="default"] {
-  background: var(--fo-surface-card-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
-  color: var(--fo-text-primary);
-  --button-bg: var(--fo-surface-card-primary) !important;
-  --button-hover: var(--fo-surface-pill) !important;
-  --button-color: var(--fo-text-primary) !important;
-  --button-bd: var(--fo-border-width) solid var(--fo-border) !important;
+/* The draft room keeps Mantine's radius until chunk 9C restyles it. */
+.dr-frame .mantine-Button-root,
+.mantine-Button-root.dr-confirmPick {
+  --button-radius: var(--mantine-radius-default) !important;
+  --fo-button-offset: var(--fo-space-0);
 }
 
-.mantine-Button-root[data-variant="filled"] {
-  /* Use background-color (not shorthand) so hover/active can override cleanly. */
+.dr-frame .mantine-Button-root[data-fo-variant="primary"],
+.mantine-Button-root[data-fo-variant="primary"].dr-confirmPick {
+  box-shadow: none;
+}
+
+/* Variant skins, keyed on ui/Button's data-fo-variant (Mantine's color prop is
+   not readable here). One block; the same variables as the base rule, with
+   !important, so they beat Mantine's inline values. */
+.mantine-Button-root[data-fo-variant="primary"] {
   background-color: var(--button-bg);
-  border: var(--fo-border-width) solid var(--fo-button-primary-border);
   color: var(--brand-on-primary);
   --button-bg: var(--brand-primary) !important;
   --button-hover: var(--fo-button-primary-hover) !important;
   --button-color: var(--brand-on-primary) !important;
   --button-bd: var(--fo-border-width) solid var(--fo-button-primary-border) !important;
+  /* The ink fades to transparent where the offset multiplier is 0, so no
+     anti-aliased sliver is painted at the corners. */
+  box-shadow: 0 calc(var(--fo-button-offset) * var(--brand-deco-offset-shadow)) 0
+    color-mix(
+      in srgb,
+      var(--brand-text) calc(100% * var(--brand-deco-offset-shadow)),
+      transparent
+    );
 }
 
-.mantine-Button-root[data-variant="filled"]:hover {
+.mantine-Button-root[data-fo-variant="primary"]:hover {
   background-color: var(--button-hover);
   --button-bd: var(--fo-border-width) solid var(--fo-button-primary-border-hover) !important;
 }
 
-.mantine-Button-root[data-variant="filled"]:active {
+.mantine-Button-root[data-fo-variant="primary"]:active {
   background-color: var(--button-bg);
   --button-bg: var(--fo-button-primary-active) !important;
   --button-hover: var(--fo-button-primary-active) !important;
   --button-bd: var(--fo-border-width) solid var(--fo-button-primary-border-hover) !important;
-  transform: translateY(var(--fo-press-offset));
+  box-shadow: 0 0 0 transparent;
+  transform: translateY(
+    calc(
+      var(--fo-press-offset) + var(--fo-button-offset) * var(--brand-deco-offset-shadow)
+    )
+  );
 }
 
-.mantine-Button-root[data-variant="subtle"] {
+.mantine-Button-root[data-fo-variant="secondary"] {
+  background: var(--brand-raised);
+  color: var(--brand-text);
+  --button-bg: var(--brand-raised) !important;
+  --button-hover: var(--brand-sunken) !important;
+  --button-color: var(--brand-text) !important;
+  --button-bd: var(--fo-border-width) solid var(--brand-rule-strong) !important;
+}
+
+.mantine-Button-root[data-fo-variant="ghost"] {
   background: transparent;
   border-color: transparent;
-  color: var(--fo-text-deemphasized);
+  color: var(--brand-muted);
   --button-bg: transparent !important;
-  --button-hover: var(--fo-surface-pill) !important;
-  --button-color: var(--fo-text-deemphasized) !important;
+  --button-hover: var(--brand-sunken) !important;
+  --button-color: var(--brand-muted) !important;
   --button-bd: transparent !important;
 }
 
-.mantine-Button-root:disabled,
-.mantine-Button-root[data-disabled] {
-  /* A neutral well with muted text for every variant; no faded call to action. */
+.mantine-Button-root[data-fo-variant="ghost"]:hover {
+  --button-color: var(--brand-text) !important;
+}
+
+.mantine-Button-root[data-fo-variant="danger"] {
+  background: transparent;
+  color: var(--fo-danger-text);
+  --button-bg: transparent !important;
+  --button-hover: color-mix(in srgb, var(--fo-danger) 10%, transparent) !important;
+  --button-color: var(--fo-danger-text) !important;
+  --button-bd: var(--fo-border-width) solid var(--fo-danger-text) !important;
+}
+
+.mantine-Button-root[data-fo-variant="destructive"] {
+  background-color: var(--button-bg);
+  color: var(--fo-danger-on);
+  --button-bg: var(--fo-danger) !important;
+  --button-hover: color-mix(in oklab, var(--fo-danger) 90%, black) !important;
+  --button-color: var(--fo-danger-on) !important;
+  --button-bd: var(--fo-border-width) solid
+    color-mix(in oklab, var(--fo-danger) 80%, black) !important;
+}
+
+.mantine-Button-root[data-fo-variant="destructive"]:hover {
+  background-color: var(--button-hover);
+}
+
+.mantine-Button-root[data-fo-variant="destructive"]:active {
+  background-color: var(--button-bg);
+  --button-bg: color-mix(in oklab, var(--fo-danger) 82%, black) !important;
+  --button-hover: color-mix(in oklab, var(--fo-danger) 82%, black) !important;
+}
+
+.mantine-Button-root[data-fo-variant="secondary"]:active,
+.mantine-Button-root[data-fo-variant="ghost"]:active,
+.mantine-Button-root[data-fo-variant="danger"]:active,
+.mantine-Button-root[data-fo-variant="destructive"]:active {
+  transform: translateY(var(--fo-press-offset));
+}
+
+/* Loading keeps the variant's colours; only the label is hidden by Mantine. */
+.mantine-Button-root[data-loading] {
+  cursor: progress;
+}
+
+/* A neutral well with muted text for every variant; no faded call to action.
+   Loading is not disabled: it keeps its variant skin (aria-busy). */
+.mantine-Button-root:disabled:not([data-loading]),
+.mantine-Button-root[data-disabled]:not([data-loading]) {
   opacity: 1;
   cursor: not-allowed;
   background: var(--brand-sunken);
   border-color: var(--brand-rule);
   box-shadow: none;
+  transform: none;
   color: var(--brand-muted);
   --button-bg: var(--brand-sunken) !important;
   --button-hover: var(--brand-sunken) !important;
   --button-color: var(--brand-muted) !important;
   --button-bd: var(--fo-border-width) solid var(--brand-rule) !important;
+}
+
+/* Icon buttons (ui/ActionIcon sets data-fo-variant). */
+.mantine-ActionIcon-root {
+  --ai-radius: var(--brand-button-radius);
+  min-width: var(--fo-control-height);
+  min-height: var(--fo-control-height);
+}
+
+.mantine-ActionIcon-root[data-fo-variant="ghost"] {
+  --ai-bg: transparent;
+  --ai-hover: var(--brand-sunken);
+  --ai-color: var(--brand-muted);
+  --ai-hover-color: var(--brand-text);
+  --ai-bd: transparent;
+}
+
+.mantine-ActionIcon-root[data-fo-variant="secondary"] {
+  --ai-bg: var(--brand-raised);
+  --ai-hover: var(--brand-sunken);
+  --ai-color: var(--brand-text);
+  --ai-hover-color: var(--brand-text);
+  --ai-bd: var(--fo-border-width) solid var(--brand-rule-strong);
+}
+
+.mantine-ActionIcon-root[data-fo-variant="danger"] {
+  --ai-bg: transparent;
+  --ai-hover: color-mix(in srgb, var(--fo-danger) 10%, transparent);
+  --ai-color: var(--fo-danger-text);
+  --ai-hover-color: var(--fo-danger-text);
+  --ai-bd: transparent;
+}
+
+.mantine-ActionIcon-root:disabled,
+.mantine-ActionIcon-root[data-disabled] {
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--brand-muted);
+  opacity: var(--fo-alpha-50);
+}
+
+/* Phone: 44 px hit areas in the shell and auth layouts. */
+@media (max-width: 499.98px) {
+  .page .mantine-Button-root,
+  .auth-page .mantine-Button-root {
+    --button-height-xs: var(--fo-touch-target) !important;
+    --button-height-sm: var(--fo-touch-target) !important;
+    --button-height-md: var(--fo-touch-target) !important;
+  }
+
+  .page .mantine-ActionIcon-root,
+  .auth-page .mantine-ActionIcon-root {
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
+  }
+}
+
+.mantine-Indicator-indicator {
+  color: var(--brand-on-primary);
+  font-weight: 600;
+  font-size: var(--fo-indicator-font-size);
 }
 
 .mantine-Checkbox-root {
@@ -1952,7 +2096,44 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 }
 
 .mantine-Menu-item {
+  min-height: var(--fo-menu-item-height);
+  padding: 0 var(--fo-menu-item-paddingX);
+  font-family: var(--brand-font-body);
+  font-size: var(--fo-font-size-sm);
+  color: var(--brand-text);
   border-radius: var(--fo-radius-small);
+}
+
+.mantine-Menu-item[data-hovered] {
+  background: var(--brand-sunken);
+}
+
+.mantine-Menu-item[data-hovered] .mantine-Menu-itemSection {
+  color: var(--brand-text);
+}
+
+.mantine-Menu-itemSection {
+  color: var(--brand-muted);
+}
+
+.mantine-Menu-itemSection .mi-icon {
+  font-size: var(--fo-font-size-md);
+}
+
+.mantine-Menu-label {
+  font-size: var(--fo-font-size-xs);
+  color: var(--brand-muted);
+}
+
+.mantine-Menu-item:disabled,
+.mantine-Menu-item[data-disabled] {
+  color: var(--brand-muted);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.mantine-Menu-divider {
+  border-color: var(--brand-rule);
 }
 
 .mantine-TextInput-input,
@@ -2115,19 +2296,157 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   margin-left: auto;
 }
 
+.site-header-lead {
+  flex: none;
+}
+
+/* The wordmark never wraps at the widths the shell serves; the nav or the actions give way. */
 .brand {
   text-decoration: none;
-  color: var(--brand-primary);
+  flex: none;
+  white-space: nowrap;
 }
 
-.site-title {
+/* The wordmark reads the brand's own colour of ink; Mantine's anchor colours do not apply. */
+.brand.mantine-Anchor-root,
+.brand.mantine-Anchor-root:hover {
+  color: inherit;
+}
+
+.brand:focus-visible {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-offset);
+}
+
+.mantine-Title-root.site-title {
   margin: 0;
+  font-family: var(--brand-wordmark-font);
+  font-weight: var(--brand-wordmark-weight);
+  text-transform: var(--brand-wordmark-case);
+  letter-spacing: var(--brand-wordmark-letter-spacing);
+  color: var(--brand-text);
   font-size: var(--fo-font-size-xl);
-  line-height: var(--fo-line-height-h1);
+  line-height: 1.1;
 }
 
+.site-title-tone {
+  color: var(--brand-wordmark-tone-color);
+  font-style: var(--brand-wordmark-tone-style);
+  font-weight: var(--brand-wordmark-tone-weight);
+  white-space: nowrap;
+}
+
+.site-title-stop {
+  display: var(--brand-wordmark-stop-display);
+  color: var(--brand-wordmark-stop-color);
+}
+
+/* The draft room keeps this bare icon button until its header is restyled. */
 .theme-toggle {
   padding-inline: var(--fo-gutter-mobile);
+}
+
+/* Header icon button: a bounded box in the brand's card edge and button shape. */
+.fo-headerIconBtn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--fo-header-control-size);
+  height: var(--fo-header-control-size);
+  padding: 0;
+  border: 0;
+  border-radius: var(--brand-button-radius);
+  background: var(--brand-raised);
+  box-shadow: var(--brand-shadow-card);
+  color: var(--brand-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fo-headerIconBtn:hover {
+  background: var(--brand-sunken);
+  box-shadow: var(--brand-shadow-raised);
+}
+
+.fo-headerIconBtn:active {
+  transform: translateY(var(--fo-press-offset));
+}
+
+.fo-headerIconBtn .mi-icon,
+.fo-headerIconBtn .gicon {
+  font-size: var(--fo-header-icon-size);
+  line-height: 1;
+}
+
+.fo-headerAccountBtn {
+  width: auto;
+  max-width: var(--fo-header-account-maxWidth);
+  gap: var(--fo-header-account-gap);
+  padding: var(--fo-header-account-padding);
+}
+
+.fo-headerAccountBtn .fo-animalAvatar {
+  flex: none;
+  width: var(--fo-header-avatar-size);
+  height: var(--fo-header-avatar-size);
+}
+
+.fo-headerAccountName {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--brand-font-body);
+  font-size: var(--fo-header-name-size);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-headerAccountBtn .fo-headerAccountCaret {
+  flex: none;
+  font-size: var(--fo-header-caret-size);
+  transition: transform 140ms ease;
+}
+
+.fo-headerAccountBtn[aria-expanded="true"] .fo-headerAccountCaret {
+  transform: rotate(180deg);
+}
+
+.fo-headerAccountLabel {
+  max-width: var(--fo-header-account-labelMaxWidth);
+  overflow-wrap: anywhere;
+}
+
+/* Reserves the width of the two signed-out buttons so the header does not jump. */
+.fo-headerChecking {
+  min-width: var(--fo-header-checking-minWidth);
+  text-align: right;
+}
+
+@media (max-width: 499.98px) {
+  .fo-headerIconBtn {
+    width: var(--fo-touch-target);
+    height: var(--fo-touch-target);
+  }
+
+  /* Below 500 the wordmark may wrap to two words rather than push the header wider. */
+  .site-header-lead {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .brand {
+    flex: 0 1 auto;
+    white-space: normal;
+  }
+}
+
+/* The wide display faces need the smaller size a little above the phone breakpoint, so
+   the drawer-mode row (menu, wordmark, theme, invites) still fits on one line at 500. */
+@media (max-width: 539.98px) {
+  .mantine-Title-root.site-title {
+    font-size: var(--fo-font-size-lg);
+  }
 }
 
 .gicon {
@@ -2640,9 +2959,10 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   align-items: center;
   justify-content: space-between;
   gap: var(--fo-card-gap);
-  padding: 0;
+  padding: 0 0 var(--fo-nav-rule-gap);
   border-radius: 0;
   border: 0;
+  border-bottom: var(--brand-nav-rule);
   background: transparent;
   margin-bottom: var(--fo-card-gap);
 }
@@ -2651,6 +2971,8 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   /* Keep in DOM for measurement, but remove it from the visual layout. */
   height: 0;
   margin: 0;
+  padding: 0;
+  border-bottom: 0;
   overflow: hidden;
   opacity: var(--fo-alpha-00);
   pointer-events: none;
@@ -2659,30 +2981,54 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .nav-links {
   display: flex;
   align-items: flex-start;
-  gap: var(--fo-card-gap);
+  /* 24 px between underlined links, 6 px between pills. */
+  column-gap: calc(24px - 18px * var(--brand-nav-pill));
+  row-gap: var(--fo-card-gap);
   flex-wrap: nowrap;
+  /* Never wider than the nav: overflowing links must show up as scrollWidth, which
+     is what decides between the inline nav and the drawer (useShellNavMode). */
+  max-width: 100%;
 }
 
+/* The transparent border reserves the indicator's space, so no state moves the text. */
 .nav-link {
   text-decoration: none;
-  color: var(--fo-text-deemphasized);
-  padding: calc(var(--fo-gutter-mobile) * 0.5) calc(var(--fo-gutter-mobile) * 0.75);
-  border-radius: var(--fo-radius-small);
-  border-bottom: var(--fo-border-width) solid transparent;
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-tight);
+  font-family: var(--brand-nav-font);
+  font-size: var(--brand-nav-size);
+  font-weight: 600;
+  text-transform: var(--brand-nav-case);
+  letter-spacing: var(--brand-nav-letter-spacing);
+  color: var(--brand-muted);
+  padding-block: var(--fo-nav-link-paddingY);
+  padding-inline: calc(14px * var(--brand-nav-pill));
+  border-style: solid;
+  border-color: transparent;
+  border-width: var(--brand-nav-border-width);
+  /* Pill brands keep the button radius; underline brands get a flat rule. */
+  border-radius: calc(var(--brand-button-radius) * var(--brand-nav-pill));
+  background: transparent;
 }
 
+/* Hover: a strong underline on underline brands, a sunken well on pill brands. */
 .nav-link:hover {
-  color: var(--fo-text-primary);
-  border-bottom-color: var(--fo-border);
-  background: transparent;
+  color: var(--brand-text);
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--brand-rule-strong) calc(100% * (1 - var(--brand-nav-pill))),
+    transparent
+  );
+  background: color-mix(
+    in srgb,
+    var(--brand-sunken) calc(100% * var(--brand-nav-pill)),
+    transparent
+  );
 }
 
-.nav-link.active {
-  color: var(--fo-text-primary);
-  border-bottom-color: var(--brand-primary);
-  background: transparent;
+.nav-link.active,
+.nav-link.active:hover {
+  color: var(--brand-nav-active-fg);
+  background: var(--brand-nav-active-bg);
+  border-color: var(--brand-nav-active-border);
 }
 
 .admin-navTriggerCaret {
@@ -3202,13 +3548,36 @@ small.error {
   word-break: break-word;
 }
 
-.fo-navDrawerLink {
-  padding-block: var(--fo-space-dense-2);
+.nav-link.fo-navDrawerLink {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--fo-touch-target);
+  padding-block: 0;
+  padding-inline: var(--fo-nav-drawer-paddingX);
+  border-width: 0;
+}
+
+.nav-link.fo-navDrawerLink:hover {
+  background: var(--brand-sunken);
+}
+
+/* Underline brands get a 3 px inline-start bar; pill brands the same pill as inline. */
+.nav-link.fo-navDrawerLink.active,
+.nav-link.fo-navDrawerLink.active:hover {
+  color: var(--brand-nav-active-fg);
+  background: var(--brand-nav-active-bg);
+  box-shadow: inset calc(3px * (1 - var(--brand-nav-pill))) 0 0 var(--brand-nav-indicator);
+}
+
+.nav-link.fo-navDrawerLink:focus-visible {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: calc(var(--fo-focus-ring-offset) * -1);
 }
 
 .fo-navDrawerLogout {
-  justify-content: flex-start;
-  padding-inline: var(--fo-space-0);
+  min-height: var(--fo-touch-target);
+  padding-inline: var(--fo-nav-drawer-paddingX);
 }
 
 .fo-inlineFlex {

@@ -90,7 +90,8 @@ export const lightbox: BrandDefinition = {
     weight: "600",
     case: "none",
     letterSpacing: "-0.02em",
-    twoTone: "weight"
+    twoTone: "weight",
+    toneColor: "accent"
   },
   shape: {
     radiusSm: "0",
@@ -102,6 +103,7 @@ export const lightbox: BrandDefinition = {
   },
   navigation: {
     activeTab: "underline",
+    activeColor: "accent",
     font: PLEX,
     case: "none",
     size: "13px"

@@ -13,6 +13,8 @@ export function ShellPrimaryNav(props: {
       className={["site-nav", props.navMode === "drawer" ? "is-collapsed" : ""].join(" ")}
       aria-label="Primary"
       aria-hidden={props.navMode === "drawer" ? "true" : undefined}
+      // Collapsed nav stays mounted for measurement but must not take focus.
+      inert={props.navMode === "drawer"}
     >
       <Group justify="space-between" wrap="wrap" w="100%">
         <Group ref={props.navLinksRef} className="nav-links" gap="md" wrap="nowrap">

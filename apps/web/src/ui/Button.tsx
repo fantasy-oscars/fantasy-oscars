@@ -11,6 +11,7 @@ export type ButtonVariant =
   | "secondary"
   | "ghost"
   | "danger"
+  | "destructive"
   | "default"
   | "filled"
   | "outline"
@@ -22,6 +23,42 @@ export type ButtonProps = Omit<MantineButtonProps, "variant"> & {
   variant?: ButtonVariant;
 };
 
+// Semantic variants map to Mantine variants for structure; the skin in
+// styles.css keys on `data-fo-variant`, because Mantine's `color` is not
+// readable from CSS.
+type MantineMapping = {
+  variant: MantineButtonProps["variant"];
+  color?: string;
+  semantic: string;
+};
+
+function mapVariant(variant: ButtonVariant): MantineMapping {
+  switch (variant) {
+    case "primary":
+    case "filled":
+      return { variant: "filled", color: "blue", semantic: "primary" };
+    case "danger":
+      return { variant: "outline", color: "red", semantic: "danger" };
+    case "destructive":
+      return { variant: "filled", color: "red", semantic: "destructive" };
+    case "ghost":
+    case "subtle":
+    case "transparent":
+      return {
+        variant: variant === "ghost" ? "subtle" : variant,
+        color: variant === "ghost" ? "blue" : undefined,
+        semantic: "ghost"
+      };
+    case "secondary":
+      return { variant: "default", color: "blue", semantic: "secondary" };
+    case "default":
+    case "outline":
+    case "light":
+    default:
+      return { variant: variant as MantineButtonProps["variant"], semantic: "secondary" };
+  }
+}
+
 export function Button<C = "button">(props: PolymorphicComponentProps<C, ButtonProps>) {
   const { variant = "secondary", ...rest } = props;
   // Forward props to Mantine. We cast to the default component type to avoid
@@ -30,37 +67,16 @@ export function Button<C = "button">(props: PolymorphicComponentProps<C, ButtonP
     "button",
     MantineButtonProps
   >;
+  const mapped = mapVariant(variant);
+  const colorProps = mapped.color ? { color: mapped.color } : {};
 
-  // Mantine's `blue` is its primaryColor and is fully rebound to the brand
-  // primary (`--brand-primary` / `--brand-on-primary`) in the token layer, so
-  // `color="blue"` renders the brand colour in every brand. `red` is Mantine's
-  // own mode-aware palette and is left as is.
-  //
-  // Semantic variants only (finite vocabulary). Internals can change without
-  // rewriting feature code.
-  switch (variant) {
-    case "primary":
-      return <MantineButton {...forwarded} variant="filled" color="blue" />;
-    case "danger":
-      return <MantineButton {...forwarded} variant="outline" color="red" />;
-    case "ghost":
-      return <MantineButton {...forwarded} variant="subtle" color="blue" />;
-    case "secondary":
-      return <MantineButton {...forwarded} variant="default" color="blue" />;
-    // Transitional: allow a small subset of Mantine variants to avoid massive
-    // churn while we migrate callsites to semantic variants.
-    case "default":
-    case "filled":
-    case "outline":
-    case "subtle":
-    case "light":
-    case "transparent":
-    default:
-      return (
-        <MantineButton
-          {...forwarded}
-          variant={variant as MantineButtonProps["variant"]}
-        />
-      );
-  }
+  return (
+    <MantineButton
+      {...forwarded}
+      {...colorProps}
+      variant={mapped.variant}
+      data-fo-variant={mapped.semantic}
+      aria-busy={forwarded.loading ? true : undefined}
+    />
+  );
 }

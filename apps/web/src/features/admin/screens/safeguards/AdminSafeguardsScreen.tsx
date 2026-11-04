@@ -319,8 +319,7 @@ export function AdminSafeguardsScreen() {
             />
             <Button
               type="button"
-              color="red"
-              variant="outline"
+              variant="danger"
               disabled={!ceremonySelectedId || loadingPreview !== null || loadingLists}
               onClick={() => void loadCeremonyPreview()}
             >
@@ -332,8 +331,7 @@ export function AdminSafeguardsScreen() {
                   component="a"
                   href={ceremonyHref}
                   type="button"
-                  color="red"
-                  variant="outline"
+                  variant="danger"
                   disabled={!selectedCeremony || loadingLists}
                   aria-label={
                     selectedCeremony ? "Open ceremony page" : ceremonyLinkTooltip
@@ -376,8 +374,7 @@ export function AdminSafeguardsScreen() {
             />
             <Button
               type="button"
-              color="red"
-              variant="outline"
+              variant="danger"
               disabled={!seasonSelectedId || loadingPreview !== null || loadingLists}
               onClick={() => void loadSeasonPreview()}
             >
@@ -389,8 +386,7 @@ export function AdminSafeguardsScreen() {
                   component="a"
                   href={seasonHref}
                   type="button"
-                  color="red"
-                  variant="outline"
+                  variant="danger"
                   disabled={!selectedSeason || loadingLists}
                   aria-label={selectedSeason ? "Open season page" : seasonLinkTooltip}
                   className={
@@ -431,8 +427,7 @@ export function AdminSafeguardsScreen() {
             />
             <Button
               type="button"
-              color="red"
-              variant="outline"
+              variant="danger"
               disabled={!leagueSelectedId || loadingPreview !== null || loadingLists}
               onClick={() => void loadLeaguePreview()}
             >
@@ -444,8 +439,7 @@ export function AdminSafeguardsScreen() {
                   component="a"
                   href={leagueHref}
                   type="button"
-                  color="red"
-                  variant="outline"
+                  variant="danger"
                   disabled={!selectedLeague || loadingLists}
                   aria-label={selectedLeague ? "Open league page" : leagueLinkTooltip}
                   className={

@@ -78,7 +78,7 @@ export function ConfirmProvider(props: { children: React.ReactNode }) {
             {pending?.req.cancelLabel ?? "Cancel"}
           </Button>
           <Button
-            color={pending?.req.danger ? "red" : undefined}
+            variant={pending?.req.danger ? "destructive" : "primary"}
             onClick={() => close(true)}
           >
             {pending?.req.confirmLabel ?? "Confirm"}
