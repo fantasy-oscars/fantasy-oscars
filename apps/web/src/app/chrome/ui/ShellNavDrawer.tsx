@@ -1,5 +1,10 @@
-import { Anchor, Button, Divider, Drawer, Stack } from "@ui";
+import { Anchor, Button, Divider, Drawer, Stack, Text } from "@ui";
 import { NavLink } from "react-router-dom";
+
+/** Mantine derives the drawer's element ids from this prefix. */
+const NAV_DRAWER_ID = "primary-nav-drawer";
+/** The drawer body, which holds the links; the header button points at it with `aria-controls`. */
+export const NAV_DRAWER_CONTROLS_ID = `${NAV_DRAWER_ID}-body`;
 
 export function ShellNavDrawer(props: {
   opened: boolean;
@@ -10,12 +15,17 @@ export function ShellNavDrawer(props: {
 }) {
   return (
     <Drawer
+      id={NAV_DRAWER_ID}
       opened={props.opened}
       onClose={props.onClose}
       position="left"
       withinPortal={false}
       title="Menu"
       size="xs"
+      closeButtonProps={{
+        "aria-label": "Close navigation",
+        size: 44
+      }}
     >
       <Stack gap="sm">
         <Stack gap="var(--fo-space-0)">
@@ -48,12 +58,18 @@ export function ShellNavDrawer(props: {
             </Anchor>
             <Button
               type="button"
-              variant="subtle"
-              color="red"
+              variant="ghost"
+              justify="flex-start"
+              fullWidth
+              leftSection={
+                <Text component="span" className="mi-icon" aria-hidden="true">
+                  logout
+                </Text>
+              }
               onClick={() => void props.onLogout()}
               className="fo-navDrawerLogout"
             >
-              Logout
+              Log out
             </Button>
           </Stack>
         ) : (
@@ -65,7 +81,7 @@ export function ShellNavDrawer(props: {
               underline="never"
               onClick={props.onClose}
             >
-              Login
+              Log in
             </Anchor>
             <Anchor
               component={NavLink}

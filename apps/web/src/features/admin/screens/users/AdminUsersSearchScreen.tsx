@@ -156,8 +156,7 @@ export function AdminUsersSearchScreen(props: {
                   />
                   <Button
                     type="button"
-                    variant="subtle"
-                    color="red"
+                    variant="danger"
                     disabled={Boolean(updatingById[u.id])}
                     onClick={() => onRemoveUser(u)}
                   >

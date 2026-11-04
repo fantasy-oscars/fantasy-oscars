@@ -97,7 +97,9 @@ export function AdminCategoryTemplatesScreen(props: {
             <StandardCard key={t.id} component="section">
               <Group justify="space-between" align="start" wrap="wrap">
                 <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
-                  <Title order={4}>{t.name}</Title>
+                  <Title order={4} variant="section">
+                    {t.name}
+                  </Title>
                   <Text className="muted" size="sm">
                     {t.code}
                   </Text>

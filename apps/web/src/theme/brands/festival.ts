@@ -93,7 +93,8 @@ export const festival: BrandDefinition = {
     weight: "900",
     case: "none",
     letterSpacing: "-0.03em",
-    twoTone: "colour"
+    twoTone: "stop",
+    toneColor: "gold"
   },
   shape: {
     radiusSm: "12px",
@@ -105,6 +106,7 @@ export const festival: BrandDefinition = {
   },
   navigation: {
     activeTab: "pill",
+    activeColor: "text",
     font: ARCHIVO,
     case: "none",
     size: "15px"

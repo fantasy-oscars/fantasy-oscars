@@ -1,19 +1,31 @@
 import {
-  Anchor,
   Box,
   Button,
   Group,
   Indicator,
   Menu,
   Text,
-  Title,
+  Tooltip,
+  UnstyledButton,
   type MantineColorScheme
 } from "@ui";
+import type { RefObject } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { NAV_DRAWER_CONTROLS_ID } from "./ShellNavDrawer";
+import { Wordmark } from "./Wordmark";
+
+/** Accessible name of the invites link; the count is capped like the badge. */
+function invitesLabel(count: number): string {
+  if (count <= 0) return "Invites";
+  return `Invites, ${count > 9 ? "9+" : count} pending`;
+}
 
 export function ShellHeader(props: {
   navMode: "inline" | "drawer";
+  /** The header row, measured by the layout to decide between inline and drawer. */
+  rowRef: RefObject<HTMLDivElement | null>;
+  navDrawerOpen: boolean;
   onOpenNavDrawer: () => void;
 
   user: null | {
@@ -37,124 +49,156 @@ export function ShellHeader(props: {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const themeLabel = `Switch to ${props.colorScheme === "dark" ? "light" : "dark"} mode`;
+  const inline = props.navMode === "inline";
+
   return (
     <Box component="header" className="site-header">
       <Group
+        ref={props.rowRef}
         className="site-header-row"
         justify="space-between"
         align="center"
         wrap="nowrap"
       >
-        <Group gap="sm" wrap="nowrap">
+        <Group className="site-header-lead" gap="sm" wrap="nowrap">
           {props.navMode === "drawer" ? (
-            <Button
-              type="button"
-              variant="subtle"
-              className="theme-toggle"
-              onClick={props.onOpenNavDrawer}
-              aria-label="Open menu"
-            >
-              <Text component="span" className="mi-icon" aria-hidden="true">
-                menu
-              </Text>
-            </Button>
+            <Tooltip label="Open navigation" openDelay={400}>
+              <UnstyledButton
+                type="button"
+                className="fo-headerIconBtn"
+                onClick={props.onOpenNavDrawer}
+                aria-label="Open navigation"
+                aria-expanded={props.navDrawerOpen}
+                aria-controls={NAV_DRAWER_CONTROLS_ID}
+              >
+                <Text component="span" className="mi-icon" aria-hidden="true">
+                  menu
+                </Text>
+              </UnstyledButton>
+            </Tooltip>
           ) : null}
 
-          <Anchor component={Link} to="/" className="brand" underline="never">
-            <Title className="site-title" order={1}>
-              Fantasy Oscars
-            </Title>
-          </Anchor>
+          <Wordmark />
         </Group>
 
         <Group
           className="site-header-actions"
+          gap="var(--fo-space-8)"
           justify="flex-end"
           align="center"
           wrap="nowrap"
         >
-          <Button
-            type="button"
-            variant="subtle"
-            className="theme-toggle"
-            onClick={() =>
-              props.setColorScheme(props.colorScheme === "dark" ? "light" : "dark")
-            }
-            aria-label={`Switch to ${props.colorScheme === "dark" ? "light" : "dark"} mode`}
-          >
-            <Text component="span" className="gicon" aria-hidden="true">
-              {props.themeToggleIcon}
-            </Text>
-          </Button>
+          <Tooltip label={themeLabel} openDelay={400}>
+            <UnstyledButton
+              type="button"
+              className="fo-headerIconBtn"
+              onClick={() =>
+                props.setColorScheme(props.colorScheme === "dark" ? "light" : "dark")
+              }
+              aria-label={themeLabel}
+            >
+              <Text component="span" className="gicon" aria-hidden="true">
+                {props.themeToggleIcon}
+              </Text>
+            </UnstyledButton>
+          </Tooltip>
 
           {props.user ? (
             <Indicator
               disabled={props.inviteCount <= 0}
               label={props.inviteCount > 9 ? "9+" : String(props.inviteCount)}
             >
-              <Button
-                component={Link}
-                to="/invites"
-                type="button"
-                variant="subtle"
-                className="theme-toggle"
-                aria-label="Notifications"
-              >
-                <Text component="span" className="mi-icon" aria-hidden="true">
-                  notifications
-                </Text>
-              </Button>
+              <Tooltip label="Invites" openDelay={400}>
+                <UnstyledButton
+                  component={Link}
+                  to="/invites"
+                  className="fo-headerIconBtn"
+                  aria-label={invitesLabel(props.inviteCount)}
+                >
+                  <Text component="span" className="mi-icon" aria-hidden="true">
+                    mail
+                  </Text>
+                </UnstyledButton>
+              </Tooltip>
             </Indicator>
           ) : null}
 
-          {props.user && props.navMode === "inline" ? (
+          {props.user && inline ? (
             <Menu
               opened={props.userMenuOpen}
               onChange={props.setUserMenuOpen}
               withinPortal={false}
             >
               <Menu.Target>
-                <Button
+                <UnstyledButton
                   type="button"
-                  variant="subtle"
-                  leftSection={
-                    <AnimalAvatarIcon avatarKey={props.user.avatar_key} size="lg" />
-                  }
-                  rightSection={
-                    <Text component="span" aria-hidden="true">
-                      ▾
-                    </Text>
-                  }
+                  className="fo-headerIconBtn fo-headerAccountBtn"
+                  aria-label={`${props.user.username ?? props.user.sub}, account menu`}
+                  title={props.user.username ?? props.user.sub}
                 >
-                  {props.user.username ?? props.user.sub}
-                </Button>
+                  <AnimalAvatarIcon avatarKey={props.user.avatar_key} size="lg" />
+                  <Text component="span" className="fo-headerAccountName">
+                    {props.user.username ?? props.user.sub}
+                  </Text>
+                  <Text
+                    component="span"
+                    className="mi-icon fo-headerAccountCaret"
+                    aria-hidden="true"
+                  >
+                    expand_more
+                  </Text>
+                </UnstyledButton>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item onClick={() => navigate("/account")}>Account</Menu.Item>
+                <Menu.Label className="fo-headerAccountLabel">
+                  {props.user.username ?? props.user.sub}
+                </Menu.Label>
+                <Menu.Item
+                  leftSection={
+                    <Text component="span" className="mi-icon" aria-hidden="true">
+                      person
+                    </Text>
+                  }
+                  onClick={() => navigate("/account")}
+                >
+                  Account
+                </Menu.Item>
                 <Menu.Divider />
-                <Menu.Item color="red" onClick={() => void props.logout()}>
-                  Logout
+                <Menu.Item
+                  leftSection={
+                    <Text component="span" className="mi-icon" aria-hidden="true">
+                      logout
+                    </Text>
+                  }
+                  onClick={() => void props.logout()}
+                >
+                  Log out
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
-          ) : !props.user && props.navMode === "inline" ? (
-            <>
-              {props.loading && (
-                <Text className="nav-muted" variant="meta">
-                  Checking…
-                </Text>
-              )}
-              <Button
-                component={Link}
-                to="/login"
-                state={{
-                  from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
-                }}
-                variant="subtle"
-              >
-                Login
-              </Button>
-            </>
+          ) : !props.user && inline ? (
+            props.loading ? (
+              <Text className="nav-muted fo-headerChecking" variant="meta">
+                Checking…
+              </Text>
+            ) : (
+              <>
+                <Button component={Link} to="/register" variant="ghost">
+                  Create account
+                </Button>
+                <Button
+                  component={Link}
+                  to="/login"
+                  state={{
+                    from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
+                  }}
+                  variant="secondary"
+                >
+                  Log in
+                </Button>
+              </>
+            )
           ) : null}
         </Group>
       </Group>

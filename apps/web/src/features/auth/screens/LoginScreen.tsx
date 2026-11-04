@@ -26,7 +26,9 @@ export function LoginScreen(props: {
       <Grid.Col span={{ base: 12, md: 6 }}>
         <StandardCard component="section">
           <Box component="header">
-            <Title variant="page">Sign in</Title>
+            <Title variant="page" className="baseline-textHeroTitle">
+              Sign in
+            </Title>
             <Text variant="helper">Sign in with your username and password.</Text>
           </Box>
           <Box component="form" onSubmit={onSubmit} onInput={onInput} mt="md">
@@ -38,7 +40,7 @@ export function LoginScreen(props: {
                 type="password"
                 error={errors.password}
               />
-              <Button type="submit" disabled={loading} variant="primary">
+              <Button type="submit" loading={loading} variant="primary">
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
               <FormStatus loading={loading} result={result} />

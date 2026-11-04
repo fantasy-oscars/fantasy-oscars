@@ -7,7 +7,9 @@ export function LeagueMembersSection(props: {
   const { members } = props;
   return (
     <Stack gap="sm">
-      <Title order={4}>Members</Title>
+      <Title order={4} variant="section">
+        Members
+      </Title>
       <Divider />
 
       {members.length === 0 ? (

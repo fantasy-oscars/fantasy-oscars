@@ -10,14 +10,16 @@ export function LeagueManagementSection(props: {
   const { working, rosterStatus, onOpenTransfer, onOpenDelete } = props;
   return (
     <Stack gap="sm">
-      <Title order={4}>Management</Title>
+      <Title order={4} variant="section">
+        Management
+      </Title>
       <Divider />
 
       <Group wrap="wrap">
-        <Button type="button" variant="subtle" onClick={onOpenTransfer}>
+        <Button type="button" variant="ghost" onClick={onOpenTransfer}>
           Transfer ownership
         </Button>
-        <Button type="button" color="red" variant="subtle" onClick={onOpenDelete}>
+        <Button type="button" variant="danger" onClick={onOpenDelete}>
           Delete league
         </Button>
       </Group>

@@ -4,6 +4,8 @@ import { StandardCard } from "@/primitives";
 import { StatusPill } from "@/shared/pills";
 import { leagueSeasonCreatePath, seasonPath } from "@/lib/routes";
 
+const CREATE_LOCKED_NOTE_ID = "league-seasons-create-locked-note";
+
 export function LeagueSeasonsSection(props: {
   leagueId: number;
   leagueName?: string | null;
@@ -21,16 +23,23 @@ export function LeagueSeasonsSection(props: {
   return (
     <Stack gap="sm">
       <Group justify="space-between" align="flex-end" wrap="wrap">
-        <Title order={3}>Seasons</Title>
+        <Title order={3} variant="section">
+          Seasons
+        </Title>
         <Button
           component={Link}
           to={leagueSeasonCreatePath({ leagueId, leagueName })}
           disabled={!canCreateSeason}
-          title={canCreateSeason ? undefined : "Commissioner permission required"}
+          aria-describedby={canCreateSeason ? undefined : CREATE_LOCKED_NOTE_ID}
         >
           Create season
         </Button>
       </Group>
+      {canCreateSeason ? null : (
+        <Text id={CREATE_LOCKED_NOTE_ID} variant="helper">
+          Commissioner permission required.
+        </Text>
+      )}
 
       {seasons.length === 0 ? (
         <Text className="baseline-textBody">No seasons yet.</Text>

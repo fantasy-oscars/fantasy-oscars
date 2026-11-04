@@ -132,6 +132,20 @@ describe("brand fonts", () => {
   });
 });
 
+describe("ballot navigation face", () => {
+  it("loads IBM Plex Mono at 500 and 600 for the uppercase nav and labels", () => {
+    const ballot = BRAND_DEFINITIONS.find((b) => b.id === "ballot")!;
+    const files = collectFontFaces([ballot])
+      .filter((b) => b.family === "IBM Plex Mono" && b.subset === "latin")
+      .map((b) => path.basename(b.file))
+      .sort();
+    expect(files).toEqual([
+      "ibm-plex-mono-latin-500-normal.woff2",
+      "ibm-plex-mono-latin-600-normal.woff2"
+    ]);
+  });
+});
+
 describe("built font preload map", () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "fo-fonts-"));
   afterAll(() => fs.rmSync(outDir, { recursive: true, force: true }));

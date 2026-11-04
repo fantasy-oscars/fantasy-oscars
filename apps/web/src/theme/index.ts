@@ -51,7 +51,7 @@ export const appTheme: MantineThemeOverride = {
       defaultProps: {
         size: 16,
         offset: 4,
-        color: "yellow"
+        color: "blue"
       }
     },
     ActionIcon: {

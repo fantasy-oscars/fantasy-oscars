@@ -31,14 +31,26 @@ export function ActionIcon<C = "button">(
   >;
 
   // Mantine's `blue` is its primaryColor and is fully rebound to the brand
-  // primary (`--brand-primary` / `--brand-on-primary`) in the token layer, so
-  // `color="blue"` renders the brand colour in every brand. `red` is Mantine's
-  // own mode-aware palette and is left as is.
+  // primary in the token layer. The skin keys on `data-fo-variant`.
   switch (variant) {
     case "danger":
-      return <MantineActionIcon {...forwarded} variant="subtle" color="red" />;
+      return (
+        <MantineActionIcon
+          {...forwarded}
+          variant="subtle"
+          color="red"
+          data-fo-variant="danger"
+        />
+      );
     case "secondary":
-      return <MantineActionIcon {...forwarded} variant="default" color="blue" />;
+      return (
+        <MantineActionIcon
+          {...forwarded}
+          variant="default"
+          color="blue"
+          data-fo-variant="secondary"
+        />
+      );
     case "ghost":
     default:
       // Transitional: allow a small subset of Mantine variants without forcing
@@ -59,6 +71,13 @@ export function ActionIcon<C = "button">(
         );
       }
 
-      return <MantineActionIcon {...forwarded} variant="subtle" color="blue" />;
+      return (
+        <MantineActionIcon
+          {...forwarded}
+          variant="subtle"
+          color="blue"
+          data-fo-variant="ghost"
+        />
+      );
   }
 }

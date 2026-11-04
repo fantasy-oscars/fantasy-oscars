@@ -78,7 +78,7 @@ export const ballot: BrandDefinition = {
     faces: [
       { family: "Bodoni Moda", weights: [400, 600, 700], styles: ["normal", "italic"] },
       { family: "Instrument Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
-      { family: "IBM Plex Mono", weights: [500], styles: ["normal"] }
+      { family: "IBM Plex Mono", weights: [500, 600], styles: ["normal"] }
     ],
     preload: {
       display: { family: "Bodoni Moda", weight: 600, style: "normal" },
@@ -90,7 +90,8 @@ export const ballot: BrandDefinition = {
     weight: "600",
     case: "none",
     letterSpacing: "normal",
-    twoTone: "italic"
+    twoTone: "italic",
+    toneColor: "accent"
   },
   shape: {
     radiusSm: "0",
@@ -102,6 +103,7 @@ export const ballot: BrandDefinition = {
   },
   navigation: {
     activeTab: "underline",
+    activeColor: "gold",
     font: PLEX,
     case: "uppercase",
     size: "12px"

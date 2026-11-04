@@ -97,7 +97,9 @@ export function AdminCeremoniesCategoriesScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Categories</Title>
+            <Title order={3} variant="section">
+              Categories
+            </Title>
             <Text className="muted">Define the award categories for this ceremony.</Text>
           </Box>
           <Box>
@@ -116,7 +118,9 @@ export function AdminCeremoniesCategoriesScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Current ceremony categories</Title>
+            <Title order={3} variant="section">
+              Current ceremony categories
+            </Title>
             <Text className="muted">
               These determine what is draftable in this ceremony.
             </Text>

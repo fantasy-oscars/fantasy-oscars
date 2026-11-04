@@ -91,7 +91,8 @@ export const redCarpet: BrandDefinition = {
     weight: "700",
     case: "none",
     letterSpacing: "0.04em",
-    twoTone: "colour"
+    twoTone: "colour",
+    toneColor: "gold"
   },
   shape: {
     radiusSm: "4px",
@@ -103,6 +104,7 @@ export const redCarpet: BrandDefinition = {
   },
   navigation: {
     activeTab: "underline",
+    activeColor: "gold",
     font: DMSANS,
     case: "uppercase",
     size: "13px"

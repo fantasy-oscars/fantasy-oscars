@@ -1,5 +1,7 @@
-import { Button, Divider, Group, Stack, Title } from "@ui";
+import { Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
+
+const BLOCKED_NOTE_ID = "season-draft-room-blocked-note";
 
 export function SeasonDraftRoomColumn(props: {
   draftId: number | null;
@@ -14,21 +16,24 @@ export function SeasonDraftRoomColumn(props: {
   const draftBoardBlocked =
     draftStatusNorm === "CANCELLED" ||
     (ceremonyStatusNorm === "LOCKED" && draftStatusNorm !== "COMPLETED");
-  const blockedTitle = draftBoardBlocked
-    ? "Draft board is unavailable once results entry begins."
-    : undefined;
 
   return (
     <Stack gap="sm">
-      <Title order={3}>Draft room</Title>
+      <Title order={3} variant="section">
+        Draft room
+      </Title>
       <Divider />
       <Group wrap="wrap">
         {draftId && !draftBoardBlocked ? (
-          <Button component={Link} to={`/drafts/${draftId}`} variant="filled">
+          <Button component={Link} to={`/drafts/${draftId}`} variant="primary">
             {draftRoomCtaLabel}
           </Button>
         ) : (
-          <Button disabled variant="filled" title={blockedTitle}>
+          <Button
+            disabled
+            variant="primary"
+            aria-describedby={draftBoardBlocked ? BLOCKED_NOTE_ID : undefined}
+          >
             {draftRoomCtaLabel}
           </Button>
         )}
@@ -36,16 +41,21 @@ export function SeasonDraftRoomColumn(props: {
           <Button
             component={Link}
             to={`/ceremonies/${ceremonyId}/draft-plans`}
-            variant="subtle"
+            variant="ghost"
           >
             Draft plans
           </Button>
         ) : (
-          <Button disabled variant="subtle">
+          <Button disabled variant="ghost">
             Draft plans
           </Button>
         )}
       </Group>
+      {draftBoardBlocked ? (
+        <Text id={BLOCKED_NOTE_ID} variant="helper">
+          Draft board is unavailable once results entry begins.
+        </Text>
+      ) : null}
     </Stack>
   );
 }

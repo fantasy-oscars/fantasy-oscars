@@ -123,7 +123,9 @@ export function AdminCeremoniesOverviewScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Initialize ceremony</Title>
+            <Title order={3} variant="section">
+              Initialize ceremony
+            </Title>
             <Text className="muted">
               Give this ceremony a stable identity and scheduled start time.
             </Text>
@@ -156,7 +158,9 @@ export function AdminCeremoniesOverviewScreen(props: {
           wrap="wrap"
         >
           <Box>
-            <Title order={3}>Foundation details</Title>
+            <Title order={3} variant="section">
+              Foundation details
+            </Title>
           </Box>
           <Tooltip
             withArrow

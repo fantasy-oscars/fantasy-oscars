@@ -58,7 +58,7 @@ describe("<App /> shell + routing", () => {
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getAllByRole("link", { name: /Login/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Log in/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -97,7 +97,7 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
-    await screen.findByRole("button", { name: /alice/i });
+    await screen.findByRole("button", { name: /account menu$/i });
     await screen.findByRole("heading", { name: /Leagues/i });
   });
 
@@ -167,13 +167,13 @@ describe("<App /> shell + routing", () => {
     });
 
     renderApp();
-    await screen.findByRole("button", { name: /alice/i });
+    await screen.findByRole("button", { name: /account menu$/i });
     const details = screen.getByRole("region", { name: /Account details/i });
     expect(within(details).getByText("Username")).toBeInTheDocument();
     expect(within(details).getByText("alice")).toBeInTheDocument();
     expect(within(details).getByText("Email")).toBeInTheDocument();
     expect(within(details).getByText("a@example.com")).toBeInTheDocument();
-    expect(within(details).getByRole("button", { name: /Logout/i })).toBeInTheDocument();
+    expect(within(details).getByRole("button", { name: /Log out/i })).toBeInTheDocument();
   });
 
   it("navigates via nav links", async () => {
@@ -195,7 +195,7 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderApp();
-    await screen.findByRole("button", { name: /alice/i });
+    await screen.findByRole("button", { name: /account menu$/i });
 
     const nav = screen.getByRole("navigation", { name: "Primary" });
     const aboutLink = within(nav).getByRole("link", { name: /About/i });
