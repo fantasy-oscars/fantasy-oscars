@@ -5,7 +5,7 @@ import "@/primitives/baseline.css";
 export function AdminContentHomeScreen(props: { isSuperAdmin: boolean }) {
   return (
     <Stack component="section" className="stack">
-      <Title order={4} className="baseline-textSectionHeader">
+      <Title order={4} variant="section" className="baseline-textSectionHeader">
         Landing page
       </Title>
       <Stack gap="var(--fo-space-0)">
@@ -46,7 +46,7 @@ export function AdminContentHomeScreen(props: { isSuperAdmin: boolean }) {
         <>
           <Divider my="md" />
 
-          <Title order={3} className="baseline-textSectionHeader">
+          <Title order={3} variant="section" className="baseline-textSectionHeader">
             Site Pages
           </Title>
           <Stack gap="var(--fo-space-0)">
@@ -93,7 +93,7 @@ export function AdminContentHomeScreen(props: { isSuperAdmin: boolean }) {
 
       <Divider my="md" />
 
-      <Title order={3} className="baseline-textSectionHeader">
+      <Title order={3} variant="section" className="baseline-textSectionHeader">
         Announcements &amp; Messaging
       </Title>
       <Stack gap="var(--fo-space-0)">
@@ -128,7 +128,7 @@ export function AdminContentHomeScreen(props: { isSuperAdmin: boolean }) {
         <>
           <Divider my="md" />
 
-          <Title order={3} className="baseline-textSectionHeader">
+          <Title order={3} variant="section" className="baseline-textSectionHeader">
             Legal
           </Title>
           <Stack gap="var(--fo-space-0)">

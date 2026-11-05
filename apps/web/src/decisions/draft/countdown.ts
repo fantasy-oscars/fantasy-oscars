@@ -9,3 +9,8 @@ export function isCountdownActive(timerRemainingMs: number | null) {
     timerRemainingMs <= COUNTDOWN_WINDOW_MS
   );
 }
+
+/** Words shown in the countdown window, e.g. "4s left". Whole seconds, rounded up. */
+export function formatCountdownText(timerRemainingMs: number) {
+  return `${Math.max(1, Math.ceil(timerRemainingMs / 1000))}s left`;
+}

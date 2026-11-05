@@ -41,7 +41,7 @@ export function TmdbLinkModal(props: {
       title="Link film to TMDB"
       centered
       size="md"
-      overlayProps={{ opacity: 0.35, blur: 2 }}
+      overlayProps={{ opacity: 0.35 }}
     >
       <Stack gap="sm">
         <Text className="baseline-textBody">{film?.title ?? "Untitled film"}</Text>

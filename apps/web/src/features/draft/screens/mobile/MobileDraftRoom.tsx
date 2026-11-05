@@ -8,7 +8,7 @@ import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
-import { FO_MODAL_OVERLAY_BLUR_PX, FO_MODAL_OVERLAY_OPACITY } from "@/tokens/overlays";
+import { FO_MODAL_OVERLAY_OPACITY } from "@/tokens/overlays";
 
 type DraftAudioController = ReturnType<
   typeof import("@/lib/draftAudio").createDraftAudioController
@@ -92,6 +92,7 @@ export function MobileDraftRoom(props: {
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
   themeIcon: string;
+  themeLabel: string;
   onToggleTheme: () => void;
 }) {
   const { o } = props;
@@ -168,6 +169,7 @@ export function MobileDraftRoom(props: {
         onToggleShowDrafted={props.onToggleShowDrafted}
         showDraftedVisible={props.showDraftedVisible}
         themeIcon={props.themeIcon}
+        themeLabel={props.themeLabel}
         onToggleTheme={props.onToggleTheme}
         userLabel={props.previewUser.label}
         userAvatarKey={props.previewUser.avatarKey}
@@ -302,10 +304,7 @@ export function MobileDraftRoom(props: {
         }}
         trapFocus
         returnFocus
-        overlayProps={{
-          opacity: FO_MODAL_OVERLAY_OPACITY,
-          blur: FO_MODAL_OVERLAY_BLUR_PX
-        }}
+        overlayProps={{ opacity: FO_MODAL_OVERLAY_OPACITY }}
       >
         <Box pos="relative">
           <Box
@@ -341,6 +340,7 @@ export function MobileDraftRoom(props: {
               action={
                 props.canDraftAction ? (
                   <Button
+                    variant="filled"
                     fullWidth
                     onClick={() => {
                       const id = mobileNominationId;

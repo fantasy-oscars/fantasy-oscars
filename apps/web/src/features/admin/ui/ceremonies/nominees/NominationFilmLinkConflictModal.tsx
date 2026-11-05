@@ -33,7 +33,7 @@ export function NominationFilmLinkConflictModal(props: {
       title="TMDB id already linked"
       centered
       size="md"
-      overlayProps={{ opacity: 0.45, blur: 2 }}
+      overlayProps={{ opacity: 0.45 }}
     >
       <Stack gap="sm">
         <Text size="sm">

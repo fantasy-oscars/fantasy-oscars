@@ -1,7 +1,7 @@
 import { Box, Button, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { LeagueIndexView } from "@/orchestration/leagueIndex";
-import { ActionCard, StandardCard } from "@/primitives";
+import { ActionCard, EmptyState, StandardCard } from "@/primitives";
 import { leaguePath } from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
@@ -39,9 +39,7 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                   <PageError message={view.message} requestId={view.requestId} />
                 </StandardCard>
               ) : view.leagues.length === 0 ? (
-                <StandardCard>
-                  <Text className="baseline-textBody">No leagues yet.</Text>
-                </StandardCard>
+                <EmptyState>No leagues yet.</EmptyState>
               ) : (
                 <Box className="baseline-leagueGrid">
                   {view.leagues.map((l) => (
@@ -53,8 +51,10 @@ export function LeagueIndexScreen(props: { view: LeagueIndexView }) {
                       to={leaguePath({ leagueId: l.id, leagueName: l.name })}
                     >
                       <Stack gap="var(--fo-space-dense-2)">
-                        <Text className="baseline-textCardTitle">{l.name}</Text>
-                        <Text className="baseline-textMeta">
+                        <Text className="baseline-textCardTitle baseline-wrapAnywhere">
+                          {l.name}
+                        </Text>
+                        <Text className="baseline-textMeta baseline-wrapAnywhere">
                           {l.commissioner_name ?? ""}
                         </Text>
                       </Stack>

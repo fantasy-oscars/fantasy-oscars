@@ -3,7 +3,7 @@ export type BannerVariant = "info" | "warning" | "success" | "error";
 export function bannerColor(variant: BannerVariant): string {
   switch (variant) {
     case "warning":
-      // Closest to our brand gold without being visually loud.
+      // Neutral ink: warning carries an icon and words, not a new hue.
       return "yellow";
     case "success":
       return "teal";
@@ -12,5 +12,20 @@ export function bannerColor(variant: BannerVariant): string {
     case "info":
     default:
       return "gray";
+  }
+}
+
+/** Material Symbols ligature for each variant, so severity never rests on colour alone. */
+export function bannerIconName(variant: BannerVariant): string {
+  switch (variant) {
+    case "warning":
+      return "warning";
+    case "success":
+      return "check_circle";
+    case "error":
+      return "error";
+    case "info":
+    default:
+      return "info";
   }
 }

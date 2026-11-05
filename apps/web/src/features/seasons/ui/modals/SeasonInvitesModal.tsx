@@ -14,6 +14,7 @@ import type { SeasonInvite, SeasonMember } from "@/lib/types";
 import { UserSearchCombobox } from "@/shared/comboboxes/UserSearchCombobox";
 import { CommissionerPill } from "@/shared/pills";
 import { useConfirm } from "@/notifications/confirm";
+import { EmptyState } from "@/primitives";
 
 function IconBtn(props: {
   label: string;
@@ -220,7 +221,7 @@ export function SeasonParticipantsModal(props: {
         <Divider label="Invites" labelPosition="left" />
 
         {visibleInvites.length === 0 ? (
-          <Text className="muted">No pending invites.</Text>
+          <EmptyState>No pending invites.</EmptyState>
         ) : (
           <Stack className="list" gap="sm">
             {visibleInvites.map((invite) => (

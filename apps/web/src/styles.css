@@ -31,6 +31,92 @@ body[data-mantine-color-scheme="dark"] {
   --mantine-color-blue-filled-hover: var(--fo-button-primary-hover);
   --mantine-color-blue-outline: var(--fo-border);
   --mantine-color-blue-outline-hover: var(--fo-surface-pill);
+
+  /* Semantic palette mapping (dark mode): rebinds only the variant variables. */
+  /* Danger: marks and text only; destructive buttons use the ui variant. */
+  --mantine-color-red-filled: var(--fo-danger-text);
+  --mantine-color-red-filled-hover: color-mix(in oklab, var(--fo-danger-text) 88%, black);
+  --mantine-color-red-light: color-mix(in srgb, var(--fo-danger) 8%, transparent);
+  --mantine-color-red-light-hover: color-mix(in srgb, var(--fo-danger) 14%, transparent);
+  --mantine-color-red-light-color: var(--fo-danger-text);
+  --mantine-color-red-outline: var(--fo-danger-text);
+  --mantine-color-red-outline-hover: color-mix(
+    in srgb,
+    var(--fo-danger) 10%,
+    transparent
+  );
+  --mantine-color-red-text: var(--fo-danger-text);
+  /* Success and complete. */
+  --mantine-color-teal-filled: var(--fo-status-complete);
+  --mantine-color-teal-filled-hover: color-mix(
+    in oklab,
+    var(--fo-status-complete) 88%,
+    black
+  );
+  --mantine-color-teal-light: color-mix(
+    in srgb,
+    var(--fo-status-complete) 8%,
+    transparent
+  );
+  --mantine-color-teal-light-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 14%,
+    transparent
+  );
+  --mantine-color-teal-light-color: var(--fo-status-complete);
+  --mantine-color-teal-outline: var(--fo-status-complete);
+  --mantine-color-teal-outline-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 10%,
+    transparent
+  );
+  --mantine-color-teal-text: var(--fo-status-complete);
+  /* Success and complete. */
+  --mantine-color-green-filled: var(--fo-status-complete);
+  --mantine-color-green-filled-hover: color-mix(
+    in oklab,
+    var(--fo-status-complete) 88%,
+    black
+  );
+  --mantine-color-green-light: color-mix(
+    in srgb,
+    var(--fo-status-complete) 8%,
+    transparent
+  );
+  --mantine-color-green-light-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 14%,
+    transparent
+  );
+  --mantine-color-green-light-color: var(--fo-status-complete);
+  --mantine-color-green-outline: var(--fo-status-complete);
+  --mantine-color-green-outline-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 10%,
+    transparent
+  );
+  --mantine-color-green-text: var(--fo-status-complete);
+  /* Warning is neutral (ink border and icon); no extra hue. */
+  --mantine-color-yellow-filled: var(--brand-text);
+  --mantine-color-yellow-filled-hover: var(--brand-text);
+  --mantine-color-yellow-light: var(--brand-sunken);
+  --mantine-color-yellow-light-hover: var(--brand-sunken);
+  --mantine-color-yellow-light-color: var(--brand-text);
+  --mantine-color-yellow-outline: var(--brand-text);
+  --mantine-color-yellow-outline-hover: var(--brand-sunken);
+  --mantine-color-yellow-text: var(--brand-text);
+  /* Neutral and info. */
+  --mantine-color-gray-filled: var(--brand-rule-strong);
+  --mantine-color-gray-filled-hover: var(--brand-muted);
+  --mantine-color-gray-light: var(--brand-sunken);
+  --mantine-color-gray-light-hover: var(--brand-sunken);
+  --mantine-color-gray-light-color: var(--brand-text);
+  --mantine-color-gray-outline: var(--brand-rule-strong);
+  --mantine-color-gray-outline-hover: var(--brand-sunken);
+  --mantine-color-gray-text: var(--brand-muted);
+
+  --mantine-color-error: var(--fo-danger-text);
+  --mantine-color-default-border: var(--brand-rule);
 }
 
 :root[data-mantine-color-scheme="light"],
@@ -47,6 +133,92 @@ body[data-mantine-color-scheme="light"] {
   --mantine-color-blue-filled-hover: var(--fo-button-primary-hover);
   --mantine-color-blue-outline: var(--fo-border);
   --mantine-color-blue-outline-hover: rgba(var(--brand-text-rgb), var(--fo-alpha-06));
+
+  /* Semantic palette mapping (light mode): rebinds only the variant variables. */
+  /* Danger: marks and text only; destructive buttons use the ui variant. */
+  --mantine-color-red-filled: var(--fo-danger-text);
+  --mantine-color-red-filled-hover: color-mix(in oklab, var(--fo-danger-text) 88%, black);
+  --mantine-color-red-light: color-mix(in srgb, var(--fo-danger) 8%, transparent);
+  --mantine-color-red-light-hover: color-mix(in srgb, var(--fo-danger) 14%, transparent);
+  --mantine-color-red-light-color: var(--fo-danger-text);
+  --mantine-color-red-outline: var(--fo-danger-text);
+  --mantine-color-red-outline-hover: color-mix(
+    in srgb,
+    var(--fo-danger) 10%,
+    transparent
+  );
+  --mantine-color-red-text: var(--fo-danger-text);
+  /* Success and complete. */
+  --mantine-color-teal-filled: var(--fo-status-complete);
+  --mantine-color-teal-filled-hover: color-mix(
+    in oklab,
+    var(--fo-status-complete) 88%,
+    black
+  );
+  --mantine-color-teal-light: color-mix(
+    in srgb,
+    var(--fo-status-complete) 8%,
+    transparent
+  );
+  --mantine-color-teal-light-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 14%,
+    transparent
+  );
+  --mantine-color-teal-light-color: var(--fo-status-complete);
+  --mantine-color-teal-outline: var(--fo-status-complete);
+  --mantine-color-teal-outline-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 10%,
+    transparent
+  );
+  --mantine-color-teal-text: var(--fo-status-complete);
+  /* Success and complete. */
+  --mantine-color-green-filled: var(--fo-status-complete);
+  --mantine-color-green-filled-hover: color-mix(
+    in oklab,
+    var(--fo-status-complete) 88%,
+    black
+  );
+  --mantine-color-green-light: color-mix(
+    in srgb,
+    var(--fo-status-complete) 8%,
+    transparent
+  );
+  --mantine-color-green-light-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 14%,
+    transparent
+  );
+  --mantine-color-green-light-color: var(--fo-status-complete);
+  --mantine-color-green-outline: var(--fo-status-complete);
+  --mantine-color-green-outline-hover: color-mix(
+    in srgb,
+    var(--fo-status-complete) 10%,
+    transparent
+  );
+  --mantine-color-green-text: var(--fo-status-complete);
+  /* Warning is neutral (ink border and icon); no extra hue. */
+  --mantine-color-yellow-filled: var(--brand-text);
+  --mantine-color-yellow-filled-hover: var(--brand-text);
+  --mantine-color-yellow-light: var(--brand-sunken);
+  --mantine-color-yellow-light-hover: var(--brand-sunken);
+  --mantine-color-yellow-light-color: var(--brand-text);
+  --mantine-color-yellow-outline: var(--brand-text);
+  --mantine-color-yellow-outline-hover: var(--brand-sunken);
+  --mantine-color-yellow-text: var(--brand-text);
+  /* Neutral and info. */
+  --mantine-color-gray-filled: var(--brand-rule-strong);
+  --mantine-color-gray-filled-hover: var(--brand-muted);
+  --mantine-color-gray-light: var(--brand-sunken);
+  --mantine-color-gray-light-hover: var(--brand-sunken);
+  --mantine-color-gray-light-color: var(--brand-text);
+  --mantine-color-gray-outline: var(--brand-rule-strong);
+  --mantine-color-gray-outline-hover: var(--brand-sunken);
+  --mantine-color-gray-text: var(--brand-muted);
+
+  --mantine-color-error: var(--fo-danger-text);
+  --mantine-color-default-border: var(--brand-rule);
 
   /* Pin Mantine's primary tokens to the brand primary in light mode as well. */
   --mantine-primary-color-filled: var(--brand-primary);
@@ -133,9 +305,10 @@ body {
 
 .mantine-Text-root[data-fo-typo="chromeHeading"] {
   font-size: var(--fo-font-size-xs);
-  font-weight: var(--fo-font-weight-semibold);
   color: var(--fo-text-deemphasized);
-  letter-spacing: var(--fo-letterSpacing-meta);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
   text-transform: var(--brand-label-case);
 }
 
@@ -254,13 +427,18 @@ body {
 
 .dr-header {
   flex: 0 0 var(--fo-db-headerHeight);
-  border-bottom: var(--fo-border-width) solid var(--fo-border);
+  border-bottom: var(--brand-section-rule);
 }
 
 .dr-mobileHeader {
   /* Mobile header is a flat bar, not a buckle. */
   flex: 0 0 var(--fo-db-headerHeight);
   background: var(--fo-surface-card-primary);
+}
+
+/* Paused is a neutral sunken bar, matching the desktop buckle. */
+.dr-mobileHeader.is-paused {
+  background: var(--brand-sunken);
 }
 
 .dr-mobileHeader.is-podium {
@@ -287,12 +465,29 @@ body {
 }
 
 .dr-mobileBar.is-countdown {
-  /* Only the active drafter pulses; this is a full-height bar treatment. */
+  /* Only the active drafter pulses; this is a full-height bar treatment. The ring,
+     glyph and words never change between phases: they are the non-colour cue. */
+  --drh-urgent-ink: var(--brand-on-primary);
   background: var(--brand-primary);
-  transition: background 120ms ease;
+  box-shadow: inset 0 0 0 var(--fo-focus-ring-width) var(--drh-urgent-ink);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+/* Text, glyph and buttons change colour in step with the fill so no pair is ever
+   caught mid-swap against the wrong background. */
+.dr-mobileBar.is-countdown .drm-clockText,
+.dr-mobileBar.is-countdown .drm-miniNumber,
+.dr-mobileBar.is-countdown .drm-miniLabel,
+.dr-mobileBar.is-countdown .drm-clockGlyph.mi-icon,
+.dr-mobileBar.is-countdown .dr-mobileIconBtn,
+.dr-mobileBar.is-countdown .dr-mobileIconBtn .mi-icon {
+  transition: color 120ms ease;
 }
 
 .dr-mobileBar.is-countdown.pulse-red {
+  --drh-urgent-ink: var(--fo-danger-on);
   background: var(--fo-danger);
 }
 
@@ -339,6 +534,21 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: var(--fo-space-4);
+}
+
+.drm-clockGlyph.mi-icon {
+  flex: none;
+  font-size: var(--fo-space-sm);
+  color: var(--fo-text-primary);
+}
+
+.dr-frame[data-turn="mine"] .drm-clockGlyph.mi-icon {
+  color: var(--brand-on-primary);
+}
+
+.dr-mobileBar.is-countdown.pulse-red .drm-clockGlyph.mi-icon {
+  color: var(--fo-danger-on);
 }
 
 .drm-clockText {
@@ -625,8 +835,9 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   border-color: rgba(var(--brand-text-rgb), var(--fo-alpha-55));
 }
 
+/* Non-text marks on the page need 3:1: ink, not the brand fill (gold fails on light). */
 .dr-frame[data-turn="mine"] .drh-token.is-active {
-  border-color: var(--brand-primary);
+  border-color: var(--brand-text);
 }
 
 .drh-overflow {
@@ -651,13 +862,15 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .dr-frame[data-turn="mine"] .drh-chevron {
-  color: var(--brand-primary);
+  color: var(--brand-text);
 }
 
 .dr-rosterWinCount {
-  font-size: var(--fo-font-size-xs);
-  font-weight: 800;
-  color: var(--fo-text-deemphasized);
+  font-family: var(--brand-font-numeral);
+  font-size: var(--fo-space-sm);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--brand-text);
   flex: 0 0 auto;
 }
 
@@ -694,61 +907,29 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
     auto;
   align-items: center;
   gap: var(--fo-db-buckleGap);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
   z-index: var(--drh-buckle-z-index, 3);
 
-  /* Buckle depth model (same structure across themes; token values vary). */
-  --drh-buckle-base: var(--fo-surface-card-primary);
-  --drh-buckle-top: color-mix(in oklab, var(--drh-buckle-base) 92%, white);
-  --drh-buckle-bottom: color-mix(in oklab, var(--drh-buckle-base) 86%, black);
-  --drh-buckle-highlight: color-mix(in oklab, var(--drh-buckle-base) 55%, white);
-  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-22));
+  /* Flat fill; the edge and depth come from the brand's raised shadow plus the
+     poster offset (F only: the multiplier is 0 elsewhere). */
+  --drh-buckle-base: var(--brand-sunken);
 
-  background: linear-gradient(to bottom, var(--drh-buckle-top), var(--drh-buckle-bottom));
-  /* Tight contact shadow (not a floating/elevation shadow). */
+  background: var(--drh-buckle-base);
   box-shadow:
-    0 var(--fo-space-2) calc(var(--fo-space-4) + var(--fo-space-2))
-      var(--drh-buckle-contact),
-    inset 0 var(--fo-border-width) 0 rgba(var(--fo-white-rgb), var(--fo-alpha-14)),
-    inset 0 calc(-1 * var(--fo-border-width)) 0
-      rgba(var(--fo-black-rgb), var(--fo-alpha-10));
+    var(--brand-shadow-raised),
+    0 calc(var(--fo-space-4) * var(--brand-deco-offset-shadow)) 0 var(--brand-text);
 }
 
 .drh-buckle.is-fixed {
   grid-template-columns: auto var(--drh-buckle-max, var(--fo-db-buckleMax-default)) auto;
 }
 
-/* Top highlight edge (overhead light). */
-.drh-buckle::before {
-  content: "";
-  position: absolute;
-  left: var(--fo-db-buckleHighlightInsetX);
-  right: var(--fo-db-buckleHighlightInsetX);
-  top: var(--fo-db-buckleHighlightTop);
-  height: var(--fo-db-buckleHighlightHeight);
-  border-radius: var(--fo-radius-pill);
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--drh-buckle-highlight) 62%, transparent),
-    transparent
-  );
-  opacity: var(--fo-alpha-65);
-}
-
-.drh-buckle.is-pre {
-  /* Pre-draft: use a more clearly defined neutral surface (reads as "gray" in light mode). */
-  --drh-buckle-base: var(--fo-surface-pill);
-}
-
 .dr-frame[data-turn="mine"] .drh-buckle {
   --drh-buckle-base: var(--brand-primary);
-  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-18));
 }
 
 .dr-frame[data-results="final"] .drh-buckle {
   --drh-buckle-base: var(--fo-win-gold);
-  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-18));
 }
 
 .dr-frame[data-results="final"] .drh-buckle.is-silver {
@@ -765,12 +946,26 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 
 /* Countdown pulse (5s window): toggled via class in sync with beeps. */
 .drh-buckle.is-countdown {
-  /* Default to the primary colour for the countdown surface; JS toggles to pulse-red as needed. */
+  /* Default to the primary colour for the countdown surface; JS toggles to pulse-red as needed.
+     The inner ring is the non-colour cue: it is layered first and never changes shape. */
   --drh-buckle-base: var(--brand-primary);
+  --drh-urgent-ink: var(--brand-on-primary);
+  box-shadow:
+    inset 0 0 0 var(--fo-focus-ring-width) var(--drh-urgent-ink),
+    var(--brand-shadow-raised),
+    0 calc(var(--fo-space-4) * var(--brand-deco-offset-shadow)) 0 var(--brand-text);
   transition:
     background 120ms ease,
     box-shadow 120ms ease,
     color 120ms ease;
+}
+
+.drh-buckle.is-countdown .drh-buckleCenter,
+.drh-buckle.is-countdown .drh-buckleNumber,
+.drh-buckle.is-countdown .drh-buckleLabel,
+.drh-buckle.is-countdown .drh-buckleCenterRow,
+.drh-buckle.is-countdown .drh-buckleCenterType {
+  transition: color 120ms ease;
 }
 
 .drh-buckle.is-countdown.pulse-gold {
@@ -780,7 +975,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-buckle.is-countdown.pulse-red {
   /* Restrained red that still reads as urgency against our neutral palette. */
   --drh-buckle-base: var(--fo-danger);
-  --drh-buckle-contact: rgba(var(--fo-black-rgb), var(--fo-alpha-26));
+  --drh-urgent-ink: var(--fo-danger-on);
 }
 
 .drh-buckle.is-countdown.pulse-red .drh-buckleCenter,
@@ -789,7 +984,8 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .drh-buckle.is-countdown.pulse-red .drh-buckleLabel {
-  color: color-mix(in srgb, var(--fo-danger-on) 78%, transparent);
+  /* Full ink: a 78% mix measures 3.64:1 on the danger fill. */
+  color: var(--fo-danger-on);
 }
 
 .drh-buckleStack {
@@ -847,6 +1043,28 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-buckleCenterViewport {
   width: 100%;
   overflow: hidden;
+}
+
+.drh-buckleCenterRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fo-space-4);
+  min-width: 0;
+}
+
+.drh-buckleGlyph.mi-icon {
+  flex: none;
+  font-size: var(--fo-space-sm);
+  color: currentColor;
+}
+
+.dr-frame[data-turn="mine"] .drh-buckleCenterRow {
+  color: var(--brand-on-primary);
+}
+
+.drh-buckle.is-countdown.pulse-red .drh-buckleCenterRow {
+  color: var(--fo-danger-on);
 }
 
 .drh-buckleCenterType {
@@ -1018,6 +1236,26 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .draft-plans-actions {
   margin-left: auto;
 }
+@media (max-width: 499.98px) {
+  .draft-plans-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .draft-plans-selectWrap {
+    width: 100%;
+    min-width: 0;
+  }
+  .draft-plans-actions {
+    margin-left: 0;
+  }
+  .draft-plans-actions .mantine-Button-root {
+    flex: 1 1 auto;
+  }
+  .draft-plan-row,
+  .draft-plan-row > * {
+    min-width: 0;
+  }
+}
 
 .drh-right {
   gap: var(--fo-db-headerRight-gap);
@@ -1045,6 +1283,16 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   font-weight: var(--fo-font-weight-bold);
   color: var(--fo-text-deemphasized);
   white-space: nowrap;
+}
+
+.drh-switchRoot {
+  width: 100%;
+}
+
+.drh-switchRoot .mantine-Switch-body {
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .drh-toggleSlot,
@@ -1225,15 +1473,9 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
 }
 
 .dr-railToggle:focus-visible {
-  outline: var(--fo-border-width-strong) solid
-    rgba(var(--brand-text-rgb), var(--fo-alpha-24));
-  outline-offset: calc(var(--fo-space-0) - var(--fo-border-width-strong));
-}
-
-:root[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible,
-body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
-  outline: var(--fo-border-width-strong) solid
-    rgba(var(--brand-text-rgb), var(--fo-alpha-20));
+  /* The toggle fills its rail, so the ring is inset. */
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: calc(-1 * var(--fo-focus-ring-width));
 }
 
 .dr-rail.is-open {
@@ -1330,12 +1572,11 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
   color: var(--fo-text-deemphasized);
 }
 
 .dr-railClose:hover {
-  background: rgba(var(--fo-text-primary-rgb), var(--fo-alpha-06));
   color: var(--fo-text-primary);
 }
 
@@ -1551,8 +1792,9 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
   display: grid;
   grid-template-columns: repeat(var(--mid-cols), minmax(0, 1fr));
   column-gap: 0;
-  /* All horizontal spacing is controlled via per-box insets (5px per side). */
-  padding: 0;
+  /* All horizontal spacing is controlled via per-box insets (5px per side).
+     Block padding leaves room for the offset shadow and rings at the scroll edges. */
+  padding: var(--fo-space-2) 0 var(--fo-space-8);
 }
 
 .dr-masonry-col {
@@ -1567,9 +1809,10 @@ body[data-mantine-color-scheme="dark"] .dr-railToggle:focus-visible {
 }
 
 .dr-card {
-  border: var(--fo-border-width) solid var(--fo-border);
-  border-radius: var(--fo-radius-small);
-  background: rgba(var(--brand-text-rgb), var(--fo-alpha-03));
+  border: var(--fo-border-width) solid transparent;
+  border-radius: var(--fo-radius-medium);
+  background: var(--brand-raised);
+  box-shadow: var(--brand-shadow-card);
   margin-inline: var(--fo-space-dense-1);
   padding: var(--fo-space-dense-2);
   display: flex;
@@ -1634,7 +1877,7 @@ body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
   ); /* 22px */
   border-radius: var(--fo-radius-pill);
   border: var(--fo-border-width) solid var(--fo-border);
-  background: transparent;
+  background: var(--brand-raised);
   padding-inline: var(--fo-space-dense-2);
   display: flex;
   align-items: center;
@@ -1663,8 +1906,8 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .dr-pill-text {
   font-size: var(--fo-db-pill-font);
-  font-weight: var(--fo-font-weight-regular);
-  color: var(--fo-text-deemphasized);
+  font-weight: 500;
+  color: var(--brand-text);
   user-select: none;
   flex: 1 1 auto;
   min-width: 0;
@@ -1847,10 +2090,11 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 /* Mantine component skins bound to tokens (no per-component color logic). */
 .mantine-Card-root {
-  background: var(--fo-surface-card-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
+  background: var(--brand-raised);
+  border: 0;
+  border-radius: var(--fo-radius-medium);
   color: var(--fo-text-primary);
-  box-shadow: none;
+  box-shadow: var(--brand-shadow-card);
 }
 
 .mantine-Button-root {
@@ -1864,18 +2108,6 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   font-family: var(--brand-font-body);
   font-weight: 600;
   font-size: var(--fo-font-size-sm);
-}
-
-/* The draft room keeps Mantine's radius until chunk 9C restyles it. */
-.dr-frame .mantine-Button-root,
-.mantine-Button-root.dr-confirmPick {
-  --button-radius: var(--mantine-radius-default) !important;
-  --fo-button-offset: var(--fo-space-0);
-}
-
-.dr-frame .mantine-Button-root[data-fo-variant="primary"],
-.mantine-Button-root[data-fo-variant="primary"].dr-confirmPick {
-  box-shadow: none;
 }
 
 /* Variant skins, keyed on ui/Button's data-fo-variant (Mantine's color prop is
@@ -2095,6 +2327,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   color: var(--brand-text);
 }
 
+.mantine-Notification-description {
+  color: var(--brand-muted);
+}
+
 .mantine-Menu-item {
   min-height: var(--fo-menu-item-height);
   padding: 0 var(--fo-menu-item-paddingX);
@@ -2134,6 +2370,33 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .mantine-Menu-divider {
   border-color: var(--brand-rule);
+}
+
+.mantine-Divider-root {
+  --divider-color: var(--brand-rule);
+}
+
+/* Skeleton shimmer in the brand rule colour (was Mantine gray-3 / dark-4). */
+.mantine-Skeleton-root::after {
+  background-color: var(--brand-rule);
+}
+
+/* Alerts and banners: tone only in the inline-start border and the icon; text is ink. */
+.mantine-Alert-root[data-variant="light"] {
+  background: var(--alert-bg);
+  border: 0;
+  border-inline-start: 3px solid var(--alert-color);
+  border-radius: var(--fo-radius-small);
+  color: var(--brand-text);
+}
+
+.mantine-Alert-title,
+.mantine-Alert-message {
+  color: var(--brand-text);
+}
+
+.mantine-Alert-icon {
+  color: var(--alert-color);
 }
 
 .mantine-TextInput-input,
@@ -2341,9 +2604,112 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   color: var(--brand-wordmark-stop-color);
 }
 
-/* The draft room keeps this bare icon button until its header is restyled. */
+/* Draft header icon buttons: the brand's button shape, a sunken hover and the brand
+   focus ring. */
+.theme-toggle,
+.drh-pause,
+.dr-railClose,
+.dr-railToggle,
+.drh-toggleBtn {
+  border-radius: var(--brand-button-radius);
+}
+
 .theme-toggle {
   padding-inline: var(--fo-gutter-mobile);
+}
+
+.theme-toggle:hover,
+.drh-pause:hover,
+.dr-railClose:hover,
+.dr-railToggle:hover,
+.drh-toggleBtn:hover {
+  background: var(--brand-sunken);
+}
+
+.theme-toggle:focus-visible,
+.drh-pause:focus-visible,
+.dr-railClose:focus-visible,
+.drh-toggleBtn:focus-visible {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-offset);
+}
+
+/* Sound and cursor-spy toggle buttons: pressed is a sunken fill with a strong inner ring. */
+.drh-toggleBtn[aria-pressed="true"] {
+  background: var(--brand-sunken);
+  box-shadow: inset 0 0 0 var(--fo-border-width) var(--brand-rule-strong);
+}
+
+/* SegmentedControl and Switch: neutral ink-on-light, never a brand hue. */
+.mantine-SegmentedControl-root {
+  background: var(--brand-sunken);
+  border-radius: var(--brand-button-radius);
+}
+
+.mantine-SegmentedControl-indicator {
+  background: var(--brand-raised);
+  border-radius: var(--brand-button-radius);
+  box-shadow: 0 0 0 var(--fo-border-width) var(--brand-rule-strong);
+}
+
+.mantine-SegmentedControl-label {
+  color: var(--brand-muted);
+  border-radius: var(--brand-button-radius);
+}
+
+.mantine-SegmentedControl-label:hover:not([data-disabled]) {
+  color: var(--brand-text);
+}
+
+.mantine-SegmentedControl-label[data-active] {
+  color: var(--brand-text);
+  font-weight: 600;
+}
+
+.mantine-SegmentedControl-input:focus-visible + .mantine-SegmentedControl-label {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-offset);
+}
+
+.mantine-SegmentedControl-root[data-disabled] .mantine-SegmentedControl-label,
+.mantine-SegmentedControl-label[data-disabled] {
+  color: var(--brand-muted);
+  opacity: var(--fo-alpha-50);
+  cursor: not-allowed;
+}
+
+.mantine-Switch-track {
+  background: var(--brand-sunken);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
+}
+
+.mantine-Switch-thumb {
+  background: var(--brand-raised);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
+}
+
+.mantine-Switch-input:checked + .mantine-Switch-track {
+  background: var(--brand-text);
+  border-color: var(--brand-text);
+}
+
+.mantine-Switch-input:checked + .mantine-Switch-track .mantine-Switch-thumb {
+  background: var(--brand-page);
+  border-color: var(--brand-page);
+}
+
+/* The checked-thumb indicator dot is drawn from the switch colour; keep it neutral. */
+.mantine-Switch-thumb::before {
+  background: var(--brand-text);
+}
+
+.mantine-Switch-input:focus-visible + .mantine-Switch-track {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-offset);
+}
+
+.mantine-Switch-input:disabled + .mantine-Switch-track {
+  opacity: var(--fo-alpha-50);
 }
 
 /* Header icon button: a bounded box in the brand's card edge and button shape. */
@@ -2429,6 +2795,11 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
     height: var(--fo-touch-target);
   }
 
+  /* The phone header is tight: the account name keeps the shorter cap. */
+  .fo-headerAccountBtn {
+    max-width: var(--fo-header-account-maxWidth-phone);
+  }
+
   /* Below 500 the wordmark may wrap to two words rather than push the header wider. */
   .site-header-lead {
     flex: 0 1 auto;
@@ -2474,6 +2845,9 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
     "opsz" 24;
   font-size: var(--fo-icon-size-md);
   line-height: 1;
+  /* Ligature glyphs: a label-case ancestor must never turn the name into text. */
+  text-transform: none;
+  letter-spacing: normal;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2543,10 +2917,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .nomination-group-title {
   margin: 0;
-  font-family: var(--mantine-font-family-headings);
   font-size: var(--fo-icon-size-md);
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-eyebrow);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
   text-transform: var(--brand-label-case);
   overflow-wrap: break-word;
 }
@@ -3103,9 +3477,10 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .nav-section {
   color: var(--fo-text-deemphasized);
   text-transform: var(--brand-label-case);
-  letter-spacing: var(--fo-letterSpacing-eyebrow);
   font-size: var(--fo-font-size-xs);
-  font-weight: var(--fo-font-weight-bold);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
   padding: 0;
 }
 
@@ -3237,7 +3612,9 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 }
 
 .eyebrow {
-  letter-spacing: var(--fo-letterSpacing-eyebrow);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
   text-transform: var(--brand-label-case);
   font-size: var(--fo-font-size-xs);
   color: var(--accent);
@@ -3270,11 +3647,11 @@ h1 {
 }
 
 .card {
-  background: var(--panel);
-  border: var(--fo-border-width) solid var(--border);
-  border-radius: var(--fo-radius-small);
+  background: var(--brand-raised);
+  border: 0;
+  border-radius: var(--fo-radius-medium);
   padding: var(--fo-card-gap);
-  box-shadow: none;
+  box-shadow: var(--brand-shadow-card);
 }
 
 /*
@@ -3691,16 +4068,6 @@ small.error {
   margin: var(--fo-gutter-mobile) 0 var(--fo-gutter-mobile);
 }
 
-.status-pill {
-  display: inline-block;
-  padding: var(--fo-gutter-mobile);
-  border-radius: var(--fo-radius-small);
-  background: var(--fo-surface-pill);
-  border: var(--fo-border-width) solid var(--border);
-  color: var(--muted);
-  font-size: var(--fo-font-size-xs);
-}
-
 .connection-status {
   display: inline-flex;
   align-items: center;
@@ -3730,7 +4097,7 @@ small.error {
 .site-footer {
   margin-top: var(--fo-section-gap);
   padding-top: var(--fo-card-gap);
-  border-top: var(--fo-border-width) solid var(--border);
+  border-top: var(--brand-section-rule);
   display: flex;
   flex-direction: column;
   gap: var(--fo-card-gap);
@@ -3744,8 +4111,9 @@ small.error {
   margin: 0 0 var(--fo-gutter-mobile);
   color: var(--text);
   font-size: var(--fo-font-size-xs);
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-eyebrow);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
   text-transform: var(--brand-label-case);
 }
 
@@ -3764,7 +4132,7 @@ small.error {
 .footer-col-links a:hover {
   color: var(--text);
   text-decoration: underline;
-  text-decoration-color: var(--border);
+  text-decoration-color: currentColor;
 }
 
 .footer-logo-link {
@@ -3982,12 +4350,12 @@ small.error {
 .wizard-step.is-active::before {
   content: "";
   position: absolute;
-  left: calc(var(--fo-space-dense-2) * -1);
+  left: 0;
   top: 0;
   height: 100%;
   width: calc(var(--fo-space-2) + var(--fo-space-hairline));
   border-radius: var(--fo-radius-small);
-  background: var(--brand-primary);
+  background: var(--brand-text);
 }
 
 .wizard-step .wizard-step-icon {
@@ -4001,14 +4369,26 @@ small.error {
   color: var(--muted);
 }
 
-.wizard-step .mantine-Stepper-verticalSeparator,
-.wizard-step .mantine-Stepper-separator {
-  background: var(--border);
+/* Connectors: Mantine paints the vertical separator as a start border, so colour
+   the border. Future connectors use the brand rule, never Mantine grey. */
+.wizard-step {
+  --stepper-outline-color: var(--brand-rule);
+  --stepper-color: var(--brand-rule);
 }
 
-.wizard-step.connector-gold .mantine-Stepper-verticalSeparator,
-.wizard-step.connector-gold .mantine-Stepper-separator {
-  background: var(--brand-primary);
+.wizard-step .mantine-Stepper-verticalSeparator,
+.wizard-step .mantine-Stepper-separator {
+  border-color: var(--brand-rule);
+}
+
+.wizard-step.connector-progress {
+  --stepper-outline-color: var(--brand-text);
+  --stepper-color: var(--brand-text);
+}
+
+.wizard-step.connector-progress .mantine-Stepper-verticalSeparator,
+.wizard-step.connector-progress .mantine-Stepper-separator {
+  border-color: var(--brand-text);
 }
 
 /* Completed steps. Mantine draws the completed glyph in its own inner element
@@ -4033,8 +4413,8 @@ small.error {
 /* Incomplete editable: ring treatment. Gold only within completed progress range. */
 .wizard-step.is-incomplete.is-progress .mantine-Stepper-stepIcon {
   background: transparent;
-  border-color: var(--brand-primary);
-  color: var(--brand-primary);
+  border-color: var(--brand-text);
+  color: var(--brand-text);
 }
 
 .wizard-step.is-incomplete.is-future .mantine-Stepper-stepIcon {
@@ -4581,8 +4961,10 @@ small.error {
 }
 
 .category-count {
-  letter-spacing: var(--fo-letterSpacing-eyebrow);
-  font-weight: var(--fo-font-weight-bold);
+  font-family: var(--brand-font-label);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
+  text-transform: var(--brand-label-case);
 }
 
 .category-body {
@@ -4713,16 +5095,85 @@ select {
   gap: var(--fo-gutter-mobile);
 }
 
-.pill {
+/* Chips (status, role, winner). Neutral by default; data-tone adds the tone colour
+   to the border and mark, never to the label. The admin pill classes share the
+   neutral construction. */
+.fo-chip,
+.pill,
+.status-pill,
+.baseline-statusPill {
   display: inline-flex;
   align-items: center;
-  height: var(--fo-control-height);
-  padding: 0 var(--fo-control-padding-x);
+  gap: calc(var(--fo-space-4) + var(--fo-space-2));
+  height: calc(var(--fo-space-lg) - var(--fo-space-dense-2));
+  max-width: 100%;
+  padding: 0 var(--fo-space-8);
   border-radius: var(--fo-radius-small);
-  border: var(--fo-border-width) solid var(--border);
-  background: var(--fo-surface-pill);
-  color: var(--muted);
-  font-size: var(--fo-font-size-sm);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
+  background: var(--brand-sunken);
+  color: var(--brand-muted);
+  font-family: var(--brand-font-label);
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  line-height: 1;
+  letter-spacing: var(--brand-label-letter-spacing);
+  text-transform: var(--brand-label-case);
+  white-space: nowrap;
+}
+
+/* A glyph-only indicator (e.g. nominated star) is not a chip: full-size glyph in ink. */
+.baseline-iconIndicator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--brand-text);
+}
+
+.fo-chip[data-tone="drafting"] {
+  --fo-chip-tone: var(--fo-status-drafting);
+}
+
+.fo-chip[data-tone="complete"] {
+  --fo-chip-tone: var(--fo-status-complete);
+}
+
+.fo-chip[data-tone="live"] {
+  --fo-chip-tone: var(--fo-status-live);
+}
+
+.fo-chip[data-tone="drafting"],
+.fo-chip[data-tone="complete"],
+.fo-chip[data-tone="live"] {
+  border-color: var(--fo-chip-tone);
+  color: var(--brand-text);
+}
+
+.fo-chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fo-chip__dot {
+  flex: 0 0 auto;
+  width: var(--fo-space-8);
+  height: var(--fo-space-8);
+  border-radius: var(--fo-radius-pill);
+  background: var(--fo-chip-tone);
+}
+
+.fo-chip__mark.mi-icon.mi-icon-tiny {
+  flex: 0 0 auto;
+  color: var(--fo-chip-tone);
+}
+
+.fo-chip--winner {
+  border-color: color-mix(in srgb, var(--fo-win-gold) 65%, transparent);
+  background: var(--fo-win-gold);
+  color: var(--fo-win-gold-on);
+}
+
+.fo-chip--winner .fo-chip__mark.mi-icon.mi-icon-tiny {
+  color: var(--fo-win-gold-on);
 }
 
 .pick-list {
@@ -4868,4 +5319,26 @@ select {
 /* Admin ceremony row: the title block takes the row; actions drop below when it would be crushed. */
 .fo-adminCeremonyMain {
   flex: 1 1 14rem;
+}
+
+/* Account fields: on a phone each value sits under its label, left-aligned, so wrapped
+   values share one start edge. */
+@media (max-width: 500px) {
+  .account-fieldRow.mantine-Group-root {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--fo-space-4);
+  }
+}
+
+/* Results nominee row: the name takes the free width and wraps; the winner chip stays
+   on the same row as its own nominee. */
+.ceremony-nomineeName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ceremony-nomineeChip {
+  flex: none;
 }

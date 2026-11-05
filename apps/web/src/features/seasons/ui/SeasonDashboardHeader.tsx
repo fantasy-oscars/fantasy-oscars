@@ -1,4 +1,5 @@
 import { Box, Group, Text, Title } from "@ui";
+import { statusTone } from "@/decisions/statusTone";
 import { StatusPill } from "@/shared/pills";
 
 export function SeasonDashboardHeader(props: {
@@ -15,7 +16,7 @@ export function SeasonDashboardHeader(props: {
         </Title>
         <Text className="baseline-textBody">{subtitle}</Text>
       </Box>
-      <StatusPill>{statusLabel}</StatusPill>
+      <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
     </Group>
   );
 }

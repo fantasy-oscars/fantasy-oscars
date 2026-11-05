@@ -7,7 +7,7 @@ export function Section(
   return (
     <Stack gap="var(--fo-space-0)">
       {props.title ? (
-        <Title order={3} className="baseline-textSectionHeader">
+        <Title order={3} variant="section" className="baseline-textSectionHeader">
           {props.title}
         </Title>
       ) : null}

@@ -1,4 +1,5 @@
 import type { CSSVariablesResolver, MantineThemeOverride } from "@mantine/core";
+import { FO_MODAL_OVERLAY_OPACITY } from "@/tokens/overlays";
 import { foTokens } from "./tokens";
 
 // Theme-first architecture:
@@ -62,16 +63,26 @@ export const appTheme: MantineThemeOverride = {
     },
     Card: {
       defaultProps: {
-        radius: "sm",
+        radius: foTokens["--fo-radius-medium"],
         padding: "md"
       }
     },
     Modal: {
       defaultProps: {
+        closeButtonProps: { "aria-label": "Close dialog" },
         overlayProps: {
-          opacity: 0.3,
-          blur: 2
+          opacity: FO_MODAL_OVERLAY_OPACITY
         }
+      }
+    },
+    Drawer: {
+      defaultProps: {
+        closeButtonProps: { "aria-label": "Close dialog" }
+      }
+    },
+    Notification: {
+      defaultProps: {
+        closeButtonProps: { "aria-label": "Dismiss notification" }
       }
     },
     Tooltip: {

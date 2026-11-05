@@ -67,7 +67,8 @@ export const foTokens = {
   // Shell and auth header controls (a bounded box, larger on phones).
   "--fo-header-account-gap": `8px`,
   "--fo-header-account-labelMaxWidth": `240px`,
-  "--fo-header-account-maxWidth": `160px`,
+  "--fo-header-account-maxWidth": `240px`,
+  "--fo-header-account-maxWidth-phone": `160px`,
   "--fo-header-account-padding": `0 10px 0 6px`,
   "--fo-header-avatar-size": `28px`,
   "--fo-header-caret-size": `18px`,

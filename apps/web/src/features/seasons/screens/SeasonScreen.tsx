@@ -179,7 +179,7 @@ export function SeasonScreen(props: {
           <SeasonDashboardHeader
             title={ceremonyName}
             subtitle={leagueName ?? "—"}
-            statusLabel={progression.toUpperCase()}
+            statusLabel={progression}
           />
 
           {/* Three-column functional layout */}

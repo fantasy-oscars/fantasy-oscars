@@ -32,7 +32,7 @@ export function ConsolidatedRecordsModal(props: {
       title="Manage consolidated records"
       centered
       size="lg"
-      overlayProps={{ opacity: 0.35, blur: 2 }}
+      overlayProps={{ opacity: 0.35 }}
     >
       <Stack gap="sm">
         <Text className="baseline-textMeta">

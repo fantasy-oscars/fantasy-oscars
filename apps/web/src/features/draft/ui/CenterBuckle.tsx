@@ -9,6 +9,8 @@ export function CenterBuckle(props: {
   centerTypeLabel?: string | null;
   centerTextRolling?: boolean;
   centerTextKey?: string;
+  /** Decorative glyph before the centre text (countdown timer, paused). */
+  centerGlyph?: "timer" | "pause" | null;
   shiftPx?: number;
   zIndex?: number;
   className?: string;
@@ -28,6 +30,28 @@ export function CenterBuckle(props: {
     "--drh-buckle-z-index": String(props.zIndex ?? 3)
   });
 
+  const centerText = (
+    <Text
+      key={props.centerTextKey ?? props.centerText}
+      className={["drh-buckleCenter", props.centerTextRolling ? "is-rolling" : ""].join(
+        " "
+      )}
+      lineClamp={1}
+    >
+      {props.centerText}
+    </Text>
+  );
+  const centerLine = props.centerGlyph ? (
+    <Box className="drh-buckleCenterRow">
+      <Text component="span" className="mi-icon drh-buckleGlyph" aria-hidden="true">
+        {props.centerGlyph}
+      </Text>
+      {centerText}
+    </Box>
+  ) : (
+    centerText
+  );
+
   return (
     <Box
       className={["drh-buckle", props.className ?? ""].join(" ")}
@@ -43,33 +67,11 @@ export function CenterBuckle(props: {
       {props.centerTypeLabel ? (
         <Box className="drh-buckleCenterStack">
           <Text className="drh-buckleCenterType">{props.centerTypeLabel}</Text>
-          <Box className="drh-buckleCenterViewport">
-            <Text
-              key={props.centerTextKey ?? props.centerText}
-              className={[
-                "drh-buckleCenter",
-                props.centerTextRolling ? "is-rolling" : ""
-              ].join(" ")}
-              lineClamp={1}
-            >
-              {props.centerText}
-            </Text>
-          </Box>
+          <Box className="drh-buckleCenterViewport">{centerLine}</Box>
         </Box>
       ) : (
         <Box className="drh-buckleCenterSlot">
-          <Box className="drh-buckleCenterViewport">
-            <Text
-              key={props.centerTextKey ?? props.centerText}
-              className={[
-                "drh-buckleCenter",
-                props.centerTextRolling ? "is-rolling" : ""
-              ].join(" ")}
-              lineClamp={1}
-            >
-              {props.centerText}
-            </Text>
-          </Box>
+          <Box className="drh-buckleCenterViewport">{centerLine}</Box>
         </Box>
       )}
       {props.pickNumber !== null && (

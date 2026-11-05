@@ -24,7 +24,7 @@ export function GroupedRecordsModal(props: { groups: FilmGroupsController }) {
       title="Grouped records"
       centered
       size="lg"
-      overlayProps={{ opacity: 0.35, blur: 2 }}
+      overlayProps={{ opacity: 0.35 }}
     >
       <Stack gap="sm">
         {group ? (

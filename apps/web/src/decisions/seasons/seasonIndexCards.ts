@@ -8,7 +8,7 @@ export type SeasonIndexCard = {
   ceremony_code: string | null;
   ceremony_name: string;
   ceremony_sort_ts: number;
-  status_label: "Open" | "Drafting" | "Complete" | "Closed";
+  status_label: "Open" | "Drafting" | "Paused" | "Complete" | "Closed";
   is_navigable: boolean;
 };
 
@@ -22,6 +22,7 @@ function ceremonySortTs(ceremony: CeremonySummary): number {
 function statusLabel(season: SeasonSummary): SeasonIndexCard["status_label"] {
   const draft = (season.draft_status ?? "").toUpperCase();
   if (draft === "LIVE" || draft === "IN_PROGRESS") return "Drafting";
+  if (draft === "PAUSED") return "Paused";
   if (draft === "COMPLETED") return "Complete";
   if (draft === "CANCELLED") return "Closed";
 

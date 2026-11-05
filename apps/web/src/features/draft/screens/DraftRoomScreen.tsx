@@ -26,6 +26,8 @@ import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
 import { buildDraftAnnouncement } from "@/decisions/draft/announcements";
+import { isCountdownActive } from "@/decisions/draft/countdown";
+import { themeSwitchLabel } from "@/decisions/draft/themeSwitchLabel";
 
 function DraftCursorGhost(props: {
   x: number;
@@ -141,6 +143,15 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     (isPreview || (props.o.header.status === "IN_PROGRESS" && isMyTurn))
   );
 
+  // The pick-timer countdown window, for the drafter on the clock only.
+  const countdownActive = Boolean(
+    props.o.header.hasTimer &&
+    draftStatus === "IN_PROGRESS" &&
+    !isFinalResults &&
+    isMyTurn &&
+    isCountdownActive(props.o.header.timerRemainingMs)
+  );
+
   // Screen-reader announcement of the latest pick and whose turn it is. Derived from
   // the ledger, so an optimistic pick and its server echo produce the same text.
   const liveMessage = useMemo(() => {
@@ -165,9 +176,17 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
       status: draftStatus,
       latestPick,
       activeSeatLabel: participants.find((p) => p.active)?.label ?? null,
-      isMyTurn
+      isMyTurn,
+      countdownActive
     });
-  }, [draftStatus, isMyTurn, isPreview, participants, props.o.ledger.rows]);
+  }, [
+    countdownActive,
+    draftStatus,
+    isMyTurn,
+    isPreview,
+    participants,
+    props.o.ledger.rows
+  ]);
 
   const flushCursorEmit = useCallback(() => {
     cursorEmitRafRef.current = null;
@@ -377,6 +396,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
             !isCompleted && (isPre ? true : props.o.header.view === "draft")
           }
           themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
+          themeLabel={themeSwitchLabel(colorScheme)}
           onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
         />
       </>
@@ -417,6 +437,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
           !isCompleted && (isPre ? true : props.o.header.view === "draft")
         }
         themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
+        themeLabel={themeSwitchLabel(colorScheme)}
         onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
         showDraftControls={!isCompleted}
         canManageDraft={isPreview ? true : props.o.header.canManageDraft}

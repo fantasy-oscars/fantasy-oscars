@@ -45,7 +45,7 @@ export function FilmRecordCard(props: {
         <Group gap="xs" wrap="wrap" justify="flex-end">
           {film.is_nominated ? (
             <Tooltip label="Nominated in at least one ceremony" withArrow>
-              <Box component="span" className="baseline-statusPill" aria-hidden="true">
+              <Box component="span" className="baseline-iconIndicator" aria-hidden="true">
                 <Text component="span" className="gicon" aria-hidden="true">
                   star
                 </Text>

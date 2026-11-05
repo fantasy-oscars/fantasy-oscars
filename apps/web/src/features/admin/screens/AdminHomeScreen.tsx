@@ -12,7 +12,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
 
       <Stack gap="lg">
         <StandardCard>
-          <Title order={3} className="baseline-textSectionHeader">
+          <Title order={3} variant="section" className="baseline-textSectionHeader">
             Game Content
           </Title>
           <Text className="baseline-textBody">
@@ -59,7 +59,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
         </StandardCard>
 
         <StandardCard interactive component={Link} to="/admin/content">
-          <Title order={3} className="baseline-textSectionHeader">
+          <Title order={3} variant="section" className="baseline-textSectionHeader">
             Site &amp; Messaging
           </Title>
           <Text className="baseline-textBody">
@@ -70,7 +70,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
         {props.isSuperAdmin ? (
           <>
             <StandardCard interactive component={Link} to="/admin/users">
-              <Title order={3} className="baseline-textSectionHeader">
+              <Title order={3} variant="section" className="baseline-textSectionHeader">
                 Users
               </Title>
               <Text className="baseline-textBody">
@@ -79,7 +79,7 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
             </StandardCard>
 
             <StandardCard interactive component={Link} to="/admin/destructive-actions">
-              <Title order={3} className="baseline-textSectionHeader">
+              <Title order={3} variant="section" className="baseline-textSectionHeader">
                 Data Deletion
               </Title>
               <Text className="baseline-textBody">

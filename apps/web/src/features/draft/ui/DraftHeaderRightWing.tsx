@@ -25,6 +25,7 @@ export function DraftHeaderRightWing(props: {
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
   themeIcon: string;
+  themeLabel: string;
   onToggleTheme: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
@@ -38,31 +39,34 @@ export function DraftHeaderRightWing(props: {
   userAvatarKey: string | null;
 }) {
   const { compactHeader } = props;
+  const draftControlLabel = props.isPre
+    ? "Start draft"
+    : props.isPaused
+      ? "Resume draft"
+      : "Pause draft";
+  const soundState = props.soundEnabled ? "on" : "off";
+  const cursorSpyState = props.cursorSpyUserEnabled ? "on" : "off";
 
   return (
     <>
       {props.showDraftControls && props.canManageDraft ? (
         <Box className="drh-pauseWrap">
-          <UnstyledButton
-            type="button"
-            className="drh-pause"
-            aria-label={
-              props.isPre
-                ? "Start draft"
-                : props.isPaused
-                  ? "Resume draft"
-                  : "Pause draft"
-            }
-            onClick={() => {
-              if (props.isPre) props.onStartDraft();
-              else if (props.isPaused) props.onResumeDraft();
-              else props.onPauseDraft();
-            }}
-          >
-            <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-              {props.isPre || props.isPaused ? "play_arrow" : "pause"}
-            </Text>
-          </UnstyledButton>
+          <Tooltip label={draftControlLabel} position="bottom" withArrow>
+            <UnstyledButton
+              type="button"
+              className="drh-pause"
+              aria-label={draftControlLabel}
+              onClick={() => {
+                if (props.isPre) props.onStartDraft();
+                else if (props.isPaused) props.onResumeDraft();
+                else props.onPauseDraft();
+              }}
+            >
+              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
+                {props.isPre || props.isPaused ? "play_arrow" : "pause"}
+              </Text>
+            </UnstyledButton>
+          </Tooltip>
         </Box>
       ) : null}
 
@@ -82,18 +86,14 @@ export function DraftHeaderRightWing(props: {
                 disabled={!props.canToggleView}
               />
             </Box>
-            <Tooltip
-              label={props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
-              position="bottom"
-              withArrow
-            >
+            <Tooltip label={`Draft sounds: ${soundState}`} position="bottom" withArrow>
               <Button
                 type="button"
                 variant="subtle"
+                className="drh-toggleBtn"
                 onClick={props.onToggleSound}
-                aria-label={
-                  props.soundEnabled ? "Mute draft sounds" : "Unmute draft sounds"
-                }
+                aria-label="Draft sounds"
+                aria-pressed={props.soundEnabled}
               >
                 <Text component="span" className="gicon" aria-hidden="true">
                   {props.soundEnabled ? "volume_up" : "volume_off"}
@@ -102,32 +102,37 @@ export function DraftHeaderRightWing(props: {
             </Tooltip>
 
             <Box className="drh-controlRow">
-              <Text className="drh-label">Show drafted</Text>
-              <Box className="drh-toggleSlot">
-                {props.showDraftedVisible ? (
-                  <Switch
-                    size="sm"
-                    checked={props.showDrafted}
-                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                  />
-                ) : (
-                  <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                )}
-              </Box>
+              {props.showDraftedVisible ? (
+                <Switch
+                  size="sm"
+                  label="Show drafted"
+                  labelPosition="left"
+                  classNames={{ root: "drh-switchRoot", label: "drh-label" }}
+                  checked={props.showDrafted}
+                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                />
+              ) : (
+                <>
+                  <Text className="drh-label">Show drafted</Text>
+                  <Box className="drh-toggleSlot">
+                    <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                  </Box>
+                </>
+              )}
             </Box>
             {props.showCursorSpyToggle ? (
               <Tooltip
-                label={props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+                label={`Cursor spy: ${cursorSpyState}`}
                 position="bottom"
                 withArrow
               >
                 <Button
                   type="button"
                   variant="subtle"
+                  className="drh-toggleBtn"
                   onClick={props.onToggleCursorSpy}
-                  aria-label={
-                    props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"
-                  }
+                  aria-label="Cursor spy"
+                  aria-pressed={props.cursorSpyUserEnabled}
                 >
                   <Text component="span" className="gicon" aria-hidden="true">
                     {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
@@ -165,7 +170,7 @@ export function DraftHeaderRightWing(props: {
                 }
                 onClick={props.onToggleSound}
               >
-                {props.soundEnabled ? "Mute sounds" : "Unmute sounds"}
+                {`Draft sounds: ${soundState}`}
               </Menu.Item>
 
               {props.showCursorSpyToggle ? (
@@ -177,7 +182,7 @@ export function DraftHeaderRightWing(props: {
                   }
                   onClick={props.onToggleCursorSpy}
                 >
-                  {props.cursorSpyUserEnabled ? "Hide cursor spy" : "Show cursor spy"}
+                  {`Cursor spy: ${cursorSpyState}`}
                 </Menu.Item>
               ) : null}
 
@@ -189,19 +194,19 @@ export function DraftHeaderRightWing(props: {
                 }
                 onClick={props.onToggleTheme}
               >
-                Toggle theme
+                {props.themeLabel}
               </Menu.Item>
 
               {props.showDraftedVisible ? (
                 <Menu.Item closeMenuOnClick={false}>
-                  <Group justify="space-between" wrap="nowrap" gap="md">
-                    <Text>Show drafted</Text>
-                    <Switch
-                      size="sm"
-                      checked={props.showDrafted}
-                      onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                    />
-                  </Group>
+                  <Switch
+                    size="sm"
+                    label="Show drafted"
+                    labelPosition="left"
+                    classNames={{ root: "drh-switchRoot" }}
+                    checked={props.showDrafted}
+                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                  />
                 </Menu.Item>
               ) : null}
             </Menu.Dropdown>
@@ -224,7 +229,7 @@ export function DraftHeaderRightWing(props: {
             variant="subtle"
             className="theme-toggle"
             onClick={props.onToggleTheme}
-            aria-label="Toggle theme"
+            aria-label={props.themeLabel}
           >
             <Text component="span" className="gicon" aria-hidden="true">
               {props.themeIcon}

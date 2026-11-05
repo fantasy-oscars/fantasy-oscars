@@ -2,7 +2,7 @@ import type { InboxInvite } from "@/lib/types";
 import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { InvitesInboxView } from "@/orchestration/invites";
 import { inviteContextLine } from "@/decisions/invites";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 
@@ -63,7 +63,7 @@ export function InvitesInboxScreen(props: {
             {view.state === "error" ? (
               <PageError message={view.message} requestId={view.requestId} />
             ) : view.invites.length === 0 ? (
-              <Text className="baseline-textBody">No pending invites.</Text>
+              <EmptyState>No pending invites.</EmptyState>
             ) : (
               <Stack gap="var(--fo-space-0)">
                 {view.invites.map((invite, idx) => (

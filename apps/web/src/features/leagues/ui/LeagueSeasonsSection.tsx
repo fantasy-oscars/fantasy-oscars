@@ -1,6 +1,7 @@
 import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
+import { statusTone } from "@/decisions/statusTone";
 import { StatusPill } from "@/shared/pills";
 import { leagueSeasonCreatePath, seasonPath } from "@/lib/routes";
 
@@ -42,7 +43,7 @@ export function LeagueSeasonsSection(props: {
       )}
 
       {seasons.length === 0 ? (
-        <Text className="baseline-textBody">No seasons yet.</Text>
+        <EmptyState>No seasons yet.</EmptyState>
       ) : (
         <Stack component="ul" gap="sm" className="fo-listReset">
           {seasons.map((s) => (
@@ -65,7 +66,7 @@ export function LeagueSeasonsSection(props: {
                   <Box miw="var(--fo-space-0)">
                     <Text className="baseline-textCardTitle">{s.ceremonyLabel}</Text>
                   </Box>
-                  <StatusPill>{s.statusLabel}</StatusPill>
+                  <StatusPill {...statusTone(s.statusLabel)}>{s.statusLabel}</StatusPill>
                 </Group>
               </StandardCard>
             </Box>

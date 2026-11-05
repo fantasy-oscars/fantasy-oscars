@@ -28,7 +28,9 @@ export function SeasonParticipantsColumn(props: {
           {members.map((m) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap">
-                <Text>{m.username ?? `User ${m.user_id}`}</Text>
+                <Text className="baseline-wrapAnywhere">
+                  {m.username ?? `User ${m.user_id}`}
+                </Text>
                 {m.role === "OWNER" ? <CommissionerPill /> : null}
               </Group>
             </Box>

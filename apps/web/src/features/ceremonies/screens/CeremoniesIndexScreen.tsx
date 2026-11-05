@@ -1,6 +1,6 @@
 import { Box, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import { PageError } from "@/shared/page-state";
 import "@/primitives/baseline.css";
 import type { CeremonyIndexRow } from "@/orchestration/ceremonies";
@@ -83,7 +83,7 @@ export function CeremoniesIndexScreen(props: {
               <Stack gap="sm">
                 <Text className="baseline-textSectionHeader">Past</Text>
                 {archived.length === 0 ? (
-                  <Text className="baseline-textBody">No past ceremonies yet.</Text>
+                  <EmptyState>No past ceremonies yet.</EmptyState>
                 ) : (
                   <Stack gap="sm">
                     {archived.map((c) => (

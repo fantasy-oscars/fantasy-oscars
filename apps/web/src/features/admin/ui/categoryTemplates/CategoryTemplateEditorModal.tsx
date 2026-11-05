@@ -28,7 +28,7 @@ export function CategoryTemplateEditorModal(props: {
       onClose={props.onClose}
       title={props.title}
       centered
-      overlayProps={{ opacity: 0.35, blur: 2 }}
+      overlayProps={{ opacity: 0.35 }}
     >
       <Stack gap="sm">
         <TextInput

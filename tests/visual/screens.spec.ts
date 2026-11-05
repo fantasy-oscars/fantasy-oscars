@@ -41,6 +41,7 @@ for (const brand of BRANDS) {
             const inFlight = trackInFlight(page);
             await freezeClock(page);
 
+            await screen.beforeNavigate?.(page, seed);
             await page.goto(screen.path(seed));
             const marker =
               "text" in screen.ready

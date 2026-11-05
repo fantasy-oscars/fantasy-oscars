@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Group, Modal, Stack, Text, TextInput } from "@ui";
+import { AlertIcon } from "../AlertIcon";
 
 export type DestructiveConsequence = {
   label: string;
@@ -65,7 +66,11 @@ export function DestructiveActionModal(props: {
           spellCheck={false}
         />
 
-        {error ? <Alert color="red">{error}</Alert> : null}
+        {error ? (
+          <Alert color="red" icon={<AlertIcon variant="error" />}>
+            {error}
+          </Alert>
+        ) : null}
 
         <Group justify="flex-end">
           <Button variant="subtle" onClick={onClose} disabled={Boolean(loading)}>

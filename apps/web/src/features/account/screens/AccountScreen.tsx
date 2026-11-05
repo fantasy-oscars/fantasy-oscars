@@ -38,15 +38,31 @@ export function AccountScreen(props: {
 
           <StandardCard component="section" aria-label="Account details">
             <Stack gap="sm">
-              <Group justify="space-between" wrap="nowrap" gap="md">
+              <Group
+                className="account-fieldRow"
+                justify="space-between"
+                wrap="nowrap"
+                gap="md"
+              >
                 <Text className="baseline-textMeta">Username</Text>
-                <Text component="span" className="baseline-statusPill baseline-textMeta">
+                <Text
+                  component="span"
+                  className="baseline-textBody baseline-wrapAnywhere"
+                >
                   {username ?? "—"}
                 </Text>
               </Group>
-              <Group justify="space-between" wrap="nowrap" gap="md">
+              <Group
+                className="account-fieldRow"
+                justify="space-between"
+                wrap="nowrap"
+                gap="md"
+              >
                 <Text className="baseline-textMeta">Email</Text>
-                <Text component="span" className="baseline-statusPill baseline-textMeta">
+                <Text
+                  component="span"
+                  className="baseline-textBody baseline-wrapAnywhere"
+                >
                   {email ?? "—"}
                 </Text>
               </Group>

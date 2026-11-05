@@ -280,6 +280,7 @@ describe("draft room accessibility", () => {
             onToggleShowDrafted={() => {}}
             showDraftedVisible
             themeIcon="e518"
+            themeLabel="Switch to light mode"
             onToggleTheme={() => {}}
             soundEnabled
             onToggleSound={() => {}}

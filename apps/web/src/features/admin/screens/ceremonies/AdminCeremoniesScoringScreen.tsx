@@ -6,7 +6,7 @@ export function AdminCeremoniesScoringScreen() {
   return (
     <Stack component="section">
       <Stack gap="var(--fo-space-0)">
-        <Title order={3} className="baseline-textSectionHeader">
+        <Title order={3} variant="section" className="baseline-textSectionHeader">
           Scoring
         </Title>
         <Text className="baseline-textBody" c="dimmed">

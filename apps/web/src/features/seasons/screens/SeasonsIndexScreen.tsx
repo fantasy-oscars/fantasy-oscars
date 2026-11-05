@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import { seasonPath } from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
+import { StatusPill } from "@/shared/pills";
+import { statusTone } from "@/decisions/statusTone";
 import "@/primitives/baseline.css";
 import type { SeasonIndexCard, SeasonsIndexView } from "@/orchestration/seasonsIndex";
 import {
@@ -69,9 +71,7 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
               <PageError message={view.message} requestId={view.requestId} />
             </StandardCard>
           ) : seasons.length === 0 ? (
-            <StandardCard>
-              <Text className="baseline-textBody">No seasons yet.</Text>
-            </StandardCard>
+            <EmptyState>No seasons yet.</EmptyState>
           ) : (
             <Stack gap="lg">
               {groupOrder.map((g) => {
@@ -104,15 +104,9 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                               <Text className="baseline-textMeta">
                                 {mode === "ceremony" ? s.ceremony_name : s.league_name}
                               </Text>
-                              <Text
-                                component="span"
-                                className={[
-                                  "baseline-statusPill",
-                                  "baseline-textMeta"
-                                ].join(" ")}
-                              >
+                              <StatusPill {...statusTone(s.status_label)}>
                                 {s.status_label}
-                              </Text>
+                              </StatusPill>
                             </Group>
                           </Stack>
                         </StandardCard>
