@@ -93,10 +93,11 @@ export type E2eStack = {
  * Boots a throwaway Postgres container, the API against it, and a production
  * build of the web app pointed at that API. Everything is torn down by `stop`.
  * `webMode` builds with a named Vite mode; `enableAllBrands` turns on unreleased brands
- * and needs a non-production mode (the build refuses the flag in production).
+ * and needs a non-production mode (the build refuses the flag in production);
+ * `enableSpecimen` includes the test-only `/__specimen` route in the bundle.
  */
 export async function startStack(
-  opts: { webMode?: string; enableAllBrands?: boolean } = {}
+  opts: { webMode?: string; enableAllBrands?: boolean; enableSpecimen?: boolean } = {}
 ): Promise<E2eStack> {
   const processes: Running[] = [];
   let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
@@ -145,7 +146,8 @@ export async function startStack(
         env: {
           ...baseEnv,
           VITE_API_BASE: E2E_API_ORIGIN,
-          ...(opts.enableAllBrands ? { VITE_FO_ENABLE_ALL_BRANDS: "1" } : {})
+          ...(opts.enableAllBrands ? { VITE_FO_ENABLE_ALL_BRANDS: "1" } : {}),
+          ...(opts.enableSpecimen ? { VITE_FO_ENABLE_SPECIMEN: "1" } : {})
         }
       }
     );

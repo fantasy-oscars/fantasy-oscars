@@ -152,8 +152,14 @@ const MAX_POLLS = 200;
  * flight, fonts and images loaded, and no DOM mutation for QUIET_POLLS polls in a
  * row (late data fetches and state updates re-render shortly after network idle).
  */
-export async function settle(page: Page, inFlight: () => number) {
-  await page.waitForLoadState("networkidle");
+export async function settle(
+  page: Page,
+  inFlight: () => number,
+  options: { quietPolls?: number; networkIdle?: boolean } = {}
+) {
+  const { quietPolls = QUIET_POLLS, networkIdle = true } = options;
+  // networkidle always costs 500ms; the in-flight count below covers requests already.
+  if (networkIdle) await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all(
@@ -168,7 +174,7 @@ export async function settle(page: Page, inFlight: () => number) {
     );
   });
   let quiet = 0;
-  for (let i = 0; quiet < QUIET_POLLS; i++) {
+  for (let i = 0; quiet < quietPolls; i++) {
     if (i > MAX_POLLS) {
       throw new Error("page never settled (requests in flight or DOM still changing)");
     }

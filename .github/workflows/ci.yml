@@ -67,7 +67,7 @@ jobs:
       - name: Visual regression
         run: pnpm run test:visual
         env:
-          VISUAL_WORKERS: 2
+          VISUAL_WORKERS: 4
       - name: Upload visual diff report
         if: failure()
         uses: actions/upload-artifact@v7
