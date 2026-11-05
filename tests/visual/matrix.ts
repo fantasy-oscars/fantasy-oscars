@@ -120,7 +120,12 @@ export const SCREENS: ScreenDef[] = [
     persona: "newcomer",
     path: () => "/leagues",
     ready: { selector: "main" },
-    fullPage: true
+    fullPage: true,
+    // The blur falloff of the header's first icon button (outside its box, 3 px wide)
+    // rendered one of two ways on CI runners, 1 pixel apart; locally it is stable and the
+    // header's geometry is whole pixels, so there is nothing to snap. The header is
+    // compared on every other signed-in screen.
+    maskSelectors: [".site-header"]
   },
   {
     id: "league-detail",
@@ -192,10 +197,14 @@ export const SCREENS: ScreenDef[] = [
     maskSelectors: [".dr-header"],
     prepare: async (page) => {
       // The participant strip is hidden in avery's wider header, so blake views and
-      // hovers avery's token. A dispatched mouseover raises the participant hover without a pointer move
-      // (see draft-live-armed).
+      // hovers avery's token. Where the header is too narrow for the strip to list the
+      // participants (some brands), it collapses to one unlabelled token for the player
+      // on the clock, who is avery. A dispatched mouseover raises the participant hover
+      // without a pointer move (see draft-live-armed).
       await page
-        .locator('.drh-tokenWrap[aria-label="avery"]')
+        .locator(
+          '.drh-tokenWrap[aria-label="avery"], .drh-strip > .drh-tokenWrap:not([aria-label])'
+        )
         .first()
         .dispatchEvent("mouseover");
       await expect(page.locator(".dr-pill.is-hoverMatch").first()).toBeVisible();
@@ -500,4 +509,39 @@ export function allCaptures(): Capture[] {
       return true;
     }
   );
+}
+
+/**
+ * One assertion-tier test: a brand at a viewport over a slice of that viewport's
+ * screens. Desktop runs axe on every screen and takes about twice as long as mobile, so
+ * it is cut into two halves to keep every cell near the same length. Longest first, so
+ * the runner starts the long cells early.
+ */
+export type AssertionCell = {
+  brand: Brand;
+  viewport: ViewportName;
+  part: number;
+  parts: number;
+  screens: ScreenDef[];
+};
+
+export function assertionCells(): AssertionCell[] {
+  const cells = BRANDS.flatMap((brand) =>
+    VIEWPORT_NAMES.flatMap((viewport) => {
+      const screens = [...SCREENS, SPECIMEN_SCREEN].filter(
+        (s) => !s.viewports || s.viewports.includes(viewport)
+      );
+      const parts = viewport === "desktop" ? 2 : 1;
+      const size = Math.ceil(screens.length / parts);
+      return Array.from({ length: parts }, (_, part) => ({
+        brand,
+        viewport,
+        part,
+        parts,
+        screens: screens.slice(part * size, (part + 1) * size)
+      }));
+    })
+  );
+  const weight = (c: AssertionCell) => (c.viewport === "desktop" ? 2 : 1);
+  return cells.sort((a, b) => weight(b) - weight(a));
 }

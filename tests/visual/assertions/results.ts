@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "no
 import path from "node:path";
 import { ALLOWLIST } from "./allowlist";
 
-/** Each assertion test (one brand and viewport, both modes) leaves one of these; the run's teardown reads them all. */
+/** Each assertion test (one brand, viewport and screen half, both modes) leaves one of these; the run's teardown reads them all. */
 export const RESULTS_DIR = "test-results/visual/assertions";
 
 export type ResultFile = {

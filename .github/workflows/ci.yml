@@ -103,7 +103,9 @@ jobs:
       - name: Visual assertions
         run: node tests/visual/run.mjs --tier assertions
         env:
-          VISUAL_WORKERS: 4
+          # 6 rather than 4: the 21 cells total about 18 minutes of test time locally and
+          # four workers leave the job near 5 minutes; six bring it to about 3.5.
+          VISUAL_WORKERS: 6
       - name: Upload visual assertion report
         if: failure()
         uses: actions/upload-artifact@v7
