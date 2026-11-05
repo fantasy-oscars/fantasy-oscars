@@ -68,6 +68,33 @@ export async function setColorScheme(context: BrowserContext, mode: Mode) {
   );
 }
 
+/**
+ * Switches the colour scheme of a loaded page the way a change made in another tab
+ * arrives: the stored preference changes and the app's own storage listener repaints.
+ * The media preference follows, for CSS that reads it.
+ */
+export async function switchColorScheme(page: Page, mode: Mode) {
+  await page.emulateMedia({ colorScheme: mode });
+  await page.evaluate(
+    ([key, value]) => {
+      window.localStorage.setItem(key!, value!);
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key,
+          newValue: value,
+          storageArea: window.localStorage
+        })
+      );
+    },
+    [COLOR_SCHEME_KEY, mode]
+  );
+  await page.waitForFunction(
+    (value) =>
+      document.documentElement.getAttribute("data-mantine-color-scheme") === value,
+    mode
+  );
+}
+
 const BRAND_PREFERENCE_KEY = "fo:brand-preference";
 
 /**
@@ -152,8 +179,14 @@ const MAX_POLLS = 200;
  * flight, fonts and images loaded, and no DOM mutation for QUIET_POLLS polls in a
  * row (late data fetches and state updates re-render shortly after network idle).
  */
-export async function settle(page: Page, inFlight: () => number) {
-  await page.waitForLoadState("networkidle");
+export async function settle(
+  page: Page,
+  inFlight: () => number,
+  options: { quietPolls?: number; networkIdle?: boolean; pollMs?: number } = {}
+) {
+  const { quietPolls = QUIET_POLLS, networkIdle = true, pollMs = POLL_MS } = options;
+  // networkidle always costs 500ms; the in-flight count below covers requests already.
+  if (networkIdle) await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all(
@@ -168,11 +201,11 @@ export async function settle(page: Page, inFlight: () => number) {
     );
   });
   let quiet = 0;
-  for (let i = 0; quiet < QUIET_POLLS; i++) {
+  for (let i = 0; quiet < quietPolls; i++) {
     if (i > MAX_POLLS) {
       throw new Error("page never settled (requests in flight or DOM still changing)");
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
     const mutations = await page.evaluate(() => {
       const w = window as unknown as { __visualMutations: number };
       const n = w.__visualMutations;

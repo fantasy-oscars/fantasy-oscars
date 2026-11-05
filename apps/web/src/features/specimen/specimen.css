@@ -1,0 +1,97 @@
+/* Layout only: the specimen's colours, type and shapes all come from the real components. */
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-section-gap);
+}
+
+.specimen-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-md);
+  min-width: 0;
+}
+
+.specimen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--fo-space-md);
+  align-items: start;
+}
+
+.specimen-grid.is-wide {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+}
+
+.specimen-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-xs);
+  min-width: 0;
+}
+
+.specimen-label {
+  font-size: var(--fo-font-size-xs);
+  color: var(--brand-muted);
+}
+
+/* A fixed box that contains position:fixed descendants (modal, overlay) so an open
+   overlay renders in the page flow at a known size. */
+.specimen-frame {
+  position: relative;
+  height: 16rem;
+  overflow: hidden;
+  transform: translateZ(0);
+  border: var(--fo-border-width) dashed var(--brand-rule);
+  padding: var(--fo-space-md);
+}
+
+.specimen-frame.is-short {
+  height: 11rem;
+}
+
+.specimen-frame.is-toast {
+  height: 9rem;
+}
+
+/* The draft frame is viewport-sized in the room; the specimen sizes it to its content. */
+.specimen .dr-frame {
+  height: auto;
+  width: 100%;
+  overflow: visible;
+}
+
+.specimen-board {
+  --mid-cols: 2;
+}
+
+.specimen-board .dr-middle {
+  height: auto;
+}
+
+.specimen-headerRow {
+  position: relative;
+  height: var(--fo-db-headerHeight);
+}
+
+.specimen-numerals {
+  font-family: var(--brand-font-numeral);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fo-font-size-xl);
+}
+
+.specimen-headerCell {
+  min-width: 0;
+  overflow: clip;
+  /* Room for the invite badge, which sits past the icon's top-right corner. */
+  padding: var(--fo-space-xs);
+}
+
+.specimen-target {
+  align-self: flex-start;
+  display: inline-block;
+}
+
+.specimen-frame.is-tall {
+  height: 24rem;
+}

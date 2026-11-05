@@ -48,9 +48,26 @@ const DraftPlansPage = lazy(() =>
   import("./pages/DraftPlansPage").then((m) => ({ default: m.DraftPlansPage }))
 );
 
+// Test builds only (VITE_FO_ENABLE_SPECIMEN=1). The flag is replaced at build time, so in
+// production this is `null` and the import below is dropped with its module.
+const SpecimenPage =
+  import.meta.env.VITE_FO_ENABLE_SPECIMEN === "1"
+    ? lazy(() => import("./pages/SpecimenPage"))
+    : null;
+
 function RoutesConfig() {
   return (
     <Routes>
+      {SpecimenPage ? (
+        <Route
+          path="/__specimen"
+          element={
+            <LazyRoute>
+              <SpecimenPage />
+            </LazyRoute>
+          }
+        />
+      ) : null}
       <Route element={<AuthLayout />}>
         <Route
           path="/login"

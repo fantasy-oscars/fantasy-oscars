@@ -7,7 +7,10 @@
 // image (and the linux/amd64 platform) is what makes baselines identical on macOS and
 // on the Linux CI runner.
 //
-// Usage: node tests/visual/run.mjs [--update] [extra playwright args...]
+// Usage: node tests/visual/run.mjs [--update] [--tier screenshots|assertions] [extra playwright args...]
+// --tier runs one half of the suite (CI runs them as two parallel jobs): `screenshots`
+// is the baseline comparisons plus the baseline orphan check, `assertions` the
+// structural and contrast checks with the stale-allowlist judgement. Default: both.
 import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { realpathSync } from "node:fs";
@@ -19,7 +22,18 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const require = createRequire(path.join(repoRoot, "package.json"));
 const args = process.argv.slice(2);
 const update = args.includes("--update");
-const passthrough = args.filter((a) => a !== "--update");
+const TIER_FILES = {
+  screenshots: ["tests/visual/screens.spec.ts", "tests/visual/baselines.spec.ts"],
+  assertions: ["tests/visual/assertions.spec.ts"]
+};
+const tierAt = args.indexOf("--tier");
+const tier = tierAt >= 0 ? args[tierAt + 1] : undefined;
+if (tierAt >= 0 && !(tier in TIER_FILES)) {
+  console.error("--tier must be one of: screenshots, assertions");
+  process.exit(2);
+}
+const tierArgs = new Set(tierAt >= 0 ? [tierAt, tierAt + 1] : []);
+const passthrough = args.filter((a, i) => a !== "--update" && !tierArgs.has(i));
 
 const testPkg = realpathSync(
   path.dirname(require.resolve("@playwright/test/package.json"))
@@ -129,7 +143,7 @@ try {
   await waitForPort(port, 60_000);
   const pwArgs = ["exec", "playwright", "test", "-c", "playwright.visual.config.ts"];
   if (update) pwArgs.push("--update-snapshots");
-  pwArgs.push(...passthrough);
+  pwArgs.push(...passthrough, ...(tier ? TIER_FILES[tier] : []));
   code = await new Promise((resolve) => {
     const child = spawn("pnpm", pwArgs, {
       cwd: repoRoot,

@@ -43,10 +43,12 @@ jobs:
       - name: Docs Check
         run: pnpm run ci:docs
   visual:
-    # Pixel-compares the screen matrix against tests/visual/__screenshots__. Chromium runs
-    # in the pinned Playwright Docker image (see docs/standards/testing.md), so the runner
-    # needs no browser install. Not part of `pnpm run ci`: it needs the Docker daemon on
-    # the host and takes minutes on a laptop; it is a PR gate here instead.
+    # Pixel-compares the screenshot tiers (layout, specimen, brand screens) against
+    # tests/visual/__screenshots__ and checks for orphaned baselines. Chromium runs in the
+    # pinned Playwright Docker image (see docs/standards/testing.md), so the runner needs
+    # no browser install. Not part of `pnpm run ci`: it needs the Docker daemon on the host
+    # and takes minutes on a laptop; it is a PR gate here instead. Runs in parallel with
+    # `visual-assertions`.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -64,15 +66,51 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build shared package
         run: pnpm --filter @fantasy-oscars/shared build
-      - name: Visual regression
-        run: pnpm run test:visual
+      - name: Visual regression (screenshots)
+        run: node tests/visual/run.mjs --tier screenshots
         env:
-          VISUAL_WORKERS: 2
+          VISUAL_WORKERS: 4
       - name: Upload visual diff report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: visual-report
+          path: |
+            playwright-report/visual
+            test-results/visual
+          retention-days: 7
+  visual-assertions:
+    # Structural, touch-target and colour-contrast checks on every screen and the specimen
+    # in every brand, both modes and both viewports, plus the stale-allowlist judgement.
+    # Same setup as `visual`; no baselines.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.3 --activate
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @fantasy-oscars/shared build
+      - name: Visual assertions
+        run: node tests/visual/run.mjs --tier assertions
+        env:
+          # 6 rather than 4: the 21 cells total about 18 minutes of test time locally and
+          # four workers leave the job near 5 minutes; six bring it to about 3.5.
+          VISUAL_WORKERS: 6
+      - name: Upload visual assertion report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-assertions-report
           path: |
             playwright-report/visual
             test-results/visual

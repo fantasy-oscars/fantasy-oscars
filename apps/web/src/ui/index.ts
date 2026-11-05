@@ -23,6 +23,7 @@ export * from "./InputBase";
 export * from "./Loader";
 export * from "./MantineProvider";
 export * from "./Menu";
+export * from "./Notification";
 export * from "./Modal";
 export * from "./NumberInput";
 export * from "./Radio";

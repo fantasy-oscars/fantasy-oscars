@@ -51,6 +51,10 @@ export default defineConfig({
     ...(browserWs
       ? { connectOptions: { wsEndpoint: browserWs, exposeNetwork: "<loopback>" } }
       : {}),
+    // Nothing waits for ever: an action or navigation that cannot finish fails in seconds
+    // rather than holding a test until its timeout. (Emulated Chromium is slow.)
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
     locale: "en-US",
     timezoneId: "UTC",
     deviceScaleFactor: 1,

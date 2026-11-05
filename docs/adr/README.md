@@ -24,3 +24,4 @@ ADRs capture decisions that could be questioned later. They keep the project int
 - Template: [template.md](template.md)
 - 0001 – Canonical Domain Model (Fantasy Oscars): [0001-domain-model.md](0001-domain-model.md)
 - 0002 – Public seasons as auto-managed league containers: [0002-public-seasons.md](0002-public-seasons.md)
+- 0003 – Layered visual testing: [0003-layered-visual-testing.md](0003-layered-visual-testing.md)
