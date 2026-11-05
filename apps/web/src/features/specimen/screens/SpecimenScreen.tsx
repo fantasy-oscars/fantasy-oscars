@@ -336,6 +336,9 @@ export function SpecimenScreen() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const navLinksRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
+  // The shell header shows its drawer variant on a phone and never the inline one, so a
+  // phone capture shows only the variants the app produces at that width.
+  const [phone] = useState(() => window.matchMedia("(max-width: 600px)").matches);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -367,35 +370,47 @@ export function SpecimenScreen() {
 
         <Box className="specimen-section">
           <Title variant="section">Header and navigation</Title>
-          <Cell label="account menu open">
-            <Box className="specimen-frame">
-              <StaticHeader user={SPECIMEN_USER_SHORT} navMode="inline" menuOpen />
-            </Box>
-          </Cell>
-          <Cell label="logged out">
-            <Box className="specimen-headerCell">
-              <StaticHeader user={null} navMode="inline" />
-            </Box>
-          </Cell>
-          <Cell label="logged in, long username">
-            <Box className="specimen-headerCell">
-              <StaticHeader user={SPECIMEN_USER} navMode="inline" />
-            </Box>
-          </Cell>
+          {phone ? null : (
+            <>
+              <Cell label="account menu open">
+                <Box className="specimen-frame">
+                  <StaticHeader user={SPECIMEN_USER_SHORT} navMode="inline" menuOpen />
+                </Box>
+              </Cell>
+              <Cell label="logged out">
+                <Box className="specimen-headerCell">
+                  <StaticHeader user={null} navMode="inline" />
+                </Box>
+              </Cell>
+              <Cell label="logged in, long username">
+                <Box className="specimen-headerCell">
+                  <StaticHeader user={SPECIMEN_USER} navMode="inline" />
+                </Box>
+              </Cell>
+            </>
+          )}
           <Cell label="logged in, drawer navigation">
             <Box className="specimen-headerCell">
               <StaticHeader user={SPECIMEN_USER_SHORT} navMode="drawer" />
             </Box>
           </Cell>
-          <Cell label="navigation, active item">
-            <Box className="specimen-headerCell">
-              <ShellPrimaryNav
-                navMode="inline"
-                navLinksRef={navLinksRef}
-                links={NAV_LINKS}
-              />
-            </Box>
-          </Cell>
+          {phone ? (
+            <Cell label="logged out, drawer navigation">
+              <Box className="specimen-headerCell">
+                <StaticHeader user={null} navMode="drawer" />
+              </Box>
+            </Cell>
+          ) : (
+            <Cell label="navigation, active item">
+              <Box className="specimen-headerCell">
+                <ShellPrimaryNav
+                  navMode="inline"
+                  navLinksRef={navLinksRef}
+                  links={NAV_LINKS}
+                />
+              </Box>
+            </Cell>
+          )}
           <Cell label="wordmark">
             <Wordmark />
           </Cell>
@@ -500,7 +515,8 @@ export function SpecimenScreen() {
             </Box>
           </Cell>
           <Cell label="menu">
-            <Box className="specimen-frame is-short">
+            {/* The default frame is tall enough for the whole dropdown. */}
+            <Box className="specimen-frame">
               <Menu
                 opened
                 withinPortal={false}

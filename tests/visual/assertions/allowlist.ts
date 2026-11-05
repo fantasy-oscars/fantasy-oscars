@@ -8,8 +8,8 @@ import type { Finding } from "./pageChecks";
  */
 export type AllowlistEntry = {
   check: Finding["check"];
-  /** Screen id, or "*". */
-  screen: string;
+  /** Screen id, a list of screen ids, or "*". */
+  screen: string | readonly string[];
   /** Brand id from the matrix (`default` is refined-gold), or "*". */
   brand: string;
   mode: "light" | "dark" | "*";
@@ -21,51 +21,34 @@ export type AllowlistEntry = {
   date: string;
 };
 
+const FOOTER_SCREENS = [
+  "account",
+  "admin-ceremony-nominees",
+  "admin-films",
+  "admin-home",
+  "ceremonies-index",
+  "ceremony-detail",
+  "ceremony-detail-results",
+  "draft-plans",
+  "home-logged-in",
+  "home-logged-out",
+  "home-new-user",
+  "league-detail",
+  "leagues-empty",
+  "leagues-list",
+  "not-found",
+  "season-completed",
+  "season-live",
+  "season-pending"
+] as const;
+const DRAFT_ROOM_SCREENS = [
+  "draft-live-countdown",
+  "draft-live-not-your-turn",
+  "draft-live-your-turn",
+  "draft-paused"
+] as const;
+
 export const ALLOWLIST: readonly AllowlistEntry[] = [
-  {
-    check: "clipped-text",
-    screen: "admin-ceremony-nominees",
-    brand: "*",
-    mode: "*",
-    viewport: "*",
-    match: "mantine-Stepper-step",
-    reason:
-      "Ceremony workflow stepper labels are clipped in their step buttons at every width; no title or aria-label carries the full label.",
-    date: "2026-11-05"
-  },
-  {
-    check: "clipped-text",
-    screen: "*",
-    brand: "ballot",
-    mode: "*",
-    viewport: "*",
-    match: "fo-chip__label",
-    reason:
-      "Status chip labels are clipped in the ballot brand with no title exposing the full text.",
-    date: "2026-11-05"
-  },
-  {
-    check: "clipped-text",
-    screen: "*",
-    brand: "lightbox",
-    mode: "*",
-    viewport: "*",
-    match: "fo-chip__label",
-    reason:
-      "Status chip labels are clipped in the lightbox brand with no title exposing the full text.",
-    date: "2026-11-05"
-  },
-  {
-    check: "clipped-text",
-    screen: "*",
-    brand: "red-carpet",
-    mode: "*",
-    viewport: "*",
-    match: "fo-chip__label",
-    reason:
-      "Status chip labels are clipped in the red-carpet brand with no title exposing the full text.",
-    date: "2026-11-05"
-  },
   {
     check: "clipped-text",
     screen: "draft-completed",
@@ -101,18 +84,39 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "contrast",
-    screen: "*",
+    screen: [
+      "draft-live-armed",
+      "draft-live-countdown",
+      "draft-live-your-turn",
+      "specimen"
+    ],
     brand: "*",
-    mode: "*",
+    mode: "light",
     viewport: "*",
     match: "dr-pill-text",
     reason:
-      "Muted (drafted or unavailable) nominee pill text is dimmed below 4.5:1 by design; the pill is not actionable.",
+      "Muted (drafted or unavailable) nominee pills dim their text below 4.5:1 in light mode; the pill is not actionable.",
+    date: "2026-11-05"
+  },
+  {
+    check: "contrast",
+    screen: [
+      "draft-live-armed",
+      "draft-live-countdown",
+      "draft-live-your-turn",
+      "specimen"
+    ],
+    brand: "ballot",
+    mode: "dark",
+    viewport: "*",
+    match: "dr-pill-text",
+    reason:
+      "Muted (drafted or unavailable) nominee pills dim their text below 4.5:1 in ballot dark; the pill is not actionable.",
     date: "2026-11-05"
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: [...FOOTER_SCREENS, "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -122,7 +126,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: FOOTER_SCREENS,
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -132,7 +136,15 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: [
+      "admin-ceremony-nominees",
+      "admin-films",
+      "draft-completed",
+      "draft-plans",
+      "login",
+      "register",
+      "specimen"
+    ],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -142,7 +154,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: ["home-logged-out", "login", "not-found", "register", "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -152,7 +164,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: ["admin-ceremony-nominees", "admin-films", "admin-home"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -162,7 +174,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: ["admin-films", "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -202,7 +214,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: [...DRAFT_ROOM_SCREENS, "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -212,7 +224,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: [...DRAFT_ROOM_SCREENS, "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -222,7 +234,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: DRAFT_ROOM_SCREENS,
     brand: "*",
     mode: "*",
     viewport: "mobile",
@@ -232,33 +244,32 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: "specimen",
     brand: "*",
     mode: "*",
     viewport: "mobile",
     match: "mantine-NumberInput-control",
-    reason: "Number input steppers are smaller than 44px at 390px.",
+    reason: "The specimen number input steppers are smaller than 44px at 390px.",
     date: "2026-11-05"
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: "specimen",
     brand: "*",
     mode: "*",
     viewport: "mobile",
     match: "mantine-Menu-item",
-    reason: "Menu items are shorter than 44px at 390px.",
+    reason: "The specimen menu items are shorter than 44px at 390px.",
     date: "2026-11-05"
   },
   {
     check: "touch-target",
-    screen: "*",
+    screen: "specimen",
     brand: "*",
     mode: "*",
     viewport: "mobile",
     match: "mantine-active",
-    reason:
-      "Compact action buttons (Confirm draft pick, header calls to action) are shorter than 44px at 390px.",
+    reason: "The specimen's modal action buttons are shorter than 44px at 390px.",
     date: "2026-11-05"
   }
 ];
@@ -267,9 +278,13 @@ export type Scope = { screen: string; brand: string; mode: string; viewport: str
 
 export function entryMatches(entry: AllowlistEntry, scope: Scope, finding: Finding) {
   const same = (want: string, got: string) => want === "*" || want === got;
+  const screenMatches =
+    typeof entry.screen === "string"
+      ? same(entry.screen, scope.screen)
+      : entry.screen.includes(scope.screen);
   return (
     entry.check === finding.check &&
-    same(entry.screen, scope.screen) &&
+    screenMatches &&
     same(entry.brand, scope.brand) &&
     same(entry.mode, scope.mode) &&
     same(entry.viewport, scope.viewport) &&

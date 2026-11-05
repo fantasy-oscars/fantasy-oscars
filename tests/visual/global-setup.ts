@@ -1,5 +1,5 @@
 import { startStack } from "../e2e/support/stack";
-import { BRANDS, MODES, VIEWPORTS } from "./matrix";
+import { BRANDS, VIEWPORTS } from "./matrix";
 import { clearResults, reportResults } from "./assertions/results";
 import { seedVisual } from "./support/seed";
 
@@ -22,6 +22,6 @@ export default async function globalSetup() {
   }
   return async () => {
     await stack.stop();
-    reportResults(BRANDS.length * MODES.length * Object.keys(VIEWPORTS).length);
+    reportResults(BRANDS.length * Object.keys(VIEWPORTS).length);
   };
 }

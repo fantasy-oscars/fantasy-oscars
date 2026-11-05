@@ -83,6 +83,8 @@
 .specimen-headerCell {
   min-width: 0;
   overflow: clip;
+  /* Room for the invite badge, which sits past the icon's top-right corner. */
+  padding: var(--fo-space-xs);
 }
 
 .specimen-target {

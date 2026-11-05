@@ -45,6 +45,42 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
     }
 
     // 2. Clipped text without recourse.
+    const GLYPH_TOLERANCE = 2;
+    const glyphOverflow = (box: HTMLElement) => {
+      const left = box.getBoundingClientRect().left + box.clientLeft;
+      const top = box.getBoundingClientRect().top + box.clientTop;
+      const right = left + box.clientWidth;
+      const bottom = top + box.clientHeight;
+      const found = { x: false, y: false };
+      const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const holder = node.parentElement;
+        if (!holder || !(node.textContent ?? "").trim() || !visible(holder)) continue;
+        // The last glyph's advance includes letter-spacing that paints nothing.
+        const trailing =
+          Math.max(parseFloat(getComputedStyle(holder).letterSpacing), 0) || 0;
+        // A text rect is the font's content area; when the line box is shorter (line-height
+        // 1) the glyphs still sit inside it, so compare the line box.
+        const lineHeight = parseFloat(getComputedStyle(holder).lineHeight);
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const r of Array.from(range.getClientRects())) {
+          if (r.width === 0 && r.height === 0) continue;
+          const inset = lineHeight < r.height ? (r.height - lineHeight) / 2 : 0;
+          if (
+            r.right - trailing > right + GLYPH_TOLERANCE ||
+            r.left < left - GLYPH_TOLERANCE
+          )
+            found.x = true;
+          if (
+            r.bottom - inset > bottom + GLYPH_TOLERANCE ||
+            r.top + inset < top - GLYPH_TOLERANCE
+          )
+            found.y = true;
+        }
+      }
+      return found;
+    };
     for (const el of Array.from(document.body.querySelectorAll("*"))) {
       const style = getComputedStyle(el);
       const clips = (v: string) => v === "hidden" || v === "clip";
@@ -65,6 +101,10 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
         el.closest("[title], [aria-label]") !== null ||
         el.querySelector("[title], [aria-label]") !== null;
       if (truncates && exposed) continue;
+      // scrollWidth also counts trailing letter-spacing and sub-pixel rounding, which hide
+      // nothing. Clipped means a glyph itself reaches past the box.
+      const glyphs = glyphOverflow(box);
+      if (!((overX && glyphs.x) || (overY && glyphs.y))) continue;
       out.push({ check: "clipped-text", description: describe(el) });
     }
 
@@ -75,9 +115,9 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       return r.width > 1 && r.height > 1 && onscreen(r);
     });
     const open = (el: Element) => el.closest('[role="menu"], [role="listbox"]') !== null;
-    // Stacked by design: scrolling content passes under fixed or sticky chrome and under
-    // overlays outside its scroll container, a number input's steppers sit inside its
-    // field, and the specimen's header previews are squeezed to the phone width.
+    // Stacked by design: fixed or sticky chrome paints over flow content, content in a
+    // scroll container passes under anything outside it, and a number input's steppers
+    // sit inside its field.
     const pinned = (el: Element) => {
       for (let n: Element | null = el; n; n = n.parentElement) {
         const position = getComputedStyle(n).position;
@@ -92,20 +132,27 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       }
       return null;
     };
-    const designed = (a: Element, b: Element) => {
-      const field = a.closest(".mantine-NumberInput-root");
+    const sitsOver = (top: Element, under: Element) => {
+      if (pinned(top) && !pinned(under)) return true;
+      const container = scrollParent(under);
       return (
-        pinned(a) !== pinned(b) ||
-        scrollParent(a) !== scrollParent(b) ||
-        (field !== null && field === b.closest(".mantine-NumberInput-root")) ||
-        a.closest(".specimen-headerCell, .specimen-section .site-header") !== null
+        container !== null && scrollParent(top) !== container && !container.contains(top)
       );
+    };
+    const inOneStepperField = (a: Element, b: Element) => {
+      const field = a.closest(".mantine-NumberInput-root");
+      return field !== null && field === b.closest(".mantine-NumberInput-root");
     };
     for (let i = 0; i < items.length; i++) {
       for (let j = i + 1; j < items.length; j++) {
         const a = items[i]!;
         const b = items[j]!;
-        if (a.contains(b) || b.contains(a) || (open(a) && open(b)) || designed(a, b))
+        if (
+          a.contains(b) ||
+          b.contains(a) ||
+          (open(a) && open(b)) ||
+          inOneStepperField(a, b)
+        )
           continue;
         const ra = rectOf(a);
         const rb = rectOf(b);
@@ -114,10 +161,15 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
         if (w <= 1 || h <= 1) continue;
         const cx = Math.max(ra.left, rb.left) + w / 2;
         const cy = Math.max(ra.top, rb.top) + h / 2;
+        // Whichever of the two paints on top at the middle of the overlap; off screen,
+        // the pinned one is taken to be on top.
+        let top: Element | null = pinned(a) ? a : pinned(b) ? b : null;
         if (cx >= 0 && cy >= 0 && cx < window.innerWidth && cy < window.innerHeight) {
           const hit = document.elementFromPoint(cx, cy);
           if (!hit || !(a.contains(hit) || b.contains(hit))) continue;
+          top = a.contains(hit) ? a : b;
         }
+        if (top && sitsOver(top, top === a ? b : a)) continue;
         out.push({
           check: "overlap",
           description: `${describe(a)} overlaps ${describe(b)}`
@@ -129,7 +181,6 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
         const r = rectOf(el);
         // Inline links inside running text are exempt (WCAG 2.5.8).
         if (el.tagName === "A" && getComputedStyle(el).display === "inline") continue;
-        if (el.closest(".specimen-headerCell, .specimen-section .site-header")) continue;
         if (r.width < 44 || r.height < 44) {
           out.push({
             check: "touch-target",

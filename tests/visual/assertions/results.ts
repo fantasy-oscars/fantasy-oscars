@@ -2,12 +2,11 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "no
 import path from "node:path";
 import { ALLOWLIST } from "./allowlist";
 
-/** Each assertion test leaves one of these; the run's teardown reads them all. */
+/** Each assertion test (one brand and viewport, both modes) leaves one of these; the run's teardown reads them all. */
 export const RESULTS_DIR = "test-results/visual/assertions";
 
 export type ResultFile = {
   brand: string;
-  mode: string;
   viewport: string;
   /** Indexes into ALLOWLIST that matched a finding in this test. */
   matched: number[];
@@ -15,6 +14,7 @@ export type ResultFile = {
   /** Every finding, for triage (not used by the run). */
   findings: {
     screen: string;
+    mode: string;
     check: string;
     description: string;
     allowlisted: boolean;
@@ -61,7 +61,7 @@ export function reportResults(expectedTests: number) {
   if (stale.length > 0) {
     const lines = stale.map(
       ({ entry }) =>
-        `  ${entry.check} ${entry.screen} ${entry.brand}/${entry.mode}/${entry.viewport} ${entry.match ?? ""}`
+        `  ${entry.check} ${[entry.screen].flat().join(",")} ${entry.brand}/${entry.mode}/${entry.viewport} ${entry.match ?? ""}`
     );
     throw new Error(
       `Stale allowlist entries (no longer failing; delete them from tests/visual/assertions/allowlist.ts):\n${lines.join("\n")}`
