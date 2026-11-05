@@ -101,7 +101,7 @@ export function AdminCeremoniesIndexScreen(props: {
 
       <Divider />
 
-      <Title order={3} className="baseline-textSectionHeader">
+      <Title order={3} variant="section" className="baseline-textSectionHeader">
         Your ceremonies
       </Title>
 

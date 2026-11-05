@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import type { BrandId } from "@fantasy-oscars/shared/brands";
 import { waitForAnimationsIdle } from "./support/page";
-import type { PersonaKey, VisualSeed } from "./support/seed";
+import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
 
 /**
  * The visual matrix is data: screens x modes x viewports x brands. Add a row to
@@ -17,6 +17,11 @@ export type ScreenDef = {
   path: (seed: VisualSeed) => string;
   /** Visible text or selector proving the screen has rendered its data. */
   ready: { text: string } | { selector: string };
+  /**
+   * Optional setup before navigation (route rewrites). Runs after the clock is frozen and
+   * before `page.goto`.
+   */
+  beforeNavigate?: (page: Page, seed: VisualSeed) => Promise<void>;
   /** Optional interaction after the page is ready (open a menu, pick a saved plan). */
   prepare?: (page: Page) => Promise<void>;
   /**
@@ -33,6 +38,27 @@ export type ScreenDef = {
    */
   maskSelectors?: readonly string[];
 };
+
+/**
+ * Rewrites the draft snapshot the room loads. The clock is frozen at FIXED_NOW, so the
+ * snapshot's own stamp is set to the same instant: the client's server-clock offset is
+ * then zero and a deadline of FIXED_NOW + 4 s always reads "4s left".
+ */
+function rewriteDraftSnapshot(
+  page: Page,
+  edit: (draft: Record<string, unknown>) => void
+): Promise<void> {
+  return page.route("**/drafts/*/snapshot", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as {
+      server_time?: string;
+      draft: Record<string, unknown>;
+    };
+    body.server_time = FIXED_NOW;
+    edit(body.draft);
+    await route.fulfill({ response, json: body });
+  });
+}
 
 export const SCREENS: ScreenDef[] = [
   {
@@ -181,6 +207,39 @@ export const SCREENS: ScreenDef[] = [
     }
   },
   {
+    id: "draft-live-countdown",
+    persona: "avery",
+    path: (s) => `/drafts/${s.drafts.live}`,
+    ready: { selector: ".drh-buckle.is-countdown, .dr-mobileBar.is-countdown" },
+    beforeNavigate: (page) =>
+      rewriteDraftSnapshot(page, (draft) => {
+        draft.pick_timer_seconds = 90;
+        draft.pick_deadline_at = new Date(Date.parse(FIXED_NOW) + 4000).toISOString();
+      }),
+    prepare: async (page) => {
+      await expect(page.locator(".drh-buckleCenter, .drm-clockText").first()).toHaveText(
+        "4s left"
+      );
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
+    id: "draft-paused",
+    persona: "avery",
+    path: (s) => `/drafts/${s.drafts.live}`,
+    ready: { selector: ".drh-buckle, .dr-mobileBar" },
+    beforeNavigate: (page) =>
+      rewriteDraftSnapshot(page, (draft) => {
+        draft.status = "PAUSED";
+      }),
+    prepare: async (page) => {
+      await expect(page.locator(".drh-buckleCenter, .drm-clockText").first()).toHaveText(
+        "Paused"
+      );
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
     id: "draft-completed",
     persona: "jo",
     path: (s) => `/drafts/${s.drafts.completed}`,
@@ -266,16 +325,11 @@ export const VIEWPORTS = {
 export type ViewportName = keyof typeof VIEWPORTS;
 
 /**
- * Screens that overflow a 390px viewport horizontally today and are not fixed by
- * this work. The phone guard skips them so the rest stay protected; remove an id
- * once its overflow is fixed.
+ * Screens that overflow a 390px viewport horizontally and are not yet fixed. The
+ * phone guard skips them so the rest stay protected; remove an id once its overflow
+ * is fixed. Empty: every screen is guarded.
  */
-export const KNOWN_PHONE_OVERFLOW: readonly string[] = [
-  // Draft-plan rows are wider than the viewport (scrollWidth 577).
-  "draft-plans",
-  // The very long username in the account page is not wrapped (scrollWidth 538).
-  "account"
-];
+export const KNOWN_PHONE_OVERFLOW: readonly string[] = [];
 
 /**
  * The screens captured for brands other than the default: enough to pin each palette's
@@ -291,7 +345,8 @@ export const KEY_SCREENS = [
   "ceremony-detail-results",
   "account",
   "login",
-  "draft-live-armed"
+  "draft-live-armed",
+  "draft-live-countdown"
 ] as const;
 
 export type Brand = {

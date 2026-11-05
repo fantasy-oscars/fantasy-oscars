@@ -32,7 +32,7 @@ export function MobileRail(props: {
   if (props.rail === "ledger") {
     return (
       <Box className="dr-mobileRailPane">
-        <Text className="dr-railPaneTitle">Draft History</Text>
+        <Text className="dr-railPaneTitle">Draft history</Text>
         <Box className="dr-railRows">
           {o.ledger.rows.map((r) => {
             const seatNumber = r.seatNumber;
@@ -133,7 +133,7 @@ export function MobileRail(props: {
   if (props.rail === "roster") {
     return (
       <Box className="dr-mobileRailPane">
-        <Text className="dr-railPaneTitle">My Roster</Text>
+        <Text className="dr-railPaneTitle">My roster</Text>
         <Box className="dr-railRows">
           {o.myRoster.picks.map((r) => {
             const nominee =
@@ -225,7 +225,7 @@ export function MobileRail(props: {
 
   return (
     <Box className="dr-mobileRailPane">
-      <Text className="dr-railPaneTitle">Auto-Draft</Text>
+      <Text className="dr-railPaneTitle">Auto-draft</Text>
       <Stack gap="sm">
         <Checkbox
           checked={o.autodraft.enabled}

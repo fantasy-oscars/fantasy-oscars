@@ -2,6 +2,7 @@ import type { BannerRow } from "@/orchestration/chrome";
 import { Alert, Box } from "@ui";
 import { Markdown } from "@ui/Markdown";
 import { bannerColor } from "@/decisions/chrome/bannerColor";
+import { AlertIcon } from "@/shared/AlertIcon";
 
 export function BannerStackScreen(props: {
   banners: BannerRow[];
@@ -19,6 +20,7 @@ export function BannerStackScreen(props: {
           role="status"
           variant="light"
           color={bannerColor(b.variant)}
+          icon={<AlertIcon variant={b.variant} />}
           withCloseButton={b.dismissible}
           closeButtonLabel="Dismiss announcement"
           onClose={b.dismissible ? () => onDismiss(b.id) : undefined}

@@ -13,6 +13,7 @@ import {
   useCombobox
 } from "@ui";
 import { PageError } from "@/shared/page-state";
+import { AlertIcon } from "@/shared/AlertIcon";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import type { useDraftPlansOrchestration } from "@/orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -20,7 +21,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { arrayMove } from "@dnd-kit/sortable";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import { SortableNomineeRow } from "@/features/ceremonies/ui/draftPlans/SortableNomineeRow";
 import {
   computeDefaultNominationIdsForDraftPlan,
@@ -407,7 +408,7 @@ export function DraftPlansScreen(props: {
                   </Combobox.Dropdown>
                 </Combobox>
               </Box>
-              <Group gap="sm" wrap="nowrap" className="draft-plans-actions">
+              <Group gap="sm" wrap="wrap" className="draft-plans-actions">
                 <Button
                   type="button"
                   variant="default"
@@ -472,14 +473,18 @@ export function DraftPlansScreen(props: {
               <StandardCard component="section" tone="nested">
                 <Stack gap="xs">
                   <Group justify="space-between" wrap="nowrap">
-                    <Title order={4} className="baseline-textSectionHeader">
+                    <Title
+                      order={4}
+                      variant="section"
+                      className="baseline-textSectionHeader"
+                    >
                       Nominees
                     </Title>
                     {o.saving ? <Text className="baseline-textMeta">Saving…</Text> : null}
                   </Group>
 
                   {effectiveOrder.length === 0 ? (
-                    <Text className="baseline-textBody">No nominees.</Text>
+                    <EmptyState>No nominees.</EmptyState>
                   ) : (
                     <DndContext
                       sensors={sensors}
@@ -628,12 +633,24 @@ export function DraftPlansScreen(props: {
             }}
           />
           {uploadFilename ? (
-            <Alert color="blue" variant="light" role="status" aria-live="polite">
+            <Alert
+              color="gray"
+              variant="light"
+              icon={<AlertIcon variant="info" />}
+              role="status"
+              aria-live="polite"
+            >
               Loaded: {uploadFilename}
             </Alert>
           ) : null}
           {uploadError ? (
-            <Alert color="red" variant="light" role="alert" aria-live="assertive">
+            <Alert
+              color="red"
+              variant="light"
+              icon={<AlertIcon variant="error" />}
+              role="alert"
+              aria-live="assertive"
+            >
               {uploadError}
             </Alert>
           ) : null}

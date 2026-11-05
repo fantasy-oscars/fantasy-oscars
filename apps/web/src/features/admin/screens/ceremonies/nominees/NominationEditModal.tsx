@@ -136,7 +136,7 @@ export function NominationEditModal(props: {
       title="Edit nomination"
       centered
       size="lg"
-      overlayProps={{ opacity: 0.35, blur: 2 }}
+      overlayProps={{ opacity: 0.35 }}
     >
       {nomination ? (
         <Stack gap="sm">

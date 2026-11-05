@@ -19,7 +19,9 @@ export function LeagueMembersSection(props: {
           {members.map((m, idx) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap" py="sm">
-                <Text className="baseline-textBody">{m.username}</Text>
+                <Text className="baseline-textBody baseline-wrapAnywhere">
+                  {m.username}
+                </Text>
                 {m.role === "OWNER" ? <CommissionerPill /> : null}
               </Group>
               {idx === members.length - 1 ? null : <Divider />}

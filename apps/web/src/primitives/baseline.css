@@ -33,14 +33,14 @@
 
 @media (max-width: 500px) {
   .baseline-landing-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--fo-space-xs);
   }
 }
 
 .baseline-card {
   background: var(--panel);
-  border-radius: var(--fo-radius-small);
+  border-radius: var(--fo-radius-medium);
   box-shadow: var(--fo-shadow-card);
   color: inherit;
   text-decoration: none;
@@ -53,6 +53,15 @@
 
 .baseline-heroCard {
   padding: var(--fo-space-md) var(--fo-space-sm);
+}
+
+/* Empty slot: a dashed placeholder where the content would sit. */
+.baseline-emptyState {
+  border: var(--fo-border-width) dashed var(--brand-faint);
+  border-radius: var(--fo-radius-medium);
+  padding: var(--fo-space-sm);
+  color: var(--brand-muted);
+  font-size: var(--fo-font-size-sm);
 }
 
 .baseline-card[data-tone="nested"] {
@@ -139,21 +148,9 @@
   color: var(--text);
 }
 
-.baseline-statusPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--fo-radius-pill);
-  padding: var(--fo-pill-padding-y) var(--fo-pill-padding-x);
-  background: rgba(var(--fo-text-primary-rgb), 0.05);
-  color: var(--text);
-  white-space: nowrap;
-}
-
-/* Beats the meta variant's muted colour (same specificity, later in the cascade). */
-.baseline-statusPill.isUrgent[data-fo-typo] {
-  background: var(--brand-primary);
-  color: var(--brand-on-primary);
+.baseline-wrapAnywhere {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .baseline-updates-prose p {
@@ -252,7 +249,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 @media (max-width: 500px) {
   .baseline-leagueGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--fo-space-xs);
   }
 }
@@ -277,7 +274,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 @media (max-width: 500px) {
   .baseline-twoCol {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -308,7 +305,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 @media (max-width: 500px) {
   .baseline-grid2Wide {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -321,7 +318,7 @@ body[data-mantine-color-scheme="dark"] .baseline-heroCard {
 
 @media (max-width: 900px) {
   .baseline-grid3Equal {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--fo-space-xs);
   }
 }

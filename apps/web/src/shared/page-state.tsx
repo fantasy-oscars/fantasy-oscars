@@ -1,4 +1,5 @@
 import { Alert, Group, Loader, Text } from "@ui";
+import { AlertIcon } from "./AlertIcon";
 
 export function PageLoader(props: { label?: string }) {
   return (
@@ -15,7 +16,12 @@ export function PageLoader(props: { label?: string }) {
  */
 export function PageError(props: { message: string; requestId?: string | null }) {
   return (
-    <Alert className="page-state status status-error" color="red" role="alert">
+    <Alert
+      className="page-state status status-error"
+      color="red"
+      icon={<AlertIcon variant="error" />}
+      role="alert"
+    >
       {props.message}
       {props.requestId ? (
         <Text size="xs" className="page-state-reference">

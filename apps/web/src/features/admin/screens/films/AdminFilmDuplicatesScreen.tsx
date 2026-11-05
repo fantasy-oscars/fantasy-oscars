@@ -35,7 +35,7 @@ export function AdminFilmDuplicatesScreen(props: AdminFilmDuplicatesScreenProps)
     <Stack gap="md">
       {compact ? (
         <Stack gap="var(--fo-space-4)">
-          <Title order={3} className="baseline-textSectionHeader">
+          <Title order={3} variant="section" className="baseline-textSectionHeader">
             Duplicate Utility
           </Title>
           <Text className="baseline-textBody">

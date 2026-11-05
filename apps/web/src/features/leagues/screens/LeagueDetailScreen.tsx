@@ -176,7 +176,7 @@ export function LeagueDetailScreen(props: {
             align="flex-start"
             wrap="wrap"
           >
-            <Title order={2} className="baseline-textHeroTitle">
+            <Title order={2} className="baseline-textHeroTitle baseline-wrapAnywhere">
               {league.name ?? "League"}
             </Title>
           </Group>

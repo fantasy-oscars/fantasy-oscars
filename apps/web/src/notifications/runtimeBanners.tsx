@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { Alert, Box } from "@ui";
 import { bannerColor } from "../decisions/chrome/bannerColor";
+import { AlertIcon } from "../shared/AlertIcon";
 
 export type RuntimeBanner = {
   id: string;
@@ -90,6 +91,7 @@ export function RuntimeBannerStack() {
           role="status"
           variant="light"
           color={bannerColor(b.variant)}
+          icon={<AlertIcon variant={b.variant} />}
           withCloseButton={b.dismissible}
           closeButtonLabel="Dismiss notification"
           onClose={b.dismissible ? () => dismiss(b.id) : undefined}

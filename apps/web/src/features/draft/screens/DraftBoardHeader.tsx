@@ -13,8 +13,9 @@ import { CenterBuckle } from "@/features/draft/ui/CenterBuckle";
 import { DraftHeaderLeftWing } from "@/features/draft/ui/DraftHeaderLeftWing";
 import { DraftHeaderMeasureRow } from "@/features/draft/ui/DraftHeaderMeasureRow";
 import { DraftHeaderRightWing } from "@/features/draft/ui/DraftHeaderRightWing";
-import { createDraftAudioController, playCountdownBeep } from "@/lib/draftAudio";
-import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "@/lib/draftCountdown";
+import type { createDraftAudioController } from "@/lib/draftAudio";
+import { formatCountdownText, isCountdownActive } from "@/lib/draftCountdown";
+import { useCountdownPhase } from "@/orchestration/draft/useCountdownPhase";
 import { useParticipantStripLayout } from "./useParticipantStripLayout";
 
 export function DraftBoardHeader(props: {
@@ -42,6 +43,7 @@ export function DraftBoardHeader(props: {
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
   themeIcon: string;
+  themeLabel: string;
   onToggleTheme: () => void;
   showDraftControls: boolean;
   canManageDraft: boolean;
@@ -131,6 +133,15 @@ export function DraftBoardHeader(props: {
     return () => window.clearInterval(interval);
   }, [hasTiedPodiumPosition, props.isFinalResults]);
 
+  const countdownActive = Boolean(
+    props.isTimerDraft &&
+    props.draftStatus === "IN_PROGRESS" &&
+    !props.isFinalResults &&
+    isCountdownActive(props.timerRemainingMs) &&
+    // Only the active drafter gets urgency feedback (audio + flashing).
+    props.isMyTurn
+  );
+
   const { centerText, centerTypeLabel, centerTextRolling, centerTextKey } = (() => {
     if (props.isFinalResults) {
       const firstPlace = podiumPositions.find((p) => p.place === 1)?.names ?? [];
@@ -187,63 +198,22 @@ export function DraftBoardHeader(props: {
         centerTextRolling: false,
         centerTextKey: "draft-complete"
       };
+    const timerText = countdownActive
+      ? formatCountdownText(props.timerRemainingMs ?? 0)
+      : props.clockText;
     return {
-      centerText: props.isTimerDraft ? props.clockText : activeLabel,
+      centerText: props.isTimerDraft ? timerText : activeLabel,
       centerTypeLabel: null,
       centerTextRolling: false,
-      centerTextKey: props.isTimerDraft ? props.clockText : activeLabel
+      centerTextKey: props.isTimerDraft ? timerText : activeLabel
     };
   })();
-  const countdownActive = Boolean(
-    props.isTimerDraft &&
-    props.draftStatus === "IN_PROGRESS" &&
-    !props.isFinalResults &&
-    isCountdownActive(props.timerRemainingMs) &&
-    // Only the active drafter gets urgency feedback (audio + flashing).
-    props.isMyTurn
-  );
 
-  const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
-  const countdownIntervalRef = useRef<number | null>(null);
-  const canBeepRef = useRef(false);
-  const audioControllerRef = useRef(props.audioController);
-
-  useEffect(() => {
-    audioControllerRef.current = props.audioController;
-  }, [props.audioController]);
-
-  useEffect(() => {
-    canBeepRef.current = Boolean(
-      props.soundEnabled && props.audioUnlocked && props.isMyTurn
-    );
-  }, [props.audioUnlocked, props.isMyTurn, props.soundEnabled]);
-
-  useEffect(() => {
-    if (!countdownActive) {
-      if (countdownIntervalRef.current) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      setCountdownPhase(null);
-      return;
-    }
-
-    // Start immediately when countdown begins.
-    const tick = () => {
-      setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
-      if (canBeepRef.current) playCountdownBeep(audioControllerRef.current);
-    };
-
-    tick();
-    countdownIntervalRef.current = window.setInterval(tick, COUNTDOWN_BEEP_INTERVAL_MS);
-
-    return () => {
-      if (countdownIntervalRef.current) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-    };
-  }, [countdownActive]);
+  const countdownPhase = useCountdownPhase({
+    active: countdownActive,
+    canBeep: Boolean(props.soundEnabled && props.audioUnlocked && props.isMyTurn),
+    audioController: props.audioController
+  });
 
   const buckleMaxPx = useMemo(() => {
     // Defensive default: ~25% of viewport, clamped.
@@ -396,6 +366,7 @@ export function DraftBoardHeader(props: {
               onToggleShowDrafted={props.onToggleShowDrafted}
               showDraftedVisible={props.showDraftedVisible}
               themeIcon={props.themeIcon}
+              themeLabel={props.themeLabel}
               onToggleTheme={props.onToggleTheme}
               onStartDraft={props.onStartDraft}
               onPauseDraft={props.onPauseDraft}
@@ -464,6 +435,7 @@ export function DraftBoardHeader(props: {
               centerTypeLabel={centerTypeLabel}
               centerTextRolling={centerTextRolling}
               centerTextKey={centerTextKey}
+              centerGlyph={countdownActive ? "timer" : isPaused ? "pause" : null}
               className={[
                 isPre ? "is-pre" : "",
                 countdownActive ? "is-countdown" : "",

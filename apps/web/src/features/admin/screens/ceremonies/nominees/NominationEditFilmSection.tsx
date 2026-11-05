@@ -13,6 +13,7 @@ import {
 } from "@ui";
 import { useEffect, useState } from "react";
 import { notify } from "@/notifications";
+import { AlertIcon } from "@/shared/AlertIcon";
 import { fetchJson } from "@/lib/api";
 import { normalizeFilmTitleForTmdbQuery } from "@/lib/films";
 
@@ -260,7 +261,12 @@ export function NominationEditFilmSection(props: {
             </Text>
           ) : null}
           {filmLinkConflict ? (
-            <Alert color="yellow" variant="light" role="status">
+            <Alert
+              color="yellow"
+              variant="light"
+              icon={<AlertIcon variant="warning" />}
+              role="status"
+            >
               <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                 <Text size="sm">
                   This ID is already linked to another film. Do you want to merge?

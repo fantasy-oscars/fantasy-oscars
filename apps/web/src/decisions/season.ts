@@ -42,7 +42,14 @@ export function computeSeasonLifecycleLabelFromRow(args: {
   seasonStatus: string | null | undefined;
   draftStatus: string | null | undefined;
   isActiveCeremony: boolean | null | undefined;
-}): "Closed" | "Complete" | "In progress" | "Draft complete" | "Drafting" | "Pre-draft" {
+}):
+  | "Closed"
+  | "Complete"
+  | "In progress"
+  | "Draft complete"
+  | "Drafting"
+  | "Paused"
+  | "Pre-draft" {
   const seasonStatus = String(args.seasonStatus ?? "").toUpperCase();
   if (args.isActiveCeremony === false || seasonStatus === "ARCHIVED") return "Closed";
 
@@ -52,6 +59,7 @@ export function computeSeasonLifecycleLabelFromRow(args: {
   const ds = String(args.draftStatus ?? "").toUpperCase();
   if (ds === "CANCELLED") return "Closed";
   if (ds === "COMPLETED") return "Draft complete";
-  if (ds === "LIVE" || ds === "IN_PROGRESS" || ds === "PAUSED") return "Drafting";
+  if (ds === "LIVE" || ds === "IN_PROGRESS") return "Drafting";
+  if (ds === "PAUSED") return "Paused";
   return "Pre-draft";
 }

@@ -64,7 +64,10 @@ export function AdminCeremonyWizardScreen(props: {
           iconSize={FO_ICON_SIZE_SM_PX}
           contentPadding={0}
           styles={{
-            step: { padding: "var(--fo-space-dense-1) var(--fo-space-0)" },
+            step: {
+              padding:
+                "var(--fo-space-dense-1) var(--fo-space-0) var(--fo-space-dense-1) var(--fo-space-8)"
+            },
             stepLabel: {
               fontSize: "var(--fo-font-size-xs)",
               lineHeight: "var(--fo-line-height-tight)"
@@ -84,7 +87,7 @@ export function AdminCeremonyWizardScreen(props: {
                 s.state === "GATED" ? "is-gated" : "",
                 s.state === "INCOMPLETE_EDITABLE" ? "is-incomplete" : "",
                 idx <= furthestCompleteIndex ? "is-progress" : "is-future",
-                idx <= furthestCompleteIndex ? "connector-gold" : "connector-gray"
+                idx <= furthestCompleteIndex ? "connector-progress" : "connector-future"
               ]
                 .filter(Boolean)
                 .join(" ")}

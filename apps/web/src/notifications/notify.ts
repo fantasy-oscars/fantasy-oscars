@@ -40,7 +40,7 @@ export function notify(event: NotificationEvent): NotifyResult {
           ? "yellow"
           : event.severity === "error" || event.severity === "critical"
             ? "red"
-            : undefined;
+            : "gray";
     notifications.show({
       title: event.title,
       message: event.message,

@@ -35,7 +35,7 @@ export function DraftLedgerRail(props: {
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 history
               </Text>
-              <Text className="dr-railPaneTitle">Draft History</Text>
+              <Text className="dr-railPaneTitle">Draft history</Text>
             </Box>
             <UnstyledButton
               type="button"

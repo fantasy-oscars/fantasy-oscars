@@ -1,10 +1,10 @@
 import { ActionIcon, Box, Button, Drawer, Group, Menu, Stack, Switch, Text } from "@ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import type { createDraftAudioController } from "@/lib/draftAudio";
-import { playCountdownBeep } from "@/lib/draftAudio";
-import { COUNTDOWN_BEEP_INTERVAL_MS, isCountdownActive } from "@/lib/draftCountdown";
+import { formatCountdownText, isCountdownActive } from "@/lib/draftCountdown";
+import { useCountdownPhase } from "@/orchestration/draft/useCountdownPhase";
 
 export function MobileDraftHeader(props: {
   open: boolean;
@@ -42,6 +42,7 @@ export function MobileDraftHeader(props: {
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
   themeIcon: string;
+  themeLabel: string;
   onToggleTheme: () => void;
   userLabel: string;
   userAvatarKey: string | null;
@@ -57,39 +58,12 @@ export function MobileDraftHeader(props: {
     props.isMyTurn &&
     isCountdownActive(props.timerRemainingMs)
   );
-  const [countdownPhase, setCountdownPhase] = useState<"gold" | "red" | null>(null);
   const [podiumCycleTick, setPodiumCycleTick] = useState(0);
-  const countdownIntervalRef = useRef<number | null>(null);
-  const audioControllerRef = useRef(props.audioController);
-
-  useEffect(() => {
-    audioControllerRef.current = props.audioController;
-  }, [props.audioController]);
-
-  useEffect(() => {
-    if (!countdownActive) {
-      if (countdownIntervalRef.current) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      setCountdownPhase(null);
-      return;
-    }
-
-    const tick = () => {
-      setCountdownPhase((prev) => (prev === "red" ? "gold" : "red"));
-      if (props.audioUnlocked) playCountdownBeep(audioControllerRef.current);
-    };
-
-    tick();
-    countdownIntervalRef.current = window.setInterval(tick, COUNTDOWN_BEEP_INTERVAL_MS);
-    return () => {
-      if (countdownIntervalRef.current) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-    };
-  }, [countdownActive, props.audioUnlocked]);
+  const countdownPhase = useCountdownPhase({
+    active: countdownActive,
+    canBeep: props.audioUnlocked,
+    audioController: props.audioController
+  });
 
   const podiumPositions = props.resultsPodium
     .map((p) => ({
@@ -127,8 +101,12 @@ export function MobileDraftHeader(props: {
           : isPre
             ? "Not started"
             : props.isTimerDraft
-              ? props.clockText
+              ? countdownActive
+                ? formatCountdownText(props.timerRemainingMs ?? 0)
+                : props.clockText
               : (props.participants.find((p) => p.active)?.label ?? "—");
+
+  const centerGlyph = countdownActive ? "timer" : isPaused ? "pause" : null;
 
   const canShowRosterLink = props.canToggleView;
 
@@ -138,7 +116,8 @@ export function MobileDraftHeader(props: {
       className={[
         "dr-header",
         "dr-mobileHeader",
-        showMobilePodium ? "is-podium" : ""
+        showMobilePodium ? "is-podium" : "",
+        isPaused ? "is-paused" : ""
       ].join(" ")}
     >
       <Box
@@ -167,6 +146,11 @@ export function MobileDraftHeader(props: {
         </Box>
 
         <Box className="drm-clock" aria-label="Timer">
+          {centerGlyph ? (
+            <Text component="span" className="mi-icon drm-clockGlyph" aria-hidden="true">
+              {centerGlyph}
+            </Text>
+          ) : null}
           <Text className="drm-clockText" lineClamp={1}>
             {centerText}
           </Text>
@@ -200,18 +184,18 @@ export function MobileDraftHeader(props: {
               }
               onClick={props.onToggleTheme}
             >
-              Toggle theme
+              {props.themeLabel}
             </Menu.Item>
             {props.showDraftedVisible ? (
               <Menu.Item closeMenuOnClick={false}>
-                <Group justify="space-between" wrap="nowrap" gap="md">
-                  <Text>Show drafted</Text>
-                  <Switch
-                    size="sm"
-                    checked={props.showDrafted}
-                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                  />
-                </Group>
+                <Switch
+                  size="sm"
+                  label="Show drafted"
+                  labelPosition="left"
+                  classNames={{ root: "drh-switchRoot" }}
+                  checked={props.showDrafted}
+                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                />
               </Menu.Item>
             ) : null}
 

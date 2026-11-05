@@ -1,9 +1,15 @@
-import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title, Tooltip } from "@ui";
+import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import type { AuthUser } from "@/auth/context";
 import type { LandingView } from "@/orchestration/landing";
 import { Markdown } from "@ui/Markdown";
-import { ActionCard, HeroCard, LandingLayout, StandardCard } from "@/primitives";
+import {
+  ActionCard,
+  EmptyState,
+  HeroCard,
+  LandingLayout,
+  StandardCard
+} from "@/primitives";
 import {
   computeLandingSeasonCeremonyLabel,
   computeLandingSeasonStatus,
@@ -11,6 +17,8 @@ import {
   titleCase
 } from "@/decisions/landing";
 import { seasonPath } from "@/lib/routes";
+import { statusTone } from "@/decisions/statusTone";
+import { StatusPill } from "@/shared/pills";
 import "@/primitives/baseline.css";
 
 export function LandingScreen(props: {
@@ -68,7 +76,7 @@ export function LandingScreen(props: {
           <Stack gap="var(--fo-space-dense-2)">
             <Text variant="meta">{new Date().toLocaleDateString()}</Text>
             <Title variant="card">It’s quiet… too quiet</Title>
-            <Text>No updates have been published yet.</Text>
+            <EmptyState>No updates have been published yet.</EmptyState>
           </Stack>
         )}
       </StandardCard>
@@ -118,9 +126,7 @@ export function LandingScreen(props: {
             <Text>{view.seasons.message}</Text>
           </StandardCard>
         ) : view.seasons.seasons.length === 0 ? (
-          <StandardCard>
-            <Text>No active seasons yet.</Text>
-          </StandardCard>
+          <EmptyState>No active seasons yet.</EmptyState>
         ) : (
           <Stack gap="sm">
             {view.seasons.seasons.map((s) => {
@@ -148,25 +154,9 @@ export function LandingScreen(props: {
                     <Title variant="card">{ceremonyLabel}</Title>
                     <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
                       <Text variant="meta">{s.league_name}</Text>
-                      <Tooltip
-                        label={status.urgencyHelp ?? ""}
-                        disabled={!status.urgencyHelp}
-                        withArrow
-                      >
-                        <Text
-                          component="span"
-                          tabIndex={status.urgencyHelp ? 0 : -1}
-                          className={[
-                            "baseline-statusPill",
-                            status.urgent ? "isUrgent" : ""
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          variant="meta"
-                        >
-                          {titleCase(status.label)}
-                        </Text>
-                      </Tooltip>
+                      <StatusPill {...statusTone(status.label)}>
+                        {titleCase(status.label)}
+                      </StatusPill>
                     </Group>
                   </Stack>
                 </StandardCard>

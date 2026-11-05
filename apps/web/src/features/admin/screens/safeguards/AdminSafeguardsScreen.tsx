@@ -9,6 +9,7 @@ import {
   slugifyPathSegment
 } from "@/lib/routes";
 import { notify } from "@/notifications";
+import { AlertIcon } from "@/shared/AlertIcon";
 import {
   DestructiveActionModal,
   type DestructiveConsequence
@@ -297,7 +298,7 @@ export function AdminSafeguardsScreen() {
 
   return (
     <Stack component="section" className="stack" gap="md">
-      <Title order={3} className="baseline-textSectionHeader">
+      <Title order={3} variant="section" className="baseline-textSectionHeader">
         Data Deletion
       </Title>
 
@@ -463,7 +464,12 @@ export function AdminSafeguardsScreen() {
       </StandardCard>
 
       {status ? (
-        <Alert color={status.ok ? "green" : "red"}>{status.message}</Alert>
+        <Alert
+          color={status.ok ? "green" : "red"}
+          icon={<AlertIcon variant={status.ok ? "success" : "error"} />}
+        >
+          {status.message}
+        </Alert>
       ) : null}
 
       <DestructiveActionModal

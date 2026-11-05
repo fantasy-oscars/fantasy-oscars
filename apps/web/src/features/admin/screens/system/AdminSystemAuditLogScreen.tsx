@@ -6,7 +6,7 @@ export function AdminSystemAuditLogScreen() {
   return (
     <Stack component="section" className="stack">
       <Box component="header">
-        <Title order={3} className="baseline-textSectionHeader">
+        <Title order={3} variant="section" className="baseline-textSectionHeader">
           Audit Log
         </Title>
         <Text className="baseline-textBody" c="dimmed">

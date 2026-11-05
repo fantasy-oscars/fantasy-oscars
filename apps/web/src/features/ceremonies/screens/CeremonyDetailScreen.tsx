@@ -1,8 +1,9 @@
 import { Box, Button, Divider, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { PageError } from "@/shared/page-state";
+import { WinnerChip } from "@/shared/pills";
 import type { CeremonyDetail } from "@/orchestration/ceremonies";
 import { Link } from "react-router-dom";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
 export function CeremonyDetailScreen(props: {
@@ -100,41 +101,40 @@ export function CeremonyDetailScreen(props: {
                   return (
                     <Box key={cat.id}>
                       <Group justify="space-between" align="baseline" wrap="wrap">
-                        <Title order={4} className="baseline-textSectionHeader">
+                        <Title
+                          order={4}
+                          variant="section"
+                          className="baseline-textSectionHeader"
+                        >
                           {cat.family_name}
                         </Title>
                       </Group>
                       <Divider my="xs" />
                       {rows.length === 0 ? (
-                        <Text className="baseline-textBody">No nominees.</Text>
+                        <EmptyState>No nominees.</EmptyState>
                       ) : (
-                        <Stack gap="var(--fo-space-8)">
+                        <Stack gap="var(--fo-space-xs)">
                           {rows.map((n) => {
                             const isWinner = winnersSet.has(n.id);
                             return (
                               <Group
                                 key={n.id}
                                 justify="space-between"
-                                wrap="wrap"
+                                align="flex-start"
+                                wrap="nowrap"
                                 gap="md"
                               >
                                 <Text
                                   fw={isWinner ? 700 : 400}
                                   lineClamp={2}
-                                  className="baseline-textBody"
+                                  className="baseline-textBody ceremony-nomineeName"
                                 >
                                   {n.label}
                                 </Text>
                                 {isWinner ? (
-                                  <Text
-                                    component="span"
-                                    className="gicon"
-                                    aria-label="Winner"
-                                    title="Winner"
-                                    opacity="var(--fo-opacity-muted-1)"
-                                  >
-                                    {String.fromCharCode(0xe838) /* emoji_events */}
-                                  </Text>
+                                  <Box component="span" className="ceremony-nomineeChip">
+                                    <WinnerChip />
+                                  </Box>
                                 ) : null}
                               </Group>
                             );

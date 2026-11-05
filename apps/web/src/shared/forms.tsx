@@ -1,5 +1,6 @@
 import type { ApiResult } from "../lib/types";
 import { Alert, Button, Loader, Text, TextInput } from "@ui";
+import { AlertIcon } from "./AlertIcon";
 
 export function FormField(props: {
   label: string;
@@ -31,6 +32,7 @@ export function FormStatus(props: {
     return (
       <Alert
         className="status status-loading"
+        color="gray"
         icon={<Loader size="sm" />}
         role="status"
         aria-live="polite"
@@ -44,7 +46,13 @@ export function FormStatus(props: {
   if (result && !result.ok) {
     const message = result.message;
     return (
-      <Alert className="status status-error" role="status" aria-live="polite">
+      <Alert
+        className="status status-error"
+        color="red"
+        icon={<AlertIcon variant="error" />}
+        role="status"
+        aria-live="polite"
+      >
         <Text size="sm">{message}</Text>
         {onRetry && (
           <Button variant="subtle" onClick={onRetry} mt="xs">
