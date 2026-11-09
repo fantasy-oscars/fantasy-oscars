@@ -244,6 +244,13 @@
   row-gap: var(--fo-space-4);
 }
 
+/* The ghost button's label sits inside its own inline padding. Pulling the button back
+   by that padding start-aligns the label with the heading when it wraps under it; on one
+   row the button's end edge does not move. */
+.baseline-seasonsHeading .mantine-Button-root {
+  margin-inline-start: calc(-1 * var(--button-padding-x));
+}
+
 /* A long league name wraps under itself; the status chip stays whole. */
 .baseline-metaRow .fo-chip {
   flex: none;

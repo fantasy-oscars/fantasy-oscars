@@ -184,7 +184,7 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
     [
       "--brand-home-cta-button-active",
       primary
-        ? "color-mix(in srgb, var(--brand-on-primary) 76%, var(--brand-primary))"
+        ? "color-mix(in srgb, var(--brand-on-primary) 80%, var(--brand-primary))"
         : "var(--fo-button-primary-active)"
     ],
     [

@@ -183,6 +183,16 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
       expect(contrast(dark.muted, dark.surface)).toBeGreaterThanOrEqual(4.5);
     });
 
+    it("keeps the pressed Home call-to-action label readable on its fill", () => {
+      if (brand.home.ctaSurface !== "primary") return;
+      for (const colors of [dark, light]) {
+        // Mirrors --brand-home-cta-button-active: on-primary 80% over primary, label in primary.
+        expect(
+          contrast(colors.primary, mix(colors.onPrimary, colors.primary, 0.8))
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
     it("keeps light page and its 0.9 mix readable on the accent panel", () => {
       if (brand.home.heroSurface !== "accentPanel") return;
       expect(contrast(light.page, light.accent)).toBeGreaterThanOrEqual(4.5);

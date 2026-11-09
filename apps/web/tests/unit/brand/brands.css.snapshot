@@ -1212,7 +1212,7 @@
   --brand-home-cta-button-bg: var(--brand-on-primary);
   --brand-home-cta-button-fg: var(--brand-primary);
   --brand-home-cta-button-hover: color-mix(in srgb, var(--brand-on-primary) 88%, var(--brand-primary));
-  --brand-home-cta-button-active: color-mix(in srgb, var(--brand-on-primary) 76%, var(--brand-primary));
+  --brand-home-cta-button-active: color-mix(in srgb, var(--brand-on-primary) 80%, var(--brand-primary));
   --brand-home-cta-button-bd: var(--brand-on-primary);
   --brand-home-cta-button-bd-hover: var(--brand-on-primary);
   --brand-home-cta-ring: var(--brand-on-primary);
