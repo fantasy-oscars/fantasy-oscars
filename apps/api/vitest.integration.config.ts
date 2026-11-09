@@ -7,6 +7,9 @@ export default mergeConfig(baseConfig, {
       "tests/integration/**/*.test.ts",
       "tests/integration/**/*.integration.test.ts"
     ],
-    exclude: ["tests/unit/**"]
+    exclude: ["tests/unit/**"],
+    // Each test file starts its own Postgres container. More than three at once
+    // overloads Docker on a developer machine and fails tests on hook timeouts.
+    maxWorkers: 3
   }
 });
