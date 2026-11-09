@@ -23,7 +23,7 @@ export type LeagueContextForSeason = {
 export async function loadLeagueContextForSeason(
   queryClient: QueryClient,
   seasonId: number,
-  opts?: { leagueIdHint?: number | null }
+  opts?: { leagueIdHint?: number | null; loadLeagueMembers?: boolean }
 ): Promise<LeagueContextForSeason | null> {
   const hintedLeagueId =
     Number.isFinite(opts?.leagueIdHint) && (opts?.leagueIdHint ?? 0) > 0
@@ -67,10 +67,13 @@ export async function loadLeagueContextForSeason(
     if (!match) continue;
 
     found = { league: lg, season: match };
-    try {
-      leagueMembers = await queryClient.fetchQuery(leagueMembersQuery(lg.id));
-    } catch {
-      leagueMembers = [];
+    // The league roster is commissioner-only; callers skip it for other viewers.
+    if (opts?.loadLeagueMembers ?? true) {
+      try {
+        leagueMembers = await queryClient.fetchQuery(leagueMembersQuery(lg.id));
+      } catch {
+        leagueMembers = [];
+      }
     }
     break;
   }

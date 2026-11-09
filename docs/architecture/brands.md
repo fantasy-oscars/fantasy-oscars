@@ -139,15 +139,16 @@ anywhere else in `apps/web/src`. Everything else reads CSS custom properties.
 Per mode (light and dark), the colour slots (`--brand-<slot>`, plus
 `--brand-<slot>-rgb` channels for alpha use): `page`, `surface`, `raised`,
 `sunken`, `text`, `muted`, `faint`, `rule`, `ruleStrong`, `primary`, `onPrimary`,
-`accent`, `link`, `linkHover`, `focusRing`; and three shadows, `shadow-card`,
-`shadow-raised` and `shadow-overlay`. Every slot is also emitted under an explicit mode name
+`accent`, `link`, `linkHover`, `focusRing`; and four shadows, `shadow-card`,
+`shadow-raised`, `shadow-overlay` and `shadow-hero` (the Home hero's edge and depth). Every slot is also emitted under an explicit mode name
 (`--brand-dark-page`, `--brand-light-text-rgb`, ...) for tokens that mean one
 specific mode regardless of the active one.
 
 The same in both modes:
 
 - Type: `font-display`, `font-body`, `font-numeral`, `font-label`, `label-case`,
-  `label-letter-spacing`, `display-weight`, `display-case`, `display-tracking`, `h1-size`, `h2-size`, `h3-size`, `body-size`.
+  `label-letter-spacing`, `display-weight`, `display-case`, `display-tracking`, `h1-size`, `h2-size`, `h3-size`, `body-size`, `font-accent` and
+  `accent-style` (`normal | italic`; the face of the Home hero tagline).
 - Wordmark: `wordmark-font`, `-weight`, `-case`, `-letter-spacing`, `-two-tone`
   (`colour | italic | weight | stop`; `stop` keeps both words alike and adds a
   trailing full stop). The contract slot `toneColor` (`primary | accent | gold`) is the
@@ -162,7 +163,11 @@ The same in both modes:
   `accent`, because each has an on-colour that passes 4.5:1 (enforced by a unit test).
 - Decorations (closed list, `1` or `0`): `deco-double-rules`, `deco-offset-shadow`,
   `deco-frame-borders`, `deco-grease-pencil`.
-- `home-layout`: one of the brand slugs.
+- Home, the `home` slot group: `placement` (`column | masthead`), `heroSurface`
+  (`darkPanel | accentPanel | open`), `heroAlign` (`start | center`), `heroMax` (px,
+  the largest hero title size), `heroFit` (a number from 8 to 30: the hero title's
+  size as a percentage of the hero's inner width), `regions` (`cards | open`) and
+  `ctaSurface` (`card | primary`). Every brand fills all seven.
 
 Enums are emitted as plain custom-property values for reference. Components read the
 derived properties below, never the enums. `css.ts` computes them per brand, in the
@@ -184,6 +189,23 @@ resolves per mode.
   `wordmark-tone-style` (`italic` or `normal`), `wordmark-tone-weight` (`400` for
   `italic` and `weight`; else `inherit`), `wordmark-stop-display` (`inline` for
   `stop`, else `none`), `wordmark-stop-color` (colour of `toneColor`).
+
+- Home (`home-*`): `home-areas` (the grid areas for `placement`, quotes included),
+  `home-hero-panel` (`1` for the two panel surfaces, `0` for `open`; a padding
+  multiplier), `home-hero-bg`, `-fg`, `-fg-rgb`, `-muted` (the dark-mode `surface`,
+  `text` and `muted` for `darkPanel`; the light-mode `accent`, light `page` and its 0.9
+  tint for `accentPanel`; transparent and the page's own ink for `open`),
+  `home-hero-radius` (`radius-lg` for panels, `0` for `open`), `home-hero-rule` (`open`
+  only: `3px double` ink for double rules, else `2px solid` ink),
+  `home-hero-align`, `home-hero-tagline-inline` (`0` or `auto`), `home-hero-max`,
+  `home-hero-fit`, `home-open` (`1` for open regions), `home-updates-bg`,
+  `home-updates-shadow`, `home-aside-rule`, `home-align`, and the create-league
+  card's `home-cta-bg`, `-fg`, `-shadow`, `-ring` and the button's `-button-bg`, `-fg`,
+  `-hover`, `-active`, `-bd` and `-bd-hover` (the 03 primary skin's values unless the tile
+  is `primary`, when the button inverts).
+  `darkPanel` and `accentPanel` take their colours from existing slots, whose
+  contrast the contract test already guarantees; the hero never uses a gradient and
+  is dark in dark mode in every brand.
 
 Decoration values are unitless `1` or `0`; use them as multipliers inside `calc()`,
 never as conditions.

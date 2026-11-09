@@ -5,6 +5,7 @@ import { ApiQueryError, unwrap } from "../query/errors";
 import { queryKeys } from "../query/keys";
 import { notify } from "../../notifications";
 import { useFieldErrors } from "../useFieldErrors";
+import { canManageSeason } from "../../decisions/seasons/canManageSeason";
 import { formatLocalDateTime } from "./seasonFormat";
 import { copySeasonInviteLink } from "./seasonInviteLinks";
 import {
@@ -55,10 +56,11 @@ function requestIdOf(err: unknown): string | undefined {
 export function useSeasonOrchestration(
   seasonId: number,
   userSub?: string,
-  opts?: { leagueIdHint?: number | null }
+  opts?: { leagueIdHint?: number | null; isSuperAdmin?: boolean }
 ) {
   const queryClient = useQueryClient();
   const leagueIdHint = opts?.leagueIdHint ?? null;
+  const isSuperAdmin = opts?.isSuperAdmin ?? false;
   const detailKey = queryKeys.seasons.detail(seasonId, leagueIdHint);
 
   const detailQuery = useQuery({
@@ -70,13 +72,21 @@ export function useSeasonOrchestration(
         }),
         "Could not load season"
       );
-      const found = await loadLeagueContextForSeason(queryClient, seasonId, {
-        leagueIdHint
+      // Invites and the league roster are commissioner-only; ask only when allowed.
+      const canManage = canManageSeason({
+        userId: Number(userSub),
+        seasonMembers: memberData?.members ?? [],
+        isSuperAdmin
       });
-      const invitesRes = await fetchJson<{ invites: SeasonInvite[] }>(
-        `/seasons/${seasonId}/invites`,
-        { method: "GET" }
-      );
+      const found = await loadLeagueContextForSeason(queryClient, seasonId, {
+        leagueIdHint,
+        loadLeagueMembers: canManage
+      });
+      const invitesRes = canManage
+        ? await fetchJson<{ invites: SeasonInvite[] }>(`/seasons/${seasonId}/invites`, {
+            method: "GET"
+          })
+        : null;
       return {
         members: memberData?.members ?? [],
         leagueContext: found
@@ -87,7 +97,7 @@ export function useSeasonOrchestration(
             }
           : null,
         ceremonyStatus: found?.ceremonyStatus ?? null,
-        invites: invitesRes.ok ? (invitesRes.data?.invites ?? []) : []
+        invites: invitesRes?.ok ? (invitesRes.data?.invites ?? []) : []
       };
     }
   });

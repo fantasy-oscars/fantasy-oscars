@@ -38,6 +38,7 @@ export const foTokens = {
   "--fo-db-miniStat-minWidth": `54px`,
   "--fo-db-mobileBottomBarHeight": `52px`,
   "--fo-db-mobileBottomBarPadX": `var(--fo-space-8)`,
+  "--fo-db-mobileFooterHeight": `42px`,
   "--fo-db-mobileIconSize": `44px`,
   "--fo-db-mobilePadX": `var(--fo-space-xs)`,
   "--fo-db-rosterUnitDivisor": `6.25`,

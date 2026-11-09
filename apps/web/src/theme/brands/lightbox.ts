@@ -43,13 +43,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 1px #141414",
   raised: "0 0 0 2px #141414",
-  overlay: "0 0 0 1px #141414"
+  overlay: "0 0 0 1px #141414",
+  hero: "inset 0 0 0 6px #ffffff, 0 0 0 1px #141414"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 1px #f2e6e4",
   raised: "0 0 0 2px #f2e6e4",
-  overlay: "0 0 0 1px #f2e6e4"
+  overlay: "0 0 0 1px #f2e6e4",
+  hero: "inset 0 0 0 6px #4a3537, 0 0 0 1px #f2e6e4"
 };
 
 export const lightbox: BrandDefinition = {
@@ -73,7 +75,9 @@ export const lightbox: BrandDefinition = {
     h1Size: "32px",
     h2Size: "24px",
     h3Size: "16px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: ARCHIVO,
+    accentStyle: "normal"
   },
   fonts: {
     faces: [
@@ -114,5 +118,13 @@ export const lightbox: BrandDefinition = {
     frameBorders: true,
     greasePencil: true
   },
-  homeLayout: "lightbox"
+  home: {
+    placement: "column",
+    heroSurface: "darkPanel",
+    heroAlign: "start",
+    heroMax: "50px",
+    heroFit: 15,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

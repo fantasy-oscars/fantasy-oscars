@@ -50,39 +50,6 @@ const DRAFT_ROOM_SCREENS = [
 
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
-    check: "clipped-text",
-    screen: "draft-completed",
-    brand: "*",
-    mode: "*",
-    viewport: "*",
-    match: "dr-card-title",
-    reason:
-      "A very long username truncates in the draft card title without exposing the full name.",
-    date: "2026-11-05"
-  },
-  {
-    check: "clipped-text",
-    screen: "draft-completed",
-    brand: "*",
-    mode: "*",
-    viewport: "*",
-    match: "drh-buckleCenter",
-    reason:
-      "A very long username truncates in the header buckle without exposing the full name.",
-    date: "2026-11-05"
-  },
-  {
-    check: "clipped-text",
-    screen: "draft-completed",
-    brand: "*",
-    mode: "*",
-    viewport: "*",
-    match: "drm-podiumText",
-    reason:
-      "A very long username truncates in the podium text without exposing the full name.",
-    date: "2026-11-05"
-  },
-  {
     check: "contrast",
     screen: [
       "draft-live-armed",

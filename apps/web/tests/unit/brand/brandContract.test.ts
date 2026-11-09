@@ -3,11 +3,18 @@ import path from "node:path";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { BRAND_IDS, isBrandId } from "@fantasy-oscars/shared/brands";
 import {
+  ACCENT_STYLES,
   BRAND_DEFINITIONS,
   BUTTON_SHAPES,
   COLOR_SLOTS,
+  CTA_SURFACES,
   DECORATIONS,
   DEFAULT_BRAND,
+  HERO_ALIGNS,
+  HERO_FIT_RANGE,
+  HERO_SURFACES,
+  HOME_PLACEMENTS,
+  HOME_REGIONS,
   MODES,
   NAV_ACTIVE_COLORS,
   NAV_TREATMENTS,
@@ -38,9 +45,32 @@ describe("brand contract (types)", () => {
 describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
   "brand definition %s",
   (_id, brand) => {
-    it("uses a known brand id and home layout", () => {
+    it("uses a known brand id", () => {
       expect(isBrandId(brand.id)).toBe(true);
-      expect(isBrandId(brand.homeLayout)).toBe(true);
+    });
+
+    it("fills every Home slot with an allowed value", () => {
+      const { home } = brand;
+      expect(Object.keys(home).sort()).toEqual(
+        [
+          "ctaSurface",
+          "heroAlign",
+          "heroFit",
+          "heroMax",
+          "heroSurface",
+          "placement",
+          "regions"
+        ].sort()
+      );
+      expect(HOME_PLACEMENTS).toContain(home.placement);
+      expect(HERO_SURFACES).toContain(home.heroSurface);
+      expect(HERO_ALIGNS).toContain(home.heroAlign);
+      expect(HOME_REGIONS).toContain(home.regions);
+      expect(CTA_SURFACES).toContain(home.ctaSurface);
+      expect(ACCENT_STYLES).toContain(brand.type.accentStyle);
+      expect(home.heroMax).toMatch(/^\d+px$/);
+      expect(home.heroFit).toBeGreaterThanOrEqual(HERO_FIT_RANGE.min);
+      expect(home.heroFit).toBeLessThanOrEqual(HERO_FIT_RANGE.max);
     });
 
     it.each(MODES)("fills every colour and shadow slot in %s mode", (mode) => {
@@ -96,6 +126,14 @@ function luminance(value: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/** Mixes `fg` at `alpha` over `bg`, as `rgba(fg, alpha)` paints over an opaque background. */
+function mix(fg: string, bg: string, alpha: number): string {
+  const f = colorChannels(fg).split(",").map(Number);
+  const b = colorChannels(bg).split(",").map(Number);
+  const [r, g, bl] = f.map((c, i) => Math.round(c * alpha + b[i]! * (1 - alpha)));
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
 function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
@@ -129,6 +167,38 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
       it("keeps the action label readable on the primary fill", () => {
         expect(contrast(colors.onPrimary, colors.primary)).toBeGreaterThanOrEqual(4.5);
       });
+    });
+  }
+);
+
+describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
+  "Home hero contrast %s",
+  (_id, brand) => {
+    const dark = brand.modes.dark.colors;
+    const light = brand.modes.light.colors;
+
+    it("keeps dark text and muted readable on the dark panel", () => {
+      if (brand.home.heroSurface !== "darkPanel") return;
+      expect(contrast(dark.text, dark.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(dark.muted, dark.surface)).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it("keeps the pressed Home call-to-action label readable on its fill", () => {
+      if (brand.home.ctaSurface !== "primary") return;
+      for (const colors of [dark, light]) {
+        // Mirrors --brand-home-cta-button-active: on-primary 80% over primary, label in primary.
+        expect(
+          contrast(colors.primary, mix(colors.onPrimary, colors.primary, 0.8))
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it("keeps light page and its 0.9 mix readable on the accent panel", () => {
+      if (brand.home.heroSurface !== "accentPanel") return;
+      expect(contrast(light.page, light.accent)).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrast(mix(light.page, light.accent, 0.9), light.accent)
+      ).toBeGreaterThanOrEqual(4.5);
     });
   }
 );
@@ -289,6 +359,37 @@ describe("generated brand CSS", () => {
       expect(Object.keys(expected)).toHaveLength(14);
     }
   );
+
+  it("derives the Home properties from the Home slots", () => {
+    const declared = (id: string) => {
+      const common = css
+        .split("\n\n")
+        .find((b) => b.startsWith(`:root[data-brand="${id}"] {`))!;
+      return Object.fromEntries(
+        [...common.matchAll(/^ {2}(--[\w-]+): (.+);$/gm)].map((m) => [m[1], m[2]])
+      );
+    };
+    const gold = declared("refined-gold");
+    expect(gold["--brand-home-areas"]).toBe('"hero aside" "updates aside"');
+    expect(gold["--brand-home-hero-bg"]).toBe("var(--brand-dark-surface)");
+    expect(gold["--brand-home-hero-fg"]).toBe("var(--brand-dark-text)");
+    expect(gold["--brand-home-hero-radius"]).toBe("var(--brand-radius-lg)");
+    expect(gold["--brand-home-hero-max"]).toBe("44px");
+    expect(gold["--brand-home-hero-fit"]).toBe("12.5");
+    expect(gold["--brand-home-open"]).toBe("0");
+    expect(gold["--brand-font-accent"]).toContain("Inter");
+    expect(gold["--brand-accent-style"]).toBe("normal");
+    const ballot = declared("ballot");
+    expect(ballot["--brand-home-hero-bg"]).toBe("transparent");
+    expect(ballot["--brand-home-hero-rule"]).toBe("3px double var(--brand-text)");
+    expect(declared("noir")["--brand-home-hero-rule"]).toBe(
+      "2px solid var(--brand-text)"
+    );
+    expect(declared("red-carpet")["--brand-home-hero-muted"]).toBe(
+      "rgba(var(--brand-light-page-rgb), 0.9)"
+    );
+    expect(gold).not.toHaveProperty("--brand-home-layout");
+  });
 
   it("is deterministic", () => {
     expect(generateBrandCss(BRAND_DEFINITIONS, DEFAULT_BRAND)).toBe(css);

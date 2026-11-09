@@ -4,7 +4,9 @@ import { useLandingOrchestration } from "@/orchestration/landing";
 
 export function HomePage() {
   const { user, loading } = useAuthContext();
-  const { view } = useLandingOrchestration({ seasonsEnabled: Boolean(user) });
+  const { view, refresh } = useLandingOrchestration({ seasonsEnabled: Boolean(user) });
 
-  return <LandingScreen user={user} authLoading={loading} view={view} />;
+  return (
+    <LandingScreen user={user} authLoading={loading} view={view} refresh={refresh} />
+  );
 }

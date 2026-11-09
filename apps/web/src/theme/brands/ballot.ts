@@ -42,13 +42,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 1px #1c1a16",
   raised: "0 0 0 2px #1c1a16",
-  overlay: "0 0 0 1px #1c1a16"
+  overlay: "0 0 0 1px #1c1a16",
+  hero: "0 0 0 0 transparent"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 1px #ede6d6",
   raised: "0 0 0 2px #ede6d6",
-  overlay: "0 0 0 1px #ede6d6"
+  overlay: "0 0 0 1px #ede6d6",
+  hero: "0 0 0 0 transparent"
 };
 
 export const ballot: BrandDefinition = {
@@ -72,7 +74,9 @@ export const ballot: BrandDefinition = {
     h1Size: "40px",
     h2Size: "30px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: BODONI,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
@@ -114,5 +118,13 @@ export const ballot: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "ballot"
+  home: {
+    placement: "masthead",
+    heroSurface: "open",
+    heroAlign: "center",
+    heroMax: "72px",
+    heroFit: 16,
+    regions: "open",
+    ctaSurface: "card"
+  }
 };

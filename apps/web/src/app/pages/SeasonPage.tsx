@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Box, Stack, Title } from "@ui";
 import { useAuthContext } from "@/auth/context";
+import { hasSuperAdminAccess } from "@/auth/roles";
 import { useSeasonOrchestration } from "@/orchestration/seasons";
 import { useSeasonRouteOrchestration } from "@/orchestration/seasons/seasonRouteOrchestration";
 import { SeasonScreen } from "@/features/seasons/screens/SeasonScreen";
@@ -19,7 +20,8 @@ function ResolvedSeasonPage(props: {
   const { user } = useAuthContext();
   const navigate = useNavigate();
   const s = useSeasonOrchestration(seasonId, user?.sub, {
-    leagueIdHint: leagueIdHint ?? null
+    leagueIdHint: leagueIdHint ?? null,
+    isSuperAdmin: hasSuperAdminAccess(user)
   });
 
   useEffect(() => {

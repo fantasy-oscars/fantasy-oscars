@@ -44,14 +44,16 @@ const lightShadows: ShadowSlots = {
   raised:
     "0 0 0 1px #d9cfb8, 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08)",
   overlay:
-    "0 0 0 1px #898781, 0 2px 6px rgba(60, 45, 10, 0.08), 0 16px 40px rgba(60, 45, 10, 0.16)"
+    "0 0 0 1px #898781, 0 2px 6px rgba(60, 45, 10, 0.08), 0 16px 40px rgba(60, 45, 10, 0.16)",
+  hero: "0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08)"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 1px #36312a, 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28)",
   raised:
     "0 0 0 1px #4a443a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35)",
-  overlay: "0 0 0 1px #716e68, 0 16px 40px rgba(0, 0, 0, 0.5)"
+  overlay: "0 0 0 1px #716e68, 0 16px 40px rgba(0, 0, 0, 0.5)",
+  hero: "0 0 0 1px #6b5a2a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35)"
 };
 
 /** The original brand and the default. */
@@ -76,7 +78,9 @@ export const refinedGold: BrandDefinition = {
     h1Size: "32px",
     h2Size: "24px",
     h3Size: "18px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: INTER,
+    accentStyle: "normal"
   },
   fonts: {
     faces: [
@@ -118,5 +122,13 @@ export const refinedGold: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "refined-gold"
+  home: {
+    placement: "column",
+    heroSurface: "darkPanel",
+    heroAlign: "start",
+    heroMax: "44px",
+    heroFit: 12.5,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

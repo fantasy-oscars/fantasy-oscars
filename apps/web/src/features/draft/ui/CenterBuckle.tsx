@@ -37,6 +37,7 @@ export function CenterBuckle(props: {
         " "
       )}
       lineClamp={1}
+      title={props.centerText}
     >
       {props.centerText}
     </Text>

@@ -43,13 +43,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 1px #e2d2c8",
   raised: "0 0 0 1px #88807e",
-  overlay: "0 0 0 1px #88807e"
+  overlay: "0 0 0 1px #88807e",
+  hero: "0 0 0 1px #8e2a3a"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 1px #3a2a2d",
   raised: "0 0 0 1px #6d6865",
-  overlay: "0 0 0 1px #6d6865"
+  overlay: "0 0 0 1px #6d6865",
+  hero: "0 0 0 1px #8e2a3a"
 };
 
 export const redCarpet: BrandDefinition = {
@@ -73,11 +75,17 @@ export const redCarpet: BrandDefinition = {
     h1Size: "36px",
     h2Size: "28px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: PLAYFAIR,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
-      { family: "Playfair Display", weights: [600, 700], styles: ["normal"] },
+      {
+        family: "Playfair Display",
+        weights: [400, 600, 700],
+        styles: ["normal", "italic"]
+      },
       { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
       { family: "Cinzel", weights: [700], styles: ["normal"] }
     ],
@@ -115,5 +123,13 @@ export const redCarpet: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "red-carpet"
+  home: {
+    placement: "masthead",
+    heroSurface: "accentPanel",
+    heroAlign: "start",
+    heroMax: "68px",
+    heroFit: 18,
+    regions: "open",
+    ctaSurface: "card"
+  }
 };

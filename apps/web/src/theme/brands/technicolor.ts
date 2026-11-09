@@ -1,5 +1,5 @@
 import type { BrandDefinition, ColorSlots, ShadowSlots } from "./contract";
-import { DMSANS, FRAUNCES } from "./stacks";
+import { DMSANS, FRAUNCES, PLAYFAIR } from "./stacks";
 
 // A three-strip Technicolor poster: cream and cherry, heavy Fraunces titles,
 // thick ink outlines with an offset shadow. Values follow
@@ -45,13 +45,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12",
   raised: "0 0 0 2px #2a1a12, 0 7px 0 2px #2a1a12",
-  overlay: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12"
+  overlay: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12",
+  hero: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb",
   raised: "0 0 0 2px #f3ddbb, 0 7px 0 2px #f3ddbb",
-  overlay: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb"
+  overlay: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb",
+  hero: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb"
 };
 
 export const technicolor: BrandDefinition = {
@@ -75,12 +77,15 @@ export const technicolor: BrandDefinition = {
     h1Size: "38px",
     h2Size: "28px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: PLAYFAIR,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
       { family: "Fraunces", weights: [400, 600, 700, 800, 900], styles: ["normal"] },
-      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] }
+      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
+      { family: "Playfair Display", weights: [400], styles: ["italic"] }
     ],
     preload: {
       display: { family: "Fraunces", weight: 800, style: "normal" },
@@ -116,5 +121,13 @@ export const technicolor: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "technicolor"
+  home: {
+    placement: "masthead",
+    heroSurface: "accentPanel",
+    heroAlign: "center",
+    heroMax: "84px",
+    heroFit: 18.5,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

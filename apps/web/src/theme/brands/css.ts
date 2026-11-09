@@ -102,6 +102,106 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
   ];
 }
 
+/** Derived Home properties (see the Home layouts prescription, 3.2). */
+function homeDeclarations(brand: BrandDefinition): Declarations {
+  const { home, shape } = brand;
+  const panel = home.heroSurface !== "open";
+  const open = home.regions === "open";
+  const primary = home.ctaSurface === "primary";
+  const heroBg = {
+    darkPanel: "var(--brand-dark-surface)",
+    accentPanel: "var(--brand-light-accent)",
+    open: "transparent"
+  }[home.heroSurface];
+  const heroFg = {
+    darkPanel: "var(--brand-dark-text)",
+    accentPanel: "var(--brand-light-page)",
+    open: "var(--brand-text)"
+  }[home.heroSurface];
+  const heroFgRgb = {
+    darkPanel: "var(--brand-dark-text-rgb)",
+    accentPanel: "var(--brand-light-page-rgb)",
+    open: "var(--brand-text-rgb)"
+  }[home.heroSurface];
+  const heroMuted = {
+    darkPanel: "var(--brand-dark-muted)",
+    accentPanel: "rgba(var(--brand-light-page-rgb), 0.9)",
+    open: "var(--brand-muted)"
+  }[home.heroSurface];
+  const openRule =
+    shape.ruleStyle === "double"
+      ? "3px double var(--brand-text)"
+      : "2px solid var(--brand-text)";
+  return [
+    [
+      "--brand-home-areas",
+      home.placement === "masthead"
+        ? '"hero hero" "updates aside"'
+        : '"hero aside" "updates aside"'
+    ],
+    ["--brand-home-hero-panel", panel ? "1" : "0"],
+    ["--brand-home-hero-bg", heroBg],
+    ["--brand-home-hero-fg", heroFg],
+    ["--brand-home-hero-fg-rgb", heroFgRgb],
+    ["--brand-home-hero-muted", heroMuted],
+    ["--brand-home-hero-radius", panel ? "var(--brand-radius-lg)" : "0"],
+    ["--brand-home-hero-rule", panel ? "0 solid transparent" : openRule],
+    ["--brand-home-hero-align", home.heroAlign],
+    ["--brand-home-hero-tagline-inline", home.heroAlign === "center" ? "auto" : "0"],
+    ["--brand-home-hero-max", home.heroMax],
+    ["--brand-home-hero-fit", String(home.heroFit)],
+    ["--brand-home-open", open ? "1" : "0"],
+    ["--brand-home-updates-bg", open ? "transparent" : "var(--panel)"],
+    [
+      "--brand-home-updates-shadow",
+      open ? "0 0 0 0 transparent" : "var(--brand-shadow-card)"
+    ],
+    [
+      "--brand-home-aside-rule",
+      open ? "var(--brand-section-rule)" : "0 solid transparent"
+    ],
+    ["--brand-home-align", open ? "stretch" : "start"],
+    ["--brand-home-cta-bg", primary ? "var(--brand-primary)" : "var(--panel)"],
+    ["--brand-home-cta-fg", primary ? "var(--brand-on-primary)" : "var(--brand-text)"],
+    [
+      "--brand-home-cta-shadow",
+      primary ? "0 0 0 0 transparent" : "var(--brand-shadow-card)"
+    ],
+    [
+      "--brand-home-cta-button-bg",
+      primary ? "var(--brand-on-primary)" : "var(--brand-primary)"
+    ],
+    [
+      "--brand-home-cta-button-fg",
+      primary ? "var(--brand-primary)" : "var(--brand-on-primary)"
+    ],
+    [
+      "--brand-home-cta-button-hover",
+      primary
+        ? "color-mix(in srgb, var(--brand-on-primary) 88%, var(--brand-primary))"
+        : "var(--fo-button-primary-hover)"
+    ],
+    [
+      "--brand-home-cta-button-active",
+      primary
+        ? "color-mix(in srgb, var(--brand-on-primary) 80%, var(--brand-primary))"
+        : "var(--fo-button-primary-active)"
+    ],
+    [
+      "--brand-home-cta-button-bd",
+      primary ? "var(--brand-on-primary)" : "var(--fo-button-primary-border)"
+    ],
+    [
+      "--brand-home-cta-button-bd-hover",
+      primary ? "var(--brand-on-primary)" : "var(--fo-button-primary-border-hover)"
+    ],
+    [
+      "--brand-home-cta-ring",
+      primary ? "var(--brand-on-primary)" : "var(--brand-focus-ring)"
+    ]
+  ];
+}
+
 function modeDeclarations(
   brand: BrandDefinition,
   mode: Mode,
@@ -137,6 +237,8 @@ function commonDeclarations(brand: BrandDefinition): Declarations {
     ["--brand-h2-size", type.h2Size],
     ["--brand-h3-size", type.h3Size],
     ["--brand-body-size", type.bodySize],
+    ["--brand-font-accent", type.accentFont],
+    ["--brand-accent-style", type.accentStyle],
     ["--brand-wordmark-font", wordmark.font],
     ["--brand-wordmark-weight", wordmark.weight],
     ["--brand-wordmark-case", wordmark.case],
@@ -158,7 +260,7 @@ function commonDeclarations(brand: BrandDefinition): Declarations {
     out.push([`--brand-deco-${kebab(d)}`, brand.decorations[d] ? "1" : "0"]);
   }
   out.push(...derivedDeclarations(brand));
-  out.push(["--brand-home-layout", brand.homeLayout]);
+  out.push(...homeDeclarations(brand));
   // Both modes are always addressable by name, for tokens that mean "the dark
   // page" regardless of the active mode.
   for (const mode of MODES) {
