@@ -289,6 +289,64 @@
   padding: var(--fo-space-md);
 }
 
+/* The create-league button follows the tile (`home.ctaSurface`). Where the tile is a
+   plain card every value below equals the 03 primary skin; where it is `primary` the
+   button inverts and the focus ring is the local on-primary colour. The selectors carry
+   the skin's `[data-fo-variant]` so they beat its !important variables. */
+.baseline-landing .baseline-actionCard {
+  --brand-focus-ring: var(--brand-home-cta-ring);
+}
+
+.baseline-landing .baseline-actionCard .mantine-Title-root,
+.baseline-landing .baseline-actionCard .mantine-Text-root {
+  color: inherit;
+}
+
+.baseline-landing .baseline-actionCard .mantine-Button-root[data-fo-variant="primary"] {
+  --button-bg: var(--brand-home-cta-button-bg) !important;
+  --button-color: var(--brand-home-cta-button-fg) !important;
+  --button-hover: var(--brand-home-cta-button-hover) !important;
+  --button-bd: var(--fo-border-width) solid var(--brand-home-cta-button-bd) !important;
+  color: var(--brand-home-cta-button-fg);
+}
+
+.baseline-landing
+  .baseline-actionCard
+  .mantine-Button-root[data-fo-variant="primary"]:hover {
+  --button-bd: var(--fo-border-width) solid var(--brand-home-cta-button-bd-hover) !important;
+}
+
+.baseline-landing
+  .baseline-actionCard
+  .mantine-Button-root[data-fo-variant="primary"]:active {
+  --button-bg: var(--brand-home-cta-button-active) !important;
+  --button-hover: var(--brand-home-cta-button-active) !important;
+  --button-bd: var(--fo-border-width) solid var(--brand-home-cta-button-bd-hover) !important;
+}
+
+/* Grease-pencil ring around the create-league button (`decorations.greasePencil`).
+   Every multiplier is 0 outside lightbox, so the wrapper adds no padding and the
+   ring is invisible. The ring sits behind the button and is never a focus cue. */
+.baseline-ctaMark {
+  position: relative;
+  display: block;
+  isolation: isolate;
+  padding: calc(var(--brand-deco-grease-pencil) * var(--fo-space-8))
+    calc(var(--brand-deco-grease-pencil) * (var(--fo-space-4) + var(--fo-space-2)));
+}
+
+.baseline-ctaMark::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--fo-space-2)) calc(-1 * var(--fo-space-8));
+  border: 2px solid var(--brand-accent);
+  border-radius: 50%;
+  transform: rotate(-3deg);
+  opacity: var(--brand-deco-grease-pencil);
+  pointer-events: none;
+  z-index: -1;
+}
+
 @media (max-width: 900px) {
   .baseline-landing .baseline-updatesCard {
     padding: calc((1 - var(--brand-home-open)) * var(--fo-space-sm));

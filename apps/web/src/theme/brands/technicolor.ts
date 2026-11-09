@@ -1,5 +1,5 @@
 import type { BrandDefinition, ColorSlots, ShadowSlots } from "./contract";
-import { DMSANS, FRAUNCES } from "./stacks";
+import { DMSANS, FRAUNCES, PLAYFAIR } from "./stacks";
 
 // A three-strip Technicolor poster: cream and cherry, heavy Fraunces titles,
 // thick ink outlines with an offset shadow. Values follow
@@ -78,13 +78,14 @@ export const technicolor: BrandDefinition = {
     h2Size: "28px",
     h3Size: "20px",
     bodySize: "14px",
-    accentFont: DMSANS,
-    accentStyle: "normal"
+    accentFont: PLAYFAIR,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
       { family: "Fraunces", weights: [400, 600, 700, 800, 900], styles: ["normal"] },
-      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] }
+      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
+      { family: "Playfair Display", weights: [400], styles: ["italic"] }
     ],
     preload: {
       display: { family: "Fraunces", weight: 800, style: "normal" },
@@ -121,10 +122,10 @@ export const technicolor: BrandDefinition = {
     greasePencil: false
   },
   home: {
-    placement: "column",
+    placement: "masthead",
     heroSurface: "accentPanel",
-    heroAlign: "start",
-    heroMax: "38px",
+    heroAlign: "center",
+    heroMax: "84px",
     heroFit: 18.5,
     regions: "cards",
     ctaSurface: "card"

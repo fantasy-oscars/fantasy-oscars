@@ -1,5 +1,5 @@
 import type { BrandDefinition, ColorSlots, ShadowSlots } from "./contract";
-import { BARLOW, INTER } from "./stacks";
+import { BARLOW, BODONI, INTER } from "./stacks";
 
 // A title card: black and white, condensed uppercase type, square edges. Values
 // follow docs/design/prescriptions/02-brand-tokens.md (3.6).
@@ -75,13 +75,14 @@ export const noir: BrandDefinition = {
     h2Size: "32px",
     h3Size: "22px",
     bodySize: "14px",
-    accentFont: INTER,
-    accentStyle: "normal"
+    accentFont: BODONI,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
       { family: "Barlow Condensed", weights: [600, 700], styles: ["normal"] },
-      { family: "Inter", weights: [400, 500, 600, 700], styles: ["normal"] }
+      { family: "Inter", weights: [400, 500, 600, 700], styles: ["normal"] },
+      { family: "Bodoni Moda", weights: [400], styles: ["italic"] }
     ],
     preload: {
       display: { family: "Barlow Condensed", weight: 700, style: "normal" },
@@ -118,12 +119,12 @@ export const noir: BrandDefinition = {
     greasePencil: false
   },
   home: {
-    placement: "column",
+    placement: "masthead",
     heroSurface: "open",
     heroAlign: "start",
-    heroMax: "40px",
+    heroMax: "148px",
     heroFit: 24,
-    regions: "cards",
+    regions: "open",
     ctaSurface: "card"
   }
 };

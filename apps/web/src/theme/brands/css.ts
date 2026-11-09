@@ -176,6 +176,26 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
       primary ? "var(--brand-primary)" : "var(--brand-on-primary)"
     ],
     [
+      "--brand-home-cta-button-hover",
+      primary
+        ? "color-mix(in srgb, var(--brand-on-primary) 88%, var(--brand-primary))"
+        : "var(--fo-button-primary-hover)"
+    ],
+    [
+      "--brand-home-cta-button-active",
+      primary
+        ? "color-mix(in srgb, var(--brand-on-primary) 76%, var(--brand-primary))"
+        : "var(--fo-button-primary-active)"
+    ],
+    [
+      "--brand-home-cta-button-bd",
+      primary ? "var(--brand-on-primary)" : "var(--fo-button-primary-border)"
+    ],
+    [
+      "--brand-home-cta-button-bd-hover",
+      primary ? "var(--brand-on-primary)" : "var(--fo-button-primary-border-hover)"
+    ],
+    [
       "--brand-home-cta-ring",
       primary ? "var(--brand-on-primary)" : "var(--brand-focus-ring)"
     ]

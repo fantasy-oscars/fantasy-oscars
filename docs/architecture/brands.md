@@ -200,7 +200,9 @@ resolves per mode.
   `home-hero-align`, `home-hero-tagline-inline` (`0` or `auto`), `home-hero-max`,
   `home-hero-fit`, `home-open` (`1` for open regions), `home-updates-bg`,
   `home-updates-shadow`, `home-aside-rule`, `home-align`, and the create-league
-  card's `home-cta-bg`, `-fg`, `-shadow`, `-button-bg`, `-button-fg` and `-ring`.
+  card's `home-cta-bg`, `-fg`, `-shadow`, `-ring` and the button's `-button-bg`, `-fg`,
+  `-hover`, `-active`, `-bd` and `-bd-hover` (the 03 primary skin's values unless the tile
+  is `primary`, when the button inverts).
   `darkPanel` and `accentPanel` take their colours from existing slots, whose
   contrast the contract test already guarantees; the hero never uses a gradient and
   is dark in dark mode in every brand.

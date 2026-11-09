@@ -142,16 +142,18 @@ export function LandingScreen(props: {
             Create a league
           </Title>
           <Text>Start a season with friends and draft nominees together.</Text>
-          <Button
-            component={Link}
-            to={user ? "/leagues/new" : "/login"}
-            state={user ? undefined : { from: "/leagues/new" }}
-            disabled={authLoading}
-            variant="primary"
-            fullWidth
-          >
-            New league
-          </Button>
+          <span className="baseline-ctaMark">
+            <Button
+              component={Link}
+              to={user ? "/leagues/new" : "/login"}
+              state={user ? undefined : { from: "/leagues/new" }}
+              disabled={authLoading}
+              variant="primary"
+              fullWidth
+            >
+              New league
+            </Button>
+          </span>
         </Stack>
       </ActionCard>
 

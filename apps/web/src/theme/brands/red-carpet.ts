@@ -76,12 +76,16 @@ export const redCarpet: BrandDefinition = {
     h2Size: "28px",
     h3Size: "20px",
     bodySize: "14px",
-    accentFont: DMSANS,
-    accentStyle: "normal"
+    accentFont: PLAYFAIR,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
-      { family: "Playfair Display", weights: [600, 700], styles: ["normal"] },
+      {
+        family: "Playfair Display",
+        weights: [400, 600, 700],
+        styles: ["normal", "italic"]
+      },
       { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
       { family: "Cinzel", weights: [700], styles: ["normal"] }
     ],
@@ -120,12 +124,12 @@ export const redCarpet: BrandDefinition = {
     greasePencil: false
   },
   home: {
-    placement: "column",
+    placement: "masthead",
     heroSurface: "accentPanel",
     heroAlign: "start",
-    heroMax: "36px",
+    heroMax: "68px",
     heroFit: 18,
-    regions: "cards",
+    regions: "open",
     ctaSurface: "card"
   }
 };

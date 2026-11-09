@@ -122,7 +122,7 @@ export const lightbox: BrandDefinition = {
     placement: "column",
     heroSurface: "darkPanel",
     heroAlign: "start",
-    heroMax: "32px",
+    heroMax: "50px",
     heroFit: 15,
     regions: "cards",
     ctaSurface: "card"

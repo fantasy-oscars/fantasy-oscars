@@ -75,8 +75,8 @@ export const ballot: BrandDefinition = {
     h2Size: "30px",
     h3Size: "20px",
     bodySize: "14px",
-    accentFont: INSTRUMENT,
-    accentStyle: "normal"
+    accentFont: BODONI,
+    accentStyle: "italic"
   },
   fonts: {
     faces: [
@@ -119,12 +119,12 @@ export const ballot: BrandDefinition = {
     greasePencil: false
   },
   home: {
-    placement: "column",
+    placement: "masthead",
     heroSurface: "open",
-    heroAlign: "start",
-    heroMax: "40px",
+    heroAlign: "center",
+    heroMax: "72px",
     heroFit: 16,
-    regions: "cards",
+    regions: "open",
     ctaSurface: "card"
   }
 };

@@ -125,9 +125,9 @@ export const festival: BrandDefinition = {
     placement: "column",
     heroSurface: "darkPanel",
     heroAlign: "start",
-    heroMax: "38px",
+    heroMax: "64px",
     heroFit: 19,
     regions: "cards",
-    ctaSurface: "card"
+    ctaSurface: "primary"
   }
 };
