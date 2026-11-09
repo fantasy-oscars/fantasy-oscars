@@ -45,13 +45,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12",
   raised: "0 0 0 2px #2a1a12, 0 7px 0 2px #2a1a12",
-  overlay: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12"
+  overlay: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12",
+  hero: "0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb",
   raised: "0 0 0 2px #f3ddbb, 0 7px 0 2px #f3ddbb",
-  overlay: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb"
+  overlay: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb",
+  hero: "0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb"
 };
 
 export const technicolor: BrandDefinition = {
@@ -75,7 +77,9 @@ export const technicolor: BrandDefinition = {
     h1Size: "38px",
     h2Size: "28px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: DMSANS,
+    accentStyle: "normal"
   },
   fonts: {
     faces: [
@@ -116,5 +120,13 @@ export const technicolor: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "technicolor"
+  home: {
+    placement: "column",
+    heroSurface: "accentPanel",
+    heroAlign: "start",
+    heroMax: "38px",
+    heroFit: 18.5,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

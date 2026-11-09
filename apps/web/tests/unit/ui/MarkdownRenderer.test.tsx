@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 import { MantineProvider } from "@ui";
 import { MarkdownRenderer } from "@/ui/MarkdownRenderer";
@@ -72,5 +72,37 @@ describe("<MarkdownRenderer /> typography normalization", () => {
     expect(screen.getByText("Above")).toBeInTheDocument();
     expect(screen.getByText("Below")).toBeInTheDocument();
     expect(screen.getByRole("separator")).toBeInTheDocument();
+  });
+});
+
+describe("<MarkdownRenderer /> headingBase", () => {
+  const markdown = "# One\n\n## Two\n\n### Three\n\n#### Four";
+
+  test("keeps the default outline when headingBase is omitted", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={markdown} />
+      </MantineProvider>
+    );
+    const view = within(container);
+    expect(view.getByRole("heading", { name: "One", level: 2 })).toBeInTheDocument();
+    expect(view.getByRole("heading", { name: "Two", level: 2 })).toBeInTheDocument();
+    expect(view.getByRole("heading", { name: "Three", level: 3 })).toBeInTheDocument();
+    expect(view.getByRole("heading", { name: "Four", level: 4 })).toBeInTheDocument();
+  });
+
+  test("shifts headings under the base and renders deeper ones as bold text", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={markdown} headingBase={4} />
+      </MantineProvider>
+    );
+    const view = within(container);
+    expect(view.getByRole("heading", { name: "One", level: 4 })).toBeInTheDocument();
+    expect(view.getByRole("heading", { name: "Two", level: 4 })).toBeInTheDocument();
+    expect(view.queryByRole("heading", { name: "Three" })).not.toBeInTheDocument();
+    expect(view.getByText("Three")).toBeInTheDocument();
+    expect(view.getByText("Four")).toBeInTheDocument();
+    expect(view.getAllByRole("heading").every((h) => h.tagName === "H4")).toBe(true);
   });
 });

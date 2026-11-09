@@ -257,7 +257,34 @@ body {
   font-size: var(--fo-heading-h2-size);
 }
 
+/* The hero title scales with its container (the hero card) up to the brand's cap;
+   `data-tier` (decisions/landing.ts) steps long titles down. Without a tier it is
+   treated as a display title. */
 .mantine-Title-root[data-fo-typo="hero"] {
+  --hero-tier: 1;
+  font-family: var(--brand-font-display);
+  letter-spacing: var(--brand-hero-tracking);
+  word-spacing: var(--brand-display-word-spacing);
+  font-size: max(
+    var(--fo-font-size-lg),
+    min(
+      calc(var(--brand-home-hero-max) * var(--hero-tier)),
+      calc(var(--brand-home-hero-fit) * var(--hero-tier) * 1cqi)
+    )
+  );
+  line-height: 1;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  margin: 0;
+}
+
+.mantine-Title-root[data-fo-typo="hero"][data-tier="medium"] {
+  --hero-tier: 0.62;
+  line-height: 1.1;
+}
+
+.mantine-Title-root[data-fo-typo="hero"][data-tier="long"] {
   font-size: var(--fo-heading-h1-size);
   line-height: 1.1;
 }

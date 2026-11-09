@@ -45,13 +45,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 0 transparent",
   raised: "0 0 0 0 transparent",
-  overlay: "0 0 0 1px #868686"
+  overlay: "0 0 0 1px #868686",
+  hero: "0 0 0 0 transparent"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 0 transparent",
   raised: "0 0 0 0 transparent",
-  overlay: "0 0 0 1px #6d6d6b"
+  overlay: "0 0 0 1px #6d6d6b",
+  hero: "0 0 0 1px #1f6b4a"
 };
 
 export const festival: BrandDefinition = {
@@ -75,7 +77,9 @@ export const festival: BrandDefinition = {
     h1Size: "38px",
     h2Size: "28px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: INSTRUMENT,
+    accentStyle: "normal"
   },
   fonts: {
     faces: [
@@ -117,5 +121,13 @@ export const festival: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "festival"
+  home: {
+    placement: "column",
+    heroSurface: "darkPanel",
+    heroAlign: "start",
+    heroMax: "38px",
+    heroFit: 19,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

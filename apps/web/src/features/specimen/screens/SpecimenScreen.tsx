@@ -452,10 +452,10 @@ export function SpecimenScreen() {
           </Cell>
           <Cell label="hero">
             <HeroCard>
-              <Stack gap="var(--fo-space-md)">
-                <Title variant="hero">Fantasy Oscars</Title>
-                <Text variant="helper">Draft the nominees. Win on ceremony night.</Text>
-              </Stack>
+              <Title variant="hero">Fantasy Oscars</Title>
+              <Text variant="helper" className="baseline-heroTagline">
+                Draft the nominees. Win on ceremony night.
+              </Text>
             </HeroCard>
           </Cell>
           <Cell label="updates">

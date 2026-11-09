@@ -43,13 +43,15 @@ const light: ColorSlots = {
 const lightShadows: ShadowSlots = {
   card: "0 0 0 1px #e2d2c8",
   raised: "0 0 0 1px #88807e",
-  overlay: "0 0 0 1px #88807e"
+  overlay: "0 0 0 1px #88807e",
+  hero: "0 0 0 1px #8e2a3a"
 };
 
 const darkShadows: ShadowSlots = {
   card: "0 0 0 1px #3a2a2d",
   raised: "0 0 0 1px #6d6865",
-  overlay: "0 0 0 1px #6d6865"
+  overlay: "0 0 0 1px #6d6865",
+  hero: "0 0 0 1px #8e2a3a"
 };
 
 export const redCarpet: BrandDefinition = {
@@ -73,7 +75,9 @@ export const redCarpet: BrandDefinition = {
     h1Size: "36px",
     h2Size: "28px",
     h3Size: "20px",
-    bodySize: "14px"
+    bodySize: "14px",
+    accentFont: DMSANS,
+    accentStyle: "normal"
   },
   fonts: {
     faces: [
@@ -115,5 +119,13 @@ export const redCarpet: BrandDefinition = {
     frameBorders: false,
     greasePencil: false
   },
-  homeLayout: "red-carpet"
+  home: {
+    placement: "column",
+    heroSurface: "accentPanel",
+    heroAlign: "start",
+    heroMax: "36px",
+    heroFit: 18,
+    regions: "cards",
+    ctaSurface: "card"
+  }
 };

@@ -14,7 +14,6 @@ export type TitleProps = Omit<MantineTitleProps, "order"> & {
 function defaultOrderForVariant(v: TitleVariant): MantineTitleProps["order"] {
   switch (v) {
     case "hero":
-      return 1;
     case "page":
       return 2;
     case "section":

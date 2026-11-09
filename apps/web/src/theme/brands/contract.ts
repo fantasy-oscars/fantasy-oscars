@@ -31,7 +31,7 @@ export type ColorSlot = (typeof COLOR_SLOTS)[number];
 export type ColorSlots = Record<ColorSlot, string>;
 
 /** Shadow slots, filled per brand and per mode. Values are CSS box-shadow lists. */
-export const SHADOW_SLOTS = ["card", "raised", "overlay"] as const;
+export const SHADOW_SLOTS = ["card", "raised", "overlay", "hero"] as const;
 export type ShadowSlot = (typeof SHADOW_SLOTS)[number];
 export type ShadowSlots = Record<ShadowSlot, string>;
 
@@ -70,6 +70,34 @@ export const DECORATIONS = [
 ] as const;
 export type Decoration = (typeof DECORATIONS)[number];
 
+export const ACCENT_STYLES = ["normal", "italic"] as const;
+export type AccentStyle = (typeof ACCENT_STYLES)[number];
+
+/** `column`: the Home hero tops the reading column. `masthead`: it spans both columns. */
+export const HOME_PLACEMENTS = ["column", "masthead"] as const;
+export type HomePlacement = (typeof HOME_PLACEMENTS)[number];
+
+/**
+ * `darkPanel`: the dark-mode surface in both modes. `accentPanel`: the light-mode
+ * accent in both modes. `open`: type on the page with a rule under it.
+ */
+export const HERO_SURFACES = ["darkPanel", "accentPanel", "open"] as const;
+export type HeroSurface = (typeof HERO_SURFACES)[number];
+
+export const HERO_ALIGNS = ["start", "center"] as const;
+export type HeroAlign = (typeof HERO_ALIGNS)[number];
+
+/** `cards`: the Home update is a card. `open`: it sits on the page, with a rule beside the side column. */
+export const HOME_REGIONS = ["cards", "open"] as const;
+export type HomeRegions = (typeof HOME_REGIONS)[number];
+
+/** `primary`: the create-league card is filled with the primary colour. */
+export const CTA_SURFACES = ["card", "primary"] as const;
+export type CtaSurface = (typeof CTA_SURFACES)[number];
+
+/** Bounds of `heroFit`, a percentage of the hero's inner width. */
+export const HERO_FIT_RANGE = { min: 8, max: 30 } as const;
+
 export type TypeSlots = {
   displayFont: string;
   bodyFont: string;
@@ -91,6 +119,23 @@ export type TypeSlots = {
   h2Size: string;
   h3Size: string;
   bodySize: string;
+  /** Font of the Home hero tagline (`--brand-font-accent`). */
+  accentFont: string;
+  /** Style of the Home hero tagline (`--brand-accent-style`). */
+  accentStyle: AccentStyle;
+};
+
+/** Composition of Home. Components read the derived `--brand-home-*` properties, never these enums. */
+export type HomeSlots = {
+  placement: HomePlacement;
+  heroSurface: HeroSurface;
+  heroAlign: HeroAlign;
+  /** Largest hero title size on desktop, in px. */
+  heroMax: string;
+  /** Hero title size as a percentage of the hero's inner width; the smaller of this and `heroMax` wins. */
+  heroFit: number;
+  regions: HomeRegions;
+  ctaSurface: CtaSurface;
 };
 
 export type WordmarkSlots = {
@@ -132,6 +177,5 @@ export type BrandDefinition = {
   shape: ShapeSlots;
   navigation: NavigationSlots;
   decorations: Record<Decoration, boolean>;
-  /** Which of the seven home layouts this brand uses. */
-  homeLayout: BrandId;
+  home: HomeSlots;
 };

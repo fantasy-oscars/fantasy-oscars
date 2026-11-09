@@ -9,6 +9,11 @@ import { CodeBlock } from "./CodeBlock";
 
 type Props = {
   markdown: string | null | undefined;
+  /**
+   * Heading level that `#` and `##` render at (default 2). Raise it when the
+   * Markdown sits under other headings, so the outline stays in order.
+   */
+  headingBase?: number;
 };
 
 function applyTypographyReplacementsToText(value: string): string {
@@ -176,7 +181,8 @@ function renderInline(
 function renderBlocks(
   nodes: Content[] | undefined,
   keyPrefix: string,
-  definitions: DefinitionsMap
+  definitions: DefinitionsMap,
+  headingBase?: number
 ): ReactNode[] {
   if (!nodes || nodes.length === 0) return [];
 
@@ -187,7 +193,7 @@ function renderBlocks(
     switch (node.type) {
       case "heading": {
         // Page-level titles must not come from Markdown; remap h1 -> h2.
-        const depth = node.depth <= 1 ? 2 : node.depth;
+        const depth = (node.depth <= 1 ? 2 : node.depth) + ((headingBase ?? 2) - 2);
 
         if (depth >= 5) {
           out.push(
@@ -204,7 +210,13 @@ function renderBlocks(
         }
 
         out.push(
-          <Title key={key} order={depth} mt="var(--fo-space-0)" mb="xs">
+          <Title
+            key={key}
+            order={depth as 1 | 2 | 3 | 4}
+            variant={headingBase === undefined ? undefined : "section"}
+            mt="var(--fo-space-0)"
+            mb="xs"
+          >
             {renderInline(node.children as PhrasingContent[], key, definitions)}
           </Title>
         );
@@ -232,7 +244,8 @@ function renderBlocks(
                 {renderBlocks(
                   li.children as Content[],
                   `${key}-li-${liIndex}`,
-                  definitions
+                  definitions,
+                  headingBase
                 )}
               </List.Item>
             ))}
@@ -244,7 +257,7 @@ function renderBlocks(
         out.push(
           <Blockquote key={key} mb="sm">
             <Stack gap="var(--fo-space-0)">
-              {renderBlocks(node.children, key, definitions)}
+              {renderBlocks(node.children, key, definitions, headingBase)}
             </Stack>
           </Blockquote>
         );
@@ -300,7 +313,7 @@ export function MarkdownRenderer(props: Props) {
 
   return (
     <Stack gap="var(--fo-space-0)">
-      {renderBlocks(tree.children, "md", definitions)}
+      {renderBlocks(tree.children, "md", definitions, props.headingBase)}
     </Stack>
   );
 }

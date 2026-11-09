@@ -5,36 +5,71 @@
   width: 100%;
 }
 
-.baseline-landing-inner {
-  /* ShellLayout already constrains width + applies gutters. */
-  width: 100%;
-  padding: 0;
-}
-
-@media (max-width: 900px) {
-  .baseline-landing-inner {
-    padding: 0;
-  }
-}
-
 .baseline-landing-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: var(--fo-space-sm);
-  align-items: start;
+  grid-template-rows: auto 1fr;
+  grid-template-areas: var(--brand-home-areas);
+  /* 16 with cards, 24 with open regions (their rules need the room). */
+  column-gap: calc(
+    var(--fo-space-sm) + var(--brand-home-open) *
+      (var(--fo-space-md) - var(--fo-space-sm))
+  );
+  row-gap: var(--fo-space-md);
+  align-items: var(--brand-home-align);
   padding: var(--fo-space-sm) 0 0;
+}
+
+.baseline-landing-hero {
+  grid-area: hero;
+  min-width: 0;
+}
+
+.baseline-landing-updates {
+  grid-area: updates;
+  min-width: 0;
+}
+
+.baseline-landing-aside {
+  grid-area: aside;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-md);
+  border-inline-start: var(--brand-home-aside-rule);
+  padding-inline-start: calc(var(--brand-home-open) * var(--fo-space-md));
 }
 
 @media (max-width: 900px) {
   .baseline-landing-grid {
-    gap: var(--fo-space-xs);
+    column-gap: calc(
+      var(--fo-space-xs) + var(--brand-home-open) *
+        (var(--fo-space-sm) - var(--fo-space-xs))
+    );
+    row-gap: var(--fo-space-sm);
+  }
+
+  .baseline-landing-aside {
+    padding-inline-start: calc(var(--brand-home-open) * var(--fo-space-sm));
   }
 }
 
 @media (max-width: 500px) {
   .baseline-landing-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--fo-space-xs);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "hero"
+      "updates"
+      "aside";
+    row-gap: var(--fo-space-md);
+  }
+
+  .baseline-landing-aside {
+    border-inline-start: 0;
+    padding-inline-start: 0;
+    border-block-start: var(--brand-home-aside-rule);
+    padding-block-start: calc(var(--brand-home-open) * var(--fo-space-md));
   }
 }
 
@@ -51,8 +86,53 @@
   padding: var(--fo-space-sm);
 }
 
+/* Home hero: a flat surface from the brand's derived `--brand-home-hero-*` properties.
+   It is the size container for the title (`cqi`), so it must get its width from its
+   parent, never from its own content. */
 .baseline-heroCard {
-  padding: var(--fo-space-md) var(--fo-space-sm);
+  --hero-pad-block: var(--fo-space-lg);
+  --hero-pad-inline: var(--fo-space-lg);
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-xs);
+  padding: calc(var(--brand-home-hero-panel) * var(--hero-pad-block))
+    calc(var(--brand-home-hero-panel) * var(--hero-pad-inline));
+  /* An open hero keeps room above its rule. */
+  padding-bottom: calc(
+    var(--brand-home-hero-panel) * var(--hero-pad-block) +
+      (1 - var(--brand-home-hero-panel)) * var(--fo-space-md)
+  );
+  background: var(--brand-home-hero-bg);
+  color: var(--brand-home-hero-fg);
+  --fo-typo-muted: var(--brand-home-hero-muted);
+  box-shadow: var(--brand-shadow-hero);
+  border-radius: var(--brand-home-hero-radius);
+  border-bottom: var(--brand-home-hero-rule);
+  text-align: var(--brand-home-hero-align);
+}
+
+@media (max-width: 900px) {
+  .baseline-heroCard {
+    --hero-pad-block: var(--fo-space-md);
+    --hero-pad-inline: var(--fo-space-md);
+  }
+}
+
+@media (max-width: 500px) {
+  .baseline-heroCard {
+    --hero-pad-block: var(--fo-space-md);
+    --hero-pad-inline: var(--fo-space-sm);
+  }
+}
+
+/* Loading placeholder: tinted from the hero's ink, on the hero's own fill. */
+.baseline-heroCard .mantine-Skeleton-root::before {
+  background-color: var(--brand-home-hero-bg);
+}
+
+.baseline-heroCard .mantine-Skeleton-root::after {
+  background-color: rgba(var(--brand-home-hero-fg-rgb), 0.18);
 }
 
 /* Empty slot: a dashed placeholder where the content would sit. */
@@ -153,14 +233,6 @@
   min-width: 0;
 }
 
-.baseline-updates-prose p {
-  margin: 0;
-}
-
-.baseline-updates-prose p + p {
-  margin-top: var(--fo-space-xs);
-}
-
 .baseline-metaRow {
   display: flex;
   justify-content: space-between;
@@ -168,9 +240,33 @@
   gap: var(--fo-space-xs);
 }
 
+.baseline-seasonsHeading {
+  row-gap: var(--fo-space-4);
+}
+
+/* A long league name wraps under itself; the status chip stays whole. */
+.baseline-metaRow .fo-chip {
+  flex: none;
+}
+
+/* In the two-column tablet layout the side column is about 220 px: the chip drops under
+   the league name instead of squeezing the name to a letter per line or spilling out of
+   the card. The phone's single column keeps the name beside the chip. */
+@media (min-width: 501px) and (max-width: 900px) {
+  .baseline-landing .baseline-metaRow {
+    flex-wrap: wrap;
+  }
+}
+
 .baseline-heroTagline {
-  /* Taglines are sans; only muted via contrast. */
-  opacity: var(--fo-opacity-muted-2);
+  margin: 0;
+  margin-inline: var(--brand-home-hero-tagline-inline);
+  max-width: 60ch;
+  font-family: var(--brand-font-accent);
+  font-style: var(--brand-accent-style);
+  font-weight: var(--fo-font-weight-regular);
+  font-size: var(--fo-font-size-md);
+  line-height: 1.4;
 }
 
 .baseline-updatesCard {
@@ -178,32 +274,29 @@
   box-shadow: var(--brand-shadow-card);
 }
 
-/* HeroCard inverted surface */
-:root[data-mantine-color-scheme="light"] .baseline-heroCard,
-body[data-mantine-color-scheme="light"] .baseline-heroCard {
-  /* Radial spotlight: warm, lit core slightly off-center; neutral charcoal falloff. */
-  background: radial-gradient(
-    circle at 33% -10%,
-    color-mix(in srgb, var(--brand-dark-surface) 70%, var(--brand-primary) 30%) 0%,
-    var(--brand-dark-surface) 65%,
-    color-mix(in srgb, var(--brand-dark-surface) 60%, var(--brand-dark-page) 40%) 100%
-  );
-  color: var(--brand-dark-text);
-  --fo-typo-muted: rgba(var(--brand-dark-text-rgb), var(--fo-alpha-75));
-  box-shadow: var(--brand-shadow-raised);
+/* Home surfaces for the update and the create-league card. The same classes outside
+   `.baseline-landing` (the specimen, other screens) keep their plain card look. */
+.baseline-landing .baseline-updatesCard {
+  background: var(--brand-home-updates-bg);
+  box-shadow: var(--brand-home-updates-shadow);
+  padding: calc((1 - var(--brand-home-open)) * var(--fo-space-md));
 }
 
-:root[data-mantine-color-scheme="dark"] .baseline-heroCard,
-body[data-mantine-color-scheme="dark"] .baseline-heroCard {
-  background: radial-gradient(
-    circle at 33% -10%,
-    color-mix(in srgb, var(--brand-light-page) 70%, var(--brand-primary) 30%) 0%,
-    var(--brand-light-page) 65%,
-    color-mix(in srgb, var(--brand-light-page) 60%, var(--brand-accent) 40%) 100%
-  );
-  color: var(--brand-light-text);
-  --fo-typo-muted: rgba(var(--brand-light-text-rgb), var(--fo-alpha-75));
-  box-shadow: var(--brand-shadow-raised);
+.baseline-landing .baseline-actionCard {
+  background: var(--brand-home-cta-bg);
+  color: var(--brand-home-cta-fg);
+  box-shadow: var(--brand-home-cta-shadow);
+  padding: var(--fo-space-md);
+}
+
+@media (max-width: 900px) {
+  .baseline-landing .baseline-updatesCard {
+    padding: calc((1 - var(--brand-home-open)) * var(--fo-space-sm));
+  }
+
+  .baseline-landing .baseline-actionCard {
+    padding: var(--fo-space-sm);
+  }
 }
 
 /* Button labels must be sans under the new baseline; every brand body face is sans. */
