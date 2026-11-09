@@ -234,6 +234,7 @@ export function MobileDraftHeader(props: {
                     p.names.length > 1 ? "is-rolling" : ""
                   ].join(" ")}
                   lineClamp={1}
+                  title={currentName}
                 >
                   {currentName}
                 </Text>

@@ -5,6 +5,7 @@ import { RuntimeBannerStack } from "@/notifications";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
+import { useCategoryKeyboardFocus } from "./useCategoryKeyboardFocus";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
 import { MobileRosterBoard } from "./MobileRosterBoard";
@@ -111,6 +112,9 @@ export function MobileDraftRoom(props: {
     ? props.categories.filter((c) => c.nominees.length > 0)
     : props.categories;
 
+  const { keyboardCategoryId, setKeyboardCategoryId, firstPillRefByCategoryId } =
+    useCategoryKeyboardFocus(categoriesForList.map((c) => c.id));
+
   const mobileNominee =
     mobileNominationId != null
       ? (props.nomineeById.get(mobileNominationId) ?? null)
@@ -202,9 +206,9 @@ export function MobileDraftRoom(props: {
                   tooltipsEnabled={false}
                   weightText={c.weightText}
                   nominees={c.nominees}
-                  firstPillRef={null}
-                  isKeyboardMode={false}
-                  setKeyboardMode={() => {}}
+                  firstPillRef={firstPillRefByCategoryId[c.id] ?? null}
+                  isKeyboardMode={keyboardCategoryId === c.id}
+                  setKeyboardMode={setKeyboardCategoryId}
                   canDraftAction={props.canDraftAction}
                   onNomineeClick={(id) => openNomineeCard(id)}
                   onNomineeDoubleClick={() => {}}

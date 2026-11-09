@@ -141,7 +141,11 @@ export function RosterBoardScaffold(props: {
               <Box className="dr-card dr-rosterCard">
                 <Box className="dr-card-titleRow">
                   <AnimalAvatarIcon avatarKey={p.avatarKey} size="md" />
-                  <Text className="dr-card-title fo-flex1Minw0" lineClamp={1}>
+                  <Text
+                    className="dr-card-title fo-flex1Minw0"
+                    lineClamp={1}
+                    title={p.label}
+                  >
                     {p.label}
                   </Text>
                   <Text

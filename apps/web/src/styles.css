@@ -1414,6 +1414,14 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   padding: 0 var(--fo-db-mobileBottomBarPadX);
 }
 
+/* Toasts sit above the rail bar and the fineprint footer beneath it, never over them. */
+body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom"] {
+  bottom: calc(
+    var(--fo-db-mobileBottomBarHeight) + var(--fo-db-mobileFooterHeight) +
+      var(--fo-space-xs) + env(safe-area-inset-bottom)
+  );
+}
+
 .dr-mobileRailBtn {
   width: var(--fo-db-mobileRailBtn-width);
   height: var(--fo-db-mobileRailBtn-height);
@@ -4371,16 +4379,19 @@ small.error {
 }
 
 .wizard-step {
+  --wizard-step-bar-width: calc(var(--fo-space-2) + var(--fo-space-hairline));
   position: relative;
+  /* The active bar has its own column so it never overlaps the icon. */
+  padding-inline-start: calc(var(--wizard-step-bar-width) + var(--fo-space-8));
 }
 
 .wizard-step.is-active::before {
   content: "";
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 0;
   height: 100%;
-  width: calc(var(--fo-space-2) + var(--fo-space-hairline));
+  width: var(--wizard-step-bar-width);
   border-radius: var(--fo-radius-small);
   background: var(--brand-text);
 }

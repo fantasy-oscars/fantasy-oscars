@@ -818,7 +818,7 @@ Brand-specific header checks (H1, desktop and phone, both modes):
 
 ### 6.3 Cells that must not change in chunk 9
 
-- Any `login` and `register` cell, except the footer band if the auth layout has one.
+- Any `login` and `register` cell, except the footer band and the auth card's corners (radius-md, 4.9).
 - `not-found`, except the footer band and card corners.
 - Draft cells, except the regions in D1–D4.
 - Win gold must be pixel-identical in hue across brands in D4 and C6.

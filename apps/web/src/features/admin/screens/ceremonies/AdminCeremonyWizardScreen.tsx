@@ -65,8 +65,9 @@ export function AdminCeremonyWizardScreen(props: {
           contentPadding={0}
           styles={{
             step: {
-              padding:
-                "var(--fo-space-dense-1) var(--fo-space-0) var(--fo-space-dense-1) var(--fo-space-8)"
+              // Inline start padding lives in `.wizard-step` (it reserves the bar column).
+              paddingBlock: "var(--fo-space-dense-1)",
+              paddingInlineEnd: "var(--fo-space-0)"
             },
             stepLabel: {
               fontSize: "var(--fo-font-size-xs)",
