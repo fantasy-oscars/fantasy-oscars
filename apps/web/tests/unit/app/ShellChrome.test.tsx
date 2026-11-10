@@ -15,6 +15,8 @@ function Harness(props: {
   inviteCount?: number;
   signedIn?: boolean;
   loading?: boolean;
+  onChooseAppearance?: () => void;
+  onExited?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -31,9 +33,6 @@ function Harness(props: {
           inviteCount={props.inviteCount ?? 0}
           userMenuOpen={false}
           setUserMenuOpen={() => undefined}
-          colorScheme="light"
-          setColorScheme={() => undefined}
-          themeToggleIcon="x"
         />
         <ShellNavDrawer
           opened={open}
@@ -41,6 +40,11 @@ function Harness(props: {
           primaryLinks={[{ to: "/", label: "Home" }]}
           user={props.signedIn === false ? null : { sub: "1" }}
           onLogout={() => Promise.resolve()}
+          onChooseAppearance={() => {
+            props.onChooseAppearance?.();
+            setOpen(false);
+          }}
+          onExited={() => props.onExited?.()}
         />
       </MemoryRouter>
     </MantineProvider>
@@ -49,6 +53,21 @@ function Harness(props: {
 
 describe("shell header controls", () => {
   afterEach(cleanup);
+
+  it("reports the Appearance choice, then the end of the close, in that order", async () => {
+    const calls: string[] = [];
+    const user = userEvent.setup();
+    render(
+      <Harness
+        navMode="drawer"
+        onChooseAppearance={() => calls.push("choose")}
+        onExited={() => calls.push("exited")}
+      />
+    );
+    await user.click(screen.getByRole("button", { name: /navigation|menu/i }));
+    await user.click(await screen.findByRole("link", { name: "Appearance" }));
+    await waitFor(() => expect(calls).toEqual(["choose", "exited"]));
+  });
 
   it("names the invites link by its count, capped at 9+", () => {
     const { rerender } = render(<Harness navMode="inline" inviteCount={0} />);
@@ -105,6 +124,64 @@ describe("shell header controls", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open navigation" }));
     expect(await screen.findByRole("link", { name: "Account" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Log out/ })).toBeInTheDocument();
+  });
+});
+
+describe("appearance entry points", () => {
+  afterEach(cleanup);
+
+  it("has no mode toggle in the header, signed in or out", () => {
+    const { rerender } = render(<Harness navMode="inline" />);
+    expect(screen.queryByRole("button", { name: /mode/i })).not.toBeInTheDocument();
+    rerender(<Harness navMode="inline" signedIn={false} />);
+    expect(screen.queryByRole("button", { name: /mode/i })).not.toBeInTheDocument();
+  });
+
+  it("shows Log in in the phone header when signed out, with the page to return to", () => {
+    const { rerender } = render(<Harness navMode="drawer" signedIn={false} />);
+    expect(screen.getByRole("link", { name: "Log in" })).toHaveAttribute(
+      "href",
+      "/login"
+    );
+    rerender(<Harness navMode="drawer" signedIn={false} loading />);
+    expect(screen.queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
+    rerender(<Harness navMode="drawer" />);
+    expect(screen.queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
+  });
+
+  it("links Appearance from the account menu and the drawer", async () => {
+    function MenuHarness() {
+      return (
+        <MantineProvider>
+          <MemoryRouter>
+            <ShellHeader
+              navMode="inline"
+              rowRef={{ current: null }}
+              navDrawerOpen={false}
+              onOpenNavDrawer={() => undefined}
+              user={USER}
+              loading={false}
+              logout={() => Promise.resolve()}
+              inviteCount={0}
+              userMenuOpen
+              setUserMenuOpen={() => undefined}
+            />
+          </MemoryRouter>
+        </MantineProvider>
+      );
+    }
+    render(<MenuHarness />);
+    expect(
+      await screen.findByRole("menuitem", { name: /Appearance/ })
+    ).toBeInTheDocument();
+    cleanup();
+
+    render(<Harness navMode="drawer" />);
+    await userEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(await screen.findByRole("link", { name: "Appearance" })).toHaveAttribute(
+      "href",
+      "/account#appearance"
+    );
   });
 });
 

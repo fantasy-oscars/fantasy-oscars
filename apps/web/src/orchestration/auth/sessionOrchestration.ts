@@ -12,6 +12,8 @@ export type AuthUser = {
   admin_role?: "NONE" | "OPERATOR" | "SUPER_ADMIN";
   avatar_key?: string;
   brand_preference?: string | null;
+  /** Appearance settings as stored (see `parseAppearance` in shared); absent on very old sessions. */
+  appearance?: Record<string, unknown>;
 };
 
 export type AuthSessionOrchestration = {

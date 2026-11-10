@@ -1,18 +1,7 @@
 import { Link } from "react-router-dom";
-import {
-  Anchor,
-  Box,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  TmdbLogo,
-  useMantineColorScheme
-} from "@ui";
+import { Anchor, Box, Group, SimpleGrid, Stack, Text, TmdbLogo } from "@ui";
 
 export function SiteFooter() {
-  useMantineColorScheme(); // keep hook for future theme-driven footer tweaks
-
   return (
     <Box component="footer" className="site-footer">
       <Box component="nav" className="footer-grid" aria-label="Footer">

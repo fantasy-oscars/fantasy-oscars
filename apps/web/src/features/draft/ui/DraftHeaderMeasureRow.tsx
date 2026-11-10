@@ -29,7 +29,6 @@ export function DraftHeaderMeasureRow(props: {
   canToggleView: boolean;
   showDraftedVisible: boolean;
   showDrafted: boolean;
-  themeIcon: string;
   showCursorSpyToggle: boolean;
   userLabel: string;
   userAvatarKey: string | null;
@@ -129,16 +128,6 @@ export function DraftHeaderMeasureRow(props: {
         ) : null}
 
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-          <Button
-            type="button"
-            variant="subtle"
-            className="theme-toggle"
-            aria-hidden="true"
-          >
-            <Text component="span" className="gicon" aria-hidden="true">
-              {props.themeIcon}
-            </Text>
-          </Button>
           <Box className="drh-userBadge">
             <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>

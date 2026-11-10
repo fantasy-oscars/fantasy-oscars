@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { Box, Button, Group, Skeleton, Stack, Text, Title, UnstyledButton } from "@ui";
+import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { AdminCeremonyCategoriesOrchestration } from "@/orchestration/adminCeremoniesCategories";
@@ -24,7 +25,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
 }) {
   const { ceremonyId, o, onAfterChange, onConfirmClone, onConfirmRemoveCategory } = props;
   const [cloneOpen, setCloneOpen] = useState(false);
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useReorderSensors();
 
   const cloneOptions = useMemo(
     () =>

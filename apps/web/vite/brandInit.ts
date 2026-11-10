@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type Plugin, type ResolvedConfig } from "vite";
+import type { FontPreloadMap } from "../src/orchestration/brand/prepaint";
 import { BRAND_DEFINITIONS, DEFAULT_BRAND, generateBrandCss } from "../src/theme/brands";
 import {
   collectFontFaces,
@@ -21,8 +22,35 @@ const RESOLVED_FONTS_ID = path.join(WEB_ROOT, "src/theme/brand-fonts.generated.c
 /** Key used for brands without a definition of their own, which render the default. */
 export const DEFAULT_PRELOAD_KEY = "*";
 
-/** Preload urls (display, then body) per brand id, plus `*` for the default brand. */
-export type FontPreloadMap = Record<string, string[]>;
+export type { FontPreloadMap };
+
+const FONT_EXT = ".woff2";
+
+/** The map of a dev server: nothing to preload. */
+const NO_PRELOADS: FontPreloadMap = { base: "", files: [], brands: {} };
+
+/**
+ * Packs preload urls (display, then body) per brand id into the script's map: the
+ * directory the urls share once, each distinct file once (without the `.woff2`
+ * every one of them ends in), and indexes per brand.
+ */
+export function buildPreloadMap(urlsByBrand: Record<string, string[]>): FontPreloadMap {
+  const urls = Object.values(urlsByBrand).flat();
+  const bad = urls.find((u) => !u.endsWith(FONT_EXT));
+  if (bad) throw new Error(`Preload font ${bad} is not a ${FONT_EXT} file`);
+  const [first = ""] = urls;
+  let base = first.slice(0, first.lastIndexOf("/") + 1);
+  while (!urls.every((u) => u.startsWith(base))) {
+    base = base.slice(0, base.slice(0, -1).lastIndexOf("/") + 1);
+  }
+  const stem = (u: string) => u.slice(base.length, -FONT_EXT.length);
+  const files = [...new Set(urls.map(stem))];
+  const brands: Record<string, number[]> = {};
+  for (const [id, list] of Object.entries(urlsByBrand)) {
+    brands[id] = list.map((u) => files.indexOf(stem(u)));
+  }
+  return { base, files, brands };
+}
 
 /**
  * Whether unreleased brands are enabled for this build. Only test builds may turn
@@ -39,7 +67,7 @@ export function resolveEnableAllBrands(mode: string, flag: string | undefined): 
 
 /** Bundles src/brand-init.ts into one dependency-free classic script. */
 export async function buildBrandInitScript(
-  preloads: FontPreloadMap = {},
+  preloads: FontPreloadMap = NO_PRELOADS,
   enableAllBrands = false
 ): Promise<string> {
   const result = await build({
@@ -54,7 +82,7 @@ export async function buildBrandInitScript(
     build: {
       write: false,
       minify: true,
-      target: "es2019",
+      target: "es2020",
       lib: {
         entry: path.join(webRoot, "src/brand-init.ts"),
         formats: ["iife"],
@@ -114,7 +142,7 @@ export function brandPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.split("?")[0] !== SCRIPT_URL) return next();
         res.setHeader("Content-Type", "text/javascript");
-        res.end(await (devScript ??= buildBrandInitScript({}, enableAllBrands)));
+        res.end(await (devScript ??= buildBrandInitScript(NO_PRELOADS, enableAllBrands)));
       });
     },
     async generateBundle(_options, bundle) {
@@ -131,14 +159,15 @@ export function brandPlugin(): Plugin {
         if (!url) throw new Error(`Preload font ${name} was not emitted by the build`);
         return url;
       };
-      const preloads: FontPreloadMap = {};
+      const urlsByBrand: Record<string, string[]> = {};
       for (const brand of BRAND_DEFINITIONS) {
-        preloads[brand.id] = [
+        urlsByBrand[brand.id] = [
           urlFor(brand.fonts.preload.display),
           urlFor(brand.fonts.preload.body)
         ];
       }
-      preloads[DEFAULT_PRELOAD_KEY] = preloads[DEFAULT_BRAND.id] ?? [];
+      urlsByBrand[DEFAULT_PRELOAD_KEY] = urlsByBrand[DEFAULT_BRAND.id] ?? [];
+      const preloads = buildPreloadMap(urlsByBrand);
       this.emitFile({
         type: "asset",
         fileName: "brand-init.js",

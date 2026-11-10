@@ -92,9 +92,6 @@ export function MobileDraftRoom(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
-  themeIcon: string;
-  themeLabel: string;
-  onToggleTheme: () => void;
 }) {
   const { o } = props;
   const draftStatus = o.header.status ?? null;
@@ -172,9 +169,6 @@ export function MobileDraftRoom(props: {
         showDrafted={props.showDrafted}
         onToggleShowDrafted={props.onToggleShowDrafted}
         showDraftedVisible={props.showDraftedVisible}
-        themeIcon={props.themeIcon}
-        themeLabel={props.themeLabel}
-        onToggleTheme={props.onToggleTheme}
         userLabel={props.previewUser.label}
         userAvatarKey={props.previewUser.avatarKey}
       />

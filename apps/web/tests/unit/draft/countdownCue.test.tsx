@@ -8,7 +8,6 @@ import {
   formatCountdownText
 } from "@/decisions/draft/countdown";
 import { buildDraftAnnouncement } from "@/decisions/draft/announcements";
-import { themeSwitchLabel } from "@/decisions/draft/themeSwitchLabel";
 import { useCountdownPhase } from "@/orchestration/draft/useCountdownPhase";
 
 afterEach(() => {
@@ -117,11 +116,6 @@ describe("countdown cue", () => {
       buildDraftAnnouncement({ ...base, isMyTurn: false, countdownActive: true })
     ).toBe("Alice is picking.");
   });
-
-  it("names the theme toggle for the mode it switches to", () => {
-    expect(themeSwitchLabel("dark")).toBe("Switch to light mode");
-    expect(themeSwitchLabel("light")).toBe("Switch to dark mode");
-  });
 });
 
 describe("draft header toggles", () => {
@@ -141,9 +135,6 @@ describe("draft header toggles", () => {
           showDrafted={false}
           onToggleShowDrafted={() => {}}
           showDraftedVisible
-          themeIcon="e518"
-          themeLabel="Switch to light mode"
-          onToggleTheme={() => {}}
           onToggleSound={() => {}}
           showCursorSpyToggle
           onToggleCursorSpy={() => {}}
@@ -181,9 +172,10 @@ describe("draft header toggles", () => {
     expect(screen.getByRole("switch", { name: "Show drafted" })).toBeTruthy();
   });
 
-  it("names the theme toggle for the target mode and the pause control by action", () => {
+  it("names the pause control by action and offers no mode control", () => {
     renderWing({ soundEnabled: true, cursorSpyUserEnabled: true });
-    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pause draft" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /mode/i })).toBeNull();
+    expect(screen.getByText("Alice")).toBeTruthy();
   });
 });

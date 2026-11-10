@@ -15,8 +15,7 @@ import {
   freezeClock,
   installNetworkGuards,
   readSeed,
-  selectBrand,
-  setColorScheme,
+  selectAppearance,
   trackInFlight
 } from "./support/page";
 
@@ -57,8 +56,7 @@ for (const { brand, viewport: viewportName, part, parts, screens } of assertionC
       test.setTimeout(300_000);
       const seed = readSeed();
       const blocked = await installNetworkGuards(context);
-      await setColorScheme(context, MODES[0]);
-      await selectBrand(context, brand.slug);
+      await selectAppearance(context, brand.slug, MODES[0]);
 
       let page = firstPage;
       let inFlight = trackInFlight(page);
@@ -75,7 +73,8 @@ for (const { brand, viewport: viewportName, part, parts, screens } of assertionC
               (async () => {
                 await loadScreen(page, context, screen, seed, inFlight, session);
                 for (const mode of MODES) {
-                  if (mode !== MODES[0]) await repaintInMode(page, mode, inFlight);
+                  if (mode !== MODES[0])
+                    await repaintInMode(page, brand.slug, mode, inFlight);
                   for (const finding of await scanScreen(
                     page,
                     screen,

@@ -8,26 +8,22 @@ import "virtual:fo-brand.css";
 import "./styles.css";
 import { AppProviders } from "./ui/AppProviders";
 import { removeLegacyAuthTokens } from "./lib/legacyAuthStorage";
+import { buildEnabledBrands, isTestBuild } from "./orchestration/brand/buildFlags";
+import { createColorSchemeManager } from "./orchestration/brand/colorSchemeManager";
 
 removeLegacyAuthTokens();
 
-// Ensure `data-mantine-color-scheme` is set before the first paint.
-// Our token bindings in `apps/web/src/styles.css` depend on this attribute.
-//
-// Mantine can set this attribute at runtime, but pre-setting it avoids a
-// flash of unthemed content and keeps global CSS vars stable during hydration.
-const COLOR_SCHEME_STORAGE_KEY = "mantine-color-scheme-value";
-try {
-  const stored = window.localStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
-  const initial = stored === "light" || stored === "dark" ? stored : "dark";
-  document.documentElement.setAttribute("data-mantine-color-scheme", initial);
-} catch {
-  // Ignore if storage is unavailable (private mode) or DOM not ready.
-}
+// The pre-paint script (brand-init.js) sets `data-brand` and
+// `data-mantine-color-scheme` before the first paint; the manager reads them and
+// persists nothing.
+const colorSchemeManager = createColorSchemeManager({
+  testOverride: isTestBuild(),
+  enabled: buildEnabledBrands()
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AppProviders>
+    <AppProviders colorSchemeManager={colorSchemeManager}>
       <App />
     </AppProviders>
   </React.StrictMode>

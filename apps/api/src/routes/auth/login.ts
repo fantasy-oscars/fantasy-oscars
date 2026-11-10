@@ -9,6 +9,11 @@ import { setAuthCookie, type AuthCookieConfig } from "../../auth/cookie.js";
 import { signSessionToken } from "../../auth/token.js";
 import { normalizeAdminRole } from "../../auth/roles.js";
 import { createAuthSession } from "../../data/repositories/authSessionRepository.js";
+import {
+  APPEARANCE_COLUMNS,
+  toStoredAppearance,
+  type AppearanceRow
+} from "../../data/repositories/userAppearanceRepository.js";
 import { AUTH_SESSION_TTL_MS } from "../../domain/authSession.js";
 import { hashPassword, verifyPassword } from "./password.js";
 
@@ -33,7 +38,7 @@ export function registerAuthLoginRoute(args: {
         const normalizedUsername = normalizeUsername(username);
         const { rows } = await query(
           client,
-          `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, u.brand_preference, p.password_hash, p.password_algo
+          `SELECT u.id, u.username, u.email, u.is_admin, u.admin_role, u.avatar_key, u.brand_preference, ${APPEARANCE_COLUMNS}, p.password_hash, p.password_algo
            FROM app_user u
            JOIN auth_password p ON p.user_id = u.id
            WHERE lower(u.username) = $1
@@ -41,7 +46,7 @@ export function registerAuthLoginRoute(args: {
           [normalizedUsername]
         );
 
-        const user = rows[0] as {
+        const user = rows[0] as AppearanceRow & {
           id: string | number;
           username: string;
           email: string;
@@ -142,7 +147,8 @@ export function registerAuthLoginRoute(args: {
             is_admin: adminRole !== "NONE",
             admin_role: adminRole,
             avatar_key: avatarKey,
-            brand_preference: user.brand_preference ?? null
+            brand_preference: user.brand_preference ?? null,
+            appearance: toStoredAppearance(user)
           }
         });
       } catch (err) {

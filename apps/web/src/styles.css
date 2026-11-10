@@ -34,6 +34,7 @@ body[data-mantine-color-scheme="dark"] {
 
   /* Semantic palette mapping (dark mode): rebinds only the variant variables. */
   /* Danger: marks and text only; destructive buttons use the ui variant. */
+  --mantine-color-red-6: var(--fo-danger-text);
   --mantine-color-red-filled: var(--fo-danger-text);
   --mantine-color-red-filled-hover: color-mix(in oklab, var(--fo-danger-text) 88%, black);
   --mantine-color-red-light: color-mix(in srgb, var(--fo-danger) 8%, transparent);
@@ -136,6 +137,7 @@ body[data-mantine-color-scheme="light"] {
 
   /* Semantic palette mapping (light mode): rebinds only the variant variables. */
   /* Danger: marks and text only; destructive buttons use the ui variant. */
+  --mantine-color-red-6: var(--fo-danger-text);
   --mantine-color-red-filled: var(--fo-danger-text);
   --mantine-color-red-filled-hover: color-mix(in oklab, var(--fo-danger-text) 88%, black);
   --mantine-color-red-light: color-mix(in srgb, var(--fo-danger) 8%, transparent);
@@ -1969,7 +1971,14 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   check; hover and focus never change hue.
 */
 .dr-pill.is-muted {
-  opacity: var(--fo-alpha-50);
+  background: var(--brand-sunken);
+  border-color: transparent;
+}
+
+.dr-pill.is-muted .dr-pill-text,
+.dr-pill.is-muted .dr-pill-points {
+  color: var(--brand-muted);
+  font-weight: var(--fo-font-weight-regular);
 }
 
 .dr-pill.is-pending {
@@ -2034,10 +2043,6 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   font-weight: var(--fo-font-weight-medium);
 }
 
-.dr-pill.is-hoverMatch.is-muted {
-  opacity: 1;
-}
-
 .dr-pill.is-hoverMatch.is-pending {
   opacity: var(--fo-alpha-65);
 }
@@ -2072,11 +2077,6 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .dr-pill.is-winner .dr-pill-points {
   color: var(--fo-win-gold-on);
   font-weight: var(--fo-font-weight-medium);
-}
-
-.dr-pill.is-winner.is-muted {
-  /* A drafted winner never dims. */
-  opacity: 1;
 }
 
 .dr-pill.is-winner.is-hoverMatch,
@@ -2202,6 +2202,12 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   --button-bd: transparent !important;
 }
 
+.mantine-Button-root[data-fo-variant="secondary"]:hover,
+.mantine-Button-root[data-fo-variant="ghost"]:hover,
+.mantine-Button-root[data-fo-variant="danger"]:hover {
+  background: var(--button-hover);
+}
+
 .mantine-Button-root[data-fo-variant="ghost"]:hover {
   --button-color: var(--brand-text) !important;
 }
@@ -2210,7 +2216,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   background: transparent;
   color: var(--fo-danger-text);
   --button-bg: transparent !important;
-  --button-hover: color-mix(in srgb, var(--fo-danger) 10%, transparent) !important;
+  --button-hover: color-mix(in srgb, var(--fo-danger) 6%, transparent) !important;
   --button-color: var(--fo-danger-text) !important;
   --button-bd: var(--fo-border-width) solid var(--fo-danger-text) !important;
 }
@@ -2317,6 +2323,30 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
     min-width: var(--fo-touch-target);
     min-height: var(--fo-touch-target);
   }
+
+  /* Mantine defines the input height on the wrapper, so the override targets it. */
+  .page .mantine-Input-wrapper,
+  .auth-page .mantine-Input-wrapper,
+  .dr-frame .mantine-Input-wrapper,
+  .mantine-Modal-root .mantine-Input-wrapper {
+    --input-height-sm: var(--fo-touch-target) !important;
+  }
+
+  .mantine-Modal-root .mantine-CloseButton-root,
+  .mantine-Notification-closeButton {
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
+  }
+
+  .mantine-Modal-root .mantine-Button-root {
+    --button-height-xs: var(--fo-touch-target) !important;
+    --button-height-sm: var(--fo-touch-target) !important;
+    --button-height-md: var(--fo-touch-target) !important;
+  }
+
+  .mantine-Menu-item {
+    --fo-menu-item-height: var(--fo-touch-target);
+  }
 }
 
 .mantine-Indicator-indicator {
@@ -2371,7 +2401,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   padding: 0 var(--fo-menu-item-paddingX);
   font-family: var(--brand-font-body);
   font-size: var(--fo-font-size-sm);
-  color: var(--brand-text);
+  color: var(--menu-item-color, var(--brand-text));
   border-radius: var(--fo-radius-small);
 }
 
@@ -2453,6 +2483,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-Textarea-input:focus,
 .mantine-Select-input:focus,
 .mantine-MultiSelect-input:focus,
+.mantine-MultiSelect-input:focus-within,
 .mantine-NumberInput-input:focus,
 .mantine-InputBase-input:focus,
 .mantine-Autocomplete-input:focus {
@@ -2464,6 +2495,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-PasswordInput-input:focus:not([data-error]),
 .mantine-Textarea-input:focus:not([data-error]),
 .mantine-Select-input:focus:not([data-error]),
+.mantine-MultiSelect-input:focus-within:not([data-error]),
 .mantine-MultiSelect-input:focus:not([data-error]),
 .mantine-NumberInput-input:focus:not([data-error]),
 .mantine-InputBase-input:focus:not([data-error]),
@@ -2471,11 +2503,19 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   border-color: var(--brand-focus-ring);
 }
 
+/* Hints in a field take the muted ink, not Mantine's raw grey. */
+.mantine-Input-input::placeholder,
+.mantine-MultiSelect-inputField::placeholder {
+  color: var(--brand-muted);
+  opacity: 1;
+}
+
 .mantine-TextInput-label,
 .mantine-PasswordInput-label,
 .mantine-Textarea-label,
 .mantine-Select-label,
-.mantine-MultiSelect-label {
+.mantine-MultiSelect-label,
+.mantine-NumberInput-label {
   color: var(--fo-text-deemphasized);
   font-weight: 400;
 }
@@ -2508,6 +2548,75 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-MultiSelect-option[data-selected] {
   background: var(--fo-surface-pill);
   color: var(--fo-text-primary);
+}
+
+/* Dropdown group headings take the brand's label treatment. */
+.mantine-Select-groupLabel,
+.mantine-MultiSelect-groupLabel {
+  font-family: var(--brand-font-label);
+  font-size: var(--fo-font-size-xs);
+  text-transform: var(--brand-label-case);
+  letter-spacing: var(--brand-label-letter-spacing);
+  color: var(--brand-muted);
+}
+
+/* A disabled option (the last one in a list) keeps readable ink. */
+.mantine-Select-option[data-combobox-disabled],
+.mantine-MultiSelect-option[data-combobox-disabled] {
+  opacity: 1;
+  color: var(--brand-muted);
+  cursor: not-allowed;
+}
+
+.mantine-MultiSelect-pill {
+  background: var(--brand-raised);
+  color: var(--brand-text);
+  box-shadow: 0 0 0 var(--fo-border-width) var(--brand-rule-strong);
+  border-radius: var(--brand-button-radius);
+}
+
+/* Labels of the segmented controls read like the inputs' own labels. */
+.account-controlLabel.mantine-Text-root {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--fo-text-deemphasized);
+  font-weight: 400;
+}
+
+/* Appearance section: the line that reports a save is always there, so nothing moves. */
+.account-saveStatus.mantine-Text-root {
+  min-height: 1lh;
+  text-align: end;
+}
+
+@media (max-width: 499.98px) {
+  .account-appearance .mantine-SegmentedControl-label {
+    min-height: var(--fo-touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Pills wrap inside the field and "Choose…" takes its own row. */
+  .account-appearance .mantine-MultiSelect-inputField {
+    min-height: var(--fo-touch-target);
+    flex: 1 0 100%;
+  }
+
+  /* The list is the way to remove a theme on a phone. */
+  .account-appearance .mantine-MultiSelect-pill button {
+    display: none;
+  }
+
+  .account-appearance .mantine-MultiSelect-pill {
+    padding-inline-end: var(--fo-space-sm);
+  }
+
+  .mantine-Select-option,
+  .mantine-MultiSelect-option {
+    display: flex;
+    align-items: center;
+    min-height: var(--fo-touch-target);
+  }
 }
 
 .mantine-Checkbox-input {
@@ -2546,6 +2655,9 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 }
 
 .auth-header {
+  display: flex;
+  align-items: center;
+  min-height: var(--fo-header-control-size);
   padding: 0;
 }
 
@@ -2588,6 +2700,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .site-header-row {
   width: 100%;
+  min-height: var(--fo-header-control-size);
 }
 
 .site-header-actions {
@@ -2603,6 +2716,14 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   text-decoration: none;
   flex: none;
   white-space: nowrap;
+  /* A shuffle click must not select the wordmark text; it stays a link. */
+  user-select: none;
+}
+
+/* The wordmark shuffle cross-fades the whole page; instant under reduced motion (script). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 150ms;
 }
 
 /* The wordmark reads the brand's own colour of ink; Mantine's anchor colours do not apply. */
@@ -2641,7 +2762,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 /* Draft header icon buttons: the brand's button shape, a sunken hover and the brand
    focus ring. */
-.theme-toggle,
+.drh-settingsBtn,
 .drh-pause,
 .dr-railClose,
 .dr-railToggle,
@@ -2649,11 +2770,11 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   border-radius: var(--brand-button-radius);
 }
 
-.theme-toggle {
+.drh-settingsBtn {
   padding-inline: var(--fo-gutter-mobile);
 }
 
-.theme-toggle:hover,
+.drh-settingsBtn:hover,
 .drh-pause:hover,
 .dr-railClose:hover,
 .dr-railToggle:hover,
@@ -2661,7 +2782,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   background: var(--brand-sunken);
 }
 
-.theme-toggle:focus-visible,
+.drh-settingsBtn:focus-visible,
 .drh-pause:focus-visible,
 .dr-railClose:focus-visible,
 .drh-toggleBtn:focus-visible {
@@ -2690,6 +2811,15 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mantine-SegmentedControl-label {
   color: var(--brand-muted);
   border-radius: var(--brand-button-radius);
+}
+
+/* Stacked segments: a pill radius would make one stadium of the whole stack. */
+.mantine-SegmentedControl-root[data-orientation="vertical"],
+.mantine-SegmentedControl-root[data-orientation="vertical"]
+  .mantine-SegmentedControl-indicator,
+.mantine-SegmentedControl-root[data-orientation="vertical"]
+  .mantine-SegmentedControl-label {
+  border-radius: var(--fo-radius-small);
 }
 
 .mantine-SegmentedControl-label:hover:not([data-disabled]) {
@@ -2830,6 +2960,11 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
     height: var(--fo-touch-target);
   }
 
+  .site-header-row,
+  .auth-header {
+    min-height: var(--fo-touch-target);
+  }
+
   /* The phone header is tight: the account name keeps the shorter cap. */
   .fo-headerAccountBtn {
     max-width: var(--fo-header-account-maxWidth-phone);
@@ -2844,6 +2979,9 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   .brand {
     flex: 0 1 auto;
     white-space: normal;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--fo-touch-target);
   }
 }
 
@@ -4188,6 +4326,23 @@ small.error {
   opacity: var(--fo-alpha-100);
 }
 
+@media (max-width: 499.98px) {
+  .footer-col-links {
+    gap: 0;
+  }
+
+  .footer-col-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--fo-touch-target);
+  }
+
+  .footer-logo-link {
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
+  }
+}
+
 .footer-logo {
   height: calc(var(--fo-font-size-sm) + var(--fo-space-2));
   width: auto;
@@ -4591,6 +4746,20 @@ small.error {
   .inline-form {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* In a column the flex-basis (a width in a row) would act as height. */
+  .admin-add-row > * {
+    flex-basis: auto;
+  }
+
+  .admin-header .nav-link,
+  .nomination-group-header {
+    min-height: var(--fo-touch-target);
+  }
+
+  .admin-header .nav-link {
+    min-width: var(--fo-touch-target);
   }
 
   .admin-add-select {

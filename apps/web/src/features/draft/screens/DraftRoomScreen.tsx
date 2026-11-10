@@ -1,5 +1,5 @@
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
-import { Box, Skeleton, Stack, useMantineColorScheme } from "@ui";
+import { Box, Skeleton, Stack } from "@ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
@@ -27,7 +27,6 @@ import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
 import { buildDraftAnnouncement } from "@/decisions/draft/announcements";
 import { isCountdownActive } from "@/decisions/draft/countdown";
-import { themeSwitchLabel } from "@/decisions/draft/themeSwitchLabel";
 
 function DraftCursorGhost(props: {
   x: number;
@@ -52,7 +51,6 @@ function DraftCursorGhost(props: {
 
 export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
   const { user } = useAuthContext();
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
   const isPreview = props.o.myRoster.pickDisabledReason === "Preview mode";
   const { value: preferences, update: updatePreferences } = props.o.preferences;
@@ -395,9 +393,6 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
           showDraftedVisible={
             !isCompleted && (isPre ? true : props.o.header.view === "draft")
           }
-          themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
-          themeLabel={themeSwitchLabel(colorScheme)}
-          onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
         />
       </>
     );
@@ -436,9 +431,6 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         showDraftedVisible={
           !isCompleted && (isPre ? true : props.o.header.view === "draft")
         }
-        themeIcon={colorScheme === "dark" ? "\ue518" : "\ue51c"}
-        themeLabel={themeSwitchLabel(colorScheme)}
-        onToggleTheme={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}
         showDraftControls={!isCompleted}
         canManageDraft={isPreview ? true : props.o.header.canManageDraft}
         onStartDraft={props.o.header.onStartDraft}
