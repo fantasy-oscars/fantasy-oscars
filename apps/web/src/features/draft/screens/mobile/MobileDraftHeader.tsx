@@ -41,9 +41,6 @@ export function MobileDraftHeader(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
-  themeIcon: string;
-  themeLabel: string;
-  onToggleTheme: () => void;
   userLabel: string;
   userAvatarKey: string | null;
 }) {
@@ -109,6 +106,9 @@ export function MobileDraftHeader(props: {
   const centerGlyph = countdownActive ? "timer" : isPaused ? "pause" : null;
 
   const canShowRosterLink = props.canToggleView;
+  // The Settings menu holds only these two items; with neither, it would open empty.
+  const showSettings =
+    props.showDraftedVisible || (props.showDraftControls && props.canManageDraft);
 
   return (
     <Box
@@ -163,53 +163,47 @@ export function MobileDraftHeader(props: {
           </Text>
         </Box>
 
-        <Menu position="bottom-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon
-              variant="subtle"
-              aria-label="Settings"
-              className="dr-mobileIconBtn"
-            >
-              <Text component="span" className="mi-icon" aria-hidden="true">
-                settings
-              </Text>
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.themeIcon}
+        {showSettings ? (
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                aria-label="Settings"
+                className="dr-mobileIconBtn"
+              >
+                <Text component="span" className="mi-icon" aria-hidden="true">
+                  settings
                 </Text>
-              }
-              onClick={props.onToggleTheme}
-            >
-              {props.themeLabel}
-            </Menu.Item>
-            {props.showDraftedVisible ? (
-              <Menu.Item closeMenuOnClick={false}>
-                <Switch
-                  size="sm"
-                  label="Show drafted"
-                  labelPosition="left"
-                  classNames={{ root: "drh-switchRoot" }}
-                  checked={props.showDrafted}
-                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                />
-              </Menu.Item>
-            ) : null}
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {props.showDraftedVisible ? (
+                <Menu.Item closeMenuOnClick={false}>
+                  <Switch
+                    size="sm"
+                    label="Show drafted"
+                    labelPosition="left"
+                    classNames={{ root: "drh-switchRoot" }}
+                    checked={props.showDrafted}
+                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                  />
+                </Menu.Item>
+              ) : null}
 
-            {props.showDraftControls && props.canManageDraft ? (
-              isPre ? (
-                <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
-              ) : isPaused ? (
-                <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
-              ) : !isCompleted ? (
-                <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
-              ) : null
-            ) : null}
-          </Menu.Dropdown>
-        </Menu>
+              {props.showDraftControls && props.canManageDraft ? (
+                isPre ? (
+                  <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
+                ) : isPaused ? (
+                  <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>
+                ) : !isCompleted ? (
+                  <Menu.Item onClick={props.onPauseDraft}>Pause draft</Menu.Item>
+                ) : null
+              ) : null}
+            </Menu.Dropdown>
+          </Menu>
+        ) : (
+          <Box className="dr-mobileIconBtn" aria-hidden="true" />
+        )}
       </Box>
 
       {showMobilePodium ? (

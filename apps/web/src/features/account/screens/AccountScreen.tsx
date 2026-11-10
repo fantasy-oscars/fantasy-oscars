@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
+import { AppearanceSection } from "@/features/account/ui/AppearanceSection";
 import { DeleteAccountModal } from "@/features/account/ui/DeleteAccountModal";
 import "@/primitives/baseline.css";
 
@@ -9,6 +10,7 @@ export function AccountScreen(props: {
   email: string | null;
   onLogout: () => void | Promise<void>;
   onDeleteAccount: () => Promise<{ ok: boolean; error?: string }>;
+  appearance: ComponentProps<typeof AppearanceSection>;
 }) {
   const { username, email, onLogout, onDeleteAccount } = props;
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -33,7 +35,9 @@ export function AccountScreen(props: {
             <Title order={2} className="baseline-textHeroTitle">
               Account
             </Title>
-            <Text className="baseline-textBody">Manage your profile and security.</Text>
+            <Text className="baseline-textBody">
+              Manage your profile, appearance and security.
+            </Text>
           </Box>
 
           <StandardCard component="section" aria-label="Account details">
@@ -93,6 +97,8 @@ export function AccountScreen(props: {
               </Group>
             </Stack>
           </StandardCard>
+
+          <AppearanceSection {...props.appearance} />
         </Stack>
       </Box>
 

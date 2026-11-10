@@ -1,90 +1,31 @@
 import {
+  BRAND_CATALOG,
   BRAND_IDS,
   ENABLED_BRAND_IDS,
   brandDayNumber,
   isBrandId,
-  isEnabledBrandId,
-  isBrandPreference,
-  resolveBrand,
   type BrandId,
-  type BrandPreference,
+  type ColorBase,
   type LocalDateTime
 } from "@fantasy-oscars/shared/brands";
-
-/**
- * Effective preference: a signed-in user's saved preference wins; if they have
- * none yet, a locally chosen one is used (and adopted by the account); else
- * the default, which the resolver treats as "rotate".
- */
-export function effectiveBrandPreference(input: {
-  signedIn: boolean;
-  serverPreference: unknown;
-  localPreference: BrandPreference | null;
-}): BrandPreference | null {
-  if (input.signedIn && isBrandPreference(input.serverPreference)) {
-    return input.serverPreference;
-  }
-  return input.localPreference;
-}
-
-/** Whether a signed-in user's local choice should be copied to their account. */
-export function shouldAdoptLocalPreference(input: {
-  signedIn: boolean;
-  serverPreference: unknown;
-  localPreference: BrandPreference | null;
-}): boolean {
-  return (
-    input.signedIn &&
-    !isBrandPreference(input.serverPreference) &&
-    input.localPreference !== null
-  );
-}
-
-/** What a pinned brand was resolved from; a different key means re-resolve. */
-export function brandPinKey(identity: string, preference: BrandPreference | null) {
-  return `${identity}|${preference ?? "unset"}`;
-}
-
-export type BrandPin = { brand: BrandId; day: number; key: string };
-
-export function parseBrandPin(raw: string | null): BrandPin | null {
-  if (!raw) return null;
-  try {
-    const value: unknown = JSON.parse(raw);
-    if (typeof value !== "object" || value === null) return null;
-    const { brand, day, key } = value as Record<string, unknown>;
-    if (!isBrandId(brand) || typeof key !== "string") return null;
-    if (typeof day !== "number" || !Number.isFinite(day)) return null;
-    return { brand, day, key };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * A pin is reused only for the same inputs on the same brand day, and only
- * while its brand is enabled.
- */
-export function isPinReusable(
-  pin: BrandPin | null,
-  key: string,
-  day: number,
-  enabled: readonly BrandId[] = ENABLED_BRAND_IDS
-): boolean {
-  return (
-    pin !== null &&
-    pin.key === key &&
-    pin.day === day &&
-    isEnabledBrandId(pin.brand, enabled)
-  );
-}
+import {
+  DEFAULT_APPEARANCE_SETTINGS,
+  MODE_PREFERENCES,
+  isRecord,
+  parseAppearance,
+  resolveAppearance,
+  resolveMode,
+  type DailyDraw,
+  type ModePreference,
+  type ResolvedAppearance
+} from "@fantasy-oscars/shared/appearance";
 
 /** The brands in play: the released set, or every brand when the test flag is on. */
 export function enabledBrandIds(enableAll: boolean): readonly BrandId[] {
   return enableAll ? BRAND_IDS : ENABLED_BRAND_IDS;
 }
 
-/** Identity strings fed to the resolver; the pre-paint script and the app must agree. */
+/** Identity strings fed to the draw; the pre-paint script and the app must agree. */
 export function userIdentity(userId: string): string {
   return `user:${userId}`;
 }
@@ -93,54 +34,160 @@ export function anonymousIdentity(anonId: string): string {
   return `anon:${anonId}`;
 }
 
-/** The last brand resolved for a signed-in user, cached in localStorage. */
-export type LastBrand = { brand: BrandId; day: number };
-
-export function parseLastBrand(raw: string | null): LastBrand | null {
+function parseJson(raw: string | null): unknown {
   if (!raw) return null;
   try {
-    const value: unknown = JSON.parse(raw);
-    if (typeof value !== "object" || value === null) return null;
-    const { brand, day } = value as Record<string, unknown>;
-    if (!isBrandId(brand)) return null;
-    if (typeof day !== "number" || !Number.isFinite(day)) return null;
-    return { brand, day };
+    return JSON.parse(raw) as unknown;
   } catch {
     return null;
   }
 }
 
-/**
- * Best guess for the brand before the session check finishes, so the first
- * paint is already right. Order: this tab's pin, the cached last brand of a
- * signed-in user, then the signed-out resolution. The app corrects it after the
- * session check if the guess was wrong (for example a changed account preference).
- * A pin or cache from an earlier brand day is ignored.
- */
-export function resolvePrepaintBrand(input: {
-  pin: BrandPin | null;
-  last: LastBrand | null;
-  localPreference: BrandPreference | null;
-  anonId: string;
-  now: LocalDateTime;
-  enabled?: readonly BrandId[];
-}): BrandId {
-  const enabled = input.enabled ?? ENABLED_BRAND_IDS;
-  const day = brandDayNumber(input.now);
-  if (input.pin && input.pin.day === day && isEnabledBrandId(input.pin.brand, enabled)) {
-    return input.pin.brand;
-  }
-  if (
-    input.last &&
-    input.last.day === day &&
-    isEnabledBrandId(input.last.brand, enabled)
-  ) {
-    return input.last.brand;
-  }
-  return resolveBrand({
-    preference: input.localPreference,
-    now: input.now,
-    identity: anonymousIdentity(input.anonId),
+/** What `fo:account-appearance` holds: the account's settings as the API returned them. */
+export type AccountSnapshot = {
+  identity: string;
+  brandPreference: string | null;
+  appearance: Record<string, unknown>;
+};
+
+export function parseAccountSnapshot(raw: string | null): AccountSnapshot | null {
+  const value = parseJson(raw);
+  if (!isRecord(value) || typeof value.identity !== "string") return null;
+  return {
+    identity: value.identity,
+    brandPreference:
+      typeof value.brandPreference === "string" ? value.brandPreference : null,
+    appearance: isRecord(value.appearance) ? value.appearance : {}
+  };
+}
+
+/** `fo:anon-draw`: a logged-out visitor's daily draw. */
+export function parseAnonDraw(
+  raw: string | null,
+  enabled: readonly BrandId[]
+): DailyDraw | null {
+  return parseAppearance({ appearance: { daily_draw: parseJson(raw) } }, enabled).draw;
+}
+
+/** `fo:discovered`: ids as stored, unreleased ones included (the account takes them all). */
+export function parseDiscoveredQueue(raw: string | null): BrandId[] {
+  const value = parseJson(raw);
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(isBrandId))];
+}
+
+/** `fo:shuffle`: the wordmark shuffle of the day (written by the shuffle, read here). */
+export type ShuffleRecord = {
+  identity: string;
+  day: number;
+  brand: BrandId;
+  rounds: DailyDraw["rounds"];
+  seq: number;
+};
+
+export function parseShuffleRecord(
+  raw: string | null,
+  enabled: readonly BrandId[]
+): ShuffleRecord | null {
+  const value = parseJson(raw);
+  if (!isRecord(value) || typeof value.identity !== "string") return null;
+  const draw = parseAppearance(
+    {
+      appearance: {
+        daily_draw: { day: value.day, brand: value.brand, rounds: value.rounds }
+      }
+    },
     enabled
+  ).draw;
+  if (!draw) return null;
+  const seq =
+    typeof value.seq === "number" && Number.isInteger(value.seq) ? value.seq : 0;
+  return { identity: value.identity, ...draw, seq };
+}
+
+/** The shuffled theme, only for the same identity on the same brand day, and while released. */
+export function activeShuffle(
+  record: ShuffleRecord | null,
+  identity: string,
+  day: number,
+  enabled: readonly BrandId[]
+): BrandId | null {
+  if (!record || record.identity !== identity || record.day !== day) return null;
+  return enabled.includes(record.brand) ? record.brand : null;
+}
+
+/** `fo:test-appearance`: honoured only in test builds. */
+export type TestAppearance = { brand: BrandId; mode: ModePreference };
+
+export function parseTestAppearance(
+  raw: string | null,
+  enabled: readonly BrandId[]
+): TestAppearance | null {
+  const value = parseJson(raw);
+  if (!isRecord(value)) return null;
+  const { brand, mode } = value;
+  if (!isBrandId(brand) || !enabled.includes(brand)) return null;
+  if (!(MODE_PREFERENCES as readonly unknown[]).includes(mode)) return null;
+  return { brand, mode: mode as ModePreference };
+}
+
+/** Brand and colour base the test override paints. */
+export function testAppearanceTarget(override: TestAppearance): {
+  brand: BrandId;
+  base: ColorBase;
+} {
+  const entry = BRAND_CATALOG.find((candidate) => candidate.id === override.brand);
+  return {
+    brand: override.brand,
+    base: entry ? resolveMode(override.mode, entry).base : "light"
+  };
+}
+
+export type StoredAppearanceState = {
+  /** The account snapshot, if one is stored. */
+  account: AccountSnapshot | null;
+  anonDraw: DailyDraw | null;
+  discoveredQueue: readonly BrandId[];
+  shuffle: ShuffleRecord | null;
+  anonId: string;
+  testOverride: TestAppearance | null;
+};
+
+/**
+ * Best guess for the theme before the session check finishes, so the first paint
+ * is already right. A snapshot means "an account was signed in here": its
+ * settings and previous draw feed the same draw the app runs after the check.
+ * Nothing stored means a first visit or a fresh device: the anonymous draw.
+ */
+export function resolvePrepaintAppearance(input: {
+  stored: StoredAppearanceState;
+  now: LocalDateTime;
+  enabled: readonly BrandId[];
+}): { brand: BrandId; base: ColorBase } {
+  const { enabled } = input;
+  const { stored } = input;
+  const day = brandDayNumber(input.now);
+
+  if (stored.testOverride) return testAppearanceTarget(stored.testOverride);
+
+  const identity = stored.account?.identity ?? anonymousIdentity(stored.anonId);
+  const parsed = stored.account
+    ? parseAppearance(
+        {
+          brand_preference: stored.account.brandPreference,
+          appearance: stored.account.appearance
+        },
+        enabled
+      )
+    : null;
+  const resolved: ResolvedAppearance = resolveAppearance({
+    identity,
+    day,
+    enabled,
+    discovered: parsed ? parsed.discovered : stored.discoveredQueue,
+    settings: parsed ? parsed.settings : DEFAULT_APPEARANCE_SETTINGS,
+    record: parsed ? parsed.draw : stored.anonDraw,
+    shuffle: activeShuffle(stored.shuffle, identity, day, enabled)
   });
+  return { brand: resolved.brand, base: resolved.mode.base };
 }

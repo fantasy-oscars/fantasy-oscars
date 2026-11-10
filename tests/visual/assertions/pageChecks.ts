@@ -193,13 +193,68 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
   }, phone) as Promise<Finding[]>;
 }
 
-/** axe color-contrast only: the one rule this tier enforces. */
+/**
+ * Shown placeholders against the field behind them. axe's color-contrast rule skips
+ * placeholder text, so a field's hint could sit far below 4.5:1 without a finding.
+ */
+async function placeholderFindings(page: Page): Promise<Finding[]> {
+  return page.evaluate(() => {
+    const out: { check: "contrast"; description: string }[] = [];
+    const canvas = document.createElement("canvas").getContext("2d");
+    if (!canvas) return out;
+    const rgba = (css: string): [number, number, number, number] => {
+      canvas.clearRect(0, 0, 1, 1);
+      canvas.fillStyle = "#000";
+      canvas.fillStyle = css;
+      canvas.fillRect(0, 0, 1, 1);
+      const d = canvas.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    };
+    const luminance = ([r, g, b]: number[]) => {
+      const lin = (v: number) => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    };
+    const backdrop = (el: Element): [number, number, number] => {
+      for (let node: Element | null = el; node; node = node.parentElement) {
+        const c = rgba(getComputedStyle(node).backgroundColor);
+        if (c[3] === 1) return [c[0], c[1], c[2]];
+      }
+      return [255, 255, 255];
+    };
+    const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+      "input[placeholder], textarea[placeholder]"
+    );
+    for (const el of fields) {
+      if (el.value || !el.placeholder || !el.checkVisibility()) continue;
+      const style = getComputedStyle(el, "::placeholder");
+      const ink = rgba(style.color);
+      const back = backdrop(el);
+      const alpha = ink[3] * Number(style.opacity || 1);
+      const mixed = [0, 1, 2].map((i) => ink[i] * alpha + back[i] * (1 - alpha));
+      const [hi, lo] = [luminance(mixed), luminance(back)].sort((a, b) => b - a);
+      const ratio = (hi + 0.05) / (lo + 0.05);
+      if (ratio < 4.5) {
+        out.push({
+          check: "contrast",
+          description: `${el.tagName.toLowerCase()}::placeholder "${el.placeholder.slice(0, 30)}" ${ratio.toFixed(2)}:1 | ${el.outerHTML.slice(0, 80)}`
+        });
+      }
+    }
+    return out;
+  });
+}
+
+/** axe color-contrast, plus the placeholder pairs axe skips: the contrast checks this tier enforces. */
 export async function contrastFindings(page: Page): Promise<Finding[]> {
   const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
-  return results.violations.flatMap((violation) =>
+  const axe = results.violations.flatMap((violation) =>
     violation.nodes.map((node) => ({
       check: "contrast" as const,
       description: `${node.target.join(" ")} | ${node.html.slice(0, 100)}`
     }))
   );
+  return [...axe, ...(await placeholderFindings(page))];
 }

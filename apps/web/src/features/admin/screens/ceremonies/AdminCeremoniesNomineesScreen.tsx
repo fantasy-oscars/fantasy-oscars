@@ -1,7 +1,7 @@
 import { Box, Group, Stack, Text } from "@ui";
-import { PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AdminCeremonyNomineesOrchestration } from "@/orchestration/adminCeremoniesNominees";
+import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
 import { FormStatus } from "@/shared/forms";
 import { notify } from "@/notifications";
 import { StandardCard } from "@/primitives";
@@ -100,9 +100,7 @@ export function AdminCeremoniesNomineesScreen(props: {
 
   const giconCheck = String.fromCharCode(0xe5ca);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  );
+  const sensors = useReorderSensors(4);
   // Only sections the admin has toggled are stored; the rest stay collapsed exactly while
   // they are empty. Seeding a value per category on first sight froze "collapsed" whenever
   // categories loaded before their nominations.

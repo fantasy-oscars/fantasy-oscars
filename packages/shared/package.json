@@ -12,6 +12,11 @@
       "import": "./dist/brands.js",
       "require": "./dist/brands.js"
     },
+    "./appearance": {
+      "types": "./dist/appearance.d.ts",
+      "import": "./dist/appearance.js",
+      "require": "./dist/appearance.js"
+    },
     "./schemas": {
       "types": "./dist/schemas/index.d.ts",
       "import": "./dist/schemas/index.js",

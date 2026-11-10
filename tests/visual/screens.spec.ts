@@ -4,8 +4,7 @@ import {
   freezeClock,
   installNetworkGuards,
   readSeed,
-  setColorScheme,
-  selectBrand,
+  selectAppearance,
   settle,
   trackInFlight,
   signIn
@@ -21,8 +20,12 @@ for (const { brand, mode, viewport: viewportName, screen, snapshot } of allCaptu
     test(screen.id, async ({ page, context }) => {
       const seed = readSeed();
       const blocked = await installNetworkGuards(context);
-      await setColorScheme(context, mode);
-      const preferenceWrites = await selectBrand(context, brand.slug);
+      const preferenceWrites = await selectAppearance(
+        context,
+        brand.slug,
+        mode,
+        screen.discovered
+      );
       if (screen.persona) await signIn(context, seed.tokens[screen.persona]);
       const inFlight = trackInFlight(page);
       await freezeClock(page);

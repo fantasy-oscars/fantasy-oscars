@@ -24,9 +24,6 @@ export function DraftHeaderRightWing(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
-  themeIcon: string;
-  themeLabel: string;
-  onToggleTheme: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   showCursorSpyToggle: boolean;
@@ -153,7 +150,7 @@ export function DraftHeaderRightWing(props: {
               <Button
                 type="button"
                 variant="subtle"
-                className="theme-toggle"
+                className="drh-settingsBtn"
                 aria-label="Settings"
               >
                 <Text component="span" className="gicon" aria-hidden="true">
@@ -186,17 +183,6 @@ export function DraftHeaderRightWing(props: {
                 </Menu.Item>
               ) : null}
 
-              <Menu.Item
-                leftSection={
-                  <Text component="span" className="gicon" aria-hidden="true">
-                    {props.themeIcon}
-                  </Text>
-                }
-                onClick={props.onToggleTheme}
-              >
-                {props.themeLabel}
-              </Menu.Item>
-
               {props.showDraftedVisible ? (
                 <Menu.Item closeMenuOnClick={false}>
                   <Switch
@@ -224,17 +210,6 @@ export function DraftHeaderRightWing(props: {
         </Group>
       ) : (
         <Group className="drh-stowaways" gap="xs" wrap="nowrap">
-          <Button
-            type="button"
-            variant="subtle"
-            className="theme-toggle"
-            onClick={props.onToggleTheme}
-            aria-label={props.themeLabel}
-          >
-            <Text component="span" className="gicon" aria-hidden="true">
-              {props.themeIcon}
-            </Text>
-          </Button>
           <Box className="drh-userBadge">
             <AnimalAvatarIcon avatarKey={props.userAvatarKey} size="md" />
             <Text className="drh-userText">{props.userLabel}</Text>

@@ -1,15 +1,5 @@
-import {
-  Box,
-  Button,
-  Group,
-  Indicator,
-  Menu,
-  Text,
-  Tooltip,
-  UnstyledButton,
-  type MantineColorScheme
-} from "@ui";
-import type { RefObject } from "react";
+import { Box, Button, Group, Indicator, Menu, Text, Tooltip, UnstyledButton } from "@ui";
+import type { MouseEvent, RefObject } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { NAV_DRAWER_CONTROLS_ID } from "./ShellNavDrawer";
@@ -41,15 +31,12 @@ export function ShellHeader(props: {
 
   userMenuOpen: boolean;
   setUserMenuOpen: (open: boolean) => void;
-
-  colorScheme: MantineColorScheme;
-  setColorScheme: (next: MantineColorScheme) => void;
-  themeToggleIcon: string;
+  /** Sees every wordmark click before navigation; may prevent it (the shuffle). */
+  onWordmarkClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const themeLabel = `Switch to ${props.colorScheme === "dark" ? "light" : "dark"} mode`;
   const inline = props.navMode === "inline";
 
   return (
@@ -79,7 +66,7 @@ export function ShellHeader(props: {
             </Tooltip>
           ) : null}
 
-          <Wordmark />
+          <Wordmark onClick={props.onWordmarkClick} />
         </Group>
 
         <Group
@@ -89,21 +76,6 @@ export function ShellHeader(props: {
           align="center"
           wrap="nowrap"
         >
-          <Tooltip label={themeLabel} openDelay={400}>
-            <UnstyledButton
-              type="button"
-              className="fo-headerIconBtn"
-              onClick={() =>
-                props.setColorScheme(props.colorScheme === "dark" ? "light" : "dark")
-              }
-              aria-label={themeLabel}
-            >
-              <Text component="span" className="gicon" aria-hidden="true">
-                {props.themeToggleIcon}
-              </Text>
-            </UnstyledButton>
-          </Tooltip>
-
           {props.user ? (
             <Indicator
               disabled={props.inviteCount <= 0}
@@ -164,6 +136,16 @@ export function ShellHeader(props: {
                 >
                   Account
                 </Menu.Item>
+                <Menu.Item
+                  leftSection={
+                    <Text component="span" className="mi-icon" aria-hidden="true">
+                      palette
+                    </Text>
+                  }
+                  onClick={() => navigate("/account#appearance")}
+                >
+                  Appearance
+                </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
                   leftSection={
@@ -199,6 +181,17 @@ export function ShellHeader(props: {
                 </Button>
               </>
             )
+          ) : !props.user && !props.loading ? (
+            <Button
+              component={Link}
+              to="/login"
+              state={{
+                from: `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
+              }}
+              variant="secondary"
+            >
+              Log in
+            </Button>
           ) : null}
         </Group>
       </Group>

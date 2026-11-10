@@ -1,5 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 import type { BrandId } from "@fantasy-oscars/shared/brands";
+// A relative path: the repo root does not depend on the shared package, and the
+// catalog is plain data with no imports.
+import { BRAND_CATALOG } from "../../packages/shared/src/brands";
 import { waitForAnimationsIdle } from "./support/page";
 import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
 
@@ -15,8 +18,8 @@ import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
  *   every brand, primary mode, both viewports.
  *
  * Add a row to SCREENS for a new screen (it joins the layout tier); add an entry to
- * BRANDS and PRIMARY_MODE when a brand lands (screens.spec.ts selects it next to the
- * colour scheme).
+ * BRANDS when a brand lands (its primary mode comes from the brand catalog, and
+ * screens.spec.ts pins it with selectAppearance).
  */
 
 export type ScreenDef = {
@@ -42,6 +45,11 @@ export type ScreenDef = {
   fullPage?: boolean;
   /** Viewports to capture; defaults to both. */
   viewports?: readonly ViewportName[];
+  /**
+   * Themes `/auth/me` reports as discovered for a signed-in persona (the account's
+   * Appearance section lists them). Defaults to none.
+   */
+  discovered?: readonly BrandId[];
   /** Cap on a full-page capture's height in px; defaults to MAX_PAGE_HEIGHT. */
   maxHeight?: number;
   /**
@@ -307,6 +315,22 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    id: "account-appearance-open",
+    persona: "long",
+    path: () => "/account",
+    ready: { selector: "#appearance" },
+    discovered: ["ballot", "noir", "festival"],
+    fullPage: true,
+    // The Random list, opened from the field: focus stays on it, as it does for a keyboard user.
+    prepare: async (page) => {
+      const field = page.getByRole("textbox", { name: "Themes to include" });
+      // Near the top of the viewport, so the list opens below the field.
+      await field.evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await field.click();
+      await page.getByRole("listbox").waitFor();
+    }
+  },
+  {
     id: "admin-home",
     persona: "admin",
     path: () => "/admin",
@@ -380,18 +404,12 @@ export const BRANDS: readonly Brand[] = [
 ];
 
 /**
- * The mode each brand is designed in first (the canvas titles in the brand design source).
+ * The mode each brand is designed in first ("Theme default"), from the brand catalog.
  * Phone specimens and the brand-screens tier capture only this mode.
  */
-export const PRIMARY_MODE: Record<BrandId, Mode> = {
-  "refined-gold": "light",
-  "red-carpet": "dark",
-  ballot: "light",
-  noir: "dark",
-  festival: "light",
-  technicolor: "light",
-  lightbox: "light"
-};
+export const PRIMARY_MODE = Object.fromEntries(
+  BRAND_CATALOG.map((entry) => [entry.id, entry.modes[0].base])
+) as Record<BrandId, Mode>;
 
 /**
  * Brand-screens tier: ids of SCREENS captured for every brand in its primary mode, both
@@ -412,7 +430,7 @@ export const SPECIMEN_SCREEN: ScreenDef = {
   ready: { selector: '[data-specimen-ready="true"]' },
   fullPage: true,
   // Tall by design: every component family and state on one page.
-  maxHeight: 12000
+  maxHeight: 16000
 };
 
 /** Tall pages are cut here so one long screen cannot dominate baseline size. */

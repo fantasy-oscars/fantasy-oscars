@@ -42,9 +42,6 @@ export function DraftBoardHeader(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
-  themeIcon: string;
-  themeLabel: string;
-  onToggleTheme: () => void;
   showDraftControls: boolean;
   canManageDraft: boolean;
   onStartDraft: () => void;
@@ -365,9 +362,6 @@ export function DraftBoardHeader(props: {
               showDrafted={props.showDrafted}
               onToggleShowDrafted={props.onToggleShowDrafted}
               showDraftedVisible={props.showDraftedVisible}
-              themeIcon={props.themeIcon}
-              themeLabel={props.themeLabel}
-              onToggleTheme={props.onToggleTheme}
               onStartDraft={props.onStartDraft}
               onPauseDraft={props.onPauseDraft}
               onResumeDraft={props.onResumeDraft}
@@ -479,7 +473,6 @@ export function DraftBoardHeader(props: {
           canToggleView={props.canToggleView}
           showDraftedVisible={props.showDraftedVisible}
           showDrafted={props.showDrafted}
-          themeIcon={props.themeIcon}
           showCursorSpyToggle={props.showCursorSpyToggle}
           userLabel={props.userLabel}
           userAvatarKey={props.userAvatarKey}

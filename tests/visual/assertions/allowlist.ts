@@ -21,26 +21,6 @@ export type AllowlistEntry = {
   date: string;
 };
 
-const FOOTER_SCREENS = [
-  "account",
-  "admin-ceremony-nominees",
-  "admin-films",
-  "admin-home",
-  "ceremonies-index",
-  "ceremony-detail",
-  "ceremony-detail-results",
-  "draft-plans",
-  "home-logged-in",
-  "home-logged-out",
-  "home-new-user",
-  "league-detail",
-  "leagues-empty",
-  "leagues-list",
-  "not-found",
-  "season-completed",
-  "season-live",
-  "season-pending"
-] as const;
 const DRAFT_ROOM_SCREENS = [
   "draft-live-countdown",
   "draft-live-not-your-turn",
@@ -50,114 +30,14 @@ const DRAFT_ROOM_SCREENS = [
 
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
-    check: "contrast",
-    screen: [
-      "draft-live-armed",
-      "draft-live-countdown",
-      "draft-live-your-turn",
-      "specimen"
-    ],
-    brand: "*",
-    mode: "light",
-    viewport: "*",
-    match: "dr-pill-text",
-    reason:
-      "Muted (drafted or unavailable) nominee pills dim their text below 4.5:1 in light mode; the pill is not actionable.",
-    date: "2026-11-05"
-  },
-  {
-    check: "contrast",
-    screen: [
-      "draft-live-armed",
-      "draft-live-countdown",
-      "draft-live-your-turn",
-      "specimen"
-    ],
-    brand: "ballot",
-    mode: "dark",
-    viewport: "*",
-    match: "dr-pill-text",
-    reason:
-      "Muted (drafted or unavailable) nominee pills dim their text below 4.5:1 in ballot dark; the pill is not actionable.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: [...FOOTER_SCREENS, "specimen"],
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "mantine-Text-root",
-    reason: "Footer text links are 19px tall at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: FOOTER_SCREENS,
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "footer-logo-link",
-    reason: "The TMDB footer logo link is 22x16 at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: [
-      "admin-ceremony-nominees",
-      "admin-films",
-      "draft-completed",
-      "draft-plans",
-      "login",
-      "register",
-      "specimen"
-    ],
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "Input-input",
-    reason: "Text, select and number inputs are 36px tall at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: ["home-logged-out", "login", "not-found", "register", "specimen"],
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "a.mantine-focus-auto.brand",
-    reason: "The wordmark link is shorter than 44px at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: ["admin-ceremony-nominees", "admin-films", "admin-home"],
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "nav-link",
-    reason: "Admin sub-navigation links are 41px tall at 390px.",
-    date: "2026-11-05"
-  },
-  {
     check: "touch-target",
     screen: ["admin-films", "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
     match: "Checkbox-input",
-    reason: "Row checkboxes are 20x20 at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: "admin-ceremony-nominees",
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "nomination-group-header",
-    reason: "Collapsible nominee group headers are 40px tall at 390px.",
-    date: "2026-11-05"
+    reason: "The row or label is the target; the box is a visual mark.",
+    date: "2026-11-09"
   },
   {
     check: "touch-target",
@@ -166,8 +46,9 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     mode: "*",
     viewport: "mobile",
     match: "nomination-drag-handle-button",
-    reason: "Reorder handles are 18x18 at 390px.",
-    date: "2026-11-05"
+    reason:
+      "Admin-only, one operator; the drag handle needs keyboard reordering rework first (a carried item).",
+    date: "2026-11-09"
   },
   {
     check: "touch-target",
@@ -176,8 +57,8 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     mode: "*",
     viewport: "mobile",
     match: "mantine-Stepper-step",
-    reason: "Ceremony workflow stepper steps are 32px tall at 390px.",
-    date: "2026-11-05"
+    reason: "Admin-only and dense by design; 44px per step adds a screen of chrome.",
+    date: "2026-11-09"
   },
   {
     check: "touch-target",
@@ -186,8 +67,9 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     mode: "*",
     viewport: "mobile",
     match: "dr-pill",
-    reason: "Draft nominee pills are 22px tall at 390px.",
-    date: "2026-11-05"
+    reason:
+      "22px plus 6px gaps meets WCAG 2.5.8 by spacing; a tap only opens the sheet, whose Draft button is 44px.",
+    date: "2026-11-09"
   },
   {
     check: "touch-target",
@@ -196,18 +78,8 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     mode: "*",
     viewport: "mobile",
     match: "dr-card-titleRow",
-    reason: "Draft category title rows are 20px tall at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: DRAFT_ROOM_SCREENS,
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "dr-mobileRailBtn",
-    reason: "Draft rail buttons are 52x40 at 390px.",
-    date: "2026-11-05"
+    reason: "It is the keyboard entry to pill mode; touch users tap pills directly.",
+    date: "2026-11-09"
   },
   {
     check: "touch-target",
@@ -216,28 +88,8 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     mode: "*",
     viewport: "mobile",
     match: "mantine-NumberInput-control",
-    reason: "The specimen number input steppers are smaller than 44px at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: "specimen",
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "mantine-Menu-item",
-    reason: "The specimen menu items are shorter than 44px at 390px.",
-    date: "2026-11-05"
-  },
-  {
-    check: "touch-target",
-    screen: "specimen",
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    match: "mantine-active",
-    reason: "The specimen's modal action buttons are shorter than 44px at 390px.",
-    date: "2026-11-05"
+    reason: "The field accepts typing on touch; the steppers are a convenience.",
+    date: "2026-11-09"
   }
 ];
 

@@ -9,6 +9,13 @@ let api: ApiAgent;
 
 type MeBody = { user: { brand_preference: string | null } };
 
+const today = () => Math.floor(Date.now() / 86_400_000);
+const draw = (day: number, brand = "refined-gold") => ({
+  day,
+  brand,
+  rounds: { ceremony: [brand], cinema: [] }
+});
+
 async function registerAndLogin(username = "brandfan") {
   await api
     .post("/auth/register")
@@ -83,7 +90,9 @@ describe("brand preference", () => {
       const res = await patch({ brand_preference: bad });
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe("VALIDATION_ERROR");
-      expect(res.body.error.details.fields).toContain("brand_preference");
+      if (bad !== undefined) {
+        expect(res.body.error.details.fields).toContain("brand_preference");
+      }
     }
     const empty = await patch({});
     expect(empty.status).toBe(400);
@@ -103,5 +112,191 @@ describe("brand preference", () => {
       .set("Origin", "https://evil.example")
       .send({ brand_preference: "noir" });
     expect(res.status).toBe(403);
+  });
+
+  it("returns the appearance defaults in login and /auth/me", async () => {
+    const login = await registerAndLogin();
+    const expected = {
+      mode_preference: null,
+      random_excluded_brands: [],
+      undiscovered_enabled: true,
+      single_mode_policy: "own",
+      discovered_brands: [],
+      daily_draw: null
+    };
+    expect(login.body.user.appearance).toEqual(expected);
+    const me = await api.get("/auth/me");
+    expect(me.body.user.appearance).toEqual(expected);
+  });
+
+  it("updates only the fields sent", async () => {
+    await registerAndLogin();
+    await patch({ brand_preference: "noir" });
+    const res = await patch({ mode_preference: "dark", single_mode_policy: "exclude" });
+    expect(res.status).toBe(200);
+    expect(res.body.preferences.brand_preference).toBe("noir");
+    expect(res.body.preferences.appearance).toMatchObject({
+      mode_preference: "dark",
+      single_mode_policy: "exclude",
+      undiscovered_enabled: true
+    });
+    const off = await patch({ undiscovered_enabled: false, mode_preference: null });
+    expect(off.body.preferences.appearance).toMatchObject({
+      mode_preference: null,
+      single_mode_policy: "exclude",
+      undiscovered_enabled: false
+    });
+    const me = await api.get("/auth/me");
+    expect(me.body.user.brand_preference).toBe("noir");
+    expect(me.body.user.appearance.undiscovered_enabled).toBe(false);
+  });
+
+  it("returns rotate and NULL brand preferences as stored", async () => {
+    await registerAndLogin();
+    const rotate = await patch({ brand_preference: "rotate", mode_preference: "light" });
+    expect(rotate.body.preferences.brand_preference).toBe("rotate");
+    await patch({ brand_preference: null });
+    const me = await api.get("/auth/me");
+    expect(me.body.user.brand_preference).toBeNull();
+    expect(me.body.user.appearance.mode_preference).toBe("light");
+  });
+
+  it("unions discoveries and dedupes them", async () => {
+    await registerAndLogin();
+    await patch({ add_discovered_brands: ["noir", "ballot", "noir"] });
+    const res = await patch({ add_discovered_brands: ["festival", "noir"] });
+    expect(res.status).toBe(200);
+    expect(res.body.preferences.appearance.discovered_brands).toEqual([
+      "ballot",
+      "festival",
+      "noir"
+    ]);
+  });
+
+  it("applies a draw when none is stored, then only for a newer day", async () => {
+    await registerAndLogin();
+    const day = today();
+    const stored = (d: number) => draw(d, "refined-gold");
+    const first = await patch({ daily_draw: stored(day - 1) });
+    expect(first.body.preferences.appearance.daily_draw).toEqual(stored(day - 1));
+
+    const older = await patch({ daily_draw: draw(day - 2, "ballot") });
+    expect(older.status).toBe(200);
+    expect(older.body.preferences.appearance.daily_draw).toEqual(stored(day - 1));
+
+    const same = await patch({ daily_draw: draw(day - 1, "ballot") });
+    expect(same.body.preferences.appearance.daily_draw).toEqual(stored(day - 1));
+
+    const newer = await patch({ daily_draw: stored(day) });
+    expect(newer.body.preferences.appearance.daily_draw).toEqual(stored(day));
+
+    const stale = await patch({ daily_draw: draw(day - 1, "ballot") });
+    expect(stale.body.preferences.appearance.daily_draw).toEqual(stored(day));
+  });
+
+  it("overwrites a stored draw whose theme is not released", async () => {
+    await registerAndLogin();
+    const day = today();
+    await patch({ daily_draw: draw(day, "refined-gold") });
+    await db.pool.query(
+      `UPDATE app_user
+       SET daily_draw = jsonb_set(daily_draw, '{brand}', '"noir"')
+       WHERE username = 'brandfan'`
+    );
+    const res = await patch({ daily_draw: draw(day, "refined-gold") });
+    expect(res.body.preferences.appearance.daily_draw).toEqual(draw(day, "refined-gold"));
+  });
+
+  it("still applies the other fields when the draw is ignored", async () => {
+    await registerAndLogin();
+    const day = today();
+    await patch({ daily_draw: draw(day) });
+    const res = await patch({ daily_draw: draw(day - 1), mode_preference: "dark" });
+    expect(res.body.preferences.appearance.mode_preference).toBe("dark");
+    expect(res.body.preferences.appearance.daily_draw).toEqual(draw(day));
+  });
+
+  it("rejects a draw day more than two from the server day", async () => {
+    await registerAndLogin();
+    const day = today();
+    for (const bad of [day - 3, day + 3, 1.5]) {
+      const res = await patch({ daily_draw: draw(bad) });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    }
+    for (const ok of [day - 2, day + 2]) {
+      expect((await patch({ daily_draw: draw(ok) })).status).toBe(200);
+    }
+  });
+
+  it("rejects a Random list that leaves nothing selected", async () => {
+    await registerAndLogin();
+    await patch({ undiscovered_enabled: false });
+    const res = await patch({ random_excluded_brands: ["refined-gold"] });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details.fields).toContain("random_excluded_brands");
+    const me = await api.get("/auth/me");
+    expect(me.body.user.appearance.random_excluded_brands).toEqual([]);
+
+    // With only one theme released, an excluded starting theme leaves nothing,
+    // whether or not Undiscovered themes is on.
+    const on = await patch({
+      random_excluded_brands: ["refined-gold"],
+      undiscovered_enabled: true
+    });
+    expect(on.status).toBe(400);
+  });
+
+  it("checks stored exclusions when only Undiscovered themes are turned off", async () => {
+    await registerAndLogin();
+    // Seeded directly: whether the API accepts this list depends on the released themes.
+    await db.pool.query(
+      `UPDATE app_user
+       SET random_excluded_brands = ARRAY['refined-gold']
+       WHERE username = 'brandfan'`
+    );
+
+    const res = await patch({ undiscovered_enabled: false });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details.fields).toContain("undiscovered_enabled");
+    const me = await api.get("/auth/me");
+    expect(me.body.user.appearance.undiscovered_enabled).toBe(true);
+
+    // With a theme left selected, turning Undiscovered off is fine.
+    await patch({ random_excluded_brands: [] });
+    expect((await patch({ undiscovered_enabled: false })).status).toBe(200);
+  });
+
+  it("counts discoveries in the same request toward the floor", async () => {
+    await registerAndLogin();
+    await patch({ undiscovered_enabled: false });
+    const res = await patch({
+      random_excluded_brands: ["refined-gold"],
+      add_discovered_brands: ["noir"]
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects malformed appearance values", async () => {
+    await registerAndLogin();
+    const bad = [
+      { mode_preference: "sepia" },
+      { single_mode_policy: "both" },
+      { undiscovered_enabled: "yes" },
+      { random_excluded_brands: ["gold"] },
+      { add_discovered_brands: "noir" },
+      { daily_draw: { day: today(), brand: "noir", rounds: { ceremony: [] } } },
+      {
+        daily_draw: {
+          day: today(),
+          brand: "noir",
+          rounds: { ceremony: [], cinema: [], extra: [] }
+        }
+      }
+    ];
+    for (const body of bad) {
+      const res = await patch(body);
+      expect(res.status).toBe(400);
+    }
   });
 });

@@ -3,6 +3,11 @@ import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import { normalizeAdminRole } from "../../auth/roles.js";
 import type { DbClient } from "../../data/db.js";
 import { query } from "../../data/db.js";
+import {
+  APPEARANCE_COLUMNS,
+  toStoredAppearance,
+  type AppearanceRow
+} from "../../data/repositories/userAppearanceRepository.js";
 
 export function registerAuthMeRoute(args: {
   router: express.Router;
@@ -18,7 +23,8 @@ export function registerAuthMeRoute(args: {
 
       const { rows } = await query(
         client,
-        `SELECT id::text AS sub, username, email, is_admin, admin_role, avatar_key, brand_preference
+        `SELECT id::text AS sub, username, email, is_admin, admin_role, avatar_key, brand_preference,
+                ${APPEARANCE_COLUMNS}
          FROM app_user
          WHERE id = $1
            AND deleted_at IS NULL`,
@@ -26,7 +32,7 @@ export function registerAuthMeRoute(args: {
       );
       const user = rows[0] as
         | undefined
-        | {
+        | (AppearanceRow & {
             sub: string;
             username?: string;
             email?: string;
@@ -34,7 +40,7 @@ export function registerAuthMeRoute(args: {
             admin_role?: string | null;
             avatar_key?: string | null;
             brand_preference?: string | null;
-          };
+          });
 
       if (!user) return res.json({ user: req.auth });
 
@@ -49,7 +55,8 @@ export function registerAuthMeRoute(args: {
           is_admin: adminRole !== "NONE",
           admin_role: adminRole,
           avatar_key: avatarKey,
-          brand_preference: user.brand_preference ?? null
+          brand_preference: user.brand_preference ?? null,
+          appearance: toStoredAppearance(user)
         }
       });
     } catch (err) {

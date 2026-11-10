@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, type BrowserContext, type Page } from "@playwright/test";
+import type { BrandId } from "@fantasy-oscars/shared/brands";
 import type { ScreenDef, ViewportName } from "../matrix";
 import type { VisualSeed } from "../support/seed";
-import { settle, signIn, switchColorScheme } from "../support/page";
+import { settle, signIn, switchAppearance } from "../support/page";
 import { contrastFindings, structuralFindings, type Finding } from "./pageChecks";
 
 const FREEZE_CSS = readFileSync("tests/visual/support/freeze.css", "utf8");
@@ -42,10 +43,11 @@ export async function loadScreen(
 /** Repaints a loaded screen in the other colour scheme and waits for it to hold still. */
 export async function repaintInMode(
   page: Page,
+  brand: BrandId,
   mode: "light" | "dark",
   inFlight: () => number
 ) {
-  await switchColorScheme(page, mode);
+  await switchAppearance(page, brand, mode);
   await settle(page, inFlight, { ...SCAN_SETTLE, quietPolls: 2 });
 }
 

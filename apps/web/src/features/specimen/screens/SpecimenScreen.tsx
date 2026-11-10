@@ -13,10 +13,12 @@ import {
   Text,
   TextInput,
   Title,
-  Tooltip,
-  useMantineColorScheme
+  Tooltip
 } from "@ui";
 import { Notification } from "@ui/Notification";
+import { BRAND_CATALOG, BRAND_IDS, DARK_MODE } from "@fantasy-oscars/shared/brands";
+import { AppearanceSection } from "@/features/account/ui/AppearanceSection";
+import { deriveAppearanceView, type AppearanceState } from "@/decisions/appearance";
 import { ShellHeader } from "@/app/chrome/ui/ShellHeader";
 import { ShellPrimaryNav } from "@/app/chrome/ui/ShellPrimaryNav";
 import { Wordmark } from "@/app/chrome/ui/Wordmark";
@@ -90,7 +92,6 @@ function StaticHeader(props: {
   menuOpen?: boolean;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
-  const { colorScheme } = useMantineColorScheme();
   return (
     <ShellHeader
       navMode={props.navMode}
@@ -103,10 +104,126 @@ function StaticHeader(props: {
       inviteCount={props.user ? 3 : 0}
       userMenuOpen={props.menuOpen ?? false}
       setUserMenuOpen={noop}
-      colorScheme={colorScheme}
-      setColorScheme={noop}
-      themeToggleIcon={colorScheme === "dark" ? "" : ""}
     />
+  );
+}
+
+const APPEARANCE_DEFAULTS: AppearanceState["settings"] = {
+  fixed: null,
+  mode: "theme",
+  excluded: [],
+  undiscoveredEnabled: true,
+  singleModePolicy: "own"
+};
+
+/** The released-theme list the specimen shows: every brand, as in a test build. */
+function appearanceView(
+  state: Partial<Omit<AppearanceState, "settings">> & {
+    settings?: Partial<AppearanceState["settings"]>;
+  },
+  context: Parameters<typeof deriveAppearanceView>[1] = {}
+) {
+  return deriveAppearanceView(
+    {
+      discovered: [],
+      draw: null,
+      fixedUnavailable: false,
+      ...state,
+      settings: { ...APPEARANCE_DEFAULTS, ...state.settings }
+    },
+    { enabled: BRAND_IDS, ...context }
+  );
+}
+
+const THREE_DISCOVERED = ["ballot", "noir", "festival"] as const;
+
+/** Noir offered in one mode only: the one case that shows the single-mode control. */
+const ONE_MODE_NOIR = BRAND_CATALOG.map((entry) =>
+  entry.id === "noir" ? { ...entry, modes: [DARK_MODE] as const } : entry
+);
+
+function AppearanceMatrix(props: { vertical: boolean }) {
+  const { vertical } = props;
+  const base = { vertical, onRetry: noop, statusText: "" };
+  const handlers = {
+    onModeChange: noop,
+    onSelectionChange: noop,
+    onFixedChange: noop,
+    onRandomChange: noop,
+    onPolicyChange: noop
+  };
+  const cells: Array<{
+    label: string;
+    id: string;
+    view: ReturnType<typeof appearanceView>;
+    statusText?: string;
+    failure?: boolean;
+    listOpen?: boolean;
+  }> = [
+    {
+      label: "random, default",
+      id: "random",
+      view: appearanceView({ discovered: [...THREE_DISCOVERED] }),
+      statusText: "Saved"
+    },
+    {
+      label: "fixed",
+      id: "fixed",
+      view: appearanceView({
+        discovered: [...THREE_DISCOVERED],
+        settings: { fixed: "ballot" }
+      })
+    },
+    {
+      label: "one option selected",
+      id: "floor",
+      view: appearanceView({ settings: { undiscoveredEnabled: false } })
+    },
+    {
+      label: "single-mode control",
+      id: "conflict",
+      view: appearanceView(
+        { discovered: [...THREE_DISCOVERED], settings: { mode: "dark" } },
+        { catalog: ONE_MODE_NOIR }
+      )
+    },
+    {
+      label: "save failed",
+      id: "failure",
+      view: appearanceView({}),
+      failure: true
+    },
+    { label: "one theme discovered", id: "one", view: appearanceView({}) },
+    {
+      label: "all themes discovered",
+      id: "all",
+      view: appearanceView({ discovered: [...BRAND_IDS] })
+    },
+    {
+      label: "random list open",
+      id: "open",
+      view: appearanceView({ discovered: [...BRAND_IDS] }),
+      listOpen: true
+    }
+  ];
+  return (
+    <>
+      {cells.map((cell) => (
+        <Cell key={cell.id} label={cell.label}>
+          <Box className={cell.listOpen ? "specimen-listOpen" : undefined}>
+            <AppearanceSection
+              {...base}
+              {...handlers}
+              idPrefix={`specimen-appearance-${cell.id}`}
+              view={cell.view}
+              statusText={cell.statusText ?? ""}
+              failure={cell.failure ?? false}
+              listOpen={cell.listOpen}
+            />
+          </Box>
+        </Cell>
+      ))}
+    </>
   );
 }
 
@@ -422,13 +539,19 @@ export function SpecimenScreen() {
 
         <Section title="Links">
           <Cell label="default">
-            <Anchor href="#specimen-links">Read the rules</Anchor>
+            <Text>
+              <Anchor href="#specimen-links">Read the rules</Anchor>
+            </Text>
           </Cell>
           <Cell label="hover" force={["hover"]}>
-            <Anchor href="#specimen-links">Read the rules</Anchor>
+            <Text>
+              <Anchor href="#specimen-links">Read the rules</Anchor>
+            </Text>
           </Cell>
           <Cell label="focus" force={["focus"]}>
-            <Anchor href="#specimen-links">Read the rules</Anchor>
+            <Text>
+              <Anchor href="#specimen-links">Read the rules</Anchor>
+            </Text>
           </Cell>
         </Section>
 
@@ -440,6 +563,10 @@ export function SpecimenScreen() {
           <Title variant="section">Nominee pills</Title>
           <PillBoard />
         </Box>
+
+        <Section title="Appearance" wide>
+          <AppearanceMatrix vertical={phone} />
+        </Section>
 
         <Section title="Cards" wide>
           <Cell label="standard">
@@ -515,8 +642,8 @@ export function SpecimenScreen() {
             </Box>
           </Cell>
           <Cell label="menu">
-            {/* The default frame is tall enough for the whole dropdown. */}
-            <Box className="specimen-frame">
+            {/* Tall: the phone's 44px items need the room. */}
+            <Box className="specimen-frame is-tall">
               <Menu
                 opened
                 withinPortal={false}

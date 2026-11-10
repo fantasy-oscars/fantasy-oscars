@@ -95,3 +95,8 @@
 .specimen-frame.is-tall {
   height: 24rem;
 }
+
+/* The open Random list drops into the page flow; the cell keeps room for it. */
+.specimen-listOpen {
+  padding-bottom: 19rem;
+}

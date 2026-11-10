@@ -3,7 +3,7 @@ import { updatePreferencesBodySchema } from "@fantasy-oscars/shared/schemas";
 import { requireAuth, type AuthedRequest } from "../../auth/middleware.js";
 import { AppError } from "../../errors.js";
 import type { DbClient } from "../../data/db.js";
-import { query } from "../../data/db.js";
+import { updateUserPreferences } from "../../data/repositories/userAppearanceRepository.js";
 import { parseBody } from "../../utils/validate.js";
 
 export function registerAuthPreferencesRoute(args: {
@@ -26,18 +26,10 @@ export function registerAuthPreferencesRoute(args: {
         }
         const body = parseBody(updatePreferencesBodySchema, req.body);
 
-        const { rows } = await query<{ brand_preference: string | null }>(
-          client,
-          `UPDATE app_user
-           SET brand_preference = $2
-           WHERE id = $1
-             AND deleted_at IS NULL
-           RETURNING brand_preference`,
-          [userId, body.brand_preference]
-        );
-        if (!rows[0]) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
+        const preferences = await updateUserPreferences(client, userId, body);
+        if (!preferences) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
 
-        return res.json({ preferences: { brand_preference: rows[0].brand_preference } });
+        return res.json({ preferences });
       } catch (err) {
         next(err);
       }

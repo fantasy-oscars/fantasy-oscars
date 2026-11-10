@@ -10,7 +10,6 @@ import { E2E_API_ORIGIN } from "../../e2e/support/stack";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ICON_FONT = readFileSync(path.join(here, "../fixtures/material-symbols.woff2"));
 
-const COLOR_SCHEME_KEY = "mantine-color-scheme-value";
 const ICON_FONT_URL = "https://fonts.gstatic.com/visual-fixture/material-symbols.woff2";
 
 export function readSeed(): VisualSeed {
@@ -58,59 +57,27 @@ export async function signIn(context: BrowserContext, token: string) {
   await context.addCookies([{ name: "auth_token", value: token, url: E2E_API_ORIGIN }]);
 }
 
-/** Pins the colour scheme the way the app persists it, before any page script runs. */
-export async function setColorScheme(context: BrowserContext, mode: Mode) {
+const TEST_APPEARANCE_KEY = "fo:test-appearance";
+
+/**
+ * Pins the theme and mode a capture renders through `fo:test-appearance`, which only a
+ * test build honours: the pre-paint script and the app paint it, and nothing is drawn,
+ * saved or recorded as a discovery. For signed-in personas `/auth/me` is answered with
+ * fixed appearance settings (Random, Theme default, and the discovered themes the screen names, none by default), so the account
+ * page renders the same whichever theme is pinned. Any attempt to save a preference is
+ * aborted and recorded; the test asserts the list is empty. Must run before navigation.
+ */
+export async function selectAppearance(
+  context: BrowserContext,
+  brand: BrandId,
+  mode: Mode,
+  discovered: readonly BrandId[] = []
+) {
   await context.addInitScript(
     ([key, value]) => {
       window.localStorage.setItem(key!, value!);
     },
-    [COLOR_SCHEME_KEY, mode]
-  );
-}
-
-/**
- * Switches the colour scheme of a loaded page the way a change made in another tab
- * arrives: the stored preference changes and the app's own storage listener repaints.
- * The media preference follows, for CSS that reads it.
- */
-export async function switchColorScheme(page: Page, mode: Mode) {
-  await page.emulateMedia({ colorScheme: mode });
-  await page.evaluate(
-    ([key, value]) => {
-      window.localStorage.setItem(key!, value!);
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key,
-          newValue: value,
-          storageArea: window.localStorage
-        })
-      );
-    },
-    [COLOR_SCHEME_KEY, mode]
-  );
-  await page.waitForFunction(
-    (value) =>
-      document.documentElement.getAttribute("data-mantine-color-scheme") === value,
-    mode
-  );
-}
-
-const BRAND_PREFERENCE_KEY = "fo:brand-preference";
-
-/**
- * Pins the brand a capture renders. The browser value covers first paint and signed-out
- * screens; for signed-in personas `/auth/me` is answered with the same brand as the
- * account's saved preference, so the app never copies the browser value to the account
- * (that write would change the shared seed database under parallel captures). Any
- * attempt to save a preference is aborted and recorded; the test asserts the list is
- * empty. Must run before navigation.
- */
-export async function selectBrand(context: BrowserContext, brand: BrandId) {
-  await context.addInitScript(
-    ([key, value]) => {
-      window.localStorage.setItem(key!, value!);
-    },
-    [BRAND_PREFERENCE_KEY, brand]
+    [TEST_APPEARANCE_KEY, JSON.stringify({ brand, mode })]
   );
   await context.route("**/auth/me", async (route) => {
     const response = await route.fetch();
@@ -119,7 +86,17 @@ export async function selectBrand(context: BrowserContext, brand: BrandId) {
       return;
     }
     const body = (await response.json()) as { user?: Record<string, unknown> };
-    if (body.user) body.user.brand_preference = brand;
+    if (body.user) {
+      body.user.brand_preference = null;
+      body.user.appearance = {
+        mode_preference: null,
+        random_excluded_brands: [],
+        undiscovered_enabled: true,
+        single_mode_policy: "own",
+        discovered_brands: discovered,
+        daily_draw: null
+      };
+    }
     const headers = Object.fromEntries(
       Object.entries(response.headers()).filter(
         ([name]) => name !== "content-length" && name !== "content-encoding"
@@ -133,6 +110,35 @@ export async function selectBrand(context: BrowserContext, brand: BrandId) {
     await route.abort();
   });
   return preferenceWrites;
+}
+
+/**
+ * Switches the theme and mode of a loaded page the way a change made in another tab
+ * arrives: the override changes and the app's colour scheme manager repaints in place.
+ * The media preference follows, for CSS that reads it.
+ */
+export async function switchAppearance(page: Page, brand: BrandId, mode: Mode) {
+  await page.emulateMedia({ colorScheme: mode });
+  const value = JSON.stringify({ brand, mode });
+  await page.evaluate(
+    ([key, next]) => {
+      window.localStorage.setItem(key!, next!);
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key,
+          newValue: next,
+          storageArea: window.localStorage
+        })
+      );
+    },
+    [TEST_APPEARANCE_KEY, value]
+  );
+  await page.waitForFunction(
+    ([nextBrand, nextMode]) =>
+      document.documentElement.getAttribute("data-mantine-color-scheme") === nextMode &&
+      document.documentElement.getAttribute("data-brand") === nextBrand,
+    [brand, mode]
+  );
 }
 
 /**

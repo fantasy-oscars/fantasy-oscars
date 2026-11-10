@@ -1,81 +1,131 @@
 # Brands
 
-The app supports several visual brands, each with light and dark modes. This
-document covers identity and selection only; it says nothing about how a brand
-looks. The light/dark color mode is separate and independent of the brand.
+The app supports several visual brands, shown to people as themes. Each theme
+declares its modes, usually light and dark. This document covers identity,
+selection and the stores behind it; it says nothing about how a brand looks. The
+rules here are prescription 05 (`docs/design/prescriptions/05-picker-and-launch.md`),
+which has the worked examples and the reasoning.
 
 ## Ids
 
 Brands have stable slug ids, defined in `packages/shared/src/brands.ts`
-(`BRAND_IDS`). The array order is the rotation order and must not change once
-shipped; append only.
+(`BRAND_IDS`). The array is append only, because stored values and draw rounds
+name the ids.
 
 `refined-gold`, `red-carpet`, `ballot`, `noir`, `festival`, `technicolor`,
 `lightbox` (legacy labels A to G, in that order).
 
-The resolved brand is exposed to styles as `data-brand="<slug>"` on the root
-element. The generated brand stylesheet scopes on it (see Design contract).
+The same file holds the catalog: `BRAND_CATALOG` gives every brand a collection
+(`ceremony` or `cinema`) and its modes. The first mode is the theme's primary
+mode ("Theme default"), and there is at most one mode per base (`light` or
+`dark`). A mode that is neither names its nearest base, and a single-mode theme
+fills both slots of its `BrandDefinition` with the same palette, so nothing
+downstream needs an optional slot. `BRAND_LABELS` (labels shown to people) and
+`STARTING_BRAND` (`refined-gold`, counted as discovered for everyone and never
+stored) sit beside it. `tests/visual/matrix.ts` takes `PRIMARY_MODE` from the
+catalog.
+
+The resolved theme is exposed to styles as `data-brand="<slug>"` on the root
+element, and its mode as `data-mantine-color-scheme`, always the mode's base
+(`light` or `dark`). The generated brand stylesheet scopes on both (see Design
+contract). Nothing else reads a mode.
 
 ## Preference
 
-A preference is one of:
+Each person has these settings (shared `parseAppearance` turns the stored
+values into one object):
 
-- `rotate` (default): the brand of the day, the same for everyone.
-- `random`: a different brand per person per day.
-- a brand slug: always that brand.
-
-Any other stored value is treated as `rotate`.
+- Selection: Random (default) or Fixed on one theme.
+- Mode: `light`, `dark` or `theme` (the theme's own primary mode, default).
+- Random exclusions, Undiscovered themes, single-mode policy, discovered themes
+  and the day's draw. See prescription 05, 4.1.
 
 Storage:
 
-- Signed in: `app_user.brand_preference` (nullable; `NULL` means unset, same as
-  `rotate`). Returned as `brand_preference` on `GET /auth/me` and the login
-  response. Updated with `PATCH /auth/me/preferences`, body
-  `{ "brand_preference": <value or null> }`, validated by
-  `updatePreferencesBodySchema` in `packages/shared/src/schemas/account.ts`.
-- Signed out: `localStorage` key `fo:brand-preference`. A per-browser id for
-  `random` lives under `fo:anon-id`.
+- Signed in: `app_user.brand_preference` (nullable) and the appearance columns of
+  migration 020, returned as `brand_preference` and `appearance` on
+  `GET /auth/me` and the login response. `brand_preference` keeps its meaning:
+  `random`, `rotate` or `NULL` mean Random (the value is returned as stored and
+  never rewritten); a released slug means Fixed; a slug that is not released
+  means Random until it is released again. Everything is written with
+  `PATCH /auth/me/preferences`, a partial update validated by
+  `updatePreferencesBodySchema`
+  (`packages/shared/src/schemas/account.ts`).
+- Signed out: no menu and no settings. Random across the released themes, each
+  theme's primary mode, with the draw in `fo:anon-draw` and discoveries in
+  `fo:discovered`. A per-browser id lives under `fo:anon-id`.
 
-When both exist, the account value wins. If the account has no value and a
-local one exists, the local one is used and copied to the account once, then
-removed locally. If that copy fails the local value stays and is retried later.
+The web stores, all in `localStorage` (`orchestration/brand/storage.ts`):
+
+| Key                          | Content                                           | Lifetime                                                            |
+| ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| `fo:account-appearance`      | `{ identity, brandPreference, appearance }`       | Written at every session resolve; removed on logout or expiry       |
+| `fo:anon-draw`               | `{ day, brand, rounds }`                          | The logged-out daily draw                                           |
+| `fo:discovered`              | array of ids                                      | Logged-out discoveries and signed-in ones until their save succeeds |
+| `fo:shuffle`                 | `{ identity, day, brand, rounds, seq }`           | Written by the shuffle; removed once `day` is not today             |
+| `fo:anon-id`                 | per-browser id                                    |                                                                     |
+| `mantine-color-scheme-value` | legacy light or dark, from the old toggle         | Read once at first login, then removed                              |
+
+`fo:brand-session`, `fo:brand-last` and `fo:brand-preference` are retired and
+deleted at every boot.
 
 ## Resolution
 
-`resolveBrand` is pure (`packages/shared/src/brands.ts`). The rules below describe
-resolution over all seven brands; see Enabled brands for what is released.
+Resolution is pure (`resolveAppearance` in `packages/shared/src/appearance.ts`;
+every input is an argument). Precedence: the test override (test builds only),
+today's shuffle, the Fixed theme, today's saved draw, then a new draw. The mode
+is then `resolveMode` for the resulting theme: `theme` gives the primary mode;
+`light` or `dark` give the first mode on that base, or the primary mode when the
+theme has none (so a single-mode theme uses its only mode).
 
-- The brand day starts at 04:00 in the viewer's local time. Before 04:00 the
-  previous calendar date counts. The day number is the count of local calendar
-  days since 1970-01-01, so DST changes do not affect it.
-- `rotate`: `BRAND_IDS[dayNumber mod 7]`.
-- `random`: FNV-1a hash of `identity|dayNumber` mod 7, where identity is the
-  user id (signed in) or the anonymous browser id. If that equals the hash for
-  the previous day it advances by a hash-derived 1 to 6 steps. The check looks
-  one day back only, so an occasional repeat is possible.
+- The brand day starts at 04:00 in the viewer's local time (`brandDayNumber`).
+  Before 04:00 the previous calendar date counts. The day number is the count of
+  local calendar days since 1970-01-01, so DST changes do not affect it.
+- The draw (`drawDaily`) is seeded by `seedHash` of identity (`user:<id>` or
+  `anon:<id>`), day and group. Themes fall into three groups (Cinema new, Cinema
+  seen, Ceremony) with 5, 5 and the remainder per cent; each collection keeps a
+  round so nothing repeats until every theme in the pool has been shown, and the
+  first theme of a new round is never yesterday's. Prescription 05, 4.2 and 4.3
+  have the rules and the worked vectors.
+- A draw happens once per brand day and identity. After that the saved record
+  is the theme: signed in it is `app_user.daily_draw`, written with a
+  compare-and-set (it applies only when the stored record is older or its theme
+  is not released), signed out it is `fo:anon-draw`. A record whose day is ahead
+  of the device is followed, not redrawn.
+- Fixed never draws and writes no record. A shuffle never writes the account
+  except to record a discovery (`add_discovered_brands`), and never changes Mode.
+- Wordmark shuffle: a plain primary click on the wordmark while on `/` calls
+  `drawShuffle` (shared; same groups and odds as the daily draw, never the current
+  theme; under Fixed, every discovered theme). `fo:shuffle` is read at click time,
+  so open tabs share the rounds and `seq`. The swap is a 150 ms view-transition
+  cross-fade, instant under reduced motion; clicks during it are ignored.
+- A theme shown by a completed draw counts as discovered. It is saved in the
+  same PATCH as the draw, or queued in `fo:discovered`. A guess painted before the
+  session check never counts.
 
 ## Enabled brands
 
 Not every defined brand is released. `ENABLED_BRAND_IDS` in
-`packages/shared/src/brands.ts` lists the brands users can actually get, in rotation
-order. It must be a non-empty subsequence of `BRAND_IDS`; a unit test checks this.
-Today it holds `refined-gold` only.
+`packages/shared/src/brands.ts` lists the brands users can actually get. It must
+be a non-empty subsequence of `BRAND_IDS`; a unit test checks this. Today it
+holds `refined-gold` only.
 
-`resolveBrand` takes an optional `enabled` list that defaults to `ENABLED_BRAND_IDS`:
+Everything in Resolution takes an optional `enabled` list that defaults to
+`ENABLED_BRAND_IDS`:
 
-- A brand slug preference that is not enabled behaves like `rotate`. Stored
-  preferences are still validated against `BRAND_IDS`, so slugs stay storable.
-- `rotate` is `enabled[dayNumber mod enabled.length]`.
-- `random` hashes over `enabled`. With fewer than two enabled brands the
-  yesterday-avoidance step is skipped.
-- With all seven enabled the results are the ones described under Resolution.
-- A pin (`fo:brand-session`) or cached brand (`fo:brand-last`) is accepted only when
-  its brand is enabled (`isEnabledBrandId`).
+- Stored lists (discoveries, exclusions, draw rounds) are filtered to released
+  ids when read and never rewritten. A stored Fixed theme that is not released
+  behaves like Random, and a saved draw naming one is ignored (today draws again
+  and overwrites it).
+- With one theme released there is nothing undiscovered and nothing to shuffle.
+- Stored preferences are still validated against `BRAND_IDS`, so slugs stay
+  storable.
 
-To release a brand, append it to `ENABLED_BRAND_IDS` in rotation order.
+To release a brand, append it to `ENABLED_BRAND_IDS`. That is the last step of
+the launch; reverting the line is the rollback.
 
 Test builds can enable every brand with `VITE_FO_ENABLE_ALL_BRANDS=1`. The flag is
-read in orchestration (`useBrandOrchestration`) and in `vite/brandInit.ts`, which
+read in `orchestration/brand/buildFlags.ts` and in `vite/brandInit.ts`, which
 bakes it into `/brand-init.js`, and is passed to the pure decisions as the `enabled`
 list. It is never on in production: `vite/brandInit.ts` throws when the flag is set
 with `mode === "production"`, orchestration ignores it unless `import.meta.env.MODE` is
@@ -83,39 +133,80 @@ something other than `production` (`PROD` is true in every `vite build`, so the 
 suite builds with `--mode visual`), and a unit test checks that the production `brand-init.js`
 renders only enabled brands whatever is stored.
 
+The same flag turns on the test override: in those builds `fo:test-appearance`
+(`{ brand, mode }`) is honoured first by the pre-paint script and by
+`useBrandOrchestration`, which then draws nothing, saves nothing and records no
+discovery. The colour scheme manager listens for `storage` events on that key so
+the assertion tier can repaint a loaded page in place. Production builds ignore
+the key (the pre-paint and fonts unit tests check it).
+
 ## Pinning
 
-The web app resolves once per session (`useBrandOrchestration`,
-`apps/web/src/orchestration/brand/orchestration.ts`) after the first session
-check completes, and stores `{ brand, day, key }` in `sessionStorage`
-(`fo:brand-session`). `key` is the identity plus preference the brand came from.
+There is no per-tab pin. The saved day record gives the same theme in every tab
+and after every reload, so `fo:brand-session` is gone.
 
-- A pin is reused while the key and brand day match, including after a reload.
-- Crossing 04:00 in an open session never changes the brand.
-- Login, logout and preference changes change the key and so re-resolve.
-- A new tab (new `sessionStorage`) or a reload on a later brand day re-resolves.
+The boot sequence (`useBrandOrchestration`,
+`apps/web/src/orchestration/brand/orchestration.ts`) runs when the session check
+finishes and whenever the identity changes, never on a background refetch:
+
+1. If the session check failed (the API could not answer), keep the painted theme,
+   write nothing anywhere and retry on the next load.
+2. Retire the old keys and drop a stale shuffle.
+3. Build the effective state. Signed in: the account's values plus
+   `pendingAccountMerge` (browser discoveries the account lacks, and the legacy
+   `mantine-color-scheme-value` when `mode_preference` is `NULL`). Signed out:
+   the Random defaults plus `fo:discovered` and `fo:anon-draw`.
+4. A newer draw in the snapshot than on the server (an earlier save failed) is
+   kept and sent again instead of redrawing.
+5. Resolve.
+6. Apply `data-brand` and the mode's base (`setColorScheme`).
+7. Persist the snapshot, or the anonymous keys.
+8. Signed in: one PATCH with whatever changed. On success the auth query is
+   updated from the response; if the compare-and-set was lost, the returned theme
+   is applied once; consumed local keys are cleared. On failure the local state
+   stays and the next load retries.
+
+No user after a normal answer (an expired session, or a logout) takes the
+signed-out path: one instant swap to the logged-out theme, the snapshot is
+removed, and nothing is written against the account. This is different from step
+1, where "no answer" means "change nothing".
+
+Tabs do not sync. Production code has no `storage` listener for these keys; a tab
+keeps what it painted until it reloads or its identity changes.
 
 ## First paint
 
-`data-brand` is set before React renders, by `/brand-init.js` (source
-`apps/web/src/brand-init.ts`, built by `vite/brandInit.ts` into one small classic
-script and injected first in `<head>`). It calls the same decision code as the
-app (`resolvePrepaintBrand` in `apps/web/src/decisions/brand.ts`, storage readers
-in `orchestration/brand/storage.ts`, `resolveBrand` from `@fantasy-oscars/shared/brands`),
-so there is no second copy of the logic. `apps/web/tests/unit/brand/prepaint.test.ts`
-builds the script and checks it against `resolveBrand` for every preference over
-two weeks. Order of preference:
+`data-brand` and `data-mantine-color-scheme` are set before React renders, by
+`/brand-init.js` (source `apps/web/src/brand-init.ts`, built by
+`vite/brandInit.ts` into one small classic script and injected first in `<head>`).
+It calls the same decision code as the app
+(`resolvePrepaintAppearance` in `apps/web/src/decisions/brand.ts`, storage readers
+in `orchestration/brand/storage.ts`, `resolveAppearance` from
+`@fantasy-oscars/shared/appearance`), so there is no second copy of the logic.
+`apps/web/tests/unit/brand/prepaint.test.ts` builds the script and checks it
+against `resolveAppearance` for each situation below over two weeks, and fails
+when the production script, built with a font map shaped like the real build's,
+passes 8000 characters (about 7.7 KB today). The script only
+reads; it never writes except the anonymous id.
 
-1. This tab's pin (`fo:brand-session`) when its brand day is today.
-2. `fo:brand-last` (localStorage, `{ brand, day }`), written only while signed in
-   and removed on logout, when its day is today. This is what stops a signed-in
-   user seeing the default brand flash on a new tab.
-3. `resolveBrand` from `fo:brand-preference` and `fo:anon-id` (same identity string
-   as the app, `anon:<id>`).
+| Situation                              | What the script reads                               | Paints                                         |
+| -------------------------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| Signed in, same brand day              | `fo:account-appearance`                             | The saved theme and its resolved mode          |
+| Signed in, new brand day               | the snapshot's settings and previous draw           | Runs `drawDaily` itself, so the same result    |
+| Signed in, shuffled today              | plus `fo:shuffle` (same identity)                   | The shuffled theme                             |
+| Logged out, returning                  | `fo:anon-draw`, `fo:discovered`                     | The saved theme, or the day's draw             |
+| First visit, or a fresh device         | nothing (it cannot tell a session exists)           | The anon draw; the app corrects it once        |
+| Session expired                        | the snapshot (it cannot tell the cookie ended)      | The account's theme, as a guess                |
+| Script throws                          | nothing                                             | Unset attributes; the app corrects them        |
 
-The first two are guesses: they do not know the identity or preference. After the
-session check the app resolves properly and corrects `data-brand` if the guess
-was wrong (for example the account preference changed on another device).
+The snapshot, fresh-device and expired cases are guesses: after the session check
+the app resolves properly and corrects the attributes if the guess was wrong. A
+guess is never recorded as a draw or a discovery.
+
+Mantine's colour scheme manager (`orchestration/brand/colorSchemeManager.ts`, handed
+in from `main.tsx` through `AppProviders` because `ui/` does not import
+orchestration) reads the attribute and persists nothing, so Mantine no longer
+writes `mantine-color-scheme-value`.
 
 CSP: the script is a same-origin file, not inline, so `script-src 'self'` needs no
 change and no hash. It is not content-hashed (the name `/brand-init.js` is fixed
@@ -123,7 +214,7 @@ so `index.html` can reference it), so the host should serve it with revalidating
 cache headers like `index.html` rather than the immutable headers used for
 `/assets/*`: `infra/Caddyfile` has a dedicated `handle /brand-init.js` with
 `Cache-Control: no-cache` (and a plain `file_server`, so a missing file is a 404,
-not the SPA shell). It is render-blocking by design and about 3 KB.
+not the SPA shell). It is render-blocking by design and about 8 KB.
 
 ## Design contract
 
@@ -280,7 +371,11 @@ shared `--fo-win-gold*` tokens.
    The compiler rejects a missing slot; the unit tests check both modes, enums and
    colour formats.
 2. Put its font stacks in `stacks.ts` if new, fill in `fonts` (see Fonts) and add it to `BRAND_DEFINITIONS` in `theme/brands/index.ts`.
-3. Run `pnpm --filter @fantasy-oscars/web run test:unit` and
+3. Append its id to `BRAND_IDS` and add its entry to `BRAND_CATALOG` and `BRAND_LABELS`
+   in `packages/shared/src/brands.ts` (collection, and modes with the primary mode
+   first). A single-mode theme fills `light` and `dark` of its definition with the
+   same palette; `brandContract.test.ts` checks the catalog against the definitions.
+4. Run `pnpm --filter @fantasy-oscars/web run test:unit` and
    `pnpm run test:visual`. Add visual coverage for the new brand to the matrix and
    commit its baselines; the other brands' baselines must not change.
 
@@ -289,10 +384,13 @@ default brand (`default`, refined-gold) takes every screen and keeps unprefixed 
 names; other brands list the screens they capture (`KEY_SCREENS`, ten screens) and
 write `<brand>-<mode>-<viewport>.png`. The suite builds the web app with
 `--mode visual` and `VITE_FO_ENABLE_ALL_BRANDS=1` so every defined brand can be
-selected. Each capture pins its brand through `localStorage`, answers `/auth/me`
-with the same `brand_preference` and aborts `/auth/me/preferences`, and the test
-asserts that no preference was written (a write would change the shared seed
-database under parallel captures).
+selected. Each capture pins its theme and mode with `selectAppearance`
+(`tests/visual/support/page.ts`), which writes `fo:test-appearance` before the page
+loads, answers `/auth/me` with fixed appearance settings and aborts
+`/auth/me/preferences`; the test asserts that no preference was written (a write would
+change the shared seed database under parallel captures). The assertion tier changes
+theme and mode on a loaded page with `switchAppearance`, which updates the key and
+dispatches the `storage` event the colour scheme manager listens for.
 
 Slots are added to the contract only together with a value for every brand.
 
@@ -307,7 +405,7 @@ A brand declares what it renders in `fonts` on its definition (`FontSlots` in `t
 
 Build (`vite/fonts.ts`, `vite/brandInit.ts`): the declared faces of all brands are merged into one generated stylesheet (`virtual:fo-fonts.css`, imported in `main.tsx`). Each face is a `@font-face` with `font-display: swap`, woff2 only, and every subset the package ships (latin, latin-ext, cyrillic, greek, vietnamese, ...), each its own rule with the package's `unicode-range`, so user content such as usernames and film titles in those scripts still renders in the brand font. A page only downloads the subset files its text uses; Latin-only pages pay nothing for the rest. All brands' faces are declared, but a browser fetches a face only when text actually uses it, so a session downloads just its own brand's fonts. Add a font by editing the brand's `fonts.faces`; the face must exist in the package or the build fails.
 
-Preload: the build resolves each brand's two preload faces (latin subset) to their hashed asset urls and bakes the map into `/brand-init.js`. After setting `data-brand` the script appends `<link rel="preload" as="font" type="font/woff2" crossorigin="anonymous">` for that brand's two files (`preloadBrandFonts` in `orchestration/brand/prepaint.ts`; unknown brands use the default's). In the dev server the map is empty and nothing is preloaded. If the app later corrects the brand, the preloaded files are simply unused.
+Preload: the build resolves each brand's two preload faces (latin subset) to their hashed asset urls and bakes the map into `/brand-init.js` (each font file once, the shared directory once, and per-brand indexes, to keep the script small). After setting `data-brand` the script appends `<link rel="preload" as="font" type="font/woff2" crossorigin="anonymous">` for that brand's two files (`preloadBrandFonts` in `orchestration/brand/prepaint.ts`; unknown brands use the default's). In the dev server the map is empty and nothing is preloaded. If the app later corrects the brand, the preloaded files are simply unused.
 
 Tests (`apps/web/tests/unit/brand/fonts.test.ts`): every declared weight and style has `@font-face` coverage (latin at minimum), preload faces are declared, and a real build's preload links all point at emitted files.
 

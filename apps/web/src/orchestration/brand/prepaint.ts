@@ -1,42 +1,45 @@
 import { localDateTimeFromDate, type BrandId } from "@fantasy-oscars/shared/brands";
-import { resolvePrepaintBrand } from "../../decisions/brand";
-import {
-  getAnonymousId,
-  loadBrandPin,
-  loadLastBrand,
-  loadLocalBrandPreference
-} from "./storage";
+import { resolvePrepaintAppearance } from "../../decisions/brand";
+import { loadStoredAppearance, type loadTestAppearance } from "./storage";
 
 /**
- * Sets `data-brand` on the root element before the app renders, so the first
- * paint already uses the right brand. Built as a standalone script (see
- * vite/brandInit.ts) and loaded from index.html; the same decision and storage
- * code as the app is used, so the two cannot drift.
+ * Sets `data-brand` and `data-mantine-color-scheme` on the root element before
+ * the app renders, so the first paint already uses the right theme and mode.
+ * Built as a standalone script (see vite/brandInit.ts) and loaded from
+ * index.html; the same decision and storage code as the app is used, so the two
+ * cannot drift. `readTestOverride` is given only in test builds.
  */
-export function applyPrepaintBrand(
+export function applyPrepaintAppearance(
   root: HTMLElement,
   now: Date,
-  enabled?: readonly BrandId[]
+  enabled: readonly BrandId[],
+  readTestOverride?: typeof loadTestAppearance
 ): string | undefined {
   try {
-    const brand = resolvePrepaintBrand({
-      pin: loadBrandPin(),
-      last: loadLastBrand(),
-      localPreference: loadLocalBrandPreference(),
-      anonId: getAnonymousId(),
+    const { brand, base } = resolvePrepaintAppearance({
+      stored: loadStoredAppearance({ enabled, readTestOverride }),
       now: localDateTimeFromDate(now),
       enabled
     });
     root.dataset.brand = brand;
+    root.setAttribute("data-mantine-color-scheme", base);
     return brand;
   } catch {
-    // Leave the attribute unset; the default brand renders.
+    // Leave the attributes unset; the default brand renders.
     return undefined;
   }
 }
 
-/** Font preload urls per brand id; `*` holds the default brand's. Filled in at build time. */
-export type FontPreloadMap = Record<string, readonly string[]>;
+/**
+ * Font preload urls, filled in at build time. Each face is listed once in `files`
+ * (urls relative to `base`, without `.woff2`); `brands` points at them by index per brand id, and `*`
+ * holds the default brand's pair.
+ */
+export type FontPreloadMap = {
+  base: string;
+  files: readonly string[];
+  brands: Record<string, readonly number[]>;
+};
 
 /**
  * Adds `<link rel="preload" as="font">` for the brand's two critical faces so
@@ -49,14 +52,14 @@ export function preloadBrandFonts(
   map: FontPreloadMap
 ): void {
   try {
-    const urls = (brand ? map[brand] : undefined) ?? map["*"] ?? [];
-    for (const href of urls) {
+    const faces = (brand ? map.brands[brand] : undefined) ?? map.brands["*"] ?? [];
+    for (const face of faces) {
       const link = doc.createElement("link");
       link.rel = "preload";
       link.as = "font";
       link.type = "font/woff2";
       link.crossOrigin = "anonymous";
-      link.href = href;
+      link.href = `${map.base}${map.files[face]}.woff2`;
       doc.head.appendChild(link);
     }
   } catch {

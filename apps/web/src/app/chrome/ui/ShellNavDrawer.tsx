@@ -12,12 +12,17 @@ export function ShellNavDrawer(props: {
   primaryLinks: Array<{ to: string; label: string }>;
   user: null | { sub: string };
   onLogout: () => Promise<void>;
+  /** The Appearance link was chosen; the drawer closes as part of it. */
+  onChooseAppearance: () => void;
+  /** The close transition finished and focus has gone back to the menu button. */
+  onExited: () => void;
 }) {
   return (
     <Drawer
       id={NAV_DRAWER_ID}
       opened={props.opened}
       onClose={props.onClose}
+      onExitTransitionEnd={props.onExited}
       position="left"
       withinPortal={false}
       title="Menu"
@@ -55,6 +60,15 @@ export function ShellNavDrawer(props: {
               onClick={props.onClose}
             >
               Account
+            </Anchor>
+            <Anchor
+              component={NavLink}
+              to="/account#appearance"
+              className="nav-link fo-navDrawerLink"
+              underline="never"
+              onClick={props.onChooseAppearance}
+            >
+              Appearance
             </Anchor>
             <Button
               type="button"

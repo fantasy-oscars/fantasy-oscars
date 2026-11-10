@@ -25,6 +25,7 @@ export * from "./MantineProvider";
 export * from "./Menu";
 export * from "./Notification";
 export * from "./Modal";
+export * from "./MultiSelect";
 export * from "./NumberInput";
 export * from "./Radio";
 export * from "./SegmentedControl";

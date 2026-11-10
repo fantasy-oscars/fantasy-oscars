@@ -24,7 +24,7 @@ Replace the brute-force matrix with layers that each test one thing, in the same
 
 A test checks that every PNG under `tests/visual/__screenshots__/` is named by the matrix, so orphan baselines cannot accumulate.
 
-Result: 122 baselines (from 358). Adding a screen costs about two screenshots (one row); adding a brand costs its tokens, three specimen captures plus Home and draft captures.
+Result: 122 baselines (from 358); 124 with the Appearance screen. Adding a screen costs about two screenshots (one row); adding a brand costs its tokens, three specimen captures plus Home and draft captures.
 
 ### Two CI jobs
 
@@ -32,7 +32,7 @@ The screenshot tiers (plus the baseline orphan check) run as the `visual` job an
 
 ### In-place colour-mode switching
 
-The app keeps the colour scheme in `localStorage` and repaints when it receives a `storage` event for that key. The assertion tier switches mode by writing the key, dispatching that event and emulating the media preference. For three screens and the specimen in two brands at both widths, the findings after an in-place switch were identical to those from a fresh load in that mode.
+The app repaints when it receives a `storage` event for the test-only `fo:test-appearance` key (`{ brand, mode }`), honoured only in test builds. The assertion tier switches mode with `switchAppearance`: it writes the key, dispatches that event and emulates the media preference. (When this decision was taken the app stored the colour scheme under `mantine-color-scheme-value`; the brand picker package replaced that with the override described in `docs/architecture/brands.md`.) For three screens and the specimen in two brands at both widths, the findings after an in-place switch were identical to those from a fresh load in that mode.
 
 ### The specimen route is a build-time gate
 

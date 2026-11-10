@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import { afterAll, describe, expect, it } from "vitest";
-import { ENABLED_BRAND_IDS } from "@fantasy-oscars/shared/brands";
+import {
+  ENABLED_BRAND_IDS,
+  brandDayNumber,
+  localDateTimeFromDate
+} from "@fantasy-oscars/shared/brands";
 import { build } from "vite";
 import {
   BRAND_DEFINITIONS,
@@ -174,7 +178,10 @@ describe("built font preload map", () => {
 
     for (const brand of BRAND_DEFINITIONS) {
       const links: Array<Record<string, string>> = [];
-      const documentElement = { dataset: {} as Record<string, string> };
+      const documentElement = {
+        dataset: {} as Record<string, string>,
+        setAttribute: () => undefined
+      };
       const sandbox: Record<string, unknown> = {
         document: {
           documentElement,
@@ -182,7 +189,18 @@ describe("built font preload map", () => {
           createElement: () => ({})
         },
         localStorage: {
-          getItem: (k: string) => (k === "fo:brand-preference" ? brand.id : null),
+          // fo:test-appearance is ignored in this build, so the brand comes from a
+          // saved anonymous draw for the current brand day.
+          getItem: (k: string) =>
+            k === "fo:anon-draw"
+              ? JSON.stringify({
+                  day: brandDayNumber(localDateTimeFromDate(new Date())),
+                  brand: brand.id,
+                  rounds: { ceremony: [], cinema: [] }
+                })
+              : k === "fo:test-appearance"
+                ? JSON.stringify({ brand: "noir", mode: "dark" })
+                : null,
           setItem: () => undefined,
           removeItem: () => undefined
         },
