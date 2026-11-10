@@ -194,13 +194,13 @@ describe("brand preference", () => {
     expect(stale.body.preferences.appearance.daily_draw).toEqual(stored(day));
   });
 
-  it("overwrites a stored draw whose theme is not released", async () => {
+  it("overwrites a stored draw whose theme is not a released brand", async () => {
     await registerAndLogin();
     const day = today();
     await patch({ daily_draw: draw(day, "refined-gold") });
     await db.pool.query(
       `UPDATE app_user
-       SET daily_draw = jsonb_set(daily_draw, '{brand}', '"noir"')
+       SET daily_draw = jsonb_set(daily_draw, '{brand}', '"gold"')
        WHERE username = 'brandfan'`
     );
     const res = await patch({ daily_draw: draw(day, "refined-gold") });
@@ -238,13 +238,12 @@ describe("brand preference", () => {
     const me = await api.get("/auth/me");
     expect(me.body.user.appearance.random_excluded_brands).toEqual([]);
 
-    // With only one theme released, an excluded starting theme leaves nothing,
-    // whether or not Undiscovered themes is on.
+    // With Undiscovered themes on, unseen themes still remain to draw from.
     const on = await patch({
       random_excluded_brands: ["refined-gold"],
       undiscovered_enabled: true
     });
-    expect(on.status).toBe(400);
+    expect(on.status).toBe(200);
   });
 
   it("checks stored exclusions when only Undiscovered themes are turned off", async () => {
@@ -274,7 +273,10 @@ describe("brand preference", () => {
       random_excluded_brands: ["refined-gold"],
       add_discovered_brands: ["noir"]
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(res.body.preferences.appearance.random_excluded_brands).toEqual([
+      "refined-gold"
+    ]);
   });
 
   it("rejects malformed appearance values", async () => {

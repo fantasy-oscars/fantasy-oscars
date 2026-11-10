@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BRAND_CATALOG,
   BRAND_IDS,
-  ENABLED_BRAND_IDS,
   STARTING_BRAND,
   brandDayNumber,
   localDateTimeFromDate,
@@ -198,7 +197,7 @@ describe("useBrandOrchestration", () => {
       expect(stored("fo:discovered")).toEqual(brand === STARTING_BRAND ? null : [brand]);
 
       window.localStorage.clear();
-      const only = setup({ enabled: ENABLED_BRAND_IDS });
+      const only = setup({ enabled: [STARTING_BRAND] });
       await waitFor(() => expect(only.result.current.brand).toBe(STARTING_BRAND));
       expect(window.localStorage.getItem("fo:discovered")).toBeNull();
     });
@@ -352,7 +351,7 @@ describe("useBrandOrchestration", () => {
     it("falls back to Random when the fixed theme is not released", async () => {
       const account = user({ brand_preference: "noir" });
       stubPatch(accountStore(account));
-      const { result } = setup({ user: account, enabled: ENABLED_BRAND_IDS });
+      const { result } = setup({ user: account, enabled: [STARTING_BRAND] });
       await waitFor(() => expect(result.current.brand).toBe(STARTING_BRAND));
     });
 

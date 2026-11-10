@@ -5,7 +5,6 @@ import {
   BRAND_CATALOG,
   BRAND_IDS,
   ENABLED_BRAND_IDS,
-  STARTING_BRAND,
   brandDayNumber,
   localDateTimeFromDate,
   type BrandId
@@ -182,8 +181,7 @@ describe("pre-paint script (production build)", () => {
     expect(code).not.toContain("zod");
   });
 
-  it("paints only released brands, whatever is stored", () => {
-    const only = ENABLED_BRAND_IDS[0];
+  it("paints what the app resolves, and only released brands, whatever is stored", () => {
     for (let day = 0; day < 14; day += 1) {
       const now = new Date(2035, 1, 10 + day, 12, 0);
       for (const brand of BRAND_IDS) {
@@ -210,7 +208,11 @@ describe("pre-paint script (production build)", () => {
           }
         ];
         for (const local of stores) {
-          expect(runScript(code, now, local).brand).toBe(only);
+          const painted = runScript(code, now, local);
+          expect(ENABLED_BRAND_IDS).toContain(painted.brand);
+          expect({ brand: painted.brand, scheme: painted.scheme }).toEqual(
+            expected(now, local)
+          );
         }
       }
     }
@@ -219,8 +221,9 @@ describe("pre-paint script (production build)", () => {
   it("ignores fo:test-appearance", () => {
     const override = JSON.stringify({ brand: "noir", mode: "dark" });
     const painted = runScript(code, NOW, { ...ANON_ID, "fo:test-appearance": override });
-    expect(painted.brand).toBe(STARTING_BRAND);
-    expect(painted.scheme).toBe(primaryBase(STARTING_BRAND));
+    expect({ brand: painted.brand, scheme: painted.scheme }).toEqual(
+      expected(NOW, ANON_ID)
+    );
   });
 
   it("does not read or write the retired keys", () => {
@@ -230,7 +233,9 @@ describe("pre-paint script (production build)", () => {
       "fo:brand-last": JSON.stringify({ brand: "noir", day: dayOf(NOW) })
     };
     const painted = runScript(code, NOW, local);
-    expect(painted.brand).toBe(STARTING_BRAND);
+    expect({ brand: painted.brand, scheme: painted.scheme }).toEqual(
+      expected(NOW, ANON_ID)
+    );
     expect(painted.keys.sort()).toEqual(Object.keys(local).sort());
   });
 });

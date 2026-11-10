@@ -63,7 +63,7 @@ describe("store parsers", () => {
   it("parses the anonymous draw and drops unreleased themes", () => {
     const raw = JSON.stringify({ day: 5, brand: "noir", rounds });
     expect(parseAnonDraw(raw, BRAND_IDS)).toEqual({ day: 5, brand: "noir", rounds });
-    expect(parseAnonDraw(raw, ENABLED_BRAND_IDS)).toBeNull();
+    expect(parseAnonDraw(raw, ["refined-gold"])).toBeNull();
     expect(parseAnonDraw("garbage", BRAND_IDS)).toBeNull();
   });
 
@@ -95,7 +95,7 @@ describe("store parsers", () => {
     expect(activeShuffle(record, "user:7", 5, BRAND_IDS)).toBe("lightbox");
     expect(activeShuffle(record, "user:8", 5, BRAND_IDS)).toBeNull();
     expect(activeShuffle(record, "user:7", 6, BRAND_IDS)).toBeNull();
-    expect(activeShuffle(record, "user:7", 5, ENABLED_BRAND_IDS)).toBeNull();
+    expect(activeShuffle(record, "user:7", 5, ["refined-gold"])).toBeNull();
     expect(parseShuffleRecord('{"identity":"u","day":5}', BRAND_IDS)).toBeNull();
   });
 
@@ -105,7 +105,7 @@ describe("store parsers", () => {
       mode: "dark"
     });
     expect(
-      parseTestAppearance('{"brand":"noir","mode":"dark"}', ENABLED_BRAND_IDS)
+      parseTestAppearance('{"brand":"noir","mode":"dark"}', ["refined-gold"])
     ).toBeNull();
     expect(parseTestAppearance('{"brand":"noir","mode":"sepia"}', BRAND_IDS)).toBeNull();
     expect(parseTestAppearance("x", BRAND_IDS)).toBeNull();
@@ -123,7 +123,7 @@ describe("store parsers", () => {
 describe("resolvePrepaintAppearance", () => {
   it("paints the starting theme's primary mode on a first visit with one theme released", () => {
     expect(
-      resolvePrepaintAppearance({ stored: empty, now: NOW, enabled: ENABLED_BRAND_IDS })
+      resolvePrepaintAppearance({ stored: empty, now: NOW, enabled: ["refined-gold"] })
     ).toEqual({
       brand: "refined-gold",
       base: "light"
