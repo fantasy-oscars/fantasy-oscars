@@ -194,6 +194,14 @@ export async function settle(
   // networkidle always costs 500ms; the in-flight count below covers requests already.
   if (networkIdle) await page.waitForLoadState("networkidle");
   await page.evaluate(async () => {
+    // `fonts.ready` resolves at once when no load has started yet, so ask for every
+    // face the page uses; a capture could otherwise beat the fonts and show fallbacks.
+    const fonts = new Set<string>();
+    for (const element of Array.from(document.querySelectorAll("body, body *"))) {
+      const style = getComputedStyle(element);
+      fonts.add(`${style.fontStyle} ${style.fontWeight} 16px ${style.fontFamily}`);
+    }
+    await Promise.all(Array.from(fonts).map((font) => document.fonts.load(font)));
     await document.fonts.ready;
     await Promise.all(
       Array.from(document.images).map((img) =>
