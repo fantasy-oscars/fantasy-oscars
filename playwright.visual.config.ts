@@ -31,7 +31,9 @@ export default defineConfig({
       caret: "hide",
       scale: "css",
       maxDiffPixels: 0,
-      threshold: 0,
+      // Absorbs Chromium's rendering noise on text edges, which varies by a few colour
+      // levels between CI runners. See docs/standards/testing.md.
+      threshold: 0.04,
       stylePath: "./tests/visual/support/freeze.css"
     }
   },
