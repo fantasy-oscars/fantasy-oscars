@@ -305,12 +305,20 @@ describe("daily draw vectors (prescription 4.3)", () => {
 
 describe("buildGroups", () => {
   it("with one theme enabled the pools hold only that theme", () => {
-    const pools = buildGroups({ discovered: [], settings: DEFAULTS });
+    const pools = buildGroups({
+      discovered: [],
+      settings: DEFAULTS,
+      enabled: ["refined-gold"]
+    });
     expect(pools).toEqual({ cinemaNew: [], cinemaSeen: [], ceremony: ["refined-gold"] });
   });
 
   it("ignores discoveries that are not enabled", () => {
-    const pools = buildGroups({ discovered: ["noir"], settings: DEFAULTS });
+    const pools = buildGroups({
+      discovered: ["noir"],
+      settings: DEFAULTS,
+      enabled: ["refined-gold"]
+    });
     expect(pools.ceremony).toEqual(["refined-gold"]);
   });
 
@@ -405,7 +413,9 @@ describe("resolveAppearance", () => {
       brand: "noir",
       rounds: { ceremony: [], cinema: [] }
     };
-    expect(resolveAppearance({ ...base, record }).drewNow).toBe(true);
+    expect(
+      resolveAppearance({ ...base, enabled: ["refined-gold"], record }).drewNow
+    ).toBe(true);
   });
 
   it("Fixed and shuffle take precedence and draw nothing", () => {

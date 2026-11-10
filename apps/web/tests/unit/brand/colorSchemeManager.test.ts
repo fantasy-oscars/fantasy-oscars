@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BRAND_IDS, ENABLED_BRAND_IDS } from "@fantasy-oscars/shared/brands";
+import { BRAND_IDS } from "@fantasy-oscars/shared/brands";
 import { createColorSchemeManager } from "@/orchestration/brand/colorSchemeManager";
 
 afterEach(() => {
@@ -69,7 +69,7 @@ describe("colour scheme manager", () => {
   });
 
   it("ignores an override naming an unreleased theme", () => {
-    const m = manager(true, ENABLED_BRAND_IDS);
+    const m = manager(true, ["refined-gold"]);
     const onUpdate = vi.fn();
     m.subscribe(onUpdate);
     window.dispatchEvent(

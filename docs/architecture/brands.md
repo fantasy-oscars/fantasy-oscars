@@ -108,7 +108,7 @@ theme has none (so a single-mode theme uses its only mode).
 Not every defined brand is released. `ENABLED_BRAND_IDS` in
 `packages/shared/src/brands.ts` lists the brands users can actually get. It must
 be a non-empty subsequence of `BRAND_IDS`; a unit test checks this. Today it
-holds `refined-gold` only.
+holds every defined brand.
 
 Everything in Resolution takes an optional `enabled` list that defaults to
 `ENABLED_BRAND_IDS`:
@@ -117,7 +117,8 @@ Everything in Resolution takes an optional `enabled` list that defaults to
   ids when read and never rewritten. A stored Fixed theme that is not released
   behaves like Random, and a saved draw naming one is ignored (today draws again
   and overwrites it).
-- With one theme released there is nothing undiscovered and nothing to shuffle.
+- With one theme released there would be nothing undiscovered and nothing to
+  shuffle.
 - Stored preferences are still validated against `BRAND_IDS`, so slugs stay
   storable.
 

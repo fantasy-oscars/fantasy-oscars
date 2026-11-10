@@ -21,10 +21,10 @@ export type BrandMode = (typeof BRAND_MODES)[number];
 export type BrandPreference = BrandMode | BrandId;
 
 /**
- * Brands released to users (a non-empty subsequence of BRAND_IDS). Everything
- * else is defined but not yet selectable or drawn.
+ * Brands released to users (a non-empty subsequence of BRAND_IDS). Anything
+ * left out is defined but not selectable or drawn.
  */
-export const ENABLED_BRAND_IDS: readonly BrandId[] = ["refined-gold"];
+export const ENABLED_BRAND_IDS: readonly BrandId[] = BRAND_IDS;
 
 export const COLOR_BASES = ["light", "dark"] as const;
 export type ColorBase = (typeof COLOR_BASES)[number];
