@@ -23,6 +23,7 @@ export type RoomCheck =
   | "room-roster-gap"
   | "room-roster-width"
   | "room-header-height"
+  | "room-header-contain"
   | "room-tab-top"
   | "room-tab-edge"
   | "room-tab-children"
@@ -569,6 +570,23 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
             description: `.dr-header is ${h.toFixed(1)}px tall, not 64`
           });
         }
+        // Every control sits inside the header's box (1px tolerance), never clipped or overhanging.
+        if (!isPhone) {
+          const box = header.getBoundingClientRect();
+          const INTERACTIVE =
+            'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="switch"], [role="radio"]';
+          for (const el of Array.from(header.querySelectorAll(INTERACTIVE))) {
+            if (!visible(el)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) continue;
+            if (r.top < box.top - 1 || r.bottom > box.bottom + 1) {
+              out.push({
+                check: "room-header-contain",
+                description: `${describe(el)} spans y ${(r.top - box.top).toFixed(1)} to ${(r.bottom - box.top).toFixed(1)}, outside the 0-${box.height.toFixed(0)} header`
+              });
+            }
+          }
+        }
       }
 
       // 5. Header tab.
@@ -678,7 +696,8 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
 
       // 8. Pills follow the small radius.
       const radiusProbe = document.createElement("div");
-      radiusProbe.style.borderRadius = "var(--brand-radius-sm)";
+      // The small radius, clamped at half the 22px pill height (prescription 4.2).
+      radiusProbe.style.borderRadius = "min(var(--brand-radius-sm), 11px)";
       document.body.append(radiusProbe);
       const wantRadius = getComputedStyle(radiusProbe).borderTopLeftRadius;
       radiusProbe.remove();
@@ -690,7 +709,7 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
       for (const [got, count] of wrong) {
         out.push({
           check: "room-pill-radius",
-          description: `.dr-pill radius ${got}, expected ${wantRadius} (--brand-radius-sm), on ${count} pills`
+          description: `.dr-pill radius ${got}, expected ${wantRadius} (--brand-radius-sm clamped at half the pill height), on ${count} pills`
         });
       }
       return out;

@@ -68,10 +68,16 @@ export function useDraftSnapshot(args: { draftId: string; disabled?: boolean }) 
     void loadSnapshot({ preserveSnapshot: true });
   }, [loadSnapshot]);
 
+  // The initial load runs once per draft. A failure sets `error` and clears `loading`, which
+  // would otherwise re-run this effect and refetch forever; later reloads are explicit
+  // (the retry action, socket events, the heartbeat).
+  const initialLoadForRef = useRef<string | null>(null);
   useEffect(() => {
     if (disabled) return;
-    if (!snapshot && !loading) void loadSnapshot();
-  }, [disabled, loadSnapshot, loading, snapshot]);
+    if (initialLoadForRef.current === draftId) return;
+    initialLoadForRef.current = draftId;
+    void loadSnapshot();
+  }, [disabled, draftId, loadSnapshot]);
 
   return {
     loading,

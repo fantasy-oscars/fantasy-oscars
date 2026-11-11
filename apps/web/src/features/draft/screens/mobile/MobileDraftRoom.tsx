@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Group, Modal, Stack, Text, UnstyledButton } from "@ui";
+import { ActionIcon, Box, Button, Group, Modal, Text, UnstyledButton } from "@ui";
 import { useState } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { RuntimeBannerStack } from "@/notifications";
@@ -188,7 +188,7 @@ export function MobileDraftRoom(props: {
               draftedNominationIds={props.draftedNominationIds}
             />
           ) : (
-            <Stack gap="sm" className="dr-mobileCategories">
+            <Box className="dr-mobileCategories">
               {categoriesForList.map((c) => (
                 <CategoryCard
                   key={c.id}
@@ -208,7 +208,7 @@ export function MobileDraftRoom(props: {
                   onNomineeDoubleClick={() => {}}
                 />
               ))}
-            </Stack>
+            </Box>
           )}
         </Box>
       </Box>

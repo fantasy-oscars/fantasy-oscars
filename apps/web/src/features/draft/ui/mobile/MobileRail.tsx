@@ -1,4 +1,7 @@
+import { useMemo, useRef } from "react";
 import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@ui";
+import { railMetaCh } from "@/decisions/draft/railMeta";
+import { useCssVars } from "@/shared/dom/useCssVars";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "../DraftCategoryIcon";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
@@ -28,12 +31,25 @@ export function MobileRail(props: {
   draftedNominationIds: Set<number>;
 }) {
   const { o } = props;
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const railVars = useMemo(() => {
+    const rows =
+      props.rail === "ledger"
+        ? o.ledger.rows
+        : props.rail === "roster"
+          ? o.myRoster.picks
+          : [];
+    return { "--dr-meta-ch": railMetaCh(rows.map((r) => r.roundPick)) };
+  }, [props.rail, o.ledger.rows, o.myRoster.picks]);
+  useCssVars(rowsRef, railVars);
 
   if (props.rail === "ledger") {
     return (
       <Box className="dr-mobileRailPane">
-        <Text className="dr-railPaneTitle">Draft history</Text>
-        <Box className="dr-railRows">
+        <Text className="dr-railPaneTitle" title="Draft history">
+          Draft history
+        </Text>
+        <Box className="dr-railRows" ref={rowsRef}>
           {o.ledger.rows.map((r) => {
             const seatNumber = r.seatNumber;
             const avatarKey =
@@ -133,8 +149,10 @@ export function MobileRail(props: {
   if (props.rail === "roster") {
     return (
       <Box className="dr-mobileRailPane">
-        <Text className="dr-railPaneTitle">My roster</Text>
-        <Box className="dr-railRows">
+        <Text className="dr-railPaneTitle" title="My roster">
+          My roster
+        </Text>
+        <Box className="dr-railRows" ref={rowsRef}>
           {o.myRoster.picks.map((r) => {
             const nominee =
               typeof r.nominationId === "number"
@@ -180,7 +198,7 @@ export function MobileRail(props: {
             );
 
             return (
-              <Box key={r.pickNumber} className="dr-railRow">
+              <Box key={r.pickNumber} className="dr-railRow dr-rosterRow">
                 <Text className="dr-railMeta">{r.roundPick}</Text>
                 {nominee ? (
                   <Tooltip
@@ -225,7 +243,9 @@ export function MobileRail(props: {
 
   return (
     <Box className="dr-mobileRailPane">
-      <Text className="dr-railPaneTitle">Auto-draft</Text>
+      <Text className="dr-railPaneTitle" title="Auto-draft">
+        Auto-draft
+      </Text>
       <Stack gap="sm">
         <Checkbox
           checked={o.autodraft.enabled}

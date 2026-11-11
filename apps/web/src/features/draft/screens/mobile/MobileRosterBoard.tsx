@@ -109,11 +109,7 @@ export function MobileRosterBoard(props: {
         <Box className="dr-card dr-rosterCard">
           <Box className="dr-card-titleRow">
             <AnimalAvatarIcon avatarKey={current.avatarKey} size="md" />
-            <Text
-              className="dr-card-title fo-flex1Minw0"
-              lineClamp={1}
-              title={current.label}
-            >
+            <Text className="dr-card-title fo-flex1Minw0" title={current.label}>
               {current.label}
             </Text>
             {o.header.status === "COMPLETED" ? (

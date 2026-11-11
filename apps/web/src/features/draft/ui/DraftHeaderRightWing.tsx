@@ -83,21 +83,6 @@ export function DraftHeaderRightWing(props: {
                 disabled={!props.canToggleView}
               />
             </Box>
-            <Tooltip label={`Draft sounds: ${soundState}`} position="bottom" withArrow>
-              <Button
-                type="button"
-                variant="subtle"
-                className="drh-toggleBtn"
-                onClick={props.onToggleSound}
-                aria-label="Draft sounds"
-                aria-pressed={props.soundEnabled}
-              >
-                <Text component="span" className="gicon" aria-hidden="true">
-                  {props.soundEnabled ? "volume_up" : "volume_off"}
-                </Text>
-              </Button>
-            </Tooltip>
-
             <Box className="drh-controlRow">
               {props.showDraftedVisible ? (
                 <Switch
@@ -117,28 +102,42 @@ export function DraftHeaderRightWing(props: {
                 </>
               )}
             </Box>
-            {props.showCursorSpyToggle ? (
-              <Tooltip
-                label={`Cursor spy: ${cursorSpyState}`}
-                position="bottom"
-                withArrow
-              >
+            <Box className="drh-toggleBtns">
+              <Tooltip label={`Draft sounds: ${soundState}`} position="bottom" withArrow>
                 <Button
                   type="button"
                   variant="subtle"
                   className="drh-toggleBtn"
-                  onClick={props.onToggleCursorSpy}
-                  aria-label="Cursor spy"
-                  aria-pressed={props.cursorSpyUserEnabled}
+                  onClick={props.onToggleSound}
+                  aria-label="Draft sounds"
+                  aria-pressed={props.soundEnabled}
                 >
                   <Text component="span" className="gicon" aria-hidden="true">
-                    {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
+                    {props.soundEnabled ? "volume_up" : "volume_off"}
                   </Text>
                 </Button>
               </Tooltip>
-            ) : (
-              <Box />
-            )}
+              {props.showCursorSpyToggle ? (
+                <Tooltip
+                  label={`Cursor spy: ${cursorSpyState}`}
+                  position="bottom"
+                  withArrow
+                >
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    className="drh-toggleBtn"
+                    onClick={props.onToggleCursorSpy}
+                    aria-label="Cursor spy"
+                    aria-pressed={props.cursorSpyUserEnabled}
+                  >
+                    <Text component="span" className="gicon" aria-hidden="true">
+                      {props.cursorSpyUserEnabled ? "visibility" : "visibility_off"}
+                    </Text>
+                  </Button>
+                </Tooltip>
+              ) : null}
+            </Box>
           </Box>
         </Box>
       ) : null}

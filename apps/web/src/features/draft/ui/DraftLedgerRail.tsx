@@ -1,4 +1,7 @@
+import { useMemo, useRef } from "react";
 import { Box, Text, Tooltip, UnstyledButton } from "@ui";
+import { railMetaCh } from "@/decisions/draft/railMeta";
+import { useCssVars } from "@/shared/dom/useCssVars";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
@@ -21,6 +24,12 @@ export function DraftLedgerRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
+  const listRef = useRef<HTMLDivElement>(null);
+  const railVars = useMemo(
+    () => ({ "--dr-meta-ch": railMetaCh(props.ledgerRows.map((r) => r.roundPick)) }),
+    [props.ledgerRows]
+  );
+  useCssVars(listRef, railVars);
 
   return (
     <Box
@@ -35,7 +44,9 @@ export function DraftLedgerRail(props: {
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 history
               </Text>
-              <Text className="dr-railPaneTitle">Draft history</Text>
+              <Text className="dr-railPaneTitle" title="Draft history">
+                Draft history
+              </Text>
             </Box>
             <UnstyledButton
               type="button"
@@ -54,7 +65,7 @@ export function DraftLedgerRail(props: {
             aria-label="Draft history"
             tabIndex={0}
           >
-            <Box className="dr-railList">
+            <Box className="dr-railList" ref={listRef}>
               {props.ledgerRows.map((r) => {
                 const nominee = r.nominationId
                   ? (props.nomineeById.get(r.nominationId) ?? null)

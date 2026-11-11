@@ -216,6 +216,17 @@ describe("draft room accessibility", () => {
     expect(failed.container.querySelectorAll("main#main-content")).toHaveLength(1);
   });
 
+  it("offers a way back to seasons on a load error", () => {
+    const base = makeOrchestration();
+    renderScreen({
+      ...base,
+      header: { ...base.header, status: null },
+      state: { ...base.state, error: "Could not load the draft" }
+    });
+    const back = screen.getByRole("link", { name: "Back to seasons" });
+    expect(back.getAttribute("href")).toBe("/seasons");
+  });
+
   it("renders one main landmark and no banner role on mobile", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: true,
