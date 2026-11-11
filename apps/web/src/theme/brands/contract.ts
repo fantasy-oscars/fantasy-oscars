@@ -166,6 +166,37 @@ export type NavigationSlots = {
   size: string;
 };
 
+export const ROOM_RING_WIDTHS = [0, 1, 2, 3] as const;
+export const ROOM_RING_COLORS = ["rule", "ruleStrong", "text"] as const;
+export const ROOM_DEPTHS = ["none", "soft", "glow"] as const;
+export const ROOM_DROP_RANGE = { min: 0, max: 6 } as const;
+export const ROOM_TITLE_FACES = ["work", "label", "display"] as const;
+export const ROOM_TAB_EDGES = [
+  "flat",
+  "keyline",
+  "double",
+  "ring",
+  "drop",
+  "lift"
+] as const;
+
+/** Composition of the draft room. Components read the derived `--brand-room-*` properties, never these enums. */
+export type RoomSlots = {
+  /** Font of pills, rail rows, numbers and every label in the room. Family must be in ROOM_WORK_FONTS. */
+  workFont: string;
+  /** Voice of rail titles and the header tab's fixed status words. */
+  titleFace: (typeof ROOM_TITLE_FACES)[number];
+  edge: {
+    ring: (typeof ROOM_RING_WIDTHS)[number];
+    ringColor: (typeof ROOM_RING_COLORS)[number];
+    /** Hard downward offset in px; 0 unless ring is at least 1. */
+    drop: number;
+    depth: (typeof ROOM_DEPTHS)[number];
+  };
+  /** Edge of the header tab. `ring` and `drop` take their width and colour from `edge`. */
+  tabEdge: (typeof ROOM_TAB_EDGES)[number];
+};
+
 export type BrandDefinition = {
   id: BrandId;
   /** Colours and shadows, one set per mode. */
@@ -178,4 +209,5 @@ export type BrandDefinition = {
   navigation: NavigationSlots;
   decorations: Record<Decoration, boolean>;
   home: HomeSlots;
+  room: RoomSlots;
 };

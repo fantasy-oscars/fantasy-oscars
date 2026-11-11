@@ -129,5 +129,11 @@ export const technicolor: BrandDefinition = {
     heroFit: 18.5,
     regions: "cards",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: DMSANS,
+    titleFace: "display",
+    edge: { ring: 2, ringColor: "text", drop: 5, depth: "none" },
+    tabEdge: "drop"
   }
 };

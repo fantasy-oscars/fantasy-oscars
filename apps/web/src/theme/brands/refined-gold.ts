@@ -130,5 +130,11 @@ export const refinedGold: BrandDefinition = {
     heroFit: 12.5,
     regions: "cards",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: INTER,
+    titleFace: "display",
+    edge: { ring: 1, ringColor: "rule", drop: 0, depth: "soft" },
+    tabEdge: "lift"
   }
 };

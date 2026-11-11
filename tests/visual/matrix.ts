@@ -64,9 +64,9 @@ export type ScreenDef = {
  * snapshot's own stamp is set to the same instant: the client's server-clock offset is
  * then zero and a deadline of FIXED_NOW + 4 s always reads "4s left".
  */
-function rewriteDraftSnapshot(
+export function rewriteDraftSnapshot(
   page: Page,
-  edit: (draft: Record<string, unknown>) => void
+  edit: (draft: Record<string, unknown>, snapshot: Record<string, unknown>) => void
 ): Promise<void> {
   return page.route("**/drafts/*/snapshot", async (route) => {
     const response = await route.fetch();
@@ -75,9 +75,15 @@ function rewriteDraftSnapshot(
       draft: Record<string, unknown>;
     };
     body.server_time = FIXED_NOW;
-    edit(body.draft);
+    edit(body.draft, body);
     await route.fulfill({ response, json: body });
   });
+}
+
+/** The countdown screen's edit: a 90 s timer with 4 s left. */
+export function countdownSnapshot(draft: Record<string, unknown>) {
+  draft.pick_timer_seconds = 90;
+  draft.pick_deadline_at = new Date(Date.parse(FIXED_NOW) + 4000).toISOString();
 }
 
 export const SCREENS: ScreenDef[] = [
@@ -240,11 +246,7 @@ export const SCREENS: ScreenDef[] = [
     persona: "avery",
     path: (s) => `/drafts/${s.drafts.live}`,
     ready: { selector: ".drh-buckle.is-countdown, .dr-mobileBar.is-countdown" },
-    beforeNavigate: (page) =>
-      rewriteDraftSnapshot(page, (draft) => {
-        draft.pick_timer_seconds = 90;
-        draft.pick_deadline_at = new Date(Date.parse(FIXED_NOW) + 4000).toISOString();
-      }),
+    beforeNavigate: (page) => rewriteDraftSnapshot(page, countdownSnapshot),
     prepare: async (page) => {
       await expect(page.locator(".drh-buckleCenter, .drm-clockText").first()).toHaveText(
         "4s left"

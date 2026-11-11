@@ -126,5 +126,11 @@ export const noir: BrandDefinition = {
     heroFit: 24,
     regions: "open",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: INTER,
+    titleFace: "display",
+    edge: { ring: 1, ringColor: "rule", drop: 0, depth: "none" },
+    tabEdge: "double"
   }
 };
