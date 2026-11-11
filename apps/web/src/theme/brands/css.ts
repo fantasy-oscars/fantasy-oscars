@@ -7,7 +7,9 @@ import {
   SHADOW_SLOTS,
   type BrandDefinition,
   type Mode,
+  type ColorSlot,
   type NavActiveColor,
+  type RoomSlots,
   type WordmarkToneColor
 } from "./contract";
 import { sharedByMode, sharedConstants } from "./shared";
@@ -37,6 +39,24 @@ export function colorChannels(value: string): string {
     );
   if (rgb) return `${rgb[1]}, ${rgb[2]}, ${rgb[3]}`;
   throw new Error(`Unsupported colour value: ${value}`);
+}
+
+function channelValues(value: string): [number, number, number] {
+  return colorChannels(value).split(",").map(Number) as [number, number, number];
+}
+
+function luminance(value: string): number {
+  const [r, g, b] = channelValues(value).map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio of two opaque colours (`#rgb`, `#rrggbb` or `rgba(...)`, alpha ignored). */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
 }
 
 function buttonRadius(shape: BrandDefinition["shape"]["buttonShape"]): string {
@@ -202,6 +222,111 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
   ];
 }
 
+/** Tab tones whose edge colour is resolved per brand and mode. */
+export const ROOM_TAB_EDGE_TONES = ["on-primary", "on-danger"] as const;
+export type RoomTabEdgeTone = (typeof ROOM_TAB_EDGE_TONES)[number];
+
+/** Lowest contrast a tab edge may have against the tab fill and against the page. */
+export const ROOM_TAB_EDGE_MIN_CONTRAST = 3;
+
+/** Resolved card-ring width and drop of the header tab, in px; both 0 unless `tabEdge` is `ring` or `drop`. */
+export function roomTabRing(room: RoomSlots): { ring: number; drop: number } {
+  if (room.tabEdge !== "ring" && room.tabEdge !== "drop") return { ring: 0, drop: 0 };
+  const ring = Math.max(room.edge.ring, 1);
+  const drop =
+    room.tabEdge === "drop" ? Math.min(Math.max(room.edge.drop, 4), 7 - ring) : 0;
+  return { ring, drop };
+}
+
+/**
+ * The colour slot a tab edge takes on a coloured tab fill: the first of
+ * `ringColor`, `text`, `ruleStrong` that reaches 3:1 against both the fill and
+ * the page. Returns undefined when none does.
+ */
+export function pickTabEdge(
+  brand: BrandDefinition,
+  mode: Mode,
+  fill: string
+): ColorSlot | undefined {
+  const { colors } = brand.modes[mode];
+  const candidates: ColorSlot[] = [brand.room.edge.ringColor, "text", "ruleStrong"];
+  return candidates.find(
+    (slot) =>
+      contrastRatio(colors[slot], fill) >= ROOM_TAB_EDGE_MIN_CONTRAST &&
+      contrastRatio(colors[slot], colors.page) >= ROOM_TAB_EDGE_MIN_CONTRAST
+  );
+}
+
+function resolveTabEdge(
+  brand: BrandDefinition,
+  mode: Mode,
+  tone: RoomTabEdgeTone
+): ColorSlot {
+  const fill =
+    tone === "on-primary"
+      ? brand.modes[mode].colors.primary
+      : sharedConstants["--fo-danger"];
+  const picked = pickTabEdge(brand, mode, fill);
+  if (picked) return picked;
+  // Brands whose tab edge draws no ring never read this value.
+  if (brand.room.tabEdge !== "ring" && brand.room.tabEdge !== "drop") {
+    return brand.room.edge.ringColor;
+  }
+  throw new Error(
+    `Brand "${brand.id}" (${mode}): no tab edge colour reaches ${ROOM_TAB_EDGE_MIN_CONTRAST}:1 on the ${tone} tab; choose another tabEdge`
+  );
+}
+
+/** Derived draft-room properties that are the same in both modes (draft room prescription, 3.3). */
+function roomDeclarations(brand: BrandDefinition): Declarations {
+  const { room, type } = brand;
+  const tab = roomTabRing(room);
+  const title = {
+    work: room.workFont,
+    label: type.labelFont,
+    display: type.displayFont
+  }[room.titleFace];
+  const ringColor = `var(--brand-${kebab(room.edge.ringColor)})`;
+  return [
+    ["--brand-room-font-work", room.workFont],
+    ["--brand-room-font-title", title],
+    [
+      "--brand-room-title-weight",
+      room.titleFace === "display" ? type.displayWeight : "600"
+    ],
+    ["--brand-room-ring", `${room.edge.ring}px`],
+    ["--brand-room-ring-color", ringColor],
+    ["--brand-room-drop", `${room.edge.drop}px`],
+    [
+      "--brand-room-card-shadow",
+      "0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth)"
+    ],
+    ["--brand-room-tab-keyline", room.tabEdge === "keyline" ? "1" : "0"],
+    ["--brand-room-tab-border", room.tabEdge === "double" ? "3px" : "0px"],
+    ["--brand-room-tab-ring", `${tab.ring}px`],
+    ["--brand-room-tab-drop", `${tab.drop}px`],
+    ["--brand-room-tab-lift", room.tabEdge === "lift" ? "1" : "0"]
+  ];
+}
+
+/** Derived draft-room properties that differ by mode. */
+function roomModeDeclarations(brand: BrandDefinition, mode: Mode): Declarations {
+  const { room } = brand;
+  const alpha = mode === "light" ? "0.05" : "0.28";
+  const depth = {
+    none: "0 0 0 0 transparent",
+    soft: `0 1px 2px rgba(0, 0, 0, ${alpha}), 0 6px 16px rgba(0, 0, 0, ${alpha})`,
+    glow: "0 0 10px rgba(var(--brand-accent-rgb), 0.35)"
+  }[room.edge.depth];
+  const ref = (slot: ColorSlot) => `var(--brand-${kebab(slot)})`;
+  return [
+    ["--brand-room-depth", depth],
+    ["--brand-room-tab-edge", `var(--brand-${kebab(room.edge.ringColor)})`],
+    ["--brand-room-tab-edge-on-primary", ref(resolveTabEdge(brand, mode, "on-primary"))],
+    ["--brand-room-tab-edge-on-danger", ref(resolveTabEdge(brand, mode, "on-danger"))]
+  ];
+}
+
 function modeDeclarations(
   brand: BrandDefinition,
   mode: Mode,
@@ -216,6 +341,8 @@ function modeDeclarations(
   for (const slot of SHADOW_SLOTS) {
     out.push([`${prefix}shadow-${slot}`, shadows[slot]]);
   }
+  // The room's per-mode properties are only meaningful under the active-mode names.
+  if (prefix === "--brand-") out.push(...roomModeDeclarations(brand, mode));
   return out;
 }
 
@@ -261,6 +388,7 @@ function commonDeclarations(brand: BrandDefinition): Declarations {
   }
   out.push(...derivedDeclarations(brand));
   out.push(...homeDeclarations(brand));
+  out.push(...roomDeclarations(brand));
   // Both modes are always addressable by name, for tokens that mean "the dark
   // page" regardless of the active mode.
   for (const mode of MODES) {

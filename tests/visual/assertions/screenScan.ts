@@ -4,7 +4,14 @@ import type { BrandId } from "@fantasy-oscars/shared/brands";
 import type { ScreenDef, ViewportName } from "../matrix";
 import type { VisualSeed } from "../support/seed";
 import { settle, signIn, switchAppearance } from "../support/page";
-import { contrastFindings, structuralFindings, type Finding } from "./pageChecks";
+import {
+  contrastFindings,
+  isDraftRoomScreen,
+  roomFindings,
+  roomTabWidthFindings,
+  structuralFindings,
+  type Finding
+} from "./pageChecks";
 
 const FREEZE_CSS = readFileSync("tests/visual/support/freeze.css", "utf8");
 const SCAN_SETTLE = { quietPolls: 3, networkIdle: false, pollMs: 60 } as const;
@@ -63,6 +70,10 @@ export async function scanScreen(
 ): Promise<Finding[]> {
   return [
     ...(await structuralFindings(page, viewport === "mobile")),
+    ...(isDraftRoomScreen(screen.id)
+      ? await roomFindings(page, viewport === "mobile")
+      : []),
+    ...(screen.id === "draft-live-countdown" ? await roomTabWidthFindings(page) : []),
     ...(viewport === "desktop" || screen.id === specimenId
       ? await contrastFindings(page)
       : [])

@@ -126,5 +126,11 @@ export const ballot: BrandDefinition = {
     heroFit: 16,
     regions: "open",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: INSTRUMENT,
+    titleFace: "label",
+    edge: { ring: 1, ringColor: "text", drop: 0, depth: "none" },
+    tabEdge: "double"
   }
 };

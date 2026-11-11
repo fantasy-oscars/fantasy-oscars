@@ -1,11 +1,52 @@
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { FIXED_NOW } from "../support/seed";
+import { runFrozenIntervals } from "../support/page";
 
 /** One failing element on one screen; `description` is what an allowlist entry matches. */
 export type Finding = {
-  check: "overflow" | "clipped-text" | "overlap" | "touch-target" | "contrast" | "load";
+  check:
+    | "overflow"
+    | "clipped-text"
+    | "overlap"
+    | "touch-target"
+    | "contrast"
+    | "load"
+    | RoomCheck;
   description: string;
 };
+
+/** Names of the draft room geometry checks (`roomFindings`), so an allowlist entry can pick one. */
+export type RoomCheck =
+  | "room-rail-align"
+  | "room-card-gap"
+  | "room-roster-gap"
+  | "room-roster-width"
+  | "room-header-height"
+  | "room-tab-top"
+  | "room-tab-edge"
+  | "room-tab-children"
+  | "room-tab-wings"
+  | "room-tab-width"
+  | "room-tab-missing"
+  | "room-roster-missing"
+  | "room-icon-contrast"
+  | "room-punchout-contrast"
+  | "room-chip-avatar"
+  | "room-pill-radius";
+
+/**
+ * The "must exist" rule of 6.4: on every draft screen a `.drh-tab` must be found, and on
+ * the roster board a `[data-roster-track]`, so the tab and roster checks cannot pass
+ * vacuously. Off until draft-room-redesigns (chunk 3 of the draft room template) renders
+ * them; that change flips this to true.
+ */
+export const REQUIRE_ROOM_ELEMENTS = false;
+
+/** Draft screens in the matrix (`draft-plans` is a planning page, not the room). */
+export function isDraftRoomScreen(id: string): boolean {
+  return id.startsWith("draft-") && id !== "draft-plans";
+}
 
 /**
  * Measures a loaded page for the structural checks. Runs in the page; scans only
@@ -257,4 +298,403 @@ export async function contrastFindings(page: Page): Promise<Finding[]> {
     }))
   );
   return [...axe, ...(await placeholderFindings(page))];
+}
+
+const TAB_CLOCK_TICKS_MS = [1000, 2000] as const;
+const CLOCK_TEXT_SELECTOR = ".drh-buckleCenter, .drm-clockText";
+
+/**
+ * The header tab's width must not move as the clock ticks. The suite freezes intervals,
+ * so a tick is a step of the page's clock plus one run of the app's one-second interval
+ * callbacks (runFrozenIntervals), then a layout pass; the tab's width and the clock text
+ * are read after each step. The clock text must change between measurements, or the check
+ * measured nothing. Only meaningful on a screen with a running countdown.
+ */
+export async function roomTabWidthFindings(page: Page): Promise<Finding[]> {
+  const measure = () =>
+    page.evaluate((clockSelector) => {
+      const tab = document.querySelector(".drh-tab");
+      return {
+        width: tab ? tab.getBoundingClientRect().width : null,
+        text: document.querySelector(clockSelector)?.textContent ?? null
+      };
+    }, CLOCK_TEXT_SELECTOR);
+  const before = await measure();
+  if (before.width === null) {
+    return REQUIRE_ROOM_ELEMENTS
+      ? [
+          {
+            check: "room-tab-missing",
+            description: "no .drh-tab on the countdown screen"
+          }
+        ]
+      : [];
+  }
+  const out: Finding[] = [];
+  let previousText = before.text;
+  try {
+    for (const ms of TAB_CLOCK_TICKS_MS) {
+      await page.clock.setFixedTime(new Date(Date.parse(FIXED_NOW) + ms));
+      await runFrozenIntervals(page, 1000);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+          )
+      );
+      const after = await measure();
+      if (after.text === previousText) {
+        out.push({
+          check: "room-tab-width",
+          description: `clock did not tick: "${after.text}" after a ${ms / 1000}s step`
+        });
+      }
+      previousText = after.text;
+      if (after.width === null || Math.abs(after.width - before.width) > 0.5) {
+        out.push({
+          check: "room-tab-width",
+          description: `.drh-tab width ${before.width} then ${after.width} after a ${ms / 1000}s clock tick ("${after.text}")`
+        });
+      }
+    }
+  } finally {
+    await page.clock.setFixedTime(new Date(FIXED_NOW));
+  }
+  return out;
+}
+
+/**
+ * The draft room's geometry rules (docs/design/prescriptions/06, section 6.4), measured on
+ * a loaded draft screen. Each rule is skipped when its subject is not on the screen, except
+ * where REQUIRE_ROOM_ELEMENTS makes the tab and the roster track mandatory.
+ */
+export async function roomFindings(page: Page, phone: boolean): Promise<Finding[]> {
+  return page.evaluate(
+    ([isPhone, requireElements]) => {
+      const out: { check: string; description: string }[] = [];
+      const TOL = 0.5;
+      const visible = (el: Element) =>
+        (el as HTMLElement).checkVisibility({
+          checkOpacity: true,
+          checkVisibilityCSS: true
+        });
+      const all = (selector: string) =>
+        Array.from(document.querySelectorAll(selector)).filter(visible);
+      const describe = (el: Element) => {
+        const classes = Array.from(el.classList)
+          .filter((c) => !/^m_[0-9a-f]+$/.test(c) && !c.startsWith("fo-force-"))
+          .slice(0, 2)
+          .map((c) => `.${c}`)
+          .join("");
+        return `${el.tagName.toLowerCase()}${classes}`;
+      };
+      const px = (value: string) => Number.parseFloat(value) || 0;
+      const rootStyle = getComputedStyle(document.documentElement);
+      const token = (name: string) => px(rootStyle.getPropertyValue(name));
+
+      // Colours: resolved through a canvas so any computed syntax becomes rgba.
+      const canvas = document.createElement("canvas").getContext("2d");
+      const rgba = (css: string): [number, number, number, number] => {
+        if (!canvas) return [0, 0, 0, 1];
+        canvas.clearRect(0, 0, 1, 1);
+        canvas.fillStyle = "#000";
+        canvas.fillStyle = css;
+        canvas.fillRect(0, 0, 1, 1);
+        const d = canvas.getImageData(0, 0, 1, 1).data;
+        return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
+      };
+      const luminance = ([r, g, b]: number[]) => {
+        const lin = (v: number) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * lin(r!) + 0.7152 * lin(g!) + 0.0722 * lin(b!);
+      };
+      const ratio = (a: number[], b: number[]) => {
+        const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+        return (hi! + 0.05) / (lo! + 0.05);
+      };
+      const backdrop = (el: Element | null): [number, number, number] => {
+        for (let node = el; node; node = node.parentElement) {
+          const c = rgba(getComputedStyle(node).backgroundColor);
+          if (c[3] === 1) return [c[0], c[1], c[2]];
+        }
+        return [255, 255, 255];
+      };
+
+      // 1. Pill left edges equal within each rail.
+      const rails: Array<[string, string]> = [
+        [".dr-rail-ledger", ".dr-ledgerRow .dr-pill"],
+        [".dr-rail-roster", ".dr-rosterRow .dr-pill"]
+      ];
+      for (const [railSelector, pillSelector] of rails) {
+        for (const rail of all(railSelector)) {
+          const lefts = Array.from(rail.querySelectorAll(pillSelector))
+            .filter(visible)
+            .map((p) => p.getBoundingClientRect().left);
+          if (lefts.length < 2) continue;
+          const lo = Math.min(...lefts);
+          const hi = Math.max(...lefts);
+          if (hi - lo > TOL) {
+            out.push({
+              check: "room-rail-align",
+              description: `${railSelector} pill left edges differ by ${(hi - lo).toFixed(1)}px (${lo.toFixed(1)} to ${hi.toFixed(1)}) in ${lefts.length} rows`
+            });
+          }
+        }
+      }
+
+      // 2. Card gaps, counting the painted edge: the hard layers of the card's shadow.
+      const splitLayers = (value: string) => {
+        const layers: string[] = [];
+        let depth = 0;
+        let start = 0;
+        for (let i = 0; i < value.length; i++) {
+          const ch = value[i];
+          if (ch === "(") depth++;
+          else if (ch === ")") depth--;
+          else if (ch === "," && depth === 0) {
+            layers.push(value.slice(start, i));
+            start = i + 1;
+          }
+        }
+        layers.push(value.slice(start));
+        return layers.map((l) => l.trim()).filter((l) => l && l !== "none");
+      };
+      const painted = (el: Element) => {
+        const ext = { top: 0, right: 0, bottom: 0, left: 0 };
+        for (const layer of splitLayers(getComputedStyle(el).boxShadow)) {
+          if (/\binset\b/.test(layer)) continue;
+          const nums = (
+            layer
+              .replace(/(rgba?|color|oklab|oklch|hsla?)\([^)]*\)/g, "")
+              .match(/-?\d*\.?\d+px/g) ?? []
+          ).map(px);
+          const [x = 0, y = 0, blur = 0, spread = 0] = nums;
+          // Soft layers are translucent depth, outside the geometry (5.1).
+          if (blur > 0) continue;
+          ext.top = Math.max(ext.top, spread - y);
+          ext.bottom = Math.max(ext.bottom, spread + y);
+          ext.left = Math.max(ext.left, spread - x);
+          ext.right = Math.max(ext.right, spread + x);
+        }
+        return ext;
+      };
+      const MIN_DOWN = 12;
+      const MIN_ACROSS = 10;
+      const cardsByParent = new Map<Element, Element[]>();
+      for (const card of all(".dr-card")) {
+        const parent = card.parentElement;
+        if (!parent) continue;
+        cardsByParent.set(parent, [...(cardsByParent.get(parent) ?? []), card]);
+      }
+      for (const cards of cardsByParent.values()) {
+        for (let i = 1; i < cards.length; i++) {
+          const above = cards[i - 1]!;
+          const below = cards[i]!;
+          const gap =
+            below.getBoundingClientRect().top -
+            painted(below).top -
+            (above.getBoundingClientRect().bottom + painted(above).bottom);
+          if (gap < MIN_DOWN - TOL) {
+            out.push({
+              check: "room-card-gap",
+              description: `${describe(below)} is ${gap.toFixed(1)}px below its neighbour, under ${MIN_DOWN}`
+            });
+          }
+        }
+      }
+      const columns = all(".dr-masonry-col");
+      for (let i = 1; i < columns.length; i++) {
+        const left = Array.from(columns[i - 1]!.children).filter(visible);
+        const right = Array.from(columns[i]!.children).filter(visible);
+        let worst: number | null = null;
+        for (const a of left) {
+          for (const b of right) {
+            const ra = a.getBoundingClientRect();
+            const rb = b.getBoundingClientRect();
+            const overlap = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+            if (overlap <= 0) continue;
+            const gap = rb.left - painted(b).left - (ra.right + painted(a).right);
+            worst = worst === null ? gap : Math.min(worst, gap);
+          }
+        }
+        if (worst !== null && worst < MIN_ACROSS - TOL) {
+          out.push({
+            check: "room-card-gap",
+            description: `masonry columns ${i} and ${i + 1} are ${worst.toFixed(1)}px apart, under ${MIN_ACROSS}`
+          });
+        }
+      }
+
+      // 3. Roster track: columns at least 12 px apart and, on desktop, 176 px wide.
+      const track = document.querySelector("[data-roster-track]");
+      if (track) {
+        const cols = Array.from(track.children).filter(visible);
+        for (let i = 1; i < cols.length; i++) {
+          const gap =
+            cols[i]!.getBoundingClientRect().left -
+            cols[i - 1]!.getBoundingClientRect().right;
+          if (gap < 12 - TOL) {
+            out.push({
+              check: "room-roster-gap",
+              description: `roster columns ${i} and ${i + 1} are ${gap.toFixed(1)}px apart, under 12`
+            });
+          }
+        }
+        if (!isPhone) {
+          for (const [i, col] of cols.entries()) {
+            const width = col.getBoundingClientRect().width;
+            if (width < 176 - TOL) {
+              out.push({
+                check: "room-roster-width",
+                description: `roster column ${i + 1} is ${width.toFixed(1)}px wide, under 176`
+              });
+            }
+          }
+        }
+      } else if (requireElements && document.querySelector(".dr-roster")) {
+        out.push({
+          check: "room-roster-missing",
+          description: "the roster board has no [data-roster-track]"
+        });
+      }
+
+      // 4. Header box.
+      for (const header of all(".dr-header")) {
+        const h = header.getBoundingClientRect().height;
+        if (Math.abs(h - 64) > TOL) {
+          out.push({
+            check: "room-header-height",
+            description: `.dr-header is ${h.toFixed(1)}px tall, not 64`
+          });
+        }
+      }
+
+      // 5. Header tab.
+      const tabs = all(".drh-tab");
+      if (tabs.length === 0 && requireElements) {
+        out.push({ check: "room-tab-missing", description: "no .drh-tab on the screen" });
+      }
+      for (const tab of tabs) {
+        const rect = tab.getBoundingClientRect();
+        const header = tab.closest(".dr-header, .dr-mobileHeader");
+        const headerTop = header ? header.getBoundingClientRect().top : 0;
+        const ring = token("--brand-room-tab-ring");
+        const drop = token("--brand-room-tab-drop");
+        if (rect.top > headerTop + TOL || rect.top < headerTop - ring - TOL) {
+          out.push({
+            check: "room-tab-top",
+            description: `.drh-tab top is ${(rect.top - headerTop).toFixed(1)}px from the header top (ring ${ring}px)`
+          });
+        }
+        const lowest = rect.bottom + ring + drop - headerTop;
+        if (lowest > 61 + TOL) {
+          out.push({
+            check: "room-tab-edge",
+            description: `.drh-tab paints to ${lowest.toFixed(1)}px from the header top, over 61`
+          });
+        }
+        for (const child of Array.from(tab.querySelectorAll("*")).filter(visible)) {
+          const r = child.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (
+            r.left < rect.left - TOL ||
+            r.right > rect.right + TOL ||
+            r.top < rect.top - TOL ||
+            r.bottom > rect.bottom + TOL
+          ) {
+            out.push({
+              check: "room-tab-children",
+              description: `${describe(child)} reaches outside .drh-tab`
+            });
+          }
+        }
+        for (const wing of all(".drh-wing")) {
+          const w = wing.getBoundingClientRect();
+          const across = Math.min(w.right, rect.right) - Math.max(w.left, rect.left);
+          const down = Math.min(w.bottom, rect.bottom) - Math.max(w.top, rect.top);
+          if (across > TOL && down > TOL) {
+            out.push({
+              check: "room-tab-wings",
+              description: `${describe(wing)} intersects .drh-tab by ${across.toFixed(1)}px`
+            });
+          }
+        }
+      }
+
+      // 6. Icon colour against the nearest opaque background, and the punchout circle.
+      const seen = new Set<string>();
+      for (const icon of all(".dr-frame .mi-icon, .dr-frame .gicon")) {
+        const style = getComputedStyle(icon);
+        const ink = rgba(style.color);
+        const back = backdrop(icon);
+        const mixed = [0, 1, 2].map((i) => ink[i]! * ink[3] + back[i]! * (1 - ink[3]));
+        const r = ratio(mixed, back);
+        if (r < 3) {
+          const description = `${describe(icon)} ink ${style.color} on rgb(${back.join(", ")}) is ${r.toFixed(2)}:1`;
+          if (!seen.has(description)) {
+            seen.add(description);
+            out.push({ check: "room-icon-contrast", description });
+          }
+        }
+        if (icon.classList.contains("dr-icon-punchout")) {
+          const circle = rgba(style.backgroundColor);
+          const surface = backdrop(icon.parentElement);
+          const cr = ratio(circle, surface);
+          if (cr < 3) {
+            const description = `${describe(icon)} circle ${style.backgroundColor} on rgb(${surface.join(", ")}) is ${cr.toFixed(2)}:1`;
+            if (!seen.has(description)) {
+              seen.add(description);
+              out.push({ check: "room-punchout-contrast", description });
+            }
+          }
+        }
+      }
+
+      // 7. The drafted chip lives in a tooltip that is not open on load, so a probe with
+      // the chip's classes stands in; the rule is the stylesheet's, not the instance's.
+      const frame = document.querySelector(".dr-frame") ?? document.body;
+      const probe = document.createElement("div");
+      probe.className = "fo-tip-draftedChip";
+      probe.style.cssText = "position:fixed;left:-9999px;top:0";
+      probe.innerHTML =
+        '<div class="fo-tip-draftedChipAvatar"><span class="fo-animalAvatar"></span></div><span class="fo-tip-draftedChipName">x</span>';
+      frame.append(probe);
+      const avatarInk = rgba(
+        getComputedStyle(probe.querySelector(".fo-animalAvatar")!, "::before")
+          .backgroundColor
+      );
+      const wantInk = rgba(
+        getComputedStyle(probe.querySelector(".fo-tip-draftedChipName")!).color
+      );
+      probe.remove();
+      if (avatarInk.some((v, i) => Math.abs(v - wantInk[i]!) > 1)) {
+        out.push({
+          check: "room-chip-avatar",
+          description: `.fo-tip-draftedChip avatar ink rgb(${avatarInk.slice(0, 3).join(", ")}) is not on-primary rgb(${wantInk.slice(0, 3).join(", ")})`
+        });
+      }
+
+      // 8. Pills follow the small radius.
+      const radiusProbe = document.createElement("div");
+      radiusProbe.style.borderRadius = "var(--brand-radius-sm)";
+      document.body.append(radiusProbe);
+      const wantRadius = getComputedStyle(radiusProbe).borderTopLeftRadius;
+      radiusProbe.remove();
+      const wrong = new Map<string, number>();
+      for (const pill of all(".dr-pill")) {
+        const got = getComputedStyle(pill).borderTopLeftRadius;
+        if (got !== wantRadius) wrong.set(got, (wrong.get(got) ?? 0) + 1);
+      }
+      for (const [got, count] of wrong) {
+        out.push({
+          check: "room-pill-radius",
+          description: `.dr-pill radius ${got}, expected ${wantRadius} (--brand-radius-sm), on ${count} pills`
+        });
+      }
+      return out;
+    },
+    [phone, REQUIRE_ROOM_ELEMENTS] as const
+  ) as Promise<Finding[]>;
 }

@@ -152,7 +152,14 @@ export async function switchAppearance(page: Page, brand: BrandId, mode: Mode) {
 export async function freezeClock(page: Page) {
   await page.clock.setFixedTime(new Date(FIXED_NOW));
   await page.addInitScript(() => {
-    window.setInterval = (() => 0) as unknown as typeof window.setInterval;
+    // Callbacks are kept (never fired) so one measurement can step them by hand: see runFrozenIntervals.
+    const frozen: { fn: unknown; ms: number }[] = [];
+    (window as unknown as { __frozenIntervals: typeof frozen }).__frozenIntervals =
+      frozen;
+    window.setInterval = ((fn: unknown, ms?: number) => {
+      frozen.push({ fn, ms: ms ?? 0 });
+      return 0;
+    }) as unknown as typeof window.setInterval;
     // Counts DOM changes so settle() can wait for the UI to stop re-rendering.
     const w = window as unknown as { __visualMutations: number };
     w.__visualMutations = 0;
@@ -165,6 +172,22 @@ export async function freezeClock(page: Page) {
       characterData: true
     });
   });
+}
+
+/**
+ * Fires, once, every interval callback the app registered with the given period (the
+ * frozen clock otherwise never runs them). Pair with page.clock.setFixedTime to advance
+ * the draft clock by a known step for a single measurement.
+ */
+export async function runFrozenIntervals(page: Page, ms: number) {
+  await page.evaluate((period) => {
+    const frozen = (
+      window as unknown as { __frozenIntervals?: { fn: unknown; ms: number }[] }
+    ).__frozenIntervals;
+    for (const entry of frozen ?? []) {
+      if (entry.ms === period && typeof entry.fn === "function") entry.fn();
+    }
+  }, ms);
 }
 
 /** Counts API/asset requests that have started but not finished. */

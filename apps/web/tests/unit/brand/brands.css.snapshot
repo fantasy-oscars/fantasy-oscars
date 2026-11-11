@@ -87,6 +87,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-room-title-weight: 700;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-rule);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 1;
   --brand-light-page: #fbf8f1;
   --brand-light-page-rgb: 251, 248, 241;
   --brand-light-surface: #f3eee2;
@@ -192,6 +204,10 @@
   --brand-shadow-raised: 0 0 0 1px #4a443a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
   --brand-shadow-overlay: 0 0 0 1px #716e68, 0 16px 40px rgba(0, 0, 0, 0.5);
   --brand-shadow-hero: 0 0 0 1px #6b5a2a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+  --brand-room-depth: 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
   --fo-win-gold: #e2c25a;
   --fo-win-gold-on: #0d0d0d;
   --fo-win-gold-text: #e2c25a;
@@ -236,6 +252,10 @@
   --brand-shadow-raised: 0 0 0 1px #d9cfb8, 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08);
   --brand-shadow-overlay: 0 0 0 1px #898781, 0 2px 6px rgba(60, 45, 10, 0.08), 0 16px 40px rgba(60, 45, 10, 0.16);
   --brand-shadow-hero: 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08);
+  --brand-room-depth: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.05);
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
   --fo-win-gold: #d4af37;
   --fo-win-gold-on: #0d0d0d;
   --fo-win-gold-text: #8a6a14;
@@ -324,6 +344,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-room-title-weight: 700;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-rule);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 1;
   --brand-light-page: #fbf8f1;
   --brand-light-page-rgb: 251, 248, 241;
   --brand-light-surface: #f3eee2;
@@ -429,6 +461,10 @@
   --brand-shadow-raised: 0 0 0 1px #4a443a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
   --brand-shadow-overlay: 0 0 0 1px #716e68, 0 16px 40px rgba(0, 0, 0, 0.5);
   --brand-shadow-hero: 0 0 0 1px #6b5a2a, 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+  --brand-room-depth: 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="refined-gold"][data-mantine-color-scheme="light"] {
@@ -466,6 +502,10 @@
   --brand-shadow-raised: 0 0 0 1px #d9cfb8, 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08);
   --brand-shadow-overlay: 0 0 0 1px #898781, 0 2px 6px rgba(60, 45, 10, 0.08), 0 16px 40px rgba(60, 45, 10, 0.16);
   --brand-shadow-hero: 0 1px 2px rgba(60, 45, 10, 0.06), 0 8px 20px rgba(60, 45, 10, 0.08);
+  --brand-room-depth: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 16px rgba(0, 0, 0, 0.05);
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="red-carpet"] {
@@ -547,6 +587,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-room-title-weight: 600;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-rule);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 1;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #f7f0ea;
   --brand-light-page-rgb: 247, 240, 234;
   --brand-light-surface: #ffffff;
@@ -652,6 +704,10 @@
   --brand-shadow-raised: 0 0 0 1px #6d6865;
   --brand-shadow-overlay: 0 0 0 1px #6d6865;
   --brand-shadow-hero: 0 0 0 1px #8e2a3a;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="red-carpet"][data-mantine-color-scheme="light"] {
@@ -689,6 +745,10 @@
   --brand-shadow-raised: 0 0 0 1px #88807e;
   --brand-shadow-overlay: 0 0 0 1px #88807e;
   --brand-shadow-hero: 0 0 0 1px #8e2a3a;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="ballot"] {
@@ -770,6 +830,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --brand-room-title-weight: 600;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-text);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 3px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #f5f1e8;
   --brand-light-page-rgb: 245, 241, 232;
   --brand-light-surface: #fbf9f4;
@@ -875,6 +947,10 @@
   --brand-shadow-raised: 0 0 0 2px #ede6d6;
   --brand-shadow-overlay: 0 0 0 1px #ede6d6;
   --brand-shadow-hero: 0 0 0 0 transparent;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="ballot"][data-mantine-color-scheme="light"] {
@@ -912,6 +988,10 @@
   --brand-shadow-raised: 0 0 0 2px #1c1a16;
   --brand-shadow-overlay: 0 0 0 1px #1c1a16;
   --brand-shadow-hero: 0 0 0 0 transparent;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="noir"] {
@@ -993,6 +1073,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Barlow Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --brand-room-title-weight: 700;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-rule);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 3px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #f4f4f4;
   --brand-light-page-rgb: 244, 244, 244;
   --brand-light-surface: #ffffff;
@@ -1098,6 +1190,10 @@
   --brand-shadow-raised: 0 0 0 1px #6c6c6c;
   --brand-shadow-overlay: 0 0 0 1px #6c6c6c;
   --brand-shadow-hero: 0 0 0 0 transparent;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="noir"][data-mantine-color-scheme="light"] {
@@ -1135,6 +1231,10 @@
   --brand-shadow-raised: 0 0 0 1px #828282;
   --brand-shadow-overlay: 0 0 0 1px #828282;
   --brand-shadow-hero: 0 0 0 0 transparent;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="festival"] {
@@ -1216,6 +1316,18 @@
   --brand-home-cta-button-bd: var(--brand-on-primary);
   --brand-home-cta-button-bd-hover: var(--brand-on-primary);
   --brand-home-cta-ring: var(--brand-on-primary);
+  --brand-room-font-work: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-title-weight: 600;
+  --brand-room-ring: 0px;
+  --brand-room-ring-color: var(--brand-rule);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 0px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #ffffff;
   --brand-light-page-rgb: 255, 255, 255;
   --brand-light-surface: #f5f5f2;
@@ -1321,6 +1433,10 @@
   --brand-shadow-raised: 0 0 0 0 transparent;
   --brand-shadow-overlay: 0 0 0 1px #6d6d6b;
   --brand-shadow-hero: 0 0 0 1px #1f6b4a;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="festival"][data-mantine-color-scheme="light"] {
@@ -1358,6 +1474,10 @@
   --brand-shadow-raised: 0 0 0 0 transparent;
   --brand-shadow-overlay: 0 0 0 1px #868686;
   --brand-shadow-hero: 0 0 0 0 transparent;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-rule);
+  --brand-room-tab-edge-on-primary: var(--brand-rule);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="technicolor"] {
@@ -1439,6 +1559,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-room-title-weight: 800;
+  --brand-room-ring: 2px;
+  --brand-room-ring-color: var(--brand-text);
+  --brand-room-drop: 5px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 2px;
+  --brand-room-tab-drop: 5px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #fff6e5;
   --brand-light-page-rgb: 255, 246, 229;
   --brand-light-surface: #fbe9c9;
@@ -1544,6 +1676,10 @@
   --brand-shadow-raised: 0 0 0 2px #f3ddbb, 0 7px 0 2px #f3ddbb;
   --brand-shadow-overlay: 0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb;
   --brand-shadow-hero: 0 0 0 2px #f3ddbb, 0 5px 0 2px #f3ddbb;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="technicolor"][data-mantine-color-scheme="light"] {
@@ -1581,6 +1717,10 @@
   --brand-shadow-raised: 0 0 0 2px #2a1a12, 0 7px 0 2px #2a1a12;
   --brand-shadow-overlay: 0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12;
   --brand-shadow-hero: 0 0 0 2px #2a1a12, 0 5px 0 2px #2a1a12;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-text);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="lightbox"] {
@@ -1662,6 +1802,18 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-room-font-work: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --brand-room-font-title: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --brand-room-title-weight: 600;
+  --brand-room-ring: 1px;
+  --brand-room-ring-color: var(--brand-text);
+  --brand-room-drop: 0px;
+  --brand-room-card-shadow: 0 0 0 var(--brand-room-ring) var(--brand-room-ring-color), 0 var(--brand-room-drop) 0 var(--brand-room-ring) var(--brand-room-ring-color), var(--brand-room-depth);
+  --brand-room-tab-keyline: 0;
+  --brand-room-tab-border: 0px;
+  --brand-room-tab-ring: 1px;
+  --brand-room-tab-drop: 0px;
+  --brand-room-tab-lift: 0;
   --brand-light-page: #ecedea;
   --brand-light-page-rgb: 236, 237, 234;
   --brand-light-surface: #ffffff;
@@ -1767,6 +1919,10 @@
   --brand-shadow-raised: 0 0 0 2px #f2e6e4;
   --brand-shadow-overlay: 0 0 0 1px #f2e6e4;
   --brand-shadow-hero: inset 0 0 0 6px #4a3537, 0 0 0 1px #f2e6e4;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }
 
 :root[data-brand="lightbox"][data-mantine-color-scheme="light"] {
@@ -1804,4 +1960,8 @@
   --brand-shadow-raised: 0 0 0 2px #141414;
   --brand-shadow-overlay: 0 0 0 1px #141414;
   --brand-shadow-hero: inset 0 0 0 6px #ffffff, 0 0 0 1px #141414;
+  --brand-room-depth: 0 0 0 0 transparent;
+  --brand-room-tab-edge: var(--brand-text);
+  --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
+  --brand-room-tab-edge-on-danger: var(--brand-text);
 }

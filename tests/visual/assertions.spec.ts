@@ -1,7 +1,16 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
-import { assertionCells, MODES, type Mode, SPECIMEN_SCREEN, VIEWPORTS } from "./matrix";
+import {
+  assertionCells,
+  type Brand,
+  MODES,
+  type Mode,
+  type ScreenDef,
+  SPECIMEN_SCREEN,
+  VIEWPORTS,
+  type ViewportName
+} from "./matrix";
 import { ALLOWLIST, entryMatches } from "./assertions/allowlist";
 import { RESULTS_DIR, type ResultFile } from "./assertions/results";
 import type { Finding } from "./assertions/pageChecks";
@@ -11,6 +20,14 @@ import {
   scanScreen,
   type SessionState
 } from "./assertions/screenScan";
+import {
+  addStressFont,
+  formatWidthTable,
+  judgeWidths,
+  measureFonts,
+  WIDTH_CHECK_FAMILIES
+} from "./assertions/widthCheck";
+import { applyStressTheme, STRESS_BRAND, stressScreens } from "./assertions/stressRuns";
 import {
   freezeClock,
   installNetworkGuards,
@@ -47,7 +64,29 @@ function withBudget<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
   return Promise.race([work, expired]).finally(() => clearTimeout(timer));
 }
 
-for (const { brand, viewport: viewportName, part, parts, screens } of assertionCells()) {
+type Cell = {
+  brand: Brand;
+  viewport: ViewportName;
+  part: number;
+  parts: number;
+  screens: ScreenDef[];
+  /** Paint the draft room stress theme over every screen after it loads. */
+  stress?: boolean;
+};
+
+const cells: Cell[] = [
+  ...assertionCells(),
+  ...(["desktop", "mobile"] as const).map((viewport) => ({
+    brand: STRESS_BRAND,
+    viewport,
+    part: 0,
+    parts: 1,
+    screens: stressScreens(viewport),
+    stress: true
+  }))
+];
+
+for (const { brand, viewport: viewportName, part, parts, screens, stress } of cells) {
   const label = parts > 1 ? ` part ${part + 1}` : "";
   test.describe(`assertions ${brand.id} ${viewportName}${label}`, () => {
     test.use({ viewport: VIEWPORTS[viewportName], colorScheme: MODES[0] });
@@ -72,6 +111,7 @@ for (const { brand, viewport: viewportName, part, parts, screens } of assertionC
             await withBudget(
               (async () => {
                 await loadScreen(page, context, screen, seed, inFlight, session);
+                if (stress) await applyStressTheme(page, inFlight);
                 for (const mode of MODES) {
                   if (mode !== MODES[0])
                     await repaintInMode(page, brand.slug, mode, inFlight);
@@ -172,3 +212,23 @@ for (const { brand, viewport: viewportName, part, parts, screens } of assertionC
     });
   });
 }
+
+// The working-text width check (5.6): every family in ROOM_WORK_FONTS, and the stress
+// theme's Montserrat, measured in the browser from the files the app serves (the pinned
+// fixture for Montserrat). One page, so the list cannot drift from the rule.
+test.describe("assertions fonts", () => {
+  test("working fonts pass the width check", async ({ page, context }) => {
+    const blocked = await installNetworkGuards(context);
+    await page.goto("/login");
+    await expect(page.getByText("Sign in").first()).toBeVisible();
+    await addStressFont(page);
+    const rows = judgeWidths(await measureFonts(page, WIDTH_CHECK_FAMILIES));
+    console.log(
+      `\nWorking font width check (100 px, weight 500, kerning on):\n${formatWidthTable(rows)}`
+    );
+    expect(blocked, "requests that left the machine").toEqual([]);
+    expect(
+      rows.flatMap((row) => row.problems.map((problem) => `${row.family}: ${problem}`))
+    ).toEqual([]);
+  });
+});

@@ -131,5 +131,11 @@ export const redCarpet: BrandDefinition = {
     heroFit: 18,
     regions: "open",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: DMSANS,
+    titleFace: "display",
+    edge: { ring: 1, ringColor: "rule", drop: 0, depth: "none" },
+    tabEdge: "keyline"
   }
 };

@@ -18,6 +18,7 @@ import {
   MODES,
   NAV_ACTIVE_COLORS,
   NAV_TREATMENTS,
+  ROOM_WORK_FONTS,
   RULE_STYLES,
   SHADOW_SLOTS,
   TEXT_CASES,
@@ -31,7 +32,17 @@ import {
   type ColorSlots,
   type Mode
 } from "@/theme/brands";
-import { colorChannels, kebab } from "@/theme/brands/css";
+import { colorChannels, kebab, pickTabEdge, roomTabRing } from "@/theme/brands/css";
+import {
+  ROOM_TAB_MAX_EDGE_PX,
+  ROOM_COMMON_PROPERTIES,
+  ROOM_MODE_PROPERTIES,
+  roomCssViolations,
+  roomTabLowestEdge,
+  roomViolations,
+  tabEdgeViolations
+} from "./roomChecks";
+import { stressBrand } from "../../../../../tests/visual/fixtures/stressBrand";
 
 const SRC = path.resolve(__dirname, "../../../src");
 
@@ -466,5 +477,290 @@ describe("generated brand CSS", () => {
     walk(SRC);
     expect(used.size).toBeGreaterThan(0);
     expect([...used].filter((name) => !defined.has(name))).toEqual([]);
+  });
+});
+
+describe("draft room generator", () => {
+  const technicolor = BRAND_DEFINITIONS.find((b) => b.id === "technicolor")!;
+  const lightbox = BRAND_DEFINITIONS.find((b) => b.id === "lightbox")!;
+
+  it("resolves the tab ring and clamped drop", () => {
+    expect(roomTabRing(technicolor.room)).toEqual({ ring: 2, drop: 5 });
+    expect(roomTabRing(lightbox.room)).toEqual({ ring: 1, drop: 0 });
+    const drop = (ring: 0 | 1 | 2 | 3, dropPx: number) =>
+      roomTabRing({
+        ...technicolor.room,
+        edge: { ...technicolor.room.edge, ring, drop: dropPx }
+      }).drop;
+    expect(drop(1, 0)).toBe(4);
+    expect(drop(3, 6)).toBe(4);
+    expect(drop(1, 6)).toBe(6);
+    expect(roomTabRing({ ...technicolor.room, tabEdge: "flat" })).toEqual({
+      ring: 0,
+      drop: 0
+    });
+  });
+
+  it("picks the tab edge colours the prescription lists for technicolor and lightbox", () => {
+    const pick = (b: BrandDefinition, mode: Mode, tone: "primary" | "danger") =>
+      pickTabEdge(
+        b,
+        mode,
+        tone === "primary" ? b.modes[mode].colors.primary : sharedConstants["--fo-danger"]
+      );
+    for (const mode of MODES) {
+      expect(pick(technicolor, mode, "primary")).toBe("text");
+      expect(pick(technicolor, mode, "danger")).toBe("text");
+      expect(pick(lightbox, mode, "primary")).toBe("ruleStrong");
+      expect(pick(lightbox, mode, "danger")).toBe("text");
+    }
+  });
+
+  it("throws, naming brand, mode and tone, when no tab edge colour reaches 3:1", () => {
+    const flat = (c: ColorSlots): ColorSlots => ({
+      ...c,
+      text: c.page,
+      ruleStrong: c.page,
+      rule: c.page
+    });
+    const broken: BrandDefinition = {
+      ...technicolor,
+      modes: {
+        ...technicolor.modes,
+        light: {
+          ...technicolor.modes.light,
+          colors: flat(technicolor.modes.light.colors)
+        }
+      }
+    };
+    expect(() => generateBrandCss([broken], broken)).toThrow(
+      /technicolor.*light.*on-primary/
+    );
+  });
+});
+
+describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
+  "draft room contract %s",
+  (_id, brand) => {
+    it("fills room, shape and fonts with allowed values", () => {
+      expect(roomViolations(brand)).toEqual([]);
+    });
+
+    it("keeps the tab edge readable on every tone in both modes", () => {
+      expect(tabEdgeViolations(brand)).toEqual([]);
+    });
+
+    it("keeps the tab's lowest painted edge within the header", () => {
+      expect(roomTabLowestEdge(brand)).toBeLessThanOrEqual(ROOM_TAB_MAX_EDGE_PX);
+    });
+
+    it("emits every derived room property in each block, and no others", () => {
+      const css = generateBrandCss(BRAND_DEFINITIONS, DEFAULT_BRAND);
+      expect(roomCssViolations(css, brand)).toEqual([]);
+      expect(ROOM_COMMON_PROPERTIES).toHaveLength(12);
+      expect(ROOM_MODE_PROPERTIES).toHaveLength(4);
+    });
+  }
+);
+
+describe("draft room checks reject broken definitions", () => {
+  const technicolor = BRAND_DEFINITIONS.find((b) => b.id === "technicolor")!;
+  const noir = BRAND_DEFINITIONS.find((b) => b.id === "noir")!;
+  const withEdge = (
+    b: BrandDefinition,
+    edge: Partial<BrandDefinition["room"]["edge"]>
+  ) => ({
+    ...b,
+    room: { ...b.room, edge: { ...b.room.edge, ...edge } }
+  });
+
+  it("rejects a drop with no ring", () => {
+    expect(roomViolations(withEdge(noir, { ring: 0, drop: 3 }))).toEqual([
+      expect.stringContaining("drop 3 needs ring of at least 1")
+    ]);
+  });
+
+  it("rejects a drop above the range and a fractional drop", () => {
+    expect(roomViolations(withEdge(technicolor, { drop: 7 }))).toEqual([
+      expect.stringContaining("drop 7 is not an integer in 0 to 6")
+    ]);
+    expect(roomViolations(withEdge(technicolor, { drop: 2.5 }))).toEqual([
+      expect.stringContaining("drop 2.5 is not an integer")
+    ]);
+  });
+
+  it("rejects a work font outside ROOM_WORK_FONTS", () => {
+    const broken = { ...noir, room: { ...noir.room, workFont: '"Cinzel", serif' } };
+    expect(roomViolations(broken)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('work font "Cinzel" is not in ROOM_WORK_FONTS')
+      ])
+    );
+  });
+
+  it("rejects a display title voice outside ROOM_TITLE_FONTS", () => {
+    const broken = {
+      ...noir,
+      type: { ...noir.type, displayFont: '"Bodoni Moda", serif' }
+    };
+    expect(roomViolations(broken)).toEqual([
+      expect.stringContaining('display font "Bodoni Moda" is not in ROOM_TITLE_FONTS')
+    ]);
+  });
+
+  it("rejects faces that miss a working weight", () => {
+    const broken = {
+      ...noir,
+      fonts: {
+        ...noir.fonts,
+        faces: noir.fonts.faces.map((f) =>
+          f.family === "Inter" ? { ...f, weights: f.weights.filter((w) => w !== 600) } : f
+        )
+      }
+    };
+    expect(roomViolations(broken)).toEqual([
+      expect.stringContaining('faces do not declare weight 600 of "Inter"')
+    ]);
+  });
+
+  it("rejects radii and a border width outside their ranges", () => {
+    const broken = {
+      ...noir,
+      shape: {
+        ...noir.shape,
+        radiusSm: "13px",
+        radiusMd: "21px",
+        radiusLg: "29px",
+        borderWidth: "3px"
+      }
+    };
+    expect(roomViolations(broken)).toHaveLength(4);
+  });
+
+  it("rejects a ring tab whose on-primary edge is 1:1 with the fill", () => {
+    const colors = technicolor.modes.light.colors;
+    const broken: BrandDefinition = {
+      ...technicolor,
+      modes: {
+        ...technicolor.modes,
+        light: {
+          ...technicolor.modes.light,
+          colors: {
+            ...colors,
+            primary: colors.text,
+            rule: colors.text,
+            ruleStrong: colors.text
+          }
+        }
+      }
+    };
+    expect(tabEdgeViolations(broken)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("(light): no on-primary edge colour")
+      ])
+    );
+  });
+
+  it("rejects a rest edge that merges with the page", () => {
+    const colors = technicolor.modes.dark.colors;
+    const broken: BrandDefinition = {
+      ...technicolor,
+      modes: {
+        ...technicolor.modes,
+        dark: {
+          ...technicolor.modes.dark,
+          colors: { ...colors, text: colors.page }
+        }
+      }
+    };
+    expect(tabEdgeViolations(broken)).toEqual(
+      expect.arrayContaining([expect.stringContaining("(dark): rest edge vs page")])
+    );
+  });
+
+  it("does not hold a brand with no ring tab to the tab edge table", () => {
+    expect(noir.room.tabEdge).toBe("double");
+    expect(tabEdgeViolations(noir)).toEqual([]);
+  });
+
+  it("measures the tab's lowest edge and holds every ring and drop to the header", () => {
+    expect(roomTabLowestEdge(withEdge(technicolor, { ring: 3, drop: 6 }))).toBe(61);
+    // The generated clamp keeps every legal ring and drop within the limit; this is the
+    // guard that fails if the clamp in roomTabRing is loosened.
+    for (const ring of [0, 1, 2, 3] as const) {
+      for (let drop = 0; drop <= 6; drop++) {
+        for (const tabEdge of ["ring", "drop"] as const) {
+          const brand = {
+            ...withEdge(technicolor, { ring, drop }),
+            room: { ...withEdge(technicolor, { ring, drop }).room, tabEdge }
+          };
+          expect(roomTabLowestEdge(brand)).toBeLessThanOrEqual(ROOM_TAB_MAX_EDGE_PX);
+        }
+      }
+    }
+  });
+
+  it("rejects generated CSS missing or adding a room property", () => {
+    const css = generateBrandCss(BRAND_DEFINITIONS, DEFAULT_BRAND);
+    const header = ':root[data-brand="refined-gold"] {';
+    const edit = (change: (block: string) => string) =>
+      css
+        .split("\n\n")
+        .map((b) => (b.startsWith(header) ? change(b) : b))
+        .join("\n\n");
+
+    const missing = edit((b) => b.replace(/^ {2}--brand-room-tab-lift: .*\n/m, ""));
+    expect(missing).not.toBe(css);
+    expect(roomCssViolations(missing, DEFAULT_BRAND)).toEqual([
+      'Brand "refined-gold" common: missing --brand-room-tab-lift'
+    ]);
+
+    const extra = edit((b) => b.replace(header, `${header}\n  --brand-room-extra: 1;`));
+    expect(roomCssViolations(extra, DEFAULT_BRAND)).toEqual([
+      'Brand "refined-gold" common: unexpected --brand-room-extra'
+    ]);
+  });
+});
+
+describe("draft room stress definition", () => {
+  const withMontserrat = { workFonts: [...ROOM_WORK_FONTS, "Montserrat"] };
+
+  it("passes the room contract with its own work font added", () => {
+    expect(roomViolations(stressBrand, withMontserrat)).toEqual([]);
+  });
+
+  it("is held to the closed list of work fonts by default", () => {
+    expect(roomViolations(stressBrand)).toEqual([
+      expect.stringContaining('work font "Montserrat" is not in ROOM_WORK_FONTS')
+    ]);
+  });
+
+  it("passes the tab edge contrast table", () => {
+    expect(tabEdgeViolations(stressBrand)).toEqual([]);
+  });
+
+  it("sits at the far edge of every range, with its lowest tab edge at 61 px", () => {
+    expect(stressBrand.room.edge).toEqual({
+      ring: 3,
+      ringColor: "text",
+      drop: 6,
+      depth: "glow"
+    });
+    expect(stressBrand.room.tabEdge).toBe("drop");
+    expect(stressBrand.shape.radiusSm).toBe("12px");
+    expect(stressBrand.shape.radiusMd).toBe("20px");
+    expect(stressBrand.shape.borderWidth).toBe("2px");
+    expect(stressBrand.shape.ruleStyle).toBe("double");
+    expect(roomTabLowestEdge(stressBrand)).toBe(61);
+  });
+
+  it("generates every derived room property", () => {
+    expect(
+      roomCssViolations(generateBrandCss([stressBrand], stressBrand), stressBrand)
+    ).toEqual([]);
+  });
+
+  it("is not a registered brand", () => {
+    expect(BRAND_DEFINITIONS).not.toContain(stressBrand);
   });
 });

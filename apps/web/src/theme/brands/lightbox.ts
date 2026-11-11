@@ -126,5 +126,11 @@ export const lightbox: BrandDefinition = {
     heroFit: 15,
     regions: "cards",
     ctaSurface: "card"
+  },
+  room: {
+    workFont: ARCHIVO,
+    titleFace: "label",
+    edge: { ring: 1, ringColor: "text", drop: 0, depth: "none" },
+    tabEdge: "ring"
   }
 };

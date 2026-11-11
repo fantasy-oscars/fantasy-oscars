@@ -21,6 +21,27 @@ export const FONT_CATALOG = {
   "Instrument Sans": { pkg: "@fontsource-variable/instrument-sans", kind: "variable" }
 } as const satisfies Record<string, { pkg: string; kind: "static" | "variable" }>;
 
+/**
+ * Families that have passed the working-text width check; only these may be a
+ * brand's `room.workFont` (docs/architecture/brands.md, "Draft room").
+ */
+export const ROOM_WORK_FONTS = [
+  "Inter",
+  "DM Sans",
+  "Instrument Sans",
+  "Archivo"
+] as const;
+
+/** Families that have passed the title-face check; a `display` title voice needs the brand's display family here. */
+export const ROOM_TITLE_FONTS = [
+  "Cinzel",
+  "Playfair Display",
+  "Barlow Condensed",
+  "Fraunces",
+  "Archivo",
+  "IBM Plex Mono"
+] as const;
+
 export type FontFamily = keyof typeof FONT_CATALOG;
 
 /** The subset preloaded and required for every declared face. */

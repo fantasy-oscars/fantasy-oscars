@@ -129,5 +129,11 @@ export const festival: BrandDefinition = {
     heroFit: 19,
     regions: "cards",
     ctaSurface: "primary"
+  },
+  room: {
+    workFont: INSTRUMENT,
+    titleFace: "label",
+    edge: { ring: 0, ringColor: "rule", drop: 0, depth: "none" },
+    tabEdge: "flat"
   }
 };

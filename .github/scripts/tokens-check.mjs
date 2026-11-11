@@ -226,6 +226,131 @@ for (const file of walk(WEB_SRC)) {
   }
 }
 
+// Draft room lock (draft room prescription, section 6.3). A theme reaches the draft room only
+// through derived --brand-room-* and slot properties, so draft CSS and components never branch
+// on which brand is active or read an enum-valued property.
+const BRAND_IDS_FILE = path.join(ROOT, "packages", "shared", "src", "brands.ts");
+const BRAND_SLUGS = (() => {
+  const src = fs.readFileSync(BRAND_IDS_FILE, "utf8");
+  const list = /BRAND_IDS\s*=\s*\[([^\]]*)\]/.exec(src)?.[1] ?? "";
+  const slugs = [...list.matchAll(/"([\w-]+)"/g)].map((m) => m[1]);
+  if (slugs.length === 0)
+    throw new Error(`Could not read BRAND_IDS from ${BRAND_IDS_FILE}`);
+  return slugs;
+})();
+const slugAlternation = BRAND_SLUGS.map((s) => s.replace(/[-]/g, "\\-")).join("|");
+
+const DRAFT_SELECTOR = /\.(?:dr|drh|drm)-|\.fo-tip-/;
+const DRAFT_CSS_PATTERNS = [
+  {
+    name: "draft-css-data-brand",
+    re: /\[data-brand/,
+    hint: "Draft rules must not select on the active brand; read --brand-room-* and slot properties."
+  },
+  {
+    name: "draft-css-enum-property",
+    re: /--brand-(?:button-shape|nav-active|rule-style|wordmark-two-tone)(?![\w-])/,
+    hint: "Enum-valued properties are not for the draft room; read a derived property instead."
+  },
+  {
+    name: "draft-css-brand-slug",
+    re: new RegExp(`(?<![\\w-])(?:${slugAlternation})(?![\\w-])`),
+    hint: "Draft rules must not name a brand."
+  }
+];
+
+/**
+ * Splits CSS into style rules (nested at-rule bodies included) with the line of each
+ * rule's selector. Comments are blanked out so they cannot hide or fake a match.
+ * @param {string} source
+ * @returns {Array<{ selector: string; body: string; line: number }>}
+ */
+function cssRules(source) {
+  const text = source.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  /** @type {Array<{ selector: string; body: string; line: number }>} */
+  const rules = [];
+  /** @param {number} from @param {number} to */
+  function scan(from, to) {
+    let i = from;
+    while (i < to) {
+      const open = text.indexOf("{", i);
+      if (open === -1 || open >= to) return;
+      let depth = 1;
+      let j = open + 1;
+      while (j < to && depth > 0) {
+        if (text[j] === "{") depth++;
+        else if (text[j] === "}") depth--;
+        j++;
+      }
+      const prelude = text.slice(i, open);
+      const lead = prelude.length - prelude.trimStart().length;
+      const selector = prelude.trim();
+      const line = text.slice(0, i + lead).split("\n").length;
+      if (selector.startsWith("@")) scan(open + 1, j - 1);
+      else rules.push({ selector, body: text.slice(open + 1, j - 1), line });
+      i = j;
+    }
+  }
+  scan(0, text.length);
+  return rules;
+}
+
+for (const file of walk(WEB_SRC)) {
+  if (!file.endsWith(".css")) continue;
+  const rel = path.relative(ROOT, file);
+  for (const rule of cssRules(fs.readFileSync(file, "utf8"))) {
+    if (!DRAFT_SELECTOR.test(rule.selector)) continue;
+    for (const p of DRAFT_CSS_PATTERNS) {
+      const m = p.re.exec(`${rule.selector} {${rule.body}}`);
+      if (!m) continue;
+      violations.push({
+        file: rel,
+        line: rule.line,
+        pattern: p.name,
+        snippet: `${rule.selector.split("\n").pop()?.trim() ?? ""} (matched "${m[0]}")`,
+        hint: p.hint
+      });
+    }
+  }
+}
+
+const DRAFT_TS_PATTERNS = [
+  {
+    name: "draft-brand-import",
+    re: /(?:from\s+|import\s*\(\s*|import\s+)["'][^"']*(?:theme\/brands|shared\/brands|\/brands)(?:\/[^"']*)?["']/,
+    hint: "Draft code must not import a brand module; the room reads derived CSS properties."
+  },
+  {
+    name: "draft-data-brand-read",
+    re: /data-brand|dataset\.brand/,
+    hint: "Draft code must not read the active brand."
+  },
+  {
+    name: "draft-brand-id-comparison",
+    re: new RegExp(`(?:[!=]==?|\\bcase)\\s*["'\`](?:${slugAlternation})["'\`]`),
+    hint: "Draft code must not branch on a brand id."
+  }
+];
+
+for (const file of walk(path.join(WEB_SRC, "features", "draft"))) {
+  if (!isTsOrTsx(file)) continue;
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isCommentLine(line)) continue;
+    for (const p of DRAFT_TS_PATTERNS) {
+      if (!p.re.test(line)) continue;
+      violations.push({
+        file: path.relative(ROOT, file),
+        line: i + 1,
+        pattern: p.name,
+        snippet: line.trim(),
+        hint: p.hint
+      });
+    }
+  }
+}
+
 if (violations.length > 0) {
   console.error("Token check failed:\n");
   for (const v of violations) {
