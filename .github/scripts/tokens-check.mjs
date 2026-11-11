@@ -254,8 +254,14 @@ const DRAFT_CSS_PATTERNS = [
   },
   {
     name: "draft-css-brand-slug",
-    re: new RegExp(`(?<![\\w-])(?:${slugAlternation})(?![\\w-])`),
+    // Only word characters bound a slug, so a hyphen-joined one (`.dr-noir`) is caught too.
+    re: new RegExp(`(?<!\\w)(?:${slugAlternation})(?!\\w)`),
     hint: "Draft rules must not name a brand."
+  },
+  {
+    name: "draft-css-pill-radius",
+    re: /border-radius\s*:\s*var\(--fo-radius-pill\)/,
+    hint: "Draft shapes follow the brand: --brand-radius-sm (clamped for pills) or --brand-button-radius, never the always-round token."
   }
 ];
 

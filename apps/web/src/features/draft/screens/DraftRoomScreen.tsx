@@ -1,5 +1,6 @@
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
-import { Box, Skeleton, Stack } from "@ui";
+import { Link } from "react-router-dom";
+import { Box, Button, Skeleton, Stack } from "@ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
@@ -354,6 +355,9 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
     return (
       <Box component="main" id="main-content" tabIndex={-1}>
         <PageError message={props.o.state.error} />
+        <Button component={Link} to="/seasons" variant="default">
+          Back to seasons
+        </Button>
       </Box>
     );
   }

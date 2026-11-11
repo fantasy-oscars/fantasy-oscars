@@ -388,7 +388,7 @@ body {
   content: "";
   width: calc(var(--fo-animalAvatar-size, var(--fo-avatar-size-sm)) * 0.82);
   height: calc(var(--fo-animalAvatar-size, var(--fo-avatar-size-sm)) * 0.82);
-  background: var(--fo-text-primary);
+  background: var(--dr-ink, var(--fo-text-primary));
   -webkit-mask-image: var(--fo-animalAvatar-src);
   mask-image: var(--fo-animalAvatar-src);
   -webkit-mask-repeat: no-repeat;
@@ -409,10 +409,57 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  /* A pill's radius follows the small radius, clamped at half its 22px height. */
+  --dr-pill-height: calc(
+    var(--fo-db-pill-rowHeight) + var(--fo-space-dense-1) + var(--fo-space-hairline)
+  );
+  --dr-pill-radius: min(var(--brand-radius-sm), calc(var(--dr-pill-height) / 2));
+  /* The visible gap between stacked cards is constant: the ring and drop add to the margin. */
+  --dr-card-gap: calc(
+    var(--fo-space-xs) + 2 * var(--brand-room-ring) + var(--brand-room-drop)
+  );
   /* Clip (not hidden) so header focus rings may extend past the frame edge. */
   overflow: clip;
   overflow-clip-margin: var(--fo-space-8);
   background: var(--fo-surface-page);
+  /* Surface owners state their ink and ground; icons and avatars only read them. */
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--brand-page);
+  --dr-ink-soft: var(--brand-muted);
+  /* Working text (names, clocks, pills, numbers) uses the room's work font. */
+  font-family: var(--brand-room-font-work);
+  --mantine-font-family: var(--brand-room-font-work);
+  /* Room glyphs are outlined line art; state marks opt back in to filled. */
+  --mi-fill: 0;
+  --mi-wght: 400;
+  --mi-opsz: 20;
+}
+
+.dr-frame .mantine-Button-root {
+  font-family: var(--brand-room-font-work);
+}
+
+.dr-frame .mi-icon,
+.dr-frame .gicon,
+.drh-stripTip .gicon {
+  color: var(--dr-ink);
+}
+
+.dr-frame .gicon {
+  font-size: var(--fo-space-sm);
+  /* Same smoothing as .mi-icon, so both families weigh the same. */
+  -webkit-font-smoothing: auto;
+}
+
+.dr-frame .mi-icon.mi-icon-tiny {
+  width: var(--fo-icon-size-sm);
+  height: var(--fo-icon-size-sm);
+  padding: 0;
+}
+
+.drh-stripTip {
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--brand-raised);
 }
 
 .dr-cursorLayer {
@@ -435,7 +482,7 @@ body {
 .dr-cursorDot {
   width: var(--fo-hit-size-sm);
   height: var(--fo-hit-size-sm);
-  border-radius: var(--fo-radius-pill);
+  border-radius: 50%;
   border: var(--fo-border-width) solid var(--fo-border-strong);
   background: var(--fo-surface-card-primary);
   box-shadow: var(--fo-shadow-chip);
@@ -446,7 +493,7 @@ body {
 
 .dr-cursorLabel {
   padding: var(--fo-space-hairline) var(--fo-space-4);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-radius-sm);
   font-size: var(--fo-db-pill-font);
   font-weight: var(--fo-font-weight-semibold);
   color: var(--fo-text-primary);
@@ -455,6 +502,9 @@ body {
 }
 
 .dr-header {
+  box-sizing: border-box;
+  /* The header is exactly its height; content may not grow it (flex items default to min-content). */
+  min-height: 0;
   flex: 0 0 var(--fo-db-headerHeight);
   border-bottom: var(--brand-section-rule);
 }
@@ -475,6 +525,8 @@ body {
 }
 
 .dr-frame[data-turn="mine"] .dr-mobileHeader {
+  --dr-ink: var(--brand-on-primary);
+  --dr-ground: var(--brand-primary);
   background: var(--brand-primary);
 }
 
@@ -497,6 +549,8 @@ body {
   /* Only the active drafter pulses; this is a full-height bar treatment. The ring,
      glyph and words never change between phases: they are the non-colour cue. */
   --drh-urgent-ink: var(--brand-on-primary);
+  --dr-ink: var(--brand-on-primary);
+  --dr-ground: var(--brand-primary);
   background: var(--brand-primary);
   box-shadow: inset 0 0 0 var(--fo-focus-ring-width) var(--drh-urgent-ink);
   transition:
@@ -517,6 +571,8 @@ body {
 
 .dr-mobileBar.is-countdown.pulse-red {
   --drh-urgent-ink: var(--fo-danger-on);
+  --dr-ink: var(--fo-danger-on);
+  --dr-ground: var(--fo-danger);
   background: var(--fo-danger);
 }
 
@@ -532,7 +588,7 @@ body {
 .dr-mobileIconBtn {
   width: var(--fo-db-mobileIconSize);
   height: var(--fo-db-mobileIconSize);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
 }
 
 .drm-miniStat {
@@ -569,15 +625,8 @@ body {
 .drm-clockGlyph.mi-icon {
   flex: none;
   font-size: var(--fo-space-sm);
-  color: var(--fo-text-primary);
-}
-
-.dr-frame[data-turn="mine"] .drm-clockGlyph.mi-icon {
-  color: var(--brand-on-primary);
-}
-
-.dr-mobileBar.is-countdown.pulse-red .drm-clockGlyph.mi-icon {
-  color: var(--fo-danger-on);
+  --mi-fill: 1;
+  --mi-wght: 600;
 }
 
 .drm-clockText {
@@ -608,18 +657,13 @@ body {
   color: var(--fo-danger-on);
 }
 
-.dr-frame[data-turn="mine"] .dr-mobileIconBtn .mi-icon,
-.dr-frame .dr-mobileBar.is-countdown.pulse-red .dr-mobileIconBtn .mi-icon {
-  color: inherit;
-}
-
 .drm-podiumStack {
   padding: 0 var(--fo-db-mobilePadX) var(--fo-space-8);
 }
 
 .drm-podiumBar {
   min-height: 2.125rem;
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -783,7 +827,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
 }
 
 .drh-back .mi-icon {
@@ -812,16 +856,19 @@ body {
 }
 
 .drh-pause {
-  width: var(--fo-db-pauseSize);
-  height: var(--fo-db-pauseSize);
+  /* Header controls are the 32px control size, inside the 64px header and its rule. */
+  width: var(--fo-control-height);
+  height: var(--fo-control-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
 }
 
 .drh-pause .mi-icon {
   font-size: var(--fo-db-pauseIconSize);
+  --mi-fill: 1;
+  --mi-wght: 600;
 }
 
 .drh-strip {
@@ -840,7 +887,7 @@ body {
 .drh-token {
   width: var(--fo-db-tokenSize);
   height: var(--fo-db-tokenSize);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
   border: var(--fo-border-width) solid rgba(var(--brand-text-rgb), var(--fo-alpha-25));
   display: inline-flex;
   align-items: center;
@@ -899,8 +946,11 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   font-size: var(--fo-space-sm);
   font-weight: 700;
   line-height: 1;
-  color: var(--brand-text);
+  color: var(--dr-ink);
   flex: 0 0 auto;
+  min-width: 3ch;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }
 
 .drh-stripTip {
@@ -942,6 +992,8 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   /* Flat fill; the edge and depth come from the brand's raised shadow plus the
      poster offset (F only: the multiplier is 0 elsewhere). */
   --drh-buckle-base: var(--brand-sunken);
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--drh-buckle-base);
 
   background: var(--drh-buckle-base);
   box-shadow:
@@ -954,10 +1006,12 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 }
 
 .dr-frame[data-turn="mine"] .drh-buckle {
+  --dr-ink: var(--brand-on-primary);
   --drh-buckle-base: var(--brand-primary);
 }
 
 .dr-frame[data-results="final"] .drh-buckle {
+  --dr-ink: var(--fo-win-gold-on);
   --drh-buckle-base: var(--fo-win-gold);
 }
 
@@ -993,6 +1047,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-buckle.is-countdown .drh-buckleNumber,
 .drh-buckle.is-countdown .drh-buckleLabel,
 .drh-buckle.is-countdown .drh-buckleCenterRow,
+.drh-buckle.is-countdown .drh-buckleGlyph,
 .drh-buckle.is-countdown .drh-buckleCenterType {
   transition: color 120ms ease;
 }
@@ -1005,6 +1060,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   /* Restrained red that still reads as urgency against our neutral palette. */
   --drh-buckle-base: var(--fo-danger);
   --drh-urgent-ink: var(--fo-danger-on);
+  --dr-ink: var(--fo-danger-on);
 }
 
 .drh-buckle.is-countdown.pulse-red .drh-buckleCenter,
@@ -1085,15 +1141,8 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-buckleGlyph.mi-icon {
   flex: none;
   font-size: var(--fo-space-sm);
-  color: currentColor;
-}
-
-.dr-frame[data-turn="mine"] .drh-buckleCenterRow {
-  color: var(--brand-on-primary);
-}
-
-.drh-buckle.is-countdown.pulse-red .drh-buckleCenterRow {
-  color: var(--fo-danger-on);
+  --mi-fill: 1;
+  --mi-wght: 600;
 }
 
 .drh-buckleCenterType {
@@ -1299,6 +1348,15 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   row-gap: var(--fo-space-dense-1);
 }
 
+/* Sound and cursor spy sit side by side, centred on the two stacked rows, so the wing fits the header. */
+.drh-toggleBtns {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-4);
+}
+
 .drh-controlRow {
   display: flex;
   justify-content: space-between;
@@ -1348,7 +1406,7 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
   align-items: center;
   gap: var(--fo-space-8);
   padding: var(--fo-space-dense-1) var(--fo-space-dense-2);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--dr-pill-radius);
   border: var(--fo-border-width) solid rgba(var(--brand-text-rgb), var(--fo-alpha-18));
 }
 
@@ -1452,6 +1510,15 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   padding: calc(var(--fo-space-4) + var(--fo-space-2)) var(--fo-space-2) var(--fo-space-0);
 }
 
+.dr-mobileCategories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dr-card-gap);
+  padding-bottom: calc(
+    var(--fo-space-8) + var(--brand-room-ring) + var(--brand-room-drop)
+  );
+}
+
 .dr-mobileCategories .dr-card {
   width: 100%;
 }
@@ -1492,6 +1559,8 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   padding: 0;
   border: 0;
   background: var(--fo-surface-card-primary);
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--brand-raised);
   cursor: default;
 }
 
@@ -1507,6 +1576,11 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 .dr-railToggle.is-disabled,
 .dr-railToggle[aria-disabled="true"] {
   cursor: not-allowed;
+}
+
+/* The pre-draft stub reads as unavailable, like the phone's disabled rail button. */
+.dr-railToggle[aria-disabled="true"] {
+  opacity: var(--fo-alpha-50);
 }
 
 .dr-railToggle:focus-visible {
@@ -1585,11 +1659,28 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 }
 
 .dr-railPaneTitle {
+  font-family: var(--brand-room-font-title);
   font-size: var(--fo-db-meta-font);
-  font-weight: var(--fo-font-weight-bold);
+  font-weight: var(--brand-room-title-weight);
   letter-spacing: var(--fo-letterSpacing-tracked);
   text-transform: var(--brand-label-case);
   color: var(--fo-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Auto-draft fields: 12px working-font text (the phone tree keeps the 44px sm controls). */
+.dr-autoDraftField {
+  font-family: var(--brand-room-font-work);
+  --mantine-font-family: var(--brand-room-font-work);
+}
+
+.dr-autoDraftField .mantine-Checkbox-label,
+.dr-autoDraftField .mantine-Select-label,
+.dr-autoDraftField .mantine-Select-input {
+  font-family: var(--brand-room-font-work);
+  font-size: var(--fo-db-meta-font);
 }
 
 .dr-railStubIcon {
@@ -1640,13 +1731,15 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 
 .dr-ledgerRow {
   /* Tighten the left meta + avatar cluster; the "gap" here is mostly column width. */
-  grid-template-columns: max-content var(--fo-hit-size-sm) 1fr;
+  grid-template-columns:
+    calc(var(--dr-meta-ch, 3) * 1ch) var(--fo-hit-size-sm)
+    minmax(0, 1fr);
   column-gap: var(--fo-space-2);
   row-gap: var(--fo-space-0);
 }
 
 .dr-rosterRow {
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: calc(var(--dr-meta-ch, 3) * 1ch) minmax(0, 1fr);
   column-gap: var(--fo-space-2);
   row-gap: var(--fo-space-0);
 }
@@ -1657,6 +1750,8 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   letter-spacing: var(--fo-letterSpacing-tracked);
   color: var(--fo-text-deemphasized);
   text-transform: var(--brand-label-case);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .dr-railAvatar {
@@ -1678,11 +1773,6 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 .dr-pill-icon {
   margin-right: calc(var(--fo-space-4) + var(--fo-space-2)); /* 6px */
   flex: 0 0 auto;
-}
-
-/* Punched-out icons carry their own circle and ink, so only plain glyphs change. */
-.dr-pill.is-winner .dr-pill-icon:not(.dr-icon-punchout) {
-  color: var(--fo-win-gold-on);
 }
 
 .dr-middle {
@@ -1748,7 +1838,7 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 .dr-rosterPill {
   height: var(--fo-db-pill-rowHeight);
   padding: 0 var(--fo-db-pill-paddingX);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--dr-pill-radius);
   background: var(--fo-surface-pill);
   display: flex;
   align-items: center;
@@ -1769,7 +1859,7 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   height: calc(var(--fo-control-height) + var(--fo-space-2)); /* 34px */
   padding: 0;
   box-sizing: border-box;
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-button-radius);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1831,13 +1921,14 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   column-gap: 0;
   /* All horizontal spacing is controlled via per-box insets (5px per side).
      Block padding leaves room for the offset shadow and rings at the scroll edges. */
-  padding: var(--fo-space-2) 0 var(--fo-space-8);
+  padding: calc(var(--fo-space-dense-1) + var(--brand-room-ring)) 0
+    calc(var(--fo-space-8) + var(--brand-room-ring) + var(--brand-room-drop));
 }
 
 .dr-masonry-col {
   display: flex;
   flex-direction: column;
-  gap: var(--fo-space-xs);
+  gap: var(--dr-card-gap);
   padding-inline: 0;
 }
 
@@ -1849,8 +1940,10 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   border: var(--fo-border-width) solid transparent;
   border-radius: var(--fo-radius-medium);
   background: var(--brand-raised);
-  box-shadow: var(--brand-shadow-card);
-  margin-inline: var(--fo-space-dense-1);
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--brand-raised);
+  box-shadow: var(--brand-room-card-shadow);
+  margin-inline: calc(var(--fo-space-dense-1) + var(--brand-room-ring));
   padding: var(--fo-space-dense-2);
   display: flex;
   flex-direction: column;
@@ -1876,23 +1969,39 @@ body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
   box-shadow: var(--fo-shadow-focusRing-neutral-strong-dark);
 }
 
-.mi-icon.dr-icon-punchout {
-  /* "Punched out" = contrasting-ink circle with glyph in the page background color. */
-  background: var(--fo-text-primary);
-  color: var(--fo-surface-page);
+.dr-frame .mi-icon.dr-icon-punchout {
+  /* "Punched out" = the surface inverted: an ink circle with the glyph in the ground. */
+  background: var(--dr-ink);
+  color: var(--dr-ground);
 }
 
-.mi-icon.mi-icon-tiny.dr-icon-punchout {
-  /* Keep the circle only ~1px larger than the glyph (minimize footprint). */
+.dr-frame .mi-icon.mi-icon-tiny.dr-icon-punchout {
+  /* Fixed circle: the 14px glyph plus 1px of padding on each side. */
+  width: calc(var(--fo-icon-size-sm) + 2 * var(--fo-space-hairline));
+  height: calc(var(--fo-icon-size-sm) + 2 * var(--fo-space-hairline));
   padding: var(--fo-space-hairline);
 }
 
 .dr-card-title {
   font-size: var(--fo-db-pill-font);
   font-weight: var(--fo-font-weight-bold);
-  color: var(--fo-text-primary);
+  color: var(--dr-ink);
   margin: var(--fo-space-0);
   text-align: left;
+}
+
+/* The category title wraps; a weight stays at the row's end. */
+.dr-card-titleWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A roster name is one line with an end ellipsis. */
+.dr-rosterCard .dr-card-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dr-card-weight {
@@ -1909,10 +2018,8 @@ body[data-mantine-color-scheme="dark"] .dr-card-titleRow:focus-visible {
 }
 
 .dr-pill {
-  height: calc(
-    var(--fo-db-pill-rowHeight) + var(--fo-space-dense-1) + var(--fo-space-hairline)
-  ); /* 22px */
-  border-radius: var(--fo-radius-pill);
+  height: var(--dr-pill-height); /* 22px */
+  border-radius: var(--dr-pill-radius);
   border: var(--fo-border-width) solid var(--fo-border);
   background: var(--brand-raised);
   padding-inline: var(--fo-space-dense-2);
@@ -1944,7 +2051,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .dr-pill-text {
   font-size: var(--fo-db-pill-font);
   font-weight: 500;
-  color: var(--brand-text);
+  color: var(--dr-ink);
   user-select: none;
   flex: 1 1 auto;
   min-width: 0;
@@ -1971,6 +2078,8 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   check; hover and focus never change hue.
 */
 .dr-pill.is-muted {
+  --dr-ink: var(--brand-muted);
+  --dr-ground: var(--brand-sunken);
   background: var(--brand-sunken);
   border-color: transparent;
 }
@@ -2048,6 +2157,8 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 }
 
 .dr-pill.is-armed {
+  --dr-ink: var(--brand-page);
+  --dr-ground: var(--brand-text);
   background: var(--brand-text);
   border-color: var(--brand-text);
 }
@@ -2064,11 +2175,14 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   padding: 0;
   margin-right: var(--fo-space-4);
   flex: 0 0 auto;
-  color: var(--brand-page);
+  --mi-fill: 1;
+  --mi-wght: 600;
   user-select: none;
 }
 
 .dr-pill.is-winner {
+  --dr-ink: var(--fo-win-gold-on);
+  --dr-ground: var(--fo-win-gold);
   background: var(--fo-win-gold);
   border-color: color-mix(in srgb, var(--fo-win-gold) 65%, transparent);
 }
@@ -2086,10 +2200,6 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .dr-pill.is-winner.is-armed .dr-pill-text {
   font-weight: var(--fo-font-weight-bold);
-}
-
-.dr-pill.is-winner .dr-pill-armedMark.mi-icon.mi-icon-tiny {
-  color: var(--fo-win-gold-on);
 }
 
 .dr-pill-btn:focus-visible,
@@ -2774,6 +2884,16 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   padding-inline: var(--fo-gutter-mobile);
 }
 
+.dr-header .drh-settingsBtn,
+.drh-toggleBtn {
+  height: var(--fo-control-height);
+  min-width: var(--fo-control-height);
+}
+
+.drh-toggleBtn {
+  padding: 0;
+}
+
 .drh-settingsBtn:hover,
 .drh-pause:hover,
 .dr-railClose:hover,
@@ -3012,10 +3132,10 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 .mi-icon {
   font-family: "Material Symbols Outlined";
   font-variation-settings:
-    "FILL" 1,
-    "wght" 500,
+    "FILL" var(--mi-fill, 1),
+    "wght" var(--mi-wght, 500),
     "GRAD" 0,
-    "opsz" 24;
+    "opsz" var(--mi-opsz, 24);
   font-size: var(--fo-icon-size-md);
   line-height: 1;
   /* Ligature glyphs: a label-case ancestor must never turn the name into text. */
@@ -3037,19 +3157,19 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   background: var(--brand-dark-page);
   color: var(--brand-dark-text);
   font-variation-settings:
-    "FILL" 1,
-    "wght" 500,
+    "FILL" var(--mi-fill, 1),
+    "wght" var(--mi-wght, 500),
     "GRAD" 0,
-    "opsz" 24;
+    "opsz" var(--mi-opsz, 24);
 }
 
 .mi-icon.mi-icon-tiny {
   font-size: var(--fo-icon-size-sm);
   font-variation-settings:
-    "FILL" 1,
-    "wght" 600,
+    "FILL" var(--mi-fill, 1),
+    "wght" var(--mi-wght, 600),
     "GRAD" 0,
-    "opsz" 20;
+    "opsz" var(--mi-opsz, 20);
 }
 
 .mi-icon.mi-icon-tiny.mi-icon-inverted {
@@ -3332,8 +3452,12 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   min-height: var(--fo-control-height);
   padding: var(--fo-space-4) var(--fo-space-8);
   border: var(--fo-border-width) solid var(--brand-primary);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-radius-sm);
   background: var(--brand-primary);
+  /* The tooltip is portaled outside .dr-frame, so the chip states its own ink. */
+  --dr-ink: var(--brand-on-primary);
+  --dr-ground: var(--brand-primary);
+  --dr-ink-soft: var(--brand-on-primary);
   box-shadow: 0 6px 14px rgba(var(--fo-black-rgb), var(--fo-alpha-25));
 }
 
@@ -5460,7 +5584,7 @@ select {
   align-items: center;
   gap: var(--fo-space-8);
   padding: var(--fo-space-4) var(--fo-space-xs);
-  border-radius: var(--fo-radius-pill);
+  border-radius: var(--brand-radius-sm);
   border: var(--fo-border-width) solid var(--fo-border);
   background: var(--fo-surface-card-primary);
   color: var(--fo-text-primary);

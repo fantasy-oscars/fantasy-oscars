@@ -33,7 +33,9 @@ export function DraftAutoDraftRail(props: {
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 smart_toy
               </Text>
-              <Text className="dr-railPaneTitle">Auto-draft</Text>
+              <Text className="dr-railPaneTitle" title="Auto-draft">
+                Auto-draft
+              </Text>
             </Box>
             <UnstyledButton
               type="button"
@@ -52,14 +54,18 @@ export function DraftAutoDraftRail(props: {
             aria-label="Auto-draft"
             tabIndex={0}
           >
-            <Stack gap="sm">
+            <Stack gap="var(--fo-space-xs)">
               <Checkbox
+                size="xs"
+                className="dr-autoDraftField"
                 checked={props.autodraft.enabled}
                 onChange={(e) => props.autodraft.setEnabled(e.currentTarget.checked)}
                 label="Enable auto-drafting"
               />
 
               <Select
+                size="xs"
+                className="dr-autoDraftField"
                 label="Strategy"
                 value={props.autodraft.strategy}
                 onChange={(v) =>
@@ -85,6 +91,8 @@ export function DraftAutoDraftRail(props: {
 
               {props.autodraft.strategy === "custom" ? (
                 <Select
+                  size="xs"
+                  className="dr-autoDraftField"
                   label="Plan"
                   placeholder={
                     props.autodraft.plans.length === 0 ? "No plans available" : "Choose…"

@@ -1,4 +1,7 @@
+import { useMemo, useRef } from "react";
 import { Box, Text, Tooltip, UnstyledButton } from "@ui";
+import { railMetaCh } from "@/decisions/draft/railMeta";
+import { useCssVars } from "@/shared/dom/useCssVars";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { DraftCategoryIcon } from "./DraftCategoryIcon";
 import {
@@ -19,6 +22,12 @@ export function DraftMyRosterRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
+  const listRef = useRef<HTMLDivElement>(null);
+  const railVars = useMemo(
+    () => ({ "--dr-meta-ch": railMetaCh(props.myPicks.map((p) => p.roundPick)) }),
+    [props.myPicks]
+  );
+  useCssVars(listRef, railVars);
 
   return (
     <Box
@@ -33,7 +42,9 @@ export function DraftMyRosterRail(props: {
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 patient_list
               </Text>
-              <Text className="dr-railPaneTitle">My roster</Text>
+              <Text className="dr-railPaneTitle" title="My roster">
+                My roster
+              </Text>
             </Box>
             <UnstyledButton
               type="button"
@@ -52,7 +63,7 @@ export function DraftMyRosterRail(props: {
             aria-label="My roster"
             tabIndex={0}
           >
-            <Box className="dr-railList">
+            <Box className="dr-railList" ref={listRef}>
               {props.myPicks.length === 0 ? (
                 <Text className="dr-railEmpty">No picks yet</Text>
               ) : (

@@ -78,7 +78,7 @@ export function CategoryCard(props: {
         }}
       >
         <DraftCategoryIcon icon={props.icon} variant={props.iconVariant} />
-        <Text className="dr-card-title">{props.title}</Text>
+        <Text className="dr-card-title dr-card-titleWrap">{props.title}</Text>
         {props.weightText ? (
           <Text component="span" className="dr-card-weight">
             {props.weightText}
