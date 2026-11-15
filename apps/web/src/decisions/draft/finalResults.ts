@@ -1,4 +1,4 @@
-import { CEREMONY_LIFECYCLE } from "@/decisions/ceremonyWorkflow";
+import { CEREMONY_LIFECYCLE } from "../ceremonyLifecycle";
 
 const RESULTS_FINALIZED_INDEX = CEREMONY_LIFECYCLE.indexOf("COMPLETE");
 
