@@ -4,6 +4,11 @@ import { AvatarToken } from "./AvatarToken";
 import { DirectionChevron } from "./DirectionChevron";
 import { NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
 
+/** "3 more: a, b, c": the hidden names belong in the chip's accessible name. */
+function moreLabel(hidden: Array<{ label: string }>): string {
+  return `${hidden.length} more: ${hidden.map((p) => p.label).join(", ")}`;
+}
+
 export function ParticipantStrip(props: {
   containerRef: RefObject<HTMLDivElement | null>;
   capacity: number;
@@ -96,7 +101,7 @@ export function ParticipantStrip(props: {
           <Box
             className="drh-token drh-overflow"
             tabIndex={0}
-            aria-label={`${headHidden} more`}
+            aria-label={moreLabel(props.participants.slice(0, start))}
           >
             <Text className="drh-overflowText">+{headHidden}</Text>
           </Box>
@@ -143,7 +148,7 @@ export function ParticipantStrip(props: {
           <Box
             className="drh-token drh-overflow"
             tabIndex={0}
-            aria-label={`${tailHidden} more`}
+            aria-label={moreLabel(props.participants.slice(end))}
           >
             <Text className="drh-overflowText">+{tailHidden}</Text>
           </Box>

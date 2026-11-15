@@ -33,7 +33,6 @@ function renderHeader(
           onPauseDraft={() => {}}
           onResumeDraft={() => {}}
           isFinalResults={false}
-          resultsWinnerLabel={null}
           resultsPodium={[]}
           view="draft"
           onViewChange={() => {}}

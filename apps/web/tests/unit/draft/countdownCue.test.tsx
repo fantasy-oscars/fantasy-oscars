@@ -1,7 +1,8 @@
 import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MantineProvider } from "@ui";
-import { CenterBuckle } from "@/features/draft/ui/CenterBuckle";
+import { computeHeaderStatus } from "@/decisions/draft/headerStatus";
+import { DraftHeaderTab } from "@/features/draft/ui/DraftHeaderTab";
 import { DraftHeaderRightWing } from "@/features/draft/ui/DraftHeaderRightWing";
 import {
   COUNTDOWN_BEEP_INTERVAL_MS,
@@ -15,18 +16,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderBuckle(className: string, glyph: "timer" | "pause" | null, text: string) {
+function renderTab(args: { draftStatus: string; phase: "gold" | "red" | null }) {
+  const countdownActive = args.phase !== null;
   return render(
     <MantineProvider>
-      <CenterBuckle
+      <DraftHeaderTab
+        status={computeHeaderStatus({
+          draftStatus: args.draftStatus,
+          isFinalResults: false,
+          hasPodium: false,
+          isTimerDraft: true,
+          isMyTurn: true,
+          countdownActive,
+          countdownPhase: args.phase,
+          timerRemainingMs: countdownActive ? 4000 : null,
+          clockText: "1:30",
+          activeLabel: "Alice"
+        })}
         roundNumber={1}
         pickNumber={3}
-        centerText={text}
-        centerGlyph={glyph}
-        className={className}
-        measureText={null}
-        isTimerDraft
-        maxHandleLengthPx={140}
+        podium={[]}
       />
     </MantineProvider>
   );
@@ -41,25 +50,31 @@ describe("countdown cue", () => {
   });
 
   it("shows the timer glyph and the words in the danger phase", () => {
-    const { container } = renderBuckle("is-countdown pulse-red", "timer", "4s left");
-    expect(screen.getByText("4s left")).toBeTruthy();
-    const glyph = container.querySelector(".drh-buckleGlyph");
+    const { container } = renderTab({ draftStatus: "IN_PROGRESS", phase: "red" });
+    expect(container.querySelector(".drh-tabHeadlineText")?.textContent).toBe("4s left");
+    expect(container.querySelector(".drh-tab")?.getAttribute("data-tone")).toBe(
+      "countdown-danger"
+    );
+    const glyph = container.querySelector(".drh-tabGlyph");
     expect(glyph?.textContent).toBe("timer");
     expect(glyph?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("keeps the glyph and the words in the gold phase", () => {
-    const { container } = renderBuckle("is-countdown pulse-gold", "timer", "5s left");
-    expect(screen.getByText("5s left")).toBeTruthy();
-    expect(container.querySelector(".drh-buckleGlyph")?.textContent).toBe("timer");
+    const { container } = renderTab({ draftStatus: "IN_PROGRESS", phase: "gold" });
+    expect(container.querySelector(".drh-tabHeadlineText")?.textContent).toBe("4s left");
+    expect(container.querySelector(".drh-tab")?.getAttribute("data-tone")).toBe(
+      "countdown-primary"
+    );
+    expect(container.querySelector(".drh-tabGlyph")?.textContent).toBe("timer");
   });
 
   it("shows the pause glyph beside Paused and no glyph otherwise", () => {
-    const paused = renderBuckle("", "pause", "Paused");
-    expect(paused.container.querySelector(".drh-buckleGlyph")?.textContent).toBe("pause");
+    const paused = renderTab({ draftStatus: "PAUSED", phase: null });
+    expect(paused.container.querySelector(".drh-tabGlyph")?.textContent).toBe("pause");
     cleanup();
-    const plain = renderBuckle("", null, "1:30");
-    expect(plain.container.querySelector(".drh-buckleGlyph")).toBeNull();
+    const plain = renderTab({ draftStatus: "IN_PROGRESS", phase: null });
+    expect(plain.container.querySelector(".drh-tabGlyph")).toBeNull();
   });
 
   it("starts the pulse in the danger phase and clears it when the window ends", () => {

@@ -510,79 +510,18 @@ body {
 }
 
 .dr-mobileHeader {
-  /* Mobile header is a flat bar, not a buckle. */
+  /* The phone bar: page ground under the section rule; the status tab hangs from the top. */
   flex: 0 0 var(--fo-db-headerHeight);
-  background: var(--fo-surface-card-primary);
-}
-
-/* Paused is a neutral sunken bar, matching the desktop buckle. */
-.dr-mobileHeader.is-paused {
-  background: var(--brand-sunken);
-}
-
-.dr-mobileHeader.is-podium {
-  flex: 0 0 auto;
-}
-
-.dr-frame[data-turn="mine"] .dr-mobileHeader {
-  --dr-ink: var(--brand-on-primary);
-  --dr-ground: var(--brand-primary);
-  background: var(--brand-primary);
+  background: var(--brand-page);
 }
 
 .dr-mobileBar {
   height: 100%;
   display: grid;
-  grid-template-columns: var(--fo-db-mobileIconSize) auto 1fr auto var(
+  grid-template-columns: var(--fo-db-mobileIconSize) minmax(0, 1fr) var(
       --fo-db-mobileIconSize
     );
   align-items: center;
-  gap: var(--fo-space-dense-2);
-  padding: 0 var(--fo-db-mobilePadX);
-}
-
-.dr-mobileHeader.is-podium .dr-mobileBar {
-  height: var(--fo-db-headerHeight);
-}
-
-.dr-mobileBar.is-countdown {
-  /* Only the active drafter pulses; this is a full-height bar treatment. The ring,
-     glyph and words never change between phases: they are the non-colour cue. */
-  --drh-urgent-ink: var(--brand-on-primary);
-  --dr-ink: var(--brand-on-primary);
-  --dr-ground: var(--brand-primary);
-  background: var(--brand-primary);
-  box-shadow: inset 0 0 0 var(--fo-focus-ring-width) var(--drh-urgent-ink);
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease;
-}
-
-/* Text, glyph and buttons change colour in step with the fill so no pair is ever
-   caught mid-swap against the wrong background. */
-.dr-mobileBar.is-countdown .drm-clockText,
-.dr-mobileBar.is-countdown .drm-miniNumber,
-.dr-mobileBar.is-countdown .drm-miniLabel,
-.dr-mobileBar.is-countdown .drm-clockGlyph.mi-icon,
-.dr-mobileBar.is-countdown .dr-mobileIconBtn,
-.dr-mobileBar.is-countdown .dr-mobileIconBtn .mi-icon {
-  transition: color 120ms ease;
-}
-
-.dr-mobileBar.is-countdown.pulse-red {
-  --drh-urgent-ink: var(--fo-danger-on);
-  --dr-ink: var(--fo-danger-on);
-  --dr-ground: var(--fo-danger);
-  background: var(--fo-danger);
-}
-
-.dr-mobileBar.is-countdown.pulse-red .drm-clockText,
-.dr-mobileBar.is-countdown.pulse-red .drm-miniNumber {
-  color: var(--fo-danger-on);
-}
-
-.dr-mobileBar.is-countdown.pulse-red .drm-miniLabel {
-  color: var(--fo-danger-on);
 }
 
 .dr-mobileIconBtn {
@@ -591,136 +530,345 @@ body {
   border-radius: var(--brand-button-radius);
 }
 
-.drm-miniStat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--fo-db-miniStat-minWidth);
-  line-height: 1;
+/* On the phone the tab is the same component as on desktop, with a tighter centre and
+   a larger name and clock. */
+.dr-mobileBar .drh-tabCenter {
+  padding-inline: var(--fo-db-tabCenterPadX-phone);
 }
 
-.drm-miniLabel {
-  font-size: var(--fo-db-miniLabel-font);
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-tracked);
-  text-transform: var(--brand-label-case);
-  color: var(--fo-text-deemphasized);
+.dr-mobileBar .drh-tabHeadline[data-kind="name"],
+.dr-mobileBar .drh-tabHeadline[data-kind="clock"] {
+  font-size: var(--fo-db-tabHeadline-font-phone);
 }
 
-.drm-miniNumber {
-  font-size: var(--fo-db-miniNumber-font);
-  font-weight: var(--fo-font-weight-extrabold);
-  color: var(--fo-text-primary);
+@container (max-width: 179.98px) {
+  .dr-mobileBar .drh-tabHeadline[data-kind="name"],
+  .dr-mobileBar .drh-tabHeadline[data-kind="clock"] {
+    font-size: var(--fo-db-tabClockSmall-font);
+  }
 }
 
-.drm-clock {
-  min-width: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--fo-space-4);
+.dr-mobileBar .drh-tab[data-podium="3"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
 }
 
-.drm-clockGlyph.mi-icon {
-  flex: none;
-  font-size: var(--fo-space-sm);
-  --mi-fill: 1;
-  --mi-wght: 600;
-}
-
-.drm-clockText {
-  font-size: var(--fo-db-clock-font);
-  font-weight: var(--fo-font-weight-black);
-  letter-spacing: var(--fo-letterSpacing-tight);
-  color: var(--fo-text-primary);
-  text-align: center;
-  line-height: var(--fo-line-height-tight);
-}
-
-.dr-frame[data-turn="mine"] .drm-clockText,
-.dr-frame[data-turn="mine"] .drm-miniNumber {
-  color: var(--brand-on-primary);
-}
-
-.dr-frame[data-turn="mine"] .drm-miniLabel {
-  color: var(--brand-on-primary);
-}
-
-.dr-frame[data-turn="mine"] .dr-mobileIconBtn {
-  --ai-color: var(--brand-on-primary);
-  color: var(--brand-on-primary);
-}
-
-.dr-frame .dr-mobileBar.is-countdown.pulse-red .dr-mobileIconBtn {
-  --ai-color: var(--fo-danger-on);
-  color: var(--fo-danger-on);
-}
-
-.drm-podiumStack {
-  padding: 0 var(--fo-db-mobilePadX) var(--fo-space-8);
-}
-
-.drm-podiumBar {
-  min-height: 2.125rem;
-  border-radius: var(--brand-radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 var(--fo-space-2) calc(var(--fo-space-4) + var(--fo-space-2))
-      rgba(var(--fo-black-rgb), var(--fo-alpha-18)),
-    inset 0 var(--fo-border-width) 0 rgba(var(--fo-white-rgb), var(--fo-alpha-14)),
-    inset 0 calc(-1 * var(--fo-border-width)) 0
-      rgba(var(--fo-black-rgb), var(--fo-alpha-10));
-}
-
-.drm-podiumBar.is-gold {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--fo-win-gold) 92%, white),
-    color-mix(in oklab, var(--fo-win-gold) 86%, black)
-  );
-}
-
-.drm-podiumBar.is-silver {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--fo-medal-silver) 92%, white),
-    color-mix(in oklab, var(--fo-medal-silver) 86%, black)
-  );
-}
-
-.drm-podiumBar.is-bronze {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--fo-medal-bronze) 92%, white),
-    color-mix(in oklab, var(--fo-medal-bronze) 86%, black)
-  );
-}
-
-.drm-podiumText {
-  font-size: var(--fo-db-clock-font);
-  font-weight: var(--fo-font-weight-black);
-  letter-spacing: var(--fo-letterSpacing-tight);
-  color: var(--fo-win-gold-on);
-  text-align: center;
-  line-height: var(--fo-line-height-tight);
-  max-width: 100%;
-}
-
-.drm-podiumText.is-rolling {
-  animation: drh-buckle-slot-roll 280ms cubic-bezier(0.16, 0.84, 0.22, 1);
+.dr-mobileBar .drh-tabPlaceName {
+  font-size: var(--fo-db-tabPlaceName-font-phone);
 }
 
 .drh-row {
   position: relative;
   height: 100%;
   width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  /* The tab's width is CSS alone; content never changes it. */
+  grid-template-columns: minmax(0, 1fr) var(--fo-db-tabWidth) minmax(0, 1fr);
+  align-items: center;
+  padding-inline: var(--fo-db-headerPadX);
+}
+
+/* Only the podium widens the tab; "Draft complete" without one keeps the normal width. */
+.drh-row:has(> .drh-tab[data-podium]) {
+  --fo-db-tabWidth: var(--fo-db-tabWidth-final);
+}
+
+/* The header tab: hangs from the top edge, square on top, rounded at the bottom corners. */
+.dr-digit {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+}
+
+.drh-tab {
+  --dr-tab-r: min(var(--brand-radius-md), var(--fo-db-tabRadiusMax));
+  --dr-ground: var(--brand-sunken);
+  --dr-ink: var(--brand-text);
+  --dr-ink-soft: var(--brand-muted);
+  --dr-tab-edge: var(--brand-room-tab-edge);
+  position: relative;
+  align-self: start;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: var(--fo-db-tabStat-w) minmax(0, 1fr) var(--fo-db-tabStat-w);
+  /* The ring sits above the screen edge, so the box grows by it and shifts up. */
+  margin-top: calc(-1 * var(--brand-room-tab-ring));
+  height: calc(var(--fo-db-tabHeight) + var(--brand-room-tab-ring));
+  background: var(--dr-ground);
+  background-clip: padding-box;
+  color: var(--dr-ink);
+  border: var(--brand-room-tab-border) double var(--brand-text);
+  border-top-width: 0;
+  border-radius: 0 0 var(--dr-tab-r) var(--dr-tab-r);
+  box-shadow:
+    inset 0 0 0 calc(var(--fo-db-tabKeylineGap) * var(--brand-room-tab-keyline))
+      var(--dr-ground),
+    inset 0 0 0 calc(var(--fo-db-tabKeylineLine) * var(--brand-room-tab-keyline))
+      color-mix(in srgb, var(--dr-ink) 75%, transparent),
+    0 0 0 var(--brand-room-tab-ring) var(--dr-tab-edge),
+    0 var(--brand-room-tab-drop) 0 var(--brand-room-tab-ring) var(--dr-tab-edge),
+    0 0 0 calc(var(--fo-db-tabLiftLine) * var(--brand-room-tab-lift)) var(--brand-rule),
+    0 calc(var(--fo-db-tabLiftOffset) * var(--brand-room-tab-lift))
+      calc(var(--fo-db-tabLiftBlur) * var(--brand-room-tab-lift))
+      rgba(var(--fo-black-rgb), calc(var(--fo-alpha-18) * var(--brand-room-tab-lift)));
+}
+
+.drh-tab[data-tone="mine"],
+.drh-tab[data-tone="countdown-primary"] {
+  --dr-ground: var(--brand-primary);
+  --dr-ink: var(--brand-on-primary);
+  --dr-ink-soft: var(--brand-on-primary);
+  --dr-tab-edge: var(--brand-room-tab-edge-on-primary);
+}
+
+.drh-tab[data-tone="countdown-danger"] {
+  --dr-ground: var(--fo-danger);
+  --dr-ink: var(--fo-danger-on);
+  --dr-ink-soft: var(--fo-danger-on);
+  --dr-tab-edge: var(--brand-room-tab-edge-on-danger);
+}
+
+.drh-tab[data-tone="final"] {
+  --dr-ground: var(--fo-win-gold);
+  --dr-ink: var(--fo-win-gold-on);
+  --dr-ink-soft: var(--fo-win-gold-on);
+  --dr-tab-edge: var(--fo-win-gold-on);
+}
+
+.drh-tab[data-stats="off"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The podium: flush metal cells, no gaps or centre borders. DOM order is 1st, 2nd, 3rd;
+   three places sit as 2nd, 1st, 3rd. */
+.drh-tab[data-podium] {
+  overflow: hidden;
+}
+
+.drh-tab[data-podium="3"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.drh-tab[data-podium="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.drh-tab[data-podium="3"] .drh-tabPlace {
+  grid-row: 1;
+}
+
+.drh-tab[data-podium="3"] .drh-tabPlace[data-place="1"] {
+  grid-column: 2;
+}
+
+.drh-tab[data-podium="3"] .drh-tabPlace[data-place="2"] {
+  grid-column: 1;
+}
+
+.drh-tab[data-podium="3"] .drh-tabPlace[data-place="3"] {
+  grid-column: 3;
+}
+
+/* The keyline edge sits over the metals, drops its top edge and follows the corners. */
+.drh-tab[data-podium]::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(var(--fo-db-tabKeylineGap) * var(--brand-room-tab-keyline))
+    calc(var(--fo-db-tabKeylineGap) * var(--brand-room-tab-keyline));
+  border: calc(
+      (var(--fo-db-tabKeylineLine) - var(--fo-db-tabKeylineGap)) *
+        var(--brand-room-tab-keyline)
+    )
+    solid color-mix(in srgb, var(--dr-ink) 55%, transparent);
+  border-top: 0;
+  border-radius: 0 0 max(0px, calc(var(--dr-tab-r) - var(--fo-db-tabKeylineGap)))
+    max(0px, calc(var(--dr-tab-r) - var(--fo-db-tabKeylineGap)));
+  pointer-events: none;
+}
+
+.drh-tabPlace {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  padding-inline: var(--fo-db-tabCenterPadX);
+  line-height: var(--fo-line-height-tight);
+  color: var(--dr-ink);
+}
+
+.drh-tabPlace[data-place="1"] {
+  background: var(--fo-win-gold);
+}
+
+.drh-tabPlace[data-place="2"] {
+  background: var(--fo-medal-silver);
+}
+
+.drh-tabPlace[data-place="3"] {
+  background: var(--fo-medal-bronze);
+}
+
+.drh-tabPlaceName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fo-db-tabName-font);
+  font-weight: var(--fo-font-weight-semibold);
+}
+
+.drh-tabPlaceName[data-rolling="true"] {
+  animation: drh-tab-roll 280ms cubic-bezier(0.16, 0.84, 0.22, 1);
+}
+
+@keyframes drh-tab-roll {
+  0% {
+    opacity: 0;
+    transform: translateY(-80%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The countdown's non-colour cue: an inner frame that follows the bottom corners. */
+.drh-tab[data-tone^="countdown"]::after {
+  content: "";
+  position: absolute;
+  inset: 0 var(--fo-db-tabFrameInset) var(--fo-db-tabFrameInset);
+  border: var(--fo-border-width-strong) solid var(--dr-ink);
+  border-top: 0;
+  border-radius: 0 0 max(0px, calc(var(--dr-tab-r) - var(--fo-db-tabFrameInset)))
+    max(0px, calc(var(--dr-tab-r) - var(--fo-db-tabFrameInset)));
+  pointer-events: none;
+}
+
+.drh-tab[data-tone^="countdown"] {
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.drh-tabStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  line-height: var(--fo-line-height-tight);
+}
+
+.drh-tabStatLabel {
+  font-size: var(--fo-db-tabKicker-font);
+  font-weight: var(--fo-font-weight-bold);
+  letter-spacing: var(--fo-letterSpacing-tracked);
+  text-transform: var(--brand-label-case);
+  color: var(--dr-ink-soft);
+}
+
+.drh-tabStatNumber {
+  font-size: var(--fo-db-tabStatNumber-font);
+  font-weight: var(--fo-font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.drh-tabCenter {
+  container-type: inline-size;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding-inline: var(--fo-db-tabCenterPadX);
+  border-inline: var(--fo-border-width) solid
+    color-mix(in srgb, var(--dr-ink) 16%, transparent);
+  line-height: var(--fo-line-height-tight);
+}
+
+.drh-tab[data-stats="off"] .drh-tabCenter {
+  border-inline: 0;
+}
+
+.drh-tabKicker {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dr-ink-soft);
+}
+
+.drh-tabKicker[data-kind="label"] {
+  font-size: var(--fo-db-tabKicker-font);
+  font-weight: var(--fo-font-weight-bold);
+  letter-spacing: var(--fo-letterSpacing-tracked);
+  text-transform: var(--brand-label-case);
+}
+
+.drh-tabKicker[data-kind="name"] {
+  font-size: var(--fo-db-tabKickerName-font);
+  font-weight: var(--fo-font-weight-semibold);
+}
+
+.drh-tabHeadline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--fo-db-headerPadX);
+  justify-content: center;
+  gap: var(--fo-space-4);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.drh-tabHeadlineText {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drh-tabHeadline[data-kind="name"] {
+  font-size: var(--fo-db-tabName-font);
+  font-weight: var(--fo-font-weight-semibold);
+}
+
+.drh-tabHeadline[data-kind="clock"] {
+  font-size: var(--fo-db-tabClock-font);
+  font-weight: var(--fo-font-weight-bold);
+}
+
+.drh-tabHeadline[data-kind="status"] {
+  font-family: var(--brand-room-font-title);
+  font-size: var(--fo-db-tabStatus-font);
+  font-weight: var(--brand-room-title-weight);
+}
+
+@container (max-width: 179.98px) {
+  .drh-tabHeadline[data-kind="clock"] {
+    font-size: var(--fo-db-tabClockSmall-font);
+  }
+}
+
+.drh-tabGlyph.mi-icon {
+  flex: none;
+  font-size: var(--fo-db-tabGlyph-size);
+  --mi-fill: 1;
+  --mi-wght: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drh-tab[data-tone^="countdown"] {
+    transition: none;
+  }
+
+  .drh-tabPlaceName[data-rolling="true"] {
+    animation: none;
+  }
 }
 
 .drh-measure {
@@ -750,27 +898,10 @@ body {
   justify-content: flex-end;
 }
 
-/* Local contrast behind the centered buckle (same mechanism in both themes). */
-.drh-row::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  height: 100%;
-  width: calc(
-    var(--drh-buckle-max, var(--fo-db-buckleMax-default)) +
-      var(--fo-db-buckleBackdropExtra)
-  );
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: 1;
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in oklab, var(--fo-surface-page) 88%, black) 0%,
-    color-mix(in oklab, var(--fo-surface-page) 94%, black) 42%,
-    transparent 72%
-  );
-  opacity: var(--fo-alpha-55);
+.drh-backWrap,
+.drh-pauseWrap {
+  /* One separator colour at back and pause, following the ink of the surface. */
+  --drh-separator: color-mix(in srgb, var(--dr-ink) 18%, transparent);
 }
 
 .drh-backWrap {
@@ -787,7 +918,7 @@ body {
   top: 18%;
   bottom: 18%;
   width: var(--fo-border-width);
-  background: rgba(var(--brand-text-rgb), var(--fo-alpha-18));
+  background: var(--drh-separator);
 }
 
 .drh-left,
@@ -796,7 +927,6 @@ body {
   align-items: center;
   min-width: 0;
   gap: var(--fo-db-wing-gap);
-  flex: 1 1 0;
   position: relative;
   z-index: 2;
 }
@@ -812,12 +942,7 @@ body {
   justify-content: flex-end;
 }
 
-.drh-left {
-  flex: 1 1 auto;
-}
-
 .drh-right {
-  flex: 1 1 auto;
   justify-content: flex-end;
 }
 
@@ -852,7 +977,7 @@ body {
   top: 18%;
   bottom: 18%;
   width: var(--fo-border-width);
-  background: rgba(var(--brand-text-rgb), var(--fo-alpha-18));
+  background: var(--drh-separator);
 }
 
 .drh-pause {
@@ -967,258 +1092,6 @@ body[data-mantine-color-scheme="dark"] .drh-token.is-active {
 .drh-tipText {
   font-size: var(--fo-font-size-xs);
   color: var(--fo-text-primary);
-}
-
-.drh-buckle {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(calc(-50% + var(--drh-buckle-shift-x, 0px)));
-  height: 100%;
-  padding: 0 var(--fo-db-headerPadX);
-  display: grid;
-  grid-template-columns:
-    auto
-    minmax(
-      var(--fo-db-buckleContentMin),
-      var(--drh-buckle-max, var(--fo-db-buckleMax-default))
-    )
-    auto;
-  align-items: center;
-  gap: var(--fo-db-buckleGap);
-  border-radius: var(--brand-button-radius);
-  z-index: var(--drh-buckle-z-index, 3);
-
-  /* Flat fill; the edge and depth come from the brand's raised shadow plus the
-     poster offset (F only: the multiplier is 0 elsewhere). */
-  --drh-buckle-base: var(--brand-sunken);
-  --dr-ink: var(--brand-text);
-  --dr-ground: var(--drh-buckle-base);
-
-  background: var(--drh-buckle-base);
-  box-shadow:
-    var(--brand-shadow-raised),
-    0 calc(var(--fo-space-4) * var(--brand-deco-offset-shadow)) 0 var(--brand-text);
-}
-
-.drh-buckle.is-fixed {
-  grid-template-columns: auto var(--drh-buckle-max, var(--fo-db-buckleMax-default)) auto;
-}
-
-.dr-frame[data-turn="mine"] .drh-buckle {
-  --dr-ink: var(--brand-on-primary);
-  --drh-buckle-base: var(--brand-primary);
-}
-
-.dr-frame[data-results="final"] .drh-buckle {
-  --dr-ink: var(--fo-win-gold-on);
-  --drh-buckle-base: var(--fo-win-gold);
-}
-
-.dr-frame[data-results="final"] .drh-buckle.is-silver {
-  --drh-buckle-base: var(--fo-medal-silver);
-}
-
-.dr-frame[data-results="final"] .drh-buckle.is-bronze {
-  --drh-buckle-base: var(--fo-medal-bronze);
-}
-
-.drh-buckle.is-podium-side {
-  opacity: var(--fo-alpha-100);
-}
-
-/* Countdown pulse (5s window): toggled via class in sync with beeps. */
-.drh-buckle.is-countdown {
-  /* Default to the primary colour for the countdown surface; JS toggles to pulse-red as needed.
-     The inner ring is the non-colour cue: it is layered first and never changes shape. */
-  --drh-buckle-base: var(--brand-primary);
-  --drh-urgent-ink: var(--brand-on-primary);
-  box-shadow:
-    inset 0 0 0 var(--fo-focus-ring-width) var(--drh-urgent-ink),
-    var(--brand-shadow-raised),
-    0 calc(var(--fo-space-4) * var(--brand-deco-offset-shadow)) 0 var(--brand-text);
-  transition:
-    background 120ms ease,
-    box-shadow 120ms ease,
-    color 120ms ease;
-}
-
-.drh-buckle.is-countdown .drh-buckleCenter,
-.drh-buckle.is-countdown .drh-buckleNumber,
-.drh-buckle.is-countdown .drh-buckleLabel,
-.drh-buckle.is-countdown .drh-buckleCenterRow,
-.drh-buckle.is-countdown .drh-buckleGlyph,
-.drh-buckle.is-countdown .drh-buckleCenterType {
-  transition: color 120ms ease;
-}
-
-.drh-buckle.is-countdown.pulse-gold {
-  --drh-buckle-base: var(--brand-primary);
-}
-
-.drh-buckle.is-countdown.pulse-red {
-  /* Restrained red that still reads as urgency against our neutral palette. */
-  --drh-buckle-base: var(--fo-danger);
-  --drh-urgent-ink: var(--fo-danger-on);
-  --dr-ink: var(--fo-danger-on);
-}
-
-.drh-buckle.is-countdown.pulse-red .drh-buckleCenter,
-.drh-buckle.is-countdown.pulse-red .drh-buckleNumber {
-  color: var(--fo-danger-on);
-}
-
-.drh-buckle.is-countdown.pulse-red .drh-buckleLabel {
-  /* Full ink: a 78% mix measures 3.64:1 on the danger fill. */
-  color: var(--fo-danger-on);
-}
-
-.drh-buckleStack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  min-width: var(--fo-db-mobileIconSize);
-}
-
-.drh-buckleLabel {
-  font-size: var(--fo-db-pill-font);
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-tracked);
-  text-transform: var(--brand-label-case);
-  color: var(--fo-text-deemphasized);
-}
-
-.drh-buckleNumber {
-  font-size: var(--fo-db-meta-font);
-  font-weight: var(--fo-font-weight-bold);
-  color: var(--fo-text-primary);
-}
-
-.drh-buckleCenter {
-  font-size: var(--fo-db-meta-font);
-  font-weight: var(--fo-font-weight-bold);
-  color: var(--fo-text-primary);
-  text-align: center;
-  grid-column: 2;
-  justify-self: center;
-  max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
-}
-
-.drh-buckleCenterStack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  grid-column: 2;
-  justify-self: center;
-  min-width: 0;
-  max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
-  line-height: 1;
-}
-
-.drh-buckleCenterSlot {
-  grid-column: 2;
-  justify-self: center;
-  width: 100%;
-  max-width: var(--drh-buckle-max, var(--fo-db-buckleMax-default));
-}
-
-.drh-buckleCenterViewport {
-  width: 100%;
-  overflow: hidden;
-}
-
-.drh-buckleCenterRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--fo-space-4);
-  min-width: 0;
-}
-
-.drh-buckleGlyph.mi-icon {
-  flex: none;
-  font-size: var(--fo-space-sm);
-  --mi-fill: 1;
-  --mi-wght: 600;
-}
-
-.drh-buckleCenterType {
-  font-size: calc(var(--fo-db-pill-font) - var(--fo-space-hairline));
-  font-weight: var(--fo-font-weight-bold);
-  letter-spacing: var(--fo-letterSpacing-tracked);
-  text-transform: var(--brand-label-case);
-  color: var(--fo-text-deemphasized);
-}
-
-/* On a primary fill the kicker uses the fill's ink; the muted grey misses 4.5:1 there
-   in every brand. */
-.dr-frame[data-turn="mine"] .drh-buckleCenterType {
-  color: var(--brand-on-primary);
-}
-
-.drh-buckle.is-countdown.pulse-red .drh-buckleCenterType {
-  color: var(--fo-danger-on);
-}
-
-/* On the winner buckle the kicker sits on gold: use the gold's ink. */
-.dr-frame[data-results="final"] .drh-buckleCenterType {
-  color: var(--fo-win-gold-on);
-}
-
-.drh-buckleCenter.is-rolling {
-  animation: drh-buckle-slot-roll 280ms cubic-bezier(0.16, 0.84, 0.22, 1);
-}
-
-@keyframes drh-buckle-slot-roll {
-  0% {
-    opacity: 0;
-    transform: translateY(-80%);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.drh-buckle[data-mode="timer"] .drh-buckleCenter {
-  font-size: calc(var(--fo-db-clock-font) + var(--fo-space-2)); /* 18px */
-  font-weight: var(--fo-font-weight-black);
-  letter-spacing: var(--fo-letterSpacing-subtle);
-}
-
-.dr-frame[data-turn="mine"] .drh-buckleCenter,
-.dr-frame[data-turn="mine"] .drh-buckleNumber {
-  color: var(--brand-on-primary);
-}
-
-.dr-frame[data-results="final"] .drh-buckleCenter,
-.dr-frame[data-results="final"] .drh-buckleNumber {
-  color: var(--fo-win-gold-on);
-}
-
-.dr-frame[data-turn="mine"] .drh-buckleLabel {
-  color: var(--brand-on-primary);
-}
-
-.dr-frame[data-results="final"] .drh-buckleLabel {
-  color: color-mix(in srgb, var(--fo-win-gold-on) 72%, transparent);
-}
-
-.dr-frame[data-turn="mine"] .drh-buckleCenter,
-.dr-frame[data-turn="mine"] .drh-buckleNumber,
-.dr-frame[data-turn="mine"] .drh-buckleLabel {
-  /* Always dark-on-gold, regardless of theme. */
-  text-shadow: none;
-}
-
-.dr-frame[data-results="final"] .drh-buckleCenter,
-.dr-frame[data-results="final"] .drh-buckleNumber,
-.dr-frame[data-results="final"] .drh-buckleLabel {
-  /* Always dark-on-gold, regardless of theme. */
-  text-shadow: none;
 }
 
 /* Draft plans */
@@ -1431,6 +1304,19 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: var(--fo-db-userText-maxWidth);
+}
+
+/* Narrow desktop: the identity lives in the menu, and the pause control keeps a touch size. */
+@media (max-width: 664.98px) {
+  .drh-userBadge,
+  .drh-stowaways:not(:has(.drh-settingsBtn)) {
+    display: none;
+  }
+
+  .drh-pause {
+    width: var(--fo-db-pauseTouch);
+    height: var(--fo-db-pauseTouch);
+  }
 }
 
 .dr-footer {
@@ -1788,28 +1674,127 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
 }
 
 .dr-roster {
-  padding: var(--fo-space-xs) var(--fo-space-0);
+  padding: var(--fo-space-0);
 }
 
-.dr-rosterGrid {
-  --roster-unit: calc(100vw / 6.25);
-  --roster-cols: 6;
-  width: calc(var(--roster-unit) * var(--roster-cols));
-  margin-inline: auto;
-  display: grid;
-  grid-template-columns: repeat(var(--roster-cols), var(--roster-unit));
-  column-gap: 0;
+/* Roster rotation (prescription 06, 5.4). Geometry arrives as --roster-* vars from
+   useRosterRotation: side allowance, column width, step (width + gap), window start and
+   the first rendered column. */
+.dr-rosterRoot {
+  min-width: 0;
+}
+
+/* The phone board runs edge to edge, past the scroll area's padding, so the column is
+   the viewport minus the two peeks. */
+.dr-rosterRoot[data-layout="phone"] {
+  margin-inline: calc(-1 * var(--fo-space-xs));
+}
+
+.dr-rosterControls {
+  position: sticky;
+  top: var(--fo-space-0);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fo-space-xs);
+  padding: var(--fo-space-dense-1) var(--roster-side);
+  background: var(--brand-page);
+}
+
+.mantine-ActionIcon-root.dr-rosterBtn {
+  --ai-size: var(--fo-db-rosterBtn-size);
+  width: var(--fo-db-rosterBtn-size);
+  height: var(--fo-db-rosterBtn-size);
+  flex: 0 0 auto;
+}
+
+.dr-rosterRoot[data-layout="phone"] .mantine-ActionIcon-root.dr-rosterBtn {
+  --ai-size: var(--fo-db-mobileIconSize);
+  width: var(--fo-db-mobileIconSize);
+  height: var(--fo-db-mobileIconSize);
+}
+
+/* At an end the button stays focusable (M8): muted ink, no fill, no edge. */
+.mantine-ActionIcon-root.dr-rosterBtn[aria-disabled="true"],
+.mantine-ActionIcon-root.dr-rosterBtn[aria-disabled="true"]:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--brand-muted);
+  cursor: default;
+}
+
+.dr-rosterSeatSelect {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dr-rosterSeatSelect .mantine-Select-input {
+  height: var(--fo-db-mobileIconSize);
+  min-height: var(--fo-db-mobileIconSize);
+  /* A long seat name ends in an ellipsis before the chevron, which Mantine pads for. */
+  text-overflow: ellipsis;
+}
+
+.dr-rosterBoard {
+  overflow: hidden;
+  padding: calc(var(--fo-space-8) + var(--brand-room-ring)) var(--fo-space-0)
+    calc(var(--fo-space-sm) + var(--brand-room-ring) + var(--brand-room-drop));
+  touch-action: pan-y;
+}
+
+.dr-rosterTrack {
+  display: flex;
+  gap: var(--roster-gap);
+  align-items: flex-start;
+  padding-left: calc(var(--roster-from) * var(--roster-step));
+  transform: translateX(
+    calc(var(--roster-side) - var(--roster-start) * var(--roster-step))
+  );
+  transition: transform var(--fo-db-rosterSlide-duration) var(--fo-db-rosterSlide-ease);
+}
+
+.dr-rosterTrack[data-instant],
+.dr-rosterTrack[data-instant] .dr-rosterCol {
+  transition: none;
+}
+
+/* Seats that fit the window: centred, no peeks, no motion. */
+.dr-rosterTrack[data-fits] {
+  padding-left: var(--fo-space-0);
+  transform: none;
+  justify-content: center;
 }
 
 .dr-rosterCol {
   box-sizing: border-box;
-  padding: var(--fo-space-0) var(--fo-space-dense-1);
+  flex: 0 0 var(--roster-col-w);
   min-width: 0;
+  transition: opacity var(--fo-db-rosterSlide-duration) var(--fo-db-rosterSlide-ease);
 }
 
-.dr-rosterCard {
-  /* Use the same card treatment as category cards, but keep roster columns within their grid cell. */
-  margin-inline: 0;
+.dr-rosterCol[data-state="peek"] {
+  opacity: var(--fo-alpha-42);
+  cursor: pointer;
+}
+
+.dr-rosterCol[data-state="off"] {
+  opacity: var(--fo-alpha-00);
+}
+
+.dr-rosterBoard:focus-visible {
+  outline: none;
+  box-shadow: var(--fo-shadow-focusRing-neutral-soft-light);
+}
+
+:root[data-mantine-color-scheme="dark"] .dr-rosterBoard:focus-visible,
+body[data-mantine-color-scheme="dark"] .dr-rosterBoard:focus-visible {
+  box-shadow: var(--fo-shadow-focusRing-neutral-soft-dark);
+}
+
+.dr-card.dr-rosterCard {
+  /* The ring sits inside the column, so the visible gap stays 12 px at any ring. */
+  margin-inline: var(--brand-room-ring);
 }
 
 .dr-rosterPickText {
@@ -1822,13 +1807,6 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   justify-content: center;
   gap: var(--fo-space-8);
   margin-bottom: var(--fo-space-dense-2);
-}
-
-.dr-rosterName {
-  font-size: var(--fo-db-meta-font);
-  font-weight: var(--fo-font-weight-bold);
-  color: var(--fo-text-primary);
-  max-width: calc(var(--roster-unit) - var(--fo-db-mobileRailBtn-width));
 }
 
 .dr-rosterPicks {
@@ -1849,36 +1827,6 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   font-size: var(--fo-db-pill-font);
   font-weight: 400;
   color: var(--fo-text-primary);
-}
-
-.dr-rosterNav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: calc(var(--fo-control-height) + var(--fo-space-2)); /* 34px */
-  height: calc(var(--fo-control-height) + var(--fo-space-2)); /* 34px */
-  padding: 0;
-  box-sizing: border-box;
-  border-radius: var(--brand-button-radius);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--fo-surface-card-primary);
-  border: var(--fo-border-width) solid var(--fo-border);
-  z-index: 4;
-}
-
-.dr-rosterNav.is-left {
-  left: var(--fo-space-dense-2);
-}
-
-.dr-rosterNav.is-right {
-  right: var(--fo-space-dense-2);
-}
-
-.dr-rosterNav.is-disabled {
-  opacity: var(--fo-alpha-45);
-  cursor: default;
 }
 
 .ceremony-card {
@@ -2961,6 +2909,16 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   color: var(--brand-muted);
   opacity: var(--fo-alpha-50);
   cursor: not-allowed;
+}
+
+/* In the room header the unavailable view switch keeps full-strength muted ink: the
+   shared 50% fade would drop its labels below 4.5:1. The cursor and the missing
+   hover state still mark it unavailable. */
+.drh-controls
+  .mantine-SegmentedControl-root[data-disabled]
+  .mantine-SegmentedControl-label,
+.drh-controls .mantine-SegmentedControl-label[data-disabled] {
+  opacity: var(--fo-alpha-100);
 }
 
 .mantine-Switch-track {

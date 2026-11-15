@@ -364,7 +364,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
 
   const statusChrome = (
     <>
-      <DraftLiveRegion message={liveMessage} />
+      <DraftLiveRegion message={liveMessage} connectionState={props.o.connection.state} />
       <DraftConnectionIndicator connection={props.o.connection} />
     </>
   );
@@ -423,7 +423,6 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         clockText={props.o.header.clockText}
         draftStatus={draftStatus}
         isFinalResults={isFinalResults}
-        resultsWinnerLabel={props.o.header.resultsWinnerLabel}
         resultsPodium={props.o.header.resultsPodium}
         view={isPre ? "draft" : isCompleted ? "roster" : props.o.header.view}
         onViewChange={props.o.header.setView}

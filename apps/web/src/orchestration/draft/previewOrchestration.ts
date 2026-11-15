@@ -237,7 +237,6 @@ export function useDraftPreviewOrchestration(args: {
       onResumeDraft: () => {},
       ceremonyStatus: null,
       isFinalResults: false,
-      resultsWinnerLabel: null,
       resultsPodium: [],
       scoringStrategyName: "fixed",
       getNominationPoints: () => 1

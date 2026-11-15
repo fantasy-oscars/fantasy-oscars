@@ -14,8 +14,10 @@ import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
  * - specimen: one page of every component and state (`/__specimen`) per brand, in both
  *   modes at desktop and the brand's primary mode on a phone. A brand's look does not
  *   depend on the screen.
- * - brand-screens: the few screens whose composition differs per brand (BRAND_SCREEN_IDS),
- *   every brand, primary mode, both viewports.
+ * - brand-screens: the few screens whose composition differs per brand (BRAND_SCREENS),
+ *   every brand, primary mode, at the viewports each names.
+ * - stress: the draft screens that show the draft room stress theme's extremes
+ *   (STRESS_SCREEN_CELLS), in the default brand's light mode with the theme painted over it.
  *
  * Add a row to SCREENS for a new screen (it joins the layout tier); add an entry to
  * BRANDS when a brand lands (its primary mode comes from the brand catalog, and
@@ -206,7 +208,7 @@ export const SCREENS: ScreenDef[] = [
     path: (s) => `/drafts/${s.drafts.live}`,
     ready: { selector: "main" },
     viewports: ["desktop"],
-    // Blake's narrower header shows the token strip; its avatars and the buckle sit on
+    // Blake's narrower header shows the token strip; its avatars and the tab sit on
     // half-pixel offsets and rasterise to one of two anti-aliased results per load.
     maskSelectors: [".dr-header"],
     prepare: async (page) => {
@@ -245,12 +247,10 @@ export const SCREENS: ScreenDef[] = [
     id: "draft-live-countdown",
     persona: "avery",
     path: (s) => `/drafts/${s.drafts.live}`,
-    ready: { selector: ".drh-buckle.is-countdown, .dr-mobileBar.is-countdown" },
+    ready: { selector: '.drh-tab[data-tone^="countdown"], .dr-mobileBar.is-countdown' },
     beforeNavigate: (page) => rewriteDraftSnapshot(page, countdownSnapshot),
     prepare: async (page) => {
-      await expect(page.locator(".drh-buckleCenter, .drm-clockText").first()).toHaveText(
-        "4s left"
-      );
+      await expect(page.locator(".drh-tabHeadlineText").first()).toHaveText("4s left");
       await waitForAnimationsIdle(page);
     }
   },
@@ -258,15 +258,13 @@ export const SCREENS: ScreenDef[] = [
     id: "draft-paused",
     persona: "avery",
     path: (s) => `/drafts/${s.drafts.live}`,
-    ready: { selector: ".drh-buckle, .dr-mobileBar" },
+    ready: { selector: ".drh-tab, .dr-mobileBar" },
     beforeNavigate: (page) =>
       rewriteDraftSnapshot(page, (draft) => {
         draft.status = "PAUSED";
       }),
     prepare: async (page) => {
-      await expect(page.locator(".drh-buckleCenter, .drm-clockText").first()).toHaveText(
-        "Paused"
-      );
+      await expect(page.locator(".drh-tabHeadlineText").first()).toHaveText("Paused");
       await waitForAnimationsIdle(page);
     }
   },
@@ -414,14 +412,37 @@ export const PRIMARY_MODE = Object.fromEntries(
 ) as Record<BrandId, Mode>;
 
 /**
- * Brand-screens tier: ids of SCREENS captured for every brand in its primary mode, both
- * viewports. These are the screens whose composition differs per brand: Home (logged out
- * and in) and the live draft room.
+ * Brand-screens tier: SCREENS captured for every brand in its primary mode, at the
+ * viewports named (default: both). These are the screens whose composition differs per
+ * brand: Home (logged out and in), the live draft room, its countdown tab (desktop) and
+ * the final podium (both). The default brand's cells that the layout tier already takes
+ * are captured once, by that tier.
  */
-export const BRAND_SCREEN_IDS: readonly string[] = [
-  "home-logged-out",
-  "home-logged-in",
-  "draft-live-your-turn"
+export const BRAND_SCREENS: readonly {
+  id: string;
+  viewports?: readonly ViewportName[];
+}[] = [
+  { id: "home-logged-out" },
+  { id: "home-logged-in" },
+  { id: "draft-live-your-turn" },
+  { id: "draft-live-countdown", viewports: ["desktop"] },
+  { id: "draft-completed" }
+];
+
+/**
+ * The draft room stress theme's own brand: it borrows the default brand's slug (the
+ * generated blocks target it) and is painted over a loaded page, never selected.
+ */
+export const STRESS_BRAND: Brand = { id: "stress", slug: "refined-gold" };
+
+/** Stress tier: draft screens captured with the stress theme, light mode. */
+export const STRESS_SCREEN_CELLS: readonly {
+  id: string;
+  viewports: readonly ViewportName[];
+}[] = [
+  { id: "draft-live-your-turn", viewports: ["desktop", "mobile"] },
+  { id: "draft-live-countdown", viewports: ["desktop"] },
+  { id: "draft-completed", viewports: ["desktop", "mobile"] }
 ];
 
 /** The component specimen page; a screen like any other, captured by its own tier. */
@@ -431,8 +452,9 @@ export const SPECIMEN_SCREEN: ScreenDef = {
   path: () => "/__specimen",
   ready: { selector: '[data-specimen-ready="true"]' },
   fullPage: true,
-  // Tall by design: every component family and state on one page.
-  maxHeight: 16000
+  // Tall by design: every component family and state on one page. The cap only has to sit
+  // above the tallest capture (phone, about 17000 px), so the whole page is baselined.
+  maxHeight: 24000
 };
 
 /** Tall pages are cut here so one long screen cannot dominate baseline size. */
@@ -444,7 +466,7 @@ export function snapshotName(brand: Brand, mode: Mode, viewport: ViewportName) {
   return [...parts, mode, viewport].join("-");
 }
 
-export type Tier = "layout" | "specimen" | "brand-screens";
+export type Tier = "layout" | "specimen" | "brand-screens" | "stress";
 
 /** One screenshot: a screen in a brand, mode and viewport, and where its baseline lives. */
 export type Capture = {
@@ -453,6 +475,8 @@ export type Capture = {
   brand: Brand;
   mode: Mode;
   viewport: ViewportName;
+  /** The stress theme is painted over the page after it loads. */
+  stress: boolean;
   /** Path of the baseline under tests/visual/__screenshots__. */
   snapshot: [string, string];
 };
@@ -473,6 +497,7 @@ function capture(
     brand,
     mode,
     viewport,
+    stress: brand.id === STRESS_BRAND.id,
     snapshot: [screen.id, `${snapshotName(brand, mode, viewport)}.png`]
   };
 }
@@ -505,14 +530,27 @@ function specimenCaptures(): Capture[] {
 }
 
 function brandScreenCaptures(): Capture[] {
-  const screens = SCREENS.filter((s) => BRAND_SCREEN_IDS.includes(s.id));
-  return BRANDS.flatMap((brand) =>
-    screens.flatMap((screen) =>
-      viewportsOf(screen).map((viewport) =>
-        capture("brand-screens", screen, brand, PRIMARY_MODE[brand.slug], viewport)
-      )
-    )
-  );
+  return BRAND_SCREENS.flatMap((entry) => {
+    const screen = SCREENS.find((s) => s.id === entry.id);
+    if (!screen) throw new Error(`brand screen ${entry.id} is not in SCREENS`);
+    return BRANDS.flatMap((brand) =>
+      viewportsOf(screen)
+        .filter((v) => !entry.viewports || entry.viewports.includes(v))
+        .map((viewport) =>
+          capture("brand-screens", screen, brand, PRIMARY_MODE[brand.slug], viewport)
+        )
+    );
+  });
+}
+
+function stressCaptures(): Capture[] {
+  return STRESS_SCREEN_CELLS.flatMap((entry) => {
+    const screen = SCREENS.find((s) => s.id === entry.id);
+    if (!screen) throw new Error(`stress screen ${entry.id} is not in SCREENS`);
+    return entry.viewports.map((viewport) =>
+      capture("stress", screen, STRESS_BRAND, MODES[0], viewport)
+    );
+  });
 }
 
 /**
@@ -521,14 +559,17 @@ function brandScreenCaptures(): Capture[] {
  */
 export function allCaptures(): Capture[] {
   const seen = new Set<string>();
-  return [...layoutCaptures(), ...specimenCaptures(), ...brandScreenCaptures()].filter(
-    (c) => {
-      const key = c.snapshot.join("/");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }
-  );
+  return [
+    ...layoutCaptures(),
+    ...specimenCaptures(),
+    ...brandScreenCaptures(),
+    ...stressCaptures()
+  ].filter((c) => {
+    const key = c.snapshot.join("/");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**

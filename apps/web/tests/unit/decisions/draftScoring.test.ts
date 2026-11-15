@@ -8,7 +8,6 @@ import {
   buildWinnerCountBySeat,
   buildWinnerSet,
   computeResultsPodium,
-  computeResultsWinnerLabel,
   computeTimerRemainingMs
 } from "@/decisions/draft/scoring";
 import { buildCursorSpyCursors } from "@/decisions/draft/boards";
@@ -116,24 +115,6 @@ describe("draft scoring decisions", () => {
         winnerCountBySeat
       })
     ).toEqual([]);
-  });
-
-  it("labels ties and null when not final", () => {
-    expect(
-      computeResultsWinnerLabel({
-        isFinalResults: true,
-        resultsPodium: [{ place: 1, names: ["a", "b"] }]
-      })
-    ).toBe("Tie: a, b");
-    expect(
-      computeResultsWinnerLabel({
-        isFinalResults: true,
-        resultsPodium: [{ place: 1, names: ["a"] }]
-      })
-    ).toBe("a");
-    expect(
-      computeResultsWinnerLabel({ isFinalResults: false, resultsPodium: [] })
-    ).toBeNull();
   });
 
   it("sorts roster board seats by standing once final", () => {

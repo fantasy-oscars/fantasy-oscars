@@ -23,7 +23,12 @@ import { ShellHeader } from "@/app/chrome/ui/ShellHeader";
 import { ShellPrimaryNav } from "@/app/chrome/ui/ShellPrimaryNav";
 import { Wordmark } from "@/app/chrome/ui/Wordmark";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
-import { CenterBuckle } from "@/features/draft/ui/CenterBuckle";
+import { DraftHeaderTab } from "@/features/draft/ui/DraftHeaderTab";
+import { computeHeaderStatus } from "@/decisions/draft/headerStatus";
+import type { PodiumCell } from "@/decisions/draft/podium";
+import { windowForSeat } from "@/decisions/draft/rosterWindow";
+import { useRosterRotation } from "@/orchestration/draft/useRosterRotation";
+import { RosterTrack } from "@/features/draft/ui/RosterTrack";
 import { AvatarToken } from "@/features/draft/ui/AvatarToken";
 import { DraftMasonryBoard } from "@/features/draft/ui/DraftMasonryBoard";
 import { ActionCard, EmptyState, HeroCard, StandardCard } from "@/primitives";
@@ -43,6 +48,9 @@ import {
   NAV_LINKS,
   PILL_CARD_TITLE,
   PILL_STATES,
+  ICON_AUDIT_PILLS,
+  ICON_DEFAULT_TITLE,
+  ICON_PUNCHOUT_TITLE,
   SELECT_OPTIONS,
   SPECIMEN_MARKER,
   SPECIMEN_USER,
@@ -58,6 +66,8 @@ const noopAsync = async () => {};
 function Cell(props: {
   label: string;
   force?: readonly ForcedState[];
+  /** Span every column of the grid (a sample wider than one column). */
+  span?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -65,6 +75,7 @@ function Cell(props: {
       className="specimen-cell"
       data-specimen-cell=""
       data-force={props.force?.join(" ")}
+      data-span={props.span ? "full" : undefined}
     >
       <Text component="span" className="specimen-label">
         {props.label}
@@ -321,12 +332,13 @@ function PillBoard() {
     props: Pick<
       React.ComponentProps<typeof CategoryCard>,
       "title" | "nominees" | "canDraftAction" | "categoryId"
-    >
+    > &
+      Partial<Pick<React.ComponentProps<typeof CategoryCard>, "iconVariant">>
   ) => (
     <CategoryCard
+      iconVariant="default"
       {...props}
       icon="trophy"
-      iconVariant="default"
       unitKind="FILM"
       tooltipsEnabled={false}
       weightText={null}
@@ -362,19 +374,49 @@ function PillBoard() {
           canDraftAction: false,
           nominees: DISABLED_PILLS
         })}
+        {card({
+          categoryId: "icon-punchout",
+          title: ICON_PUNCHOUT_TITLE,
+          canDraftAction: true,
+          iconVariant: "inverted",
+          nominees: ICON_AUDIT_PILLS
+        })}
+        {card({
+          categoryId: "icon-default",
+          title: ICON_DEFAULT_TITLE,
+          canDraftAction: true,
+          nominees: ICON_AUDIT_PILLS
+        })}
       </Box>
     </Box>
   );
 }
 
+type StripState = Partial<Parameters<typeof computeHeaderStatus>[0]>;
+
+/** The room's header row around one tab state, fed fixed values: nothing here ticks. */
 function DraftHeaderStrip(props: {
   label: string;
-  buckleClass: string;
-  centerText: string;
-  glyph: "timer" | null;
+  state: StripState;
+  round?: number | null;
+  pick?: number | null;
+  podium?: PodiumCell[];
 }) {
+  const status = computeHeaderStatus({
+    draftStatus: "IN_PROGRESS",
+    isFinalResults: false,
+    hasPodium: (props.podium?.length ?? 0) > 0,
+    isTimerDraft: false,
+    isMyTurn: false,
+    countdownActive: false,
+    countdownPhase: null,
+    timerRemainingMs: null,
+    clockText: "1:30",
+    activeLabel: "blake",
+    ...props.state
+  });
   return (
-    <Cell label={props.label}>
+    <Cell label={props.label} span>
       <Box className="specimen-headerCell">
         <Box className="dr-frame" data-turn="mine" data-results="live">
           <Box className="dr-header">
@@ -383,15 +425,11 @@ function DraftHeaderStrip(props: {
                 <AvatarToken label="avery" avatarKey="giraffe" active />
                 <AvatarToken label="blake" avatarKey="bear" active={false} />
               </Group>
-              <CenterBuckle
-                roundNumber={3}
-                pickNumber={14}
-                centerText={props.centerText}
-                centerGlyph={props.glyph}
-                className={props.buckleClass}
-                measureText={null}
-                isTimerDraft
-                maxHandleLengthPx={140}
+              <DraftHeaderTab
+                status={status}
+                roundNumber={props.round === undefined ? 3 : props.round}
+                pickNumber={props.pick === undefined ? 14 : props.pick}
+                podium={props.podium ?? []}
               />
             </Box>
           </Box>
@@ -401,29 +439,92 @@ function DraftHeaderStrip(props: {
   );
 }
 
+const COUNTDOWN: StripState = {
+  isTimerDraft: true,
+  isMyTurn: true,
+  countdownActive: true,
+  activeLabel: "avery"
+};
+
+/** Ties on every place, one long name: the static podium (the cycle holds still). */
+const SPECIMEN_PODIUM: PodiumCell[] = [
+  { place: 1, names: ["avery", "blake"] },
+  { place: 2, names: [LONG_FILM_TITLE, "jo"] },
+  { place: 3, names: ["morgan"] }
+];
+
+const ROSTER_SEATS = 12;
+
+/** One roster board held at its first or last position, so the end control reads disabled. */
+function RosterEnd(props: { end: "start" | "end" }) {
+  const rotation = useRosterRotation({ count: ROSTER_SEATS, layout: "desktop" });
+  const { capacity } = rotation.geometry;
+  const start =
+    props.end === "start" ? 0 : windowForSeat(ROSTER_SEATS - 1, capacity, ROSTER_SEATS);
+  const held = {
+    ...rotation,
+    start,
+    canPrev: start > 0,
+    canNext: start + capacity < ROSTER_SEATS,
+    instant: true
+  };
+  return (
+    <Box className="dr-frame" data-turn="mine" data-results="live">
+      <RosterTrack
+        rotation={held}
+        columnKey={(i) => i}
+        renderColumn={(i) => (
+          <Box className="dr-card dr-rosterCard">
+            <Text>{`Seat ${i + 1}`}</Text>
+          </Box>
+        )}
+      />
+    </Box>
+  );
+}
+
 function DraftSlice() {
   return (
     <Box className="specimen-section">
       <Title variant="section">Draft board</Title>
       <Box className="specimen-grid is-wide">
         <DraftHeaderStrip
-          label="on the clock"
-          buckleClass=""
-          centerText="avery"
-          glyph={null}
+          label="rest, not started"
+          state={{ draftStatus: "PENDING" }}
+          round={null}
+          pick={null}
+        />
+        <DraftHeaderStrip label="rest, on the clock" state={{}} />
+        <DraftHeaderStrip
+          label="rest, timed (seat name)"
+          state={{ isTimerDraft: true }}
+        />
+        <DraftHeaderStrip label="mine" state={{ isMyTurn: true, activeLabel: "avery" }} />
+        <DraftHeaderStrip
+          label="mine, timed"
+          state={{ isTimerDraft: true, isMyTurn: true, activeLabel: "avery" }}
+        />
+        <DraftHeaderStrip label="paused" state={{ draftStatus: "PAUSED" }} />
+        <DraftHeaderStrip
+          label="countdown, primary"
+          state={{ ...COUNTDOWN, countdownPhase: "gold", timerRemainingMs: 4000 }}
         />
         <DraftHeaderStrip
-          label="countdown, normal"
-          buckleClass="is-countdown pulse-gold"
-          centerText="28s left"
-          glyph="timer"
+          label="countdown, danger"
+          state={{ ...COUNTDOWN, countdownPhase: "red", timerRemainingMs: 3000 }}
         />
         <DraftHeaderStrip
-          label="countdown, urgent"
-          buckleClass="is-countdown pulse-red"
-          centerText="4s left"
-          glyph="timer"
+          label="final, podium with ties"
+          state={{ isFinalResults: true }}
+          podium={SPECIMEN_PODIUM}
         />
+        <DraftHeaderStrip label="complete, no podium" state={{ isFinalResults: true }} />
+        <Cell label="roster controls, start end">
+          <RosterEnd end="start" />
+        </Cell>
+        <Cell label="roster controls, last end">
+          <RosterEnd end="end" />
+        </Cell>
       </Box>
       <Box className="dr-frame specimen-board" data-turn="mine" data-results="live">
         <DraftMasonryBoard

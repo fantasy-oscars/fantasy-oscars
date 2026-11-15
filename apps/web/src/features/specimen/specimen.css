@@ -80,11 +80,40 @@
   font-size: var(--fo-font-size-xl);
 }
 
+.specimen-cell[data-span="full"] {
+  grid-column: 1 / -1;
+}
+
 .specimen-headerCell {
   min-width: 0;
   overflow: clip;
   /* Room for the invite badge, which sits past the icon's top-right corner. */
   padding: var(--fo-space-xs);
+}
+
+/* The strip is the cell's own width, not the viewport's: the tab is sized from the strip so
+   the avatar wings never meet it. On a phone the wings are left out and the tab takes
+   the strip, as the room's phone header has none. */
+.specimen-headerCell {
+  --fo-db-tabWidth: clamp(15.5rem, 40%, 27.5rem);
+  --fo-db-tabWidth-final: clamp(20rem, 70%, 45rem);
+}
+
+@media (max-width: 600px) {
+  .specimen-headerCell {
+    --fo-db-tabWidth: 100%;
+    --fo-db-tabWidth-final: 100%;
+  }
+
+  .specimen-headerCell .drh-row {
+    grid-template-columns: var(--fo-db-tabWidth);
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .specimen-headerCell .drh-row > :not(.drh-tab) {
+    display: none;
+  }
 }
 
 .specimen-target {

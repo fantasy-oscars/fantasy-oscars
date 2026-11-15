@@ -1,9 +1,14 @@
 import { ActionIcon, Box, Button, Drawer, Group, Menu, Stack, Switch, Text } from "@ui";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import type { createDraftAudioController } from "@/lib/draftAudio";
-import { formatCountdownText, isCountdownActive } from "@/lib/draftCountdown";
+import {
+  computeHeaderStatus,
+  isHeaderCountdownRunning
+} from "@/decisions/draft/headerStatus";
+import { resolvePodium } from "@/decisions/draft/podium";
+import { DraftHeaderTab } from "@/features/draft/ui/DraftHeaderTab";
 import { useCountdownPhase } from "@/orchestration/draft/useCountdownPhase";
 
 export function MobileDraftHeader(props: {
@@ -33,7 +38,6 @@ export function MobileDraftHeader(props: {
   onPauseDraft: () => void;
   onResumeDraft: () => void;
   isFinalResults: boolean;
-  resultsWinnerLabel: string | null;
   resultsPodium: Array<{ place: 1 | 2 | 3; names: string[] }>;
   view: "draft" | "roster";
   onViewChange: (v: "draft" | "roster") => void;
@@ -48,85 +52,41 @@ export function MobileDraftHeader(props: {
   const isPaused = props.draftStatus === "PAUSED";
   const isCompleted = props.draftStatus === "COMPLETED";
 
-  const countdownActive = Boolean(
-    props.isTimerDraft &&
-    props.draftStatus === "IN_PROGRESS" &&
-    !props.isFinalResults &&
-    props.isMyTurn &&
-    isCountdownActive(props.timerRemainingMs)
-  );
-  const [podiumCycleTick, setPodiumCycleTick] = useState(0);
+  const countdownActive = isHeaderCountdownRunning({
+    isTimerDraft: props.isTimerDraft,
+    draftStatus: props.draftStatus,
+    isFinalResults: props.isFinalResults,
+    isMyTurn: props.isMyTurn,
+    timerRemainingMs: props.timerRemainingMs
+  });
   const countdownPhase = useCountdownPhase({
     active: countdownActive,
     canBeep: props.audioUnlocked,
     audioController: props.audioController
   });
 
-  const podiumPositions = props.resultsPodium
-    .map((p) => ({
-      place: p.place,
-      names: p.names.map((name) => name.trim()).filter((name) => name.length > 0)
-    }))
-    .filter((p) => p.names.length > 0)
-    .sort((a, b) => a.place - b.place)
-    .slice(0, 3);
-  const hasTiedPodiumPosition = podiumPositions.some((p) => p.names.length > 1);
-  const showMobilePodium = props.isFinalResults && podiumPositions.length > 0;
-  const podiumSignature = podiumPositions
-    .map((p) => `${p.place}:${p.names.join("|")}`)
-    .join("||");
+  const podium = useMemo(() => resolvePodium(props.resultsPodium), [props.resultsPodium]);
 
-  useEffect(() => {
-    setPodiumCycleTick(0);
-  }, [podiumSignature]);
-
-  useEffect(() => {
-    if (!showMobilePodium || !hasTiedPodiumPosition) return;
-    const interval = window.setInterval(() => {
-      setPodiumCycleTick((prev) => prev + 1);
-    }, 1500);
-    return () => window.clearInterval(interval);
-  }, [hasTiedPodiumPosition, showMobilePodium]);
-
-  const centerText =
-    props.isFinalResults && props.resultsWinnerLabel
-      ? props.resultsWinnerLabel
-      : isCompleted
-        ? "Draft complete"
-        : isPaused
-          ? "Paused"
-          : isPre
-            ? "Not started"
-            : props.isTimerDraft
-              ? countdownActive
-                ? formatCountdownText(props.timerRemainingMs ?? 0)
-                : props.clockText
-              : (props.participants.find((p) => p.active)?.label ?? "—");
-
-  const centerGlyph = countdownActive ? "timer" : isPaused ? "pause" : null;
-
+  const status = computeHeaderStatus({
+    draftStatus: props.draftStatus,
+    isFinalResults: props.isFinalResults,
+    hasPodium: podium.length > 0,
+    isTimerDraft: props.isTimerDraft,
+    isMyTurn: props.isMyTurn,
+    countdownActive,
+    countdownPhase,
+    timerRemainingMs: props.timerRemainingMs,
+    clockText: props.clockText,
+    activeLabel: props.participants.find((p) => p.active)?.label ?? "—"
+  });
   const canShowRosterLink = props.canToggleView;
   // The Settings menu holds only these two items; with neither, it would open empty.
   const showSettings =
     props.showDraftedVisible || (props.showDraftControls && props.canManageDraft);
 
   return (
-    <Box
-      component="header"
-      className={[
-        "dr-header",
-        "dr-mobileHeader",
-        showMobilePodium ? "is-podium" : "",
-        isPaused ? "is-paused" : ""
-      ].join(" ")}
-    >
-      <Box
-        className={[
-          "dr-mobileBar",
-          countdownActive ? "is-countdown" : "",
-          countdownActive ? (countdownPhase === "red" ? "pulse-red" : "pulse-gold") : ""
-        ].join(" ")}
-      >
+    <Box component="header" className="dr-header dr-mobileHeader">
+      <Box className="dr-mobileBar">
         <ActionIcon
           variant="subtle"
           onClick={props.onOpen}
@@ -138,30 +98,12 @@ export function MobileDraftHeader(props: {
           </Text>
         </ActionIcon>
 
-        <Box className="drm-miniStat" aria-label="Round">
-          <Text className="drm-miniLabel">Round</Text>
-          <Text className="drm-miniNumber">
-            {isCompleted ? "—" : (props.roundNumber ?? "—")}
-          </Text>
-        </Box>
-
-        <Box className="drm-clock" aria-label="Timer">
-          {centerGlyph ? (
-            <Text component="span" className="mi-icon drm-clockGlyph" aria-hidden="true">
-              {centerGlyph}
-            </Text>
-          ) : null}
-          <Text className="drm-clockText" lineClamp={1}>
-            {centerText}
-          </Text>
-        </Box>
-
-        <Box className="drm-miniStat" aria-label="Pick">
-          <Text className="drm-miniLabel">Pick</Text>
-          <Text className="drm-miniNumber">
-            {isCompleted ? "—" : (props.pickNumber ?? "—")}
-          </Text>
-        </Box>
+        <DraftHeaderTab
+          status={status}
+          roundNumber={props.roundNumber}
+          pickNumber={props.pickNumber}
+          podium={podium}
+        />
 
         {showSettings ? (
           <Menu position="bottom-end" withinPortal>
@@ -205,38 +147,6 @@ export function MobileDraftHeader(props: {
           <Box className="dr-mobileIconBtn" aria-hidden="true" />
         )}
       </Box>
-
-      {showMobilePodium ? (
-        <Stack className="drm-podiumStack" gap="var(--fo-space-4)">
-          {podiumPositions.map((p) => {
-            const currentName =
-              p.names.length > 1
-                ? (p.names[podiumCycleTick % p.names.length] ?? p.names[0])
-                : p.names[0];
-            return (
-              <Box
-                key={`mobile-podium-${p.place}`}
-                className={[
-                  "drm-podiumBar",
-                  p.place === 1 ? "is-gold" : p.place === 2 ? "is-silver" : "is-bronze"
-                ].join(" ")}
-              >
-                <Text
-                  key={`mobile-podium-text-${p.place}-${podiumCycleTick % p.names.length}`}
-                  className={[
-                    "drm-podiumText",
-                    p.names.length > 1 ? "is-rolling" : ""
-                  ].join(" ")}
-                  lineClamp={1}
-                  title={currentName}
-                >
-                  {currentName}
-                </Text>
-              </Box>
-            );
-          })}
-        </Stack>
-      ) : null}
 
       <Drawer
         opened={props.open}

@@ -8,7 +8,7 @@ import {
   countdownSnapshot,
   rewriteDraftSnapshot,
   SCREENS,
-  type Brand,
+  STRESS_BRAND,
   type ScreenDef,
   type ViewportName
 } from "../matrix";
@@ -16,10 +16,10 @@ import { settle } from "../support/page";
 
 // The draft room stress theme (fixtures/stressBrand.ts) in the assertion tier: the same
 // geometry, overflow, clipped-text, overlap and contrast checks, run on the draft screens
-// that make its extremes visible. No screenshots and no baselines (chunk 3 adds those).
+// that make its extremes visible. The screenshot tier takes five baselines of the same
+// screens (the `stress` cells of matrix.ts), through `stressScreen` and `applyStressTheme`.
 
-/** The stress runs borrow the default brand's slug: the generated blocks target it. */
-export const STRESS_BRAND: Brand = { id: "stress", slug: stressBrand.id };
+export { STRESS_BRAND };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const MONTSERRAT = readFileSync(
@@ -34,17 +34,35 @@ export const MONTSERRAT_FACE_CSS = `@font-face {
   src: url(data:font/woff2;base64,${MONTSERRAT}) format("woff2");
 }`;
 
-const STRESS_CSS = `${MONTSERRAT_FACE_CSS}\n${generateBrandCss([stressBrand], stressBrand)}`;
+const STRESS_CSS = generateBrandCss([stressBrand], stressBrand);
 
-/** Paints the stress theme over a loaded page and waits for its fonts. */
+/**
+ * Paints the stress theme over a loaded page. The font is declared and loaded first, so
+ * the theme lands in one step: the header decides whether to collapse its wings from what
+ * it measures (with hysteresis), and a pass through fallback-font widths could leave it
+ * collapsed in one run and open in the next.
+ */
 export async function applyStressTheme(page: Page, inFlight: () => number) {
-  await page.addStyleTag({ content: STRESS_CSS });
+  await page.addStyleTag({ content: MONTSERRAT_FACE_CSS });
   await page.evaluate(() =>
     Promise.all(
       [400, 500, 600, 700].map((w) => document.fonts.load(`${w} 16px Montserrat`))
     ).then(() => document.fonts.ready)
   );
+  await page.addStyleTag({ content: STRESS_CSS });
   await settle(page, inFlight, { quietPolls: 2, networkIdle: false, pollMs: 60 });
+  // The stress header sits near the collapse threshold, where the hysteresis makes the
+  // result depend on the widths passed through. Opening the wings at a wide viewport and
+  // returning to the real one makes the capture start from the same state every run.
+  // The phone header has no wings to collapse, and widening past the 500 px phone
+  // breakpoint would remount the room as the desktop layout, so only desktop is widened.
+  const size = page.viewportSize();
+  if (size && size.width > 500) {
+    await page.setViewportSize({ width: size.width + 640, height: size.height });
+    await settle(page, inFlight, { quietPolls: 2, networkIdle: false, pollMs: 60 });
+    await page.setViewportSize(size);
+    await settle(page, inFlight, { quietPolls: 2, networkIdle: false, pollMs: 60 });
+  }
 }
 
 // Long enough to need truncation in every cell that shows a name (61 characters).
@@ -92,17 +110,22 @@ const STRESS_SCREEN_IDS = [
 /** Assertion tests the stress runs add: one per viewport. */
 export const STRESS_TEST_COUNT = 2;
 
+/** A draft screen with its snapshot rewritten to the stress data (12 seats, long names). */
+export function stressScreen(id: string): ScreenDef {
+  const base = SCREENS.find((s) => s.id === id);
+  if (!base) throw new Error(`stress screen ${id} is not in the matrix`);
+  return {
+    ...base,
+    beforeNavigate: (page) =>
+      rewriteDraftSnapshot(page, (draft, snapshot) => {
+        if (id === "draft-live-countdown") countdownSnapshot(draft);
+        stressSnapshot(snapshot);
+      })
+  };
+}
+
 export function stressScreens(viewport: ViewportName): ScreenDef[] {
-  return STRESS_SCREEN_IDS.map((id): ScreenDef => {
-    const base = SCREENS.find((s) => s.id === id);
-    if (!base) throw new Error(`stress screen ${id} is not in the matrix`);
-    return {
-      ...base,
-      beforeNavigate: (page) =>
-        rewriteDraftSnapshot(page, (draft, snapshot) => {
-          if (id === "draft-live-countdown") countdownSnapshot(draft);
-          stressSnapshot(snapshot);
-        })
-    };
-  }).filter((s) => !s.viewports || s.viewports.includes(viewport));
+  return STRESS_SCREEN_IDS.map(stressScreen).filter(
+    (s) => !s.viewports || s.viewports.includes(viewport)
+  );
 }

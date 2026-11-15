@@ -122,6 +122,15 @@ export const DISABLED_PILLS = [
   nominee(202, "Not draftable")
 ];
 
+/** The icon audit: the card icon in both variants beside a default, a muted and a winner pill. */
+export const ICON_PUNCHOUT_TITLE = "Icon, punchout";
+export const ICON_DEFAULT_TITLE = "Icon, plain";
+export const ICON_AUDIT_PILLS = [
+  nominee(401, "Default pill"),
+  nominee(402, "Muted pill", { muted: true }),
+  nominee(403, "Winner pill", { winner: true, muted: true })
+];
+
 export const BOARD_COLUMNS = [
   [
     {

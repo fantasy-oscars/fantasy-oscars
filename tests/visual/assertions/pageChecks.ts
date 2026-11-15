@@ -39,10 +39,9 @@ export type RoomCheck =
 /**
  * The "must exist" rule of 6.4: on every draft screen a `.drh-tab` must be found, and on
  * the roster board a `[data-roster-track]`, so the tab and roster checks cannot pass
- * vacuously. Off until draft-room-redesigns (chunk 3 of the draft room template) renders
- * them; that change flips this to true.
+ * vacuously.
  */
-export const REQUIRE_ROOM_ELEMENTS = false;
+export const REQUIRE_ROOM_ELEMENTS = true;
 
 /** Draft screens in the matrix (`draft-plans` is a planning page, not the room). */
 export function isDraftRoomScreen(id: string): boolean {
@@ -86,8 +85,12 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       });
     }
 
-    // 2. Clipped text without recourse.
+    // 2. Clipped text without recourse. The roster board clips the seats outside its window
+    // by design (aria-hidden and inert; the step buttons, keys and drag reach them), so only
+    // those columns are skipped: a visible card whose name clips without a title still fails.
+    const OFF_WINDOW = '[data-roster-track] [data-state]:not([data-state="window"])';
     const GLYPH_TOLERANCE = 2;
+    const clips = (v: string) => v === "hidden" || v === "clip";
     const glyphOverflow = (box: HTMLElement) => {
       const left = box.getBoundingClientRect().left + box.clientLeft;
       const top = box.getBoundingClientRect().top + box.clientTop;
@@ -98,6 +101,15 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const holder = node.parentElement;
         if (!holder || !(node.textContent ?? "").trim() || !visible(holder)) continue;
+        if (holder.closest(OFF_WINDOW)) continue;
+        // Text an inner element clips is that element's to answer for (it is checked as a
+        // box of its own); it is not hidden by this one.
+        let innerClip = false;
+        for (let n: Element | null = holder; n && n !== box; n = n.parentElement) {
+          const style = getComputedStyle(n);
+          if (clips(style.overflowX) || clips(style.overflowY)) innerClip = true;
+        }
+        if (innerClip) continue;
         // The last glyph's advance includes letter-spacing that paints nothing.
         const trailing =
           Math.max(parseFloat(getComputedStyle(holder).letterSpacing), 0) || 0;
@@ -125,10 +137,10 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
     };
     for (const el of Array.from(document.body.querySelectorAll("*"))) {
       const style = getComputedStyle(el);
-      const clips = (v: string) => v === "hidden" || v === "clip";
       if (!clips(style.overflowX) && !clips(style.overflowY)) continue;
       // The specimen's own frames and header cells clip by design (fixed-size previews).
       if ([...el.classList].some((c) => c.startsWith("specimen-"))) continue;
+      if (el.closest(OFF_WINDOW)) continue;
       const box = el as HTMLElement;
       if (box.clientWidth < 2 || box.clientHeight < 2) continue;
       const overX = clips(style.overflowX) && box.scrollWidth > box.clientWidth + 1;
@@ -302,7 +314,7 @@ export async function contrastFindings(page: Page): Promise<Finding[]> {
 }
 
 const TAB_CLOCK_TICKS_MS = [1000, 2000] as const;
-const CLOCK_TEXT_SELECTOR = ".drh-buckleCenter, .drm-clockText";
+const CLOCK_TEXT_SELECTOR = ".drh-tabHeadlineText";
 
 /**
  * The header tab's width must not move as the clock ticks. The suite freezes intervals,
@@ -571,18 +583,47 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
           });
         }
         // Every control sits inside the header's box (1px tolerance), never clipped or overhanging.
-        if (!isPhone) {
-          const box = header.getBoundingClientRect();
-          const INTERACTIVE =
-            'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="switch"], [role="radio"]';
-          for (const el of Array.from(header.querySelectorAll(INTERACTIVE))) {
-            if (!visible(el)) continue;
-            const r = el.getBoundingClientRect();
-            if (r.width === 0 || r.height === 0) continue;
-            if (r.top < box.top - 1 || r.bottom > box.bottom + 1) {
+        const box = header.getBoundingClientRect();
+        const INTERACTIVE =
+          'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="switch"], [role="radio"]';
+        for (const el of Array.from(header.querySelectorAll(INTERACTIVE))) {
+          if (!visible(el)) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.top < box.top - 1 || r.bottom > box.bottom + 1) {
+            out.push({
+              check: "room-header-contain",
+              description: `${describe(el)} spans y ${(r.top - box.top).toFixed(1)} to ${(r.bottom - box.top).toFixed(1)}, outside the 0-${box.height.toFixed(0)} header`
+            });
+          }
+        }
+        // Nothing overflows the header sideways, and no wing content reaches the tab.
+        if (header.scrollWidth > header.clientWidth + 1) {
+          out.push({
+            check: "room-header-contain",
+            description: `.dr-header scrolls horizontally: ${header.scrollWidth}px of content in ${header.clientWidth}px`
+          });
+        }
+        const tab = header.querySelector(".drh-tab");
+        const tabBox = tab ? tab.getBoundingClientRect() : null;
+        for (const el of Array.from(header.querySelectorAll(INTERACTIVE))) {
+          if (!visible(el) || (tab && tab.contains(el))) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          if (r.left < box.left - 1 || r.right > box.right + 1) {
+            out.push({
+              check: "room-header-contain",
+              description: `${describe(el)} spans x ${(r.left - box.left).toFixed(1)} to ${(r.right - box.left).toFixed(1)}, outside the 0-${box.width.toFixed(0)} header`
+            });
+          }
+          if (tabBox) {
+            const across =
+              Math.min(r.right, tabBox.right) - Math.max(r.left, tabBox.left);
+            const down = Math.min(r.bottom, tabBox.bottom) - Math.max(r.top, tabBox.top);
+            if (across > TOL && down > TOL) {
               out.push({
                 check: "room-header-contain",
-                description: `${describe(el)} spans y ${(r.top - box.top).toFixed(1)} to ${(r.bottom - box.top).toFixed(1)}, outside the 0-${box.height.toFixed(0)} header`
+                description: `${describe(el)} intersects .drh-tab by ${across.toFixed(1)}px`
               });
             }
           }

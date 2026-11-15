@@ -110,16 +110,6 @@ export function computeResultsPodium(args: {
     .filter((p) => p.names.length > 0);
 }
 
-export function computeResultsWinnerLabel(args: {
-  isFinalResults: boolean;
-  resultsPodium: PodiumEntry[];
-}) {
-  const firstPlace = args.resultsPodium.find((p) => p.place === 1)?.names ?? [];
-  if (!args.isFinalResults || firstPlace.length === 0) return null;
-  if (firstPlace.length === 1) return firstPlace[0];
-  return `Tie: ${firstPlace.join(", ")}`;
-}
-
 export type RosterBoardSeat = {
   seatNumber: number;
   username: string | null;

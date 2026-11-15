@@ -46,7 +46,6 @@ export type DraftRoomOrchestration = {
     onResumeDraft: () => void;
     ceremonyStatus: string | null;
     isFinalResults: boolean;
-    resultsWinnerLabel: string | null;
     resultsPodium: Array<{
       place: 1 | 2 | 3;
       names: string[];

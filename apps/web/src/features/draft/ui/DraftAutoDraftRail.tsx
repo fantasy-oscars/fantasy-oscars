@@ -6,6 +6,7 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "./nomineeTooltip";
+import { useRailFocusReturn } from "./useRailFocusReturn";
 import type { AutoDraftState, DraftNomineeMeta } from "./types";
 
 export function DraftAutoDraftRail(props: {
@@ -19,6 +20,7 @@ export function DraftAutoDraftRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, compactRails, openRailExclusive } = props;
+  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
 
   return (
     <Box
@@ -41,7 +43,7 @@ export function DraftAutoDraftRail(props: {
               type="button"
               className="dr-railClose"
               aria-label="Collapse auto-draft"
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 chevron_right
@@ -209,6 +211,7 @@ export function DraftAutoDraftRail(props: {
       ) : (
         <UnstyledButton
           type="button"
+          ref={toggleRef}
           className="dr-railToggle"
           aria-label="Expand auto-draft"
           title="Auto-draft"
