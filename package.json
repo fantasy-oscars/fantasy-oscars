@@ -19,19 +19,12 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^17.13.0",
-    "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.20.0",
     "remark-cli": "^12.0.1",
     "remark-validate-links": "^13.1.0"
   },
   "scripts": {
-    "render:install:api": "pnpm install --frozen-lockfile --filter @fantasy-oscars/api... --filter !fantasy-oscars",
-    "render:build:api": "pnpm run --filter @fantasy-oscars/api build",
-    "render:start:api": "pnpm run --filter @fantasy-oscars/api start",
     "docker:build:api": "docker build -f apps/api/Dockerfile -t fantasy-oscars-api .",
-    "render:install:web": "pnpm install --frozen-lockfile --filter @fantasy-oscars/web... --filter !fantasy-oscars",
-    "render:build:web": "pnpm run --filter @fantasy-oscars/web build",
-    "render:preview:web": "pnpm run --filter @fantasy-oscars/web preview",
     "test:e2e": "pnpm exec playwright test",
     "test:visual": "node tests/visual/run.mjs",
     "test:visual:update": "node tests/visual/run.mjs --update",
@@ -50,10 +43,8 @@
     "test:build": "pnpm run build",
     "bundle:check": "node .github/scripts/bundle-budget.mjs",
     "test:docs": "pnpm run docs:check",
-    "ci:e2e": "pnpm run test:e2e",
     "ci:tests": "pnpm run test:format && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit && pnpm run test:integration && pnpm run test:build && pnpm run bundle:check && pnpm run test:e2e",
     "ci:docs": "pnpm run test:docs",
-    "ci:all": "pnpm run ci",
     "dev": "pnpm -r --if-present dev",
     "build": "pnpm run --filter @fantasy-oscars/shared build && pnpm run --filter @fantasy-oscars/api build && pnpm run --filter @fantasy-oscars/web build",
     "test": "pnpm -r --if-present test",
@@ -71,22 +62,11 @@
     "db:down": "docker compose -f tooling/infra/docker-compose.yml down -v",
     "dev:local": "pnpm run db:up && pnpm run db:migrate && concurrently -k -n api,web \"pnpm -C apps/api run dev\" \"pnpm -C apps/web run dev\"",
     "dev:local:reset": "pnpm run db:down && pnpm run dev:local",
-    "ticket:comment": "node .github/scripts/comment-ticket.mjs",
-    "ticket:status": "node .github/scripts/ticket-status.mjs",
-    "ticket:pull": "node .github/scripts/ticket-pull.mjs",
-    "ticket:create": "node .github/scripts/ticket-create.mjs",
-    "ticket:import-roadmap": "node .github/scripts/roadmap-import.mjs",
-    "ticket:sync": "node .github/scripts/ticket-sync.mjs",
-    "ticket:deps": "node .github/scripts/ticket-deps.mjs",
-    "ticket:link-linear": "node .github/scripts/ticket-link-linear.mjs",
     "test:scripts": "node --test tests/unit/tooling/*.test.mjs",
     "lint:e2e": "pnpm exec eslint playwright.config.ts playwright.visual.config.ts tests/e2e tests/visual",
     "format:e2e": "pnpm exec prettier -w playwright.config.ts playwright.visual.config.ts tests/e2e tests/visual",
     "format:e2e:check": "pnpm exec prettier -c playwright.config.ts playwright.visual.config.ts tests/e2e tests/visual",
     "lint:scripts": "pnpm exec eslint .github/scripts",
     "format:check": "pnpm -r --if-present format:check"
-  },
-  "dependencies": {
-    "remark-gfm": "^4.0.1"
   }
 }

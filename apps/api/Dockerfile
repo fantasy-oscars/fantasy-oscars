@@ -34,5 +34,5 @@ EXPOSE 4000
 # Liveness only (no DB) so the probe doesn't keep a suspend-on-idle database awake.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
-# Same start path as Render: optional migrate-on-start (MIGRATE_ON_START), then the API.
+# Start path: optional migrate-on-start (MIGRATE_ON_START), then the API.
 CMD ["node", "scripts/start.mjs"]
