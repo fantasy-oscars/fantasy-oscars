@@ -38,6 +38,14 @@ export function nextConnectionState(
   }
 }
 
+/** True when the socket has just come back after being lost (not on the first connect). */
+export function isReconnection(
+  prev: DraftConnectionState,
+  next: DraftConnectionState
+): boolean {
+  return next === "connected" && (prev === "reconnecting" || prev === "disconnected");
+}
+
 export type DraftConnectionView = {
   state: DraftConnectionState;
   /** Whether the indicator should be on screen. */

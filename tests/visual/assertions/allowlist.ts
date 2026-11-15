@@ -28,23 +28,6 @@ const DRAFT_ROOM_SCREENS = [
   "draft-paused"
 ] as const;
 
-const CHUNK_3 =
-  "Fixed by draft-room-redesigns (chunk 3 of the draft room template): the phone completed screen moves the podium into the header tab.";
-const ROOM_DATE = "2026-11-10";
-
-const ROOM_ENTRIES: readonly AllowlistEntry[] = [
-  // The phone completed header keeps the podium in a taller bar until the tab replaces it.
-  {
-    check: "room-header-height",
-    screen: "draft-completed",
-    brand: "*",
-    mode: "*",
-    viewport: "mobile",
-    reason: CHUNK_3,
-    date: ROOM_DATE
-  }
-];
-
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
@@ -107,8 +90,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     match: "mantine-NumberInput-control",
     reason: "The field accepts typing on touch; the steppers are a convenience.",
     date: "2026-11-09"
-  },
-  ...ROOM_ENTRIES
+  }
 ];
 
 export type Scope = { screen: string; brand: string; mode: string; viewport: string };

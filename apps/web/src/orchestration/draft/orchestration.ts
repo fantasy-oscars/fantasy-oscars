@@ -145,8 +145,7 @@ export function useDraftRoomOrchestration(args: {
     categoryWeightByCategoryId,
     pointsForNominationId,
     seatScoreBySeatNumber,
-    resultsPodium,
-    resultsWinnerLabel
+    resultsPodium
   } = derived;
 
   const turn = useMemo(
@@ -376,7 +375,6 @@ export function useDraftRoomOrchestration(args: {
       canManageDraft,
       ceremonyStatus,
       isFinalResults,
-      resultsWinnerLabel,
       resultsPodium,
       scoringStrategyName,
       getNominationPoints: (nominationId: number) =>

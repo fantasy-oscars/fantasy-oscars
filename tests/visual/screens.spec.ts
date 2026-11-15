@@ -9,8 +9,17 @@ import {
   trackInFlight,
   signIn
 } from "./support/page";
+import { applyStressTheme, stressScreen } from "./assertions/stressRuns";
 
-for (const { brand, mode, viewport: viewportName, screen, snapshot } of allCaptures()) {
+for (const {
+  brand,
+  mode,
+  viewport: viewportName,
+  screen: base,
+  stress,
+  snapshot
+} of allCaptures()) {
+  const screen = stress ? stressScreen(base.id) : base;
   test.describe(`${brand.id} ${mode} ${viewportName}`, () => {
     test.use({
       viewport: VIEWPORTS[viewportName],
@@ -37,6 +46,7 @@ for (const { brand, mode, viewport: viewportName, screen, snapshot } of allCaptu
           ? page.getByText(screen.ready.text).first()
           : page.locator(screen.ready.selector).first();
       await expect(marker).toBeVisible();
+      if (stress) await applyStressTheme(page, inFlight);
       await screen.prepare?.(page);
       await settle(page, inFlight);
       expect(blocked, "requests that left the machine").toEqual([]);

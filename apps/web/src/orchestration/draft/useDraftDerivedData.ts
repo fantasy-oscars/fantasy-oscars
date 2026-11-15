@@ -13,8 +13,7 @@ import {
   buildSeatScoreBySeatNumber,
   buildWinnerCountBySeat,
   buildWinnerSet,
-  computeResultsPodium,
-  computeResultsWinnerLabel
+  computeResultsPodium
 } from "../../decisions/draft/scoring";
 
 /** Lookup tables, scoring and final-results standings derived from the snapshot. */
@@ -82,11 +81,6 @@ export function useDraftDerivedData(snapshot: Snapshot | null) {
     ]
   );
 
-  const resultsWinnerLabel = useMemo(
-    () => computeResultsWinnerLabel({ isFinalResults, resultsPodium }),
-    [isFinalResults, resultsPodium]
-  );
-
   return {
     drafted,
     winnerSet,
@@ -101,8 +95,7 @@ export function useDraftDerivedData(snapshot: Snapshot | null) {
     categoryWeightByCategoryId,
     pointsForNominationId,
     seatScoreBySeatNumber,
-    resultsPodium,
-    resultsWinnerLabel
+    resultsPodium
   };
 }
 

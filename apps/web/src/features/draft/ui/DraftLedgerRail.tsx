@@ -10,6 +10,7 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "./nomineeTooltip";
+import { useRailFocusReturn } from "./useRailFocusReturn";
 import type { DraftLedgerRow, DraftNomineeMeta } from "./types";
 
 export function DraftLedgerRail(props: {
@@ -24,6 +25,7 @@ export function DraftLedgerRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
+  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.ledgerRows.map((r) => r.roundPick)) }),
@@ -52,7 +54,7 @@ export function DraftLedgerRail(props: {
               type="button"
               className="dr-railClose"
               aria-label="Collapse draft history"
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 chevron_left
@@ -168,6 +170,7 @@ export function DraftLedgerRail(props: {
       ) : (
         <UnstyledButton
           type="button"
+          ref={toggleRef}
           className={["dr-railToggle", isPre ? "is-disabled" : ""]
             .filter(Boolean)
             .join(" ")}

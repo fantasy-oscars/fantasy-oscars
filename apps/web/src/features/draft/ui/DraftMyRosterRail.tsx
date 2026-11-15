@@ -9,6 +9,7 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "./nomineeTooltip";
+import { useRailFocusReturn } from "./useRailFocusReturn";
 import type { DraftNomineeMeta, DraftRosterPick } from "./types";
 
 export function DraftMyRosterRail(props: {
@@ -22,6 +23,7 @@ export function DraftMyRosterRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
+  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.myPicks.map((p) => p.roundPick)) }),
@@ -50,7 +52,7 @@ export function DraftMyRosterRail(props: {
               type="button"
               className="dr-railClose"
               aria-label="Collapse my roster"
-              onClick={() => setOpen(false)}
+              onClick={close}
             >
               <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
                 chevron_right
@@ -154,6 +156,7 @@ export function DraftMyRosterRail(props: {
       ) : (
         <UnstyledButton
           type="button"
+          ref={toggleRef}
           className={["dr-railToggle", isPre ? "is-disabled" : ""]
             .filter(Boolean)
             .join(" ")}

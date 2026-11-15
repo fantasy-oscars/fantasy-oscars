@@ -274,10 +274,10 @@ export async function waitForAnimationsIdle(page: Page) {
     }
     const frame = () =>
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    // The header buckle is positioned from measured widths; wait for them to hold
+    // The header tab is positioned from measured widths; wait for them to hold
     // still for several frames so its edge is not captured mid-layout.
     const rectKey = () =>
-      Array.from(document.querySelectorAll(".drh-buckle, .drh-tokenWrap"))
+      Array.from(document.querySelectorAll(".drh-tab, .drh-tokenWrap"))
         .map((el) => {
           const r = el.getBoundingClientRect();
           return `${r.left}|${r.top}|${r.width}|${r.height}`;
