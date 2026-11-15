@@ -7,6 +7,7 @@ import {
   buildNominationIconById,
   buildNominationLabelById
 } from "../../decisions/draft";
+import { isFinalResults as isFinalResultsDecision } from "../../decisions/draft/finalResults";
 import {
   buildCategoryWeightByCategoryId,
   buildPointsByNominationId,
@@ -40,8 +41,10 @@ export function useDraftDerivedData(snapshot: Snapshot | null) {
 
   const ceremonyStatus = snapshot?.ceremony_status ?? null;
   const scoringStrategyName = snapshot?.scoring_strategy_name ?? "fixed";
-  const isFinalResults =
-    (snapshot?.draft.status ?? null) === "COMPLETED" && ceremonyStatus === "COMPLETE";
+  const isFinalResults = isFinalResultsDecision({
+    draftStatus: snapshot?.draft.status,
+    ceremonyStatus
+  });
 
   const categoryWeightByCategoryId = useMemo(
     () => buildCategoryWeightByCategoryId(snapshot?.category_weights),

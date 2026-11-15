@@ -1,4 +1,6 @@
-export type CeremonyStatus = "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+import type { CeremonyStatus } from "./ceremonyLifecycle";
+
+export type { CeremonyStatus };
 
 export type CeremonyWorkflowStepId =
   "initialize" | "structure" | "populate" | "publish" | "results" | "archive";
