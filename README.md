@@ -49,6 +49,8 @@ pnpm run dev:local
 - Run the full suite (matches CI): `pnpm run ci`
 - Run non-Docker checks only: `pnpm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`)
 - Requires Docker for database-backed tests (Testcontainers launches an isolated Postgres)
+- Visual suite (component tolerances, structural assertions, Home and sample-card screenshots; needs Docker): `pnpm run test:visual`
+- Run only the checks a diff needs, against `origin/main`: `pnpm run ci:affected` (CI picks the same groups and gates on one `gate` job)
 
 Remove build outputs (`dist/` folders and `*.tsbuildinfo`): `pnpm run clean`
 

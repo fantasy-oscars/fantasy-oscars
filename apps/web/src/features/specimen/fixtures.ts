@@ -1,3 +1,5 @@
+import type { BannerRow } from "@/orchestration/chrome";
+
 // Static data for the specimen page. The long names mirror the visual suite's seed
 // (tests/visual/support/seed.ts and dataset.ts) so a brand's truncation is judged on
 // the same strings the real screens show.
@@ -46,6 +48,52 @@ export const STATUS_LABELS = [
   { label: "Complete", note: "complete" },
   { label: "Pre-draft", note: "neutral" }
 ] as const;
+
+export const SEASONS = [
+  {
+    id: 1,
+    ceremonyId: 1,
+    ceremonyCode: "golden-reel-2035",
+    ceremonyLabel: "Golden Reel Awards 2035",
+    statusLabel: "Drafting",
+    isNavigable: true
+  },
+  {
+    id: 2,
+    ceremonyId: 2,
+    ceremonyCode: "golden-reel-2034",
+    ceremonyLabel: "Golden Reel Awards 2034",
+    statusLabel: "Complete",
+    isNavigable: false
+  }
+];
+
+export const BANNERS: BannerRow[] = (
+  [
+    ["info", "Draft night moves to Saturday."],
+    ["warning", "Picks lock at **8:00 pm** tonight."],
+    ["success", "Your league is ready. [Open it](/leagues)."],
+    ["error", "Live results are delayed; refresh in a minute."]
+  ] as const
+).map(([variant, body], id) => ({
+  id,
+  title: variant,
+  body_markdown: body,
+  variant,
+  dismissible: true,
+  starts_at: null,
+  ends_at: null,
+  published_at: null
+}));
+
+export const MARKDOWN_SAMPLE = [
+  "## Draft rules",
+  "### Picks",
+  "#### Timer",
+  "Each pick has ninety seconds, then the room drafts for you.",
+  "- Snake order\n- Two picks in the last round",
+  "Read the [full rules](https://example.com/rules)."
+].join("\n\n");
 
 export const SELECT_OPTIONS = ["Best Picture", "Best Director", "Best Original Score"];
 

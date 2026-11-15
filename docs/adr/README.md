@@ -25,3 +25,4 @@ ADRs capture decisions that could be questioned later. They keep the project int
 - 0001 – Canonical Domain Model (Fantasy Oscars): [0001-domain-model.md](0001-domain-model.md)
 - 0002 – Public seasons as auto-managed league containers: [0002-public-seasons.md](0002-public-seasons.md)
 - 0003 – Layered visual testing: [0003-layered-visual-testing.md](0003-layered-visual-testing.md)
+- 0004 – Measured component tolerances: [0004-measured-component-tolerances.md](0004-measured-component-tolerances.md) (supersedes the screenshot tiers of 0003)

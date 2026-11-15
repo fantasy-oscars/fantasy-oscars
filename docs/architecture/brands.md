@@ -22,8 +22,8 @@ mode ("Theme default"), and there is at most one mode per base (`light` or
 fills both slots of its `BrandDefinition` with the same palette, so nothing
 downstream needs an optional slot. `BRAND_LABELS` (labels shown to people) and
 `STARTING_BRAND` (`refined-gold`, counted as discovered for everyone and never
-stored) sit beside it. `tests/visual/matrix.ts` takes `PRIMARY_MODE` from the
-catalog.
+stored) sit beside it. `tests/visual/matrix.ts` takes each brand's modes (`modesOf`)
+from the catalog.
 
 The resolved theme is exposed to styles as `data-brand="<slug>"` on the root
 element, and its mode as `data-mantine-color-scheme`, always the mode's base
@@ -57,14 +57,14 @@ Storage:
 
 The web stores, all in `localStorage` (`orchestration/brand/storage.ts`):
 
-| Key                          | Content                                           | Lifetime                                                            |
-| ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
-| `fo:account-appearance`      | `{ identity, brandPreference, appearance }`       | Written at every session resolve; removed on logout or expiry       |
-| `fo:anon-draw`               | `{ day, brand, rounds }`                          | The logged-out daily draw                                           |
-| `fo:discovered`              | array of ids                                      | Logged-out discoveries and signed-in ones until their save succeeds |
-| `fo:shuffle`                 | `{ identity, day, brand, rounds, seq }`           | Written by the shuffle; removed once `day` is not today             |
-| `fo:anon-id`                 | per-browser id                                    |                                                                     |
-| `mantine-color-scheme-value` | legacy light or dark, from the old toggle         | Read once at first login, then removed                              |
+| Key                          | Content                                     | Lifetime                                                            |
+| ---------------------------- | ------------------------------------------- | ------------------------------------------------------------------- |
+| `fo:account-appearance`      | `{ identity, brandPreference, appearance }` | Written at every session resolve; removed on logout or expiry       |
+| `fo:anon-draw`               | `{ day, brand, rounds }`                    | The logged-out daily draw                                           |
+| `fo:discovered`              | array of ids                                | Logged-out discoveries and signed-in ones until their save succeeds |
+| `fo:shuffle`                 | `{ identity, day, brand, rounds, seq }`     | Written by the shuffle; removed once `day` is not today             |
+| `fo:anon-id`                 | per-browser id                              |                                                                     |
+| `mantine-color-scheme-value` | legacy light or dark, from the old toggle   | Read once at first login, then removed                              |
 
 `fo:brand-session`, `fo:brand-last` and `fo:brand-preference` are retired and
 deleted at every boot.
@@ -190,15 +190,15 @@ when the production script, built with a font map shaped like the real build's,
 passes 8000 characters (about 7.7 KB today). The script only
 reads; it never writes except the anonymous id.
 
-| Situation                              | What the script reads                               | Paints                                         |
-| -------------------------------------- | --------------------------------------------------- | ---------------------------------------------- |
-| Signed in, same brand day              | `fo:account-appearance`                             | The saved theme and its resolved mode          |
-| Signed in, new brand day               | the snapshot's settings and previous draw           | Runs `drawDaily` itself, so the same result    |
-| Signed in, shuffled today              | plus `fo:shuffle` (same identity)                   | The shuffled theme                             |
-| Logged out, returning                  | `fo:anon-draw`, `fo:discovered`                     | The saved theme, or the day's draw             |
-| First visit, or a fresh device         | nothing (it cannot tell a session exists)           | The anon draw; the app corrects it once        |
-| Session expired                        | the snapshot (it cannot tell the cookie ended)      | The account's theme, as a guess                |
-| Script throws                          | nothing                                             | Unset attributes; the app corrects them        |
+| Situation                      | What the script reads                          | Paints                                      |
+| ------------------------------ | ---------------------------------------------- | ------------------------------------------- |
+| Signed in, same brand day      | `fo:account-appearance`                        | The saved theme and its resolved mode       |
+| Signed in, new brand day       | the snapshot's settings and previous draw      | Runs `drawDaily` itself, so the same result |
+| Signed in, shuffled today      | plus `fo:shuffle` (same identity)              | The shuffled theme                          |
+| Logged out, returning          | `fo:anon-draw`, `fo:discovered`                | The saved theme, or the day's draw          |
+| First visit, or a fresh device | nothing (it cannot tell a session exists)      | The anon draw; the app corrects it once     |
+| Session expired                | the snapshot (it cannot tell the cookie ended) | The account's theme, as a guess             |
+| Script throws                  | nothing                                        | Unset attributes; the app corrects them     |
 
 The snapshot, fresh-device and expired cases are guesses: after the session check
 the app resolves properly and corrects the attributes if the guess was wrong. A
@@ -394,7 +394,7 @@ Checks:
 - **CSS check** (`pnpm run tokens:check`): in rules whose selectors include `.dr-`, `.drh-`, `.drm-` or `.fo-tip-`, no `[data-brand`, no read of `--brand-button-shape`, `--brand-nav-active`, `--brand-rule-style` or `--brand-wordmark-two-tone`, and no brand id; in `apps/web/src/features/draft/`, no brand module import, `data-brand` read or brand-id comparison. The brand ids are read from `BRAND_IDS` in `packages/shared/src/brands.ts`.
 
 - **Width check** (assertion tier, `tests/visual/assertions/widthCheck.ts`, test "assertions fonts"): one page measures Inter (the reference), every family in `ROOM_WORK_FONTS` and, reported apart, the stress theme's Montserrat, in Chromium at 100 px, weight 500, kerning on. It loads each family from the files the app serves (Montserrat from the pinned fixture), confirms a face loaded and that the glyphs measured are the family's, not a fallback's, then applies the three rules of prescription 06, 5.6 (sentence width 0.85 to 1.10 of Inter, capitals width at most 1.10, x-height at least 0.49 em with x-height over cap height at most 0.80). Any violation fails the tier, so the list cannot drift from the rule.
-- **Stress theme** (`tests/visual/fixtures/stressBrand.ts`): a `BrandDefinition` at the far edge of every range (ring 3, drop 6, `glow` depth, `drop` tab edge, `radiusSm` 12, `radiusMd` 20, `borderWidth` 2, Montserrat as work font, a Cinzel `display` title voice, a double section rule). It is test-only: not in `BRAND_DEFINITIONS` or `BRAND_IDS`, read by no production code, and it borrows the default brand's slug so the blocks from `generateBrandCss([stress], stress)` land on the page the suite paints it over. The pinned `montserrat-latin.woff2` (SIL Open Font License 1.1; rebuilt by `fetch-stress-font.mjs`) is injected as a data URL. Montserrat passes the width check but is deliberately not in `ROOM_WORK_FONTS`, so `roomViolations(stress, { workFonts })` takes the extra family explicitly. The assertion tier runs it as brand `stress` (`assertions stress desktop` and `mobile`): the countdown, your-turn and completed screens through `rewriteDraftSnapshot` with 12 seats, 61-character names, no winners (every seat ties on the podium) and `long` on the clock, both modes. It has no screenshots yet.
+- **Stress theme** (`tests/visual/fixtures/stressBrand.ts`): a `BrandDefinition` at the far edge of every range (ring 3, drop 6, `glow` depth, `drop` tab edge, `radiusSm` 12, `radiusMd` 20, `borderWidth` 2, Montserrat as work font, a Cinzel `display` title voice, a double section rule). It is test-only: not in `BRAND_DEFINITIONS` or `BRAND_IDS`, read by no production code, and it borrows the default brand's slug so the blocks from `generateBrandCss([stress], stress)` land on the page the suite paints it over. The pinned `montserrat-latin.woff2` (SIL Open Font License 1.1; rebuilt by `fetch-stress-font.mjs`) is injected as a data URL. Montserrat passes the width check but is deliberately not in `ROOM_WORK_FONTS`, so `roomViolations(stress, { workFonts })` takes the extra family explicitly. The assertion tier runs it as brand `stress` (`assertions stress desktop` and `mobile`): the countdown, your-turn and completed screens through `rewriteDraftSnapshot` with 12 seats, 61-character names, no winners (every seat ties on the podium) and `long` on the clock, both modes. It has no screenshots.
 - **Room geometry assertions** (`roomFindings` in `tests/visual/assertions/pageChecks.ts`), on every draft screen in every brand, the stress runs included: pill left edges equal per rail (`.dr-rail-ledger .dr-ledgerRow .dr-pill`, `.dr-rail-roster .dr-rosterRow .dr-pill`); gaps between cards, counting the hard layers of their computed shadow, at least 12 px down and 10 px across (0.5 px tolerance); `.dr-header` 64 px tall; the `.drh-tab` checks (top at the header top allowing the hidden ring, lowest painted edge within 61 px, no descendant outside it, no `.drh-wing` intersecting it, width constant across two advanced clock steps on `draft-live-countdown`, where the clock text must also change at each step or the check reports `clock did not tick`; the suite freezes `setInterval`, so a step moves the page clock and runs the app's recorded one-second interval callbacks by hand, for this measurement only); icon colour 3:1 against the nearest opaque background for `.dr-frame .mi-icon` and `.dr-frame .gicon`, and the punchout circle 3:1 against its surface; the drafted-chip avatar `::before` equal to on-primary (measured on a probe carrying the chip's classes, because the chip lives in a closed tooltip); `.dr-pill` radius equal to `--brand-radius-sm`. The roster checks key on a `[data-roster-track]` attribute: its element children are the columns (at least 12 px apart, and at least 176 px wide on desktop), and the room's roster track must render that attribute. Findings are named by check (`room-rail-align`, `room-card-gap`, `room-tab-top`, and so on, listed in `RoomCheck`) so an allowlist entry can be specific. The rule that a `.drh-tab` and a roster track must exist is implemented behind `REQUIRE_ROOM_ELEMENTS` in `pageChecks.ts`, off until the tab and the roster track are built.
 
 ### Adding a brand
@@ -408,13 +408,16 @@ Checks:
    first). A single-mode theme fills `light` and `dark` of its definition with the
    same palette; `brandContract.test.ts` checks the catalog against the definitions.
 4. Run `pnpm --filter @fantasy-oscars/web run test:unit` and
-   `pnpm run test:visual`. Add visual coverage for the new brand to the matrix and
-   commit its baselines; the other brands' baselines must not change.
+   `pnpm run test:visual`. The tolerance and assertion tiers cover the new brand with
+   no files. Generate its Home and sample-card baselines (see "Visual Tests" in
+   `docs/standards/testing.md`); the other brands' baselines must not change.
 
-The visual matrix has a brand dimension (`BRANDS` in `tests/visual/matrix.ts`). The
-default brand (`default`, refined-gold) takes every screen and keeps unprefixed file
-names; other brands list the screens they capture (`KEY_SCREENS`, ten screens) and
-write `<brand>-<mode>-<viewport>.png`. The suite builds the web app with
+The visual matrix has a brand dimension (`BRANDS` in `tests/visual/matrix.ts`). Screenshots
+cover only Home and the specimen's sample card, for every brand in each mode from the
+catalog; other brands' files are named `<brand>-<mode>-<viewport>.png`. The tolerance tier
+(`tests/visual/tolerances/`) measures the specimen's components in every brand, mode and
+viewport against bounds derived from this contract, so a brand inside the contract passes
+without editing the spec. The suite builds the web app with
 `--mode visual` and `VITE_FO_ENABLE_ALL_BRANDS=1` so every defined brand can be
 selected. Each capture pins its theme and mode with `selectAppearance`
 (`tests/visual/support/page.ts`), which writes `fo:test-appearance` before the page

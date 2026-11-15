@@ -45,6 +45,7 @@
     "test:docs": "pnpm run docs:check",
     "ci:tests": "pnpm run test:format && pnpm run test:lint && pnpm run test:typecheck && pnpm run test:unit && pnpm run test:integration && pnpm run test:build && pnpm run bundle:check && pnpm run test:e2e",
     "ci:docs": "pnpm run test:docs",
+    "ci:affected": "node .github/scripts/ci-affected.mjs",
     "dev": "pnpm -r --if-present dev",
     "build": "pnpm run --filter @fantasy-oscars/shared build && pnpm run --filter @fantasy-oscars/api build && pnpm run --filter @fantasy-oscars/web build",
     "test": "pnpm -r --if-present test",

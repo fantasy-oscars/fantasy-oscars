@@ -5,6 +5,11 @@
   gap: var(--fo-section-gap);
 }
 
+.specimen-sample {
+  width: 28rem;
+  max-width: 100%;
+}
+
 .specimen-section {
   display: flex;
   flex-direction: column;

@@ -3,9 +3,12 @@ import { assertionCells } from "./matrix";
 import { STRESS_TEST_COUNT } from "./assertions/stressRuns";
 import { clearResults, reportResults } from "./assertions/results";
 import { seedVisual } from "./support/seed";
+import { BRANDS } from "./matrix";
+import { clearToleranceResults, reportToleranceResults } from "./tolerances/results";
 
 export default async function globalSetup() {
   clearResults();
+  clearToleranceResults();
   // A non-production build mode so every brand can be enabled (the flag is refused in
   // production). Only the brand gate differs from the e2e build.
   const stack = await startStack({
@@ -24,5 +27,6 @@ export default async function globalSetup() {
   return async () => {
     await stack.stop();
     reportResults(assertionCells().length + STRESS_TEST_COUNT);
+    reportToleranceResults(BRANDS.length * 2);
   };
 }
