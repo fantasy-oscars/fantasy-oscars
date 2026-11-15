@@ -71,19 +71,7 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 
 ## API Service (Render) — build, deploy, rollback, verify
 
-- **Build command (Render):**
-
-  ```bash
-  corepack enable
-  pnpm run render:install:api
-  pnpm run render:build:api
-  ```
-
-- **Start command (Render):**
-
-  ```bash
-  pnpm run render:start:api
-  ```
+- **Build and start:** the Docker image (`apps/api/Dockerfile`, see "Running the API in Docker" below). Production deploys run from `.github/workflows/deploy.yml`; see [vps.md](vps.md).
 
 - **Env var checklist (API):** `NODE_ENV=production`, `DATABASE_URL`, `AUTH_SECRET`, `CORS_ALLOWED_ORIGINS=https://fantasy-oscars.onrender.com`, optionally `REALTIME_ENABLED=true`. Render supplies `PORT`.
 - **Deploy:** push to `main` (Render auto-deploy). If auto-deploy is disabled, trigger “Manual Deploy” in Render UI for the API service.
@@ -100,14 +88,7 @@ For rollback and operational procedures, see `docs/runbooks/operational-runbook.
 
 ## Web App (Render static) — build, deploy, rollback, verify
 
-- **Build command (Render):**
-
-  ```bash
-  corepack enable
-  pnpm run render:install:web
-  pnpm run render:build:web
-  ```
-
+- **Build:** `pnpm --filter @fantasy-oscars/web build` (production images use `apps/web/Dockerfile`).
 - **Publish directory:** `apps/web/dist`
 - **Env var checklist (Web):** `VITE_API_BASE=https://fantasy-oscars-api-prod.onrender.com`
 - **Deploy:** push to `main` (auto-deploy). If auto-deploy is off, trigger manual deploy in Render UI for the static site.
@@ -155,7 +136,7 @@ docker run --rm -p 4000:4000 \
 ```
 
 - Node 24, production dependencies only, runs as the non-root `node` user, `NODE_ENV=production`, listens on `PORT` (default `4000`).
-- The default command is the same start path as Render: migrate (unless `MIGRATE_ON_START=false`), then the API.
+- The default command is the start path (`scripts/start.mjs`): migrate (unless `MIGRATE_ON_START=false`), then the API.
 - `HEALTHCHECK` calls `/health` (liveness, no DB) so the container probe does not keep a suspend-on-idle database awake. Use `/health/ready` for load-balancer/orchestrator readiness.
 - On SIGTERM the API stops accepting connections, stops the draft sweeper, closes Socket.IO (clients reconnect to another instance), waits up to `SHUTDOWN_TIMEOUT_MS` for in-flight requests, closes the Postgres pool and exits 0. Set the host's stop grace period above `SHUTDOWN_TIMEOUT_MS` plus about 7 seconds (pool end up to 5 s, Sentry flush up to 2 s).
 - Set `TRUST_PROXY` to the number of proxies in front of the container.
