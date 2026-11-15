@@ -7,10 +7,15 @@
 // image (and the linux/amd64 platform) is what makes baselines identical on macOS and
 // on the Linux CI runner.
 //
-// Usage: node tests/visual/run.mjs [--update] [--tier screenshots|assertions] [extra playwright args...]
-// --tier runs one half of the suite (CI runs them as two parallel jobs): `screenshots`
-// is the baseline comparisons plus the baseline orphan check, `assertions` the
-// structural and contrast checks with the stale-allowlist judgement. Default: both.
+// Usage: node tests/visual/run.mjs [--update] [--tier screenshots|assertions|tolerances] [extra playwright args...]
+// --tier runs one slice of the suite (CI runs them as parallel jobs):
+// - `screenshots`: baseline comparisons for Home (every brand x mode x viewport) and the
+//   sample card (every brand x mode, desktop), plus the baseline orphan check;
+// - `tolerances`: the specimen's components measured against declared bounds, with the
+//   stale-allowlist judgement;
+// - `assertions`: structural and contrast checks on every screen and the specimen, with
+//   the stale-allowlist judgement.
+// Default: all three.
 import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { realpathSync } from "node:fs";
@@ -24,12 +29,13 @@ const args = process.argv.slice(2);
 const update = args.includes("--update");
 const TIER_FILES = {
   screenshots: ["tests/visual/screens.spec.ts", "tests/visual/baselines.spec.ts"],
-  assertions: ["tests/visual/assertions.spec.ts"]
+  assertions: ["tests/visual/assertions.spec.ts"],
+  tolerances: ["tests/visual/tolerances.spec.ts"]
 };
 const tierAt = args.indexOf("--tier");
 const tier = tierAt >= 0 ? args[tierAt + 1] : undefined;
 if (tierAt >= 0 && !(tier in TIER_FILES)) {
-  console.error("--tier must be one of: screenshots, assertions");
+  console.error("--tier must be one of: screenshots, assertions, tolerances");
   process.exit(2);
 }
 const tierArgs = new Set(tierAt >= 0 ? [tierAt, tierAt + 1] : []);

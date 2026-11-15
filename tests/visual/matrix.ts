@@ -7,21 +7,25 @@ import { waitForAnimationsIdle } from "./support/page";
 import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
 
 /**
- * The visual matrix is data, in tiers that each test one thing:
+ * The visual matrix is data. The suite has three tiers that each test one thing; this
+ * file holds the screenshot tier's matrix and the screens the assertion tier walks.
  *
- * - layout: every screen in the default brand, light, both viewports (dark only for
- *   DARK_KEY_SCREENS). A screen's structure does not depend on the brand.
- * - specimen: one page of every component and state (`/__specimen`) per brand, in both
- *   modes at desktop and the brand's primary mode on a phone. A brand's look does not
- *   depend on the screen.
- * - brand-screens: the few screens whose composition differs per brand (BRAND_SCREENS),
- *   every brand, primary mode, at the viewports each names.
- * - stress: the draft screens that show the draft room stress theme's extremes
- *   (STRESS_SCREEN_CELLS), in the default brand's light mode with the theme painted over it.
+ * - screenshots (screens.spec.ts, baselines.spec.ts): only what a person judges by eye.
+ *   The bespoke Home page (`home-logged-in`) for every brand x mode x viewport, and one
+ *   sample card per brand x mode at desktop (SAMPLE_SELECTOR, a region of the specimen).
+ *   `home-logged-out` is not captured: it has the same layout and slots, differing in the
+ *   header's controls and the content of the seasons slot, both covered by the other tiers.
+ *   Modes come from the brand catalog, so a brand that declares one mode gets one.
+ * - tolerances (tolerances.spec.ts, tolerances/): every representative component on the
+ *   specimen (`/__specimen`) measured against declared bounds in every brand x mode x
+ *   viewport. No baselines.
+ * - assertions (assertions.spec.ts): structure, overflow, clipping, overlap and contrast
+ *   checks on every row of SCREENS, the specimen and the draft stress cells (see
+ *   assertionCells), in every brand, mode and viewport. No baselines.
  *
- * Add a row to SCREENS for a new screen (it joins the layout tier); add an entry to
- * BRANDS when a brand lands (its primary mode comes from the brand catalog, and
- * screens.spec.ts pins it with selectAppearance).
+ * Add a row to SCREENS for a new screen (it joins the assertion tier); add an entry to
+ * BRANDS when a brand lands (its modes come from the brand catalog, and screens.spec.ts
+ * pins each with selectAppearance). A new brand or mode adds Home and sample-card cells.
  */
 
 export type ScreenDef = {
@@ -376,23 +380,13 @@ export type ViewportName = keyof typeof VIEWPORTS;
  */
 export const KNOWN_PHONE_OVERFLOW: readonly string[] = [];
 
-/** Layout tier: screens that also get a dark-mode capture (dark changes colour, not structure). */
-export const DARK_KEY_SCREENS = [
-  "home-logged-in",
-  "league-detail",
-  "draft-live-your-turn",
-  "draft-completed",
-  "ceremony-detail",
-  "login"
-] as const;
-
 export type Brand = {
   /** Used in baseline file names; `default` keeps the unprefixed names. */
   id: string;
   slug: BrandId;
 };
 
-/** Brands multiply the tiers that are per brand. The default brand also owns the layout tier. */
+/** Brands multiply the tiers that are per brand. */
 export const BRANDS: readonly Brand[] = [
   { id: "default", slug: "refined-gold" },
   { id: "red-carpet", slug: "red-carpet" },
@@ -403,31 +397,12 @@ export const BRANDS: readonly Brand[] = [
   { id: "lightbox", slug: "lightbox" }
 ];
 
-/**
- * The mode each brand is designed in first ("Theme default"), from the brand catalog.
- * Phone specimens and the brand-screens tier capture only this mode.
- */
-export const PRIMARY_MODE = Object.fromEntries(
-  BRAND_CATALOG.map((entry) => [entry.id, entry.modes[0].base])
-) as Record<BrandId, Mode>;
-
-/**
- * Brand-screens tier: SCREENS captured for every brand in its primary mode, at the
- * viewports named (default: both). These are the screens whose composition differs per
- * brand: Home (logged out and in), the live draft room, its countdown tab (desktop) and
- * the final podium (both). The default brand's cells that the layout tier already takes
- * are captured once, by that tier.
- */
-export const BRAND_SCREENS: readonly {
-  id: string;
-  viewports?: readonly ViewportName[];
-}[] = [
-  { id: "home-logged-out" },
-  { id: "home-logged-in" },
-  { id: "draft-live-your-turn" },
-  { id: "draft-live-countdown", viewports: ["desktop"] },
-  { id: "draft-completed" }
-];
+/** The modes a brand offers, from the brand catalog (primary first); one per base. */
+export function modesOf(brand: Brand): readonly Mode[] {
+  const entry = BRAND_CATALOG.find((e) => e.id === brand.slug);
+  if (!entry) throw new Error(`brand ${brand.slug} is not in the brand catalog`);
+  return entry.modes.map((m) => m.base);
+}
 
 /**
  * The draft room stress theme's own brand: it borrows the default brand's slug (the
@@ -435,30 +410,25 @@ export const BRAND_SCREENS: readonly {
  */
 export const STRESS_BRAND: Brand = { id: "stress", slug: "refined-gold" };
 
-/** Stress tier: draft screens captured with the stress theme, light mode. */
-export const STRESS_SCREEN_CELLS: readonly {
-  id: string;
-  viewports: readonly ViewportName[];
-}[] = [
-  { id: "draft-live-your-turn", viewports: ["desktop", "mobile"] },
-  { id: "draft-live-countdown", viewports: ["desktop"] },
-  { id: "draft-completed", viewports: ["desktop", "mobile"] }
-];
-
-/** The component specimen page; a screen like any other, captured by its own tier. */
+/** The component specimen page; a screen like any other, walked by the assertion tier. */
 export const SPECIMEN_SCREEN: ScreenDef = {
   id: "specimen",
   persona: null,
   path: () => "/__specimen",
-  ready: { selector: '[data-specimen-ready="true"]' },
-  fullPage: true,
-  // Tall by design: every component family and state on one page. The cap only has to sit
-  // above the tallest capture (phone, about 17000 px), so the whole page is baselined.
-  maxHeight: 24000
+  ready: { selector: '[data-specimen-ready="true"]' }
 };
+
+/**
+ * The sample card: a region of the specimen (a card with heading, body, status chip, primary
+ * and secondary button and an input) stamped with `data-specimen-sample`. The screenshot
+ * tier captures this element, not the page.
+ */
+export const SAMPLE_SELECTOR = "[data-specimen-sample]";
 
 /** Tall pages are cut here so one long screen cannot dominate baseline size. */
 export const MAX_PAGE_HEIGHT = 2400;
+
+const VIEWPORT_NAMES = Object.keys(VIEWPORTS) as ViewportName[];
 
 /** Baseline file name within the screen's directory (no extension). */
 export function snapshotName(brand: Brand, mode: Mode, viewport: ViewportName) {
@@ -466,7 +436,7 @@ export function snapshotName(brand: Brand, mode: Mode, viewport: ViewportName) {
   return [...parts, mode, viewport].join("-");
 }
 
-export type Tier = "layout" | "specimen" | "brand-screens" | "stress";
+export type Tier = "home" | "sample";
 
 /** One screenshot: a screen in a brand, mode and viewport, and where its baseline lives. */
 export type Capture = {
@@ -475,21 +445,25 @@ export type Capture = {
   brand: Brand;
   mode: Mode;
   viewport: ViewportName;
-  /** The stress theme is painted over the page after it loads. */
-  stress: boolean;
+  /** Capture only this element (the sample card) instead of the page. */
+  region?: string;
   /** Path of the baseline under tests/visual/__screenshots__. */
   snapshot: [string, string];
 };
 
-const VIEWPORT_NAMES = Object.keys(VIEWPORTS) as ViewportName[];
-const DEFAULT = BRANDS[0]!;
+/** The Home screen the screenshot tier captures (a signed-in persona). */
+const HOME_SCREEN_ID = "home-logged-in";
+
+/** Directory of the sample card baselines. */
+const SAMPLE_DIR = "sample-card";
 
 function capture(
   tier: Tier,
   screen: ScreenDef,
   brand: Brand,
   mode: Mode,
-  viewport: ViewportName
+  viewport: ViewportName,
+  region?: string
 ): Capture {
   return {
     tier,
@@ -497,79 +471,35 @@ function capture(
     brand,
     mode,
     viewport,
-    stress: brand.id === STRESS_BRAND.id,
-    snapshot: [screen.id, `${snapshotName(brand, mode, viewport)}.png`]
+    region,
+    snapshot: [
+      tier === "sample" ? SAMPLE_DIR : screen.id,
+      `${snapshotName(brand, mode, viewport)}.png`
+    ]
   };
 }
 
-function viewportsOf(screen: ScreenDef) {
-  return VIEWPORT_NAMES.filter((v) => !screen.viewports || screen.viewports.includes(v));
-}
-
-function layoutCaptures(): Capture[] {
-  return SCREENS.flatMap((screen) =>
-    MODES.filter(
-      (mode) =>
-        mode === "light" || (DARK_KEY_SCREENS as readonly string[]).includes(screen.id)
-    ).flatMap((mode) =>
-      viewportsOf(screen).map((viewport) =>
-        capture("layout", screen, DEFAULT, mode, viewport)
-      )
-    )
-  );
-}
-
-function specimenCaptures(): Capture[] {
+function homeCaptures(): Capture[] {
+  const screen = SCREENS.find((s) => s.id === HOME_SCREEN_ID);
+  if (!screen) throw new Error(`${HOME_SCREEN_ID} is not in SCREENS`);
   return BRANDS.flatMap((brand) =>
-    MODES.flatMap((mode) =>
-      VIEWPORT_NAMES.filter(
-        (viewport) => viewport === "desktop" || mode === PRIMARY_MODE[brand.slug]
-      ).map((viewport) => capture("specimen", SPECIMEN_SCREEN, brand, mode, viewport))
+    modesOf(brand).flatMap((mode) =>
+      VIEWPORT_NAMES.map((viewport) => capture("home", screen, brand, mode, viewport))
     )
   );
 }
 
-function brandScreenCaptures(): Capture[] {
-  return BRAND_SCREENS.flatMap((entry) => {
-    const screen = SCREENS.find((s) => s.id === entry.id);
-    if (!screen) throw new Error(`brand screen ${entry.id} is not in SCREENS`);
-    return BRANDS.flatMap((brand) =>
-      viewportsOf(screen)
-        .filter((v) => !entry.viewports || entry.viewports.includes(v))
-        .map((viewport) =>
-          capture("brand-screens", screen, brand, PRIMARY_MODE[brand.slug], viewport)
-        )
-    );
-  });
+function sampleCaptures(): Capture[] {
+  return BRANDS.flatMap((brand) =>
+    modesOf(brand).map((mode) =>
+      capture("sample", SPECIMEN_SCREEN, brand, mode, "desktop", SAMPLE_SELECTOR)
+    )
+  );
 }
 
-function stressCaptures(): Capture[] {
-  return STRESS_SCREEN_CELLS.flatMap((entry) => {
-    const screen = SCREENS.find((s) => s.id === entry.id);
-    if (!screen) throw new Error(`stress screen ${entry.id} is not in SCREENS`);
-    return entry.viewports.map((viewport) =>
-      capture("stress", screen, STRESS_BRAND, MODES[0], viewport)
-    );
-  });
-}
-
-/**
- * Every screenshot the suite takes. A cell two tiers both name (the default brand's
- * primary-mode Home, say) is captured once, by the first tier.
- */
+/** Every screenshot the suite takes: Home, then the sample cards. */
 export function allCaptures(): Capture[] {
-  const seen = new Set<string>();
-  return [
-    ...layoutCaptures(),
-    ...specimenCaptures(),
-    ...brandScreenCaptures(),
-    ...stressCaptures()
-  ].filter((c) => {
-    const key = c.snapshot.join("/");
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return [...homeCaptures(), ...sampleCaptures()];
 }
 
 /**

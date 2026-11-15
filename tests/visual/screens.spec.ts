@@ -9,24 +9,22 @@ import {
   trackInFlight,
   signIn
 } from "./support/page";
-import { applyStressTheme, stressScreen } from "./assertions/stressRuns";
 
 for (const {
   brand,
   mode,
   viewport: viewportName,
-  screen: base,
-  stress,
+  screen,
+  region,
   snapshot
 } of allCaptures()) {
-  const screen = stress ? stressScreen(base.id) : base;
   test.describe(`${brand.id} ${mode} ${viewportName}`, () => {
     test.use({
       viewport: VIEWPORTS[viewportName],
       colorScheme: mode
     });
 
-    test(screen.id, async ({ page, context }) => {
+    test(region ? "sample-card" : screen.id, async ({ page, context }) => {
       const seed = readSeed();
       const blocked = await installNetworkGuards(context);
       const preferenceWrites = await selectAppearance(
@@ -46,7 +44,6 @@ for (const {
           ? page.getByText(screen.ready.text).first()
           : page.locator(screen.ready.selector).first();
       await expect(marker).toBeVisible();
-      if (stress) await applyStressTheme(page, inFlight);
       await screen.prepare?.(page);
       await settle(page, inFlight);
       expect(blocked, "requests that left the machine").toEqual([]);
@@ -59,6 +56,12 @@ for (const {
         expect(scrollWidth, "horizontal overflow at 390px").toBeLessThanOrEqual(
           VIEWPORTS.mobile.width
         );
+      }
+
+      if (region) {
+        // The region is one element; its own box is the capture, whatever the page height.
+        await expect(page.locator(region)).toHaveScreenshot(snapshot);
+        return;
       }
 
       const height = await page.evaluate(() => document.documentElement.scrollHeight);

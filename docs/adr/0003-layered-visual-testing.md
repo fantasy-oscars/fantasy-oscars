@@ -1,6 +1,6 @@
 # ADR 0003: Layered visual testing
 
-- Status: Accepted
+- Status: Accepted; the screenshot tiers (items 1 to 3 below) are superseded by [ADR 0004](0004-measured-component-tolerances.md)
 - Date: 2026-11-05
 
 ## Context
@@ -14,7 +14,7 @@ Pixel comparison also proves little about the properties that matter across the 
 
 ## Decision
 
-Replace the brute-force matrix with layers that each test one thing, in the same pinned Docker browser:
+Replace the brute-force matrix with layers that each test one thing, in the same pinned Docker browser. Superseded by ADR 0004: items 1 to 3 (layout tier, specimen captures, brand screens) were removed in favour of a tolerance tier and screenshots of Home and a sample card; items 4 and 5 stand.
 
 1. **Layout tier (screenshots, one brand).** Every row of `SCREENS` in the default brand (refined-gold), light mode, both viewports; dark mode only for `DARK_KEY_SCREENS`. 65 baselines.
 2. **Brand tier (specimen).** `/__specimen` renders the app's real components in every state with realistic seed data. Captured for every brand in both modes at desktop width and in the brand's primary mode at phone width: 21 baselines.
@@ -27,6 +27,8 @@ A test checks that every PNG under `tests/visual/__screenshots__/` is named by t
 Result: 122 baselines (from 358); 124 with the Appearance screen. Adding a screen costs about two screenshots (one row); adding a brand costs its tokens, three specimen captures plus Home and draft captures.
 
 ### Two CI jobs
+
+Superseded in part by ADR 0004: it replaces this CI arrangement with visual jobs chosen by diff and a single required `gate` check. The text below is the history as decided.
 
 The screenshot tiers (plus the baseline orphan check) run as the `visual` job and the assertion tier as the `visual-assertions` job, in parallel with identical setup. Locally `pnpm run test:visual` still runs both; `node tests/visual/run.mjs --tier screenshots|assertions` runs one. The stale-allowlist judgement belongs to the assertion job, which runs all 21 cells on 6 workers (the screenshot job uses 4). Neither job is a required status check.
 

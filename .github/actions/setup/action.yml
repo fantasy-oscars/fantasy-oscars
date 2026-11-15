@@ -1,0 +1,16 @@
+name: Setup workspace
+description: Node, pnpm via Corepack and a frozen-lockfile install. Run after checkout.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+    - name: Enable Corepack
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare pnpm@9.12.3 --activate
+    - name: Install
+      shell: bash
+      run: pnpm install --frozen-lockfile

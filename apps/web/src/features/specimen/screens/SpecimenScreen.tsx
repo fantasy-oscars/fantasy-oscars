@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  ActionIcon,
   Anchor,
   Box,
   Button,
@@ -10,11 +11,13 @@ import {
   NumberInput,
   Select,
   Stack,
+  Switch,
   Text,
   TextInput,
   Title,
   Tooltip
 } from "@ui";
+import { Markdown } from "@ui/Markdown";
 import { Notification } from "@ui/Notification";
 import { BRAND_CATALOG, BRAND_IDS, DARK_MODE } from "@fantasy-oscars/shared/brands";
 import { AppearanceSection } from "@/features/account/ui/AppearanceSection";
@@ -34,10 +37,13 @@ import { DraftMasonryBoard } from "@/features/draft/ui/DraftMasonryBoard";
 import { ActionCard, EmptyState, HeroCard, StandardCard } from "@/primitives";
 import { statusTone } from "@/decisions/statusTone";
 import { PageError } from "@/shared/page-state";
-import { StatusPill } from "@/shared/pills";
+import { StatusPill, WinnerChip } from "@/shared/pills";
+import { BannerStackScreen } from "@/app/chrome/screens/BannerStackScreen";
+import { LeagueSeasonsSection } from "@/features/leagues/ui/LeagueSeasonsSection";
 import "@/primitives/baseline.css";
 import "../specimen.css";
 import {
+  BANNERS,
   BOARD_COLUMNS,
   DISABLED_CARD_TITLE,
   DISABLED_PILLS,
@@ -45,12 +51,14 @@ import {
   FORCED_PILLS,
   HOVER_MATCH_IDS,
   LONG_FILM_TITLE,
+  MARKDOWN_SAMPLE,
   NAV_LINKS,
   PILL_CARD_TITLE,
   PILL_STATES,
   ICON_AUDIT_PILLS,
   ICON_DEFAULT_TITLE,
   ICON_PUNCHOUT_TITLE,
+  SEASONS,
   SELECT_OPTIONS,
   SPECIMEN_MARKER,
   SPECIMEN_USER,
@@ -58,6 +66,7 @@ import {
   STATUS_LABELS
 } from "../fixtures";
 import { forceStates, installForcedStateRules, type ForcedState } from "../forceStates";
+import { applySpecimenHooks, CELL_HOOK_ATTR, CELL_STATE_ATTR } from "../hooks";
 
 const noop = () => {};
 const noopAsync = async () => {};
@@ -66,6 +75,9 @@ const noopAsync = async () => {};
 function Cell(props: {
   label: string;
   force?: readonly ForcedState[];
+  /** Measurement hook (`component[:variant]`) and state of the cell's one measured element; see hooks.ts. */
+  hook?: string;
+  state?: string;
   /** Span every column of the grid (a sample wider than one column). */
   span?: boolean;
   children: ReactNode;
@@ -75,6 +87,7 @@ function Cell(props: {
       className="specimen-cell"
       data-specimen-cell=""
       data-force={props.force?.join(" ")}
+      {...{ [CELL_HOOK_ATTR]: props.hook, [CELL_STATE_ATTR]: props.state }}
       data-span={props.span ? "full" : undefined}
     >
       <Text component="span" className="specimen-label">
@@ -92,6 +105,35 @@ function Section(props: { title: string; wide?: boolean; children: ReactNode }) 
       <Box className={["specimen-grid", props.wide ? "is-wide" : ""].join(" ")}>
         {props.children}
       </Box>
+    </Box>
+  );
+}
+
+/**
+ * The sample card the screenshot tier captures per brand and mode: a heading, body text,
+ * a status chip, both button kinds and an input, in real components with fixed data.
+ * `data-specimen-sample` is the capture hook; it carries no measurement hook.
+ */
+function SampleCard() {
+  const { tone, mark } = statusTone("In progress");
+  return (
+    <Box className="specimen-sample" data-specimen-sample="">
+      <StandardCard>
+        <Stack gap="sm">
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Title variant="card">Friday Night Film Club</Title>
+            <StatusPill tone={tone} mark={mark}>
+              In progress
+            </StatusPill>
+          </Group>
+          <Text>Draft the nominees with friends and win on ceremony night.</Text>
+          <TextInput label="League name" defaultValue="Friday Night Film Club" />
+          <Group>
+            <Button variant="primary">Save</Button>
+            <Button variant="secondary">Cancel</Button>
+          </Group>
+        </Stack>
+      </StandardCard>
     </Box>
   );
 }
@@ -220,7 +262,13 @@ function AppearanceMatrix(props: { vertical: boolean }) {
   return (
     <>
       {cells.map((cell) => (
-        <Cell key={cell.id} label={cell.label}>
+        <Cell
+          key={cell.id}
+          label={cell.label}
+          // The first cell holds the real segmented controls; its first one is shown focused.
+          hook={cell.id === "random" ? "segmented" : undefined}
+          force={cell.id === "random" ? ["focus"] : undefined}
+        >
           <Box className={cell.listOpen ? "specimen-listOpen" : undefined}>
             <AppearanceSection
               {...base}
@@ -244,6 +292,7 @@ function ButtonMatrix() {
     { name: "default" },
     { name: "hover", force: ["hover"] },
     { name: "focus", force: ["focus"] },
+    { name: "active", force: ["active"] },
     { name: "disabled", disabled: true }
   ];
   return (
@@ -254,6 +303,8 @@ function ButtonMatrix() {
             key={`${variant}-${s.name}`}
             label={`${variant}, ${s.name}`}
             force={s.force}
+            hook={`button:${variant}`}
+            state={s.name}
           >
             <Button variant={variant} disabled={s.disabled}>
               {variant === "danger" ? "Delete league" : "Save changes"}
@@ -261,6 +312,21 @@ function ButtonMatrix() {
           </Cell>
         ))
       )}
+      {states.map((s) => (
+        <Cell
+          key={`icon-${s.name}`}
+          label={`icon, ${s.name}`}
+          force={s.force}
+          hook="icon-button"
+          state={s.name}
+        >
+          <ActionIcon aria-label="Open navigation" disabled={s.disabled}>
+            <Text component="span" className="mi-icon" aria-hidden="true">
+              menu
+            </Text>
+          </ActionIcon>
+        </Cell>
+      ))}
     </>
   );
 }
@@ -277,10 +343,17 @@ function FormMatrix() {
     { name: "error", error: "This field is required" },
     { name: "disabled", disabled: true }
   ];
+  const checkStates = [{ name: "selected" }, ...states];
   return (
     <>
       {states.map((s) => (
-        <Cell key={`text-${s.name}`} label={`input, ${s.name}`} force={s.force}>
+        <Cell
+          key={`text-${s.name}`}
+          label={`input, ${s.name}`}
+          force={s.force}
+          hook="input"
+          state={s.name}
+        >
           <TextInput
             label="League name"
             defaultValue={s.disabled ? "Friday Night Film Club" : undefined}
@@ -291,7 +364,13 @@ function FormMatrix() {
         </Cell>
       ))}
       {states.map((s) => (
-        <Cell key={`select-${s.name}`} label={`select, ${s.name}`} force={s.force}>
+        <Cell
+          key={`select-${s.name}`}
+          label={`select, ${s.name}`}
+          force={s.force}
+          hook="select"
+          state={s.name}
+        >
           <Select
             label="Category"
             data={SELECT_OPTIONS}
@@ -302,7 +381,13 @@ function FormMatrix() {
         </Cell>
       ))}
       {states.map((s) => (
-        <Cell key={`number-${s.name}`} label={`number input, ${s.name}`} force={s.force}>
+        <Cell
+          key={`number-${s.name}`}
+          label={`number input, ${s.name}`}
+          force={s.force}
+          hook="number-input"
+          state={s.name}
+        >
           <NumberInput
             label="Pick timer (seconds)"
             defaultValue={90}
@@ -311,14 +396,50 @@ function FormMatrix() {
           />
         </Cell>
       ))}
-      {states.map((s) => (
-        <Cell key={`check-${s.name}`} label={`checkbox, ${s.name}`} force={s.force}>
+      {checkStates.map((s) => (
+        <Cell
+          key={`check-${s.name}`}
+          label={`checkbox, ${s.name}`}
+          force={s.force}
+          hook="checkbox"
+          state={s.name}
+        >
           <Checkbox
             label="Allow auto-draft"
-            defaultChecked={s.name !== "default"}
+            defaultChecked={s.name === "selected"}
             error={s.error}
             disabled={s.disabled}
           />
+        </Cell>
+      ))}
+    </>
+  );
+}
+
+/** The switch in the states its skin changes (the segmented control is measured in the appearance cells). */
+function SelectionMatrix() {
+  const switches: Array<{
+    name: string;
+    force?: ForcedState[];
+    checked?: boolean;
+    disabled?: boolean;
+  }> = [
+    { name: "default" },
+    { name: "selected", checked: true },
+    { name: "focus", force: ["focus"] },
+    { name: "disabled", disabled: true }
+  ];
+  return (
+    <>
+      {switches.map((s) => (
+        <Cell
+          key={`switch-${s.name}`}
+          label={`switch, ${s.name}`}
+          force={s.force}
+          hook="switch"
+          state={s.name}
+        >
+          <Switch label="Auto-draft" defaultChecked={s.checked} disabled={s.disabled} />
         </Cell>
       ))}
     </>
@@ -569,10 +690,15 @@ export function SpecimenScreen() {
       const states = (cell.getAttribute("data-force") ?? "").split(" ").filter(Boolean);
       if (target) forceStates(target, states as ForcedState[], cell);
     }
+    // Nav links are forced one by one: the first idle link hovered, the next focused.
+    const idleLinks = root.querySelectorAll(".site-nav .nav-link:not(.active)");
+    if (idleLinks[0]) forceStates(idleLinks[0], ["hover"], root);
+    if (idleLinks[1]) forceStates(idleLinks[1], ["focus"], root);
     for (const pill of FORCED_PILLS) {
       const target = root.querySelector(`[aria-label="${pill.label}"]`);
       if (target) forceStates(target, pill.states, target.closest(".dr-card") ?? root);
     }
+    applySpecimenHooks(root);
     setReady(true);
   }, []);
 
@@ -585,6 +711,8 @@ export function SpecimenScreen() {
         data-specimen-ready={ready ? "true" : "false"}
       >
         <Title variant="page">Component specimen</Title>
+
+        <SampleCard />
 
         <Box className="specimen-section">
           <Title variant="section">Header and navigation</Title>
@@ -619,7 +747,7 @@ export function SpecimenScreen() {
               </Box>
             </Cell>
           ) : (
-            <Cell label="navigation, active item">
+            <Cell label="navigation, active item" hook="nav">
               <Box className="specimen-headerCell">
                 <ShellPrimaryNav
                   navMode="inline"
@@ -629,7 +757,7 @@ export function SpecimenScreen() {
               </Box>
             </Cell>
           )}
-          <Cell label="wordmark">
+          <Cell label="wordmark" hook="wordmark">
             <Wordmark />
           </Cell>
         </Box>
@@ -660,6 +788,10 @@ export function SpecimenScreen() {
           <FormMatrix />
         </Section>
 
+        <Section title="Selection controls">
+          <SelectionMatrix />
+        </Section>
+
         <Box className="specimen-section">
           <Title variant="section">Nominee pills</Title>
           <PillBoard />
@@ -670,7 +802,7 @@ export function SpecimenScreen() {
         </Section>
 
         <Section title="Cards" wide>
-          <Cell label="standard">
+          <Cell label="standard" hook="card:standard">
             <StandardCard>
               <Stack gap="var(--fo-space-xs)">
                 <Title variant="card">Friday Night Film Club</Title>
@@ -678,13 +810,21 @@ export function SpecimenScreen() {
               </Stack>
             </StandardCard>
           </Cell>
-          <Cell label="hero">
+          <Cell label="hero" hook="card:hero">
             <HeroCard>
               <Title variant="hero">Fantasy Oscars</Title>
               <Text variant="helper" className="baseline-heroTagline">
                 Draft the nominees. Win on ceremony night.
               </Text>
             </HeroCard>
+          </Cell>
+          <Cell label="season" hook="card:season">
+            <LeagueSeasonsSection
+              leagueId={1}
+              leagueName="Friday Night Film Club"
+              canCreateSeason
+              seasons={SEASONS}
+            />
           </Cell>
           <Cell label="updates">
             <StandardCard className="baseline-updatesCard">
@@ -695,7 +835,7 @@ export function SpecimenScreen() {
               </Stack>
             </StandardCard>
           </Cell>
-          <Cell label="action">
+          <Cell label="action" hook="card:action">
             <ActionCard>
               <Title variant="card">Start a league</Title>
             </ActionCard>
@@ -706,7 +846,7 @@ export function SpecimenScreen() {
           {STATUS_LABELS.map(({ label, note }) => {
             const { tone, mark } = statusTone(label);
             return (
-              <Cell key={label} label={note}>
+              <Cell key={label} label={note} hook={`chip:${note}`}>
                 <Group>
                   <StatusPill tone={tone} mark={mark}>
                     {label}
@@ -715,10 +855,15 @@ export function SpecimenScreen() {
               </Cell>
             );
           })}
+          <Cell label="winner" hook="chip:winner">
+            <Group>
+              <WinnerChip />
+            </Group>
+          </Cell>
         </Section>
 
         <Section title="Overlays" wide>
-          <Cell label="modal">
+          <Cell label="modal" hook="modal">
             <Box className="specimen-frame is-tall">
               <Modal
                 opened
@@ -742,7 +887,7 @@ export function SpecimenScreen() {
               </Modal>
             </Box>
           </Cell>
-          <Cell label="menu">
+          <Cell label="menu" hook="menu">
             {/* Tall: the phone's 44px items need the room. */}
             <Box className="specimen-frame is-tall">
               <Menu
@@ -760,14 +905,15 @@ export function SpecimenScreen() {
                 <Menu.Dropdown>
                   <Menu.Label>Draft</Menu.Label>
                   <Menu.Item>Pause draft</Menu.Item>
-                  <Menu.Item>Copy invite link</Menu.Item>
+                  {/* Held in its hover state by class: the menu re-renders as it positions. */}
+                  <Menu.Item className="fo-force-hover">Copy invite link</Menu.Item>
                   <Menu.Divider />
                   <Menu.Item color="red">Cancel draft</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
             </Box>
           </Cell>
-          <Cell label="toast">
+          <Cell label="toast" hook="toast">
             <Box className="specimen-frame is-toast">
               <Notification title="Pick confirmed" withCloseButton onClose={noop}>
                 {LONG_FILM_TITLE} is yours.
@@ -795,11 +941,20 @@ export function SpecimenScreen() {
         <DraftSlice />
 
         <Section title="Empty and error states" wide>
-          <Cell label="empty state">
+          <Cell label="empty state" hook="empty-state">
             <EmptyState>No leagues yet. Create one to get started.</EmptyState>
           </Cell>
           <Cell label="error state">
             <PageError message="We could not load this league." requestId="req-7f3a91" />
+          </Cell>
+        </Section>
+
+        <Section title="Banners and content" wide>
+          <Cell label="banners" span hook="banners">
+            <BannerStackScreen banners={BANNERS} onDismiss={noop} />
+          </Cell>
+          <Cell label="markdown" hook="markdown">
+            <Markdown markdown={MARKDOWN_SAMPLE} />
           </Cell>
         </Section>
 

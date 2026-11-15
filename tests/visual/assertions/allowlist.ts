@@ -31,6 +31,17 @@ const DRAFT_ROOM_SCREENS = [
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
+    screen: "specimen",
+    brand: "*",
+    mode: "*",
+    viewport: "mobile",
+    match: "Dismiss announcement",
+    reason:
+      "The announcement banner's close button is Mantine's 20px default on a phone. Found when the specimen gained the banner variants; the fix (a 44px close target in the banner skin) is follow-up banner-dismiss-touch-target.",
+    date: "2026-11-15"
+  },
+  {
+    check: "touch-target",
     screen: ["admin-films", "specimen"],
     brand: "*",
     mode: "*",

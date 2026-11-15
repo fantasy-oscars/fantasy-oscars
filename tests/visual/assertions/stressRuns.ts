@@ -16,8 +16,7 @@ import { settle } from "../support/page";
 
 // The draft room stress theme (fixtures/stressBrand.ts) in the assertion tier: the same
 // geometry, overflow, clipped-text, overlap and contrast checks, run on the draft screens
-// that make its extremes visible. The screenshot tier takes five baselines of the same
-// screens (the `stress` cells of matrix.ts), through `stressScreen` and `applyStressTheme`.
+// that make its extremes visible.
 
 export { STRESS_BRAND };
 

@@ -1,69 +1,126 @@
 name: CI
 
+# Which jobs run is chosen by the diff (.github/scripts/affected.mjs). Pushes to main and
+# merge queue runs always select everything. Branch protection requires only `gate`.
 on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      checks: ${{ steps.affected.outputs.checks }}
+      api: ${{ steps.affected.outputs.api }}
+      web: ${{ steps.affected.outputs.web }}
+      visual: ${{ steps.affected.outputs.visual }}
+      e2e: ${{ steps.affected.outputs.e2e }}
+      docs: ${{ steps.affected.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Select groups
+        id: affected
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF"
+            node .github/scripts/affected.mjs "origin/$BASE_REF" --github
+          else
+            node .github/scripts/affected.mjs --all --github
+          fi
+
+  checks:
+    # Format, lint, typecheck and unit tests: fast, so they run for any code change.
+    needs: changes
+    if: needs.changes.outputs.checks == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: Enable Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.12.3 --activate
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
+      - name: Format
+        run: pnpm run test:format
+      - name: Lint
+        run: pnpm run test:lint
+      - name: Typecheck
+        run: pnpm run test:typecheck
+      - name: Unit tests
+        run: pnpm run test:unit
+
+  integration:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build shared package
+        run: pnpm --filter @fantasy-oscars/shared build
+      - name: API integration tests
+        run: pnpm run test:integration
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build
+        run: pnpm run test:build
+      - name: Bundle size budget
+        run: pnpm run bundle:check
+
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - name: Install Playwright (Chromium)
         run: pnpm exec playwright install --with-deps chromium
-      - name: CI
-        run: pnpm run ci:tests
+      - name: Build shared package
+        run: pnpm --filter @fantasy-oscars/shared build
+      - name: End-to-end tests
+        run: pnpm run test:e2e
+
   docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: Enable Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.12.3 --activate
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Docs Check
         run: pnpm run ci:docs
-  visual:
-    # Pixel-compares the screenshot tiers (layout, specimen, brand screens) against
-    # tests/visual/__screenshots__ and checks for orphaned baselines. Chromium runs in the
-    # pinned Playwright Docker image (see docs/standards/testing.md), so the runner needs
-    # no browser install. Not part of `pnpm run ci`: it needs the Docker daemon on the host
-    # and takes minutes on a laptop; it is a PR gate here instead. Runs in parallel with
-    # `visual-assertions`.
+
+  # The three visual jobs run Chromium in the pinned Playwright Docker image (see
+  # docs/standards/testing.md), so the runner needs no browser install. They are not part
+  # of `pnpm run ci`: they need the Docker daemon on the host and take minutes on a
+  # laptop. They run in parallel.
+  visual-screenshots:
+    # Pixel-compares Home and the sample card against tests/visual/__screenshots__ and
+    # checks for orphaned baselines.
+    needs: changes
+    if: needs.changes.outputs.visual == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: Enable Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.12.3 --activate
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Build shared package
         run: pnpm --filter @fantasy-oscars/shared build
       - name: Visual regression (screenshots)
@@ -79,25 +136,48 @@ jobs:
             playwright-report/visual
             test-results/visual
           retention-days: 7
-  visual-assertions:
-    # Structural, touch-target and colour-contrast checks on every screen and the specimen
-    # in every brand, both modes and both viewports, plus the stale-allowlist judgement.
-    # Same setup as `visual`; no baselines.
+
+  visual-tolerances:
+    # Measures each representative component on the specimen in every brand, mode and
+    # viewport against the bounds and relations in tests/visual/tolerances/spec.ts.
+    needs: changes
+    if: needs.changes.outputs.visual == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
+      - name: Build shared package
+        run: pnpm --filter @fantasy-oscars/shared build
+      - name: Visual tolerances
+        run: node tests/visual/run.mjs --tier tolerances
+        env:
+          VISUAL_WORKERS: 4
+      - name: Upload visual tolerance report
+        if: failure()
+        uses: actions/upload-artifact@v7
         with:
-          node-version: 24
-      - name: Enable Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.12.3 --activate
-      - name: Install
-        run: pnpm install --frozen-lockfile
+          name: visual-tolerances-report
+          path: |
+            playwright-report/visual
+            test-results/visual
+          retention-days: 7
+
+  visual-assertions:
+    # Structural, touch-target and colour-contrast checks on every screen and the specimen
+    # in every brand, both modes and both viewports, plus the stale-allowlist judgement.
+    # No baselines.
+    needs: changes
+    if: needs.changes.outputs.visual == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - name: Build shared package
         run: pnpm --filter @fantasy-oscars/shared build
       - name: Visual assertions
@@ -115,3 +195,31 @@ jobs:
             playwright-report/visual
             test-results/visual
           retention-days: 7
+
+  gate:
+    # The single required check. Passes only when `changes` succeeded and every other job
+    # either succeeded or was skipped by the selection; a failed, cancelled or otherwise
+    # unfinished job fails it.
+    if: always()
+    needs:
+      - changes
+      - checks
+      - integration
+      - build
+      - e2e
+      - docs
+      - visual-screenshots
+      - visual-tolerances
+      - visual-assertions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate needed jobs
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e '.changes.result == "success"' > /dev/null \
+            || { echo "changes did not succeed; selection is unknown"; exit 1; }
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null \
+            || { echo "a needed job failed or was cancelled"; exit 1; }
