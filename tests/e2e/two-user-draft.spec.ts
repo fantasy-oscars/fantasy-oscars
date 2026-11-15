@@ -187,4 +187,20 @@ test("two users run a league from invite to final standings", async ({ browser }
       page.getByText("Winner", { exact: true }).locator("xpath=..")
     ).toContainText(leader);
   }
+
+  // Archiving the finalized ceremony keeps the draft room in its final-results state.
+  await adminPost(`/admin/ceremonies/${process.env.E2E_CEREMONY_ID}/archive`, {}, token);
+  for (const { page } of players) {
+    await page.reload();
+    await expect(page.locator('[data-results="final"]').first()).toBeVisible();
+    await expect(page.locator('[data-results="live"]')).toHaveCount(0);
+    for (const [name, score] of scores) {
+      await expect(
+        page.getByLabel(`${score} winners`).locator("xpath=preceding-sibling::p[1]")
+      ).toHaveText(name);
+    }
+    await expect(
+      page.getByText("Winner", { exact: true }).locator("xpath=..")
+    ).toContainText(leader);
+  }
 });
