@@ -1,6 +1,7 @@
 import type { Router } from "express";
 import type { DbClient } from "../../data/db.js";
 import { registerAdminCeremonyArchiveRoute } from "./ceremonyArchive.js";
+import { registerAdminCeremonyDatesUpdateRoute } from "./ceremonyDatesUpdate.js";
 import { registerAdminCeremonyDraftBoardRoute } from "./ceremonyDraftBoard.js";
 import { registerAdminCeremonyDeleteRoute } from "./ceremonyDelete.js";
 import { registerAdminCeremonyDraftLockStatusRoute } from "./ceremonyDraftLockStatus.js";
@@ -26,4 +27,5 @@ export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
   registerAdminCeremoniesCreateRoute({ router, client });
   registerAdminCeremoniesDraftCreateRoute({ router, client });
   registerAdminCeremoniesUpdateRoute({ router, client });
+  registerAdminCeremonyDatesUpdateRoute({ router, client });
 }

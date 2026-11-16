@@ -1,6 +1,6 @@
 # ADR 0005: Series competition domain model
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-16
 
 ## Context

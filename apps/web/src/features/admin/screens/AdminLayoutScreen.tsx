@@ -13,11 +13,13 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
   const gameContentActive =
     location.pathname.startsWith("/admin/ceremonies") ||
     location.pathname.startsWith("/admin/category-templates") ||
-    location.pathname.startsWith("/admin/films");
+    location.pathname.startsWith("/admin/films") ||
+    location.pathname.startsWith("/admin/series");
   const gameContentOpen = isGameContentOpen;
   const ceremoniesActive = location.pathname.startsWith("/admin/ceremonies");
   const templatesActive = location.pathname.startsWith("/admin/category-templates");
   const filmsActive = location.pathname.startsWith("/admin/films");
+  const seriesActive = location.pathname.startsWith("/admin/series");
 
   function handleGameContentBlur(event: FocusEvent<HTMLDivElement>) {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -83,6 +85,12 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
                       className={`nav-link admin-navDrawerLink${filmsActive ? " active" : ""}`}
                     >
                       Films
+                    </NavLink>
+                    <NavLink
+                      to="/admin/series"
+                      className={`nav-link admin-navDrawerLink${seriesActive ? " active" : ""}`}
+                    >
+                      Series
                     </NavLink>
                   </Box>
                 </Box>

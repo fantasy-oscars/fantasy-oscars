@@ -182,9 +182,11 @@ describe("auth sessions", () => {
     expect(claims.sid).toBe(rows[0]!.id);
     expect(rows[0]!.revoked_at).toBeNull();
 
+    // expires_at comes from the database clock (now() + 30 days) and is compared
+    // with this process's clock, so allow the same small skew as the JWT check.
     const ttl = new Date(rows[0]!.expires_at).getTime() - Date.now();
     expect(ttl).toBeGreaterThan(29.9 * DAY_MS);
-    expect(ttl).toBeLessThanOrEqual(30 * DAY_MS);
+    expect(ttl).toBeLessThanOrEqual(30 * DAY_MS + 2000);
     // JWT exp is aligned with the session expiry.
     expect(
       Math.abs(Number(claims.exp) * 1000 - new Date(rows[0]!.expires_at).getTime())
