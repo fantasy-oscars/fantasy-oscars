@@ -180,9 +180,10 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       return r.width > 1 && r.height > 1 && onscreen(r);
     });
     const open = (el: Element) => el.closest('[role="menu"], [role="listbox"]') !== null;
-    // Stacked by design: fixed or sticky chrome paints over flow content, content in a
-    // scroll container passes under anything outside it, and a number input's steppers
-    // sit inside its field.
+    // Stacked by design: fixed or sticky chrome paints over flow content, an open tooltip
+    // floats over the page (it ignores the pointer, so hit testing cannot see it on top),
+    // content in a scroll container passes under anything outside it, and a number
+    // input's steppers sit inside its field.
     const pinned = (el: Element) => {
       for (let n: Element | null = el; n; n = n.parentElement) {
         const position = getComputedStyle(n).position;
@@ -197,6 +198,7 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
       }
       return null;
     };
+    const inTooltip = (el: Element) => el.closest('[role="tooltip"]') !== null;
     const sitsOver = (top: Element, under: Element) => {
       if (pinned(top) && !pinned(under)) return true;
       const container = scrollParent(under);
@@ -216,6 +218,7 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
           a.contains(b) ||
           b.contains(a) ||
           (open(a) && open(b)) ||
+          inTooltip(a) !== inTooltip(b) ||
           inOneStepperField(a, b)
         )
           continue;
@@ -329,11 +332,12 @@ const CLOCK_TEXT_SELECTOR = ".drh-tabHeadlineText";
 
 /**
  * The nominee tooltip card's drafted-by chip, on every `[data-specimen-tip]` sample (the
- * longest real category name and a stress-length one). The chip's box must not meet any
- * line box of the category name (read from the text's own client rects, not the header
- * element's), the name must stay inside the card, the chip must lie inside every ancestor
- * that clips it, and the card must lie inside the viewport. Fails when no sample or no
- * chip is found, so the check cannot pass vacuously.
+ * longest real category name and a stress-length one). The chip hangs off the card's
+ * lower-right corner: its bottom is below the card's, its right edge inside it. Its box
+ * must not meet any line box of the category name or the TMDB attribution (read from the
+ * text's own client rects) nor the TMDB logo, the name must stay inside the card, the chip
+ * must lie inside every ancestor that clips it, and the card must lie inside the viewport.
+ * Fails when no sample or no chip is found, so the check cannot pass vacuously.
  */
 export async function tooltipChipFindings(page: Page): Promise<Finding[]> {
   return page.evaluate(() => {
@@ -375,6 +379,43 @@ export async function tooltipChipFindings(page: Page): Promise<Finding[]> {
         if (r.left < cardRect.left - EPS || r.right > cardRect.right + EPS) {
           fail(`${name}: category text line ${box(r)} leaves the card ${box(cardRect)}`);
         }
+      }
+      const hits = (r: DOMRect) =>
+        r.left < chipRect.right - EPS &&
+        r.right > chipRect.left + EPS &&
+        r.top < chipRect.bottom - EPS &&
+        r.bottom > chipRect.top + EPS;
+      const attribution = sample.querySelector<HTMLElement>(".fo-tip-attribution");
+      const logo = sample.querySelector<HTMLElement>(".fo-tip-tmdbLink");
+      if (!attribution || !logo) {
+        fail(`${name}: TMDB attribution or logo missing`);
+      } else {
+        const attrRange = document.createRange();
+        attrRange.selectNodeContents(attribution);
+        for (const r of attrRange.getClientRects()) {
+          if (r.width > 0 && hits(r)) {
+            fail(`${name}: chip ${box(chipRect)} covers attribution line ${box(r)}`);
+          }
+        }
+        const logoRect = logo.getBoundingClientRect();
+        if (hits(logoRect)) {
+          fail(`${name}: chip ${box(chipRect)} covers the TMDB logo ${box(logoRect)}`);
+        }
+      }
+      if (chipRect.bottom <= cardRect.bottom + EPS) {
+        fail(
+          `${name}: chip ${box(chipRect)} does not hang below the card ${box(cardRect)}`
+        );
+      }
+      if (chipRect.top >= cardRect.bottom - EPS) {
+        fail(
+          `${name}: chip ${box(chipRect)} is detached below the card ${box(cardRect)}`
+        );
+      }
+      if (chipRect.right > cardRect.right + EPS) {
+        fail(
+          `${name}: chip ${box(chipRect)} sticks out right of the card ${box(cardRect)}`
+        );
       }
       // The chip must be fully visible: inside each clipping ancestor and the viewport.
       for (let el = chip.parentElement; el; el = el.parentElement) {
