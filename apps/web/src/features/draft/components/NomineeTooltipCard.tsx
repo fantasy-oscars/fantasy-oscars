@@ -138,31 +138,16 @@ export function NomineeTooltipCard(props: {
     filmTitle && filmYear ? `${filmTitle} (${filmYear})` : (filmTitle ?? null);
 
   return (
-    <Box className="fo-tip" role="tooltip">
+    <Box
+      className={["fo-tip", showDraftedChip ? "has-draftedChip" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      role="tooltip"
+    >
       <Box className="fo-tip-bar fo-tip-header">
         <Text component="span" className="fo-tip-barText">
           {categoryName}
         </Text>
-        {showDraftedChip ? (
-          <Box
-            className="fo-tip-draftedChip"
-            aria-label={`Drafted by ${draftedByLabel} ${draftedRoundPick}`}
-          >
-            <Box className="fo-tip-draftedChipLeft">
-              <Box className="fo-tip-draftedChipAvatar" aria-hidden="true">
-                <AnimalAvatarIcon avatarKey={draftedByAvatarKey} size="sm" />
-              </Box>
-              <Text
-                className="fo-tip-draftedChipName"
-                lineClamp={1}
-                title={draftedByLabel ?? undefined}
-              >
-                {draftedByLabel}
-              </Text>
-            </Box>
-            <Text className="fo-tip-draftedChipPick">{draftedRoundPick}</Text>
-          </Box>
-        ) : null}
       </Box>
 
       <Box className="fo-tip-body">
@@ -278,9 +263,6 @@ export function NomineeTooltipCard(props: {
       </Box>
 
       <Box className="fo-tip-bar fo-tip-footer">
-        <Text component="span" className="fo-tip-attribution">
-          Data provided by TMDB
-        </Text>
         <a
           className="fo-tip-tmdbLink"
           href="https://www.themoviedb.org"
@@ -290,6 +272,29 @@ export function NomineeTooltipCard(props: {
         >
           <TmdbLogo className="fo-tip-tmdbLogo" />
         </a>
+        <Text component="span" className="fo-tip-attribution">
+          Data provided by TMDB
+        </Text>
+        {showDraftedChip ? (
+          <Box
+            className="fo-tip-draftedChip"
+            aria-label={`Drafted by ${draftedByLabel} ${draftedRoundPick}`}
+          >
+            <Box className="fo-tip-draftedChipLeft">
+              <Box className="fo-tip-draftedChipAvatar" aria-hidden="true">
+                <AnimalAvatarIcon avatarKey={draftedByAvatarKey} size="sm" />
+              </Box>
+              <Text
+                className="fo-tip-draftedChipName"
+                lineClamp={1}
+                title={draftedByLabel ?? undefined}
+              >
+                {draftedByLabel}
+              </Text>
+            </Box>
+            <Text className="fo-tip-draftedChipPick">{draftedRoundPick}</Text>
+          </Box>
+        ) : null}
       </Box>
 
       {action ? <Box className="fo-tip-action">{action}</Box> : null}

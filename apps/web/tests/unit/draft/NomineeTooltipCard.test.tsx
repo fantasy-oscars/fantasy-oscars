@@ -20,19 +20,33 @@ function renderCard(drafted: boolean) {
 }
 
 describe("NomineeTooltipCard drafted-by chip", () => {
-  it("sits in the header bar beside the category name, so the name wraps around it", () => {
+  it("is the last item of the footer, after the TMDB logo and attribution", () => {
     const { container } = renderCard(true);
-    const header = container.querySelector(".fo-tip-header");
-    const chip = header?.querySelector(".fo-tip-draftedChip");
+    const footer = container.querySelector(".fo-tip-footer");
+    const chip = footer?.querySelector(".fo-tip-draftedChip");
     expect(chip).not.toBeNull();
     expect(chip?.getAttribute("aria-label")).toBe("Drafted by avery R3 #4");
-    expect(header?.querySelector(".fo-tip-barText")?.textContent).toBe(
-      "Best International Feature Film"
+    const order = [...(footer?.children ?? [])].map((el) =>
+      ["fo-tip-tmdbLink", "fo-tip-attribution", "fo-tip-draftedChip"].find((c) =>
+        el.classList.contains(c)
+      )
     );
+    expect(order).toEqual([
+      "fo-tip-tmdbLink",
+      "fo-tip-attribution",
+      "fo-tip-draftedChip"
+    ]);
+    expect(container.querySelector(".fo-tip-header .fo-tip-draftedChip")).toBeNull();
+    expect(
+      container.querySelector(".fo-tip")?.classList.contains("has-draftedChip")
+    ).toBe(true);
   });
 
   it("is absent when the nominee is undrafted", () => {
     const { container } = renderCard(false);
     expect(container.querySelector(".fo-tip-draftedChip")).toBeNull();
+    expect(
+      container.querySelector(".fo-tip")?.classList.contains("has-draftedChip")
+    ).toBe(false);
   });
 });
