@@ -1,6 +1,6 @@
 # ADR 0005: Series competition domain model
 
-- Status: Accepted
+- Status: Accepted; sections 1, 2 and 4 partly superseded by [ADR 0006](0006-circuit-admin-defined-structure.md) (the Series is now the Circuit)
 - Date: 2026-11-16
 
 ## Context
@@ -15,6 +15,8 @@ The brief fixes the product rules (sections 2–12 and 17). This ADR fixes the t
 
 ### 1. A separate `series_*` table family
 
+> Superseded in part by [ADR 0006](0006-circuit-admin-defined-structure.md), section 2: the tables are `circuit_*`, and `category_family` and `icon` join the shared reference data.
+
 All Series state lives in new tables prefixed `series_`. They may reference shared reference data: `app_user`, `league`, `league_member`, `ceremony`, `category_edition`, `nomination`, `nomination_contributor`, `ceremony_winner`, `film` and `person`. They never reference `season`, `season_member`, `season_invite`, `draft`, `draft_seat`, `draft_pick`, `draft_event`, `draft_plan` or `draft_result`, and no existing table gains a foreign key to a `series_*` table.
 
 The Series draft is its own family too (`series_draft`, `series_draft_seat`, `series_draft_pick`, `series_draft_event`), not a nullable column on `draft`. It reuses the pure domain code (`apps/api/src/domain/draftOrder.ts`, `draftPickRules.ts`), the sweeper loop and its advisory lock, the event-versioning pattern and the socket session checks, but not the ceremony draft's tables or routes. Section 6 says why.
@@ -22,6 +24,8 @@ The Series draft is its own family too (`series_draft`, `series_draft_seat`, `se
 The only change to an existing table is two nullable date columns on `ceremony` (section 3). Migration `021_ceremony_lifecycle_active.sql` is a separate decision (plan section 1.1) and is not part of the Series schema.
 
 ### 2. Series, events, canonical categories
+
+> Superseded by [ADR 0006](0006-circuit-admin-defined-structure.md), section 3: events and categories are admin-defined, with no fixed codes, and a new Circuit starts empty.
 
 | Table             | Key columns                                                                                     | Constraints                                                                                                                                                                |
 | ----------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,6 +53,8 @@ A **scoring occasion** is `(ceremony, kind)` with `kind IN ('NOMINATION','WIN')`
   - A league that initialises late owns nothing before its draft, so nothing scores retroactively.
 
 ### 4. Leagues, membership, configuration
+
+> Superseded in part by [ADR 0006](0006-circuit-admin-defined-structure.md), section 4: a league gets one event row per event the Circuit has, not "all five".
 
 | Table                    | Key columns                                                                                                                                                                                                                                                                                             | Constraints                                                                                                                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -34,6 +34,11 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
                 title: "Films",
                 description: "Maintain film records and resolve duplicates.",
                 to: "/admin/films"
+              },
+              {
+                title: "Circuits",
+                description: "Season-long competitions across several ceremonies.",
+                to: "/admin/circuits"
               }
             ].map((row, idx, all) => (
               <Box key={row.to}>
