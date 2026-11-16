@@ -162,6 +162,39 @@ describe("RosterTrack", () => {
     expect(screen.getByText("Seats 1 to 6 of 14")).toBeTruthy();
   });
 
+  it("steps once when a drag starts and ends on a peeking column", () => {
+    render(<Harness count={14} />);
+    const peek = () => screen.getByText("seat 7").closest("[data-state]") as HTMLElement;
+    fireEvent.pointerDown(peek(), { pointerId: 1, clientX: 600, button: 0 });
+    fireEvent.pointerUp(peek(), { pointerId: 1, clientX: 200 });
+    fireEvent.click(peek());
+    expect(screen.getByText("Seats 2 to 7 of 14")).toBeTruthy();
+  });
+
+  it("still steps from a plain click on a peeking column", () => {
+    render(<Harness count={14} />);
+    const peek = screen.getByText("seat 7").closest("[data-state]") as HTMLElement;
+    fireEvent.pointerDown(peek, { pointerId: 1, clientX: 600, button: 0 });
+    fireEvent.pointerUp(peek, { pointerId: 1, clientX: 600 });
+    fireEvent.click(peek);
+    expect(screen.getByText("Seats 2 to 7 of 14")).toBeTruthy();
+  });
+
+  it("captures the pointer once a drag moves, so a release outside the board counts", () => {
+    render(<Harness count={14} />);
+    const capture = vi.fn();
+    board().setPointerCapture = capture;
+    fireEvent.pointerDown(board(), { pointerId: 1, clientX: 600, button: 0 });
+    fireEvent.pointerMove(board(), { pointerId: 1, clientX: 602 });
+    expect(capture).not.toHaveBeenCalled();
+    fireEvent.pointerMove(board(), { pointerId: 1, clientX: 560 });
+    fireEvent.pointerMove(board(), { pointerId: 1, clientX: 520 });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(1);
+    fireEvent.pointerUp(board(), { pointerId: 1, clientX: 200 });
+    expect(screen.getByText("Seats 2 to 7 of 14")).toBeTruthy();
+  });
+
   it("steps back on a drag right straight after a drag left, with a stale selection", () => {
     render(<Harness count={14} />);
     const text = board().querySelector("div div div") as HTMLElement;
@@ -182,7 +215,24 @@ describe("RosterTrack", () => {
     expect(screen.getByText("Seats 1 to 6 of 14")).toBeTruthy();
   });
 
-  it("does not step when the drag selected text", () => {
+  it("steps once on a drag that starts on text, dropping the text it selected", () => {
+    render(<Harness count={14} />);
+    const text = board().querySelector("div div div") as HTMLElement;
+    fireEvent.pointerDown(text, { pointerId: 1, clientX: 600, button: 0 });
+    // The browser starts selecting before the pointer is captured.
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    window.getSelection()?.addRange(range);
+    fireEvent.pointerMove(board(), { pointerId: 1, clientX: 560 });
+    expect(window.getSelection()?.isCollapsed).toBe(true);
+    expect(board().hasAttribute("data-dragging")).toBe(true);
+    fireEvent.pointerMove(board(), { pointerId: 1, clientX: 300 });
+    fireEvent.pointerUp(board(), { pointerId: 1, clientX: 200 });
+    expect(board().hasAttribute("data-dragging")).toBe(false);
+    expect(screen.getByText("Seats 2 to 7 of 14")).toBeTruthy();
+  });
+
+  it("does not step when the press selected text without a drag", () => {
     render(<Harness count={14} />);
     const text = board().querySelector("div div div") as HTMLElement;
     fireEvent.pointerDown(board(), { pointerId: 1, clientX: 600, button: 0 });

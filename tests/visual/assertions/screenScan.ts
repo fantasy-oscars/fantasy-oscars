@@ -10,6 +10,7 @@ import {
   roomFindings,
   roomTabWidthFindings,
   structuralFindings,
+  tooltipChipFindings,
   type Finding
 } from "./pageChecks";
 
@@ -73,6 +74,7 @@ export async function scanScreen(
     ...(isDraftRoomScreen(screen.id)
       ? await roomFindings(page, viewport === "mobile")
       : []),
+    ...(screen.id === specimenId ? await tooltipChipFindings(page) : []),
     ...(screen.id === "draft-live-countdown" ? await roomTabWidthFindings(page) : []),
     ...(viewport === "desktop" || screen.id === specimenId
       ? await contrastFindings(page)

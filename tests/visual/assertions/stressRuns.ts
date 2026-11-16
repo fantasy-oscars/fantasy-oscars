@@ -80,11 +80,15 @@ const AVATARS = [
 ];
 const SEATS = 12;
 
+/** Winning picks per seat on the stress final results: a first, a tied second, a third. */
+const STRESS_WINS_BY_SEAT = [3, 2, 2, 1];
+
 /**
- * Twelve seats, every name 61 characters, and no winners, so every seat ties for first on
- * the final podium. The seats the seed does not have are appended with invented ids.
+ * Twelve seats, every name 61 characters, and no winners. The seats the seed does not have
+ * are appended with invented ids. With `podium`, the first few picks are handed to seats
+ * 1 to 4 and made winners, so the final results show three places with a tie for second.
  */
-function stressSnapshot(snapshot: Record<string, unknown>) {
+function stressSnapshot(snapshot: Record<string, unknown>, podium: boolean) {
   const seats = (snapshot.seats ?? []) as Array<Record<string, unknown>>;
   const next = Array.from({ length: SEATS }, (_, i) => {
     const seat = seats[i] ?? {
@@ -97,6 +101,25 @@ function stressSnapshot(snapshot: Record<string, unknown>) {
   });
   snapshot.seats = next;
   snapshot.winners = [];
+  if (!podium) return;
+  const picks = (snapshot.picks ?? []) as Array<Record<string, unknown>>;
+  const nominations = (snapshot.nominations ?? []) as Array<Record<string, unknown>>;
+  const seatOfPick = STRESS_WINS_BY_SEAT.flatMap((wins, i) =>
+    Array.from({ length: wins }, () => i + 1)
+  );
+  const winners = seatOfPick.flatMap((seat, i) => {
+    const pick = picks[i];
+    const nomination = nominations.find((n) => n.id === pick?.nomination_id);
+    if (!pick || !nomination) return [];
+    pick.seat_number = seat;
+    return [
+      {
+        category_edition_id: nomination.category_edition_id,
+        nomination_id: pick.nomination_id
+      }
+    ];
+  });
+  snapshot.winners = winners;
 }
 
 /** Draft screens that show the states the stress theme is for. */
@@ -118,7 +141,7 @@ export function stressScreen(id: string): ScreenDef {
     beforeNavigate: (page) =>
       rewriteDraftSnapshot(page, (draft, snapshot) => {
         if (id === "draft-live-countdown") countdownSnapshot(draft);
-        stressSnapshot(snapshot);
+        stressSnapshot(snapshot, id === "draft-completed");
       })
   };
 }

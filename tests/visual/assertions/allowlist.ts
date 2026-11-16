@@ -101,6 +101,17 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
     match: "mantine-NumberInput-control",
     reason: "The field accepts typing on touch; the steppers are a convenience.",
     date: "2026-11-09"
+  },
+  {
+    check: "touch-target",
+    screen: "specimen",
+    brand: "*",
+    mode: "*",
+    viewport: "mobile",
+    match: "fo-tip-tmdbLink",
+    reason:
+      "The TMDB attribution link in the nominee card's footer; the card is read-only information on phone. Follow-up: tmdb-link-touch-target.",
+    date: "2026-11-15"
   }
 ];
 

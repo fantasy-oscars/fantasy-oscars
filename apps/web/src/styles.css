@@ -1288,7 +1288,7 @@ body[data-mantine-color-scheme="dark"] .drh-userBadge {
   border-color: rgba(var(--brand-text-rgb), var(--fo-alpha-20));
 }
 
-/* Narrow desktop: keep the right wing clear of the centre buckle by showing only the
+/* Narrow desktop: keep the right wing clear of the centre tab by showing only the
    avatar (the badge keeps its name as a tooltip and accessible label). */
 @media (max-width: 1100px) {
   .drh-right .drh-userText {
@@ -1733,7 +1733,9 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   height: var(--fo-db-mobileIconSize);
   min-height: var(--fo-db-mobileIconSize);
   /* A long seat name ends in an ellipsis before the chevron, which Mantine pads for. */
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dr-rosterBoard {
@@ -1741,6 +1743,10 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   padding: calc(var(--fo-space-8) + var(--brand-room-ring)) var(--fo-space-0)
     calc(var(--fo-space-sm) + var(--brand-room-ring) + var(--brand-room-drop));
   touch-action: pan-y;
+}
+
+.dr-rosterBoard[data-dragging] {
+  user-select: none;
 }
 
 .dr-rosterTrack {
@@ -1782,14 +1788,11 @@ body:has(.dr-mobileBottomBar) .mantine-Notifications-root[data-position^="bottom
   opacity: var(--fo-alpha-00);
 }
 
+/* The same ring as the step buttons. The board clips what leaves it, so the ring is drawn
+   inside its edge. */
 .dr-rosterBoard:focus-visible {
-  outline: none;
-  box-shadow: var(--fo-shadow-focusRing-neutral-soft-light);
-}
-
-:root[data-mantine-color-scheme="dark"] .dr-rosterBoard:focus-visible,
-body[data-mantine-color-scheme="dark"] .dr-rosterBoard:focus-visible {
-  box-shadow: var(--fo-shadow-focusRing-neutral-soft-dark);
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: calc(-1 * var(--fo-focus-ring-width));
 }
 
 .dr-card.dr-rosterCard {
@@ -3392,22 +3395,25 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
     rgba(var(--fo-text-primary-rgb), var(--fo-alpha-12));
 }
 
-.fo-tip.has-draftedChip {
-  padding-top: var(--fo-space-xs);
+/*
+ * The drafted-by chip sits in the header bar, after the category name, as a flex item:
+ * the name wraps in the space the chip leaves, so the two cannot overlap whatever the
+ * name's length, the brand or the font.
+ */
+.fo-tip-header {
+  justify-content: space-between;
+  gap: var(--fo-space-8);
 }
 
 .fo-tip-draftedChip {
-  position: absolute;
-  top: var(--fo-space-0);
-  right: var(--fo-space-xs);
-  transform: translateY(calc(var(--fo-space-0) - var(--fo-space-dense-2)));
-  z-index: 2;
-  max-width: calc(var(--fo-tip-width) - var(--fo-space-md));
+  /* Keeps its content width up to the cap; only then does the name ellipsize. */
+  flex: 0 0 auto;
+  max-width: 50%;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   gap: var(--fo-space-8);
-  min-height: var(--fo-control-height);
   padding: var(--fo-space-4) var(--fo-space-8);
   border: var(--fo-border-width) solid var(--brand-primary);
   border-radius: var(--brand-radius-sm);
@@ -3416,7 +3422,6 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   --dr-ink: var(--brand-on-primary);
   --dr-ground: var(--brand-primary);
   --dr-ink-soft: var(--brand-on-primary);
-  box-shadow: 0 6px 14px rgba(var(--fo-black-rgb), var(--fo-alpha-25));
 }
 
 .fo-tip-draftedChipLeft {
@@ -3424,7 +3429,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   align-items: center;
   gap: var(--fo-space-8);
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .fo-tip-draftedChipAvatar {
@@ -3460,6 +3465,9 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 }
 
 .fo-tip-barText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--fo-font-size-xs);
   font-weight: var(--fo-font-weight-medium);
   color: rgba(var(--fo-text-primary-rgb), var(--fo-alpha-65));
@@ -3522,7 +3530,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .fo-tip-support {
   font-size: var(--fo-font-size-xs);
   font-weight: var(--fo-font-weight-medium);
-  color: rgba(var(--fo-text-primary-rgb), 0.55);
+  color: var(--fo-text-deemphasized);
   line-height: 1.15;
 }
 

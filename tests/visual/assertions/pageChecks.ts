@@ -27,6 +27,7 @@ export type RoomCheck =
   | "room-tab-top"
   | "room-tab-edge"
   | "room-tab-children"
+  | "room-tab-headline"
   | "room-tab-wings"
   | "room-tab-width"
   | "room-tab-missing"
@@ -34,7 +35,8 @@ export type RoomCheck =
   | "room-icon-contrast"
   | "room-punchout-contrast"
   | "room-chip-avatar"
-  | "room-pill-radius";
+  | "room-pill-radius"
+  | "room-tip-chip";
 
 /**
  * The "must exist" rule of 6.4: on every draft screen a `.drh-tab` must be found, and on
@@ -103,11 +105,20 @@ export async function structuralFindings(page: Page, phone: boolean): Promise<Fi
         if (!holder || !(node.textContent ?? "").trim() || !visible(holder)) continue;
         if (holder.closest(OFF_WINDOW)) continue;
         // Text an inner element clips is that element's to answer for (it is checked as a
-        // box of its own); it is not hidden by this one.
+        // box of its own), but only while that element sits wholly inside this box: one
+        // that itself reaches past this box is hidden by it, and its text still counts.
         let innerClip = false;
         for (let n: Element | null = holder; n && n !== box; n = n.parentElement) {
           const style = getComputedStyle(n);
-          if (clips(style.overflowX) || clips(style.overflowY)) innerClip = true;
+          if (!clips(style.overflowX) && !clips(style.overflowY)) continue;
+          const r = n.getBoundingClientRect();
+          if (
+            r.left >= left - GLYPH_TOLERANCE &&
+            r.right <= right + GLYPH_TOLERANCE &&
+            r.top >= top - GLYPH_TOLERANCE &&
+            r.bottom <= bottom + GLYPH_TOLERANCE
+          )
+            innerClip = true;
         }
         if (innerClip) continue;
         // The last glyph's advance includes letter-spacing that paints nothing.
@@ -315,6 +326,105 @@ export async function contrastFindings(page: Page): Promise<Finding[]> {
 
 const TAB_CLOCK_TICKS_MS = [1000, 2000] as const;
 const CLOCK_TEXT_SELECTOR = ".drh-tabHeadlineText";
+
+/**
+ * The nominee tooltip card's drafted-by chip, on every `[data-specimen-tip]` sample (the
+ * longest real category name and a stress-length one). The chip's box must not meet any
+ * line box of the category name (read from the text's own client rects, not the header
+ * element's), the name must stay inside the card, the chip must lie inside every ancestor
+ * that clips it, and the card must lie inside the viewport. Fails when no sample or no
+ * chip is found, so the check cannot pass vacuously.
+ */
+export async function tooltipChipFindings(page: Page): Promise<Finding[]> {
+  return page.evaluate(() => {
+    const out: { check: "room-tip-chip"; description: string }[] = [];
+    const EPS = 0.5;
+    const SHORT_DRAFTER_CHARS = 8;
+    const fail = (description: string) =>
+      out.push({ check: "room-tip-chip", description });
+    const samples = [...document.querySelectorAll<HTMLElement>("[data-specimen-tip]")];
+    if (samples.length < 3) {
+      fail(`expected at least 3 tooltip samples, found ${samples.length}`);
+      return out;
+    }
+    const box = (r: DOMRect) =>
+      `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+    for (const sample of samples) {
+      const name = sample.getAttribute("data-specimen-tip") ?? "tooltip";
+      const card = sample.querySelector<HTMLElement>(".fo-tip");
+      const chip = sample.querySelector<HTMLElement>(".fo-tip-draftedChip");
+      const text = sample.querySelector<HTMLElement>(".fo-tip-barText");
+      if (!card || !chip || !text) {
+        fail(`${name}: card, chip or category name missing`);
+        continue;
+      }
+      const chipRect = chip.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const lines = [...range.getClientRects()].filter(
+        (r) => r.width > 0 && r.height > 0
+      );
+      if (lines.length === 0) fail(`${name}: category name has no line boxes`);
+      for (const r of lines) {
+        const hitsX = r.left < chipRect.right - EPS && r.right > chipRect.left + EPS;
+        const hitsY = r.top < chipRect.bottom - EPS && r.bottom > chipRect.top + EPS;
+        if (hitsX && hitsY) {
+          fail(`${name}: chip ${box(chipRect)} covers category text line ${box(r)}`);
+        }
+        if (r.left < cardRect.left - EPS || r.right > cardRect.right + EPS) {
+          fail(`${name}: category text line ${box(r)} leaves the card ${box(cardRect)}`);
+        }
+      }
+      // The chip must be fully visible: inside each clipping ancestor and the viewport.
+      for (let el = chip.parentElement; el; el = el.parentElement) {
+        const style = getComputedStyle(el);
+        const clips = [style.overflowX, style.overflowY].some((v) => v !== "visible");
+        if (!clips) continue;
+        const r = el.getBoundingClientRect();
+        if (
+          chipRect.left < r.left - EPS ||
+          chipRect.right > r.right + EPS ||
+          chipRect.top < r.top - EPS ||
+          chipRect.bottom > r.bottom + EPS
+        ) {
+          fail(
+            `${name}: chip ${box(chipRect)} is clipped by ${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]} ${box(r)}`
+          );
+        }
+      }
+      // The chip keeps its content width up to its cap: nothing inside may overflow it,
+      // and a short drafter name must show whole.
+      if (chip.scrollWidth > chip.clientWidth + EPS) {
+        fail(
+          `${name}: chip content ${chip.scrollWidth}px overflows the chip ${chip.clientWidth}px`
+        );
+      }
+      const drafter = chip.querySelector<HTMLElement>(".fo-tip-draftedChipName");
+      const drafterText = drafter?.textContent ?? "";
+      if (!drafter) {
+        fail(`${name}: chip has no drafter name`);
+      } else if (drafterText.length <= SHORT_DRAFTER_CHARS) {
+        if (drafter.scrollWidth > drafter.clientWidth + EPS) {
+          fail(
+            `${name}: short drafter name "${drafterText}" is truncated (${drafter.scrollWidth}px of ${drafter.clientWidth}px)`
+          );
+        }
+      }
+      if (cardRect.left < -EPS || cardRect.right > window.innerWidth + EPS) {
+        fail(
+          `${name}: card ${box(cardRect)} is outside the ${window.innerWidth}px viewport`
+        );
+      }
+      if (chipRect.left < -EPS || chipRect.right > window.innerWidth + EPS) {
+        fail(
+          `${name}: chip ${box(chipRect)} is outside the ${window.innerWidth}px viewport`
+        );
+      }
+    }
+    return out;
+  }) as Promise<Finding[]>;
+}
 
 /**
  * The header tab's width must not move as the clock ticks. The suite freezes intervals,
@@ -666,6 +776,23 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
             out.push({
               check: "room-tab-children",
               description: `${describe(child)} reaches outside .drh-tab`
+            });
+          }
+        }
+        // The headline's text must carry the size and weight its kind sets on the headline:
+        // a component class on the text itself would override them silently.
+        for (const headline of Array.from(tab.querySelectorAll(".drh-tabHeadline"))) {
+          const text = headline.querySelector(".drh-tabHeadlineText");
+          if (!text || !visible(text)) continue;
+          const expected = getComputedStyle(headline);
+          const actual = getComputedStyle(text);
+          if (
+            actual.fontSize !== expected.fontSize ||
+            actual.fontWeight !== expected.fontWeight
+          ) {
+            out.push({
+              check: "room-tab-headline",
+              description: `.drh-tabHeadlineText is ${actual.fontSize}/${actual.fontWeight}, its ${headline.getAttribute("data-kind")} headline sets ${expected.fontSize}/${expected.fontWeight}`
             });
           }
         }

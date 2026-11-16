@@ -48,6 +48,20 @@ describe("DraftHeaderTab", () => {
     expect(container.querySelector("button, a, [tabindex]")).toBeNull();
   });
 
+  it("renders every headline kind as a bare span, so the kind's size and weight apply", () => {
+    for (const args of [
+      { isTimerDraft: false },
+      { draftStatus: "PAUSED" },
+      { draftStatus: "PENDING" }
+    ]) {
+      const { container } = renderTab(args);
+      const text = container.querySelector(".drh-tabHeadline > .drh-tabHeadlineText");
+      expect(text?.tagName).toBe("SPAN");
+      expect(text?.className).toBe("drh-tabHeadlineText");
+      cleanup();
+    }
+  });
+
   it("shows the seat name over a digit-celled clock, round and pick", () => {
     const { container } = renderTab({});
     expect(screen.getByText("Blake")).toBeTruthy();

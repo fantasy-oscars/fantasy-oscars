@@ -40,7 +40,7 @@ export function useParticipantStripLayout(args: {
       const stride = Math.max(1, tokenW + gapPx);
 
       const w = el.clientWidth;
-      // Small safety margin so we don't visually crowd the buckle at the center.
+      // Small safety margin so we don't visually crowd the tab at the center.
       const usable = Math.max(0, w - 8);
       // When there are only a few participants, always show them (even if our stride
       // estimate is briefly wrong during layout), to avoid the confusing 1-token collapse.
