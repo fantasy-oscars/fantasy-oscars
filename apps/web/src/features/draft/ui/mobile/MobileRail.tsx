@@ -1,15 +1,10 @@
 import { useMemo, useRef } from "react";
-import { Box, Checkbox, Select, Stack, Text, Tooltip } from "@ui";
+import { Box, Checkbox, Select, Stack, Text } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { useCssVars } from "@/shared/dom/useCssVars";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { DraftCategoryIcon } from "../DraftCategoryIcon";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
-import {
-  NOMINEE_CARD_TOOLTIP_STYLES,
-  NOMINEE_TOOLTIP_EVENTS,
-  NOMINEE_TOOLTIP_OFFSET_PX
-} from "../nomineeTooltip";
+import { nomineePillProps } from "./nomineePillProps";
 import type {
   AutoDraftState,
   DraftLedgerRow,
@@ -29,6 +24,7 @@ export function MobileRail(props: {
   avatarKeyBySeat: Map<number, string | null>;
   nomineeById: Map<number, DraftNomineeMeta>;
   draftedNominationIds: Set<number>;
+  onNomineeOpen: (nominationId: number) => void;
 }) {
   const { o } = props;
   const rowsRef = useRef<HTMLDivElement>(null);
@@ -72,8 +68,10 @@ export function MobileRail(props: {
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                tabIndex={nominee ? 0 : undefined}
-                role={nominee ? "group" : undefined}
+                {...nomineePillProps(
+                  nominee ? r.nominationId : null,
+                  props.onNomineeOpen
+                )}
                 aria-label={
                   nominee
                     ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
@@ -105,39 +103,7 @@ export function MobileRail(props: {
                 <Box className="dr-railAvatar">
                   <AnimalAvatarIcon avatarKey={avatarKey} />
                 </Box>
-                {nominee ? (
-                  <Tooltip
-                    events={NOMINEE_TOOLTIP_EVENTS}
-                    withArrow={false}
-                    position="bottom-start"
-                    multiline
-                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                    styles={NOMINEE_CARD_TOOLTIP_STYLES}
-                    label={
-                      <NomineeTooltipCard
-                        unitKind={nominee.unitKind}
-                        categoryName={nominee.categoryName}
-                        filmTitle={nominee.filmTitle}
-                        filmYear={nominee.filmYear}
-                        filmPosterUrl={nominee.filmPosterUrl}
-                        contributors={nominee.contributors}
-                        performerName={nominee.performerName}
-                        performerCharacter={nominee.performerCharacter}
-                        performerProfileUrl={nominee.performerProfileUrl}
-                        performerProfilePath={nominee.performerProfilePath}
-                        performerContributors={nominee.performerContributors}
-                        songTitle={nominee.songTitle}
-                        draftedByLabel={nominee.draftedByLabel}
-                        draftedByAvatarKey={nominee.draftedByAvatarKey}
-                        draftedRoundPick={nominee.draftedRoundPick}
-                      />
-                    }
-                  >
-                    {pill}
-                  </Tooltip>
-                ) : (
-                  pill
-                )}
+                {pill}
               </Box>
             );
           })}
@@ -170,8 +136,10 @@ export function MobileRail(props: {
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                tabIndex={nominee ? 0 : undefined}
-                role={nominee ? "group" : undefined}
+                {...nomineePillProps(
+                  nominee ? r.nominationId : null,
+                  props.onNomineeOpen
+                )}
                 aria-label={
                   nominee
                     ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
@@ -200,39 +168,7 @@ export function MobileRail(props: {
             return (
               <Box key={r.pickNumber} className="dr-railRow dr-rosterRow">
                 <Text className="dr-railMeta">{r.roundPick}</Text>
-                {nominee ? (
-                  <Tooltip
-                    events={NOMINEE_TOOLTIP_EVENTS}
-                    withArrow={false}
-                    position="bottom-start"
-                    multiline
-                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                    styles={NOMINEE_CARD_TOOLTIP_STYLES}
-                    label={
-                      <NomineeTooltipCard
-                        unitKind={nominee.unitKind}
-                        categoryName={nominee.categoryName}
-                        filmTitle={nominee.filmTitle}
-                        filmYear={nominee.filmYear}
-                        filmPosterUrl={nominee.filmPosterUrl}
-                        contributors={nominee.contributors}
-                        performerName={nominee.performerName}
-                        performerCharacter={nominee.performerCharacter}
-                        performerProfileUrl={nominee.performerProfileUrl}
-                        performerProfilePath={nominee.performerProfilePath}
-                        performerContributors={nominee.performerContributors}
-                        songTitle={nominee.songTitle}
-                        draftedByLabel={nominee.draftedByLabel}
-                        draftedByAvatarKey={nominee.draftedByAvatarKey}
-                        draftedRoundPick={nominee.draftedRoundPick}
-                      />
-                    }
-                  >
-                    {pill}
-                  </Tooltip>
-                ) : (
-                  pill
-                )}
+                {pill}
               </Box>
             );
           })}
@@ -307,8 +243,10 @@ export function MobileRail(props: {
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      tabIndex={nominee ? 0 : undefined}
-                      role={nominee ? "group" : undefined}
+                      {...nomineePillProps(
+                        nominee ? item.nominationId : null,
+                        props.onNomineeOpen
+                      )}
                       aria-label={
                         nominee ? `${nominee.categoryName}: ${item.label}` : undefined
                       }
@@ -332,40 +270,7 @@ export function MobileRail(props: {
                     </Box>
                   );
 
-                  return nominee ? (
-                    <Tooltip
-                      key={item.nominationId}
-                      events={NOMINEE_TOOLTIP_EVENTS}
-                      withArrow={false}
-                      position="bottom-start"
-                      multiline
-                      offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                      styles={NOMINEE_CARD_TOOLTIP_STYLES}
-                      label={
-                        <NomineeTooltipCard
-                          unitKind={nominee.unitKind}
-                          categoryName={nominee.categoryName}
-                          filmTitle={nominee.filmTitle}
-                          filmYear={nominee.filmYear}
-                          filmPosterUrl={nominee.filmPosterUrl}
-                          contributors={nominee.contributors}
-                          performerName={nominee.performerName}
-                          performerCharacter={nominee.performerCharacter}
-                          performerProfileUrl={nominee.performerProfileUrl}
-                          performerProfilePath={nominee.performerProfilePath}
-                          performerContributors={nominee.performerContributors}
-                          songTitle={nominee.songTitle}
-                          draftedByLabel={nominee.draftedByLabel}
-                          draftedByAvatarKey={nominee.draftedByAvatarKey}
-                          draftedRoundPick={nominee.draftedRoundPick}
-                        />
-                      }
-                    >
-                      {pill}
-                    </Tooltip>
-                  ) : (
-                    <Box key={item.nominationId}>{pill}</Box>
-                  );
+                  return <Box key={item.nominationId}>{pill}</Box>;
                 })}
               </Stack>
             )}
