@@ -127,6 +127,9 @@ export function MobileDraftRoom(props: {
     setMobileNominationId(id);
   };
 
+  // Rail and roster pills show already-drafted nominees: details only, no select.
+  const openNomineeInfo = (id: number) => setMobileNominationId(id);
+
   const canOpenLedger = !props.isPre && !isCompleted;
   const canOpenRosterRail = !props.isPre && !isCompleted;
   const canOpenAutodraft = !isCompleted;
@@ -177,7 +180,11 @@ export function MobileDraftRoom(props: {
       <Box component="main" id="main-content" tabIndex={-1} className="dr-body">
         <Box className="dr-mobileScroll">
           {isCompleted || o.header.view === "roster" ? (
-            <MobileRosterBoard o={o} nomineeById={props.nomineeById} />
+            <MobileRosterBoard
+              o={o}
+              nomineeById={props.nomineeById}
+              onNomineeOpen={openNomineeInfo}
+            />
           ) : activeRail ? (
             <MobileRail
               rail={activeRail}
@@ -185,6 +192,7 @@ export function MobileDraftRoom(props: {
               avatarKeyBySeat={props.avatarKeyBySeat}
               nomineeById={props.nomineeById}
               draftedNominationIds={props.draftedNominationIds}
+              onNomineeOpen={openNomineeInfo}
             />
           ) : (
             <Box className="dr-mobileCategories">
@@ -335,7 +343,9 @@ export function MobileDraftRoom(props: {
               draftedByAvatarKey={mobileNominee.draftedByAvatarKey}
               draftedRoundPick={mobileNominee.draftedRoundPick}
               action={
-                props.canDraftAction ? (
+                props.canDraftAction &&
+                mobileNominationId != null &&
+                !props.draftedNominationIds.has(mobileNominationId) ? (
                   <Button
                     variant="filled"
                     fullWidth

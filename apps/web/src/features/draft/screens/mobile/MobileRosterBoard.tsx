@@ -1,21 +1,17 @@
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
-import { Box, Select, Stack, Text, Tooltip } from "@ui";
+import { Box, Select, Stack, Text } from "@ui";
 import { useMemo } from "react";
 import { RosterTrack } from "@/features/draft/ui/RosterTrack";
 import { useRosterRotation } from "@/orchestration/draft/useRosterRotation";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
-import {
-  NOMINEE_CARD_TOOLTIP_STYLES,
-  NOMINEE_TOOLTIP_EVENTS,
-  NOMINEE_TOOLTIP_OFFSET_PX
-} from "@/features/draft/ui/nomineeTooltip";
+import { nomineePillProps } from "@/features/draft/ui/mobile/nomineePillProps";
 
 export function MobileRosterBoard(props: {
   o: DraftRoomOrchestration;
+  onNomineeOpen: (nominationId: number) => void;
   nomineeById: Map<
     number,
     {
@@ -113,8 +109,10 @@ export function MobileRosterBoard(props: {
                 className={["dr-pill", "dr-pill-static", pick.winner ? "is-winner" : ""]
                   .filter(Boolean)
                   .join(" ")}
-                tabIndex={0}
-                role="group"
+                {...nomineePillProps(
+                  nominee ? pick.nominationId : null,
+                  props.onNomineeOpen
+                )}
                 aria-label={
                   nominee
                     ? `${nominee.categoryName}: ${pick.label}`
@@ -147,43 +145,7 @@ export function MobileRosterBoard(props: {
               </Box>
             );
 
-            return (
-              <Box key={`${pick.pickNumber}`}>
-                <Tooltip
-                  events={NOMINEE_TOOLTIP_EVENTS}
-                  withArrow={!nominee}
-                  position="bottom-start"
-                  multiline
-                  offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                  styles={nominee ? NOMINEE_CARD_TOOLTIP_STYLES : undefined}
-                  label={
-                    nominee ? (
-                      <NomineeTooltipCard
-                        unitKind={nominee.unitKind}
-                        categoryName={nominee.categoryName}
-                        filmTitle={nominee.filmTitle}
-                        filmYear={nominee.filmYear}
-                        filmPosterUrl={nominee.filmPosterUrl}
-                        contributors={nominee.contributors}
-                        performerName={nominee.performerName}
-                        performerCharacter={nominee.performerCharacter}
-                        performerProfileUrl={nominee.performerProfileUrl}
-                        performerProfilePath={nominee.performerProfilePath}
-                        performerContributors={nominee.performerContributors}
-                        songTitle={nominee.songTitle}
-                        draftedByLabel={nominee.draftedByLabel}
-                        draftedByAvatarKey={nominee.draftedByAvatarKey}
-                        draftedRoundPick={nominee.draftedRoundPick}
-                      />
-                    ) : (
-                      <Text className="baseline-textBody">{pick.label}</Text>
-                    )
-                  }
-                >
-                  {pill}
-                </Tooltip>
-              </Box>
-            );
+            return <Box key={`${pick.pickNumber}`}>{pill}</Box>;
           })}
         </Stack>
       </Box>

@@ -28,6 +28,8 @@ const DRAFT_ROOM_SCREENS = [
   "draft-paused"
 ] as const;
 
+const DRAFT_POOL_PILL_SCREENS = [...DRAFT_ROOM_SCREENS, "draft-completed"] as const;
+
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
@@ -73,13 +75,13 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: [...DRAFT_ROOM_SCREENS, "specimen"],
+    screen: [...DRAFT_POOL_PILL_SCREENS, "specimen"],
     brand: "*",
     mode: "*",
     viewport: "mobile",
     match: "dr-pill",
     reason:
-      "22px plus 6px gaps meets WCAG 2.5.8 by spacing; a tap only opens the sheet, whose Draft button is 44px.",
+      "22px plus 6px gaps meets WCAG 2.5.8 by spacing; a tap only opens the sheet, whose Draft button is 44px. The completed-draft roster board opens the same sheet.",
     date: "2026-11-09"
   },
   {
