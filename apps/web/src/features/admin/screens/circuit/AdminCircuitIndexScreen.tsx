@@ -5,6 +5,7 @@ import {
   Button,
   Divider,
   Group,
+  SimpleGrid,
   Skeleton,
   Stack,
   Text,
@@ -15,7 +16,7 @@ import { FormStatus } from "@/shared/forms";
 import type { ApiResult, FieldErrors } from "@/lib/types";
 import type { CircuitCreateForm, CircuitSummary } from "@/orchestration/adminCircuit";
 import { circuitStatusLabel } from "@/decisions/admin/circuit";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 
 export function AdminCircuitIndexScreen(props: {
@@ -67,7 +68,7 @@ export function AdminCircuitIndexScreen(props: {
         <Title order={3} variant="section">
           New Circuit
         </Title>
-        <Box className="grid grid-stackOnPhone">
+        <SimpleGrid cols={{ base: 1, sm: 3 }} mt="var(--fo-card-gap)">
           <TextInput
             label="Name"
             value={form.name}
@@ -81,6 +82,7 @@ export function AdminCircuitIndexScreen(props: {
           <TextInput
             label="Code"
             description="Lowercase letters, numbers and dashes."
+            inputWrapperOrder={["label", "input", "description", "error"]}
             value={form.code}
             onChange={(e) => {
               const v = e.currentTarget.value;
@@ -100,8 +102,8 @@ export function AdminCircuitIndexScreen(props: {
             }}
             error={fieldErrors.opensOn}
           />
-        </Box>
-        <Group className="inline-actions" mt="sm" wrap="wrap">
+        </SimpleGrid>
+        <Group mt="md" wrap="wrap" justify="flex-end">
           <Button type="submit" disabled={!canCreate}>
             {props.creating ? "Creating..." : "Create Circuit"}
           </Button>
@@ -116,17 +118,13 @@ export function AdminCircuitIndexScreen(props: {
       </Title>
 
       {circuits.length === 0 ? (
-        <StandardCard>
-          <Text className="baseline-textBody" c="dimmed">
-            No Circuits exist yet.
-          </Text>
-        </StandardCard>
+        <EmptyState>No Circuits exist yet.</EmptyState>
       ) : (
         <Stack component="ul" gap="sm" className="fo-listReset">
           {circuits.map((s) => (
             <StandardCard key={s.id} component="li">
-              <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-                <Box miw="var(--fo-space-0)">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Box miw="var(--fo-space-0)" flex={1}>
                   <Text
                     fw="var(--fo-font-weight-bold)"
                     component={Link}

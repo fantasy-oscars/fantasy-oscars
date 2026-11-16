@@ -295,6 +295,45 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(screen.queryByRole("button", { name: "Activate Circuit" })).toBeNull();
   });
 
+  it("offers row actions as named icon buttons and groups the add forms under headings", () => {
+    renderDetail();
+    const ceremonies = screen.getByRole("region", { name: "Ceremonies" });
+    const rename = within(ceremonies).getByRole("button", { name: "Rename Guilds" });
+    expect(rename).toHaveTextContent("edit");
+    expect(rename).toHaveAttribute("title", "Rename Guilds");
+    expect(
+      within(ceremonies).getByRole("heading", { name: "Add a ceremony" })
+    ).toBeInTheDocument();
+    expect(
+      within(ceremonies).getByRole("heading", { name: "Group ceremonies into an event" })
+    ).toBeInTheDocument();
+    const categories = screen.getByRole("region", { name: "Categories" });
+    expect(
+      within(categories).getByRole("heading", { name: "Add a category" })
+    ).toBeInTheDocument();
+  });
+
+  it("shows consistent empty states when nothing is set up", () => {
+    renderDetail({
+      detail: {
+        ...DETAIL,
+        ceremonies: [],
+        events: [],
+        categories: [],
+        category_editions: [],
+        occasions: [],
+        readiness: { missing_dates: [] }
+      }
+    });
+    expect(screen.getAllByText("No ceremonies yet.")).toHaveLength(2);
+    expect(
+      screen.getByText("No categories yet. Add one from a template.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Add a Circuit category to map ceremony categories to it.")
+    ).toBeInTheDocument();
+  });
+
   it("disables every edit on an archived Circuit", () => {
     renderDetail({
       detail: { ...DETAIL, circuit: { ...DETAIL.circuit, status: "ARCHIVED" } }

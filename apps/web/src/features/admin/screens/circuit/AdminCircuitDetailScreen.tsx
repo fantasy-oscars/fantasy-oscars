@@ -90,29 +90,29 @@ export function AdminCircuitDetailScreen(props: {
 
   return (
     <Stack component="section" gap="md">
-      <Group
-        className="header-with-controls"
-        justify="space-between"
-        align="start"
-        wrap="wrap"
-      >
-        <Box>
+      <Group justify="space-between" align="end" wrap="wrap" gap="sm">
+        <Box miw="var(--fo-space-0)">
           <Title order={2} className="baseline-textHeroTitle">
             {circuit.name}
           </Title>
-          <Text className="muted">
-            {circuit.code}
-            {circuit.opens_on ? ` · opens ${circuit.opens_on}` : ""}
-          </Text>
+          <Group gap="xs" align="center" mt="var(--fo-space-4)">
+            <Box component="span" className="baseline-statusPill">
+              <Text
+                className="baseline-textMeta fo-letterSpacingTracked"
+                fw="var(--fo-font-weight-bold)"
+              >
+                {circuitStatusLabel(circuit.status)}
+              </Text>
+            </Box>
+            <Text className="baseline-textMeta" c="dimmed">
+              {circuit.code}
+              {circuit.opens_on ? ` · opens ${circuit.opens_on}` : ""}
+            </Text>
+          </Group>
         </Box>
-        <Group className="inline-actions" wrap="wrap">
-          <Box component="span" className="status-pill">
-            {circuitStatusLabel(circuit.status)}
-          </Box>
-          <Button component={Link} to="/admin/circuits" variant="subtle">
-            All Circuits
-          </Button>
-        </Group>
+        <Button component={Link} to="/admin/circuits" variant="subtle">
+          All Circuits
+        </Button>
       </Group>
 
       {!editable ? (
@@ -123,14 +123,16 @@ export function AdminCircuitDetailScreen(props: {
 
       {canActivateCircuit(circuit.status) ? (
         <StandardCard component="section" aria-labelledby="circuit-activate-title">
-          <Title order={3} variant="section" id="circuit-activate-title">
-            Activate
-          </Title>
-          <Text className="muted">
-            Activation does not wait for dates. Ceremonies, events, categories and
-            mappings stay editable afterwards, with a confirmation step.
-          </Text>
-          <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Group justify="space-between" align="center" wrap="wrap" gap="md">
+            <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
+              <Title order={3} variant="section" id="circuit-activate-title">
+                Activate
+              </Title>
+              <Text className="muted">
+                Activation does not wait for dates. Ceremonies, events, categories and
+                mappings stay editable afterwards, with a confirmation step.
+              </Text>
+            </Box>
             <Button type="button" onClick={props.onActivate} disabled={working}>
               Activate Circuit
             </Button>

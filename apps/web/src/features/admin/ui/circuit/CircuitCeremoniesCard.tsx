@@ -12,7 +12,7 @@ import {
   TextInput,
   Title
 } from "@ui";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import {
   ceremoniesByEvent,
   ceremonyLabel,
@@ -21,6 +21,7 @@ import {
 } from "@/decisions/admin/circuit";
 import type { CircuitCeremony, CircuitEvent } from "@/orchestration/adminCircuit";
 import { CircuitRenameForm } from "./CircuitRenameForm";
+import { CircuitRowIconButton } from "./CircuitRowIconButton";
 
 /** Select value for "give the ceremony its own event". */
 const OWN_EVENT = "own";
@@ -87,14 +88,14 @@ export function CircuitCeremoniesCard(props: {
       </Text>
 
       {groups.length === 0 ? (
-        <Text className="muted" size="sm" mt="sm">
-          No ceremonies yet.
-        </Text>
+        <Box mt="md">
+          <EmptyState>No ceremonies yet.</EmptyState>
+        </Box>
       ) : (
-        <Stack gap="sm" mt="sm">
+        <Stack gap="md" mt="md">
           {groups.map(({ event, ceremonies: rows }, idx) => (
             <Box key={event.id} role="group" aria-label={`Event: ${event.name}`}>
-              {idx > 0 ? <Divider mb="sm" /> : null}
+              {idx > 0 ? <Divider mb="md" /> : null}
               {renaming === event.id ? (
                 <CircuitRenameForm
                   label="Event name"
@@ -105,50 +106,42 @@ export function CircuitCeremoniesCard(props: {
                 />
               ) : (
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                  <Text fw="var(--fo-font-weight-bold)">{event.name}</Text>
-                  <Group className="inline-actions" wrap="wrap" gap="xs">
-                    <Button
-                      type="button"
-                      variant="subtle"
+                  <Box flex={1} miw="var(--fo-layout-fieldMin-lg)">
+                    <Title order={4} variant="section">
+                      {event.name}
+                    </Title>
+                  </Box>
+                  <Group gap="xs" wrap="nowrap" ml="auto">
+                    <CircuitRowIconButton
+                      icon="edit"
+                      label={`Rename ${event.name}`}
                       disabled={disabled}
-                      aria-label={`Rename ${event.name}`}
                       onClick={() => setRenaming(event.id)}
-                    >
-                      Rename
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    />
+                    <CircuitRowIconButton
+                      icon="arrow_upward"
+                      label={`Move ${event.name} up`}
                       disabled={disabled || idx === 0}
-                      aria-label={`Move ${event.name} up`}
                       onClick={() => actions.moveEvent(event.id, -1)}
-                    >
-                      Move up
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    />
+                    <CircuitRowIconButton
+                      icon="arrow_downward"
+                      label={`Move ${event.name} down`}
                       disabled={disabled || idx === groups.length - 1}
-                      aria-label={`Move ${event.name} down`}
                       onClick={() => actions.moveEvent(event.id, 1)}
-                    >
-                      Move down
-                    </Button>
+                    />
                     {rows.length > 1 ? (
-                      <Button
-                        type="button"
-                        variant="subtle"
+                      <CircuitRowIconButton
+                        icon="call_split"
+                        label={`Ungroup ${event.name}`}
                         disabled={disabled}
-                        aria-label={`Ungroup ${event.name}`}
                         onClick={() => actions.ungroupEvent(event.id)}
-                      >
-                        Ungroup
-                      </Button>
+                      />
                     ) : null}
                   </Group>
                 </Group>
               )}
-              <Stack component="ul" gap="xs" mt="xs" className="fo-listReset">
+              <Stack component="ul" gap="sm" mt="sm" className="fo-listReset">
                 {rows.map((c) => (
                   <Group
                     key={c.ceremony_id}
@@ -156,13 +149,14 @@ export function CircuitCeremoniesCard(props: {
                     justify="space-between"
                     align="center"
                     wrap="wrap"
-                    gap="xs"
+                    gap="sm"
                   >
-                    <Box miw="var(--fo-space-0)">
+                    <Box miw="var(--fo-space-0)" flex={1}>
                       <Text
                         component={Link}
                         to={`/admin/ceremonies/${c.ceremony_id}/overview`}
-                        className="link-plain"
+                        className="link-plain fo-block"
+                        fw="var(--fo-font-weight-bold)"
                       >
                         {ceremonyLabel(c)}
                       </Text>
@@ -172,35 +166,38 @@ export function CircuitCeremoniesCard(props: {
                         {CIRCUIT_DATE_LABELS.results_on}: {dateOnlyLabel(c.results_on)}
                       </Text>
                     </Box>
-                    <Group className="inline-actions" wrap="wrap" gap="xs">
-                      <Select
-                        aria-label={`Event for ${ceremonyLabel(c)}`}
-                        value={String(c.circuit_event_id)}
-                        allowDeselect={false}
-                        disabled={disabled}
-                        onChange={(v) => {
-                          if (v === null || v === String(c.circuit_event_id)) return;
-                          void actions.place(
-                            c.ceremony_id,
-                            v === OWN_EVENT ? null : Number(v)
-                          );
-                        }}
-                        data={[
-                          ...eventOptions,
-                          ...(rows.length > 1
-                            ? [{ value: OWN_EVENT, label: "Its own event" }]
-                            : [])
-                        ]}
-                      />
-                      <Button
-                        type="button"
-                        variant="subtle"
-                        disabled={disabled}
-                        aria-label={`Remove ${ceremonyLabel(c)}`}
-                        onClick={() => actions.remove(c.ceremony_id)}
+                    <Group gap="xs" wrap="nowrap" align="center" maw="100%">
+                      <Box
+                        flex={1}
+                        miw="var(--fo-space-0)"
+                        w="var(--fo-layout-fieldMin-md)"
                       >
-                        Remove
-                      </Button>
+                        <Select
+                          aria-label={`Event for ${ceremonyLabel(c)}`}
+                          value={String(c.circuit_event_id)}
+                          allowDeselect={false}
+                          disabled={disabled}
+                          onChange={(v) => {
+                            if (v === null || v === String(c.circuit_event_id)) return;
+                            void actions.place(
+                              c.ceremony_id,
+                              v === OWN_EVENT ? null : Number(v)
+                            );
+                          }}
+                          data={[
+                            ...eventOptions,
+                            ...(rows.length > 1
+                              ? [{ value: OWN_EVENT, label: "Its own event" }]
+                              : [])
+                          ]}
+                        />
+                      </Box>
+                      <CircuitRowIconButton
+                        icon="link_off"
+                        label={`Remove ${ceremonyLabel(c)}`}
+                        disabled={disabled}
+                        onClick={() => actions.remove(c.ceremony_id)}
+                      />
                     </Group>
                   </Group>
                 ))}
@@ -210,9 +207,12 @@ export function CircuitCeremoniesCard(props: {
         </Stack>
       )}
 
-      <Divider my="sm" />
+      <Divider my="md" />
 
       <Box component="form" onSubmit={submitAdd} aria-label="Add a ceremony">
+        <Title order={4} variant="section">
+          Add a ceremony
+        </Title>
         <Box className="grid grid-stackOnPhone">
           <Select
             label="Ceremony"
@@ -238,7 +238,7 @@ export function CircuitCeremoniesCard(props: {
             data={eventOptions}
           />
         </Box>
-        <Group className="inline-actions" mt="sm" wrap="wrap">
+        <Group mt="sm" wrap="wrap">
           <Button type="submit" disabled={disabled || !ceremonyId}>
             Add ceremony
           </Button>
@@ -247,12 +247,15 @@ export function CircuitCeremoniesCard(props: {
 
       {ceremonies.length > 1 ? (
         <>
-          <Divider my="sm" />
+          <Divider my="md" />
           <Box
             component="form"
             onSubmit={submitGroup}
             aria-label="Group ceremonies into an event"
           >
+            <Title order={4} variant="section">
+              Group ceremonies into an event
+            </Title>
             <Box className="grid grid-stackOnPhone">
               <TextInput
                 label="New event name"
@@ -272,7 +275,7 @@ export function CircuitCeremoniesCard(props: {
                 }))}
               />
             </Box>
-            <Group className="inline-actions" mt="sm" wrap="wrap">
+            <Group mt="sm" wrap="wrap">
               <Button
                 type="submit"
                 disabled={disabled || !groupName.trim() || groupIds.length === 0}
