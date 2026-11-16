@@ -17,6 +17,7 @@ export type CeremonySummary = {
   year?: number | null;
   starts_at?: string | null;
   status: string;
+  results_finalized_at?: string | null;
 };
 
 export type LeagueMember = {
@@ -134,6 +135,7 @@ export type Snapshot = {
   ceremony_id?: number | null;
   ceremony_starts_at?: string | null;
   ceremony_status?: string | null;
+  ceremony_results_finalized_at?: string | null;
   scoring_strategy_name?: string | null;
   category_weights?: Record<string, number> | null;
   my_seat_number?: number | null;

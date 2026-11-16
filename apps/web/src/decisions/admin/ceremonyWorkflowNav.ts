@@ -1,3 +1,4 @@
+import { isCeremonyContentEditable } from "../ceremonyLifecycle";
 import type { CeremonyStatus, CeremonyWorkflowStepId } from "../ceremonyWorkflow";
 
 export function isCeremonyWorkflowStepAllowed(args: {
@@ -12,9 +13,10 @@ export function isCeremonyWorkflowStepAllowed(args: {
   // Results are only meaningful once the ceremony is no longer in DRAFT.
   if (stepId === "results") return ceremonyStatus !== "DRAFT";
 
-  // Structure and publish are only editable while in DRAFT.
-  if (stepId === "structure") return ceremonyStatus === "DRAFT";
+  // Categories stay editable until the ceremony opens for leagues.
+  if (stepId === "structure") return isCeremonyContentEditable(ceremonyStatus);
   if (stepId === "publish") return ceremonyStatus === "DRAFT";
+  if (stepId === "open") return ceremonyStatus === "PUBLISHED";
 
   return true;
 }

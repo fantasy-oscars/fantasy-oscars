@@ -14,7 +14,7 @@ Document and “freeze” the canonical domain model for the Foundations & Guard
 
 ## Core entities
 
-- **Ceremony**: yearly event with categories.
+- **Ceremony**: yearly event with categories. Status is `DRAFT`, `PUBLISHED`, `ACTIVE`, `LOCKED` or `ARCHIVED`; categories and nominations are editable only in `DRAFT` and `PUBLISHED`, seasons and drafts can be created only in `ACTIVE`, and finalized results are the `results_finalized_at` timestamp on a `LOCKED` ceremony (migration 021).
 - **Category Family / Category Edition**: reusable category template per ceremony; edition points to ceremony/family with unit kind and display templates.
 - **Nomination**: one subject per category edition; subject can be film OR song OR performance (exclusive).
 - **Nomination Contributor**: people associated with a nomination.

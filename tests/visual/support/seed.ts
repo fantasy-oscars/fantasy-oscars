@@ -231,7 +231,7 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     { id: 2, code: "golden-reel-2035", name: "Golden Reel Awards 2035", year: 2035 },
     { id: 3, code: "golden-reel-2036", name: "Golden Reel Awards 2036", year: 2036 }
   ];
-  const ceremonyStatus = ["COMPLETE", "PUBLISHED", "DRAFT"];
+  const ceremonyStatus = ["LOCKED", "ACTIVE", "DRAFT"];
   const startsAt = [
     "2034-03-06T01:00:00Z",
     "2035-03-05T01:00:00Z",
@@ -239,8 +239,9 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   ];
   for (const [i, c] of ceremonyDefs.entries()) {
     await pool.query(
-      `INSERT INTO ceremony (id, code, name, year, starts_at, status, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO ceremony
+         (id, code, name, year, starts_at, status, published_at, results_finalized_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         c.id,
         c.code,
@@ -248,7 +249,9 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
         c.year,
         startsAt[i],
         ceremonyStatus[i],
-        ceremonyStatus[i] === "DRAFT" ? null : minutes(100 + i)
+        ceremonyStatus[i] === "DRAFT" ? null : minutes(100 + i),
+        // The finished ceremony has finalized results.
+        i === 0 ? minutes(200) : null
       ]
     );
   }

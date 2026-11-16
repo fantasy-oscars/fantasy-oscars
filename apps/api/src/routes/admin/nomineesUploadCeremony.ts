@@ -6,6 +6,7 @@ import { type DbClient, query } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError, validationError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import { loadNominees } from "../../scripts/load-nominees.js";
 import {
   adminCeremonyIdParam,
@@ -36,13 +37,7 @@ export function registerAdminNomineesUploadCeremonyRoute({
         );
         const status = ceremonyRows[0]?.status;
         if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        if (status !== "DRAFT") {
-          throw new AppError(
-            "CEREMONY_NOT_DRAFT",
-            409,
-            "Nominees can only be uploaded while the ceremony is in draft"
-          );
-        }
+        assertCeremonyContentEditable(status);
 
         const draftsStarted = await hasDraftsStartedForCeremony(client, ceremonyId);
         if (draftsStarted) {

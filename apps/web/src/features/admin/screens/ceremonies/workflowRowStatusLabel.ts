@@ -6,7 +6,7 @@ export function workflowRowStatusLabel(args: {
 }): string {
   const { rowStatus, current } = args;
   if (current) return "Current";
-  if (rowStatus === "COMPLETE") return "Complete";
+  if (rowStatus === "DONE") return "Complete";
   if (rowStatus === "IN_PROGRESS") return "In progress";
   if (rowStatus === "LOCKED") return "Locked";
   return "Not started";

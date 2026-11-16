@@ -3,6 +3,7 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import {
   adminCategoryEditionIdParam,
   adminCategoryEditionUpdateBody
@@ -31,13 +32,7 @@ export function registerAdminCategoryEditionsUpdateRoute(args: {
         );
         const ce = ceRows[0];
         if (!ce) throw new AppError("NOT_FOUND", 404, "Category edition not found");
-        if (ce.status !== "DRAFT") {
-          throw new AppError(
-            "CEREMONY_NOT_DRAFT",
-            409,
-            "Categories can only be edited while the ceremony is in draft"
-          );
-        }
+        assertCeremonyContentEditable(ce.status);
 
         const body = parseBody(adminCategoryEditionUpdateBody, req.body);
 

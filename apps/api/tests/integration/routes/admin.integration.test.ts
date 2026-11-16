@@ -106,7 +106,7 @@ describe("admin routes", () => {
 
   it("upserts winner for active ceremony and locks drafts on first write", async () => {
     const ceremony = await insertCeremony(db.pool, { code: "oscars-2028", year: 2028 });
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       ceremony.id
     ]);
     await db.pool.query(

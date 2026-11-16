@@ -30,7 +30,8 @@ export function registerAdminCeremonyGetRoute(args: {
              draft_warning_hours::int,
              draft_locked_at,
              published_at,
-             archived_at
+             archived_at,
+             results_finalized_at
            FROM ceremony
            WHERE id = $1
              AND deleted_at IS NULL`,

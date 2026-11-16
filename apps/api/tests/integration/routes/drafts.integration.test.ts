@@ -55,8 +55,8 @@ describe("drafts integration", () => {
     await truncateAllTables(db.pool);
   });
 
-  async function publishCeremony(ceremonyId: number) {
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+  async function openCeremonyForLeagues(ceremonyId: number) {
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       ceremonyId
     ]);
   }
@@ -67,7 +67,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     const res = await post<{ error: { code: string } }>(
       "/drafts",
       { league_id: league.id, season_id: season.id, draft_order_type: "SNAKE" },
@@ -84,7 +84,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     const res = await post<{ draft: { id: number; league_id: number; status: string } }>(
       "/drafts",
       { league_id: league.id, season_id: season.id, draft_order_type: "SNAKE" }
@@ -126,7 +126,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
       season_id: season.id,
@@ -143,7 +143,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     await post("/drafts", {
       league_id: league.id,
       season_id: season.id,
@@ -165,7 +165,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     const draftRes = await post<{ draft: { id: number } }>("/drafts", {
       league_id: league.id,
       season_id: season.id,
@@ -201,7 +201,7 @@ describe("drafts integration", () => {
       league_id: league.id,
       ceremony_id: league.ceremony_id
     });
-    await publishCeremony(season.ceremony_id);
+    await openCeremonyForLeagues(season.ceremony_id);
     const res = await post<{ error: { code: string } }>("/drafts", {
       league_id: league.id,
       season_id: season.id,

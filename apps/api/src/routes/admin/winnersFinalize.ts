@@ -26,7 +26,12 @@ export function registerAdminWinnersFinalizeRoute(args: {
             status: string;
             code: string | null;
             name: string | null;
-          }>(tx, `SELECT status, code, name FROM ceremony WHERE id = $1`, [ceremonyId]);
+            results_finalized_at: Date | null;
+          }>(
+            tx,
+            `SELECT status, code, name, results_finalized_at FROM ceremony WHERE id = $1`,
+            [ceremonyId]
+          );
           const ceremony = ceremonyRows[0];
           if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
           if (ceremony.status === "ARCHIVED") {
@@ -50,6 +55,13 @@ export function registerAdminWinnersFinalizeRoute(args: {
               "Winners can only be finalized once results entry has started (ceremony locked)"
             );
           }
+          if (ceremony.results_finalized_at) {
+            throw new AppError(
+              "CEREMONY_RESULTS_FINALIZED",
+              409,
+              "Winners are already finalized for this ceremony"
+            );
+          }
 
           const { rows: winnerRows } = await query<{ id: number }>(
             tx,
@@ -64,12 +76,17 @@ export function registerAdminWinnersFinalizeRoute(args: {
             );
           }
 
-          await query(tx, `UPDATE ceremony SET status = 'COMPLETE' WHERE id = $1`, [
-            ceremonyId
-          ]);
+          const { rows: updatedRows } = await query<{ results_finalized_at: Date }>(
+            tx,
+            `UPDATE ceremony SET results_finalized_at = now()
+             WHERE id = $1
+             RETURNING results_finalized_at`,
+            [ceremonyId]
+          );
           return {
             id: ceremonyId,
-            status: "COMPLETE",
+            status: "LOCKED",
+            results_finalized_at: updatedRows[0].results_finalized_at,
             code: ceremony.code,
             name: ceremony.name
           };
@@ -81,11 +98,15 @@ export function registerAdminWinnersFinalizeRoute(args: {
             action: "finalize_winners",
             target_type: "ceremony",
             target_id: ceremonyId,
-            meta: { status: "COMPLETE" }
+            meta: { results_finalized_at: result.results_finalized_at }
           });
         }
 
-        void emitCeremonyFinalized({ db: client, ceremonyId });
+        void emitCeremonyFinalized({
+          db: client,
+          ceremonyId,
+          resultsFinalizedAt: result.results_finalized_at
+        });
 
         return res.status(200).json({ ceremony: result });
       } catch (err) {

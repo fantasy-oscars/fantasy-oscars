@@ -50,6 +50,8 @@ export function AdminCeremoniesWinnersScreen(props: {
     savingCategory,
     draftLock,
     ceremonyStatus,
+    resultsFinalizedAt,
+    ceremonyStatusText,
     isDirty,
     nominationLabel,
     pendingSaveAll,
@@ -128,7 +130,7 @@ export function AdminCeremoniesWinnersScreen(props: {
               {draftLock.draft_locked ? "Drafts locked" : "Drafts open"}
             </Box>
             <Box component="span" className="pill muted">
-              Ceremony: {ceremonyStatus}
+              Ceremony: {ceremonyStatusText}
             </Box>
           </Group>
         </Group>
@@ -151,7 +153,7 @@ export function AdminCeremoniesWinnersScreen(props: {
                   type="button"
                   onClick={requestSaveAll}
                   disabled={
-                    !isDirty || savingCategory !== null || ceremonyStatus === "COMPLETE"
+                    !isDirty || savingCategory !== null || Boolean(resultsFinalizedAt)
                   }
                 >
                   Save
@@ -277,7 +279,11 @@ export function AdminCeremoniesWinnersScreen(props: {
                 type="button"
                 variant="subtle"
                 onClick={requestFinalizeWinners}
-                disabled={ceremonyStatus !== "LOCKED" || savingCategory !== null}
+                disabled={
+                  ceremonyStatus !== "LOCKED" ||
+                  Boolean(resultsFinalizedAt) ||
+                  savingCategory !== null
+                }
               >
                 Finalize winners
               </Button>

@@ -232,14 +232,22 @@ export function useDraftSocket(args: {
       });
     };
 
-    const onCeremonyFinalized = (msg: { ceremony_id: number; status: "COMPLETE" }) => {
+    const onCeremonyFinalized = (msg: {
+      ceremony_id: number;
+      status: "LOCKED";
+      results_finalized_at: string;
+    }) => {
       void invalidateCeremonyAndDraftData(queryClient);
       const current = snapshotRef.current;
       if (!current) return;
       // Keep the local snapshot in sync for results presentation without a full resync.
       setSnapshot((prev) => {
         if (!prev || prev.draft.id !== current.draft.id) return prev;
-        return { ...prev, ceremony_status: msg.status };
+        return {
+          ...prev,
+          ceremony_status: msg.status,
+          ceremony_results_finalized_at: msg.results_finalized_at
+        };
       });
     };
 

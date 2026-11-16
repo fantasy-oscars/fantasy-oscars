@@ -12,7 +12,8 @@ type CeremonyWinnersUpdatedPayload = {
 
 type CeremonyFinalizedPayload = {
   ceremony_id: number;
-  status: "COMPLETE";
+  status: "LOCKED";
+  results_finalized_at: string;
   created_at: string;
 };
 
@@ -62,12 +63,17 @@ export async function emitCeremonyWinnersUpdated(args: {
   }
 }
 
-export async function emitCeremonyFinalized(args: { db: DbClient; ceremonyId: number }) {
+export async function emitCeremonyFinalized(args: {
+  db: DbClient;
+  ceremonyId: number;
+  resultsFinalizedAt: Date;
+}) {
   if (!draftNamespace) return;
   const draftIds = await listDraftIdsByCeremony(args.db, args.ceremonyId);
   const payload: CeremonyFinalizedPayload = {
     ceremony_id: args.ceremonyId,
-    status: "COMPLETE",
+    status: "LOCKED",
+    results_finalized_at: args.resultsFinalizedAt.toISOString(),
     created_at: new Date().toISOString()
   };
   for (const draftId of draftIds) {

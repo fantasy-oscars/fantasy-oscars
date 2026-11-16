@@ -16,7 +16,7 @@ export function registerCeremoniesPublishedRoute({
         client,
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
-         WHERE status = 'PUBLISHED'
+         WHERE status = 'ACTIVE'
            AND deleted_at IS NULL
          ORDER BY year DESC, id DESC`
       );

@@ -24,10 +24,11 @@ export function computeSeasonLocked(args: {
 
 export function computeSeasonDraftRoomCtaLabel(args: {
   ceremonyStatus: string | null | undefined;
+  resultsFinalizedAt: string | null | undefined;
   draftStatus: string | null | undefined;
 }): "View results" | "View draft results" | "Enter draft room" | "Draft unavailable" {
   const cs = String(args.ceremonyStatus ?? "").toUpperCase();
-  if (cs === "COMPLETE" || cs === "ARCHIVED") return "View results";
+  if (args.resultsFinalizedAt || cs === "ARCHIVED") return "View results";
 
   const ds = String(args.draftStatus ?? "").toUpperCase();
   if (cs === "LOCKED" && ds !== "COMPLETED") return "Draft unavailable";

@@ -122,7 +122,7 @@ export async function seedCeremony(stack: Pick<E2eStack, "pool">) {
   };
   await postJson("/admin/nominees/upload", dataset, token);
 
-  await stack.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+  await stack.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
     ceremony.id
   ]);
   return { ceremonyId: ceremony.id };

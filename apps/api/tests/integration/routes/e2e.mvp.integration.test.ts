@@ -70,7 +70,7 @@ describe("MVP end-to-end flow", () => {
       { code: "oscars-e2e", year: 2035 },
       false
     );
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       ceremony.id
     ]);
     const setActive = await postJson(

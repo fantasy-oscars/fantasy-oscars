@@ -60,9 +60,7 @@ export function registerSeasonsLeaguesSeasonsListRoute(args: {
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status
-            ? ["PUBLISHED", "LOCKED", "COMPLETE"].includes(
-                String(s.ceremony_status).toUpperCase()
-              )
+            ? ["ACTIVE", "LOCKED"].includes(String(s.ceremony_status).toUpperCase())
             : false
         }));
         return res.json({ seasons: response });

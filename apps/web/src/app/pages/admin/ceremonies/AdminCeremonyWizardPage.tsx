@@ -15,6 +15,7 @@ import { AdminCeremoniesOverviewPage } from "./AdminCeremoniesOverviewPage";
 import { AdminCeremoniesCategoriesPage } from "./AdminCeremoniesCategoriesPage";
 import { AdminCeremoniesNomineesPage } from "./AdminCeremoniesNomineesPage";
 import { AdminCeremonyPublishPage } from "./AdminCeremonyPublishPage";
+import { AdminCeremonyOpenPage } from "./AdminCeremonyOpenPage";
 import { AdminCeremoniesWinnersPage } from "./AdminCeremoniesWinnersPage";
 import { AdminCeremoniesLockPage } from "./AdminCeremoniesLockPage";
 import { CeremonyWizardProvider } from "./ceremonyWizardContext";
@@ -70,7 +71,7 @@ export function AdminCeremonyWizardPage() {
   const prevIndex = Math.max(0, currentIndex - 1);
 
   const canGoBack = currentIndex > 0;
-  const resultsFinalized = ceremonyStatus === "COMPLETE" || ceremonyStatus === "ARCHIVED";
+  const resultsFinalized = Boolean(ceremony.results_finalized_at);
   const canGoNext =
     currentIndex < STEP_ORDER.length - 1 &&
     (current.id !== "results" || resultsFinalized) &&
@@ -90,6 +91,7 @@ export function AdminCeremonyWizardPage() {
     if (current.id === "categories") return <AdminCeremoniesCategoriesPage />;
     if (current.id === "populate") return <AdminCeremoniesNomineesPage />;
     if (current.id === "publish") return <AdminCeremonyPublishPage />;
+    if (current.id === "open") return <AdminCeremonyOpenPage />;
     if (current.id === "results") return <AdminCeremoniesWinnersPage />;
     return <AdminCeremoniesLockPage />;
   })();

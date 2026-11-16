@@ -291,6 +291,7 @@ export async function getDraftRuntimeSnapshot(args: {
     ceremony_starts_at: season?.ceremony_starts_at ?? null,
     ceremony_status:
       (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? null,
+    ceremony_results_finalized_at: season?.ceremony_results_finalized_at ?? null,
     scoring_strategy_name:
       (season as { scoring_strategy_name?: string | null } | null)
         ?.scoring_strategy_name ?? null,

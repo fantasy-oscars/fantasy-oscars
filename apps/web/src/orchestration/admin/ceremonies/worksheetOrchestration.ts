@@ -5,12 +5,13 @@ import {
   getCeremonyWorkflowSteps,
   getNextCeremonyWorkflowStep
 } from "../../../decisions/ceremonyWorkflow";
+import type { CeremonyStatus } from "../../../decisions/ceremonyLifecycle";
 
 type LoadState = "loading" | "error" | "ready";
 
 export type CeremonyDetail = {
   id: number;
-  status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+  status: CeremonyStatus;
   code: string | null;
   name: string | null;
   year: number | null;
@@ -19,6 +20,7 @@ export type CeremonyDetail = {
   draft_warning_hours: number;
   published_at: string | null;
   archived_at: string | null;
+  results_finalized_at: string | null;
 };
 
 export type CeremonyStats = {
@@ -81,7 +83,7 @@ export function useAdminCeremonyWorksheetOrchestration(args: {
 
   const statusText = useMemo(() => {
     if (!ceremony) return "—";
-    return ceremonyStatusLabel(ceremony.status);
+    return ceremonyStatusLabel(ceremony.status, ceremony.results_finalized_at);
   }, [ceremony]);
 
   const steps = useMemo(() => {

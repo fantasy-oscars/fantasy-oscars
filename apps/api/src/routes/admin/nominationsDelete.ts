@@ -6,6 +6,7 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import { adminNominationIdParam } from "@fantasy-oscars/shared/schemas";
 import { parseParams } from "../../utils/validate.js";
 
@@ -51,13 +52,7 @@ export function registerAdminNominationDeleteRoute(args: {
           );
           const status = ceremonyRows[0]?.status;
           if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-          if (status !== "DRAFT") {
-            throw new AppError(
-              "CEREMONY_NOT_DRAFT",
-              409,
-              "Nominations can only be deleted while the ceremony is in draft"
-            );
-          }
+          assertCeremonyContentEditable(status);
 
           const draftsStarted = await hasDraftsStartedForCeremony(tx, row.ceremony_id);
           if (draftsStarted) {

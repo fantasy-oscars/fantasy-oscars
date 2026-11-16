@@ -43,46 +43,6 @@ export function registerAdminCeremonyPublishRoute(args: {
           );
         }
 
-        const { rows: statsRows } = await query<{
-          categories_total: number;
-          categories_with_nominees: number;
-        }>(
-          client,
-          `WITH cats AS (
-             SELECT ce.id
-             FROM category_edition ce
-             WHERE ce.ceremony_id = $1
-           ),
-           nom AS (
-             SELECT DISTINCT n.category_edition_id
-             FROM nomination n
-             JOIN cats ON cats.id = n.category_edition_id
-             WHERE n.status = 'ACTIVE'
-           )
-           SELECT
-             (SELECT COUNT(*)::int FROM cats) AS categories_total,
-             (SELECT COUNT(*)::int FROM nom) AS categories_with_nominees`,
-          [id]
-        );
-        const stats = statsRows[0] ?? {
-          categories_total: 0,
-          categories_with_nominees: 0
-        };
-        if (stats.categories_total === 0) {
-          throw new AppError(
-            "CEREMONY_INCOMPLETE",
-            409,
-            "No categories exist for this ceremony"
-          );
-        }
-        if (stats.categories_with_nominees !== stats.categories_total) {
-          throw new AppError(
-            "CEREMONY_INCOMPLETE",
-            409,
-            "All categories must have nominees before publishing"
-          );
-        }
-
         const { rows } = await query(
           client,
           `UPDATE ceremony

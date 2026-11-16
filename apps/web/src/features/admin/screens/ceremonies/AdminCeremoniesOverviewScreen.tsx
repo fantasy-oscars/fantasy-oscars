@@ -17,6 +17,7 @@ import { PageError } from "@/shared/page-state";
 import type { ApiResult, FieldErrors } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
+import type { CeremonyStatus } from "@/decisions/ceremonyLifecycle";
 
 const INFO_ICON = String.fromCharCode(0xe88e);
 
@@ -27,7 +28,7 @@ export function AdminCeremoniesOverviewScreen(props: {
   status: ApiResult | null;
   ceremony: {
     id: number;
-    status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+    status: CeremonyStatus;
     code: string | null;
     name: string | null;
     starts_at: string | null;

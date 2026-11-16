@@ -151,7 +151,7 @@ export function AdminCeremoniesCategoriesScreen(props: {
 
         {!o.canEdit ? (
           <Box className="status status-warning" role="status" mt="sm">
-            Categories can only be edited while the ceremony is in DRAFT.
+            Categories can only be edited while the ceremony is in Draft or Published.
           </Box>
         ) : null}
 

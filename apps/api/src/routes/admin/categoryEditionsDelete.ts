@@ -3,6 +3,7 @@ import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import { adminCategoryEditionIdParam } from "@fantasy-oscars/shared/schemas";
 import { parseParams } from "../../utils/validate.js";
 
@@ -28,13 +29,7 @@ export function registerAdminCategoryEditionsDeleteRoute(args: {
         );
         const ce = ceRows[0];
         if (!ce) throw new AppError("NOT_FOUND", 404, "Category edition not found");
-        if (ce.status !== "DRAFT") {
-          throw new AppError(
-            "CEREMONY_NOT_DRAFT",
-            409,
-            "Categories can only be edited while the ceremony is in draft"
-          );
-        }
+        assertCeremonyContentEditable(ce.status);
 
         const { rows: nomCountRows } = await query<{ count: string }>(
           client,

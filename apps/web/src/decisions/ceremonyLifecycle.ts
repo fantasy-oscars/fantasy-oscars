@@ -1,10 +1,17 @@
 // Ordered ceremony lifecycle; later entries come after earlier ones.
-export const CEREMONY_LIFECYCLE = [
-  "DRAFT",
-  "PUBLISHED",
-  "LOCKED",
-  "COMPLETE",
-  "ARCHIVED"
-] as const;
+export {
+  ceremonyStatuses as CEREMONY_LIFECYCLE,
+  isCeremonyContentEditable,
+  isCeremonyStatus,
+  type CeremonyStatus
+} from "@fantasy-oscars/shared";
 
-export type CeremonyStatus = (typeof CEREMONY_LIFECYCLE)[number];
+/**
+ * Archive needs finalized results on a locked ceremony; the API refuses it otherwise.
+ */
+export function canArchiveCeremony(args: {
+  status: string | null | undefined;
+  resultsFinalizedAt: string | null | undefined;
+}): boolean {
+  return args.status === "LOCKED" && Boolean(args.resultsFinalizedAt);
+}

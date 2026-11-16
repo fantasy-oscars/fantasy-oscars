@@ -44,6 +44,7 @@ type SeasonDetailData = {
   invites: SeasonInvite[];
   leagueContext: LeagueContext | null;
   ceremonyStatus: string | null;
+  ceremonyResultsFinalizedAt: string | null;
 };
 
 const NO_MEMBERS: SeasonMember[] = [];
@@ -97,6 +98,7 @@ export function useSeasonOrchestration(
             }
           : null,
         ceremonyStatus: found?.ceremonyStatus ?? null,
+        ceremonyResultsFinalizedAt: found?.ceremonyResultsFinalizedAt ?? null,
         invites: invitesRes?.ok ? (invitesRes.data?.invites ?? []) : []
       };
     }
@@ -110,6 +112,7 @@ export function useSeasonOrchestration(
   const invites = detail?.invites ?? NO_INVITES;
   const leagueContext = detail?.leagueContext ?? null;
   const ceremonyStatus = detail?.ceremonyStatus ?? null;
+  const ceremonyResultsFinalizedAt = detail?.ceremonyResultsFinalizedAt ?? null;
   const [inviteTokens, setInviteTokens] = useState<TokenMap>({});
 
   // Local edits are written straight to the cached detail so the screen updates
@@ -843,6 +846,7 @@ export function useSeasonOrchestration(
     inviteTokens,
     leagueContext,
     ceremonyStatus,
+    ceremonyResultsFinalizedAt,
     scoringState,
     allocationState,
     timerState,

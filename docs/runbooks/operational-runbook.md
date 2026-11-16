@@ -70,7 +70,8 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
 
 ### Guardrails & lock rule
 
-- Drafting is locked for a ceremony once results entry begins (winners are saved) and remains locked through completion/archival.
+- Ceremony status runs `DRAFT → PUBLISHED → ACTIVE → LOCKED → ARCHIVED`. Seasons and drafts can be created only while the ceremony is `ACTIVE` (open for leagues).
+- Drafting is locked for a ceremony once results entry begins (winners are saved) and remains locked through finalization and archival.
 - Existing seasons/drafts tied to an older ceremony stay visible historically; new drafts should be created on new seasons tied to the new ceremony.
 
 ### Prereqs
@@ -82,17 +83,20 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
 
 1) **Freeze the outgoing ceremony (e.g., 2026)**
    - Ensure all winners are entered in Admin → Results/Winners.
-   - Finalize winners (if the UI supports a finalize action), then set ceremony status to Complete/Archived as appropriate.
+   - Finalize winners (Admin → Results → Finalize winners). This sets `results_finalized_at`; the ceremony stays `LOCKED` and winners become read-only.
+   - Archive the ceremony (Admin → Archive). Archive is refused until results are finalized.
 
 2) **Create the new ceremony record**
    - Use Admin → Ceremonies → New ceremony (preferred).
-   - Fill identity (name/code/year), add categories, then populate nominees.
+   - Fill identity (name/code/year) and the ceremony date.
 
 3) **Publish the ceremony**
-   - Once categories and nominees are ready, publish the ceremony so users can create seasons against it.
+   - Publishing needs only the name and code, so the ceremony can go out with its date before nominations are announced. It is visible to users but leagues cannot create seasons yet.
+   - Add categories and populate nominees; both stay editable while the ceremony is `PUBLISHED`.
 
-4) **Open drafting for the new year**
-   - Commissioners can now create seasons for the new ceremony and draft as usual.
+4) **Open for leagues**
+   - Admin → Open for leagues. It is refused (`409 CEREMONY_INCOMPLETE`) while any category has no nominee, and the error lists those categories.
+   - Opening freezes categories and nominees. Commissioners can now create seasons for the new ceremony and draft as usual.
 
 5) **Smoke**
    - Confirm old seasons remain visible.
@@ -142,5 +146,6 @@ Post-steps:
 - **Realtime (Socket.IO) checks:**
   - Browser Network tab: websocket upgrade to `https://api.fantasy-oscars.com/socket.io/…` should return 101. Failures show 4xx (auth) or 5xx; check console for CORS errors.
   - Common API error codes: `401/403` (unauthenticated/unauthorized), `409 CEREMONY_INACTIVE` (wrong ceremony), `409 ACTIVE_CEREMONY_NOT_SET`, `409 DRAFTS_LOCKED` (winners entered).
+  - Ceremony lifecycle codes: `409 CEREMONY_NOT_ACTIVE` (season or draft create before the ceremony is open for leagues), `409 CEREMONY_CONTENT_LOCKED` (category or nomination edit after it opened), `409 CEREMONY_NOT_PUBLISHED` (open for leagues from any status but `PUBLISHED`), `409 CEREMONY_INCOMPLETE` (open for leagues with categories missing nominees), `409 CEREMONY_RESULTS_FINALIZED` (winner change or second finalize), `409 CEREMONY_RESULTS_NOT_FINALIZED` (archive before finalize).
 - **Web runtime errors:** Static site has no server logs; use browser console + Network tab. If a client error corresponds to API failures, correlate timestamps with API logs above.
 - **Healthy signals:** `GET /health` returns `{ ok: true, service: "api", status: "healthy" }`; Socket.IO connects without retry loops; `/auth/me` returns 200 for authenticated users and 401 for logged-out sessions.

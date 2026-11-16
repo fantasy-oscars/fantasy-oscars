@@ -15,6 +15,7 @@ export type SeasonRecord = {
   created_at: Date;
   ceremony_starts_at?: Date | null;
   ceremony_status?: string | null;
+  ceremony_results_finalized_at?: Date | null;
   draft_id?: number | null;
   draft_status?: string | null;
 };
@@ -138,6 +139,7 @@ export async function getSeasonById(
 	       s.created_at,
 	       c.starts_at AS ceremony_starts_at,
 	       c.status AS ceremony_status,
+	       c.results_finalized_at AS ceremony_results_finalized_at,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
      FROM season s

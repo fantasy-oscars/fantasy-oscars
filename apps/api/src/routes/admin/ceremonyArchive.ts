@@ -20,16 +20,17 @@ export function registerAdminCeremonyArchiveRoute(args: {
       try {
         const { id } = parseParams(adminCeremonyIdParam, req.params);
 
-        const { rows: ceremonyRows } = await query<{ status: string }>(
-          client,
-          `SELECT status FROM ceremony WHERE id = $1`,
-          [id]
-        );
-        const status = ceremonyRows[0]?.status;
-        if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        if (status !== "COMPLETE") {
+        const { rows: ceremonyRows } = await query<{
+          status: string;
+          results_finalized_at: Date | null;
+        }>(client, `SELECT status, results_finalized_at FROM ceremony WHERE id = $1`, [
+          id
+        ]);
+        const ceremony = ceremonyRows[0];
+        if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
+        if (ceremony.status !== "LOCKED" || !ceremony.results_finalized_at) {
           throw new AppError(
-            "CEREMONY_NOT_COMPLETE",
+            "CEREMONY_RESULTS_NOT_FINALIZED",
             409,
             "Ceremony results must be finalized before archiving"
           );
@@ -41,7 +42,7 @@ export function registerAdminCeremonyArchiveRoute(args: {
            SET status = 'ARCHIVED',
                archived_at = COALESCE(archived_at, now())
            WHERE id = $1
-           RETURNING id::int, status, archived_at`,
+           RETURNING id::int, status, archived_at, results_finalized_at`,
           [id]
         );
 

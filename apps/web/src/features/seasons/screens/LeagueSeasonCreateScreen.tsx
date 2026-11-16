@@ -154,7 +154,7 @@ export function LeagueSeasonCreateScreen(props: {
               />
               {view.ceremonies.length === 0 && (
                 <Text className="baseline-textMeta">
-                  No published ceremonies available yet.
+                  No ceremonies are open for leagues yet.
                 </Text>
               )}
 

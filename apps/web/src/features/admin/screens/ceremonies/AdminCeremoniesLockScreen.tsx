@@ -2,6 +2,7 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
+import { canArchiveCeremony } from "@/decisions/ceremonyLifecycle";
 import "@/primitives/baseline.css";
 
 export function AdminCeremoniesLockScreen(props: {
@@ -11,12 +12,16 @@ export function AdminCeremoniesLockScreen(props: {
     status: string;
     draft_locked: boolean;
     draft_locked_at: string | null;
+    results_finalized_at: string | null;
   } | null;
   status: ApiResult | null;
   onArchive: () => void;
 }) {
   const { loading, saving, lockState, status, onArchive } = props;
-  const canArchive = lockState?.status === "COMPLETE";
+  const canArchive = canArchiveCeremony({
+    status: lockState?.status,
+    resultsFinalizedAt: lockState?.results_finalized_at
+  });
   const isArchived = lockState?.status === "ARCHIVED";
   const archiveDisabledReason =
     !isArchived && !canArchive ? "Finalize winners before archiving." : null;

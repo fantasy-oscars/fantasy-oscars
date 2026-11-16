@@ -1,16 +1,12 @@
-import { CEREMONY_LIFECYCLE } from "../ceremonyLifecycle";
-
-const RESULTS_FINALIZED_INDEX = CEREMONY_LIFECYCLE.indexOf("COMPLETE");
-
 /**
- * Results are final once the draft is completed and the ceremony has reached
- * COMPLETE or any later lifecycle state (so archiving never hides them).
+ * Results are final once the draft is completed and the ceremony's winners have
+ * been finalized. The timestamp stays set after archiving, so archiving never
+ * hides them.
  */
 export function isFinalResults(args: {
   draftStatus: string | null | undefined;
-  ceremonyStatus: string | null | undefined;
+  resultsFinalizedAt: string | null | undefined;
 }): boolean {
   if (args.draftStatus !== "COMPLETED") return false;
-  const index = CEREMONY_LIFECYCLE.findIndex((s) => s === args.ceremonyStatus);
-  return index >= RESULTS_FINALIZED_INDEX;
+  return Boolean(args.resultsFinalizedAt);
 }

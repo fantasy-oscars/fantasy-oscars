@@ -1,7 +1,9 @@
-import type { CeremonyStatus } from "../ceremonyWorkflow";
+import { isCeremonyContentEditable, type CeremonyStatus } from "../ceremonyLifecycle";
+
+export { isCeremonyStatus } from "../ceremonyLifecycle";
 
 export type StepId =
-  "initialize" | "categories" | "populate" | "publish" | "results" | "archive";
+  "initialize" | "categories" | "populate" | "publish" | "open" | "results" | "archive";
 
 export type StepState =
   "INCOMPLETE_EDITABLE" | "COMPLETE_EDITABLE" | "COMPLETE_LOCKED" | "GATED";
@@ -11,6 +13,7 @@ export const STEP_ORDER: Array<{ id: StepId; label: string }> = [
   { id: "categories", label: "Categories" },
   { id: "populate", label: "Populate nominees" },
   { id: "publish", label: "Publish" },
+  { id: "open", label: "Open for leagues" },
   { id: "results", label: "Results" },
   { id: "archive", label: "Archive" }
 ];
@@ -21,24 +24,20 @@ export function inferStepFromPathname(pathname: string): StepId {
   if (tail === "structure" || tail === "categories") return "categories";
   if (tail === "populate" || tail === "nominees") return "populate";
   if (tail === "publish") return "publish";
+  if (tail === "open") return "open";
   if (tail === "results" || tail === "winners") return "results";
   if (tail === "archive" || tail === "lock") return "archive";
   return "initialize";
 }
 
-export function isCeremonyStatus(s: unknown): s is CeremonyStatus {
-  return (
-    s === "DRAFT" ||
-    s === "PUBLISHED" ||
-    s === "LOCKED" ||
-    s === "COMPLETE" ||
-    s === "ARCHIVED"
-  );
-}
-
 export function computeStepState(args: {
   step: StepId;
-  ceremony: { status: CeremonyStatus; code: string | null; name: string | null };
+  ceremony: {
+    status: CeremonyStatus;
+    code: string | null;
+    name: string | null;
+    results_finalized_at?: string | null;
+  };
   stats: {
     categories_total: number;
     categories_with_nominees: number;
@@ -65,7 +64,7 @@ export function computeStepState(args: {
   if (step === "categories") {
     if (!hasIdentity)
       return { state: "GATED", reason: "Requires ceremony name and code." };
-    if (ceremony.status !== "DRAFT") return { state: "COMPLETE_LOCKED" };
+    if (!isCeremonyContentEditable(ceremony.status)) return { state: "COMPLETE_LOCKED" };
     return {
       state: hasCategories ? "COMPLETE_EDITABLE" : "INCOMPLETE_EDITABLE",
       reason: hasCategories ? undefined : "Requires at least one category."
@@ -84,22 +83,32 @@ export function computeStepState(args: {
     };
   }
 
+  // Publishing needs only the ceremony identity; content can follow.
   if (step === "publish") {
     if (!hasIdentity)
       return { state: "GATED", reason: "Requires ceremony name and code." };
-    if (!hasCategories)
-      return { state: "GATED", reason: "Requires at least one category." };
-    if (!nomineesComplete)
-      return { state: "GATED", reason: "Requires nominees for every category." };
     if (ceremony.status === "DRAFT") return { state: "INCOMPLETE_EDITABLE" };
     return { state: "COMPLETE_LOCKED" };
+  }
+
+  // Opening for leagues is where nominee completeness is enforced.
+  if (step === "open") {
+    if (ceremony.status === "DRAFT")
+      return { state: "GATED", reason: "Publish the ceremony first." };
+    if (ceremony.status !== "PUBLISHED") return { state: "COMPLETE_LOCKED" };
+    return {
+      state: "INCOMPLETE_EDITABLE",
+      reason: nomineesComplete
+        ? "Open the ceremony for leagues to continue."
+        : "Requires nominees for every category."
+    };
   }
 
   if (step === "results") {
     if (ceremony.status === "DRAFT")
       return { state: "GATED", reason: "Publish the ceremony to enter results." };
     if (ceremony.status === "ARCHIVED") return { state: "COMPLETE_LOCKED" };
-    if (ceremony.status === "COMPLETE") return { state: "COMPLETE_LOCKED" };
+    if (ceremony.results_finalized_at) return { state: "COMPLETE_LOCKED" };
     return {
       state: stats.winners_total > 0 ? "COMPLETE_EDITABLE" : "INCOMPLETE_EDITABLE",
       reason:

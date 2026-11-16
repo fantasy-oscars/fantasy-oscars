@@ -53,7 +53,7 @@ describe("draft standings scoring strategies", () => {
       ceremony_id: leagueFixed.ceremony_id,
       scoring_strategy_name: "fixed"
     });
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       seasonFixed.ceremony_id
     ]);
     const draftFixed = await insertDraft(db.pool, {
@@ -127,7 +127,7 @@ describe("draft standings scoring strategies", () => {
       ceremony_id: leagueNeg.ceremony_id,
       scoring_strategy_name: "negative"
     });
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       seasonNeg.ceremony_id
     ]);
     const draftNeg = await insertDraft(db.pool, {
@@ -203,7 +203,7 @@ describe("draft standings scoring strategies", () => {
       ceremony_id: league.ceremony_id,
       scoring_strategy_name: "fixed"
     });
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       season.ceremony_id
     ]);
     const draft = await insertDraft(db.pool, {

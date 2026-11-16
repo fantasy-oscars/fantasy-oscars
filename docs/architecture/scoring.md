@@ -17,6 +17,9 @@ ceremony winners are known.
 - Ceremony winners are entered centrally (admin-only) and stored in `ceremony_winner` (one winning `nomination_id` per `category_edition`).
 - Standings are derived from winners for the season's ceremony; all seasons for that
   ceremony see the same winner set (subject to ceremony lifecycle).
+- Results are final once `ceremony.results_finalized_at` is set (finalize winners). The
+  ceremony stays `LOCKED`, winners become read-only, and the `ceremony:finalized` event
+  carries the timestamp so draft rooms switch to the final-results view.
 - `GET /drafts/:id/standings` computes per-seat totals using the season's scoring strategy.
 
 ## Category weights (category-weighted scoring)
