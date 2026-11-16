@@ -5,13 +5,21 @@ import { useRailFocusReturn } from "@/features/draft/ui/useRailFocusReturn";
 
 function Rail() {
   const [open, setOpen] = useState(true);
-  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
+  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
   return open ? (
-    <button key="close" type="button" onClick={close}>
+    <button key="close" type="button" ref={closeRef} onClick={close}>
       Collapse
     </button>
   ) : (
-    <button key="toggle" type="button" ref={toggleRef} onClick={() => setOpen(true)}>
+    <button
+      key="toggle"
+      type="button"
+      ref={toggleRef}
+      onClick={() => {
+        noteExpand();
+        setOpen(true);
+      }}
+    >
       Expand
     </button>
   );
@@ -27,10 +35,33 @@ describe("useRailFocusReturn", () => {
     expect(screen.getByRole("button", { name: "Expand" })).toHaveFocus();
   });
 
-  it("does not take focus when the rail opens", () => {
+  it("moves focus to the close button when the rail expands from its toggle", () => {
     render(<Rail />);
     fireEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    screen.getByRole("button", { name: "Expand" }).focus();
     fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    expect(screen.getByRole("button", { name: "Collapse" })).toHaveFocus();
+  });
+
+  it("does not take focus when the rail opens without the toggle", () => {
+    function Opener() {
+      const [open, setOpen] = useState(false);
+      const { closeRef, close } = useRailFocusReturn(open, setOpen);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open elsewhere
+          </button>
+          {open ? (
+            <button type="button" ref={closeRef} onClick={close}>
+              Collapse
+            </button>
+          ) : null}
+        </>
+      );
+    }
+    render(<Opener />);
+    fireEvent.click(screen.getByRole("button", { name: "Open elsewhere" }));
     expect(screen.getByRole("button", { name: "Collapse" })).not.toHaveFocus();
   });
 });

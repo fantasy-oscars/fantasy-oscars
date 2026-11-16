@@ -25,7 +25,7 @@ export function DraftLedgerRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
-  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
+  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.ledgerRows.map((r) => r.roundPick)) }),
@@ -52,6 +52,7 @@ export function DraftLedgerRail(props: {
             </Box>
             <UnstyledButton
               type="button"
+              ref={closeRef}
               className="dr-railClose"
               aria-label="Collapse draft history"
               onClick={close}
@@ -179,6 +180,7 @@ export function DraftLedgerRail(props: {
           title={isPre ? "Draft history (available after draft starts)" : "Draft history"}
           onClick={() => {
             if (isPre) return;
+            noteExpand();
             if (compactRails) openRailExclusive("ledger");
             else setOpen(true);
           }}

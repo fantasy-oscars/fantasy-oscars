@@ -155,7 +155,7 @@ export const PILL_STATES = {
   focus: nominee(108, "Focus"),
   long: nominee(109, LONG_FILM_TITLE)
 };
-export const HOVER_MATCH_IDS = new Set([102, 106]);
+export const HOVER_MATCH_IDS = new Set([102, 106, 502]);
 export const FORCED_PILLS: ReadonlyArray<{
   label: string;
   states: readonly ("hover" | "focus")[];
@@ -177,6 +177,16 @@ export const ICON_AUDIT_PILLS = [
   nominee(401, "Default pill"),
   nominee(402, "Muted pill", { muted: true }),
   nominee(403, "Winner pill", { winner: true, muted: true })
+];
+
+/** Every pill state, rendered with the punchout icon variant (default, armed, hover-match, muted, winner). */
+export const PUNCHOUT_STATES_TITLE = "Pill states, punchout";
+export const PUNCHOUT_PILLS = [
+  nominee(501, "Default"),
+  nominee(502, "Hover (match)"),
+  nominee(503, "Armed", { selected: true }),
+  nominee(504, "Muted", { muted: true }),
+  nominee(505, "Winner", { winner: true, muted: true })
 ];
 
 export const BOARD_COLUMNS = [
@@ -201,6 +211,29 @@ export const BOARD_COLUMNS = [
         nominee(312, "Tobias Achterberg"),
         nominee(313, "Rosalind Okonkwo-Dray", { muted: true })
       ]
+    }
+  ]
+];
+
+/** Three short cards over two columns: stacked in one, side by side across both. */
+export const EDGE_COLUMNS = [
+  [
+    {
+      id: "edge-a",
+      title: "Best Editing",
+      nominees: [nominee(601, FILM_TITLES[0]), nominee(602, FILM_TITLES[1])]
+    },
+    {
+      id: "edge-b",
+      title: "Best Score",
+      nominees: [nominee(603, FILM_TITLES[2]), nominee(604, FILM_TITLES[0])]
+    }
+  ],
+  [
+    {
+      id: "edge-c",
+      title: "Best Sound",
+      nominees: [nominee(605, FILM_TITLES[1]), nominee(606, FILM_TITLES[2])]
     }
   ]
 ];

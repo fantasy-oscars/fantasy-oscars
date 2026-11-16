@@ -20,7 +20,7 @@ export function DraftAutoDraftRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, compactRails, openRailExclusive } = props;
-  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
+  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
 
   return (
     <Box
@@ -41,6 +41,7 @@ export function DraftAutoDraftRail(props: {
             </Box>
             <UnstyledButton
               type="button"
+              ref={closeRef}
               className="dr-railClose"
               aria-label="Collapse auto-draft"
               onClick={close}
@@ -216,6 +217,7 @@ export function DraftAutoDraftRail(props: {
           aria-label="Expand auto-draft"
           title="Auto-draft"
           onClick={() => {
+            noteExpand();
             if (compactRails) openRailExclusive("auto");
             else setOpen(true);
           }}

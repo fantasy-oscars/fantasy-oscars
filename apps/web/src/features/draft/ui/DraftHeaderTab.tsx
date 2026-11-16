@@ -84,9 +84,9 @@ export function DraftHeaderTab(props: {
     status.headlineKind === "clock" ? (
       <TabularText text={status.headline} className="drh-tabHeadlineText" />
     ) : (
-      <Text component="span" className="drh-tabHeadlineText">
-        {status.headline}
-      </Text>
+      // A plain span: Mantine's Text class would set its own size and weight on it and
+      // hide the headline rules on `.drh-tabHeadline` from it.
+      <span className="drh-tabHeadlineText">{status.headline}</span>
     );
 
   return (

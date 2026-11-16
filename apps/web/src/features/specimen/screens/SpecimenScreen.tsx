@@ -25,6 +25,7 @@ import { deriveAppearanceView, type AppearanceState } from "@/decisions/appearan
 import { ShellHeader } from "@/app/chrome/ui/ShellHeader";
 import { ShellPrimaryNav } from "@/app/chrome/ui/ShellPrimaryNav";
 import { Wordmark } from "@/app/chrome/ui/Wordmark";
+import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { DraftHeaderTab } from "@/features/draft/ui/DraftHeaderTab";
 import { computeHeaderStatus } from "@/decisions/draft/headerStatus";
@@ -47,6 +48,7 @@ import {
   BOARD_COLUMNS,
   DISABLED_CARD_TITLE,
   DISABLED_PILLS,
+  EDGE_COLUMNS,
   FILM_TITLES,
   FORCED_PILLS,
   HOVER_MATCH_IDS,
@@ -55,6 +57,8 @@ import {
   NAV_LINKS,
   PILL_CARD_TITLE,
   PILL_STATES,
+  PUNCHOUT_PILLS,
+  PUNCHOUT_STATES_TITLE,
   ICON_AUDIT_PILLS,
   ICON_DEFAULT_TITLE,
   ICON_PUNCHOUT_TITLE,
@@ -446,16 +450,15 @@ function SelectionMatrix() {
   );
 }
 
-function PillBoard() {
-  const p = PILL_STATES;
-  const noClick = noop;
-  const card = (
-    props: Pick<
-      React.ComponentProps<typeof CategoryCard>,
-      "title" | "nominees" | "canDraftAction" | "categoryId"
-    > &
-      Partial<Pick<React.ComponentProps<typeof CategoryCard>, "iconVariant">>
-  ) => (
+/** One category card as the room renders it, from specimen nominees. */
+function specimenCard(
+  props: Pick<
+    React.ComponentProps<typeof CategoryCard>,
+    "title" | "nominees" | "canDraftAction" | "categoryId"
+  > &
+    Partial<Pick<React.ComponentProps<typeof CategoryCard>, "iconVariant">>
+) {
+  return (
     <CategoryCard
       iconVariant="default"
       {...props}
@@ -466,14 +469,18 @@ function PillBoard() {
       hoveredNominationIds={HOVER_MATCH_IDS}
       isKeyboardMode={false}
       setKeyboardMode={noop}
-      onNomineeClick={noClick}
-      onNomineeDoubleClick={noClick}
+      onNomineeClick={noop}
+      onNomineeDoubleClick={noop}
     />
   );
+}
+
+function PillBoard() {
+  const p = PILL_STATES;
   return (
     <Box className="dr-frame" data-turn="mine" data-results="live">
       <Box className="specimen-grid is-wide">
-        {card({
+        {specimenCard({
           categoryId: "pill-states",
           title: PILL_CARD_TITLE,
           canDraftAction: true,
@@ -489,20 +496,37 @@ function PillBoard() {
             p.long
           ]
         })}
-        {card({
+        {specimenCard({
           categoryId: "pill-disabled",
           title: DISABLED_CARD_TITLE,
           canDraftAction: false,
           nominees: DISABLED_PILLS
         })}
-        {card({
+      </Box>
+    </Box>
+  );
+}
+
+/** The draft room's icon rules on one row: every pill state with the punchout variant, and the audit cards. */
+function DraftIconRow() {
+  return (
+    <Box className="dr-frame" data-turn="mine" data-results="live">
+      <Box className="specimen-grid is-wide">
+        {specimenCard({
+          categoryId: "punchout-states",
+          title: PUNCHOUT_STATES_TITLE,
+          canDraftAction: true,
+          iconVariant: "inverted",
+          nominees: PUNCHOUT_PILLS
+        })}
+        {specimenCard({
           categoryId: "icon-punchout",
           title: ICON_PUNCHOUT_TITLE,
           canDraftAction: true,
           iconVariant: "inverted",
           nominees: ICON_AUDIT_PILLS
         })}
-        {card({
+        {specimenCard({
           categoryId: "icon-default",
           title: ICON_DEFAULT_TITLE,
           canDraftAction: true,
@@ -522,6 +546,7 @@ function DraftHeaderStrip(props: {
   round?: number | null;
   pick?: number | null;
   podium?: PodiumCell[];
+  phone: boolean;
 }) {
   const status = computeHeaderStatus({
     draftStatus: "IN_PROGRESS",
@@ -536,24 +561,53 @@ function DraftHeaderStrip(props: {
     activeLabel: "blake",
     ...props.state
   });
+  const tab = (
+    <DraftHeaderTab
+      status={status}
+      roundNumber={props.round === undefined ? 3 : props.round}
+      pickNumber={props.pick === undefined ? 14 : props.pick}
+      podium={props.podium ?? []}
+    />
+  );
   return (
     <Cell label={props.label} span>
-      <Box className="specimen-headerCell">
+      <Box className="specimen-headerCell is-strip">
         <Box className="dr-frame" data-turn="mine" data-results="live">
-          <Box className="dr-header">
-            <Box className="drh-row">
-              <Group gap="var(--fo-space-8)">
-                <AvatarToken label="avery" avatarKey="giraffe" active />
-                <AvatarToken label="blake" avatarKey="bear" active={false} />
-              </Group>
-              <DraftHeaderTab
-                status={status}
-                roundNumber={props.round === undefined ? 3 : props.round}
-                pickNumber={props.pick === undefined ? 14 : props.pick}
-                podium={props.podium ?? []}
-              />
+          {props.phone ? (
+            <Box className="dr-header dr-mobileHeader">
+              <Box className="dr-mobileBar">
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Menu"
+                  className="dr-mobileIconBtn"
+                  onClick={noop}
+                >
+                  <Text component="span" className="mi-icon" aria-hidden="true">
+                    menu
+                  </Text>
+                </ActionIcon>
+                {tab}
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Settings"
+                  className="dr-mobileIconBtn"
+                  onClick={noop}
+                >
+                  <Text component="span" className="mi-icon" aria-hidden="true">
+                    settings
+                  </Text>
+                </ActionIcon>
+              </Box>
             </Box>
-          </Box>
+          ) : (
+            <Box className="dr-header">
+              <Box className="drh-row">
+                {/* One token in the left wing, as the room shows with a short roster. */}
+                <AvatarToken label="avery" avatarKey="giraffe" active />
+                {tab}
+              </Box>
+            </Box>
+          )}
         </Box>
       </Box>
     </Cell>
@@ -604,42 +658,99 @@ function RosterEnd(props: { end: "start" | "end" }) {
   );
 }
 
-function DraftSlice() {
+/**
+ * Category names the drafted-by chip must not cover: the longest official name (the repo's
+ * own data carries only short ones) and a stress length with one unbreakable word.
+ */
+const TOOLTIP_CATEGORIES = [
+  {
+    label: "longest real name",
+    name: "Best International Feature Film",
+    drafter: "avery"
+  },
+  {
+    label: "long drafter name",
+    name: "Best Cinematography",
+    drafter: "avery_the_long_drafter"
+  },
+  {
+    label: "stress length",
+    drafter: "avery",
+    name: "Best Achievement in Cinematography and Production Design for a Feature-Length Motion Picture Supercalifragilistic"
+  }
+] as const;
+
+function DraftSlice(props: { phone: boolean }) {
+  const { phone } = props;
   return (
     <Box className="specimen-section">
       <Title variant="section">Draft board</Title>
       <Box className="specimen-grid is-wide">
         <DraftHeaderStrip
+          phone={phone}
           label="rest, not started"
           state={{ draftStatus: "PENDING" }}
           round={null}
           pick={null}
         />
-        <DraftHeaderStrip label="rest, on the clock" state={{}} />
+        <DraftHeaderStrip phone={phone} label="rest, on the clock" state={{}} />
         <DraftHeaderStrip
+          phone={phone}
           label="rest, timed (seat name)"
           state={{ isTimerDraft: true }}
         />
-        <DraftHeaderStrip label="mine" state={{ isMyTurn: true, activeLabel: "avery" }} />
         <DraftHeaderStrip
+          phone={phone}
+          label="mine"
+          state={{ isMyTurn: true, activeLabel: "avery" }}
+        />
+        <DraftHeaderStrip
+          phone={phone}
           label="mine, timed"
           state={{ isTimerDraft: true, isMyTurn: true, activeLabel: "avery" }}
         />
-        <DraftHeaderStrip label="paused" state={{ draftStatus: "PAUSED" }} />
         <DraftHeaderStrip
+          phone={phone}
+          label="paused"
+          state={{ draftStatus: "PAUSED" }}
+        />
+        <DraftHeaderStrip
+          phone={phone}
           label="countdown, primary"
           state={{ ...COUNTDOWN, countdownPhase: "gold", timerRemainingMs: 4000 }}
         />
         <DraftHeaderStrip
+          phone={phone}
           label="countdown, danger"
           state={{ ...COUNTDOWN, countdownPhase: "red", timerRemainingMs: 3000 }}
         />
         <DraftHeaderStrip
+          phone={phone}
           label="final, podium with ties"
           state={{ isFinalResults: true }}
           podium={SPECIMEN_PODIUM}
         />
-        <DraftHeaderStrip label="complete, no podium" state={{ isFinalResults: true }} />
+        <DraftHeaderStrip
+          phone={phone}
+          label="complete, no podium"
+          state={{ isFinalResults: true }}
+        />
+        {TOOLTIP_CATEGORIES.map((c) => (
+          <Cell key={c.label} label={`nominee tooltip, ${c.label}`}>
+            <Box className="specimen-tip" data-specimen-tip={c.label}>
+              <NomineeTooltipCard
+                unitKind="FILM"
+                categoryName={c.name}
+                filmTitle={LONG_FILM_TITLE}
+                filmYear={2024}
+                contributors={["Ana Ferreira", "Tomas Reyes"]}
+                draftedByLabel={c.drafter}
+                draftedByAvatarKey={null}
+                draftedRoundPick="R3 #4"
+              />
+            </Box>
+          </Cell>
+        ))}
         <Cell label="roster controls, start end">
           <RosterEnd end="start" />
         </Cell>
@@ -667,6 +778,31 @@ function DraftSlice() {
           onNomineeDoubleClick={noop}
         />
       </Box>
+      <Cell label="card edges, gaps between and across columns" span>
+        <Box className="dr-frame specimen-board" data-turn="mine" data-results="live">
+          <DraftMasonryBoard
+            midCols={2}
+            masonry={EDGE_COLUMNS.map((col) =>
+              col.map((c) => ({
+                ...c,
+                icon: "trophy",
+                iconVariant: "default" as const,
+                unitKind: "FILM",
+                weightText: null
+              }))
+            )}
+            keyboardCategoryId={null}
+            setKeyboardCategoryId={noop}
+            canDraftAction
+            hoveredNominationIds={new Set()}
+            onNomineeClick={noop}
+            onNomineeDoubleClick={noop}
+          />
+        </Box>
+      </Cell>
+      <Cell label="icon audit: punchout on every pill state, plain and punchout" span>
+        <DraftIconRow />
+      </Cell>
     </Box>
   );
 }
@@ -938,7 +1074,7 @@ export function SpecimenScreen() {
           </Cell>
         </Section>
 
-        <DraftSlice />
+        <DraftSlice phone={phone} />
 
         <Section title="Empty and error states" wide>
           <Cell label="empty state" hook="empty-state">

@@ -22,7 +22,7 @@ export const sharedConstants = {
 } as const;
 
 // Win gold ("this pick won") and status colours, from the design source.
-// Win gold is rendered by winning pills, the final-results buckle and podium
+// Win gold is rendered by winning pills, the final-results tab and podium
 // first place. Status colours are not rendered yet.
 export const sharedByMode = {
   light: {

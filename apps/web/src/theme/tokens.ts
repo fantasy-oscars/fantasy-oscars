@@ -192,6 +192,7 @@ export const foTokens = {
   "--fo-tip-bar-paddingY": `var(--fo-space-8)`,
   "--fo-tip-body-padding": `var(--fo-space-xs)`,
   "--fo-tip-card-gap": `var(--fo-space-xs)`,
+  "--fo-tip-chip-hang": `var(--fo-space-dense-2)`,
   "--fo-tip-overlayRoom": `var(--fo-space-8)`,
   "--fo-tip-poster-height": `108px`,
   "--fo-tip-poster-radius": `var(--brand-radius-sm)`,

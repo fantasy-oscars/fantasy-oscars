@@ -553,7 +553,7 @@ Three chunks. Each ships alone, passes `pnpm run ci` and changes baselines only 
 
 - Work: the header tab (5.3) with `computeHeaderStatus`, `TabularText`, tones, edges, the countdown frame, compaction rework, podium and ties on desktop and phone; roster rotation (5.4) with `rosterWindow`, `RosterTrack`, drag, keyboard and live region; the remaining marginal improvements (M1–M4, M6–M8, M10–M12); the new brand and stress cells and the specimen sections.
 - Acceptance: tab and roster assertions find their elements and pass in all brands and the stress theme; tab width constant across ticks; the tab's lowest edge at most 61 px; reduced motion holds `countdown-danger` and makes the roster step instant; unit tests for `computeHeaderStatus` (every row of the content table), `shouldCompactHeader` (including a font or theme swap), `rosterGeometry` at 390, 500, 768, 1100 and 1280, and `stepWindow`/`windowForSeat` at 2, 7, 12 and 200 seats; 44 px targets on the phone; the owner reviews the gallery before the PR.
-- Baselines changed: 27 draft cells (the 29 less `-hover-match` and `-focus-disabled`, whose header is masked and whose board does not change here) and specimen 21; new: 18 brand cells and 5 stress cells. Total 147.
+- Baselines changed: 29 draft cells (including `-hover-match` and `-focus-disabled` light desktop, where the previous header shape's shadow bled below the masked header and the tab's does not) and specimen 21; new: 18 brand cells and 5 stress cells. Total 147.
 
 ## 12. Marginal improvements
 

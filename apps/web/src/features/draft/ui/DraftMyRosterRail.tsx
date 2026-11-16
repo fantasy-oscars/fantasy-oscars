@@ -23,7 +23,7 @@ export function DraftMyRosterRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
-  const { toggleRef, close } = useRailFocusReturn(open, setOpen);
+  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.myPicks.map((p) => p.roundPick)) }),
@@ -50,6 +50,7 @@ export function DraftMyRosterRail(props: {
             </Box>
             <UnstyledButton
               type="button"
+              ref={closeRef}
               className="dr-railClose"
               aria-label="Collapse my roster"
               onClick={close}
@@ -165,6 +166,7 @@ export function DraftMyRosterRail(props: {
           title={isPre ? "My roster (available after draft starts)" : "My roster"}
           onClick={() => {
             if (isPre) return;
+            noteExpand();
             if (compactRails) openRailExclusive("roster");
             else setOpen(true);
           }}
