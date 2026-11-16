@@ -20,6 +20,9 @@ Use this as the map. Start with the section that matches your intent.
   - [Database](runbooks/database.md)
   - [VPS: provisioning, backups, alerts, cutover](runbooks/vps.md)
   - [Debugging](runbooks/debugging.md)
+- **Planning**
+  - [Series competition: audit and plan](planning/series/plan.md)
+  - [Series competition: product brief](planning/series/brief.md)
 - **ADRs**
   - [What is an ADR?](adr/README.md)
   - [Template](adr/template.md)
