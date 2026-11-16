@@ -128,7 +128,11 @@ export const technicolor: BrandDefinition = {
     heroMax: "84px",
     heroFit: 18.5,
     regions: "cards",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "accent", style: "normal" },
+    asideHeading: "title"
   },
   room: {
     workFont: DMSANS,

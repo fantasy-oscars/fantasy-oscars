@@ -124,13 +124,17 @@ export const redCarpet: BrandDefinition = {
     greasePencil: false
   },
   home: {
-    placement: "masthead",
+    placement: "band",
     heroSurface: "accentPanel",
     heroAlign: "start",
     heroMax: "68px",
     heroFit: 18,
     regions: "open",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "hero",
+    updateRule: "accent",
+    heroTone: { color: "accent", style: "italic" },
+    asideHeading: "title"
   },
   room: {
     workFont: DMSANS,

@@ -125,7 +125,11 @@ export const lightbox: BrandDefinition = {
     heroMax: "50px",
     heroFit: 15,
     regions: "cards",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "wordmark", style: "normal" },
+    asideHeading: "title"
   },
   room: {
     workFont: ARCHIVO,

@@ -49,12 +49,42 @@ export function LandingScreen(props: {
 }) {
   const { user, authLoading, view, refresh } = props;
 
+  // The create-league card renders in both slots; the brand's derived display
+  // properties show one and remove the other from layout and focus order.
+  const createLeague = (
+    <ActionCard>
+      <Stack gap="sm">
+        <Title variant="section" order={3}>
+          Create a league
+        </Title>
+        <Text>Start a season with friends and draft nominees together.</Text>
+        <span className="baseline-ctaMark">
+          <Button
+            component={Link}
+            to={user ? "/leagues/new" : "/login"}
+            state={user ? undefined : { from: "/leagues/new" }}
+            disabled={authLoading}
+            variant="primary"
+            fullWidth
+          >
+            New league
+          </Button>
+        </span>
+      </Stack>
+    </ActionCard>
+  );
+
   const hero = (
     <HeroCard>
-      <WordmarkTitle order={2} size="hero" face="display" />
-      <Text variant="helper" className="baseline-heroTagline">
-        {HERO_TAGLINE}
-      </Text>
+      <div className="baseline-heroText">
+        <WordmarkTitle order={2} size="hero" face="display" />
+        <Text variant="helper" className="baseline-heroTagline">
+          {HERO_TAGLINE}
+        </Text>
+      </div>
+      <div className="baseline-ctaSlot" data-slot="hero">
+        {createLeague}
+      </div>
     </HeroCard>
   );
 
@@ -111,26 +141,9 @@ export function LandingScreen(props: {
 
   const aside = (
     <>
-      <ActionCard>
-        <Stack gap="sm">
-          <Title variant="section" order={3}>
-            Create a league
-          </Title>
-          <Text>Start a season with friends and draft nominees together.</Text>
-          <span className="baseline-ctaMark">
-            <Button
-              component={Link}
-              to={user ? "/leagues/new" : "/login"}
-              state={user ? undefined : { from: "/leagues/new" }}
-              disabled={authLoading}
-              variant="primary"
-              fullWidth
-            >
-              New league
-            </Button>
-          </span>
-        </Stack>
-      </ActionCard>
+      <div className="baseline-ctaSlot" data-slot="aside">
+        {createLeague}
+      </div>
 
       <Stack gap="md">
         <Group
@@ -139,7 +152,9 @@ export function LandingScreen(props: {
           align="center"
           wrap="wrap"
         >
-          <Title variant="section">Active seasons</Title>
+          <Title variant="section" className="baseline-asideHeading">
+            Active seasons
+          </Title>
           {showSeeAll ? (
             <Button
               variant="ghost"

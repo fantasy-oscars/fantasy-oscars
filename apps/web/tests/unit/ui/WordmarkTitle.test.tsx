@@ -78,7 +78,7 @@ describe("Home hero", () => {
         </MemoryRouter>
       </MantineProvider>
     );
-    const hero = container.querySelector(".baseline-heroCard") as HTMLElement;
+    const hero = container.querySelector(".baseline-heroText") as HTMLElement;
     const headings = within(hero).getAllByRole("heading");
     expect(headings).toHaveLength(1);
     const heading = within(hero).getByRole("heading", {

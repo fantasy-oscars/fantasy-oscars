@@ -17,7 +17,8 @@
   );
   row-gap: var(--fo-space-md);
   align-items: var(--brand-home-align);
-  padding: var(--fo-space-sm) 0 0;
+  /* A band starts at the top of the grid; its fill already separates it from the nav. */
+  padding: calc((1 - var(--brand-home-hero-band)) * var(--fo-space-sm)) 0 0;
 }
 
 .baseline-landing-hero {
@@ -93,11 +94,18 @@
   --hero-pad-block: var(--fo-space-lg);
   --hero-pad-inline: var(--fo-space-lg);
   container-type: inline-size;
+  /* The title block, then the create-league card when the brand places it here
+     (`home.ctaPlacement`): beside the title block while both fit, else under it. */
   display: flex;
-  flex-direction: column;
-  gap: var(--fo-space-xs);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--fo-space-md) var(--fo-space-lg);
+  /* A band's content aligns to the page column, so it drops the inline padding. */
   padding: calc(var(--brand-home-hero-panel) * var(--hero-pad-block))
-    calc(var(--brand-home-hero-panel) * var(--hero-pad-inline));
+    calc(
+      var(--brand-home-hero-panel) * (1 - var(--brand-home-hero-band)) *
+        var(--hero-pad-inline)
+    );
   /* An open hero keeps room above its rule. */
   padding-bottom: calc(
     var(--brand-home-hero-panel) * var(--hero-pad-block) +
@@ -109,7 +117,14 @@
   /* The wordmark's tone, as it reads on this surface (theme/brands/css.ts). */
   --brand-wordmark-tone-color: var(--brand-home-hero-tone-color);
   --brand-wordmark-stop-color: var(--brand-home-hero-stop-color);
-  box-shadow: var(--brand-shadow-hero);
+  --brand-wordmark-tone-style: var(--brand-home-hero-tone-style);
+  box-shadow: var(--brand-home-hero-shadow);
+  /* Band: the fill and its edges run to the viewport edges while the box keeps the
+     column width. The outset is ink overflow, so it never adds horizontal scroll. */
+  border-image-source: var(--brand-home-hero-band-fill);
+  border-image-slice: 0 fill;
+  border-image-width: 0;
+  border-image-outset: 0 100vmax;
   border-radius: var(--brand-home-hero-radius);
   border-bottom: var(--brand-home-hero-rule);
   text-align: var(--brand-home-hero-align);
@@ -126,6 +141,46 @@
   .baseline-heroCard {
     --hero-pad-block: var(--fo-space-md);
     --hero-pad-inline: var(--fo-space-sm);
+  }
+}
+
+.baseline-heroText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-xs);
+  flex: 1 1 30rem;
+  min-width: 0;
+}
+
+/* The create-league card's two slots; `--brand-home-cta-*-display` is `contents` for
+   the brand's slot and `none` for the other, which also leaves the focus order. */
+.baseline-ctaSlot[data-slot="hero"] {
+  display: var(--brand-home-cta-hero-display);
+}
+
+.baseline-ctaSlot[data-slot="aside"] {
+  display: var(--brand-home-cta-aside-display);
+}
+
+/* In the hero the card is an outline on the hero's own fill, in the hero's inks. */
+.baseline-landing .baseline-heroCard .baseline-actionCard {
+  flex: 0 1 21rem;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  border: 1px solid var(--brand-home-cta-hero-edge);
+  text-align: start;
+  --brand-focus-ring: var(--brand-home-hero-fg);
+}
+
+.baseline-landing .baseline-heroCard .baseline-actionCard .mantine-Text-root {
+  color: var(--brand-home-hero-muted);
+}
+
+@media (max-width: 500px) {
+  .baseline-landing .baseline-heroCard .baseline-actionCard {
+    flex-basis: 100%;
   }
 }
 
@@ -247,6 +302,16 @@
   row-gap: var(--fo-space-4);
 }
 
+/* "Active seasons" as a section title or an eyebrow (`home.asideHeading`). */
+.baseline-landing .mantine-Title-root.baseline-asideHeading {
+  font-family: var(--brand-home-aside-heading-font);
+  font-weight: var(--brand-home-aside-heading-weight);
+  text-transform: var(--brand-home-aside-heading-case);
+  letter-spacing: var(--brand-home-aside-heading-tracking);
+  font-size: var(--brand-home-aside-heading-size);
+  color: var(--brand-home-aside-heading-color);
+}
+
 /* The ghost button's label sits inside its own inline padding. Pulling the button back
    by that padding start-aligns the label with the heading when it wraps under it; on one
    row the button's end edge does not move. */
@@ -290,6 +355,13 @@
   background: var(--brand-home-updates-bg);
   box-shadow: var(--brand-home-updates-shadow);
   padding: calc((1 - var(--brand-home-open)) * var(--fo-space-md));
+  /* `home.updateRule`: a square-ended rule above the update, with room under it. */
+  border-top: var(--brand-home-update-rule);
+  border-radius: calc((1 - var(--brand-home-update-ruled)) * var(--fo-radius-medium));
+  padding-top: calc(
+    (1 - var(--brand-home-open)) * var(--fo-space-md) + var(--brand-home-update-ruled) *
+      var(--fo-space-sm)
+  );
 }
 
 .baseline-landing .baseline-actionCard {
@@ -336,7 +408,10 @@
 
 /* Grease-pencil ring around the create-league button (`decorations.greasePencil`).
    Every multiplier is 0 outside lightbox, so the wrapper adds no padding and the
-   ring is invisible. The ring sits behind the button and is never a focus cue. */
+   ring is invisible. The ring sits behind the button and is never a focus cue.
+   It is a hasty felt-tip loop: one uneven stroke whose end runs past its start,
+   painted in the accent through an SVG mask. The mask stretches with the button, so
+   the stroke thickens and thins a little with the width, as a felt tip does. */
 .baseline-ctaMark {
   position: relative;
   display: block;
@@ -349,9 +424,10 @@
   content: "";
   position: absolute;
   inset: calc(-1 * var(--fo-space-2)) calc(-1 * var(--fo-space-8));
-  border: 2px solid var(--brand-accent);
-  border-radius: 50%;
-  transform: rotate(-3deg);
+  background-color: var(--brand-accent);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 60' preserveAspectRatio='none'%3E%3Cpath d='M200 5C140 1 48 3 16 17C1 24 4 44 56 53C120 62 238 58 268 42C281 34 275 13 226 7C196 3 150 3 104 9' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  transform: rotate(-2deg);
   opacity: var(--brand-deco-grease-pencil);
   pointer-events: none;
   z-index: -1;
@@ -360,6 +436,10 @@
 @media (max-width: 900px) {
   .baseline-landing .baseline-updatesCard {
     padding: calc((1 - var(--brand-home-open)) * var(--fo-space-sm));
+    padding-top: calc(
+      (1 - var(--brand-home-open)) * var(--fo-space-sm) + var(--brand-home-update-ruled) *
+        var(--fo-space-sm)
+    );
   }
 
   .baseline-landing .baseline-actionCard {

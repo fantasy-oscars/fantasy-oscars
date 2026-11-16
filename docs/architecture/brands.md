@@ -255,11 +255,22 @@ The same in both modes:
   `accent`, because each has an on-colour that passes 4.5:1 (enforced by a unit test).
 - Decorations (closed list, `1` or `0`): `deco-double-rules`, `deco-offset-shadow`,
   `deco-frame-borders`, `deco-grease-pencil`.
-- Home, the `home` slot group: `placement` (`column | masthead`), `heroSurface`
+- Home, the `home` slot group: `placement` (`column | masthead | band`; `band` is a
+  masthead whose fill runs edge to edge), `heroSurface`
   (`darkPanel | accentPanel | open`), `heroAlign` (`start | center`), `heroMax` (px,
   the largest hero title size), `heroFit` (a number from 8 to 30: the hero title's
-  size as a percentage of the hero's inner width), `regions` (`cards | open`) and
-  `ctaSurface` (`card | primary`). Every brand fills all seven.
+  size as a percentage of the hero's inner width), `regions` (`cards | open`),
+  `ctaSurface` (`card | primary`), `ctaPlacement` (`aside | hero`: where the
+  create-league card sits), `updateRule` (`none | accent`: a 1 px rule above the latest
+  update), `heroTone` (`{ color: wordmark | accent, style: normal | italic }`: the hero
+  title's second word; `wordmark` keeps the header wordmark's tone) and `asideHeading`
+  (`title | eyebrow`: the "Active seasons" heading). Every brand fills all eleven.
+  "accent" in `updateRule` and `heroTone` is the shared ceremony gold
+  (`--fo-win-gold-text`), not the `accent` slot: red carpet's and technicolor's
+  `accent` is their hero panel. Values today: red carpet `band`, `hero`, `accent`,
+  `{ accent, italic }`; refined gold `eyebrow`; technicolor `{ accent, normal }` (gold
+  #e2c25a on the teal panel #0c6e6e is 3.49:1); every other slot and brand the neutral
+  value (`aside`, `none`, `{ wordmark, normal }`, `title`).
 
 Enums are emitted as plain custom-property values for reference. Components read the
 derived properties below, never the enums. `css.ts` computes them per brand, in the
@@ -300,6 +311,40 @@ resolves per mode.
   card's `home-cta-bg`, `-fg`, `-shadow`, `-ring` and the button's `-button-bg`, `-fg`,
   `-hover`, `-active`, `-bd` and `-bd-hover` (the 03 primary skin's values unless the tile
   is `primary`, when the button inverts).
+  The signature slots derive:
+  - Band: `home-hero-band` (`1` or `0`), `home-hero-band-fill` (a gradient of the band
+    edge, the hero fill and the edge again, else `none`), `home-hero-shadow` (none for a
+    band, else `shadow-hero`), `home-hero-radius` `0` for a band, and per mode
+    `home-band-edge` (the ring colour of that mode's `shadow-hero`, else `ruleStrong`).
+    The hero card paints the fill through `border-image` with an outset of `100vmax`
+    inline: ink overflow, so no horizontal scroll and no `100vw` scrollbar error, while
+    the box and its content stay on the page column. The grid drops its top padding
+    above a band.
+  - Create-league card: `home-cta-hero-display` and `home-cta-aside-display`
+    (`contents` or `none`). The card renders in both slots (in the hero after the title
+    and tagline, and at the top of the side column); `none` removes the hidden copy from
+    layout, the accessibility tree and the focus order, so DOM, focus and visual order
+    agree. `home-cta-hero-edge` is the hero muted ink: the hero card is outlined in it,
+    unfilled, with its text in that ink and its focus ring in the hero foreground (the
+    page's ring can vanish on the band).
+  - `home-update-rule` (`1px solid` gold or `0 solid transparent`) and
+    `home-update-ruled` (`1` or `0`, a multiplier for the extra top padding and for
+    squaring the corners).
+  - `home-hero-tone-color` (`heroTone.color: accent`: the gold that reaches 3:1 on the
+    panel, the panel's own mode first, else the wordmark tone above) and
+    `home-hero-tone-style` (`italic` for `heroTone.style: italic` or an `italic`
+    wordmark, else `normal`).
+  - `home-aside-heading-font`, `-weight`, `-case`, `-tracking`, `-size` (eyebrow: the
+    label font, semibold, uppercase, eyebrow tracking, `xs`; title: the section title's
+    values) and per mode `home-aside-heading-color` (eyebrow: `accent` where it reaches
+    4.5:1 on the page in that mode, else `muted`; title: `inherit`).
+
+  Contract tests hold every brand with a signature slot on to these rules in both
+  modes: band edge at 1.3:1 against the band and the page (a hairline that must read as
+  a line, not a boundary that must be seen); the hero card outline 3:1 and its text
+  4.5:1 on the hero, and the hero foreground (its focus ring) 3:1; the accent word 3:1
+  on the hero, or `heroAccentColor` returns null and the brand must use `wordmark`;
+  the update rule's gold 3:1 on the page; the eyebrow ink 4.5:1 on the page.
   `darkPanel` and `accentPanel` take their colours from existing slots, whose
   contrast the contract test already guarantees; the hero never uses a gradient and
   is dark in dark mode in every brand.
