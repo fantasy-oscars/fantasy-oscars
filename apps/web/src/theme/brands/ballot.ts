@@ -125,7 +125,11 @@ export const ballot: BrandDefinition = {
     heroMax: "72px",
     heroFit: 16,
     regions: "open",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "wordmark", style: "normal" },
+    asideHeading: "title"
   },
   room: {
     workFont: INSTRUMENT,

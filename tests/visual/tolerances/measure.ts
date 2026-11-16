@@ -73,6 +73,7 @@ export const TOKEN_NAMES = [
   "--brand-radius-sm",
   "--brand-radius-md",
   "--brand-radius-lg",
+  "--brand-home-hero-radius",
   "--brand-button-radius",
   "--brand-border-width",
   "--brand-h1-size",

@@ -615,7 +615,8 @@ export const ENTRIES: Entry[] = [
     ]
   },
   card("standard", "--brand-radius-md"),
-  card("hero", "--brand-radius-lg", [
+  // The hero's radius is derived: radius-lg on a panel, 0 for an open or band hero.
+  card("hero", "--brand-home-hero-radius", [
     value(
       "fontSize",
       { min: { token: "--brand-h1-size" }, max: { token: "--brand-home-hero-max" } },

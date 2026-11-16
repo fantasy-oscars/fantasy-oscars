@@ -62,6 +62,9 @@
   --brand-wordmark-stop-color: var(--brand-accent);
   --brand-home-areas: "hero aside" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: var(--brand-dark-surface);
   --brand-home-hero-fg: var(--brand-dark-text);
   --brand-home-hero-fg-rgb: var(--brand-dark-text-rgb);
@@ -73,6 +76,7 @@
   --brand-home-hero-max: 44px;
   --brand-home-hero-fit: 12.5;
   --brand-home-hero-tone-color: var(--brand-dark-accent);
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
@@ -89,6 +93,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-dark-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-label);
+  --brand-home-aside-heading-weight: var(--fo-font-weight-semibold);
+  --brand-home-aside-heading-case: uppercase;
+  --brand-home-aside-heading-tracking: var(--fo-letterSpacing-eyebrow);
+  --brand-home-aside-heading-size: var(--fo-font-size-xs);
   --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
   --brand-room-title-weight: 700;
@@ -210,6 +224,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #6b5a2a;
+  --brand-home-aside-heading-color: var(--brand-accent);
   --fo-win-gold: #e2c25a;
   --fo-win-gold-on: #0d0d0d;
   --fo-win-gold-text: #e2c25a;
@@ -258,6 +274,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #898781;
+  --brand-home-aside-heading-color: var(--brand-accent);
   --fo-win-gold: #d4af37;
   --fo-win-gold-on: #0d0d0d;
   --fo-win-gold-text: #8a6a14;
@@ -321,6 +339,9 @@
   --brand-wordmark-stop-color: var(--brand-accent);
   --brand-home-areas: "hero aside" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: var(--brand-dark-surface);
   --brand-home-hero-fg: var(--brand-dark-text);
   --brand-home-hero-fg-rgb: var(--brand-dark-text-rgb);
@@ -332,6 +353,7 @@
   --brand-home-hero-max: 44px;
   --brand-home-hero-fit: 12.5;
   --brand-home-hero-tone-color: var(--brand-dark-accent);
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
@@ -348,6 +370,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-dark-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-label);
+  --brand-home-aside-heading-weight: var(--fo-font-weight-semibold);
+  --brand-home-aside-heading-case: uppercase;
+  --brand-home-aside-heading-tracking: var(--fo-letterSpacing-eyebrow);
+  --brand-home-aside-heading-size: var(--fo-font-size-xs);
   --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
   --brand-room-title-weight: 700;
@@ -469,6 +501,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #6b5a2a;
+  --brand-home-aside-heading-color: var(--brand-accent);
 }
 
 :root[data-brand="refined-gold"][data-mantine-color-scheme="light"] {
@@ -510,6 +544,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #898781;
+  --brand-home-aside-heading-color: var(--brand-accent);
 }
 
 :root[data-brand="red-carpet"] {
@@ -530,11 +566,11 @@
   --brand-body-size: 14px;
   --brand-font-accent: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
   --brand-accent-style: italic;
-  --brand-wordmark-font: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  --brand-wordmark-weight: 700;
+  --brand-wordmark-font: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-wordmark-weight: 600;
   --brand-wordmark-case: none;
-  --brand-wordmark-letter-spacing: 0.04em;
-  --brand-wordmark-two-tone: colour;
+  --brand-wordmark-letter-spacing: 0.01em;
+  --brand-wordmark-two-tone: colourItalic;
   --brand-radius-sm: 4px;
   --brand-radius-md: 6px;
   --brand-radius-lg: 6px;
@@ -560,23 +596,27 @@
   --brand-section-rule: var(--brand-border-width) solid var(--brand-rule);
   --brand-nav-rule: var(--brand-section-rule);
   --brand-wordmark-tone-color: var(--fo-win-gold-text);
-  --brand-wordmark-tone-style: normal;
+  --brand-wordmark-tone-style: italic;
   --brand-wordmark-tone-weight: inherit;
   --brand-wordmark-stop-display: none;
   --brand-wordmark-stop-color: var(--fo-win-gold-text);
   --brand-home-areas: "hero hero" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 1;
+  --brand-home-hero-band-fill: linear-gradient(var(--brand-home-band-edge) 0 1px, var(--brand-home-hero-bg) 1px calc(100% - 1px), var(--brand-home-band-edge) calc(100% - 1px));
+  --brand-home-hero-shadow: 0 0 0 0 transparent;
   --brand-home-hero-bg: var(--brand-light-accent);
   --brand-home-hero-fg: var(--brand-light-page);
   --brand-home-hero-fg-rgb: var(--brand-light-page-rgb);
   --brand-home-hero-muted: rgba(var(--brand-light-page-rgb), 0.9);
-  --brand-home-hero-radius: var(--brand-radius-lg);
+  --brand-home-hero-radius: 0;
   --brand-home-hero-rule: 0 solid transparent;
   --brand-home-hero-align: start;
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 68px;
   --brand-home-hero-fit: 18;
   --brand-home-hero-tone-color: #e2c25a;
+  --brand-home-hero-tone-style: italic;
   --brand-home-hero-stop-color: #e2c25a;
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
@@ -593,6 +633,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: contents;
+  --brand-home-cta-aside-display: none;
+  --brand-home-cta-hero-edge: rgba(var(--brand-light-page-rgb), 0.9);
+  --brand-home-update-rule: 1px solid var(--fo-win-gold-text);
+  --brand-home-update-ruled: 1;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
   --brand-room-title-weight: 600;
@@ -714,6 +764,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #8e2a3a;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="red-carpet"][data-mantine-color-scheme="light"] {
@@ -755,6 +807,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #8e2a3a;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="ballot"] {
@@ -811,6 +865,9 @@
   --brand-wordmark-stop-color: var(--brand-accent);
   --brand-home-areas: "hero hero" "updates aside";
   --brand-home-hero-panel: 0;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: transparent;
   --brand-home-hero-fg: var(--brand-text);
   --brand-home-hero-fg-rgb: var(--brand-text-rgb);
@@ -822,6 +879,7 @@
   --brand-home-hero-max: 72px;
   --brand-home-hero-fit: 16;
   --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-tone-style: italic;
   --brand-home-hero-stop-color: var(--brand-accent);
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
@@ -838,6 +896,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --brand-room-title-weight: 600;
@@ -959,6 +1027,8 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #716d65;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="ballot"][data-mantine-color-scheme="light"] {
@@ -1000,6 +1070,8 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #84817b;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="noir"] {
@@ -1056,6 +1128,9 @@
   --brand-wordmark-stop-color: var(--fo-win-gold-text);
   --brand-home-areas: "hero hero" "updates aside";
   --brand-home-hero-panel: 0;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: transparent;
   --brand-home-hero-fg: var(--brand-text);
   --brand-home-hero-fg-rgb: var(--brand-text-rgb);
@@ -1067,6 +1142,7 @@
   --brand-home-hero-max: 148px;
   --brand-home-hero-fit: 24;
   --brand-home-hero-tone-color: var(--fo-win-gold-text);
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: var(--fo-win-gold-text);
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
@@ -1083,6 +1159,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Barlow Condensed", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --brand-room-title-weight: 700;
@@ -1204,6 +1290,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #6c6c6c;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="noir"][data-mantine-color-scheme="light"] {
@@ -1245,6 +1333,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #828282;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="festival"] {
@@ -1301,6 +1391,9 @@
   --brand-wordmark-stop-color: var(--fo-win-gold-text);
   --brand-home-areas: "hero aside" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: var(--brand-dark-surface);
   --brand-home-hero-fg: var(--brand-dark-text);
   --brand-home-hero-fg-rgb: var(--brand-dark-text-rgb);
@@ -1312,6 +1405,7 @@
   --brand-home-hero-max: 64px;
   --brand-home-hero-fit: 19;
   --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: #e2c25a;
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
@@ -1328,6 +1422,16 @@
   --brand-home-cta-button-bd: var(--brand-on-primary);
   --brand-home-cta-button-bd-hover: var(--brand-on-primary);
   --brand-home-cta-ring: var(--brand-on-primary);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-dark-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-title-weight: 600;
@@ -1449,6 +1553,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #1f6b4a;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="festival"][data-mantine-color-scheme="light"] {
@@ -1490,6 +1596,8 @@
   --brand-room-tab-edge: var(--brand-rule);
   --brand-room-tab-edge-on-primary: var(--brand-rule);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #868686;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="technicolor"] {
@@ -1546,6 +1654,9 @@
   --brand-wordmark-stop-color: var(--brand-accent);
   --brand-home-areas: "hero hero" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: var(--brand-light-accent);
   --brand-home-hero-fg: var(--brand-light-page);
   --brand-home-hero-fg-rgb: var(--brand-light-page-rgb);
@@ -1556,7 +1667,8 @@
   --brand-home-hero-tagline-inline: auto;
   --brand-home-hero-max: 84px;
   --brand-home-hero-fit: 18.5;
-  --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-tone-color: #e2c25a;
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: inherit;
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
@@ -1573,6 +1685,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: rgba(var(--brand-light-page-rgb), 0.9);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
   --brand-room-title-weight: 800;
@@ -1694,6 +1816,8 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #f3ddbb;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="technicolor"][data-mantine-color-scheme="light"] {
@@ -1735,6 +1859,8 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-text);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #2a1a12;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="lightbox"] {
@@ -1791,6 +1917,9 @@
   --brand-wordmark-stop-color: var(--brand-accent);
   --brand-home-areas: "hero aside" "updates aside";
   --brand-home-hero-panel: 1;
+  --brand-home-hero-band: 0;
+  --brand-home-hero-band-fill: none;
+  --brand-home-hero-shadow: var(--brand-shadow-hero);
   --brand-home-hero-bg: var(--brand-dark-surface);
   --brand-home-hero-fg: var(--brand-dark-text);
   --brand-home-hero-fg-rgb: var(--brand-dark-text-rgb);
@@ -1802,6 +1931,7 @@
   --brand-home-hero-max: 50px;
   --brand-home-hero-fit: 15;
   --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-tone-style: normal;
   --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
@@ -1818,6 +1948,16 @@
   --brand-home-cta-button-bd: var(--fo-button-primary-border);
   --brand-home-cta-button-bd-hover: var(--fo-button-primary-border-hover);
   --brand-home-cta-ring: var(--brand-focus-ring);
+  --brand-home-cta-hero-display: none;
+  --brand-home-cta-aside-display: contents;
+  --brand-home-cta-hero-edge: var(--brand-dark-muted);
+  --brand-home-update-rule: 0 solid transparent;
+  --brand-home-update-ruled: 0;
+  --brand-home-aside-heading-font: var(--brand-font-display);
+  --brand-home-aside-heading-weight: var(--brand-display-weight);
+  --brand-home-aside-heading-case: var(--brand-display-case);
+  --brand-home-aside-heading-tracking: var(--brand-display-tracking);
+  --brand-home-aside-heading-size: var(--fo-heading-h3-size);
   --brand-room-font-work: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-room-font-title: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --brand-room-title-weight: 600;
@@ -1939,6 +2079,8 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #f2e6e4;
+  --brand-home-aside-heading-color: inherit;
 }
 
 :root[data-brand="lightbox"][data-mantine-color-scheme="light"] {
@@ -1980,4 +2122,6 @@
   --brand-room-tab-edge: var(--brand-text);
   --brand-room-tab-edge-on-primary: var(--brand-rule-strong);
   --brand-room-tab-edge-on-danger: var(--brand-text);
+  --brand-home-band-edge: #141414;
+  --brand-home-aside-heading-color: inherit;
 }

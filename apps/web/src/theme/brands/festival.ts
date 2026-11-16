@@ -128,7 +128,11 @@ export const festival: BrandDefinition = {
     heroMax: "64px",
     heroFit: 19,
     regions: "cards",
-    ctaSurface: "primary"
+    ctaSurface: "primary",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "wordmark", style: "normal" },
+    asideHeading: "title"
   },
   room: {
     workFont: INSTRUMENT,

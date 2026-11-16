@@ -4,15 +4,19 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { BRAND_IDS, isBrandId } from "@fantasy-oscars/shared/brands";
 import {
   ACCENT_STYLES,
+  ASIDE_HEADINGS,
   BRAND_DEFINITIONS,
   BUTTON_SHAPES,
   COLOR_SLOTS,
+  CTA_PLACEMENTS,
   CTA_SURFACES,
   DECORATIONS,
   DEFAULT_BRAND,
   HERO_ALIGNS,
   HERO_FIT_RANGE,
   HERO_SURFACES,
+  HERO_TONE_COLORS,
+  HERO_TONE_STYLES,
   HOME_PLACEMENTS,
   HOME_REGIONS,
   MODES,
@@ -23,6 +27,7 @@ import {
   SHADOW_SLOTS,
   TEXT_CASES,
   TWO_TONE_METHODS,
+  UPDATE_RULES,
   WORDMARK_TONE_COLORS,
   generateBrandCss,
   sharedByMode,
@@ -33,12 +38,16 @@ import {
   type Mode
 } from "@/theme/brands";
 import {
+  ASIDE_EYEBROW_MIN_CONTRAST,
   HERO_TONE_MIN_CONTRAST,
+  bandEdgeColor,
   colorChannels,
+  heroAccentColor,
   heroToneColor,
   kebab,
   pickTabEdge,
-  roomTabRing
+  roomTabRing,
+  shadowRingColor
 } from "@/theme/brands/css";
 import {
   ROOM_TAB_MAX_EDGE_PX,
@@ -71,20 +80,30 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
       const { home } = brand;
       expect(Object.keys(home).sort()).toEqual(
         [
+          "asideHeading",
+          "ctaPlacement",
           "ctaSurface",
           "heroAlign",
           "heroFit",
           "heroMax",
           "heroSurface",
+          "heroTone",
           "placement",
-          "regions"
+          "regions",
+          "updateRule"
         ].sort()
       );
+      expect(Object.keys(home.heroTone).sort()).toEqual(["color", "style"]);
       expect(HOME_PLACEMENTS).toContain(home.placement);
       expect(HERO_SURFACES).toContain(home.heroSurface);
       expect(HERO_ALIGNS).toContain(home.heroAlign);
       expect(HOME_REGIONS).toContain(home.regions);
       expect(CTA_SURFACES).toContain(home.ctaSurface);
+      expect(CTA_PLACEMENTS).toContain(home.ctaPlacement);
+      expect(UPDATE_RULES).toContain(home.updateRule);
+      expect(HERO_TONE_COLORS).toContain(home.heroTone.color);
+      expect(HERO_TONE_STYLES).toContain(home.heroTone.style);
+      expect(ASIDE_HEADINGS).toContain(home.asideHeading);
       expect(ACCENT_STYLES).toContain(brand.type.accentStyle);
       expect(home.heroMax).toMatch(/^\d+px$/);
       expect(home.heroFit).toBeGreaterThanOrEqual(HERO_FIT_RANGE.min);
@@ -242,6 +261,136 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
   }
 );
 
+/** The hero's painted fill, foreground and muted ink in `mode`, as `--brand-home-hero-*` resolve. */
+function heroInks(brand: BrandDefinition, mode: Mode) {
+  const { dark, light } = brand.modes;
+  const page = brand.modes[mode].colors;
+  switch (brand.home.heroSurface) {
+    case "darkPanel":
+      return { bg: dark.colors.surface, fg: dark.colors.text, muted: dark.colors.muted };
+    case "accentPanel":
+      return {
+        bg: light.colors.accent,
+        fg: light.colors.page,
+        muted: mix(light.colors.page, light.colors.accent, 0.9)
+      };
+    case "open":
+      return { bg: page.page, fg: page.text, muted: page.muted };
+  }
+}
+
+/** The band edge is a hairline, not a boundary that must be seen: it only has to read as a line. */
+const BAND_EDGE_MIN_CONTRAST = 1.3;
+
+describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
+  "Home signature contrast %s",
+  (_id, brand) => {
+    const { home } = brand;
+
+    describe.each(MODES)("%s", (mode) => {
+      const { colors } = brand.modes[mode];
+      const hero = heroInks(brand, mode);
+
+      it("draws the band edge as a line apart from both the band and the page", () => {
+        if (home.placement !== "band") return;
+        const edge = bandEdgeColor(brand, mode);
+        expect(contrast(edge, hero.bg)).toBeGreaterThanOrEqual(BAND_EDGE_MIN_CONTRAST);
+        expect(contrast(edge, colors.page)).toBeGreaterThanOrEqual(
+          BAND_EDGE_MIN_CONTRAST
+        );
+      });
+
+      it("outlines the create-league card in the hero at 3:1 and keeps its ring visible", () => {
+        if (home.ctaPlacement !== "hero") return;
+        // --brand-home-cta-hero-edge is the hero muted ink; the ring is the hero foreground.
+        expect(contrast(hero.muted, hero.bg)).toBeGreaterThanOrEqual(3);
+        expect(contrast(hero.fg, hero.bg)).toBeGreaterThanOrEqual(3);
+        // The card's text is the hero muted ink.
+        expect(contrast(hero.muted, hero.bg)).toBeGreaterThanOrEqual(4.5);
+      });
+
+      it("sets the hero's accent word at 3:1 on the hero, or falls back to the wordmark", () => {
+        if (home.heroTone.color !== "accent") return;
+        const accent = heroAccentColor(brand);
+        expect(accent, "accent word does not reach 3:1; use wordmark").not.toBeNull();
+        const value =
+          accent === "var(--fo-win-gold-text)"
+            ? sharedByMode[mode]["--fo-win-gold-text"]
+            : accent!;
+        expect(contrast(value, hero.bg)).toBeGreaterThanOrEqual(HERO_TONE_MIN_CONTRAST);
+      });
+
+      it("sets the accent rule above the update at 3:1 on the page", () => {
+        if (home.updateRule !== "accent") return;
+        expect(
+          contrast(sharedByMode[mode]["--fo-win-gold-text"], colors.page)
+        ).toBeGreaterThanOrEqual(3);
+      });
+
+      it("keeps the eyebrow heading at 4.5:1 on the page", () => {
+        if (home.asideHeading !== "eyebrow") return;
+        const ink =
+          contrast(colors.accent, colors.page) >= ASIDE_EYEBROW_MIN_CONTRAST
+            ? colors.accent
+            : colors.muted;
+        expect(contrast(ink, colors.page)).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+  }
+);
+
+describe("Home signature values", () => {
+  const byId = (id: string) => BRAND_DEFINITIONS.find((b) => b.id === id)!;
+
+  it("sets red carpet's header wordmark in the hero's voice", () => {
+    const { type, wordmark, home } = byId("red-carpet");
+    expect(wordmark).toMatchObject({
+      font: type.displayFont,
+      weight: type.displayWeight,
+      case: type.displayCase,
+      letterSpacing: type.heroTracking,
+      twoTone: "colourItalic",
+      toneColor: "gold"
+    });
+    // The hero's second word is gold italic too.
+    expect(home.heroTone).toEqual({ color: "accent", style: "italic" });
+    expect(byId("red-carpet").fonts.faces.map((f) => f.family)).not.toContain("Cinzel");
+  });
+
+  it("gives red carpet the band, the card in the band, the accent rule and a gold italic word", () => {
+    expect(byId("red-carpet").home).toMatchObject({
+      placement: "band",
+      ctaPlacement: "hero",
+      updateRule: "accent",
+      heroTone: { color: "accent", style: "italic" }
+    });
+  });
+
+  it("gives refined gold the eyebrow heading and technicolor the accent word", () => {
+    expect(byId("refined-gold").home.asideHeading).toBe("eyebrow");
+    // Gold #e2c25a on the teal panel #0c6e6e measures 3.49:1.
+    expect(byId("technicolor").home.heroTone).toEqual({
+      color: "accent",
+      style: "normal"
+    });
+    expect(heroAccentColor(byId("technicolor"))).toBe("#e2c25a");
+  });
+
+  it("leaves every other brand on the neutral signature values", () => {
+    const signed = new Set(["red-carpet", "refined-gold", "technicolor"]);
+    for (const brand of BRAND_DEFINITIONS) {
+      if (signed.has(brand.id)) continue;
+      expect(brand.home, brand.id).toMatchObject({
+        ctaPlacement: "aside",
+        updateRule: "none",
+        heroTone: { color: "wordmark", style: "normal" },
+        asideHeading: "title"
+      });
+      expect(brand.home.placement, brand.id).not.toBe("band");
+    }
+  });
+});
+
 describe("brand registry", () => {
   it("has unique ids from the shared brand list and a default among them", () => {
     const ids = BRAND_DEFINITIONS.map((b) => b.id);
@@ -284,7 +433,8 @@ const DERIVED: Record<string, Record<string, string>> = {
     "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
     "--brand-nav-rule": "var(--brand-section-rule)",
     "--brand-wordmark-tone-color": "var(--fo-win-gold-text)",
-    "--brand-wordmark-tone-style": "normal",
+    // `colourItalic`: gold italic "Oscars" at the wordmark's own weight, as the hero.
+    "--brand-wordmark-tone-style": "italic",
     "--brand-wordmark-tone-weight": "inherit",
     "--brand-wordmark-stop-display": "none",
     "--brand-wordmark-stop-color": "var(--fo-win-gold-text)"
@@ -446,7 +596,8 @@ describe("generated brand CSS", () => {
       "red-carpet": ["#e2c25a", "#e2c25a"],
       ballot: ["inherit", "var(--brand-accent)"],
       festival: ["inherit", "#e2c25a"],
-      technicolor: ["inherit", "inherit"],
+      // heroTone.color "accent": the second word is gold on the teal panel.
+      technicolor: ["#e2c25a", "inherit"],
       lightbox: ["inherit", "var(--brand-dark-accent)"]
     };
     for (const brand of BRAND_DEFINITIONS) {
@@ -456,6 +607,109 @@ describe("generated brand CSS", () => {
         brand.id
       ).toEqual(expected[brand.id]);
     }
+  });
+
+  it("derives the band, hero CTA, update rule, hero tone and eyebrow properties", () => {
+    const redCarpet = BRAND_DEFINITIONS.find((b) => b.id === "red-carpet")!;
+    const signed: BrandDefinition = {
+      ...redCarpet,
+      home: {
+        ...redCarpet.home,
+        placement: "band",
+        ctaPlacement: "hero",
+        updateRule: "accent",
+        heroTone: { color: "accent", style: "italic" },
+        asideHeading: "eyebrow"
+      }
+    };
+    const blocks = generateBrandCss([signed], DEFAULT_BRAND).split("\n\n");
+    const declared = (selector: string) =>
+      Object.fromEntries(
+        [
+          ...blocks
+            .find((b) => b.startsWith(`${selector} {`))!
+            .matchAll(/^ {2}(--[\w-]+): (.+);$/gm)
+        ].map((m) => [m[1], m[2]])
+      );
+    const scope = ':root[data-brand="red-carpet"]';
+    const common = declared(scope);
+    expect(common["--brand-home-areas"]).toBe('"hero hero" "updates aside"');
+    expect(common["--brand-home-hero-band"]).toBe("1");
+    expect(common["--brand-home-hero-band-fill"]).toContain(
+      "var(--brand-home-band-edge)"
+    );
+    expect(common["--brand-home-hero-radius"]).toBe("0");
+    expect(common["--brand-home-hero-shadow"]).toBe("0 0 0 0 transparent");
+    expect(common["--brand-home-cta-hero-display"]).toBe("contents");
+    expect(common["--brand-home-cta-aside-display"]).toBe("none");
+    expect(common["--brand-home-cta-hero-edge"]).toBe(common["--brand-home-hero-muted"]);
+    expect(common["--brand-home-update-rule"]).toBe("1px solid var(--fo-win-gold-text)");
+    expect(common["--brand-home-update-ruled"]).toBe("1");
+    expect(common["--brand-home-hero-tone-color"]).toBe("#e2c25a");
+    expect(common["--brand-home-hero-tone-style"]).toBe("italic");
+    expect(common["--brand-home-aside-heading-case"]).toBe("uppercase");
+    expect(common["--brand-home-aside-heading-font"]).toBe("var(--brand-font-label)");
+    expect(common["--brand-home-aside-heading-size"]).toBe("var(--fo-font-size-xs)");
+    // Velvet is unreadable on the dark page and readable on the light one.
+    expect(declared(`${scope}:not([data-mantine-color-scheme="light"])`)).toMatchObject({
+      "--brand-home-band-edge": "#8e2a3a",
+      "--brand-home-aside-heading-color": "var(--brand-muted)"
+    });
+    expect(declared(`${scope}[data-mantine-color-scheme="light"]`)).toMatchObject({
+      "--brand-home-band-edge": "#8e2a3a",
+      "--brand-home-aside-heading-color": "var(--brand-accent)"
+    });
+  });
+
+  it("keeps every brand's current Home rendering under the neutral new slots", () => {
+    const declared = (id: string) =>
+      Object.fromEntries(
+        [
+          ...css
+            .split("\n\n")
+            .find((b) => b.startsWith(`:root[data-brand="${id}"] {`))!
+            .matchAll(/^ {2}(--[\w-]+): (.+);$/gm)
+        ].map((m) => [m[1], m[2]])
+      );
+    for (const brand of BRAND_DEFINITIONS) {
+      if (brand.home.placement === "band") continue;
+      const values = declared(brand.id);
+      expect(values["--brand-home-hero-band"], brand.id).toBe("0");
+      expect(values["--brand-home-hero-band-fill"], brand.id).toBe("none");
+      expect(values["--brand-home-hero-shadow"], brand.id).toBe(
+        "var(--brand-shadow-hero)"
+      );
+    }
+  });
+
+  it("reads the band edge from the hero shadow's ring, else ruleStrong", () => {
+    expect(shadowRingColor("0 0 0 1px #8e2a3a")).toBe("#8e2a3a");
+    expect(shadowRingColor("inset 0 0 0 6px #ffffff, 0 0 0 1px #141414")).toBe("#141414");
+    expect(
+      shadowRingColor("0 1px 2px rgba(60, 45, 10, 0.06), 0 0 0 2px rgba(1, 2, 3, 0.5)")
+    ).toBe("rgba(1, 2, 3, 0.5)");
+    expect(shadowRingColor("0 0 0 0 transparent")).toBeNull();
+    expect(shadowRingColor("0 8px 20px rgba(0, 0, 0, 0.35)")).toBeNull();
+    const gold = BRAND_DEFINITIONS.find((b) => b.id === "refined-gold")!;
+    expect(bandEdgeColor(gold, "light")).toBe(gold.modes.light.colors.ruleStrong);
+    expect(bandEdgeColor(gold, "dark")).toBe("#6b5a2a");
+  });
+
+  it("resolves the hero accent ink to a gold that reads on the panel, or null", () => {
+    const byId = (id: string) => BRAND_DEFINITIONS.find((b) => b.id === id)!;
+    expect(heroAccentColor(byId("ballot"))).toBe("var(--fo-win-gold-text)");
+    expect(heroAccentColor(byId("red-carpet"))).toBe("#e2c25a");
+    const unreadable: BrandDefinition = {
+      ...byId("red-carpet"),
+      modes: {
+        ...byId("red-carpet").modes,
+        light: {
+          ...byId("red-carpet").modes.light,
+          colors: { ...byId("red-carpet").modes.light.colors, accent: "#c9a640" }
+        }
+      }
+    };
+    expect(heroAccentColor(unreadable)).toBeNull();
   });
 
   it("is deterministic", () => {

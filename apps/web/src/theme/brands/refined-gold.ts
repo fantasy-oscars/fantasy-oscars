@@ -129,7 +129,11 @@ export const refinedGold: BrandDefinition = {
     heroMax: "44px",
     heroFit: 12.5,
     regions: "cards",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "wordmark", style: "normal" },
+    asideHeading: "eyebrow"
   },
   room: {
     workFont: INTER,

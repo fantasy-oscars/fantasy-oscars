@@ -125,7 +125,11 @@ export const noir: BrandDefinition = {
     heroMax: "148px",
     heroFit: 24,
     regions: "open",
-    ctaSurface: "card"
+    ctaSurface: "card",
+    ctaPlacement: "aside",
+    updateRule: "none",
+    heroTone: { color: "wordmark", style: "normal" },
+    asideHeading: "title"
   },
   room: {
     workFont: INTER,

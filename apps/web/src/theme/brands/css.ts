@@ -92,6 +92,7 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
         ? "var(--brand-border-width) solid var(--brand-text)"
         : "var(--brand-border-width) solid var(--brand-rule)";
   const tone = wordmark.twoTone;
+  const toneColoured = tone === "colour" || tone === "colourItalic";
   return [
     ["--brand-nav-pill", pill ? "1" : "0"],
     ["--brand-nav-indicator", indicator],
@@ -110,9 +111,12 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
     ["--brand-nav-rule", pill ? "0 solid transparent" : "var(--brand-section-rule)"],
     [
       "--brand-wordmark-tone-color",
-      tone === "colour" ? colorRef(wordmark.toneColor) : "inherit"
+      toneColoured ? colorRef(wordmark.toneColor) : "inherit"
     ],
-    ["--brand-wordmark-tone-style", tone === "italic" ? "italic" : "normal"],
+    [
+      "--brand-wordmark-tone-style",
+      tone === "italic" || tone === "colourItalic" ? "italic" : "normal"
+    ],
     [
       "--brand-wordmark-tone-weight",
       tone === "italic" || tone === "weight" ? "400" : "inherit"
@@ -154,13 +158,91 @@ export function heroToneColor(brand: BrandDefinition): string {
     : `var(--brand-${mode}-${kebab(wordmark.toneColor)})`;
 }
 
+/** Lowest contrast the side column's eyebrow heading may have against the page to take `accent`. */
+export const ASIDE_EYEBROW_MIN_CONTRAST = 4.5;
+
+/**
+ * The Home accent ink on the hero: the shared ceremony gold. On a panel it takes
+ * whichever mode's gold reads at 3:1, the panel's own mode first. Null when
+ * neither does; the second word then keeps the wordmark's tone.
+ */
+export function heroAccentColor(brand: BrandDefinition): string | null {
+  const { home } = brand;
+  if (home.heroSurface === "open") return colorRef("gold");
+  const panel =
+    home.heroSurface === "darkPanel"
+      ? brand.modes.dark.colors.surface
+      : brand.modes.light.colors.accent;
+  const order: Mode[] =
+    home.heroSurface === "darkPanel" ? ["dark", "light"] : ["light", "dark"];
+  const gold = order
+    .map((m) => sharedByMode[m]["--fo-win-gold-text"])
+    .find((value) => contrastRatio(value, panel) >= HERO_TONE_MIN_CONTRAST);
+  return gold ?? null;
+}
+
+/**
+ * Colour of the outermost spread ring (`0 0 0 <n>px <colour>`, not inset) in a
+ * box-shadow list, or null when the list has none.
+ */
+export function shadowRingColor(shadow: string): string | null {
+  for (const layer of shadow.split(/,(?![^(]*\))/)) {
+    const m =
+      /^\s*0(?:px)? 0(?:px)? 0(?:px)? [1-9]\d*px (#[0-9a-f]{3,6}|rgba?\([^)]*\))\s*$/i.exec(
+        layer
+      );
+    if (m) return m[1]!;
+  }
+  return null;
+}
+
+/**
+ * The 1 px edge above and below a `band` hero, per mode: the hero shadow's ring
+ * colour, or `ruleStrong` when that shadow has no ring.
+ */
+export function bandEdgeColor(brand: BrandDefinition, mode: Mode): string {
+  const { colors, shadows } = brand.modes[mode];
+  return shadowRingColor(shadows.hero) ?? colors.ruleStrong;
+}
+
+/** Per-mode Home properties, under the active-mode names only. */
+function homeModeDeclarations(brand: BrandDefinition, mode: Mode): Declarations {
+  const { colors } = brand.modes[mode];
+  const accentReads =
+    contrastRatio(colors.accent, colors.page) >= ASIDE_EYEBROW_MIN_CONTRAST;
+  return [
+    ["--brand-home-band-edge", bandEdgeColor(brand, mode)],
+    [
+      "--brand-home-aside-heading-color",
+      brand.home.asideHeading === "eyebrow"
+        ? accentReads
+          ? "var(--brand-accent)"
+          : "var(--brand-muted)"
+        : "inherit"
+    ]
+  ];
+}
+
 /** Derived Home properties (see the Home layouts prescription, 3.2). */
 function homeDeclarations(brand: BrandDefinition): Declarations {
   const { home, shape, wordmark } = brand;
   const panel = home.heroSurface !== "open";
+  const band = home.placement === "band";
   const heroTone = heroToneColor(brand);
   const open = home.regions === "open";
   const primary = home.ctaSurface === "primary";
+  const ctaInHero = home.ctaPlacement === "hero";
+  const updateRule = home.updateRule === "accent";
+  const eyebrow = home.asideHeading === "eyebrow";
+  const heroAccent = home.heroTone.color === "accent" ? heroAccentColor(brand) : null;
+  const twoTone = wordmark.twoTone;
+  const heroWordTone =
+    heroAccent ??
+    (twoTone === "colour" || twoTone === "colourItalic" ? heroTone : "inherit");
+  const heroWordStyle =
+    home.heroTone.style === "italic" || twoTone === "italic" || twoTone === "colourItalic"
+      ? "italic"
+      : "normal";
   const heroBg = {
     darkPanel: "var(--brand-dark-surface)",
     accentPanel: "var(--brand-light-accent)",
@@ -188,25 +270,34 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
   return [
     [
       "--brand-home-areas",
-      home.placement === "masthead"
-        ? '"hero hero" "updates aside"'
-        : '"hero aside" "updates aside"'
+      home.placement === "column"
+        ? '"hero aside" "updates aside"'
+        : '"hero hero" "updates aside"'
     ],
     ["--brand-home-hero-panel", panel ? "1" : "0"],
+    ["--brand-home-hero-band", band ? "1" : "0"],
+    [
+      "--brand-home-hero-band-fill",
+      band
+        ? "linear-gradient(var(--brand-home-band-edge) 0 1px, var(--brand-home-hero-bg) 1px calc(100% - 1px), var(--brand-home-band-edge) calc(100% - 1px))"
+        : "none"
+    ],
+    [
+      "--brand-home-hero-shadow",
+      band ? "0 0 0 0 transparent" : "var(--brand-shadow-hero)"
+    ],
     ["--brand-home-hero-bg", heroBg],
     ["--brand-home-hero-fg", heroFg],
     ["--brand-home-hero-fg-rgb", heroFgRgb],
     ["--brand-home-hero-muted", heroMuted],
-    ["--brand-home-hero-radius", panel ? "var(--brand-radius-lg)" : "0"],
+    ["--brand-home-hero-radius", panel && !band ? "var(--brand-radius-lg)" : "0"],
     ["--brand-home-hero-rule", panel ? "0 solid transparent" : openRule],
     ["--brand-home-hero-align", home.heroAlign],
     ["--brand-home-hero-tagline-inline", home.heroAlign === "center" ? "auto" : "0"],
     ["--brand-home-hero-max", home.heroMax],
     ["--brand-home-hero-fit", String(home.heroFit)],
-    [
-      "--brand-home-hero-tone-color",
-      wordmark.twoTone === "colour" ? heroTone : "inherit"
-    ],
+    ["--brand-home-hero-tone-color", heroWordTone],
+    ["--brand-home-hero-tone-style", heroWordStyle],
     ["--brand-home-hero-stop-color", heroTone],
     ["--brand-home-open", open ? "1" : "0"],
     ["--brand-home-updates-bg", open ? "transparent" : "var(--panel)"],
@@ -256,6 +347,35 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
     [
       "--brand-home-cta-ring",
       primary ? "var(--brand-on-primary)" : "var(--brand-focus-ring)"
+    ],
+    // The create-league card renders in one of two slots; `contents` keeps its own layout.
+    ["--brand-home-cta-hero-display", ctaInHero ? "contents" : "none"],
+    ["--brand-home-cta-aside-display", ctaInHero ? "none" : "contents"],
+    ["--brand-home-cta-hero-edge", heroMuted],
+    [
+      "--brand-home-update-rule",
+      updateRule ? "1px solid var(--fo-win-gold-text)" : "0 solid transparent"
+    ],
+    ["--brand-home-update-ruled", updateRule ? "1" : "0"],
+    [
+      "--brand-home-aside-heading-font",
+      eyebrow ? "var(--brand-font-label)" : "var(--brand-font-display)"
+    ],
+    [
+      "--brand-home-aside-heading-weight",
+      eyebrow ? "var(--fo-font-weight-semibold)" : "var(--brand-display-weight)"
+    ],
+    [
+      "--brand-home-aside-heading-case",
+      eyebrow ? "uppercase" : "var(--brand-display-case)"
+    ],
+    [
+      "--brand-home-aside-heading-tracking",
+      eyebrow ? "var(--fo-letterSpacing-eyebrow)" : "var(--brand-display-tracking)"
+    ],
+    [
+      "--brand-home-aside-heading-size",
+      eyebrow ? "var(--fo-font-size-xs)" : "var(--fo-heading-h3-size)"
     ]
   ];
 }
@@ -380,7 +500,10 @@ function modeDeclarations(
     out.push([`${prefix}shadow-${slot}`, shadows[slot]]);
   }
   // The room's per-mode properties are only meaningful under the active-mode names.
-  if (prefix === "--brand-") out.push(...roomModeDeclarations(brand, mode));
+  if (prefix === "--brand-") {
+    out.push(...roomModeDeclarations(brand, mode));
+    out.push(...homeModeDeclarations(brand, mode));
+  }
   return out;
 }
 

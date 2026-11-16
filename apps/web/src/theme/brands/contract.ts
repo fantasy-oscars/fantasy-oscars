@@ -40,8 +40,18 @@ export type ModeSlots = { colors: ColorSlots; shadows: ShadowSlots };
 export const TEXT_CASES = ["none", "uppercase", "lowercase", "capitalize"] as const;
 export type TextCase = (typeof TEXT_CASES)[number];
 
-/** How the second word of the wordmark differs: `stop` keeps both words alike and adds a trailing full stop. */
-export const TWO_TONE_METHODS = ["colour", "italic", "weight", "stop"] as const;
+/**
+ * How the second word of the wordmark differs: `stop` keeps both words alike and adds a
+ * trailing full stop; `colourItalic` sets it in the tone colour and italic, at the
+ * wordmark's own weight.
+ */
+export const TWO_TONE_METHODS = [
+  "colour",
+  "colourItalic",
+  "italic",
+  "weight",
+  "stop"
+] as const;
 export type TwoToneMethod = (typeof TWO_TONE_METHODS)[number];
 
 /** Colours the active nav indicator may take; `gold` is the shared win-gold text colour. */
@@ -73,8 +83,12 @@ export type Decoration = (typeof DECORATIONS)[number];
 export const ACCENT_STYLES = ["normal", "italic"] as const;
 export type AccentStyle = (typeof ACCENT_STYLES)[number];
 
-/** `column`: the Home hero tops the reading column. `masthead`: it spans both columns. */
-export const HOME_PLACEMENTS = ["column", "masthead"] as const;
+/**
+ * `column`: the Home hero tops the reading column. `masthead`: it spans both columns.
+ * `band`: it spans both columns and its fill runs the full viewport width, with a
+ * 1 px edge above and below and its content aligned to the page column.
+ */
+export const HOME_PLACEMENTS = ["column", "masthead", "band"] as const;
 export type HomePlacement = (typeof HOME_PLACEMENTS)[number];
 
 /**
@@ -94,6 +108,30 @@ export type HomeRegions = (typeof HOME_REGIONS)[number];
 /** `primary`: the create-league card is filled with the primary colour. */
 export const CTA_SURFACES = ["card", "primary"] as const;
 export type CtaSurface = (typeof CTA_SURFACES)[number];
+
+/** `hero`: the create-league card sits inside the hero, after the tagline (DOM and focus order follow). */
+export const CTA_PLACEMENTS = ["aside", "hero"] as const;
+export type CtaPlacement = (typeof CTA_PLACEMENTS)[number];
+
+/** `accent`: a 1 px rule in the Home accent ink above the latest update. */
+export const UPDATE_RULES = ["none", "accent"] as const;
+export type UpdateRule = (typeof UPDATE_RULES)[number];
+
+/**
+ * Colour of the hero wordmark's second word. `wordmark`: as the header wordmark's
+ * tone reads on the hero. `accent`: the Home accent ink (the shared ceremony gold)
+ * as it reads on the hero; a brand's `accent` slot is often the hero panel itself.
+ */
+export const HERO_TONE_COLORS = ["wordmark", "accent"] as const;
+export type HeroToneColor = (typeof HERO_TONE_COLORS)[number];
+
+/** Style of the hero wordmark's second word; `normal` keeps the wordmark's own treatment. */
+export const HERO_TONE_STYLES = ["normal", "italic"] as const;
+export type HeroToneStyle = (typeof HERO_TONE_STYLES)[number];
+
+/** `eyebrow`: the side column's heading is a small, uppercase, letter-spaced label. */
+export const ASIDE_HEADINGS = ["title", "eyebrow"] as const;
+export type AsideHeading = (typeof ASIDE_HEADINGS)[number];
 
 /** Bounds of `heroFit`, a percentage of the hero's inner width. */
 export const HERO_FIT_RANGE = { min: 8, max: 30 } as const;
@@ -136,6 +174,10 @@ export type HomeSlots = {
   heroFit: number;
   regions: HomeRegions;
   ctaSurface: CtaSurface;
+  ctaPlacement: CtaPlacement;
+  updateRule: UpdateRule;
+  heroTone: { color: HeroToneColor; style: HeroToneStyle };
+  asideHeading: AsideHeading;
 };
 
 export type WordmarkSlots = {
@@ -144,7 +186,7 @@ export type WordmarkSlots = {
   case: TextCase;
   letterSpacing: string;
   twoTone: TwoToneMethod;
-  /** Colour of the second word (`colour`) or of the full stop (`stop`); still required when unused. */
+  /** Colour of the second word (`colour`, `colourItalic`) or of the full stop (`stop`); still required when unused. */
   toneColor: WordmarkToneColor;
 };
 
