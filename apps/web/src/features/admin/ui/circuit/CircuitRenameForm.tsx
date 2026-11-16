@@ -21,13 +21,15 @@ export function CircuitRenameForm(props: {
   return (
     <Box component="form" onSubmit={submit} aria-label={props.label}>
       <Group align="end" wrap="wrap" gap="xs">
-        <TextInput
-          label={props.label}
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-          disabled={props.disabled}
-        />
-        <Group className="inline-actions" wrap="wrap" gap="xs">
+        <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
+          <TextInput
+            label={props.label}
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            disabled={props.disabled}
+          />
+        </Box>
+        <Group gap="xs" wrap="nowrap">
           <Button type="submit" disabled={!canSave}>
             Save
           </Button>

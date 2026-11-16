@@ -9,7 +9,8 @@ import type {
   CeremonyCircuitOption
 } from "@/orchestration/adminCircuit";
 import { CIRCUIT_DATE_LABELS, circuitStatusLabel } from "@/decisions/admin/circuit";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
+import { CircuitRowIconButton } from "@/features/admin/ui/circuit/CircuitRowIconButton";
 import "@/primitives/baseline.css";
 
 /** Select value for "give the ceremony its own event". */
@@ -105,7 +106,7 @@ export function AdminCeremonyCircuitScreen(props: {
             error={fieldErrors.resultsOn}
           />
         </Box>
-        <Group className="inline-actions" mt="sm" wrap="wrap">
+        <Group mt="md" wrap="wrap">
           <Button type="submit" disabled={props.savingDates}>
             {props.savingDates ? "Saving..." : "Save dates"}
           </Button>
@@ -123,11 +124,11 @@ export function AdminCeremonyCircuitScreen(props: {
         </Text>
 
         {props.associations.length === 0 ? (
-          <Text className="muted" size="sm" mt="sm">
-            Not in any Circuit.
-          </Text>
+          <Box mt="md">
+            <EmptyState>Not in any Circuit.</EmptyState>
+          </Box>
         ) : (
-          <Stack component="ul" gap="xs" mt="sm" className="fo-listReset">
+          <Stack component="ul" gap="sm" mt="md" className="fo-listReset">
             {props.associations.map((a) => {
               const option = props.circuitOptions.find((c) => c.id === a.circuit_id);
               const locked = props.working || a.circuit_status === "ARCHIVED";
@@ -138,13 +139,14 @@ export function AdminCeremonyCircuitScreen(props: {
                   justify="space-between"
                   align="center"
                   wrap="wrap"
-                  gap="xs"
+                  gap="sm"
                 >
-                  <Box miw="var(--fo-space-0)">
+                  <Box miw="var(--fo-space-0)" flex={1}>
                     <Text
                       component={Link}
                       to={`/admin/circuits/${a.circuit_id}`}
-                      className="link-plain"
+                      className="link-plain fo-block"
+                      fw="var(--fo-font-weight-bold)"
                     >
                       {a.circuit_name}
                     </Text>
@@ -152,38 +154,41 @@ export function AdminCeremonyCircuitScreen(props: {
                       {a.event_name} · {circuitStatusLabel(a.circuit_status)}
                     </Text>
                   </Box>
-                  <Group className="inline-actions" wrap="wrap" gap="xs">
+                  <Group gap="xs" wrap="nowrap" align="center" maw="100%">
                     {option ? (
-                      <Select
-                        aria-label={`Event in ${a.circuit_name}`}
-                        value={String(a.circuit_event_id)}
-                        allowDeselect={false}
-                        disabled={locked}
-                        onChange={(v) => {
-                          if (v === null || v === String(a.circuit_event_id)) return;
-                          void props.onAssociate(
-                            a.circuit_id,
-                            v === OWN_EVENT ? null : Number(v)
-                          );
-                        }}
-                        data={[
-                          ...option.events.map((e) => ({
-                            value: String(e.id),
-                            label: e.name
-                          })),
-                          { value: OWN_EVENT, label: "Its own event" }
-                        ]}
-                      />
+                      <Box
+                        flex={1}
+                        miw="var(--fo-space-0)"
+                        w="var(--fo-layout-fieldMin-md)"
+                      >
+                        <Select
+                          aria-label={`Event in ${a.circuit_name}`}
+                          value={String(a.circuit_event_id)}
+                          allowDeselect={false}
+                          disabled={locked}
+                          onChange={(v) => {
+                            if (v === null || v === String(a.circuit_event_id)) return;
+                            void props.onAssociate(
+                              a.circuit_id,
+                              v === OWN_EVENT ? null : Number(v)
+                            );
+                          }}
+                          data={[
+                            ...option.events.map((e) => ({
+                              value: String(e.id),
+                              label: e.name
+                            })),
+                            { value: OWN_EVENT, label: "Its own event" }
+                          ]}
+                        />
+                      </Box>
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    <CircuitRowIconButton
+                      icon="link_off"
+                      label={`Remove from ${a.circuit_name}`}
                       disabled={locked}
-                      aria-label={`Remove from ${a.circuit_name}`}
                       onClick={() => props.onRemove(a.circuit_id)}
-                    >
-                      Remove
-                    </Button>
+                    />
                   </Group>
                 </Group>
               );
@@ -193,9 +198,12 @@ export function AdminCeremonyCircuitScreen(props: {
 
         <FormStatus loading={props.working} result={props.associationStatus} />
 
-        <Divider my="sm" />
+        <Divider my="md" />
 
         <Box component="form" onSubmit={submitAssociation} aria-label="Add to a Circuit">
+          <Title order={4} variant="section">
+            Add to a Circuit
+          </Title>
           <Box className="grid grid-stackOnPhone">
             <Select
               label="Circuit"
@@ -222,7 +230,7 @@ export function AdminCeremonyCircuitScreen(props: {
               }))}
             />
           </Box>
-          <Group className="inline-actions" mt="sm" wrap="wrap">
+          <Group mt="sm" wrap="wrap">
             <Button type="submit" disabled={props.working || !circuitId}>
               Add to Circuit
             </Button>

@@ -1,5 +1,5 @@
 import { Box, Button, Divider, Group, Select, Stack, Text, Title } from "@ui";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import {
   ceremonyLabel,
   effectiveMapping,
@@ -57,22 +57,26 @@ export function CircuitMappingsCard(props: {
       </Text>
 
       {categories.length === 0 || groups.length === 0 ? (
-        <Text className="muted" size="sm" mt="sm">
-          {categories.length === 0
-            ? "Add a Circuit category to map ceremony categories to it."
-            : "Add a ceremony to map its categories."}
-        </Text>
+        <Box mt="md">
+          <EmptyState>
+            {categories.length === 0
+              ? "Add a Circuit category to map ceremony categories to it."
+              : "Add a ceremony to map its categories."}
+          </EmptyState>
+        </Box>
       ) : (
         <>
-          <Stack gap="sm" mt="sm">
+          <Stack gap="md" mt="md">
             {groups.map(({ ceremony, editions: rows }, idx) => (
               <Box
                 key={ceremony.ceremony_id}
                 role="group"
                 aria-label={ceremonyLabel(ceremony)}
               >
-                {idx > 0 ? <Divider mb="sm" /> : null}
-                <Text fw="var(--fo-font-weight-bold)">{ceremonyLabel(ceremony)}</Text>
+                {idx > 0 ? <Divider mb="md" /> : null}
+                <Title order={4} variant="section">
+                  {ceremonyLabel(ceremony)}
+                </Title>
                 {rows.length === 0 ? (
                   <Text className="muted" size="sm">
                     This ceremony has no categories yet.
@@ -107,7 +111,7 @@ export function CircuitMappingsCard(props: {
             ))}
           </Stack>
 
-          <Group className="inline-actions" mt="sm" wrap="wrap" align="center">
+          <Group mt="md" wrap="wrap" align="center" gap="sm">
             <Button type="button" onClick={actions.save} disabled={disabled || !pending}>
               Save mappings
             </Button>
@@ -120,14 +124,16 @@ export function CircuitMappingsCard(props: {
             </Text>
           </Group>
 
-          <Divider my="sm" />
+          <Divider my="md" />
 
           <Box role="group" aria-label="Mapped to each Circuit category">
-            <Text fw="var(--fo-font-weight-bold)">By Circuit category</Text>
-            <Stack component="ul" gap="xs" mt="xs" className="fo-listReset">
+            <Title order={4} variant="section">
+              By Circuit category
+            </Title>
+            <Stack component="ul" gap="sm" mt="sm" className="fo-listReset">
               {byCategory.map(({ category, mapped }) => (
                 <Box key={category.id} component="li">
-                  <Text>{category.name}</Text>
+                  <Text fw="var(--fo-font-weight-bold)">{category.name}</Text>
                   <Text className="muted" size="sm">
                     {mapped.length === 0
                       ? "Nothing mapped yet."

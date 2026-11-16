@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { Box, Button, Divider, Group, Select, Stack, Text, Title } from "@ui";
-import { StandardCard } from "@/primitives";
+import { EmptyState, StandardCard } from "@/primitives";
 import { circuitCategoryKindLabel } from "@/decisions/admin/circuit";
 import type {
   CircuitCategory,
   CircuitCategoryTemplate
 } from "@/orchestration/adminCircuit";
 import { CircuitRenameForm } from "./CircuitRenameForm";
+import { CircuitRowIconButton } from "./CircuitRowIconButton";
 
 export type CircuitCategoryActions = {
   add: (templateId: number) => Promise<boolean>;
@@ -46,13 +47,14 @@ export function CircuitCategoriesCard(props: {
       </Text>
 
       {categories.length === 0 ? (
-        <Text className="muted" size="sm" mt="sm">
-          No categories yet. Add one from a template.
-        </Text>
+        <Box mt="md">
+          <EmptyState>No categories yet. Add one from a template.</EmptyState>
+        </Box>
       ) : (
-        <Stack component="ol" gap="xs" mt="sm" className="fo-listReset">
+        <Stack component="ol" gap="sm" mt="md" className="fo-listReset">
           {categories.map((c, idx) => (
             <Box key={c.id} component="li">
+              {idx > 0 ? <Divider mb="sm" /> : null}
               {renaming === c.id ? (
                 <CircuitRenameForm
                   label="Category name"
@@ -63,49 +65,37 @@ export function CircuitCategoriesCard(props: {
                 />
               ) : (
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                  <Box miw="var(--fo-space-0)">
+                  <Box miw="var(--fo-layout-fieldMin-lg)" flex={1}>
                     <Text fw="var(--fo-font-weight-bold)">{c.name}</Text>
                     <Text className="muted" size="sm">
                       {circuitCategoryKindLabel(c.kind)}
                     </Text>
                   </Box>
-                  <Group className="inline-actions" wrap="wrap" gap="xs">
-                    <Button
-                      type="button"
-                      variant="subtle"
+                  <Group gap="xs" wrap="nowrap" ml="auto">
+                    <CircuitRowIconButton
+                      icon="edit"
+                      label={`Rename ${c.name}`}
                       disabled={disabled}
-                      aria-label={`Rename ${c.name}`}
                       onClick={() => setRenaming(c.id)}
-                    >
-                      Rename
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    />
+                    <CircuitRowIconButton
+                      icon="arrow_upward"
+                      label={`Move ${c.name} up`}
                       disabled={disabled || idx === 0}
-                      aria-label={`Move ${c.name} up`}
                       onClick={() => actions.move(c.id, -1)}
-                    >
-                      Move up
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    />
+                    <CircuitRowIconButton
+                      icon="arrow_downward"
+                      label={`Move ${c.name} down`}
                       disabled={disabled || idx === categories.length - 1}
-                      aria-label={`Move ${c.name} down`}
                       onClick={() => actions.move(c.id, 1)}
-                    >
-                      Move down
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="subtle"
+                    />
+                    <CircuitRowIconButton
+                      icon="delete"
+                      label={`Remove ${c.name}`}
                       disabled={disabled}
-                      aria-label={`Remove ${c.name}`}
                       onClick={() => actions.remove(c.id)}
-                    >
-                      Remove
-                    </Button>
+                    />
                   </Group>
                 </Group>
               )}
@@ -114,22 +104,25 @@ export function CircuitCategoriesCard(props: {
         </Stack>
       )}
 
-      <Divider my="sm" />
+      <Divider my="md" />
 
       <Box component="form" onSubmit={submit} aria-label="Add a category">
-        <Box className="grid grid-stackOnPhone">
-          <Select
-            label="Category template"
-            placeholder="Choose a template"
-            value={templateId}
-            onChange={setTemplateId}
-            searchable
-            disabled={disabled}
-            nothingFoundMessage="No matching templates"
-            data={templates.map((t) => ({ value: String(t.id), label: t.name }))}
-          />
-        </Box>
-        <Group className="inline-actions" mt="sm" wrap="wrap">
+        <Title order={4} variant="section" mb="xs">
+          Add a category
+        </Title>
+        <Group align="end" wrap="wrap" gap="sm">
+          <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
+            <Select
+              label="Category template"
+              placeholder="Choose a template"
+              value={templateId}
+              onChange={setTemplateId}
+              searchable
+              disabled={disabled}
+              nothingFoundMessage="No matching templates"
+              data={templates.map((t) => ({ value: String(t.id), label: t.name }))}
+            />
+          </Box>
           <Button type="submit" disabled={disabled || !templateId}>
             Add category
           </Button>
