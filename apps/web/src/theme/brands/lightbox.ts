@@ -74,7 +74,7 @@ export const lightbox: BrandDefinition = {
     displayWordSpacing: "normal",
     h1Size: "32px",
     h2Size: "24px",
-    h3Size: "16px",
+    h3Size: "17px",
     bodySize: "14px",
     accentFont: ARCHIVO,
     accentStyle: "normal"

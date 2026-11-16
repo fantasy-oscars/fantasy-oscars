@@ -1,28 +1,19 @@
-import { Box, Stack, Text, Title } from "@ui";
-import type { StaticContentView } from "@/orchestration/content";
+import { Box, Stack, Title } from "@ui";
+import type { SitePage } from "@/content/sitePages";
 import { Markdown } from "@ui/Markdown";
 import { StandardCard } from "@/primitives";
-import { StaticPageProseSkeleton } from "@/shared/StaticPage";
 import "@/primitives/baseline.css";
 
-export function AboutScreen(props: { title: string; view: StaticContentView }) {
-  const { title, view } = props;
+export function AboutScreen(props: { page: SitePage }) {
+  const { page } = props;
 
   return (
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
         <StandardCard>
           <Stack gap="sm">
-            <Title variant="page">
-              {view.state === "ready" ? view.content.title : title}
-            </Title>
-            {view.state === "loading" ? (
-              <StaticPageProseSkeleton />
-            ) : view.state === "error" ? (
-              <Text>{view.message}</Text>
-            ) : (
-              <Markdown markdown={view.content.body_markdown} />
-            )}
+            <Title variant="page">{page.title}</Title>
+            <Markdown markdown={page.markdown} />
           </Stack>
         </StandardCard>
       </Box>

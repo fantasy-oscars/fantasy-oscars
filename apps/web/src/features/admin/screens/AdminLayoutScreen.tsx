@@ -91,7 +91,7 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
                   to="/admin/content"
                   className={({ isActive }) => navLinkClass(isActive)}
                 >
-                  Site &amp; Messaging
+                  Announcements
                 </NavLink>
 
                 {props.isSuperAdmin ? (

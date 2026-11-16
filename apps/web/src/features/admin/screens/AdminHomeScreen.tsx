@@ -60,11 +60,9 @@ export function AdminHomeScreen(props: { isSuperAdmin: boolean }) {
 
         <StandardCard interactive component={Link} to="/admin/content">
           <Title order={3} variant="section" className="baseline-textSectionHeader">
-            Site &amp; Messaging
+            Announcements
           </Title>
-          <Text className="baseline-textBody">
-            Edit static pages and publish announcements and banners.
-          </Text>
+          <Text className="baseline-textBody">Publish the Home update and banners.</Text>
         </StandardCard>
 
         {props.isSuperAdmin ? (

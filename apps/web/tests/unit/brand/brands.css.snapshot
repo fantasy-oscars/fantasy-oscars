@@ -72,6 +72,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 44px;
   --brand-home-hero-fit: 12.5;
+  --brand-home-hero-tone-color: var(--brand-dark-accent);
+  --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
   --brand-home-updates-shadow: var(--brand-shadow-card);
@@ -329,6 +331,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 44px;
   --brand-home-hero-fit: 12.5;
+  --brand-home-hero-tone-color: var(--brand-dark-accent);
+  --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
   --brand-home-updates-shadow: var(--brand-shadow-card);
@@ -572,6 +576,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 68px;
   --brand-home-hero-fit: 18;
+  --brand-home-hero-tone-color: #e2c25a;
+  --brand-home-hero-stop-color: #e2c25a;
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
   --brand-home-updates-shadow: 0 0 0 0 transparent;
@@ -815,6 +821,8 @@
   --brand-home-hero-tagline-inline: auto;
   --brand-home-hero-max: 72px;
   --brand-home-hero-fit: 16;
+  --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-stop-color: var(--brand-accent);
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
   --brand-home-updates-shadow: 0 0 0 0 transparent;
@@ -1058,6 +1066,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 148px;
   --brand-home-hero-fit: 24;
+  --brand-home-hero-tone-color: var(--fo-win-gold-text);
+  --brand-home-hero-stop-color: var(--fo-win-gold-text);
   --brand-home-open: 1;
   --brand-home-updates-bg: transparent;
   --brand-home-updates-shadow: 0 0 0 0 transparent;
@@ -1301,6 +1311,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 64px;
   --brand-home-hero-fit: 19;
+  --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-stop-color: #e2c25a;
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
   --brand-home-updates-shadow: var(--brand-shadow-card);
@@ -1544,6 +1556,8 @@
   --brand-home-hero-tagline-inline: auto;
   --brand-home-hero-max: 84px;
   --brand-home-hero-fit: 18.5;
+  --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-stop-color: inherit;
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
   --brand-home-updates-shadow: var(--brand-shadow-card);
@@ -1737,7 +1751,7 @@
   --brand-display-word-spacing: normal;
   --brand-h1-size: 32px;
   --brand-h2-size: 24px;
-  --brand-h3-size: 16px;
+  --brand-h3-size: 17px;
   --brand-body-size: 14px;
   --brand-font-accent: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --brand-accent-style: normal;
@@ -1787,6 +1801,8 @@
   --brand-home-hero-tagline-inline: 0;
   --brand-home-hero-max: 50px;
   --brand-home-hero-fit: 15;
+  --brand-home-hero-tone-color: inherit;
+  --brand-home-hero-stop-color: var(--brand-dark-accent);
   --brand-home-open: 0;
   --brand-home-updates-bg: var(--panel);
   --brand-home-updates-shadow: var(--brand-shadow-card);

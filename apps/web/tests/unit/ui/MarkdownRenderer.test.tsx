@@ -75,34 +75,98 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   });
 });
 
-describe("<MarkdownRenderer /> headingBase", () => {
+describe("<MarkdownRenderer /> heading levels", () => {
   const markdown = "# One\n\n## Two\n\n### Three\n\n#### Four";
 
-  test("keeps the default outline when headingBase is omitted", () => {
+  function headings(container: HTMLElement) {
+    return within(container)
+      .getAllByRole("heading")
+      .map((h) => [h.textContent, h.tagName]);
+  }
+
+  test("shifts each depth one level down from h2 when headingBase is omitted", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={markdown} />
+      </MantineProvider>
+    );
+    expect(headings(container)).toEqual([
+      ["One", "H2"],
+      ["Two", "H3"],
+      ["Three", "H4"],
+      ["Four", "H5"]
+    ]);
+  });
+
+  test("gives h2, h3 and h4 their own type steps", () => {
     const { container } = render(
       <MantineProvider>
         <MarkdownRenderer markdown={markdown} />
       </MantineProvider>
     );
     const view = within(container);
-    expect(view.getByRole("heading", { name: "One", level: 2 })).toBeInTheDocument();
-    expect(view.getByRole("heading", { name: "Two", level: 2 })).toBeInTheDocument();
-    expect(view.getByRole("heading", { name: "Three", level: 3 })).toBeInTheDocument();
-    expect(view.getByRole("heading", { name: "Four", level: 4 })).toBeInTheDocument();
+    const variant = (name: string) =>
+      view.getByRole("heading", { name }).getAttribute("data-fo-typo");
+    expect(variant("One")).toBe("page");
+    expect(variant("Two")).toBe("section");
+    expect(variant("Three")).toBe("card");
   });
 
-  test("shifts headings under the base and renders deeper ones as bold text", () => {
+  test("shifts from the base and caps at h6", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={markdown} headingBase={4} />
+      </MantineProvider>
+    );
+    expect(headings(container)).toEqual([
+      ["One", "H4"],
+      ["Two", "H5"],
+      ["Three", "H6"],
+      ["Four", "H6"]
+    ]);
+  });
+
+  test("under a raised base, starts at the section size and steps down each level", () => {
     const { container } = render(
       <MantineProvider>
         <MarkdownRenderer markdown={markdown} headingBase={4} />
       </MantineProvider>
     );
     const view = within(container);
-    expect(view.getByRole("heading", { name: "One", level: 4 })).toBeInTheDocument();
-    expect(view.getByRole("heading", { name: "Two", level: 4 })).toBeInTheDocument();
-    expect(view.queryByRole("heading", { name: "Three" })).not.toBeInTheDocument();
-    expect(view.getByText("Three")).toBeInTheDocument();
-    expect(view.getByText("Four")).toBeInTheDocument();
-    expect(view.getAllByRole("heading").every((h) => h.tagName === "H4")).toBe(true);
+    const heading = (name: string) => view.getByRole("heading", { name });
+    expect(heading("One").getAttribute("data-fo-typo")).toBe("section");
+    expect(heading("Two").getAttribute("data-fo-typo")).toBe("card");
+    // Below the display steps: small bold capitals in the body face.
+    expect(heading("Three").getAttribute("data-fo-typo")).toBe("body");
+    expect(heading("Three").getAttribute("style") ?? "").toContain("uppercase");
+    expect(heading("Four").getAttribute("style") ?? "").toContain("uppercase");
+  });
+
+  test("sizes headings from the document's top heading, not the rendered level", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={"## Section\n\n### Subsection"} />
+      </MantineProvider>
+    );
+    const view = within(container);
+    const section = view.getByRole("heading", { name: "Section" });
+    const subsection = view.getByRole("heading", { name: "Subsection" });
+    expect([section.tagName, section.getAttribute("data-fo-typo")]).toEqual([
+      "H3",
+      "page"
+    ]);
+    expect([subsection.tagName, subsection.getAttribute("data-fo-typo")]).toEqual([
+      "H4",
+      "section"
+    ]);
+  });
+
+  test("never renders a Markdown heading as h1", () => {
+    const { container } = render(
+      <MantineProvider>
+        <MarkdownRenderer markdown={markdown} headingBase={1} />
+      </MantineProvider>
+    );
+    expect(headings(container)[0]).toEqual(["One", "H2"]);
   });
 });

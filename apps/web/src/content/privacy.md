@@ -1,5 +1,3 @@
-# Privacy Policy
-
 ## Overview
 
 This Privacy Policy explains how this app collects, uses, and protects information when you create an account or use the service. The app is intended for users aged 13 and older and is designed to collect only the minimum information necessary to function.
@@ -43,4 +41,4 @@ We may update this Privacy Policy from time to time. When we do, we will update 
 
 If you have questions about this Privacy Policy or how your information is handled, you may contact us at:
 
-[support@fantasyoscars.com](mailto:support@fantasyoscars.com)
+[support@fantasy-oscars.com](mailto:support@fantasy-oscars.com)

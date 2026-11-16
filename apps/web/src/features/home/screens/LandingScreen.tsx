@@ -1,4 +1,4 @@
-import { Button, Group, Skeleton, Stack, Text, Title } from "@ui";
+import { Button, Group, Skeleton, Stack, Text, Title, WordmarkTitle } from "@ui";
 import { Link } from "react-router-dom";
 import type { AuthUser } from "@/auth/context";
 import type { LandingView } from "@/orchestration/landing";
@@ -11,12 +11,10 @@ import {
   StandardCard
 } from "@/primitives";
 import {
-  HERO_FALLBACK_TAGLINE,
-  computeHeroTitleTier,
+  HERO_TAGLINE,
   computeLandingSeasonCeremonyLabel,
   computeLandingSeasonStatus,
   formatUpdateDate,
-  markdownToTagline,
   titleCase
 } from "@/decisions/landing";
 import { seasonPath } from "@/lib/routes";
@@ -24,8 +22,6 @@ import { statusTone } from "@/decisions/statusTone";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
 import "@/primitives/baseline.css";
-
-const HERO_FALLBACK_TITLE = "Fantasy Oscars";
 
 function SeasonsSkeleton() {
   return (
@@ -53,33 +49,12 @@ export function LandingScreen(props: {
 }) {
   const { user, authLoading, view, refresh } = props;
 
-  const heroTitle =
-    view.blurb.state === "ready" ? view.blurb.content.title : HERO_FALLBACK_TITLE;
-  const tagline =
-    view.blurb.state === "ready"
-      ? markdownToTagline(view.blurb.content.body_markdown)
-      : view.blurb.state === "error"
-        ? HERO_FALLBACK_TAGLINE
-        : "";
-
   const hero = (
     <HeroCard>
-      <Title variant="hero" data-tier={computeHeroTitleTier(heroTitle)}>
-        {heroTitle}
-      </Title>
-      {view.blurb.state === "loading" ? (
-        <Skeleton
-          className="baseline-heroTagline"
-          height="calc(var(--fo-font-size-md) * 1.4)"
-          width="60%"
-          role="status"
-          aria-label="Loading"
-        />
-      ) : tagline ? (
-        <Text variant="helper" className="baseline-heroTagline">
-          {tagline}
-        </Text>
-      ) : null}
+      <WordmarkTitle order={2} size="hero" face="display" />
+      <Text variant="helper" className="baseline-heroTagline">
+        {HERO_TAGLINE}
+      </Text>
     </HeroCard>
   );
 

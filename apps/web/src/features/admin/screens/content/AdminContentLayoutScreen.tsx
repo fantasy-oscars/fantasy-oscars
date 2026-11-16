@@ -6,10 +6,13 @@ export function AdminContentLayoutScreen(props: { children: ReactNode }) {
   return (
     <Box component="section">
       <Box component="header">
-        <Title order={2} className="baseline-textHeroTitle">
-          Content
+        <Title order={2} className="baseline-textHeroTitle admin-contentTitle">
+          Announcements
         </Title>
-        <Text className="baseline-textBody">Manage what the app says and shows.</Text>
+        <Text className="baseline-textBody">
+          The update on Home and the banners shown across the app. One Home announcement
+          is published at a time; several banners can run at once.
+        </Text>
       </Box>
       <Divider my="md" />
       {props.children}

@@ -1,5 +1,4 @@
 export type {
-  LandingBlurbView,
   LandingUpdatesView,
   LandingSeasonsView,
   LandingView

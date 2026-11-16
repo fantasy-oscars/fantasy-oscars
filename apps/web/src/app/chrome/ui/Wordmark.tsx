@@ -1,11 +1,10 @@
-import { Anchor, Title } from "@ui";
+import { Anchor, WordmarkTitle } from "@ui";
 import type { MouseEvent } from "react";
 import { Link } from "react-router-dom";
 
 /**
- * The two-tone wordmark. The text stays one accessible string, "Fantasy Oscars";
- * the full stop is decoration and only shows where the brand asks for it.
- * `onClick` sees the click before the link navigates; the caller may prevent it.
+ * The header wordmark: the two-tone product name as the page's one h1, linking
+ * home. `onClick` sees the click before the link navigates; the caller may prevent it.
  */
 export function Wordmark(props: {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
@@ -18,15 +17,7 @@ export function Wordmark(props: {
       underline="never"
       onClick={props.onClick}
     >
-      <Title className="site-title" order={1}>
-        <span className="site-title-word">Fantasy</span>{" "}
-        <span className="site-title-tone">
-          Oscars
-          <span className="site-title-stop" aria-hidden="true">
-            .
-          </span>
-        </span>
-      </Title>
+      <WordmarkTitle order={1} />
     </Anchor>
   );
 }

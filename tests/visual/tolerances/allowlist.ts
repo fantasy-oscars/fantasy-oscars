@@ -34,9 +34,6 @@ const BOTH_MODES = ["light", "dark"] as const;
 const BOTH_VIEWPORTS = ["desktop", "mobile"] as const;
 const DATE = "2026-11-15";
 
-const MARKDOWN_FOLLOW_UP =
-  "markdown-heading-scale (the site-content package): give h2, h3 and h4 their own steps in MarkdownRenderer";
-
 const PINS_BTN: ToleranceAllowance["pins"] = {
   festival: ["1.42|2.14", "1.42|2.54", "1.69|3"],
   technicolor: ["1.45|2.3", "1.45|2.75"]
@@ -70,46 +67,6 @@ const PINS_SW: ToleranceAllowance["pins"] = {
   noir: ["20"],
   "red-carpet": ["20"],
   technicolor: ["20"]
-};
-
-const PINS_H3_ORD: ToleranceAllowance["pins"] = {
-  ballot: ["30/30"],
-  default: ["24/24"],
-  festival: ["28/28"],
-  lightbox: ["24/24"],
-  noir: ["32/32"],
-  "red-carpet": ["28/28"],
-  technicolor: ["28/28"]
-};
-
-const PINS_H3_SIZE: ToleranceAllowance["pins"] = {
-  ballot: ["30"],
-  default: ["24"],
-  festival: ["28"],
-  lightbox: ["24"],
-  noir: ["32"],
-  "red-carpet": ["28"],
-  technicolor: ["28"]
-};
-
-const PINS_H4_ORD: ToleranceAllowance["pins"] = {
-  ballot: ["30/30"],
-  default: ["24/24"],
-  festival: ["28/28"],
-  lightbox: ["24/24"],
-  noir: ["32/32"],
-  "red-carpet": ["28/28"],
-  technicolor: ["28/28"]
-};
-
-const PINS_H4_SIZE: ToleranceAllowance["pins"] = {
-  ballot: ["30"],
-  default: ["24"],
-  festival: ["28"],
-  lightbox: ["24"],
-  noir: ["32"],
-  "red-carpet": ["28"],
-  technicolor: ["28"]
 };
 
 export const TOLERANCE_ALLOWLIST: readonly ToleranceAllowance[] = [
@@ -162,50 +119,6 @@ export const TOLERANCE_ALLOWLIST: readonly ToleranceAllowance[] = [
     reason: "The switch row is 20 px high on a phone, under the 44 px target.",
     followUp:
       "form-row-touch-targets: give checkbox and switch rows a 44 px minimum on a phone",
-    date: DATE
-  },
-  {
-    pins: PINS_H3_ORD,
-    modes: BOTH_MODES,
-    viewports: BOTH_VIEWPORTS,
-    hook: "markdown:h3",
-    prop: "relation:ordered",
-    reason:
-      "Markdown renders every heading level with the section title style, so this level is exactly the size of the one above it (the pinned step is size/size). Fixing it restyles every admin-written page.",
-    followUp: MARKDOWN_FOLLOW_UP,
-    date: DATE
-  },
-  {
-    pins: PINS_H3_SIZE,
-    modes: BOTH_MODES,
-    viewports: BOTH_VIEWPORTS,
-    hook: "markdown:h3",
-    prop: "fontSize",
-    reason:
-      "The heading renders at the h2 size (the pinned value per brand) instead of its own slot: Markdown passes the section title style to every level.",
-    followUp: MARKDOWN_FOLLOW_UP,
-    date: DATE
-  },
-  {
-    pins: PINS_H4_ORD,
-    modes: BOTH_MODES,
-    viewports: BOTH_VIEWPORTS,
-    hook: "markdown:h4",
-    prop: "relation:ordered",
-    reason:
-      "Markdown renders every heading level with the section title style, so this level is exactly the size of the one above it (the pinned step is size/size). Fixing it restyles every admin-written page.",
-    followUp: MARKDOWN_FOLLOW_UP,
-    date: DATE
-  },
-  {
-    pins: PINS_H4_SIZE,
-    modes: BOTH_MODES,
-    viewports: BOTH_VIEWPORTS,
-    hook: "markdown:h4",
-    prop: "fontSize",
-    reason:
-      "The heading renders at the h2 size (the pinned value per brand) instead of its own slot: Markdown passes the section title style to every level.",
-    followUp: MARKDOWN_FOLLOW_UP,
     date: DATE
   }
 ];

@@ -32,7 +32,14 @@ import {
   type ColorSlots,
   type Mode
 } from "@/theme/brands";
-import { colorChannels, kebab, pickTabEdge, roomTabRing } from "@/theme/brands/css";
+import {
+  HERO_TONE_MIN_CONTRAST,
+  colorChannels,
+  heroToneColor,
+  kebab,
+  pickTabEdge,
+  roomTabRing
+} from "@/theme/brands/css";
 import {
   ROOM_TAB_MAX_EDGE_PX,
   ROOM_COMMON_PROPERTIES,
@@ -202,6 +209,27 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
           contrast(colors.primary, mix(colors.onPrimary, colors.primary, 0.8))
         ).toBeGreaterThanOrEqual(4.5);
       }
+    });
+
+    it("keeps the hero wordmark's tone colour at 3:1 on a panel, or drops it", () => {
+      if (brand.home.heroSurface === "open") return;
+      const panel = brand.home.heroSurface === "darkPanel" ? dark.surface : light.accent;
+      const tone = heroToneColor(brand);
+      if (tone === "inherit") {
+        for (const mode of MODES) {
+          const value =
+            brand.wordmark.toneColor === "gold"
+              ? sharedByMode[mode]["--fo-win-gold-text"]
+              : brand.modes[mode].colors[brand.wordmark.toneColor];
+          expect(contrast(value, panel)).toBeLessThan(HERO_TONE_MIN_CONTRAST);
+        }
+        return;
+      }
+      const match = /^var\(--brand-(light|dark)-([\w-]+)\)$/.exec(tone);
+      const value = match
+        ? brand.modes[match[1] as Mode].colors[brand.wordmark.toneColor as ColorSlot]
+        : tone;
+      expect(contrast(value, panel)).toBeGreaterThanOrEqual(HERO_TONE_MIN_CONTRAST);
     });
 
     it("keeps light page and its 0.9 mix readable on the accent panel", () => {
@@ -400,6 +428,34 @@ describe("generated brand CSS", () => {
       "rgba(var(--brand-light-page-rgb), 0.9)"
     );
     expect(gold).not.toHaveProperty("--brand-home-layout");
+  });
+
+  it("gives the hero wordmark a tone colour that reads on the hero surface", () => {
+    const declared = (id: string) => {
+      const common = css
+        .split("\n\n")
+        .find((b) => b.startsWith(`:root[data-brand="${id}"] {`))!;
+      return Object.fromEntries(
+        [...common.matchAll(/^ {2}(--[\w-]+): (.+);$/gm)].map((m) => [m[1], m[2]])
+      );
+    };
+    // [tone colour, stop colour] per brand.
+    const expected: Record<string, [string, string]> = {
+      "refined-gold": ["var(--brand-dark-accent)", "var(--brand-dark-accent)"],
+      noir: ["var(--fo-win-gold-text)", "var(--fo-win-gold-text)"],
+      "red-carpet": ["#e2c25a", "#e2c25a"],
+      ballot: ["inherit", "var(--brand-accent)"],
+      festival: ["inherit", "#e2c25a"],
+      technicolor: ["inherit", "inherit"],
+      lightbox: ["inherit", "var(--brand-dark-accent)"]
+    };
+    for (const brand of BRAND_DEFINITIONS) {
+      const values = declared(brand.id);
+      expect(
+        [values["--brand-home-hero-tone-color"], values["--brand-home-hero-stop-color"]],
+        brand.id
+      ).toEqual(expected[brand.id]);
+    }
   });
 
   it("is deterministic", () => {

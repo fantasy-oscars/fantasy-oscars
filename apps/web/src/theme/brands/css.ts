@@ -122,10 +122,43 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
   ];
 }
 
+/** Lowest contrast the wordmark's tone colour may have against the hero surface (display-size text). */
+export const HERO_TONE_MIN_CONTRAST = 3;
+
+/**
+ * The wordmark's tone colour on the Home hero. An open hero sits on the page, so it
+ * takes the header's colour. A panel keeps one colour in both modes, so the tone
+ * takes whichever mode's value of its slot reads on that panel at 3:1, the panel's
+ * own mode first. When neither does (an accent tone on the accent panel), the second
+ * word takes the hero ink and keeps only its style or weight.
+ */
+export function heroToneColor(brand: BrandDefinition): string {
+  const { home, wordmark } = brand;
+  if (home.heroSurface === "open") return colorRef(wordmark.toneColor);
+  const panel =
+    home.heroSurface === "darkPanel"
+      ? brand.modes.dark.colors.surface
+      : brand.modes.light.colors.accent;
+  const order: Mode[] =
+    home.heroSurface === "darkPanel" ? ["dark", "light"] : ["light", "dark"];
+  const value = (mode: Mode) =>
+    wordmark.toneColor === "gold"
+      ? sharedByMode[mode]["--fo-win-gold-text"]
+      : brand.modes[mode].colors[wordmark.toneColor];
+  const mode = order.find(
+    (m) => contrastRatio(value(m), panel) >= HERO_TONE_MIN_CONTRAST
+  );
+  if (!mode) return "inherit";
+  return wordmark.toneColor === "gold"
+    ? value(mode)
+    : `var(--brand-${mode}-${kebab(wordmark.toneColor)})`;
+}
+
 /** Derived Home properties (see the Home layouts prescription, 3.2). */
 function homeDeclarations(brand: BrandDefinition): Declarations {
-  const { home, shape } = brand;
+  const { home, shape, wordmark } = brand;
   const panel = home.heroSurface !== "open";
+  const heroTone = heroToneColor(brand);
   const open = home.regions === "open";
   const primary = home.ctaSurface === "primary";
   const heroBg = {
@@ -170,6 +203,11 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
     ["--brand-home-hero-tagline-inline", home.heroAlign === "center" ? "auto" : "0"],
     ["--brand-home-hero-max", home.heroMax],
     ["--brand-home-hero-fit", String(home.heroFit)],
+    [
+      "--brand-home-hero-tone-color",
+      wordmark.twoTone === "colour" ? heroTone : "inherit"
+    ],
+    ["--brand-home-hero-stop-color", heroTone],
     ["--brand-home-open", open ? "1" : "0"],
     ["--brand-home-updates-bg", open ? "transparent" : "var(--panel)"],
     [

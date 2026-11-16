@@ -1,7 +1,6 @@
-import { useStaticContentOrchestration } from "@/orchestration/content";
+import { SITE_PAGES } from "@/content/sitePages";
 import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function TermsPage() {
-  const { view } = useStaticContentOrchestration("legal_terms");
-  return <StaticContentScreen fallbackTitle="Terms" view={view} />;
+  return <StaticContentScreen page={SITE_PAGES.terms} />;
 }

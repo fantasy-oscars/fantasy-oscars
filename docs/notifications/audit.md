@@ -37,7 +37,7 @@ This audit enforces the canonical taxonomy and decision tree defined in `docs/no
   - `apps/web/src/pages/SeasonPage.tsx`
   - `apps/web/src/pages/admin/users/AdminUserDetailPage.tsx`
   - `apps/web/src/pages/admin/content/AdminDynamicContentEditorPage.tsx`
-  - `apps/web/src/pages/admin/content/AdminDynamicContentLedgerPage.tsx`
+  - `apps/web/src/app/pages/admin/content/confirmHomeReplacement.ts` (replacing the published Home announcement)
   - `apps/web/src/pages/admin/ceremonies/AdminCeremoniesLockPage.tsx`
   - `apps/web/src/pages/admin/ceremonies/AdminCeremonyHomePage.tsx`
   - `apps/web/src/screens/draft/DraftRoomScreen.tsx` (single-click draft pick confirmation)
