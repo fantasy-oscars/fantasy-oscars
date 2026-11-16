@@ -224,7 +224,11 @@ export async function settle(
       const style = getComputedStyle(element);
       fonts.add(`${style.fontStyle} ${style.fontWeight} 16px ${style.fontFamily}`);
     }
-    await Promise.all(Array.from(fonts).map((font) => document.fonts.load(font)));
+    // A face that fails to load is reported by assertFontsLoaded, which names it and the
+    // capture; a bare NetworkError from here would name neither.
+    await Promise.all(
+      Array.from(fonts).map((font) => document.fonts.load(font).catch(() => []))
+    );
     await document.fonts.ready;
     await Promise.all(
       Array.from(document.images).map((img) =>
@@ -243,13 +247,22 @@ export async function settle(
       throw new Error("page never settled (requests in flight or DOM still changing)");
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
-    const mutations = await page.evaluate(() => {
+    const { mutations, fontsLoading } = await page.evaluate(() => {
       const w = window as unknown as { __visualMutations: number };
       const n = w.__visualMutations;
       w.__visualMutations = 0;
-      return n;
+      // Text rendered after the first font pass (query data, a re-render after sign-in)
+      // may use faces nobody has asked for yet. Ask again; a face that starts loading
+      // flips `status` to "loading" at once, which keeps this poll from counting as quiet.
+      const requested = new Set<string>();
+      for (const element of Array.from(document.querySelectorAll("body, body *"))) {
+        const style = getComputedStyle(element);
+        requested.add(`${style.fontStyle} ${style.fontWeight} 16px ${style.fontFamily}`);
+      }
+      for (const font of requested) document.fonts.load(font).catch(() => []);
+      return { mutations: n, fontsLoading: document.fonts.status === "loading" };
     });
-    quiet = mutations === 0 && inFlight() === 0 ? quiet + 1 : 0;
+    quiet = mutations === 0 && !fontsLoading && inFlight() === 0 ? quiet + 1 : 0;
   }
   await page.evaluate(
     () =>
@@ -257,6 +270,92 @@ export async function settle(
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
       )
   );
+}
+
+const FONT_GATE_MS = 3000;
+
+export type FontGateContext = {
+  screen: string;
+  brand: string;
+  mode: Mode;
+  viewport: string;
+};
+
+type MissingFont = { family: string; weight: string; style: string; status: string };
+
+/**
+ * Fails, naming the font, when a face the page renders text in is not loaded. Run it
+ * right before a screenshot: without it a face that is late (or cannot load) is drawn
+ * in the fallback and the capture fails as an unexplained pixel diff.
+ *
+ * For every distinct family (first one declared in `document.fonts`), weight and style
+ * on visible text it loads the face for that text, waits at most FONT_GATE_MS, then
+ * verifies with `document.fonts.check`. `fonts.load` alone cannot be trusted: it
+ * resolves `[]` for a family nobody declared, and `check` is true for one.
+ */
+export async function assertFontsLoaded(page: Page, ctx: FontGateContext) {
+  const missing = await page.evaluate(async (timeoutMs): Promise<MissingFont[]> => {
+    const unquote = (name: string) => name.trim().replace(/^["']|["']$/g, "");
+    const declared = new Set(Array.from(document.fonts).map((f) => unquote(f.family)));
+    const wanted = new Map<
+      string,
+      { family: string; weight: string; style: string; text: Set<string> }
+    >();
+    for (const element of Array.from(document.querySelectorAll("body *"))) {
+      if (!element.checkVisibility()) continue;
+      let text = "";
+      for (const node of Array.from(element.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE) text += node.textContent ?? "";
+      }
+      text = text.trim();
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      if (style.textTransform === "uppercase") text = text.toUpperCase();
+      const family = style.fontFamily
+        .split(",")
+        .map(unquote)
+        .find((f) => declared.has(f));
+      if (!family) continue;
+      const key = `${style.fontStyle}|${style.fontWeight}|${family}`;
+      const entry = wanted.get(key) ?? {
+        family,
+        weight: style.fontWeight,
+        style: style.fontStyle,
+        text: new Set<string>()
+      };
+      for (const char of text) entry.text.add(char);
+      wanted.set(key, entry);
+    }
+    const specOf = (e: { family: string; weight: string; style: string }) =>
+      `${e.style} ${e.weight} 16px "${e.family}"`;
+    const loads = Promise.all(
+      Array.from(wanted.values()).map((e) =>
+        document.fonts.load(specOf(e), Array.from(e.text).join("")).catch(() => [])
+      )
+    ).then(() => document.fonts.ready);
+    await Promise.race([loads, new Promise((resolve) => setTimeout(resolve, timeoutMs))]);
+    return Array.from(wanted.values())
+      .filter((e) => !document.fonts.check(specOf(e), Array.from(e.text).join("")))
+      .map((e) => {
+        const faces = Array.from(document.fonts).filter(
+          (f) => unquote(f.family) === e.family
+        );
+        const status = faces.some((f) => f.status === "error")
+          ? "a face failed to load"
+          : faces.some((f) => f.status === "loading")
+            ? `still loading after ${timeoutMs} ms`
+            : "not loaded";
+        return { family: e.family, weight: e.weight, style: e.style, status };
+      });
+  }, FONT_GATE_MS);
+  if (missing.length > 0) {
+    const names = missing
+      .map((m) => `"${m.family}" weight ${m.weight} ${m.style} (${m.status})`)
+      .join("; ");
+    throw new Error(
+      `font not loaded before capture: ${names}; screen ${ctx.screen}, theme ${ctx.brand}, ${ctx.mode} mode, ${ctx.viewport}`
+    );
+  }
 }
 
 /**

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { KNOWN_PHONE_OVERFLOW, MAX_PAGE_HEIGHT, VIEWPORTS, allCaptures } from "./matrix";
 import {
+  assertFontsLoaded,
   freezeClock,
   installNetworkGuards,
   readSeed,
@@ -57,6 +58,13 @@ for (const {
           VIEWPORTS.mobile.width
         );
       }
+
+      await assertFontsLoaded(page, {
+        screen: region ? "sample-card" : screen.id,
+        brand: brand.id,
+        mode,
+        viewport: viewportName
+      });
 
       if (region) {
         // The region is one element; its own box is the capture, whatever the page height.
