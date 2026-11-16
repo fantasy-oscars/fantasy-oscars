@@ -3396,24 +3396,30 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 }
 
 /*
- * The drafted-by chip sits in the header bar, after the category name, as a flex item:
- * the name wraps in the space the chip leaves, so the two cannot overlap whatever the
- * name's length, the brand or the font.
+ * The drafted-by chip is the last flex item of the footer bar, after the TMDB logo and
+ * attribution, so it cannot cover them. It hangs off the card's lower-right corner by
+ * --fo-tip-chip-hang; the card reserves that much margin below it, so the floating
+ * tooltip's flip and the nominee modal's scroll box account for the overhang.
  */
-.fo-tip-header {
-  justify-content: space-between;
-  gap: var(--fo-space-8);
+.fo-tip.has-draftedChip {
+  margin-bottom: var(--fo-tip-chip-hang);
 }
 
 .fo-tip-draftedChip {
-  /* Keeps its content width up to the cap; only then does the name ellipsize. */
+  /* Keeps its content width up to the cap; the attribution wraps first. */
   flex: 0 0 auto;
-  max-width: 50%;
+  max-width: 60%;
   min-width: 0;
+  margin-left: auto;
+  align-self: flex-end;
+  margin-bottom: calc(-1 * (var(--fo-tip-bar-paddingY) + var(--fo-tip-chip-hang)));
+  position: relative;
+  z-index: var(--fo-z-overlay-2);
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   gap: var(--fo-space-8);
+  min-height: var(--fo-control-height);
   padding: var(--fo-space-4) var(--fo-space-8);
   border: var(--fo-border-width) solid var(--brand-primary);
   border-radius: var(--brand-radius-sm);
@@ -3422,6 +3428,7 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   --dr-ink: var(--brand-on-primary);
   --dr-ground: var(--brand-primary);
   --dr-ink-soft: var(--brand-on-primary);
+  box-shadow: 0 6px 14px rgba(var(--fo-black-rgb), var(--fo-alpha-25));
 }
 
 .fo-tip-draftedChipLeft {
@@ -3455,7 +3462,8 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 .fo-tip-footer {
   border-top: var(--fo-border-width) solid
     rgba(var(--fo-text-primary-rgb), var(--fo-alpha-12));
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: var(--fo-space-8);
 }
 
 .fo-tip-action {
@@ -3581,6 +3589,8 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
 }
 
 .fo-tip-attribution {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: var(--fo-font-size-xs);
   color: var(--fo-text-deemphasized);
   line-height: 1.2;
