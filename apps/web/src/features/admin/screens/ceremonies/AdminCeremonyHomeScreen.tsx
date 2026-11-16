@@ -7,6 +7,7 @@ import type {
 } from "@/decisions/ceremonyWorkflow";
 import { getCeremonyWorkflowStepMeta } from "@/decisions/ceremonyWorkflow";
 import { isCeremonyWorkflowStepAllowed } from "@/decisions/admin/ceremonyWorkflowNav";
+import { canArchiveCeremony } from "@/decisions/ceremonyLifecycle";
 import { FormStatus } from "@/shared/forms";
 import type { ApiResult } from "@/lib/types";
 import { workflowRowStatusLabel } from "./workflowRowStatusLabel";
@@ -43,7 +44,10 @@ export function AdminCeremonyHomeScreen(props: {
   } = props;
 
   const next = nextStep ?? getCeremonyWorkflowStepMeta("initialize");
-  const canArchive = ceremony.status === "COMPLETE";
+  const canArchive = canArchiveCeremony({
+    status: ceremony.status,
+    resultsFinalizedAt: ceremony.results_finalized_at
+  });
   const nextAllowed =
     next.id === "archive"
       ? false

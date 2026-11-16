@@ -43,7 +43,7 @@ export function useDraftDerivedData(snapshot: Snapshot | null) {
   const scoringStrategyName = snapshot?.scoring_strategy_name ?? "fixed";
   const isFinalResults = isFinalResultsDecision({
     draftStatus: snapshot?.draft.status,
-    ceremonyStatus
+    resultsFinalizedAt: snapshot?.ceremony_results_finalized_at
   });
 
   const categoryWeightByCategoryId = useMemo(

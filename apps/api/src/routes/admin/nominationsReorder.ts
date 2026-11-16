@@ -6,6 +6,7 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError, validationError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import {
   adminCeremonyIdParam,
   adminNominationReorderBody
@@ -35,13 +36,7 @@ export function registerAdminNominationReorderRoute(args: {
           );
           const status = ceremonyRows[0]?.status;
           if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-          if (status !== "DRAFT") {
-            throw new AppError(
-              "CEREMONY_NOT_DRAFT",
-              409,
-              "Nominations can only be edited while the ceremony is in draft"
-            );
-          }
+          assertCeremonyContentEditable(status);
 
           const draftsStarted = await hasDraftsStartedForCeremony(tx, ceremonyId);
           if (draftsStarted) {

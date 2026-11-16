@@ -9,14 +9,14 @@ export function registerCeremoniesIndexRoute({
   router: Router;
   client: DbClient;
 }): void {
-  // User-visible ceremony index: active (published/locked) and archived.
+  // User-visible ceremony index: published, active, locked and archived.
   router.get("/", async (_req, res, next) => {
     try {
       const { rows } = await query(
         client,
-        `SELECT id::int, code, name, year, starts_at, status
+        `SELECT id::int, code, name, year, starts_at, status, results_finalized_at
          FROM ceremony
-         WHERE status IN ('PUBLISHED','LOCKED','COMPLETE','ARCHIVED')
+         WHERE status IN ('PUBLISHED','ACTIVE','LOCKED','ARCHIVED')
            AND deleted_at IS NULL
          ORDER BY starts_at DESC NULLS LAST, id DESC`
       );

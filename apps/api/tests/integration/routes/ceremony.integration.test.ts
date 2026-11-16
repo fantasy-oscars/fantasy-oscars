@@ -99,7 +99,7 @@ describe("ceremony routes", () => {
 
   it("exposes lock state and winners for active ceremony", async () => {
     const ceremony = await insertCeremony(db.pool);
-    await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+    await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
       ceremony.id
     ]);
     const category = await insertCategoryEdition(db.pool, { ceremony_id: ceremony.id });

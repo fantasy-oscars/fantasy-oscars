@@ -3,6 +3,8 @@ import { notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { winnersNominationLabel } from "../../../decisions/admin/winnersNominationLabel";
+import { isCeremonyStatus } from "../../../decisions/ceremonyLifecycle";
+import { ceremonyStatusLabel } from "../../../decisions/ceremonyWorkflow";
 import type { WinnersNominationRow } from "./winners/types";
 
 export function useAdminCeremonyWinnersOrchestration(args: {
@@ -36,6 +38,10 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     draft_locked_at: null
   });
   const [ceremonyStatus, setCeremonyStatus] = useState<string>("DRAFT");
+  const [resultsFinalizedAt, setResultsFinalizedAt] = useState<string | null>(null);
+  const ceremonyStatusText = isCeremonyStatus(ceremonyStatus)
+    ? ceremonyStatusLabel(ceremonyStatus, resultsFinalizedAt)
+    : ceremonyStatus;
   const [pendingWinner, setPendingWinner] = useState<{
     categoryId: number;
     nominationIds: number[];
@@ -76,6 +82,7 @@ export function useAdminCeremonyWinnersOrchestration(args: {
         draft_locked: boolean;
         draft_locked_at: string | null;
         status: string;
+        results_finalized_at: string | null;
       }>(`/admin/ceremonies/${ceremonyId}/lock`, { method: "GET" })
     ]);
 
@@ -118,6 +125,7 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       draft_locked_at: lockRes.data?.draft_locked_at ?? null
     });
     setCeremonyStatus(String(lockRes.data?.status ?? "DRAFT").toUpperCase());
+    setResultsFinalizedAt(lockRes.data?.results_finalized_at ?? null);
 
     setLoadState({ ok: true, message: "Ready" });
     setLoading(false);
@@ -221,7 +229,8 @@ export function useAdminCeremonyWinnersOrchestration(args: {
       draft_locked: prev.draft_locked || Boolean(res.data?.draft_locked_at),
       draft_locked_at: res.data?.draft_locked_at ?? prev.draft_locked_at
     }));
-    setCeremonyStatus((prev) => (prev === "COMPLETE" ? prev : "LOCKED"));
+    // The first saved winner locks the ceremony.
+    setCeremonyStatus("LOCKED");
     setWinnerStatus((prev) => ({
       ...prev,
       [categoryId]: { ok: true, message: "Saved" }
@@ -385,6 +394,8 @@ export function useAdminCeremonyWinnersOrchestration(args: {
     savingCategory,
     draftLock,
     ceremonyStatus,
+    resultsFinalizedAt,
+    ceremonyStatusText,
     isDirty,
     nominationLabel: winnersNominationLabel,
     pendingWinner,

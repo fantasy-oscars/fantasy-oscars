@@ -107,7 +107,7 @@ describe("POST /drafts", () => {
         // Ceremony status check for the season-based draft creation flow.
         if (text.includes("FROM ceremony")) {
           return {
-            rows: [{ status: "PUBLISHED", draft_locked_at: null }]
+            rows: [{ status: "ACTIVE", draft_locked_at: null }]
           };
         }
         return { rows: [] };

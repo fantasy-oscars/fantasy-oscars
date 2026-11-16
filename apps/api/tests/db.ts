@@ -52,21 +52,29 @@ function getSortedMigrationFiles() {
 
 // Mirrors scripts/db-migrate.mjs, including the history rows the API's boot
 // check reads, so a test database looks like a migrated production one.
-async function applyMigrations(pool: Pool) {
+// `before` stops at that file, so a test can seed the schema an older
+// migration left behind; applyMigrations again finishes the rest.
+export async function applyMigrations(pool: Pool, opts: { before?: string } = {}) {
   await pool.query(
     `CREATE TABLE IF NOT EXISTS migration_history (
        filename text PRIMARY KEY,
        applied_at timestamptz NOT NULL DEFAULT now()
      )`
   );
+  const { rows } = await pool.query<{ filename: string }>(
+    `SELECT filename FROM migration_history`
+  );
+  const applied = new Set(rows.map((r) => r.filename));
   for (const file of getSortedMigrationFiles()) {
+    if (opts.before && file >= opts.before) break;
+    if (applied.has(file)) continue;
     const sql = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
     await pool.query(sql);
     await pool.query(`INSERT INTO migration_history (filename) VALUES ($1)`, [file]);
   }
 }
 
-export async function startTestDatabase() {
+export async function startTestDatabase(opts: { migrateBefore?: string } = {}) {
   // Ensure docker host is set for environments that have Docker available but DOCKER_HOST unset.
   if (!process.env.DOCKER_HOST) {
     const candidates = ["/var/run/docker.sock", "/run/docker.sock"];
@@ -82,7 +90,7 @@ export async function startTestDatabase() {
   // Stopping the container can terminate a connection that is still closing;
   // without a listener pg rethrows that as an unhandled error.
   pool.on("error", () => {});
-  await applyMigrations(pool);
+  await applyMigrations(pool, { before: opts.migrateBefore });
 
   async function stop() {
     await pool.end();

@@ -27,6 +27,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
   const fieldErrors = useFieldErrors();
@@ -161,12 +162,40 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     await load();
   }, [ceremony, load]);
 
+  const openForLeagues = useCallback(async () => {
+    if (!ceremony) return;
+    setOpening(true);
+    setStatus(null);
+    const res = await fetchJson<{ ceremony: CeremonyDetail }>(
+      `/admin/ceremonies/${ceremony.id}/open`,
+      { method: "POST" }
+    );
+    setOpening(false);
+    if (!res.ok) {
+      // The refusal names the categories that still need nominees.
+      setStatus({ ok: false, message: res.error ?? "Could not open for leagues" });
+      return;
+    }
+    notify({
+      id: "admin.ceremony.open.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony is open for leagues."
+    });
+    setStatus(null);
+    await load();
+  }, [ceremony, load]);
+
   const readOnly = ceremony?.status === "ARCHIVED";
 
   return {
     loading,
     saving,
     publishing,
+    opening,
     loadError,
     status,
     ceremony,
@@ -177,6 +206,6 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     clearFieldError: fieldErrors.clear,
     completeness,
     readOnly,
-    actions: { save, publish }
+    actions: { save, publish, openForLeagues }
   };
 }

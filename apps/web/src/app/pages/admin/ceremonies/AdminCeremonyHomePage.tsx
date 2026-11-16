@@ -6,12 +6,14 @@ import { useAdminCeremonyWorksheetOrchestration } from "@/orchestration/adminCer
 import type { CeremonyWorkflowStepId } from "@/decisions/ceremonyWorkflow";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";
 import { confirm } from "@/notifications";
+import { canArchiveCeremony } from "@/decisions/ceremonyLifecycle";
 
 function getStepPath(step: CeremonyWorkflowStepId) {
   if (step === "initialize") return "initialize";
   if (step === "structure") return "structure";
   if (step === "populate") return "populate";
   if (step === "publish") return "publish";
+  if (step === "open") return "open";
   if (step === "results") return "results";
   return "archive";
 }
@@ -58,7 +60,14 @@ export function AdminCeremonyHomePage() {
         saving: archive.saving,
         status: archive.status,
         onArchive: () => {
-          if (o.ceremony?.status === "ARCHIVED" || o.ceremony?.status !== "COMPLETE")
+          const c = o.ceremony;
+          if (
+            !c ||
+            !canArchiveCeremony({
+              status: c.status,
+              resultsFinalizedAt: c.results_finalized_at
+            })
+          )
             return;
           void confirm({
             title: "Archive ceremony?",

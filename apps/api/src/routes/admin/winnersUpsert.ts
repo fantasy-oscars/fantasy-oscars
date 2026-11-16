@@ -54,9 +54,12 @@ export function registerAdminWinnersUpsertRoute(args: {
           const { rows: ceremonyRows } = await query<{
             status: string;
             draft_locked_at: Date | null;
-          }>(tx, `SELECT status, draft_locked_at FROM ceremony WHERE id = $1`, [
-            category.ceremony_id
-          ]);
+            results_finalized_at: Date | null;
+          }>(
+            tx,
+            `SELECT status, draft_locked_at, results_finalized_at FROM ceremony WHERE id = $1`,
+            [category.ceremony_id]
+          );
           const ceremony = ceremonyRows[0];
           if (!ceremony) {
             throw new AppError("NOT_FOUND", 404, "Ceremony not found");
@@ -75,9 +78,9 @@ export function registerAdminWinnersUpsertRoute(args: {
               "Archived ceremonies are read-only"
             );
           }
-          if (ceremony.status === "COMPLETE") {
+          if (ceremony.results_finalized_at) {
             throw new AppError(
-              "CEREMONY_COMPLETE",
+              "CEREMONY_RESULTS_FINALIZED",
               409,
               "This ceremony has finalized winners and is read-only for results entry"
             );

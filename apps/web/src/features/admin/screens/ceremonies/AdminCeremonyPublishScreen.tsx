@@ -2,13 +2,14 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
+import type { CeremonyStatus } from "@/decisions/ceremonyLifecycle";
 
 export function AdminCeremonyPublishScreen(props: {
   loading: boolean;
   publishing: boolean;
   loadError: string | null;
   status: ApiResult | null;
-  ceremony: { status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED" } | null;
+  ceremony: { status: CeremonyStatus } | null;
   canPublish: boolean;
   publishDisabledReason: string | null;
   onPublish: () => void;
@@ -55,7 +56,8 @@ export function AdminCeremonyPublishScreen(props: {
       <Box component="header">
         <Title order={2}>Publish</Title>
         <Text className="muted">
-          Publishing makes the ceremony visible to users and locks categories.
+          Publishing makes the ceremony visible to users. Categories and nominees stay
+          editable until you open it for leagues.
         </Text>
       </Box>
 

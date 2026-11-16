@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyLockOrchestration } from "@/orchestration/adminCeremonies";
 import { AdminCeremoniesLockScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesLockScreen";
 import { confirm } from "@/notifications";
+import { canArchiveCeremony } from "@/decisions/ceremonyLifecycle";
 import { useCeremonyWizardContext } from "./ceremonyWizardContext";
 
 export function AdminCeremoniesLockPage() {
@@ -17,7 +18,13 @@ export function AdminCeremoniesLockPage() {
       lockState={o.lockState}
       status={o.status}
       onArchive={() => {
-        if (o.lockState?.status !== "COMPLETE") return;
+        if (
+          !canArchiveCeremony({
+            status: o.lockState?.status,
+            resultsFinalizedAt: o.lockState?.results_finalized_at
+          })
+        )
+          return;
         void confirm({
           title: "Archive ceremony?",
           message:

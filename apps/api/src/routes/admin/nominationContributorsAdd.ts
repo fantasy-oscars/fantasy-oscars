@@ -6,6 +6,7 @@ import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError, validationError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import {
   adminContributorAddBody,
   adminNominationIdParam
@@ -42,13 +43,7 @@ export function registerAdminNominationContributorsAddRoute({
           );
           const meta = metaRows[0];
           if (!meta) throw new AppError("NOT_FOUND", 404, "Nomination not found");
-          if (meta.status !== "DRAFT") {
-            throw new AppError(
-              "CEREMONY_NOT_DRAFT",
-              409,
-              "Nominations can only be edited while the ceremony is in draft"
-            );
-          }
+          assertCeremonyContentEditable(meta.status);
           const draftsStarted = await hasDraftsStartedForCeremony(tx, meta.ceremony_id);
           if (draftsStarted) {
             throw new AppError(

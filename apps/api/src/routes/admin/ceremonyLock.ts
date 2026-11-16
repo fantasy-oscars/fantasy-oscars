@@ -40,7 +40,7 @@ export function registerAdminCeremonyLockRoute(args: {
               "Archived ceremonies cannot be locked"
             );
           }
-          if (status !== "PUBLISHED" && status !== "LOCKED") {
+          if (status !== "PUBLISHED" && status !== "ACTIVE" && status !== "LOCKED") {
             throw new AppError(
               "CEREMONY_NOT_PUBLISHED",
               409,

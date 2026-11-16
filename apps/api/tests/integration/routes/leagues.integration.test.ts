@@ -20,8 +20,8 @@ async function setActiveCeremony(id: number) {
 
 async function createActiveCeremony() {
   const ceremony = await insertCeremony(db.pool);
-  // Current API requires ceremonies to be published before they can be used for season/draft flows.
-  await db.pool.query(`UPDATE ceremony SET status = 'PUBLISHED' WHERE id = $1`, [
+  // Seasons and drafts can be created only while the ceremony is open for leagues.
+  await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [
     ceremony.id
   ]);
   await setActiveCeremony(ceremony.id);

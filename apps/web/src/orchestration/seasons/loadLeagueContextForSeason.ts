@@ -13,6 +13,7 @@ export type LeagueContextForSeason = {
   season: SeasonMeta & { id: number };
   leagueMembers: LeagueMember[];
   ceremonyStatus: string | null;
+  ceremonyResultsFinalizedAt: string | null;
 };
 
 /**
@@ -81,13 +82,21 @@ export async function loadLeagueContextForSeason(
   if (!found) return null;
 
   let ceremonyStatus: string | null = null;
+  let ceremonyResultsFinalizedAt: string | null = null;
   try {
     const ceremonies = await queryClient.fetchQuery(ceremoniesListQuery());
-    ceremonyStatus =
-      ceremonies.find((c) => c.id === found.season.ceremony_id)?.status ?? null;
+    const ceremony = ceremonies.find((c) => c.id === found.season.ceremony_id);
+    ceremonyStatus = ceremony?.status ?? null;
+    ceremonyResultsFinalizedAt = ceremony?.results_finalized_at ?? null;
   } catch {
     ceremonyStatus = null;
   }
 
-  return { league: found.league, season: found.season, leagueMembers, ceremonyStatus };
+  return {
+    league: found.league,
+    season: found.season,
+    leagueMembers,
+    ceremonyStatus,
+    ceremonyResultsFinalizedAt
+  };
 }

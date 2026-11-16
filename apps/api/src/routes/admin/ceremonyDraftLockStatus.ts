@@ -17,9 +17,13 @@ export function registerAdminCeremonyDraftLockStatusRoute(args: {
     async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
       try {
         const { id: ceremonyId } = parseParams(adminCeremonyIdParam, req.params);
-        const { rows } = await query<{ status: string; draft_locked_at: Date | null }>(
+        const { rows } = await query<{
+          status: string;
+          draft_locked_at: Date | null;
+          results_finalized_at: Date | null;
+        }>(
           client,
-          `SELECT status, draft_locked_at FROM ceremony WHERE id = $1`,
+          `SELECT status, draft_locked_at, results_finalized_at FROM ceremony WHERE id = $1`,
           [ceremonyId]
         );
         const row = rows[0];
@@ -27,7 +31,8 @@ export function registerAdminCeremonyDraftLockStatusRoute(args: {
         return res.status(200).json({
           status: row.status,
           draft_locked: Boolean(row.draft_locked_at) || row.status === "LOCKED",
-          draft_locked_at: row.draft_locked_at ?? null
+          draft_locked_at: row.draft_locked_at ?? null,
+          results_finalized_at: row.results_finalized_at ?? null
         });
       } catch (err) {
         next(err);

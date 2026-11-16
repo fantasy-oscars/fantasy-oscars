@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
+import {
+  isCeremonyContentEditable,
+  isCeremonyStatus
+} from "../../../decisions/ceremonyLifecycle";
 import { useFieldErrors } from "../../useFieldErrors";
 import type { CeremonyOption } from "./types";
 import { fetchAdminCeremonies, sortCeremonies } from "./fetchCeremonies";
@@ -60,7 +64,8 @@ export function useAdminCeremonyCategoriesOrchestration(args: {
     icon_variant: "default" | "inverted";
   } | null>(null);
 
-  const canEdit = ceremonyStatus === "DRAFT";
+  const canEdit =
+    isCeremonyStatus(ceremonyStatus) && isCeremonyContentEditable(ceremonyStatus);
 
   const load = useCallback(async () => {
     if (ceremonyId === null || !Number.isFinite(ceremonyId) || ceremonyId <= 0) {

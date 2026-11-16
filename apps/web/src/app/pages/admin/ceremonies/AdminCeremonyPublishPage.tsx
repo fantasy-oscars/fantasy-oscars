@@ -12,19 +12,13 @@ export function AdminCeremonyPublishPage() {
 
   const publishDisabledReason = useMemo(() => {
     const c = o.ceremony;
-    const stats = o.stats;
-    if (!c || !stats) return null;
+    if (!c) return null;
     if (c.status !== "DRAFT") return null;
     if (!c.code?.trim() || !c.name?.trim()) {
       return "Add a ceremony name and code before publishing.";
     }
-    if (stats.categories_total === 0)
-      return "Add at least one category before publishing.";
-    if (stats.categories_with_nominees !== stats.categories_total) {
-      return "Each category needs at least one nominee before publishing.";
-    }
     return null;
-  }, [o.ceremony, o.stats]);
+  }, [o.ceremony]);
 
   const canPublish = Boolean(!publishDisabledReason && o.ceremony?.status === "DRAFT");
 

@@ -16,7 +16,7 @@ export function registerCeremoniesActiveRoute({
         client,
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
-         WHERE status IN ('PUBLISHED','LOCKED','COMPLETE')
+         WHERE status IN ('PUBLISHED','ACTIVE','LOCKED')
            AND deleted_at IS NULL
          ORDER BY year DESC, id DESC`
       );

@@ -14,7 +14,7 @@ export type CeremonyIndexRow = {
   code: string | null;
   name: string | null;
   starts_at: string | null;
-  status: "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+  status: "PUBLISHED" | "ACTIVE" | "LOCKED" | "ARCHIVED";
 };
 
 type LoadState = "loading" | "error" | "ready";
@@ -58,7 +58,7 @@ export type CeremonyDetail = {
     code: string | null;
     name: string | null;
     starts_at: string | null;
-    status: "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+    status: "PUBLISHED" | "ACTIVE" | "LOCKED" | "ARCHIVED";
   };
   categories: Array<{
     id: number;

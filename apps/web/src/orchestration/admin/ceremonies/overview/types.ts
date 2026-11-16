@@ -1,13 +1,16 @@
+import type { CeremonyStatus } from "../../../../decisions/ceremonyLifecycle";
+
 export type CeremonyDetail = {
   id: number;
   code: string | null;
   name: string | null;
   starts_at: string | null;
-  status: "DRAFT" | "PUBLISHED" | "LOCKED" | "COMPLETE" | "ARCHIVED";
+  status: CeremonyStatus;
   draft_warning_hours: number;
   draft_locked_at: string | null;
   published_at: string | null;
   archived_at: string | null;
+  results_finalized_at: string | null;
 };
 
 export type CeremonyStats = {

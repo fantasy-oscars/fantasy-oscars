@@ -5,6 +5,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError, validationError } from "../../errors.js";
+import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
 import {
   adminCeremonyCategoryAddBody,
   adminCeremonyIdParam
@@ -38,13 +39,7 @@ export function registerAdminCeremonyCategoriesAddRoute(args: {
         );
         const status = ceremonyRows[0]?.status;
         if (!status) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
-        if (status !== "DRAFT") {
-          throw new AppError(
-            "CEREMONY_NOT_DRAFT",
-            409,
-            "Categories can only be edited while the ceremony is in draft"
-          );
-        }
+        assertCeremonyContentEditable(status);
 
         const { rows: familyRows } = await query<{
           code: string;

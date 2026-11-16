@@ -111,9 +111,10 @@ export function SeasonScreen(props: {
     () =>
       computeSeasonDraftRoomCtaLabel({
         ceremonyStatus: s.ceremonyStatus,
+        resultsFinalizedAt: s.ceremonyResultsFinalizedAt,
         draftStatus: s.draftStatus
       }),
-    [s.ceremonyStatus, s.draftStatus]
+    [s.ceremonyStatus, s.ceremonyResultsFinalizedAt, s.draftStatus]
   );
 
   const weights = useSeasonCategoryWeightsModal({
