@@ -14,12 +14,12 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
     location.pathname.startsWith("/admin/ceremonies") ||
     location.pathname.startsWith("/admin/category-templates") ||
     location.pathname.startsWith("/admin/films") ||
-    location.pathname.startsWith("/admin/series");
+    location.pathname.startsWith("/admin/circuits");
   const gameContentOpen = isGameContentOpen;
   const ceremoniesActive = location.pathname.startsWith("/admin/ceremonies");
   const templatesActive = location.pathname.startsWith("/admin/category-templates");
   const filmsActive = location.pathname.startsWith("/admin/films");
-  const seriesActive = location.pathname.startsWith("/admin/series");
+  const circuitsActive = location.pathname.startsWith("/admin/circuits");
 
   function handleGameContentBlur(event: FocusEvent<HTMLDivElement>) {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -87,10 +87,10 @@ export function AdminLayoutScreen(props: { children: ReactNode; isSuperAdmin: bo
                       Films
                     </NavLink>
                     <NavLink
-                      to="/admin/series"
-                      className={`nav-link admin-navDrawerLink${seriesActive ? " active" : ""}`}
+                      to="/admin/circuits"
+                      className={`nav-link admin-navDrawerLink${circuitsActive ? " active" : ""}`}
                     >
-                      Series
+                      Circuits
                     </NavLink>
                   </Box>
                 </Box>

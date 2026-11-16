@@ -11,8 +11,8 @@ import { AdminUsersLayout } from "./users/AdminUsersLayout";
 import { AdminUsersSearchPage } from "./users/AdminUsersSearchPage";
 import { AdminCategoryTemplatesPage } from "./categoryTemplates/AdminCategoryTemplatesPage";
 import { AdminFilmsPage } from "./films/AdminFilmsPage";
-import { AdminSeriesIndexPage } from "./series/AdminSeriesIndexPage";
-import { AdminSeriesDetailPage } from "./series/AdminSeriesDetailPage";
+import { AdminCircuitIndexPage } from "./circuit/AdminCircuitIndexPage";
+import { AdminCircuitDetailPage } from "./circuit/AdminCircuitDetailPage";
 import { AdminContentLayout } from "./content/AdminContentLayout";
 import {
   AdminAnnouncementsKeyRedirect,
@@ -53,9 +53,9 @@ export default function AdminRoutes() {
 
         <Route path="films" element={<AdminFilmsPage />} />
 
-        <Route path="series">
-          <Route index element={<AdminSeriesIndexPage />} />
-          <Route path=":seriesId" element={<AdminSeriesDetailPage />} />
+        <Route path="circuits">
+          <Route index element={<AdminCircuitIndexPage />} />
+          <Route path=":circuitId" element={<AdminCircuitDetailPage />} />
         </Route>
 
         <Route path="content" element={<AdminContentLayout />}>

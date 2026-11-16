@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
 import { AdminCeremoniesOverviewScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesOverviewScreen";
 import { useCeremonyWizardContext } from "./ceremonyWizardContext";
-import { AdminCeremonySeriesPanel } from "./AdminCeremonySeriesPanel";
+import { AdminCeremonyCircuitPanel } from "./AdminCeremonyCircuitPanel";
 
 export function AdminCeremoniesOverviewPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
@@ -32,7 +32,7 @@ export function AdminCeremoniesOverviewPage() {
           });
         }}
       />
-      {o.ceremony ? <AdminCeremonySeriesPanel ceremonyId={ceremonyId} /> : null}
+      {o.ceremony ? <AdminCeremonyCircuitPanel ceremonyId={ceremonyId} /> : null}
     </>
   );
 }

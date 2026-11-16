@@ -7,7 +7,7 @@ Use this as the map. Start with the section that matches your intent.
   - [Runtime](architecture/runtime.md)
   - [Domain Model](architecture/domain-model.md)
   - [Data](architecture/data.md)
-  - [Series](architecture/series.md)
+  - [Circuit](architecture/circuit.md)
 - **Standards**
   - [Engineering Standard](standards/engineering-standard.md)
   - [Testing](standards/testing.md)
@@ -22,8 +22,8 @@ Use this as the map. Start with the section that matches your intent.
   - [VPS: provisioning, backups, alerts, cutover](runbooks/vps.md)
   - [Debugging](runbooks/debugging.md)
 - **Planning**
-  - [Series competition: audit and plan](planning/series/plan.md)
-  - [Series competition: product brief](planning/series/brief.md)
+  - [Circuit competition: audit and plan](planning/series/plan.md)
+  - [Circuit competition: product brief](planning/series/brief.md)
 - **ADRs**
   - [What is an ADR?](adr/README.md)
   - [Template](adr/template.md)

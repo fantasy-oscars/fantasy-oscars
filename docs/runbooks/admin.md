@@ -44,34 +44,48 @@ read -rs NEWPW && printf '%s' "$NEWPW" | pnpm run admin:reset-password -- --user
 - Set active ceremony: `POST /admin/ceremony/active` with `{ "ceremony_id": <id> }`.
 - Read active ceremony: `GET /ceremony/active` (public).
 
-### Series admin routes
+### Circuit admin routes
 
-See [architecture/series.md](../architecture/series.md). Every write appends to
-`admin_audit_log`. Associations and mappings stay editable after activation;
-only an archived Series is read-only (409 `SERIES_ARCHIVED`).
+See [architecture/circuit.md](../architecture/circuit.md). Every write appends to
+`admin_audit_log` (`target_type` `circuit`, or `ceremony` for dates). Structural
+edits stay allowed after activation; only an archived Circuit is read-only
+(409 `CIRCUIT_ARCHIVED`).
 
-- `GET /admin/series`: list every Series.
-- `POST /admin/series` with `{ code, name, opens_on? }`: create a Series with its
-  five events and eight categories.
-- `GET /admin/series/:id`: events, categories, associated ceremonies with their
-  dates, category editions with their mapping, `readiness.missing_dates` and
-  `occasions`.
-- `POST /admin/series/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
-  `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `SERIES_NOT_DRAFT`.
-- `PUT /admin/series/:id/ceremonies/:ceremonyId` with `{ series_event_id }`, and
-  `DELETE` on the same path: associate or remove a ceremony (removal also drops
-  its mappings in the Series).
-- `GET /admin/ceremonies/:id/series`: the ceremony's associations, plus every
-  non-archived Series with its events.
-- `PUT /admin/ceremonies/:id/series/:seriesId` with `{ series_event_id }`, and
-  `DELETE` on the same path: the same association, from the ceremony side.
-- `PUT /admin/series/:id/mappings/:categoryEditionId` with
-  `{ series_category_id }`, and `DELETE` on the same path: map or unmap a
-  category edition. 409 `SERIES_CEREMONY_NOT_ASSOCIATED` until its ceremony is
-  in the Series.
+- `GET /admin/circuits`: list every Circuit.
+- `POST /admin/circuits` with `{ code, name, opens_on? }`: create an empty Circuit
+  (no events, no categories).
+- `GET /admin/circuits/:id`: events, categories, associated ceremonies with their
+  dates, category editions with their mapping and
+  `suggested_circuit_category_id` (computed from matching templates, never
+  saved), `readiness.missing_dates` and `occasions`.
+- `POST /admin/circuits/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
+  `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `CIRCUIT_NOT_DRAFT`.
+- `PUT /admin/circuits/:id/ceremonies/:ceremonyId` with `{ circuit_event_id? }`,
+  and `DELETE` on the same path: add any ceremony or move it to another event;
+  without an event (omitted or `null`) it gets its own one-ceremony event. An
+  event left empty is deleted. Removal also drops its mappings in the Circuit.
+- `GET /admin/ceremonies/:id/circuits`: the ceremony's associations, plus every
+  non-archived Circuit with its events.
+- `PUT /admin/ceremonies/:id/circuits/:circuitId` with `{ circuit_event_id? }`,
+  and `DELETE` on the same path: the same association, from the ceremony side.
+- `POST /admin/circuits/:id/events` with `{ name, code?, ceremony_ids? }`: create
+  an event, moving the listed ceremonies into it.
+  `PATCH /admin/circuits/:id/events/:eventId` with `{ name?, code? }`: rename.
+  `PUT /admin/circuits/:id/events/order` with `{ event_ids }`: reorder (every
+  event once). `DELETE /admin/circuits/:id/events/:eventId`: ungroup; each of its
+  ceremonies gets its own event and keeps its mappings.
+- `POST /admin/circuits/:id/categories` with `{ category_family_id }`: add a
+  category copied from a template (`FILM` → `FILM`, `PERFORMANCE` → `ACTING`;
+  `SONG` → 400). `PATCH .../categories/:categoryId` with `{ name }`,
+  `PUT .../categories/order` with `{ category_ids }`, and
+  `DELETE .../categories/:categoryId` (also removes its mappings).
+- `PUT /admin/circuits/:id/mappings/:categoryEditionId` with
+  `{ circuit_category_id }`, and `DELETE` on the same path: map or unmap a
+  category edition. Several editions may map to one Circuit category. 409
+  `CIRCUIT_CEREMONY_NOT_ASSOCIATED` until its ceremony is in the Circuit.
 - `PATCH /admin/ceremonies/:id/dates` with `{ nominations_on?, results_on? }`
   (`YYYY-MM-DD`, `null` clears): works at every ceremony status and never
-  changes a Series' status.
+  changes a Circuit's status.
 
 ## Notes
 

@@ -1,6 +1,8 @@
-# Series competition: audit and implementation plan
+# Circuit competition: audit and implementation plan
 
-This plan covers the season-long Series competition described in the [product brief](brief.md) (decisions through 2026-11-14). It begins with an audit of the existing system (brief section 16, step 1), so later packages build on what the code does today rather than on what the docs say. The domain model is [ADR 0005](../../adr/0005-series-domain-model.md); sections 2–8 are the build plan, schedule and test plan, and section 9 lists the questions the owner needs to answer.
+This plan covers the season-long Circuit competition described in the [product brief](brief.md) (decisions through 2026-11-14). It begins with an audit of the existing system (brief section 16, step 1), so later packages build on what the code does today rather than on what the docs say. The domain model is [ADR 0005](../../adr/0005-series-domain-model.md); sections 2–8 are the build plan, schedule and test plan, and section 9 lists the questions the owner needs to answer.
+
+**Vocabulary (2026-11-16).** This competition was first called a Series. It is a **Circuit** in code, tables and admin screens, and players see it as a **Season**, like the single-ceremony competition ([ADR 0006](../../adr/0006-circuit-admin-defined-structure.md)). Its ceremonies, events and categories are admin-defined: the five events, the eight categories and the Guild bundle below are the default slate an admin builds, not rules. Package slugs (`series-NN-*`) keep their original names.
 
 Every file and line reference below is against `origin/main` at `31113d91`. Paths are relative to the repository root.
 
@@ -58,7 +60,7 @@ Content is frozen at publish. Every category and nomination write is guarded by 
 | `LOCKED` (finalize)           | finalize winners                                | sets `results_finalized_at`; status stays `LOCKED`                  |
 | `LOCKED → ARCHIVED`           | archive                                         | `results_finalized_at IS NOT NULL` (replaces `status = 'COMPLETE'`) |
 
-Category and nomination edits move from `DRAFT` only to `DRAFT` or `PUBLISHED`. That is what lets an admin enter nominations on announcement day into a ceremony that Series leagues already see, while the ceremony-specific draft pool still freezes once the ceremony is `ACTIVE`, exactly as it freezes at publish today.
+Category and nomination edits move from `DRAFT` only to `DRAFT` or `PUBLISHED`. That is what lets an admin enter nominations on announcement day into a ceremony that Circuit leagues already see, while the ceremony-specific draft pool still freezes once the ceremony is `ACTIVE`, exactly as it freezes at publish today.
 
 **Every code path the change touches.**
 
@@ -67,7 +69,7 @@ Category and nomination edits move from `DRAFT` only to `DRAFT` or `PUBLISHED`. 
 - Docs: `docs/architecture/data.md:10`, `docs/architecture/overview.md:9`, `docs/architecture/scoring.md`.
 - Tests and seeds: the API factory inserts ceremonies as `DRAFT` (`apps/api/tests/factories/db.ts:47`) and eight API test files promote them with `UPDATE ceremony SET status = 'PUBLISHED'` (for example `apps/api/tests/integration/routes/drafts.integration.test.ts:59`); those become `ACTIVE`. The e2e seed does the same (`tests/e2e/support/seed.ts:125`), and the visual seed cycles through `COMPLETE` (`tests/visual/support/seed.ts:234`). Web unit tests that use `COMPLETE` (for example `apps/web/tests/unit/decisions/draftFinalResults.test.ts`) move to `results_finalized_at`.
 
-**Not part of this migration.** Nomination and results dates are Series inputs (brief sections 10 and 12). They belong to the Series schema package, as two nullable `date` columns on `ceremony` (whole days, admin-correctable). Today nothing records when a nomination or a win was announced: `nomination` has no timestamps (`001_init.sql:746-757`), and `ceremony_winner.created_at` (`001_init.sql:300`) resets on every edit because winners are replaced by delete and insert (`apps/api/src/data/repositories/winnerRepository.ts:22-32`).
+**Not part of this migration.** Nomination and results dates are Circuit inputs (brief sections 10 and 12). They belong to the Circuit schema package, as two nullable `date` columns on `ceremony` (whole days, admin-correctable). Today nothing records when a nomination or a win was announced: `nomination` has no timestamps (`001_init.sql:746-757`), and `ceremony_winner.created_at` (`001_init.sql:300`) resets on every edit because winners are replaced by delete and insert (`apps/api/src/data/repositories/winnerRepository.ts:22-32`).
 
 ### 1.2 Draft structure, pick clock and runtime
 
@@ -75,24 +77,24 @@ Category and nomination edits move from `DRAFT` only to `DRAFT` or `PUBLISHED`. 
 
 - **Order types.** Only snake is accepted: the request schema pipes to `z.literal("SNAKE")` (`packages/shared/src/schemas/drafts.ts:33-37`), turn math rejects anything else (`apps/api/src/domain/draftOrder.ts:38-41`), and both draft-creation paths hard-code it (`apps/api/src/routes/drafts/create.ts:90`, `leagues/seasonsCreate.ts:138`). The database also allows `LINEAR` (`001_init.sql:408`) and ADR 0001 lists it (`docs/adr/0001-domain-model.md:25`), but nothing computes a linear order. There is no auction support anywhere.
 - **Pick clock.** Free-form seconds: any number ≥ 0 (`packages/shared/src/schemas/seasons.ts:13-15`); 0 or null means untimed (`drafts/create.ts:95-98`). The UI is an on/off switch plus a number input in steps of 5, defaulting to on and 60 seconds (`apps/web/src/orchestration/seasons/leagueSeasonCreateOrchestration.ts:59-60`, `apps/web/src/features/seasons/screens/LeagueSeasonCreateScreen.tsx:202-207`). The brief's 90-second default is a new default, not a new option.
-- **Sizing.** Picks per seat are derived at start from the ceremony's nomination count, `floor(nominations / seats)`, with a remainder strategy (`apps/api/src/routes/drafts/start.ts:113-136`). `league.roster_size` is a placeholder set to `max_members` (`apps/api/src/routes/leagues/leaguesCreate.ts:68`). A Series roster is a fixed configured size (default 16), independent of any pool.
-- **Seat order.** Seats come from season members at start, shuffled with `sort(() => Math.random() - 0.5)` (`start.ts:94-98`). The order persists as `draft_seat.seat_number`, which the Series needs for reverse-order waiver priority and chip values.
+- **Sizing.** Picks per seat are derived at start from the ceremony's nomination count, `floor(nominations / seats)`, with a remainder strategy (`apps/api/src/routes/drafts/start.ts:113-136`). `league.roster_size` is a placeholder set to `max_members` (`apps/api/src/routes/leagues/leaguesCreate.ts:68`). A Circuit roster is a fixed configured size (default 16), independent of any pool.
+- **Seat order.** Seats come from season members at start, shuffled with `sort(() => Math.random() - 0.5)` (`start.ts:94-98`). The order persists as `draft_seat.seat_number`, which the Circuit needs for reverse-order waiver priority and chip values.
 
 #### Runtime pieces
 
 - **Picks** (`apps/api/src/routes/drafts/picks.ts`): rate limited (`:47`), idempotent on `request_id` (`:83`), turn-checked inside a transaction (`:199`, `:204`), and validated against the ceremony's nominations (`:156`). Uniqueness is the constraint `UNIQUE (draft_id, nomination_id)` (`001_init.sql:1397`). The pick row requires `nomination_id NOT NULL` with a foreign key to `nomination` (`001_init.sql:477`, `:2111`).
-- **Auto-draft.** There are two layers. Users pick a strategy from `RANDOM, PLAN, BY_CATEGORY, ALPHABETICAL, WISDOM` (`packages/shared/src/schemas/drafts.ts:13-19`), and the draft has its own `auto_pick_strategy` (`001_init.sql:407`, `apps/api/src/domain/autodraftStrategies.ts:6-27`), set to `RANDOM_SEED` whenever a timer is on (`drafts/create.ts:31-32`, `leagues/seasonsCreate.ts:147-148`). Resolution falls through user strategy, then draft strategy, then **always** takes the first available nomination (`apps/api/src/services/drafting/autoPick.ts:126-200`, `:243`, `:249`). The brief forbids this: Series auto-draft uses only the participant's queue and otherwise records a missed pick.
+- **Auto-draft.** There are two layers. Users pick a strategy from `RANDOM, PLAN, BY_CATEGORY, ALPHABETICAL, WISDOM` (`packages/shared/src/schemas/drafts.ts:13-19`), and the draft has its own `auto_pick_strategy` (`001_init.sql:407`, `apps/api/src/domain/autodraftStrategies.ts:6-27`), set to `RANDOM_SEED` whenever a timer is on (`drafts/create.ts:31-32`, `leagues/seasonsCreate.ts:147-148`). Resolution falls through user strategy, then draft strategy, then **always** takes the first available nomination (`apps/api/src/services/drafting/autoPick.ts:126-200`, `:243`, `:249`). The brief forbids this: Circuit auto-draft uses only the participant's queue and otherwise records a missed pick.
 - **Plans (crib sheets).** These are ceremony-scoped lists of nomination ids (`database/migrations/007_draft_plans.sql:7`, `:41`), seeded from the ceremony's active nominations (`apps/api/src/routes/draftPlans/helpers.ts:17`).
 - **Sweeper.** One process-wide loop takes a Postgres advisory lock (`apps/api/src/services/draftSweeper.ts:96`), selects `draft` rows whose `pick_deadline_at` has passed (`:107-117`) and calls `tickDraft` (`:124`), which calls `autoPickIfExpired` (`apps/api/src/services/drafting/tick.ts:21`). It is generic over `draft` rows.
 - **Real-time and reconnect.** The `/drafts` namespace admits a socket only for a league member who is also a season member (`apps/api/src/realtime/draftNamespace.ts:91-97`). Events are versioned per draft (`UNIQUE (draft_id, version)`, `001_init.sql:1381`; increment at `apps/api/src/data/repositories/draftRepository/drafts.ts:438`) and emitted as `draft:event` (`apps/api/src/realtime/draftEvents.ts:21`). Reconnect fetches `GET /drafts/:id/snapshot` (`apps/api/src/routes/drafts/snapshotRoute.ts:10`), and the client forces a resync when it sees activity on a stale snapshot (`apps/web/src/orchestration/draft/useDraftSocket.ts:51-52`). The snapshot builds a ceremony board, winners and the wisdom benchmark (`runtimeSnapshot.ts:178`, `:220-224`). Ceremony events fan out to drafts by ceremony (`apps/api/src/realtime/ceremonyEvents.ts:46-76`). History is the `draft_event` log plus `GET /drafts/:id/export` (`apps/api/src/routes/drafts/exportRoute.ts:10`).
 
-#### What a Series draft can reuse
+#### What a Circuit draft can reuse
 
-| Reuse unchanged                                                                                                                                                                                                                                                                      | Generalise                                                                                                                                                                                                                                                                                                                                                                                         | New                                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Snake turn math (`getSnakeSeatForPick`, shared); deadline and timer helpers (`apps/api/src/domain/draftPickRules.ts`); pause, resume and tick; the sweeper loop and advisory lock; event versioning and emit; idempotent `request_id`; the pick rate limiter; socket session checks. | The three hard couplings to a ceremony Season: `draft.season_id NOT NULL` (`001_init.sql:394`, one draft per season `:1916`); `draft_pick.nomination_id NOT NULL` plus `UNIQUE (draft_id, nomination_id)`; socket admission through `season_member` (`draftNamespace.ts:94`). Also the snapshot board builder, the start-time sizing and the sweeper query, if Series drafts live outside `draft`. | Auction drafts; a Series-scoped ranked queue (crib sheet and auto-draft source in one); auto-draft that never invents a pick; the missed-pick queue, supplemental opportunity and chips; durable roster ownership written by each pick; a 90-second default. |
+| Reuse unchanged                                                                                                                                                                                                                                                                      | Generalise                                                                                                                                                                                                                                                                                                                                                                                          | New                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Snake turn math (`getSnakeSeatForPick`, shared); deadline and timer helpers (`apps/api/src/domain/draftPickRules.ts`); pause, resume and tick; the sweeper loop and advisory lock; event versioning and emit; idempotent `request_id`; the pick rate limiter; socket session checks. | The three hard couplings to a ceremony Season: `draft.season_id NOT NULL` (`001_init.sql:394`, one draft per season `:1916`); `draft_pick.nomination_id NOT NULL` plus `UNIQUE (draft_id, nomination_id)`; socket admission through `season_member` (`draftNamespace.ts:94`). Also the snapshot board builder, the start-time sizing and the sweeper query, if Circuit drafts live outside `draft`. | Auction drafts; a Circuit-scoped ranked queue (crib sheet and auto-draft source in one); auto-draft that never invents a pick; the missed-pick queue, supplemental opportunity and chips; durable roster ownership written by each pick; a 90-second default. |
 
-The domain ADR (step 2) chooses between extending `draft` with a nullable Series foreign key and a new `series_draft` family sharing the pure domain code. Either way, no Series pick may reference a ceremony nomination.
+The domain ADR (step 2) chooses between extending `draft` with a nullable Circuit foreign key and a new `circuit_draft` family sharing the pure domain code. Either way, no Circuit pick may reference a ceremony nomination.
 
 ### 1.3 League and Season membership and initialisation
 
@@ -101,7 +103,7 @@ The domain ADR (step 2) chooses between extending `draft` with a nullable Series
 - **Membership.** `season_member` is unique per (season, user) (`001_init.sql:1605`). Membership locks once the draft leaves `PENDING`: add (`apps/api/src/routes/seasons/membersAdd.ts:47-49`), invite accept (`invitesAccept.ts:84-88`), leave (`membersLeave.ts:37`) and remove (`membersRemove.ts:39`). Two join paths skip that check: public-season join (`apps/api/src/routes/seasons/publicJoin.ts:82`) and league join (`apps/api/src/routes/leagues/join.ts:75`). The domain guard `ensureJoinAllowed` (`apps/api/src/domain/leagueMembership.ts:17-21`) is only called from its unit test. Draft start revokes pending invites and seats every current season member (`start.ts:90-98`), so a late public joiner is a member with no seat.
 - **Navigation.** Web routes are ceremony-shaped: `/leagues/:leagueId/:leagueSlug/:ceremonyCode` and `/seasons/:id` (`apps/web/src/app/App.tsx:144`, `:169`).
 
-**For the Series.** League and `league_member` can be reused as they are: the brief keeps Series and Season independent, but both hang off a league. Series participation needs its own membership table, because `season_member`, invites and draft seats all key on `season_id`. "Membership fixed at initialisation" should be one domain guard that every Series join path calls, not a check copied into each route. The Season join gap above shows what happens when it is copied.
+**For the Circuit.** League and `league_member` can be reused as they are: the brief keeps Circuit and Season independent, but both hang off a league. Circuit participation needs its own membership table, because `season_member`, invites and draft seats all key on `season_id`. "Membership fixed at initialisation" should be one domain guard that every Circuit join path calls, not a check copied into each route. The Season join gap above shows what happens when it is copied.
 
 ### 1.4 Catalog, TMDB search and credits
 
@@ -113,7 +115,7 @@ The domain ADR (step 2) chooses between extending `draft` with a nullable Series
 
 **What a public contender search needs.**
 
-- Auth: signed-in users only, and only while they participate in a Series league.
+- Auth: signed-in users only, and only while they participate in a Circuit league.
 - Limits: per-user and per-IP sliding windows on search and on credits. Validate the query: at least 2 characters, at most 100, trimmed.
 - Cost: no per-result enrichment calls. Cache normalised search queries for about an hour and film credits for about a day, in process. Selecting a contender persists the film, and for acting selections the person and credits, through the existing `syncTmdbMovieById` path, so identity lives locally.
 - Resilience: a 5-second timeout on TMDB calls; TMDB failures mapped to `AppError` 502/503 with no upstream body passed to clients.
@@ -122,10 +124,10 @@ The domain ADR (step 2) chooses between extending `draft` with a nullable Series
 
 ### 1.5 Scoring and result entry
 
-- **Nomination entry.** Admin-only, `DRAFT` ceremonies only (`nominationsCreate.ts:44`). Acting nominations are stored as `nomination.film_id` plus one or more `nomination_contributor` people (`nominationsCreate.ts:129-145`, `:162` onward); the `performance` table is not used by this path. Exact Series matching is therefore: film-only categories on `nomination.film_id → film.tmdb_id`; acting categories on that plus `nomination_contributor.person_id → person.tmdb_id`; only `nomination.status = 'ACTIVE'` counts (`001_init.sql:753-756`).
+- **Nomination entry.** Admin-only, `DRAFT` ceremonies only (`nominationsCreate.ts:44`). Acting nominations are stored as `nomination.film_id` plus one or more `nomination_contributor` people (`nominationsCreate.ts:129-145`, `:162` onward); the `performance` table is not used by this path. Exact Circuit matching is therefore: film-only categories on `nomination.film_id → film.tmdb_id`; acting categories on that plus `nomination_contributor.person_id → person.tmdb_id`; only `nomination.status = 'ACTIVE'` counts (`001_init.sql:753-756`).
 - **Winner entry.** Admin-only, per category; replaces the winner set and supports ties (`winnerRepository.ts:14-32`). The first winner locks the ceremony and cancels in-progress drafts (`winnersUpsert.ts:93-107`). It is audit-logged (`:119`) and broadcast (`:133`). Finalize freezes results (`winnersFinalize.ts:46-67`); there is no correction after that (`winnersUpsert.ts:78`), which matches brief section 13.
 - **Scoring.** Pure strategies over (picks, winners) only (`apps/api/src/domain/scoring.ts:53-125`), recomputed on every read of `GET /drafts/:id/standings` (`apps/api/src/routes/drafts/read.ts:105-171`). There are no nomination points, no ownership timing and no ledger. Category weights are keyed by `category_edition_id`, so they are per ceremony (`read.ts:135-160`).
-- **For the Series.** Scoring at a scoring event is a function of (ownership at that date, nominations or winners, league scoring matrix). It needs ownership intervals, event dates and canonical-category mappings, none of which exist. Results and nominations entry can be reused as is once the lifecycle change in 1.1 allows entry after publish. The winner-entry side effect (lock plus cancel drafts) touches only ceremony-specific drafts and should stay that way.
+- **For the Circuit.** Scoring at a scoring event is a function of (ownership at that date, nominations or winners, league scoring matrix). It needs ownership intervals, event dates and Circuit-category mappings, none of which exist. Results and nominations entry can be reused as is once the lifecycle change in 1.1 allows entry after publish. The winner-entry side effect (lock plus cancel drafts) touches only ceremony-specific drafts and should stay that way.
 
 ### 1.6 Findings outside this package
 
@@ -141,7 +143,7 @@ These were found during the audit and are deliberately not changed here:
 
 [ADR 0005](../../adr/0005-series-domain-model.md) is the model the packages below build. In short:
 
-- A separate `series_*` table family that never references Season or ceremony-draft tables.
+- A separate `circuit_*` table family that never references Season or ceremony-draft tables.
 - Selections keyed on `(category, film tmdb id[, person tmdb id])`.
 - Ownership as append-only half-open intervals, with one open interval per (league, selection).
 - A derived, rebuildable scoring ledger evaluated at 00:00 Pacific on each occasion's date.
@@ -160,7 +162,7 @@ Packages are in dependency order: no package depends on a later one. Each gets i
 | L    | schema, service, routes and one or two screens           | one or two steps, full review   |
 | XL   | a full subsystem with real-time behaviour or a batch job | two or three steps, full review |
 
-Every package also meets the repo's definition of done: `pnpm run ci` and GitHub CI pass, tests cover every changed behaviour, and the docs under `docs/` are updated. Packages that add or change screens update `docs/design/app-inventory.md` afterwards. UI packages get code review, functional QA (real flows, desktop and phone, keyboard only) and design review on the key screens only: new Series screens use existing components and tokens, so the full brand matrix is not re-baselined. Backend-only packages get code review.
+Every package also meets the repo's definition of done: `pnpm run ci` and GitHub CI pass, tests cover every changed behaviour, and the docs under `docs/` are updated. Packages that add or change screens update `docs/design/app-inventory.md` afterwards. UI packages get code review, functional QA (real flows, desktop and phone, keyboard only) and design review on the key screens only: new Circuit screens use existing components and tokens, so the full brand matrix is not re-baselined. Backend-only packages get code review.
 
 | #   | Package                      | Brief step | Depends on | Size | Reviews                     |
 | --- | ---------------------------- | ---------- | ---------- | ---- | --------------------------- |
@@ -177,7 +179,7 @@ Every package also meets the repo's definition of done: `pnpm run ci` and GitHub
 | 11  | `series-11-auction`          | 4          | 06, 07     | XL   | code, QA, design, inventory |
 | 12  | `series-12-invariants`       | 8          | 08, 09     | M    | code                        |
 
-Package 01 has no dependants: today's admin flow already lets Series ceremonies get nominations and winners (section 7). It is listed first because it closes the brief's lifecycle gap, but section 4 schedules it after the draft path.
+Package 01 has no dependants: today's admin flow already lets Circuit ceremonies get nominations and winners (section 7). It is listed first because it closes the brief's lifecycle gap, but section 4 schedules it after the draft path.
 
 ### 01 Ceremony lifecycle reconciliation (`series-01-lifecycle`, M)
 
@@ -191,28 +193,30 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
   - No `COMPLETE` remains in code, docs or seeds (grep check in the PR).
 - **Note:** it changes the live ceremony game. Merge it in a quiet period, before ceremony-specific Oscar leagues open on Oscar nominations day.
 
-### 02 Series foundation (`series-02-foundation`, L)
+### 02 Circuit foundation (`series-02-foundation`, L)
+
+- **Amended by 02b** (`series-02b-restructure`, [ADR 0006](../../adr/0006-circuit-admin-defined-structure.md)): the rename to Circuit, empty Circuits on creation, admin-defined events and template-based categories, and many-to-one mappings. The fixed slate in the scope and acceptance below describes migration 022 as first built.
 
 - **Scope:** ADR sections 2 and 3:
-  - `series`, `series_event`, `series_category`, `series_ceremony`, `series_mapping`, and the two ceremony date columns;
-  - admin API and screens to create a Series (seeding its five events and eight categories), associate ceremonies from the Series side and from the ceremony side, edit mappings, and set dates on the ceremony admin;
+  - `circuit`, `circuit_event`, `circuit_category`, `circuit_ceremony`, `circuit_mapping`, and the two ceremony date columns;
+  - admin API and screens to create a Circuit (seeding its five events and eight categories), associate ceremonies from the Circuit side and from the ceremony side, edit mappings, and set dates on the ceremony admin;
   - the readiness check and activation;
   - audit-log entries for every write;
-  - the public read endpoints the web needs (Series, events, categories, schedule).
+  - the public read endpoints the web needs (Circuit, events, categories, schedule).
 - **Acceptance:**
-  - Creating a Series yields exactly five events and eight categories, with `kind` fixed by code.
+  - Creating a Circuit yields exactly five events and eight categories, with `kind` fixed by code.
   - One association is visible and editable from both admin screens.
-  - A category edition maps to at most one canonical category (database constraint test).
+  - A category edition maps to at most one Circuit category (database constraint test).
   - Activation succeeds with missing dates and returns the ceremonies that lack them (unit test on the pure readiness function; integration test on the route).
   - Editing a date after activation leaves `status = 'ACTIVE'`.
   - Every write appears in `admin_audit_log`.
-  - The schema test asserts no foreign key between `series_*` and Season or ceremony-draft tables, and an ESLint `no-restricted-imports` rule blocks imports in either direction (ADR section 10).
+  - The schema test asserts no foreign key between `circuit_*` and Season or ceremony-draft tables, and an ESLint `no-restricted-imports` rule blocks imports in either direction (ADR section 10).
 
 ### 03 Contender search and selections (`series-03-contenders`, L)
 
 - **Scope:** ADR section 5 and audit 1.4:
   - signed-in public film search and film-credit lookup through TMDB, with per-user and per-IP rate limits, query validation (2–100 characters), an in-process cache (search about 1 hour, credits about 1 day), a 5-second timeout, and TMDB failures mapped to `AppError` 502/503 with no enrichment fan-out;
-  - `series_selection` with the TMDB-identity unique key, upserted through `syncTmdbMovieById`;
+  - `circuit_selection` with the TMDB-identity unique key, upserted through `syncTmdbMovieById`;
   - acting validation against stored credits;
   - the pure matching function against nominations and winners, following film consolidation;
   - a reusable web picker (category, then film, then person for acting categories) with TMDB attribution.
@@ -224,26 +228,26 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
   - Matching unit tests cover: mapped versus unmapped editions, Globes Drama and Comedy both mapping to Best Picture without double scoring, consolidated films, inactive nominations, and acting matches that need both ids.
   - Search is rate-limited (429 after the limit), cached (one upstream call for repeated queries), and returns 502/503 on TMDB failure without upstream text (integration tests with a stubbed TMDB).
 
-### 04 Series leagues and membership (`series-04-leagues`, L)
+### 04 Circuit leagues and membership (`series-04-leagues`, L)
 
 - **Scope:** ADR section 4:
-  - `series_league`, `series_league_event`, `series_league_category`, `series_league_member`;
-  - creating a Series competition in an existing league, and joining through the league;
+  - `circuit_league`, `circuit_league_event`, `circuit_league_category`, `circuit_league_member`;
+  - creating a Circuit competition in an existing league, and joining through the league;
   - setup screens for enabled events, roster size, category limits, scoring values and weights, and draft settings (snake, 90-second default, auto-draft on or off);
-  - initialisation, and the single `assertSeriesLeagueOpen` guard;
-  - Series competitions listed beside Seasons on the league and home navigation, reached the same way.
+  - initialisation, and the single `assertCircuitLeagueOpen` guard;
+  - Circuit competitions listed beside Seasons on the league and home navigation, reached the same way.
 - **Acceptance:**
-  - Defaults are five events enabled, roster 16, unlimited category limits, 1 + 2 points, weights 1 and a 90-second clock.
-  - The Guild bundle toggles as one event.
+  - Defaults are every event of the Circuit enabled, roster 16, unlimited category limits, 1 + 2 points, weights 1 and a 90-second clock.
+  - An event of several ceremonies (the default Guild event) toggles as one unit.
   - Any subset of events, including none, can be saved.
   - After initialisation, every member and event write path is refused (one integration test per route, all failing through the guard).
   - Only league members can join.
-  - A league can hold a Season and a Series at once, and changing one never changes the other's members (integration test).
+  - A league can hold a Season and a Circuit at once, and changing one never changes the other's members (integration test).
 
 ### 05 Ownership, transactions and free agency (`series-05-ownership`, L)
 
 - **Scope:** ADR section 7:
-  - `series_ownership` intervals and `series_transaction`;
+  - `circuit_ownership` intervals and `circuit_transaction`;
   - the ownership service every acquisition path uses (member-row lock, capacity and category-limit checks, add with an atomic drop);
   - immediate drops;
   - free-agent add, with a drop when at capacity, allowed only outside waiver windows;
@@ -258,17 +262,17 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
   - `waiverWindows()` unit tests reproduce the 2026–27 windows in section 4.
   - Free agency is refused inside a window and allowed outside.
 
-### 06 Series draft engine (`series-06-draft-engine`, XL, three steps)
+### 06 Circuit draft engine (`series-06-draft-engine`, XL, three steps)
 
 - **Scope:** ADR section 6, backend:
-  - `series_draft*` tables and `series_queue_item`;
+  - `circuit_draft*` tables and `circuit_queue_item`;
   - start (uniform seat shuffle, rounds equal to roster size) and manual picks (idempotent, rate-limited, turn-checked);
   - each pick writes ownership through the 05 service;
   - the queue API (add, remove, reorder, at any time);
   - queue-only auto-draft;
   - timer and sweeper integration (one sweeper loop, a second query);
   - missed picks, the supplemental round and chip creation;
-  - the `/series` namespace with versioned events, and the snapshot route.
+  - the `/circuits` namespace with versioned events, and the snapshot route.
 - **Steps:** (1) schema, start, manual picks, ownership writes; (2) queue, auto-draft, timer, missed picks, supplemental round, chips; (3) namespace, events, snapshot and reconnect.
 - **Acceptance:**
   - Snake order matches `getSnakeSeatForPick`.
@@ -278,11 +282,11 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
   - Each missed pick gets one supplemental pick in original order; a missed supplemental creates exactly one chip with the original pick number.
   - The default clock is 90 seconds, and 0 means untimed.
   - Snapshot plus events reproduce the board after a reconnect.
-  - Only Series league members can join the namespace room.
+  - Only Circuit league members can join the namespace room.
 
-### 07 Series draft room (`series-07-draft-room`, XL, two steps)
+### 07 Circuit draft room (`series-07-draft-room`, XL, two steps)
 
-- **Scope:** the web draft room for Series drafts:
+- **Scope:** the web draft room for Circuit drafts:
   - the board by participant and by category;
   - the 03 picker for live picks;
   - the crib sheet and queue, editable before and during the draft;
@@ -299,7 +303,7 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
 ### 08 Waivers, priority and chips (`series-08-waivers`, XL, three steps)
 
 - **Scope:** ADR section 9:
-  - `series_waiver_run`, `series_waiver_claim`, `series_chip` status;
+  - `circuit_waiver_run`, `circuit_waiver_claim`, `circuit_chip` status;
   - rolling priority initialised in reverse draft order when the draft completes;
   - claims (ranked, one per selection per window, optional conditional drop, optional chip; private, editable until resolution);
   - the processor (one transaction per league and window, sequential, idempotent) and its scheduler (advisory-locked loop, catch-up after downtime);
@@ -325,7 +329,7 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
 ### 09 Scoring ledger and standings (`series-09-scoring`, L)
 
 - **Scope:** ADR section 8:
-  - `series_score_entry`, and the pure `scoreOccasion` function;
+  - `circuit_score_entry`, and the pure `scoreOccasion` function;
   - ledger rebuilds triggered by nomination, winner, date, mapping and enabled-event writes, plus an admin "rebuild" action;
   - cumulative standings with per-ceremony breakdown screens;
   - real-time score-update events.
@@ -345,12 +349,12 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
 
 - **Scope:**
   - readiness and schedule views for admins;
-  - mapping coverage reports (which canonical categories each ceremony supplies);
-  - audit coverage of every Series admin write;
-  - real-time Series status and schedule-change events;
-  - a public Series rules page stating the ownership instant, the window rule and the scoring defaults.
+  - mapping coverage reports (which Circuit categories each ceremony supplies);
+  - audit coverage of every Circuit admin write;
+  - real-time Circuit status and schedule-change events;
+  - a public Circuit rules page stating the ownership instant, the window rule and the scoring defaults.
 - **Acceptance:**
-  - Every Series admin route writes an audit row (one table-driven test).
+  - Every Circuit admin route writes an audit row (one table-driven test).
   - A date change emits a schedule event and shifts the derived windows.
   - The rules page renders the league's actual settings.
 
@@ -371,16 +375,16 @@ Package 01 has no dependants: today's admin flow already lets Series ceremonies 
 
 Checked on 2026-11-16 against [AwardsWatch](https://awardswatch.com/2026-2027-film-awards-calendar/), the [Rotten Tomatoes awards calendar](https://editorial.rottentomatoes.com/article/2026-2027-awards-calendar/), [TheWrap](https://www.thewrap.com/industry-news/awards/critics-choice-awards-set-2027-date/), the [Actor Awards calendar](https://actorawards.org/awards/calendar) and the [WGA press release](https://www.wgaeast.org/2027-writers-guild-awards-date-announced/).
 
-| Ceremony          | Nominations    | Ceremony       | Notes                                                                                         |
-| ----------------- | -------------- | -------------- | --------------------------------------------------------------------------------------------- |
-| Critics Choice    | Fri 2026-12-04 | Sun 2027-01-03 | TheWrap, AwardsWatch, Rotten Tomatoes                                                         |
-| Golden Globes     | Mon 2026-12-07 | Sun 2027-01-10 | AwardsWatch, Rotten Tomatoes                                                                  |
-| Actor Awards      | Wed 2027-01-06 | Sun 2027-02-28 | actorawards.org calendar; Rotten Tomatoes still lists nominations as TBD                      |
-| DGA               | Thu 2027-01-07 | Sat 2027-01-30 | AwardsWatch, Rotten Tomatoes                                                                  |
-| PGA               | Fri 2027-01-08 | Sat 2027-02-27 | theatrical feature nominations (documentary nominations are 2026-12-08 and not in the Series) |
-| WGA               | Fri 2027-01-08 | Sat 2027-02-13 | WGA press release and media timeline; Rotten Tomatoes lists both as TBD                       |
-| BAFTA Film Awards | Tue 2027-01-19 | Sun 2027-02-21 | longlists 2027-01-07 do not score                                                             |
-| Academy Awards    | Thu 2027-01-21 | Sun 2027-03-14 | Oscar shortlists 2026-12-15 do not score                                                      |
+| Ceremony          | Nominations    | Ceremony       | Notes                                                                                          |
+| ----------------- | -------------- | -------------- | ---------------------------------------------------------------------------------------------- |
+| Critics Choice    | Fri 2026-12-04 | Sun 2027-01-03 | TheWrap, AwardsWatch, Rotten Tomatoes                                                          |
+| Golden Globes     | Mon 2026-12-07 | Sun 2027-01-10 | AwardsWatch, Rotten Tomatoes                                                                   |
+| Actor Awards      | Wed 2027-01-06 | Sun 2027-02-28 | actorawards.org calendar; Rotten Tomatoes still lists nominations as TBD                       |
+| DGA               | Thu 2027-01-07 | Sat 2027-01-30 | AwardsWatch, Rotten Tomatoes                                                                   |
+| PGA               | Fri 2027-01-08 | Sat 2027-02-27 | theatrical feature nominations (documentary nominations are 2026-12-08 and not in the Circuit) |
+| WGA               | Fri 2027-01-08 | Sat 2027-02-13 | WGA press release and media timeline; Rotten Tomatoes lists both as TBD                        |
+| BAFTA Film Awards | Tue 2027-01-19 | Sun 2027-02-21 | longlists 2027-01-07 do not score                                                              |
+| Academy Awards    | Thu 2027-01-21 | Sun 2027-03-14 | Oscar shortlists 2026-12-15 do not score                                                       |
 
 That is 16 scoring occasions (8 ceremonies × nomination and win) on 15 distinct days, because PGA and WGA nominations fall on the same day. Brief section 3 says fourteen; [owner question 8](#9-owner-questions) asks about the difference. Recheck the TBD-elsewhere dates (Actor Awards nominations, WGA) when package 02 lands, and enter any change in the ceremony admin: windows and scoring follow the dates.
 
@@ -410,12 +414,12 @@ The plan PR merges and the owner answers the questions by **Tue 2026-11-17**. Bu
 
 | Milestone                                         | What must be live                                                                                                | Latest date                        |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| A. Ops can set up the 2026–27 Series              | 02                                                                                                               | Thu Nov 19                         |
+| A. Ops can set up the 2026–27 Circuit             | 02                                                                                                               | Thu Nov 19                         |
 | B. Leagues can form and configure                 | 03, 04                                                                                                           | Tue Nov 24                         |
-| C. Leagues can draft (go or no-go)                | 05, 06, 07; all eight ceremonies, mappings and 16 dates entered; Series activated                                | Sun Nov 29                         |
+| C. Leagues can draft (go or no-go)                | 05, 06, 07; all eight ceremonies, mappings and 16 dates entered; Circuit activated                               | Sun Nov 29                         |
 | D. Before the first nominations and waiver window | 08 (claims open at Fri Dec 4 00:00 PT; the first run is at Mon Dec 7 00:00 PT); drafts finished by Thu Dec 3     | Thu Dec 3                          |
 | E. Points visible                                 | 09 (the ledger rebuilds Dec 4 and Dec 7 retroactively from ownership history; nothing is lost if it lands later) | target Wed Dec 9; latest Sat Jan 2 |
-| F. Before the first ceremony (Jan 3)              | 09 merged; winner entry rehearsed on a Series ceremony; 12 merged                                                | Sat Jan 2                          |
+| F. Before the first ceremony (Jan 3)              | 09 merged; winner entry rehearsed on a Circuit ceremony; 12 merged                                               | Sat Jan 2                          |
 | G. Before the guild nomination crunch (Jan 6–8)   | 10                                                                                                               | Tue Jan 5                          |
 | H. Before Oscar nominations (Jan 21)              | 01 merged and deployed in the quiet week before ceremony-specific Oscar leagues open                             | Thu Jan 14                         |
 
@@ -446,9 +450,9 @@ The plan PR merges and the owner answers the questions by **Tue 2026-11-17**. Bu
 
 **Assumptions:**
 
-- **Build throughput, from this repo's recent package history:** comparable full-review packages took 1.5–2 hours of build time from start to a green PR (`site-content`, `home-signatures`); small packages took minutes (`create-favicon`, 10 minutes); several earlier packages were interrupted and resumed, adding a run each. Series packages are backend-heavy and integration-tested, so this plan assumes an L takes half a build day and an XL a full build day, including one fix round and one interruption. The total, 01–10 plus 12, is about 7 build days, spread over more calendar days by reviews, fix rounds and deploys. Build capacity is rationed per week, and the Series is likely to use most of a week's worth; hitting that limit in late November would slip the path by days.
+- **Build throughput, from this repo's recent package history:** comparable full-review packages took 1.5–2 hours of build time from start to a green PR (`site-content`, `home-signatures`); small packages took minutes (`create-favicon`, 10 minutes); several earlier packages were interrupted and resumed, adding a run each. Circuit packages are backend-heavy and integration-tested, so this plan assumes an L takes half a build day and an XL a full build day, including one fix round and one interruption. The total, 01–10 plus 12, is about 7 build days, spread over more calendar days by reviews, fix rounds and deploys. Build capacity is rationed per week, and the Circuit is likely to use most of a week's worth; hitting that limit in late November would slip the path by days.
 - **Owner review:** PRs #410–#419 merged a median of about 20 minutes after opening (range 4 minutes to 6 hours). At the time of writing, four PRs (#422–#425) had waited overnight. The schedule assumes each package merges and deploys within a day of its PR.
-- **Capacity:** the parked Cinema theme work stays parked, and nothing else is queued ahead of the Series path until 08 merges ([owner question 13](#9-owner-questions)).
+- **Capacity:** the parked Cinema theme work stays parked, and nothing else is queued ahead of the Circuit path until 08 merges ([owner question 13](#9-owner-questions)).
 - **No scope growth:** the brief's deferred items stay deferred. Each owner answer that adds behaviour adds to a package's size.
 
 ## 6. Fallback order
@@ -459,7 +463,7 @@ The rule: anything that is a _pure function of recorded truth_ can land late. An
 
 1. **09 scoring ledger and standings.** The ledger is derived from ownership intervals, dates and nominations, and rebuilding it later produces the same points. Cost of lateness: players cannot see standings yet.
 2. **10 administration completion.** Rules page, coverage reports and audit coverage beyond the basics. Package 02 already audit-logs every write.
-3. **01 lifecycle.** Today's flow works for Series ceremonies (section 7). It must avoid the live ceremony-game windows, so after Mar 14 is also acceptable.
+3. **01 lifecycle.** Today's flow works for Circuit ceremonies (section 7). It must avoid the live ceremony-game windows, so after Mar 14 is also acceptable.
 4. **12 invariants suite.** It adds risk if late, but no data loss. Each package already carries its own invariant tests.
 5. **11 auction.** It only affects leagues that have not drafted. Snake is always available.
 6. **Real-time for scoring and schedule events.** A refresh shows the same data.
@@ -492,8 +496,8 @@ The owner is the only global admin (`requireAdmin`), so the owner does all of th
   | BAFTA          | film, director, four acting, two screenplay, animated                                              | 9        |
   | Oscars         | the same nine as BAFTA                                                                             | 9        |
 
-- **Create the 2026–27 Series.** Associate the eight ceremonies (the four guilds to the Guild event), map the 47 editions and enter the 16 dates from section 4.
-- **Activate the Series** and check the readiness report shows nothing missing.
+- **Create the 2026–27 Circuit.** Add the eight ceremonies, group the four guilds into one Guild event, build the eight categories from templates, map the 47 editions and enter the 16 dates from section 4.
+- **Activate the Circuit** and check the readiness report shows nothing missing.
 - **Announce** the opening and the rules page to players.
 
 **On each nomination day:**
@@ -531,34 +535,34 @@ That is about 225 rows outside the Oscars. The heaviest stretch is Jan 6–10: f
 
 Brief section 16, step 8, and every invariant in brief section 17. Each row names the package that owns it and the test that proves it. Package 12 adds the cross-package rows and the simulated season.
 
-| Invariant (brief section 17 unless noted)                                                      | Enforced by                                          | Test (package)                                                                                                                                       |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Series and Season are separate                                                                 | no cross foreign keys; import rule                   | schema test on `information_schema`; ESLint rule (02); league with both, independent membership (04); winner entry never touches `series_draft` (12) |
-| Eight canonical categories, five events                                                        | seeded on create; fixed codes                        | create test (02)                                                                                                                                     |
-| Guild bundle indivisible: Actor Awards, DGA, PGA, WGA                                          | one `series_event` row; four associations            | event toggle test (04); association test (02)                                                                                                        |
-| Film-only categories select films; acting categories select a person in a film                 | `series_selection` kind check                        | selection constraint tests (03)                                                                                                                      |
-| Person must be in the film's TMDB credits; any credit type                                     | credit validation on upsert                          | integration test with crew and cast credits (03)                                                                                                     |
-| Any TMDB film is selectable                                                                    | no eligibility check                                 | selection of an old and an unreleased film (03)                                                                                                      |
-| Selections immutable and exclusive while owned                                                 | no update path; partial unique index                 | repository test (03); concurrent acquisition test (05)                                                                                               |
-| One film in many categories; many people from one film in one acting category                  | identity key includes category and person            | multiplicity tests (03); drafting all of them in one draft (06)                                                                                      |
-| Only official nominations and wins score                                                       | matching reads only active nominations and winners   | matching unit tests (03); scoring tests (09)                                                                                                         |
-| Exact matching by TMDB identity and canonical category (16.8 category mapping)                 | pure matcher; mapping table                          | matcher unit tests including unmapped editions and two editions mapped to one category (03)                                                          |
-| Ownership at each scoring event decides points (16.8 ownership changes between events)         | intervals; 00:00 PT instant                          | drop between nomination and win (09); simulated season (12)                                                                                          |
-| Default 1 + 2 points                                                                           | column defaults                                      | defaults test (04); nominated winner scores 3 (09)                                                                                                   |
-| One cumulative leaderboard                                                                     | standings sum the ledger                             | standings equal ledger sum (09)                                                                                                                      |
-| Roster 16 by default; category limits optional, unlimited by default                           | defaults; capacity check under lock                  | defaults (04); capacity and limit tests (05)                                                                                                         |
-| No expiration; owned selections hold roster space until dropped                                | no expiry state; intervals close only by transaction | ownership persists past its last occasion (12)                                                                                                       |
-| Draft live and synchronous; 90-second default clock                                            | `series_draft` timer; sweeper                        | timer and default tests (06); e2e draft (07)                                                                                                         |
-| One ranked list is the crib sheet and the auto-draft queue                                     | `series_queue_item` read live                        | mid-draft edit changes next auto-pick (06)                                                                                                           |
-| Auto-draft uses only that list and never invents a pick                                        | queue-only auto-pick                                 | empty and fully owned queue gives `MISSED` (06)                                                                                                      |
-| Missed picks get one supplemental chance, then a unique-value chip                             | supplemental round; unique `original_pick_number`    | supplemental and chip tests (06)                                                                                                                     |
-| Waivers resolve in batches around event blocks; free agency is immediate between windows       | derived windows; scheduler; free-agency guard        | `waiverWindows()` against section 4 (05); free agency refused in a window (05); scheduler catch-up (08)                                              |
-| Rolling priority starts in reverse draft order; winners drop to the bottom once per run        | priority rewrite at run end                          | priority tests (08)                                                                                                                                  |
-| Chips outrank rolling priority and expire when the first window closes (16.8 consumption)      | claim ordering; expiry in the first run              | ordering, consumption on success only, expiry (08)                                                                                                   |
-| Claims private until resolution, editable until the window closes                              | owner-only reads; lock at processing                 | privacy and edit-lock tests (08)                                                                                                                     |
-| Claims may omit a drop but fail at capacity (16.8 sequential claims, conditional add and drop) | evaluation against live state                        | same-drop, no-drop and sequential tests (08)                                                                                                         |
-| Membership and event selection lock at initialisation (16.8 fixed membership)                  | `assertSeriesLeagueOpen`                             | every write path refused after initialisation (04)                                                                                                   |
-| Past scoring events never award points (16.8 no retroactive scoring)                           | no ownership before the draft; 00:00 instant         | league drafted after an occasion, and a draft on an event day (09); late-starting league in the simulation (12)                                      |
+| Invariant (brief section 17 unless noted)                                                            | Enforced by                                          | Test (package)                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Circuit and Season are separate                                                                      | no cross foreign keys; import rule                   | schema test on `information_schema`; ESLint rule (02); league with both, independent membership (04); winner entry never touches `circuit_draft` (12) |
+| Admin-defined events and categories (default slate: eight categories, five events)                   | empty on create; added by admins                     | create test (02b)                                                                                                                                     |
+| Grouped ceremonies are indivisible for leagues (default: Guild event of Actor Awards, DGA, PGA, WGA) | one `circuit_event` row; four associations           | event toggle test (04); association test (02)                                                                                                         |
+| Film-only categories select films; acting categories select a person in a film                       | `circuit_selection` kind check                       | selection constraint tests (03)                                                                                                                       |
+| Person must be in the film's TMDB credits; any credit type                                           | credit validation on upsert                          | integration test with crew and cast credits (03)                                                                                                      |
+| Any TMDB film is selectable                                                                          | no eligibility check                                 | selection of an old and an unreleased film (03)                                                                                                       |
+| Selections immutable and exclusive while owned                                                       | no update path; partial unique index                 | repository test (03); concurrent acquisition test (05)                                                                                                |
+| One film in many categories; many people from one film in one acting category                        | identity key includes category and person            | multiplicity tests (03); drafting all of them in one draft (06)                                                                                       |
+| Only official nominations and wins score                                                             | matching reads only active nominations and winners   | matching unit tests (03); scoring tests (09)                                                                                                          |
+| Exact matching by TMDB identity and Circuit category (16.8 category mapping)                         | pure matcher; mapping table                          | matcher unit tests including unmapped editions and two editions mapped to one category (03)                                                           |
+| Ownership at each scoring event decides points (16.8 ownership changes between events)               | intervals; 00:00 PT instant                          | drop between nomination and win (09); simulated season (12)                                                                                           |
+| Default 1 + 2 points                                                                                 | column defaults                                      | defaults test (04); nominated winner scores 3 (09)                                                                                                    |
+| One cumulative leaderboard                                                                           | standings sum the ledger                             | standings equal ledger sum (09)                                                                                                                       |
+| Roster 16 by default; category limits optional, unlimited by default                                 | defaults; capacity check under lock                  | defaults (04); capacity and limit tests (05)                                                                                                          |
+| No expiration; owned selections hold roster space until dropped                                      | no expiry state; intervals close only by transaction | ownership persists past its last occasion (12)                                                                                                        |
+| Draft live and synchronous; 90-second default clock                                                  | `circuit_draft` timer; sweeper                       | timer and default tests (06); e2e draft (07)                                                                                                          |
+| One ranked list is the crib sheet and the auto-draft queue                                           | `circuit_queue_item` read live                       | mid-draft edit changes next auto-pick (06)                                                                                                            |
+| Auto-draft uses only that list and never invents a pick                                              | queue-only auto-pick                                 | empty and fully owned queue gives `MISSED` (06)                                                                                                       |
+| Missed picks get one supplemental chance, then a unique-value chip                                   | supplemental round; unique `original_pick_number`    | supplemental and chip tests (06)                                                                                                                      |
+| Waivers resolve in batches around event blocks; free agency is immediate between windows             | derived windows; scheduler; free-agency guard        | `waiverWindows()` against section 4 (05); free agency refused in a window (05); scheduler catch-up (08)                                               |
+| Rolling priority starts in reverse draft order; winners drop to the bottom once per run              | priority rewrite at run end                          | priority tests (08)                                                                                                                                   |
+| Chips outrank rolling priority and expire when the first window closes (16.8 consumption)            | claim ordering; expiry in the first run              | ordering, consumption on success only, expiry (08)                                                                                                    |
+| Claims private until resolution, editable until the window closes                                    | owner-only reads; lock at processing                 | privacy and edit-lock tests (08)                                                                                                                      |
+| Claims may omit a drop but fail at capacity (16.8 sequential claims, conditional add and drop)       | evaluation against live state                        | same-drop, no-drop and sequential tests (08)                                                                                                          |
+| Membership and event selection lock at initialisation (16.8 fixed membership)                        | `assertCircuitLeagueOpen`                            | every write path refused after initialisation (04)                                                                                                    |
+| Past scoring events never award points (16.8 no retroactive scoring)                                 | no ownership before the draft; 00:00 instant         | league drafted after an occasion, and a draft on an event day (09); late-starting league in the simulation (12)                                       |
 
 ## 9. Owner questions
 
@@ -582,11 +586,11 @@ The plan needs these answers and the brief does not give them. Each one has a re
 
 12. **Chip expiry for a league that cannot claim in window 1** (needed by 08, Nov 28). The brief says chips expire when the first waiver window closes. A league that drafts after Dec 4, or that has no claims system because 08 shipped late, never had a chance to use its chips in window 1. _Recommended:_ a league's first window is the first one that opens after its draft completes and while claims are live. Its chips expire when that window resolves.
 
-13. **Capacity.** Does Cinema chunk 22 stay parked, with nothing queued ahead of the Series path, until 08 merges? _Recommended:_ yes.
+13. **Capacity.** Does Cinema chunk 22 stay parked, with nothing queued ahead of the Circuit path, until 08 merges? _Recommended:_ yes.
 14. **Owner review over Nov 19–Dec 3, including Thanksgiving (Nov 26).** Target A needs each PR merged and deployed within a day of opening. _Recommended:_ commit to one review slot a day. If that is not possible, choose target B now and tell players drafts open Dec 14.
 15. **A second admin for nomination days**, especially Jan 6–10: four nomination days and one ceremony in five days (section 7). _Recommended:_ appoint one trusted person as a global admin by Dec 1. Otherwise the owner does all the operational work.
 16. **Go or no-go on Sun Nov 29.** _Recommended:_ the owner decides that evening. Go only if 05–07 are merged and deployed and a rehearsal draft with test accounts has completed on production. Otherwise switch to target B and tell players the same day.
 
 17. **Duplicate season-create route** (audit 1.3). _Recommended:_ retire `POST /seasons/leagues/:id/seasons` in a small cleanup after Mar 14, not during the ceremony season.
-18. **A 90-second default for ceremony-specific Seasons** (audit 1.2). The Series gets one. _Recommended:_ no change to the live ceremony game this season; revisit after Mar 14.
+18. **A 90-second default for ceremony-specific Seasons** (audit 1.2). The Circuit gets one. _Recommended:_ no change to the live ceremony game this season; revisit after Mar 14.
 19. **Audit findings 1, 2 and 4** (section 1.6). _Recommended:_ fix them in one small package queued after 08, merged with 01 in the quiet week before Jan 14. That package would stop any signed-in user from writing `draft_result` rows, add the membership lock to both Season join paths and use a uniform seat shuffle. The join fix matters before ceremony-specific Oscar leagues open on Jan 21. There is no build brief for it yet; ask for one.

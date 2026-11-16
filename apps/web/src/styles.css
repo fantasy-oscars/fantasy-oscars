@@ -3905,6 +3905,11 @@ h1 {
   margin-top: var(--fo-card-gap);
 }
 
+/* Many fields that wrap onto new rows instead of shrinking until their values clip. */
+.grid.grid-minCell {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+}
+
 /* Forms whose fields need the full width on a phone instead of sharing one row. */
 @media (max-width: 500px) {
   .grid.grid-stackOnPhone {

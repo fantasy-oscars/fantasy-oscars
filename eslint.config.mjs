@@ -123,15 +123,15 @@ export default [
       ]
     }
   },
-  // Series independence (ADR 0005, section 10): Series modules and the Season,
+  // Circuit independence (ADR 0005, section 10): Circuit modules and the Season,
   // draft, scoring and realtime modules never import each other. A module
   // belongs to a family by its file or folder name. The base rule is used here
   // because the layering blocks above own the TypeScript variant, and flat
-  // config replaces (not merges) a rule's options. The Series draft reuses the
+  // config replaces (not merges) a rule's options. The Circuit draft reuses the
   // pure draft-order and pick-rule functions (ADR 0005, section 1), so those
   // two stay importable.
   {
-    files: ["apps/api/src/**/series*.ts", "apps/api/src/**/series/**/*.ts"],
+    files: ["apps/api/src/**/circuit*.ts", "apps/api/src/**/circuit/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -149,7 +149,7 @@ export default [
                 "!**/domain/draftPickRules.js"
               ],
               message:
-                "Series modules must not import Season, draft, scoring or realtime modules (ADR 0005, section 10)."
+                "Circuit modules must not import Season, draft, scoring or realtime modules (ADR 0005, section 10)."
             }
           ]
         }
@@ -172,9 +172,9 @@ export default [
         {
           patterns: [
             {
-              group: ["**/series*", "**/series/**"],
+              group: ["**/circuit*", "**/circuit/**"],
               message:
-                "Season, draft, scoring and realtime modules must not import Series modules (ADR 0005, section 10)."
+                "Season, draft, scoring and realtime modules must not import Circuit modules (ADR 0005, section 10)."
             }
           ]
         }
