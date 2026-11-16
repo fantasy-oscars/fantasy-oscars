@@ -44,6 +44,11 @@ export function LoginScreen(props: {
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
               <FormStatus loading={loading} result={result} />
+              <Box>
+                <Button variant="ghost" component={Link} to="/forgot-password">
+                  Forgot password?
+                </Button>
+              </Box>
             </Stack>
           </Box>
         </StandardCard>

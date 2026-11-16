@@ -76,6 +76,10 @@ services:
       # Caddy is the only proxy in front of the API.
       TRUST_PROXY: "1"
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${SITE_HOST:-www.fantasy-oscars.com}}
+      # Public web origin for links in emails (password reset).
+      WEB_BASE_URL: ${WEB_BASE_URL:-https://${SITE_HOST:-www.fantasy-oscars.com}}
+      MAIL_FROM: ${MAIL_FROM:-Fantasy Oscars <no-reply@fantasy-oscars.com>}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-support@fantasy-oscars.com}
       PG_POOL_MAX: "8"
       NODE_OPTIONS: --max-old-space-size=192
       # Optional pass-through: omitted entirely when not set in .env.
@@ -83,6 +87,8 @@ services:
       TMDB_API_TOKEN:
       TMDB_READ_ACCESS_TOKEN:
       SENTRY_DSN:
+      # Without it, password reset emails are not sent and each attempt is reported as an error.
+      RESEND_API_KEY:
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     healthcheck:
       # Readiness (database reachable and migrations applied), not just liveness.

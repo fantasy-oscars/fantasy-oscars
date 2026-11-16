@@ -6,7 +6,10 @@ import { useAuthContext, type AuthUser } from "@/auth/context";
 import { useBrandContext } from "@/brand/context";
 import { AccountScreen } from "@/features/account/screens/AccountScreen";
 import { saveStatusText } from "@/decisions/appearance";
-import { useAccountOrchestration } from "@/orchestration/account/orchestration";
+import {
+  useAccountOrchestration,
+  useAccountSecurityOrchestration
+} from "@/orchestration/account/orchestration";
 import { useAppearanceOrchestration } from "@/orchestration/account/useAppearanceOrchestration";
 
 /** Below this width the segmented controls stack (matches the phone rules in styles.css). */
@@ -21,9 +24,14 @@ function useAppearanceAnchor() {
   }, [hash, key]);
 }
 
-function SignedInAccount(props: { user: AuthUser; logout: () => Promise<void> }) {
-  const { user, logout } = props;
+function SignedInAccount(props: {
+  user: AuthUser;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+}) {
+  const { user, logout, refresh } = props;
   const account = useAccountOrchestration();
+  const security = useAccountSecurityOrchestration({ onEmailChanged: refresh });
   const { brand, show } = useBrandContext();
   const phone = useMediaQuery(PHONE_QUERY, false, { getInitialValueInEffect: false });
   const appearance = useAppearanceOrchestration({ user, currentBrand: brand, show });
@@ -42,6 +50,7 @@ function SignedInAccount(props: { user: AuthUser; logout: () => Promise<void> })
       email={user.email ?? null}
       onLogout={() => void logout()}
       onDeleteAccount={deleteAccount}
+      security={security}
       appearance={{
         view: appearance.view,
         statusText: saveStatusText(appearance.status),
@@ -60,9 +69,9 @@ function SignedInAccount(props: { user: AuthUser; logout: () => Promise<void> })
 }
 
 export function AccountPage() {
-  const { user, logout } = useAuthContext();
+  const { user, logout, refresh } = useAuthContext();
   // The route guard keeps signed-out visitors out; this only covers the frame in
   // which a logout has started.
   if (!user) return null;
-  return <SignedInAccount user={user} logout={logout} />;
+  return <SignedInAccount user={user} logout={logout} refresh={refresh} />;
 }

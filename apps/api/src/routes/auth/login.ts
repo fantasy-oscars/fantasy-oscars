@@ -15,7 +15,7 @@ import {
   type AppearanceRow
 } from "../../data/repositories/userAppearanceRepository.js";
 import { AUTH_SESSION_TTL_MS } from "../../domain/authSession.js";
-import { hashPassword, verifyPassword } from "./password.js";
+import { hashPassword, verifyPassword } from "../../auth/password.js";
 
 export function registerAuthLoginRoute(args: {
   router: express.Router;

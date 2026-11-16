@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,6 +86,8 @@ async function waitForHttp(url: string, p: Running, timeoutMs: number) {
 export type E2eStack = {
   pool: Awaited<ReturnType<typeof startTestDatabase>>["pool"];
   databaseUrl: string;
+  /** The API's stdout as JSON log lines, including the logging mailer's reset links. */
+  apiLogPath: string;
   stop: () => Promise<void>;
 };
 
@@ -95,6 +97,8 @@ export type E2eStack = {
  * `webMode` builds with a named Vite mode; `enableAllBrands` turns on unreleased brands
  * and needs a non-production mode (the build refuses the flag in production);
  * `enableSpecimen` includes the test-only `/__specimen` route in the bundle.
+ * The API sends no real email: without `RESEND_API_KEY` outside production it uses the
+ * logging mailer, whose `mail_logged` lines land in `apiLogPath`.
  */
 export async function startStack(
   opts: { webMode?: string; enableAllBrands?: boolean; enableSpecimen?: boolean } = {}
@@ -102,17 +106,21 @@ export async function startStack(
   const processes: Running[] = [];
   let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
   let webDist: string | null = null;
+  const apiLogDir = mkdtempSync(path.join(tmpdir(), "fo-e2e-api-log-"));
+  const apiLogPath = path.join(apiLogDir, "api.log");
 
   const stop = async () => {
     await Promise.all(processes.map(stopProcess));
     if (db) await db.stop();
     if (webDist) rmSync(webDist, { recursive: true, force: true });
+    rmSync(apiLogDir, { recursive: true, force: true });
   };
 
   try {
     db = await startTestDatabase();
     const baseEnv: NodeJS.ProcessEnv = { ...process.env };
     delete baseEnv.NODE_ENV;
+    delete baseEnv.RESEND_API_KEY;
 
     const api = run("api", process.execPath, ["--import", "tsx", "src/index.ts"], {
       cwd: path.join(repoRoot, "apps/api"),
@@ -122,10 +130,14 @@ export async function startStack(
         PORT: String(E2E_API_PORT),
         AUTH_SECRET: "e2e-auth-secret",
         CORS_ALLOWED_ORIGINS: E2E_WEB_ORIGIN,
+        WEB_BASE_URL: E2E_WEB_ORIGIN,
+        LOG_LEVEL: "info",
+        LOG_FORMAT: "json",
         DRAFT_SWEEPER_ENABLED: "false"
       }
     });
     processes.push(api);
+    api.child.stdout?.on("data", (chunk: Buffer) => appendFileSync(apiLogPath, chunk));
 
     webDist = mkdtempSync(path.join(tmpdir(), "fo-e2e-web-"));
     const webDir = path.join(repoRoot, "apps/web");
@@ -176,7 +188,7 @@ export async function startStack(
       waitForHttp(E2E_WEB_ORIGIN, web, 60_000)
     ]);
 
-    return { pool: db.pool, databaseUrl: db.connectionString, stop };
+    return { pool: db.pool, databaseUrl: db.connectionString, apiLogPath, stop };
   } catch (err) {
     await stop();
     throw err;

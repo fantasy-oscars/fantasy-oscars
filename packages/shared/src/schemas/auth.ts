@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
+  PASSWORD_MIN_LENGTH,
   normalizeEmail,
+  validateEmail,
   validatePassword,
   validateRegisterInput,
   validateUsername
@@ -76,5 +78,45 @@ export const registerBodySchema = z.preprocess(
     }))
 );
 
+const INVALID_EMAIL = "Enter a valid email address";
+const SHORT_PASSWORD = `Passwords must be at least ${PASSWORD_MIN_LENGTH} characters`;
+
+// Reset tokens are 32 random bytes in base64url (43 characters); anything far
+// longer is not one of ours.
+const RESET_TOKEN_MAX_LENGTH = 128;
+
+const emailField = z
+  .string(requiredString)
+  .trim()
+  .min(1, MISSING)
+  .refine((value) => validateEmail(value).length === 0, INVALID_EMAIL)
+  .transform(normalizeEmail);
+
+const newPasswordField = z
+  .string(requiredString)
+  .min(1, MISSING)
+  .refine((value) => validatePassword(value).length === 0, SHORT_PASSWORD);
+
+export const passwordResetRequestBodySchema = z.object({ email: emailField });
+
+export const passwordResetConfirmBodySchema = z.object({
+  token: z.string(requiredString).min(1, MISSING).max(RESET_TOKEN_MAX_LENGTH, BAD_TYPE),
+  password: newPasswordField
+});
+
+export const changePasswordBodySchema = z.object({
+  currentPassword: z.string(requiredString).min(1, MISSING),
+  newPassword: newPasswordField
+});
+
+export const changeEmailBodySchema = z.object({
+  currentPassword: z.string(requiredString).min(1, MISSING),
+  email: emailField
+});
+
 export type LoginBody = z.output<typeof loginBodySchema>;
 export type RegisterBody = z.output<typeof registerBodySchema>;
+export type PasswordResetRequestBody = z.output<typeof passwordResetRequestBodySchema>;
+export type PasswordResetConfirmBody = z.output<typeof passwordResetConfirmBodySchema>;
+export type ChangePasswordBody = z.output<typeof changePasswordBodySchema>;
+export type ChangeEmailBody = z.output<typeof changeEmailBodySchema>;

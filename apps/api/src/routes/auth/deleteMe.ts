@@ -284,7 +284,7 @@ export function registerAuthDeleteMeRoute(args: {
             }
 
             await revokeAllUserSessions(tx, id);
-            await query(tx, `DELETE FROM auth_password_reset WHERE user_id = $1`, [id]);
+            await query(tx, `DELETE FROM password_reset_token WHERE user_id = $1`, [id]);
             await query(tx, `DELETE FROM auth_password WHERE user_id = $1`, [id]);
             await query(
               tx,

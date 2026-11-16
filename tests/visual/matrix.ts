@@ -129,6 +129,21 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    id: "forgot-password",
+    persona: null,
+    path: () => "/forgot-password",
+    ready: { text: "Send reset link" },
+    fullPage: true
+  },
+  {
+    id: "reset-password",
+    persona: null,
+    // Any token shows the form; it is only checked when the form is submitted.
+    path: () => "/reset-password?token=visual-check",
+    ready: { text: "Save new password" },
+    fullPage: true
+  },
+  {
     id: "leagues-list",
     persona: "avery",
     path: () => "/leagues",

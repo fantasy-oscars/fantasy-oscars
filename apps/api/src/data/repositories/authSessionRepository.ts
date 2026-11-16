@@ -105,3 +105,19 @@ export async function revokeAllUserSessions(db: DbClient, userId: number): Promi
     [userId]
   );
 }
+
+/** Revokes every live session of the user except `keepSessionId`. */
+export async function revokeOtherUserSessions(
+  db: DbClient,
+  input: { userId: number; keepSessionId: string }
+): Promise<void> {
+  await query(
+    db,
+    `UPDATE auth_session
+     SET revoked_at = now()
+     WHERE user_id = $1
+       AND id <> $2
+       AND revoked_at IS NULL`,
+    [input.userId, input.keepSessionId]
+  );
+}

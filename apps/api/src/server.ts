@@ -20,6 +20,7 @@ import { AppError, errorBody } from "./errors.js";
 import { buildRequestLog, deriveDraftContext, log } from "./logger.js";
 import { loadConfig } from "./config/env.js";
 import { captureServerError } from "./observability/sentry.js";
+import { createMailer, type Mailer } from "./services/mail/mailer.js";
 
 function isTestRuntime(): boolean {
   return (
@@ -50,10 +51,12 @@ function sanitizeBody(value: unknown): unknown {
   return value;
 }
 
-export function createServer(deps?: { db?: Pool }): Express {
+export function createServer(deps?: { db?: Pool; mailer?: Mailer }): Express {
   const app = express();
   const config = loadConfig();
   const pool = deps?.db ?? createPool(process.env.DATABASE_URL ?? "");
+  const mailer =
+    deps?.mailer ?? createMailer(config.mail, process.env.NODE_ENV === "production");
   // Behind a reverse proxy (Render) req.ip must come from X-Forwarded-For, otherwise
   // every client shares the proxy's address for rate limiting.
   app.set("trust proxy", config.trustProxy);
@@ -115,7 +118,9 @@ export function createServer(deps?: { db?: Pool }): Express {
     "/auth",
     createAuthRouter(pool, {
       authSecret: config.authSecret,
-      corsAllowedOrigins: config.corsAllowedOrigins
+      corsAllowedOrigins: config.corsAllowedOrigins,
+      mailer,
+      webBaseUrl: config.webBaseUrl
     })
   );
   app.use("/leagues", createLeaguesRouter(pool, config.authSecret));

@@ -72,7 +72,7 @@ export function AdminUsersSearchScreen(props: {
         >
           <Combobox.Target>
             <TextInput
-              aria-label="Username"
+              aria-label="Username or email"
               name="admin_user_search"
               autoComplete="new-password"
               autoCorrect="off"
@@ -87,7 +87,7 @@ export function AdminUsersSearchScreen(props: {
               }}
               onFocus={() => combobox.openDropdown()}
               onBlur={() => combobox.closeDropdown()}
-              placeholder="Username"
+              placeholder="Username or email"
             />
           </Combobox.Target>
           <Combobox.Dropdown>
@@ -130,6 +130,9 @@ export function AdminUsersSearchScreen(props: {
                     truncate="end"
                   >
                     {u.username}
+                  </Text>
+                  <Text className="baseline-textMeta" c="dimmed" truncate="end">
+                    {u.email}
                   </Text>
                 </Box>
                 <Group

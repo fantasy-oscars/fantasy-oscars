@@ -17,9 +17,14 @@ We use the information we collect solely to operate and improve the app. This in
 - Creating and managing user accounts
 - Supporting leagues, drafts, and other core features
 - Communicating service-related information
+- Sending account-recovery messages, such as a password reset link you ask for
 - Maintaining security and preventing abuse
 
-We do not sell user information or use it for advertising or marketing purposes.
+We do not sell user information or use it for advertising or marketing purposes, and we do not send marketing email.
+
+## Email
+
+Your email address is used to help you get back into your account. The only email the app sends is a password reset link, and only when you ask for one. These messages are delivered through Resend, an email delivery service that processes your address and the message on our behalf and only to send it. The messages contain no tracking.
 
 ## Data Retention
 

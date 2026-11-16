@@ -2,6 +2,7 @@ import { useState, type ComponentProps } from "react";
 import { Box, Button, Group, Stack, Text, Title } from "@ui";
 import { StandardCard } from "@/primitives";
 import { AppearanceSection } from "@/features/account/ui/AppearanceSection";
+import { AccountSecuritySection } from "@/features/account/ui/AccountSecuritySection";
 import { DeleteAccountModal } from "@/features/account/ui/DeleteAccountModal";
 import "@/primitives/baseline.css";
 
@@ -11,6 +12,7 @@ export function AccountScreen(props: {
   onLogout: () => void | Promise<void>;
   onDeleteAccount: () => Promise<{ ok: boolean; error?: string }>;
   appearance: ComponentProps<typeof AppearanceSection>;
+  security: ComponentProps<typeof AccountSecuritySection>;
 }) {
   const { username, email, onLogout, onDeleteAccount } = props;
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -97,6 +99,8 @@ export function AccountScreen(props: {
               </Group>
             </Stack>
           </StandardCard>
+
+          <AccountSecuritySection {...props.security} />
 
           <AppearanceSection {...props.appearance} />
         </Stack>

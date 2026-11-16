@@ -47,6 +47,13 @@ export function parseAuthCookieSameSite(
   return normalized;
 }
 
+export type MailConfig = {
+  /** Unset means no email is delivered (logged in development, an error in production). */
+  resendApiKey: string | null;
+  from: string;
+  replyTo: string;
+};
+
 export type ApiConfig = {
   port: number;
   authSecret: string;
@@ -54,7 +61,13 @@ export type ApiConfig = {
   corsAllowedOrigins: string[];
   /** Value for Express `trust proxy`: hop count, or boolean. */
   trustProxy: boolean | number;
+  /** Public web origin used to build links in emails, without a trailing slash. */
+  webBaseUrl: string;
+  mail: MailConfig;
 };
+
+export const DEFAULT_MAIL_FROM = "Fantasy Oscars <no-reply@fantasy-oscars.com>";
+export const DEFAULT_MAIL_REPLY_TO = "support@fantasy-oscars.com";
 
 const DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173";
 
@@ -79,6 +92,40 @@ export function parseTrustProxy(
   throw new ConfigError(
     `TRUST_PROXY must be a non-negative integer, true, or false, received: ${value}`
   );
+}
+
+/**
+ * Public web origin for links in emails. Defaults to the first CORS origin,
+ * which is the web app in every supported setup.
+ */
+export function parseWebBaseUrl(
+  value: string | undefined,
+  corsOrigins: string[]
+): string {
+  const raw =
+    value === undefined || value.trim() === "" ? (corsOrigins[0] ?? "") : value.trim();
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ConfigError(`WEB_BASE_URL must be an absolute URL, received: ${raw}`);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new ConfigError(`WEB_BASE_URL must use http or https, received: ${raw}`);
+  }
+  return normalizeOrigin(url.origin + url.pathname);
+}
+
+function optionalTrimmed(value: string | undefined): string | null {
+  return value === undefined || value.trim() === "" ? null : value.trim();
+}
+
+export function parseMailConfig(env: NodeJS.ProcessEnv = process.env): MailConfig {
+  return {
+    resendApiKey: optionalTrimmed(env.RESEND_API_KEY),
+    from: optionalTrimmed(env.MAIL_FROM) ?? DEFAULT_MAIL_FROM,
+    replyTo: optionalTrimmed(env.MAIL_REPLY_TO) ?? DEFAULT_MAIL_REPLY_TO
+  };
 }
 
 export type PgPoolConfig = {
@@ -117,7 +164,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const trustProxy = parseTrustProxy(env.TRUST_PROXY, env.NODE_ENV === "production");
   // Fail fast on a bad value; the cookie module reads it again where it is used.
   parseAuthCookieSameSite(env.AUTH_COOKIE_SAMESITE, env.NODE_ENV === "production");
-  return { port, authSecret, realtimeEnabled, corsAllowedOrigins, trustProxy };
+  const webBaseUrl = parseWebBaseUrl(env.WEB_BASE_URL, corsAllowedOrigins);
+  const mail = parseMailConfig(env);
+  return {
+    port,
+    authSecret,
+    realtimeEnabled,
+    corsAllowedOrigins,
+    trustProxy,
+    webBaseUrl,
+    mail
+  };
 }
 
 function parseOptionalBool(value: string | undefined, fallback: boolean): boolean {
