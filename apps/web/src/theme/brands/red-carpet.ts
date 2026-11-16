@@ -1,5 +1,5 @@
 import type { BrandDefinition, ColorSlots, ShadowSlots } from "./contract";
-import { CINZEL, DMSANS, PLAYFAIR } from "./stacks";
+import { DMSANS, PLAYFAIR } from "./stacks";
 
 // Premiere night: near-black with velvet and gold, tight corners, hairlines instead
 // of shadows. Values follow docs/design/prescriptions/02-brand-tokens.md (3.5).
@@ -86,20 +86,21 @@ export const redCarpet: BrandDefinition = {
         weights: [400, 600, 700],
         styles: ["normal", "italic"]
       },
-      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] },
-      { family: "Cinzel", weights: [700], styles: ["normal"] }
+      { family: "DM Sans", weights: [400, 500, 600, 700], styles: ["normal"] }
     ],
     preload: {
       display: { family: "Playfair Display", weight: 600, style: "normal" },
       body: { family: "DM Sans", weight: 400, style: "normal" }
     }
   },
+  // The header wordmark is the hero's: Playfair at the display weight and hero
+  // tracking, with "Oscars" in gold italic.
   wordmark: {
-    font: CINZEL,
-    weight: "700",
+    font: PLAYFAIR,
+    weight: "600",
     case: "none",
-    letterSpacing: "0.04em",
-    twoTone: "colour",
+    letterSpacing: "0.01em",
+    twoTone: "colourItalic",
     toneColor: "gold"
   },
   shape: {

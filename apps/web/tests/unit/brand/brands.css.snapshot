@@ -566,11 +566,11 @@
   --brand-body-size: 14px;
   --brand-font-accent: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
   --brand-accent-style: italic;
-  --brand-wordmark-font: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  --brand-wordmark-weight: 700;
+  --brand-wordmark-font: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
+  --brand-wordmark-weight: 600;
   --brand-wordmark-case: none;
-  --brand-wordmark-letter-spacing: 0.04em;
-  --brand-wordmark-two-tone: colour;
+  --brand-wordmark-letter-spacing: 0.01em;
+  --brand-wordmark-two-tone: colourItalic;
   --brand-radius-sm: 4px;
   --brand-radius-md: 6px;
   --brand-radius-lg: 6px;
@@ -596,7 +596,7 @@
   --brand-section-rule: var(--brand-border-width) solid var(--brand-rule);
   --brand-nav-rule: var(--brand-section-rule);
   --brand-wordmark-tone-color: var(--fo-win-gold-text);
-  --brand-wordmark-tone-style: normal;
+  --brand-wordmark-tone-style: italic;
   --brand-wordmark-tone-weight: inherit;
   --brand-wordmark-stop-display: none;
   --brand-wordmark-stop-color: var(--fo-win-gold-text);

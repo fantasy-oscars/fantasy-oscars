@@ -342,6 +342,21 @@ describe.each(BRAND_DEFINITIONS.map((b) => [b.id, b] as const))(
 describe("Home signature values", () => {
   const byId = (id: string) => BRAND_DEFINITIONS.find((b) => b.id === id)!;
 
+  it("sets red carpet's header wordmark in the hero's voice", () => {
+    const { type, wordmark, home } = byId("red-carpet");
+    expect(wordmark).toMatchObject({
+      font: type.displayFont,
+      weight: type.displayWeight,
+      case: type.displayCase,
+      letterSpacing: type.heroTracking,
+      twoTone: "colourItalic",
+      toneColor: "gold"
+    });
+    // The hero's second word is gold italic too.
+    expect(home.heroTone).toEqual({ color: "accent", style: "italic" });
+    expect(byId("red-carpet").fonts.faces.map((f) => f.family)).not.toContain("Cinzel");
+  });
+
   it("gives red carpet the band, the card in the band, the accent rule and a gold italic word", () => {
     expect(byId("red-carpet").home).toMatchObject({
       placement: "band",
@@ -418,7 +433,8 @@ const DERIVED: Record<string, Record<string, string>> = {
     "--brand-section-rule": "var(--brand-border-width) solid var(--brand-rule)",
     "--brand-nav-rule": "var(--brand-section-rule)",
     "--brand-wordmark-tone-color": "var(--fo-win-gold-text)",
-    "--brand-wordmark-tone-style": "normal",
+    // `colourItalic`: gold italic "Oscars" at the wordmark's own weight, as the hero.
+    "--brand-wordmark-tone-style": "italic",
     "--brand-wordmark-tone-weight": "inherit",
     "--brand-wordmark-stop-display": "none",
     "--brand-wordmark-stop-color": "var(--fo-win-gold-text)"

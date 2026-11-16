@@ -40,8 +40,18 @@ export type ModeSlots = { colors: ColorSlots; shadows: ShadowSlots };
 export const TEXT_CASES = ["none", "uppercase", "lowercase", "capitalize"] as const;
 export type TextCase = (typeof TEXT_CASES)[number];
 
-/** How the second word of the wordmark differs: `stop` keeps both words alike and adds a trailing full stop. */
-export const TWO_TONE_METHODS = ["colour", "italic", "weight", "stop"] as const;
+/**
+ * How the second word of the wordmark differs: `stop` keeps both words alike and adds a
+ * trailing full stop; `colourItalic` sets it in the tone colour and italic, at the
+ * wordmark's own weight.
+ */
+export const TWO_TONE_METHODS = [
+  "colour",
+  "colourItalic",
+  "italic",
+  "weight",
+  "stop"
+] as const;
 export type TwoToneMethod = (typeof TWO_TONE_METHODS)[number];
 
 /** Colours the active nav indicator may take; `gold` is the shared win-gold text colour. */
@@ -176,7 +186,7 @@ export type WordmarkSlots = {
   case: TextCase;
   letterSpacing: string;
   twoTone: TwoToneMethod;
-  /** Colour of the second word (`colour`) or of the full stop (`stop`); still required when unused. */
+  /** Colour of the second word (`colour`, `colourItalic`) or of the full stop (`stop`); still required when unused. */
   toneColor: WordmarkToneColor;
 };
 
