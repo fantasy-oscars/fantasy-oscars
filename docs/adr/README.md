@@ -26,3 +26,4 @@ ADRs capture decisions that could be questioned later. They keep the project int
 - 0002 – Public seasons as auto-managed league containers: [0002-public-seasons.md](0002-public-seasons.md)
 - 0003 – Layered visual testing: [0003-layered-visual-testing.md](0003-layered-visual-testing.md)
 - 0004 – Measured component tolerances: [0004-measured-component-tolerances.md](0004-measured-component-tolerances.md) (supersedes the screenshot tiers of 0003)
+- 0005 – Series competition domain model: [0005-series-domain-model.md](0005-series-domain-model.md)
