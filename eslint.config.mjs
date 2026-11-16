@@ -64,7 +64,8 @@ export default [
           patterns: [
             {
               group: ["@mantine/*"],
-              message: "Import Mantine via apps/web/src/ui/* wrappers instead of @mantine/*."
+              message:
+                "Import Mantine via apps/web/src/ui/* wrappers instead of @mantine/*."
             }
           ]
         }
@@ -116,6 +117,64 @@ export default [
               group: ["**/services/**", "**/services", "**/data/**", "**/data"],
               allowTypeImports: true,
               message: "domain/ is pure: no runtime imports from data/ or services/."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  // Series independence (ADR 0005, section 10): Series modules and the Season,
+  // draft, scoring and realtime modules never import each other. A module
+  // belongs to a family by its file or folder name. The base rule is used here
+  // because the layering blocks above own the TypeScript variant, and flat
+  // config replaces (not merges) a rule's options. The Series draft reuses the
+  // pure draft-order and pick-rule functions (ADR 0005, section 1), so those
+  // two stay importable.
+  {
+    files: ["apps/api/src/**/series*.ts", "apps/api/src/**/series/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/season*",
+                "**/draft*",
+                "**/autodraft*",
+                "**/scoring*",
+                "**/realtime",
+                "**/realtime/**",
+                "!**/domain/draftOrder.js",
+                "!**/domain/draftPickRules.js"
+              ],
+              message:
+                "Series modules must not import Season, draft, scoring or realtime modules (ADR 0005, section 10)."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: [
+      "apps/api/src/**/season*.ts",
+      "apps/api/src/**/season*/**/*.ts",
+      "apps/api/src/**/draft*.ts",
+      "apps/api/src/**/draft*/**/*.ts",
+      "apps/api/src/**/autodraft*.ts",
+      "apps/api/src/**/scoring*.ts",
+      "apps/api/src/realtime/**/*.ts"
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/series*", "**/series/**"],
+              message:
+                "Season, draft, scoring and realtime modules must not import Series modules (ADR 0005, section 10)."
             }
           ]
         }

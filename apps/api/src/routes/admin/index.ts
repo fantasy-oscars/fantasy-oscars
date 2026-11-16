@@ -16,6 +16,7 @@ import { registerAdminWinnerRoutes } from "./winners.js";
 import { registerAdminFilmRoutes } from "./films.js";
 import { registerAdminSeasonDeleteRoutes } from "./seasonsDelete.js";
 import { registerAdminLeagueDeleteRoutes } from "./leaguesDelete.js";
+import { registerAdminSeriesRoutes } from "./series.js";
 
 export function createAdminRouter(client: DbClient): Router {
   const router = express.Router();
@@ -35,6 +36,7 @@ export function createAdminRouter(client: DbClient): Router {
   registerAdminFilmRoutes(router, client);
   registerAdminSeasonDeleteRoutes({ router, client });
   registerAdminLeagueDeleteRoutes({ router, client });
+  registerAdminSeriesRoutes(router, client);
 
   return router;
 }

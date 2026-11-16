@@ -31,7 +31,9 @@ export function registerAdminCeremonyGetRoute(args: {
              draft_locked_at,
              published_at,
              archived_at,
-             results_finalized_at
+             results_finalized_at,
+             nominations_on::text AS nominations_on,
+             results_on::text AS results_on
            FROM ceremony
            WHERE id = $1
              AND deleted_at IS NULL`,

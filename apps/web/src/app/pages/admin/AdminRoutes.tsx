@@ -11,6 +11,8 @@ import { AdminUsersLayout } from "./users/AdminUsersLayout";
 import { AdminUsersSearchPage } from "./users/AdminUsersSearchPage";
 import { AdminCategoryTemplatesPage } from "./categoryTemplates/AdminCategoryTemplatesPage";
 import { AdminFilmsPage } from "./films/AdminFilmsPage";
+import { AdminSeriesIndexPage } from "./series/AdminSeriesIndexPage";
+import { AdminSeriesDetailPage } from "./series/AdminSeriesDetailPage";
 import { AdminContentLayout } from "./content/AdminContentLayout";
 import {
   AdminAnnouncementsKeyRedirect,
@@ -50,6 +52,11 @@ export default function AdminRoutes() {
         <Route path="category-templates" element={<AdminCategoryTemplatesPage />} />
 
         <Route path="films" element={<AdminFilmsPage />} />
+
+        <Route path="series">
+          <Route index element={<AdminSeriesIndexPage />} />
+          <Route path=":seriesId" element={<AdminSeriesDetailPage />} />
+        </Route>
 
         <Route path="content" element={<AdminContentLayout />}>
           <Route index element={<AdminAnnouncementsPage />} />

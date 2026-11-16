@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
 import { AdminCeremoniesOverviewScreen } from "@/features/admin/screens/ceremonies/AdminCeremoniesOverviewScreen";
 import { useCeremonyWizardContext } from "./ceremonyWizardContext";
+import { AdminCeremonySeriesPanel } from "./AdminCeremonySeriesPanel";
 
 export function AdminCeremoniesOverviewPage() {
   const { ceremonyId: ceremonyIdRaw } = useParams();
@@ -11,24 +12,27 @@ export function AdminCeremoniesOverviewPage() {
   const o = useAdminCeremonyOverviewOrchestration({ ceremonyId });
 
   return (
-    <AdminCeremoniesOverviewScreen
-      loading={o.loading}
-      saving={o.saving}
-      loadError={o.loadError}
-      status={o.status}
-      ceremony={o.ceremony}
-      stats={o.stats}
-      form={o.form}
-      setForm={o.setForm}
-      fieldErrors={o.fieldErrors}
-      onEditField={o.clearFieldError}
-      readOnly={o.readOnly}
-      onSave={() => {
-        void o.actions.save().then(async () => {
-          // Ensure the wizard's step completion state updates immediately after saving.
-          await wizard?.reloadWorksheet();
-        });
-      }}
-    />
+    <>
+      <AdminCeremoniesOverviewScreen
+        loading={o.loading}
+        saving={o.saving}
+        loadError={o.loadError}
+        status={o.status}
+        ceremony={o.ceremony}
+        stats={o.stats}
+        form={o.form}
+        setForm={o.setForm}
+        fieldErrors={o.fieldErrors}
+        onEditField={o.clearFieldError}
+        readOnly={o.readOnly}
+        onSave={() => {
+          void o.actions.save().then(async () => {
+            // Ensure the wizard's step completion state updates immediately after saving.
+            await wizard?.reloadWorksheet();
+          });
+        }}
+      />
+      {o.ceremony ? <AdminCeremonySeriesPanel ceremonyId={ceremonyId} /> : null}
+    </>
   );
 }

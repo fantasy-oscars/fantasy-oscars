@@ -44,6 +44,35 @@ read -rs NEWPW && printf '%s' "$NEWPW" | pnpm run admin:reset-password -- --user
 - Set active ceremony: `POST /admin/ceremony/active` with `{ "ceremony_id": <id> }`.
 - Read active ceremony: `GET /ceremony/active` (public).
 
+### Series admin routes
+
+See [architecture/series.md](../architecture/series.md). Every write appends to
+`admin_audit_log`. Associations and mappings stay editable after activation;
+only an archived Series is read-only (409 `SERIES_ARCHIVED`).
+
+- `GET /admin/series`: list every Series.
+- `POST /admin/series` with `{ code, name, opens_on? }`: create a Series with its
+  five events and eight categories.
+- `GET /admin/series/:id`: events, categories, associated ceremonies with their
+  dates, category editions with their mapping, `readiness.missing_dates` and
+  `occasions`.
+- `POST /admin/series/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
+  `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `SERIES_NOT_DRAFT`.
+- `PUT /admin/series/:id/ceremonies/:ceremonyId` with `{ series_event_id }`, and
+  `DELETE` on the same path: associate or remove a ceremony (removal also drops
+  its mappings in the Series).
+- `GET /admin/ceremonies/:id/series`: the ceremony's associations, plus every
+  non-archived Series with its events.
+- `PUT /admin/ceremonies/:id/series/:seriesId` with `{ series_event_id }`, and
+  `DELETE` on the same path: the same association, from the ceremony side.
+- `PUT /admin/series/:id/mappings/:categoryEditionId` with
+  `{ series_category_id }`, and `DELETE` on the same path: map or unmap a
+  category edition. 409 `SERIES_CEREMONY_NOT_ASSOCIATED` until its ceremony is
+  in the Series.
+- `PATCH /admin/ceremonies/:id/dates` with `{ nominations_on?, results_on? }`
+  (`YYYY-MM-DD`, `null` clears): works at every ceremony status and never
+  changes a Series' status.
+
 ## Notes
 
 - Default is non-admin on registration.

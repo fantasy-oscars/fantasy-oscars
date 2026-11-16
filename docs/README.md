@@ -7,6 +7,7 @@ Use this as the map. Start with the section that matches your intent.
   - [Runtime](architecture/runtime.md)
   - [Domain Model](architecture/domain-model.md)
   - [Data](architecture/data.md)
+  - [Series](architecture/series.md)
 - **Standards**
   - [Engineering Standard](standards/engineering-standard.md)
   - [Testing](standards/testing.md)

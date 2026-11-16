@@ -49,6 +49,7 @@ flowchart LR
   - Web: `apps/web/src/**` (screens + client socket wiring)
 - Seasons:
   - API: `apps/api/src/routes/seasons.ts` and `apps/api/src/routes/seasons/**`
+- Series competition (foundation): [series.md](series.md)
 - Admin surfaces & lock rule: `apps/api/src/routes/admin/**`, `apps/api/src/routes/ceremony.ts`
 - Operational runbook (includes rollover + lock behavior): [../runbooks/operational-runbook.md](../runbooks/operational-runbook.md)
 - Layering / atomization rules (Decision / Orchestration / Glue / UI): [atomization.md](atomization.md)
