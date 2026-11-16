@@ -92,6 +92,7 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
         ? "var(--brand-border-width) solid var(--brand-text)"
         : "var(--brand-border-width) solid var(--brand-rule)";
   const tone = wordmark.twoTone;
+  const toneColoured = tone === "colour" || tone === "colourItalic";
   return [
     ["--brand-nav-pill", pill ? "1" : "0"],
     ["--brand-nav-indicator", indicator],
@@ -110,9 +111,12 @@ function derivedDeclarations(brand: BrandDefinition): Declarations {
     ["--brand-nav-rule", pill ? "0 solid transparent" : "var(--brand-section-rule)"],
     [
       "--brand-wordmark-tone-color",
-      tone === "colour" ? colorRef(wordmark.toneColor) : "inherit"
+      toneColoured ? colorRef(wordmark.toneColor) : "inherit"
     ],
-    ["--brand-wordmark-tone-style", tone === "italic" ? "italic" : "normal"],
+    [
+      "--brand-wordmark-tone-style",
+      tone === "italic" || tone === "colourItalic" ? "italic" : "normal"
+    ],
     [
       "--brand-wordmark-tone-weight",
       tone === "italic" || tone === "weight" ? "400" : "inherit"
@@ -231,10 +235,12 @@ function homeDeclarations(brand: BrandDefinition): Declarations {
   const updateRule = home.updateRule === "accent";
   const eyebrow = home.asideHeading === "eyebrow";
   const heroAccent = home.heroTone.color === "accent" ? heroAccentColor(brand) : null;
+  const twoTone = wordmark.twoTone;
   const heroWordTone =
-    heroAccent ?? (wordmark.twoTone === "colour" ? heroTone : "inherit");
+    heroAccent ??
+    (twoTone === "colour" || twoTone === "colourItalic" ? heroTone : "inherit");
   const heroWordStyle =
-    home.heroTone.style === "italic" || wordmark.twoTone === "italic"
+    home.heroTone.style === "italic" || twoTone === "italic" || twoTone === "colourItalic"
       ? "italic"
       : "normal";
   const heroBg = {

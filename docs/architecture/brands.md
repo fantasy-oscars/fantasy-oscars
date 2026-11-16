@@ -242,10 +242,13 @@ The same in both modes:
   `label-letter-spacing`, `display-weight`, `display-case`, `display-tracking`, `h1-size`, `h2-size`, `h3-size`, `body-size`, `font-accent` and
   `accent-style` (`normal | italic`; the face of the Home hero tagline).
 - Wordmark: `wordmark-font`, `-weight`, `-case`, `-letter-spacing`, `-two-tone`
-  (`colour | italic | weight | stop`; `stop` keeps both words alike and adds a
-  trailing full stop). The contract slot `toneColor` (`primary | accent | gold`) is the
-  colour of the second word (`colour`) or the full stop (`stop`). It is required for
-  every brand, even where the method does not use it.
+  (`colour | colourItalic | italic | weight | stop`; `stop` keeps both words alike and
+  adds a trailing full stop; `colourItalic` sets the second word in the tone colour and
+  italic, at the wordmark's own weight). The contract slot `toneColor`
+  (`primary | accent | gold`) is the colour of the second word (`colour`,
+  `colourItalic`) or the full stop (`stop`). It is required for every brand, even where
+  the method does not use it. Red carpet's header wordmark is its hero's: Playfair
+  Display 600 at the hero tracking (0.01em), "Oscars" in gold italic (`colourItalic`).
 - Shape: `radius-sm/md/lg`, `button-shape` (`pill | rounded | square`) and the
   derived `button-radius`, `border-width`, `rule-style` (`solid | double`).
 - Navigation: `nav-active` (`pill | underline`), `nav-font`, `nav-case`, `nav-size`.
@@ -288,8 +291,9 @@ resolves per mode.
 - `section-rule` (`3px double` ink for double rules; ink frame for frame borders;
   otherwise a hairline in `rule`) and `nav-rule` (underline brands: the section
   rule; pill brands: `0 solid transparent`).
-- `wordmark-tone-color` (`colour`: colour of `toneColor`; else `inherit`),
-  `wordmark-tone-style` (`italic` or `normal`), `wordmark-tone-weight` (`400` for
+- `wordmark-tone-color` (`colour` and `colourItalic`: colour of `toneColor`; else
+  `inherit`), `wordmark-tone-style` (`italic` for `italic` and `colourItalic`, else
+  `normal`), `wordmark-tone-weight` (`400` for
   `italic` and `weight`; else `inherit`), `wordmark-stop-display` (`inline` for
   `stop`, else `none`), `wordmark-stop-color` (colour of `toneColor`).
 
@@ -304,7 +308,7 @@ resolves per mode.
   `home-hero-fit`, `home-hero-tone-color` and `home-hero-stop-color` (the wordmark's
   tone and stop colours on the hero: an open hero takes the header's; a panel takes
   whichever mode's value of `toneColor` reaches 3:1 on it, the panel's own mode first,
-  else `inherit`, so the hero ink; the tone is `inherit` unless `twoTone` is `colour`;
+  else `inherit`, so the hero ink; the tone is `inherit` unless `twoTone` is `colour` or `colourItalic`;
   the hero card redefines `wordmark-tone-color` and `wordmark-stop-color` from them),
   `home-open` (`1` for open regions), `home-updates-bg`,
   `home-updates-shadow`, `home-aside-rule`, `home-align`, and the create-league
