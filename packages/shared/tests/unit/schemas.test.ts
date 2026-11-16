@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  changeEmailBodySchema,
+  changePasswordBodySchema,
   includeCancelledQuerySchema,
   leagueCreateBodySchema,
   loginBodySchema,
+  passwordResetConfirmBodySchema,
+  passwordResetRequestBodySchema,
   registerBodySchema,
   seasonCreateBodySchema,
   seasonScoringBodySchema,
@@ -57,6 +61,52 @@ describe("auth schemas", () => {
         password: "longenough"
       })
     ).toEqual({ username: "Alice", email: "a@b.co", password: "longenough" });
+  });
+});
+
+describe("account recovery schemas", () => {
+  it("reset request normalises the email and rejects a malformed one", () => {
+    expect(passwordResetRequestBodySchema.parse({ email: " A@B.CO " })).toEqual({
+      email: "a@b.co"
+    });
+    const bad = passwordResetRequestBodySchema.safeParse({ email: "nope" });
+    expect(bad.error?.issues[0]?.message).toBe("Enter a valid email address");
+    const missing = passwordResetRequestBodySchema.safeParse({});
+    expect(missing.error?.issues[0]?.message).toBe("Please fill in all required fields");
+  });
+
+  it("reset confirm applies the shared password rules and bounds the token", () => {
+    expect(
+      passwordResetConfirmBodySchema.safeParse({ token: "abc", password: "longenough" })
+        .success
+    ).toBe(true);
+    const short = passwordResetConfirmBodySchema.safeParse({
+      token: "abc",
+      password: "short"
+    });
+    expect(short.error?.issues[0]?.message).toBe(
+      "Passwords must be at least 8 characters"
+    );
+    expect(
+      passwordResetConfirmBodySchema.safeParse({
+        token: "x".repeat(129),
+        password: "longenough"
+      }).success
+    ).toBe(false);
+  });
+
+  it("password and email changes require the current password", () => {
+    expect(
+      changePasswordBodySchema.safeParse({ newPassword: "longenough" }).success
+    ).toBe(false);
+    expect(
+      changePasswordBodySchema.safeParse({ currentPassword: "x", newPassword: "short" })
+        .success
+    ).toBe(false);
+    expect(
+      changeEmailBodySchema.parse({ currentPassword: "x", email: "New@B.co" })
+    ).toEqual({ currentPassword: "x", email: "new@b.co" });
+    expect(changeEmailBodySchema.safeParse({ email: "new@b.co" }).success).toBe(false);
   });
 });
 

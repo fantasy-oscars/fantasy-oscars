@@ -8,8 +8,9 @@ export function FormField(props: {
   type?: string;
   error?: string;
   defaultValue?: string;
+  autoComplete?: string;
 }) {
-  const { label, name, type = "text", error, defaultValue } = props;
+  const { label, name, type = "text", error, defaultValue, autoComplete } = props;
   return (
     <TextInput
       className="field"
@@ -17,6 +18,7 @@ export function FormField(props: {
       name={name}
       type={type}
       defaultValue={defaultValue}
+      autoComplete={autoComplete}
       error={error}
     />
   );

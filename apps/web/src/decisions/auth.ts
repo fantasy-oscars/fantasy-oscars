@@ -50,3 +50,29 @@ export function authFieldErrorMessage(field: string): string {
       return "Invalid";
   }
 }
+
+export function validatePasswordConfirmMessage(
+  password: string,
+  confirmation: string
+): string | null {
+  if (!confirmation) return "Required";
+  return password === confirmation ? null : "Passwords don't match";
+}
+
+/** The reset token carried by a password-reset link (`?token=…`), if any. */
+export function readResetToken(search: string): string | null {
+  const token = new URLSearchParams(search).get("token")?.trim();
+  return token ? token : null;
+}
+
+/** The same address with the reset token removed, so it cannot linger in history. */
+export function withoutResetToken(location: {
+  pathname: string;
+  search: string;
+  hash: string;
+}): string {
+  const params = new URLSearchParams(location.search);
+  params.delete("token");
+  const rest = params.toString();
+  return `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`;
+}

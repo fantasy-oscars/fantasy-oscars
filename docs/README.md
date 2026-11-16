@@ -20,6 +20,7 @@ Use this as the map. Start with the section that matches your intent.
   - [Local Development](runbooks/local-dev.md)
   - [Database](runbooks/database.md)
   - [VPS: provisioning, backups, alerts, cutover](runbooks/vps.md)
+  - [Email: Resend setup and limits](runbooks/email.md)
   - [Debugging](runbooks/debugging.md)
 - **Planning**
   - [Circuit competition: audit and plan](planning/series/plan.md)

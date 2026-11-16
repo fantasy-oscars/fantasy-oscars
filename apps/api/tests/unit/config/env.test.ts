@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, loadConfig, parsePgPoolConfig } from "../../../src/config/env.js";
+import {
+  ConfigError,
+  DEFAULT_MAIL_FROM,
+  DEFAULT_MAIL_REPLY_TO,
+  loadConfig,
+  parseMailConfig,
+  parsePgPoolConfig,
+  parseWebBaseUrl
+} from "../../../src/config/env.js";
 
 function withEnv(env: Record<string, string>, fn: () => void) {
   const prev = { ...process.env };
@@ -113,5 +121,62 @@ describe("parsePgPoolConfig", () => {
     for (const bad of ["0", "-3", "abc", "2.5"]) {
       expect(() => parsePgPoolConfig({ PG_POOL_MAX: bad })).toThrow(ConfigError);
     }
+  });
+});
+
+describe("mail config", () => {
+  it("defaults the sender and reply-to and treats a blank key as unset", () => {
+    expect(parseMailConfig({ RESEND_API_KEY: "  " })).toEqual({
+      resendApiKey: null,
+      from: DEFAULT_MAIL_FROM,
+      replyTo: DEFAULT_MAIL_REPLY_TO
+    });
+    expect(DEFAULT_MAIL_FROM).toBe("Fantasy Oscars <no-reply@fantasy-oscars.com>");
+    expect(DEFAULT_MAIL_REPLY_TO).toBe("support@fantasy-oscars.com");
+  });
+
+  it("reads overrides from the environment", () => {
+    expect(
+      parseMailConfig({
+        RESEND_API_KEY: "re_123",
+        MAIL_FROM: "Test <a@example.com>",
+        MAIL_REPLY_TO: "b@example.com"
+      })
+    ).toEqual({
+      resendApiKey: "re_123",
+      from: "Test <a@example.com>",
+      replyTo: "b@example.com"
+    });
+  });
+});
+
+describe("WEB_BASE_URL", () => {
+  it("falls back to the first CORS origin", () => {
+    expect(parseWebBaseUrl(undefined, ["http://localhost:5173", "http://x"])).toBe(
+      "http://localhost:5173"
+    );
+  });
+
+  it("strips a trailing slash and keeps a path prefix", () => {
+    expect(parseWebBaseUrl("https://www.fantasy-oscars.com/", [])).toBe(
+      "https://www.fantasy-oscars.com"
+    );
+    expect(parseWebBaseUrl("https://example.com/app/", [])).toBe(
+      "https://example.com/app"
+    );
+  });
+
+  it("rejects values that are not http(s) URLs", () => {
+    expect(() => parseWebBaseUrl("not a url", [])).toThrow(ConfigError);
+    expect(() => parseWebBaseUrl("ftp://example.com", [])).toThrow(ConfigError);
+  });
+
+  it("is exposed on the loaded config", () => {
+    withEnv(
+      { PORT: "4000", AUTH_SECRET: "secret", WEB_BASE_URL: "https://example.com" },
+      () => {
+        expect(loadConfig().webBaseUrl).toBe("https://example.com");
+      }
+    );
   });
 });

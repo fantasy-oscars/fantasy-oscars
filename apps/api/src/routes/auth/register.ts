@@ -5,7 +5,7 @@ import { registerBodySchema } from "@fantasy-oscars/shared/schemas";
 import type { DbClient } from "../../data/db.js";
 import { AppError } from "../../errors.js";
 import { parseBody } from "../../utils/validate.js";
-import { hashPassword } from "./password.js";
+import { hashPassword } from "../../auth/password.js";
 import { insertUser } from "./users.js";
 
 export function registerAuthRegisterRoute(args: {

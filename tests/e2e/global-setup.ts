@@ -6,6 +6,7 @@ export default async function globalSetup() {
   try {
     const { ceremonyId } = await seedCeremony(stack);
     process.env.E2E_CEREMONY_ID = String(ceremonyId);
+    process.env.E2E_API_LOG = stack.apiLogPath;
   } catch (err) {
     await stack.stop();
     throw err;

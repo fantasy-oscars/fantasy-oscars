@@ -38,19 +38,22 @@
   `/drafts` socket that is already connected is not disconnected when its session
   is revoked; it keeps receiving draft events until it drops and fails to
   reconnect. Its write actions go through HTTP and are rejected immediately.
-- A password reset (`pnpm run admin:reset-password`, see
-  [admin.md](admin.md#reset-a-users-password)) revokes every session of the user.
+- A password reset, by email link (below) or by an operator
+  (`pnpm run admin:reset-password`, see [admin.md](admin.md#reset-a-users-password)),
+  revokes every session of the user, including the browser it was completed in.
+- A password change from the account page (`POST /auth/password`) keeps the
+  current session and revokes every other one.
 
 ## CSRF guard
 
 Overall posture: the cookie is `SameSite=Lax` in production, so browsers do not send it
 on cross-site `POST`/`PUT`/`PATCH`/`DELETE`; no `GET` route changes state; JSON bodies
-need a CORS preflight, which only `CORS_ALLOWED_ORIGINS` passes; and the two routes
+need a CORS preflight, which only `CORS_ALLOWED_ORIGINS` passes; and the routes
 that a cookie alone can drive also check `Origin` (below). Login CSRF and other hosts on
 the same site (`*.fantasy-oscars.com`) are out of scope.
 
-`POST /auth/logout` and `DELETE /auth/me` can be driven by the cookie alone, so
-they refuse (403 `FORBIDDEN`) a request whose `Origin` header is present and not in
+`POST /auth/logout`, `DELETE /auth/me`, `POST /auth/password` and `PATCH /auth/email`
+can be driven by the cookie alone, so they refuse (403 `FORBIDDEN`) a request whose `Origin` header is present and not in
 `CORS_ALLOWED_ORIGINS`. Requests without `Origin` (non-browser clients) are allowed.
 
 ## Passwords
@@ -62,6 +65,59 @@ they refuse (403 `FORBIDDEN`) a request whose `Origin` header is present and not
   verified, so a concurrent admin reset either wins (the login is refused) or
   revokes the session the login created. Remaining legacy rows
   are cleared by the next login or an admin reset; nobody is forced to reset.
+
+## Password reset by email
+
+The only email the app sends. Delivery setup: [email.md](email.md).
+
+1. **Request.** "Forgot password?" on the sign-in screen opens `/forgot-password`,
+   which posts `POST /auth/password-reset/request { email }`. The answer is always
+   `200 {"ok":true}`, whether or not an account uses the address, and the screen
+   shows the same message either way, so the form cannot be used to find accounts.
+   The lookup and token work happen before the reply; the email is sent after it,
+   so known and unknown addresses take about the same time.
+2. **Token.** 32 random bytes, base64url, sent only in the email link
+   (`$WEB_BASE_URL/reset-password?token=…`). The database keeps only its SHA-256 in
+   `password_reset_token` (`token_hash` unique, `expires_at` = created + 60 minutes,
+   `used_at`). A new request deletes the user's earlier unused tokens, so only the
+   newest link works.
+3. **Reset.** `/reset-password` reads the token, removes it from the address bar at
+   once (`history.replaceState`) and sets `<meta name="referrer" content="no-referrer">`
+   (the site-wide policy is already `strict-origin-when-cross-origin`). It posts
+   `POST /auth/password-reset/confirm { token, password }`; the password goes through
+   the shared validator. In one transaction the API sets the password, marks the
+   token used and revokes every session of the user. It answers `204` and does not
+   sign the user in; the web sends them to sign in. A missing, wrong, expired or
+   used token gets one answer, `400 INVALID_RESET_TOKEN`, and the page offers a link
+   to ask for a new one.
+
+Rate limits (in-memory, per API process): request 10 per 15 minutes per IP and 3 per
+hour per address (across IPs); confirm 10 per 15 minutes per IP. A rate-limited
+request gets `429` whether or not the address has an account.
+
+A password change, an email change or a completed reset also voids any outstanding
+reset links.
+
+## Account changes (signed in)
+
+- `POST /auth/password { currentPassword, newPassword }` → `204`. Wrong current
+  password → `400 INVALID_CURRENT_PASSWORD`. Keeps this session, revokes the others.
+- `PATCH /auth/email { currentPassword, email }` → `200 { user: { email } }`. An
+  address another account uses, in any case, → `409 USER_EXISTS`. No confirmation
+  email is sent (owner decision: as few emails as possible), so a typo means the
+  user cannot receive reset links until they or an operator fix it.
+- Both are Origin-guarded and limited to 10 per 15 minutes per IP, which slows
+  guessing the current password with a stolen session.
+
+## Logging
+
+Recovery and account-change routes log structurally only: `password_reset_requested`
+(outcome `issued` or `no_account`), `password_reset_completed`, `password_changed` and
+`email_changed`, each with `user_id` and outcome. Tokens, passwords and full email
+addresses are never logged. These are player actions, so nothing goes to
+`admin_audit_log`. In development the logging mailer writes `mail_logged` with a
+masked recipient (`a***@example.com`) and the link, so the flow can be tested
+without sending email.
 
 ## Credential transports
 

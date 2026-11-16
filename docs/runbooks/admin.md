@@ -15,10 +15,37 @@ UPDATE app_user SET is_admin = TRUE WHERE username = 'your-username';
 
 Then log in again so the issued token includes `is_admin: true`.
 
+## Help a Player Who Lost Access
+
+Players reset their own password by email ("Forgot password?" on the sign-in
+screen; flow in [auth.md](auth.md#password-reset-by-email)). When one asks for help:
+
+1. **Find the account.** Admin → Users: search by username or email. Each result
+   shows the email under the username.
+2. **They still control that address:** ask them to use "Forgot password?" and to
+   check their spam folder. Links expire after an hour and only the newest one
+   works. Requests are limited to 3 per hour per address, so if they asked several
+   times, wait an hour.
+3. **They no longer control it, or the address is wrong** (there is no email
+   confirmation, so a typo at signup is possible): verify their identity out of band
+   first, for example through someone in their league who knows them, or details only
+   the account holder would know (leagues, recent picks). Never act on an email
+   alone. Then either:
+   - set a new password with `admin:reset-password` (below) and share it privately;
+     they can then change their email from the account page; or
+   - correct `app_user.email` directly (keep it unique, case-insensitively) and let
+     them use "Forgot password?":
+
+     ```sql
+     UPDATE app_user SET email = lower('new@example.com') WHERE username = 'alice';
+     ```
+
+Do not send a reset link to an address the player does not control.
+
 ## Reset a User's Password
 
-There is no self-service reset. An operator with database access sets a new
-password and signs the user out everywhere:
+An operator with database access sets a new password and signs the user out
+everywhere:
 
 ```bash
 # Password from an env var (prefix the line with a space if your shell keeps

@@ -10,6 +10,8 @@ import { DraftLayout } from "./layouts/DraftLayout";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AboutPage } from "./pages/AboutPage";
 import { CodeOfConductPage } from "./pages/CodeOfConductPage";
 import { ContactPage } from "./pages/ContactPage";
@@ -85,6 +87,16 @@ function RoutesConfig() {
             </RedirectIfAuthed>
           }
         />
+        <Route
+          path="/forgot-password"
+          element={
+            <RedirectIfAuthed>
+              <ForgotPasswordPage />
+            </RedirectIfAuthed>
+          }
+        />
+        {/* Not redirected when signed in: the link must work in a browser that has a session. */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/reset" element={<Navigate to="/login" replace />} />
         <Route path="/reset/confirm" element={<Navigate to="/login" replace />} />
       </Route>
