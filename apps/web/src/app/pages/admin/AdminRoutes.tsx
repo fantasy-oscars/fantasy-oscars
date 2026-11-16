@@ -12,9 +12,10 @@ import { AdminUsersSearchPage } from "./users/AdminUsersSearchPage";
 import { AdminCategoryTemplatesPage } from "./categoryTemplates/AdminCategoryTemplatesPage";
 import { AdminFilmsPage } from "./films/AdminFilmsPage";
 import { AdminContentLayout } from "./content/AdminContentLayout";
-import { AdminContentHomePage } from "./content/AdminContentHomePage";
-import { AdminStaticContentEditorPage } from "./content/AdminStaticContentEditorPage";
-import { AdminDynamicContentLedgerPage } from "./content/AdminDynamicContentLedgerPage";
+import {
+  AdminAnnouncementsKeyRedirect,
+  AdminAnnouncementsPage
+} from "./content/AdminAnnouncementsPage";
 import { AdminDynamicContentEditorPage } from "./content/AdminDynamicContentEditorPage";
 import { AdminSafeguardsPage } from "./safeguards/AdminSafeguardsPage";
 import { AdminSystemLayout } from "./system/AdminSystemLayout";
@@ -51,9 +52,8 @@ export default function AdminRoutes() {
         <Route path="films" element={<AdminFilmsPage />} />
 
         <Route path="content" element={<AdminContentLayout />}>
-          <Route index element={<AdminContentHomePage />} />
-          <Route path="static/:key" element={<AdminStaticContentEditorPage />} />
-          <Route path="dynamic/:key" element={<AdminDynamicContentLedgerPage />} />
+          <Route index element={<AdminAnnouncementsPage />} />
+          <Route path="dynamic/:key" element={<AdminAnnouncementsKeyRedirect />} />
           <Route
             path="dynamic/:key/drafts/:id"
             element={<AdminDynamicContentEditorPage />}

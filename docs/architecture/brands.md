@@ -290,7 +290,12 @@ resolves per mode.
   `home-hero-radius` (`radius-lg` for panels, `0` for `open`), `home-hero-rule` (`open`
   only: `3px double` ink for double rules, else `2px solid` ink),
   `home-hero-align`, `home-hero-tagline-inline` (`0` or `auto`), `home-hero-max`,
-  `home-hero-fit`, `home-open` (`1` for open regions), `home-updates-bg`,
+  `home-hero-fit`, `home-hero-tone-color` and `home-hero-stop-color` (the wordmark's
+  tone and stop colours on the hero: an open hero takes the header's; a panel takes
+  whichever mode's value of `toneColor` reaches 3:1 on it, the panel's own mode first,
+  else `inherit`, so the hero ink; the tone is `inherit` unless `twoTone` is `colour`;
+  the hero card redefines `wordmark-tone-color` and `wordmark-stop-color` from them),
+  `home-open` (`1` for open regions), `home-updates-bg`,
   `home-updates-shadow`, `home-aside-rule`, `home-align`, and the create-league
   card's `home-cta-bg`, `-fg`, `-shadow`, `-ring` and the button's `-button-bg`, `-fg`,
   `-hover`, `-active`, `-bd` and `-bd-hover` (the 03 primary skin's values unless the tile

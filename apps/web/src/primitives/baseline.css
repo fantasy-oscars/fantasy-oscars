@@ -106,6 +106,9 @@
   background: var(--brand-home-hero-bg);
   color: var(--brand-home-hero-fg);
   --fo-typo-muted: var(--brand-home-hero-muted);
+  /* The wordmark's tone, as it reads on this surface (theme/brands/css.ts). */
+  --brand-wordmark-tone-color: var(--brand-home-hero-tone-color);
+  --brand-wordmark-stop-color: var(--brand-home-hero-stop-color);
   box-shadow: var(--brand-shadow-hero);
   border-radius: var(--brand-home-hero-radius);
   border-bottom: var(--brand-home-hero-rule);

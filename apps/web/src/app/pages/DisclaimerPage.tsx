@@ -1,7 +1,6 @@
-import { useStaticContentOrchestration } from "@/orchestration/content";
+import { SITE_PAGES } from "@/content/sitePages";
 import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function DisclaimerPage() {
-  const { view } = useStaticContentOrchestration("legal_disclaimer");
-  return <StaticContentScreen fallbackTitle="Disclaimer" view={view} />;
+  return <StaticContentScreen page={SITE_PAGES.disclaimer} />;
 }

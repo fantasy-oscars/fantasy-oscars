@@ -2,25 +2,7 @@ import type { DbClient } from "../db.js";
 import { query, runInTransaction } from "../db.js";
 import type { Pool, PoolClient } from "pg";
 
-export type CmsStaticKey =
-  | "about"
-  | "faq"
-  | "how_it_works"
-  | "landing_blurb"
-  | "code_of_conduct"
-  | "legal_terms"
-  | "legal_privacy"
-  | "legal_disclaimer";
-
 export type CmsDynamicKey = "banner" | "home_main";
-
-export type CmsStaticContentRow = {
-  key: string;
-  title: string;
-  body_markdown: string;
-  updated_at: string;
-  updated_by_user_id: number | null;
-};
 
 export type CmsDynamicContentRow = {
   id: number;
@@ -39,43 +21,6 @@ export type CmsDynamicContentRow = {
   updated_by_user_id: number | null;
   published_by_user_id: number | null;
 };
-
-export async function getStaticContentByKey(client: DbClient, key: string) {
-  const { rows } = await query<CmsStaticContentRow>(
-    client,
-    `SELECT key, title, body_markdown, updated_at, updated_by_user_id
-     FROM cms_static_content
-     WHERE key = $1`,
-    [key]
-  );
-  return rows[0] ?? null;
-}
-
-export async function upsertStaticContent(
-  client: DbClient,
-  input: {
-    key: string;
-    title: string;
-    body_markdown: string;
-    actor_user_id?: number | null;
-  }
-) {
-  const { key, title, body_markdown, actor_user_id = null } = input;
-  const { rows } = await query<CmsStaticContentRow>(
-    client,
-    `INSERT INTO cms_static_content (key, title, body_markdown, updated_by_user_id)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (key)
-     DO UPDATE SET
-       title = EXCLUDED.title,
-       body_markdown = EXCLUDED.body_markdown,
-       updated_at = now(),
-       updated_by_user_id = EXCLUDED.updated_by_user_id
-     RETURNING key, title, body_markdown, updated_at, updated_by_user_id`,
-    [key, title, body_markdown, actor_user_id]
-  );
-  return rows[0] ?? null;
-}
 
 export async function listDynamicContentByKey(client: DbClient, key: string) {
   const { rows } = await query<CmsDynamicContentRow>(

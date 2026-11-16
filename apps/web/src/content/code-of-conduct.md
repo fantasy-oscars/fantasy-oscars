@@ -1,5 +1,3 @@
-# Code of Conduct
-
 ## Purpose
 
 This Code of Conduct exists to help maintain a respectful, welcoming environment for everyone using the app. It sets expectations for behavior and outlines how concerns are handled.

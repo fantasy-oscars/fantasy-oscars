@@ -259,36 +259,20 @@ body {
   font-size: var(--fo-heading-h2-size);
 }
 
-/* The hero title scales with its container (the hero card) up to the brand's cap;
-   `data-tier` (decisions/landing.ts) steps long titles down. Without a tier it is
-   treated as a display title. */
+/* The hero title scales with its container (the hero card) up to the brand's cap. */
 .mantine-Title-root[data-fo-typo="hero"] {
-  --hero-tier: 1;
   font-family: var(--brand-font-display);
   letter-spacing: var(--brand-hero-tracking);
   word-spacing: var(--brand-display-word-spacing);
   font-size: max(
     var(--fo-font-size-lg),
-    min(
-      calc(var(--brand-home-hero-max) * var(--hero-tier)),
-      calc(var(--brand-home-hero-fit) * var(--hero-tier) * 1cqi)
-    )
+    min(var(--brand-home-hero-max), calc(var(--brand-home-hero-fit) * 1cqi))
   );
   line-height: 1;
   text-wrap: balance;
   overflow-wrap: anywhere;
   max-width: 100%;
   margin: 0;
-}
-
-.mantine-Title-root[data-fo-typo="hero"][data-tier="medium"] {
-  --hero-tier: 0.62;
-  line-height: 1.1;
-}
-
-.mantine-Title-root[data-fo-typo="hero"][data-tier="long"] {
-  font-size: var(--fo-heading-h1-size);
-  line-height: 1.1;
 }
 
 .mantine-Title-root[data-fo-typo="page"] {
@@ -2798,12 +2782,21 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   outline-offset: var(--fo-focus-ring-offset);
 }
 
+/* The two-tone wordmark (ui/WordmarkTitle.tsx). `data-face` picks the face and
+   `data-size` the size; the hero size and the display face come from the hero Title
+   variant above. */
 .mantine-Title-root.site-title {
   margin: 0;
+}
+
+.mantine-Title-root.site-title[data-face="wordmark"] {
   font-family: var(--brand-wordmark-font);
   font-weight: var(--brand-wordmark-weight);
   text-transform: var(--brand-wordmark-case);
   letter-spacing: var(--brand-wordmark-letter-spacing);
+}
+
+.mantine-Title-root.site-title[data-size="header"] {
   color: var(--brand-text);
   font-size: var(--fo-font-size-xl);
   line-height: 1.1;
@@ -3069,7 +3062,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 /* The wide display faces need the smaller size a little above the phone breakpoint, so
    the drawer-mode row (menu, wordmark, theme, invites) still fits on one line at 500. */
 @media (max-width: 539.98px) {
-  .mantine-Title-root.site-title {
+  .mantine-Title-root.site-title[data-size="header"] {
     font-size: var(--fo-font-size-lg);
   }
 }
@@ -4490,6 +4483,29 @@ small.error {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--fo-gutter-mobile);
+}
+
+/* Phone: the one-word "Announcements" title steps down to the page size so it fits
+   the column, and the type filter keeps 44 px hit areas. */
+@media (max-width: 499.98px) {
+  .mantine-Title-root[data-fo-typo].baseline-textHeroTitle.admin-contentTitle {
+    font-size: var(--fo-heading-h2-size);
+  }
+
+  .admin-announcementsFilter .mantine-SegmentedControl-label {
+    min-height: var(--fo-touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Live preview beside the content editor's Markdown field. */
+.admin-contentPreview {
+  padding: var(--fo-space-sm);
+  border: var(--fo-border-width) solid var(--fo-border);
+  border-radius: var(--fo-radius-small);
+  overflow-wrap: anywhere;
 }
 
 .admin-index-row {

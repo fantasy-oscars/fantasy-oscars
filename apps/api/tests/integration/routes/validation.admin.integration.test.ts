@@ -791,17 +791,7 @@ describe("request validation: admin routes", () => {
   describe("content", () => {
     it("rejects blank content keys", async () => {
       expectValidation(
-        await call("get", "/admin/content/static/%20", undefined),
-        "Key is required",
-        ["key"]
-      );
-      expectValidation(
         await call("get", "/admin/content/dynamic/%20", undefined),
-        "Key is required",
-        ["key"]
-      );
-      expectValidation(
-        await call("put", "/admin/content/static/%20", { title: "t" }),
         "Key is required",
         ["key"]
       );
@@ -812,14 +802,15 @@ describe("request validation: admin routes", () => {
       );
     });
 
-    it("stores empty text for non-string static content fields", async () => {
-      const res = await api
-        .put("/admin/content/static/about")
-        .set("Authorization", `Bearer ${token}`)
-        .send({ title: 5, body_markdown: null });
-      expect(res.status).toBe(200);
-      expect(res.body.content.title).toBe("");
-      expect(res.body.content.body_markdown).toBe("");
+    it("no longer serves the static content editor routes", async () => {
+      for (const method of ["get", "put"] as const) {
+        const res = await call(method, "/admin/content/static/about", {
+          title: "t",
+          body_markdown: "b"
+        });
+        expect(res.status).toBe(404);
+        expect(res.json.error.code).toBe("NOT_FOUND");
+      }
     });
   });
 });

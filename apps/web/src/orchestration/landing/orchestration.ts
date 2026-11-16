@@ -6,7 +6,6 @@ import {
   type LandingSeasonPreview
 } from "../../decisions/landing/seasonPreviews";
 
-type StaticContent = { key: string; title: string; body_markdown: string };
 type DynamicContent = {
   id: number;
   key: string;
@@ -14,11 +13,6 @@ type DynamicContent = {
   body_markdown: string;
   published_at: string | null;
 };
-
-export type LandingBlurbView =
-  | { state: "loading" }
-  | { state: "error"; message: string }
-  | { state: "ready"; content: StaticContent };
 
 export type LandingUpdatesView =
   | { state: "loading" }
@@ -32,19 +26,9 @@ export type LandingSeasonsView =
   | { state: "ready"; seasons: LandingSeasonPreview[]; total: number };
 
 export type LandingView = {
-  blurb: LandingBlurbView;
   updates: LandingUpdatesView;
   seasons: LandingSeasonsView;
 };
-
-async function loadStaticContent(key: string) {
-  return fetchJson<{ content: StaticContent }>(
-    `/content/static/${encodeURIComponent(key)}`,
-    {
-      method: "GET"
-    }
-  );
-}
 
 async function loadDynamicContent(key: string) {
   return fetchJson<{ content: DynamicContent | null }>(
@@ -84,23 +68,8 @@ async function loadSeasonPreview(
 export function useLandingOrchestration(opts: { seasonsEnabled: boolean }) {
   const { seasonsEnabled } = opts;
 
-  const [blurb, setBlurb] = useState<LandingBlurbView>({ state: "loading" });
   const [updates, setUpdates] = useState<LandingUpdatesView>({ state: "loading" });
   const [seasons, setSeasons] = useState<LandingSeasonsView>({ state: "idle" });
-
-  const refreshBlurb = useCallback(async () => {
-    setBlurb((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
-    const res = await loadStaticContent("landing_blurb");
-    if (!res.ok || !res.data?.content) {
-      setBlurb((prev) =>
-        prev.state === "ready"
-          ? prev
-          : { state: "error", message: res.error ?? "Failed to load content" }
-      );
-      return;
-    }
-    setBlurb({ state: "ready", content: res.data.content });
-  }, []);
 
   const refreshUpdates = useCallback(async () => {
     setUpdates((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
@@ -140,16 +109,12 @@ export function useLandingOrchestration(opts: { seasonsEnabled: boolean }) {
     }
   }, [seasonsEnabled]);
 
-  useEffect(() => void refreshBlurb(), [refreshBlurb]);
   useEffect(() => void refreshUpdates(), [refreshUpdates]);
   useEffect(() => void refreshSeasons(), [refreshSeasons]);
 
-  const view: LandingView = useMemo(
-    () => ({ blurb, updates, seasons }),
-    [blurb, updates, seasons]
-  );
+  const view: LandingView = useMemo(() => ({ updates, seasons }), [updates, seasons]);
   return {
     view,
-    refresh: { blurb: refreshBlurb, updates: refreshUpdates, seasons: refreshSeasons }
+    refresh: { updates: refreshUpdates, seasons: refreshSeasons }
   };
 }

@@ -55,7 +55,7 @@ export function DynamicContentEditorHeader(props: {
             {isSequential ? (
               !isActive ? (
                 <Button type="button" onClick={onActivate} disabled={busy}>
-                  Make active
+                  Publish
                 </Button>
               ) : null
             ) : (
@@ -65,7 +65,7 @@ export function DynamicContentEditorHeader(props: {
                 onClick={isActive ? onDeactivate : onActivate}
                 disabled={busy}
               >
-                {isActive ? "Deactivate" : "Activate"}
+                {isActive ? "Unpublish" : "Publish"}
               </Button>
             )}
             {!isActive ? (

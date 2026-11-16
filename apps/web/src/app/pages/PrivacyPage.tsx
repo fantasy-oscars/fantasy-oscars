@@ -1,7 +1,6 @@
-import { useStaticContentOrchestration } from "@/orchestration/content";
+import { SITE_PAGES } from "@/content/sitePages";
 import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function PrivacyPage() {
-  const { view } = useStaticContentOrchestration("legal_privacy");
-  return <StaticContentScreen fallbackTitle="Privacy" view={view} />;
+  return <StaticContentScreen page={SITE_PAGES.privacy} />;
 }

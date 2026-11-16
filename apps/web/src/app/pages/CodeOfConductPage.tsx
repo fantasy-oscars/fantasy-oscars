@@ -1,7 +1,6 @@
-import { useStaticContentOrchestration } from "@/orchestration/content";
+import { SITE_PAGES } from "@/content/sitePages";
 import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function CodeOfConductPage() {
-  const { view } = useStaticContentOrchestration("code_of_conduct");
-  return <StaticContentScreen fallbackTitle="Code of Conduct" view={view} />;
+  return <StaticContentScreen page={SITE_PAGES.codeOfConduct} />;
 }

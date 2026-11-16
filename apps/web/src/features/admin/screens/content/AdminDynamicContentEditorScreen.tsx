@@ -1,18 +1,22 @@
 import {
+  Box,
   Checkbox,
   Divider,
   Grid,
   Select,
+  SimpleGrid,
   Skeleton,
   Stack,
+  Text,
   TextInput,
   Textarea
 } from "@ui";
+import { Markdown } from "@ui/Markdown";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
 import type { CmsDynamicRow } from "@/orchestration/adminContent";
-import type { DynamicKey } from "@/decisions/adminContent";
+import { announcementStatusLabel, type DynamicKey } from "@/decisions/adminContent";
 import { DynamicContentEditorHeader } from "@/features/admin/ui/content/DynamicContentEditorHeader";
 import "@/primitives/baseline.css";
 
@@ -71,7 +75,7 @@ export function AdminDynamicContentEditorScreen(props: {
           <Skeleton height="var(--fo-font-size-sm)" width="34%" />
         </Stack>
         <Divider />
-        <Stack className="stack-sm" gap="sm">
+        <Stack gap="sm">
           <Skeleton height="56px" width="100%" />
           <Skeleton height="320px" width="100%" />
         </Stack>
@@ -86,8 +90,8 @@ export function AdminDynamicContentEditorScreen(props: {
     <Stack component="section">
       <DynamicContentEditorHeader
         title={meta.label}
-        statusText={`Status: ${isActive ? "Active" : "Inactive"}`}
-        backHref={`/admin/content/dynamic/${contentKey}`}
+        statusText={`Status: ${announcementStatusLabel(entry.status)}`}
+        backHref="/admin/content"
         viewOnly={viewOnly}
         busy={busy}
         isSequential={isSequential}
@@ -100,84 +104,84 @@ export function AdminDynamicContentEditorScreen(props: {
 
       <Divider />
 
-      <Stack className="stack-sm" gap="sm">
+      {/* A plain flex Stack: the grid `.stack-sm` sized its column to the content,
+          which left the editor phone-width on desktop. */}
+      <Stack gap="sm">
         {fields.isBanner ? (
-          <Grid gutter="lg" align="flex-start">
-            <Grid.Col span={{ base: 12, md: 7 }}>
-              <Stack gap="sm">
-                <TextInput
-                  label="Title"
-                  value={fields.title}
-                  onChange={(e) => fields.setTitle(e.currentTarget.value)}
-                  disabled={viewOnly}
-                />
-                <Textarea
-                  label="Body (Markdown)"
-                  value={fields.body}
-                  onChange={(e) => fields.setBody(e.currentTarget.value)}
-                  autosize
-                  minRows={12}
-                  disabled={viewOnly}
-                />
-                <FormStatus loading={busy} result={status} />
-              </Stack>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 5 }}>
-              <Stack gap="sm">
-                <Select
-                  label="Variant"
-                  value={fields.variant}
-                  onChange={(v) => fields.setVariant((v ?? "info") as never)}
-                  data={[
-                    { value: "info", label: "info" },
-                    { value: "warning", label: "warning" },
-                    { value: "success", label: "success" },
-                    { value: "error", label: "error" }
-                  ]}
-                  disabled={viewOnly}
-                />
-                <Checkbox
-                  label="Dismissible"
-                  checked={fields.dismissible}
-                  onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
-                  disabled={viewOnly}
-                />
-                <TextInput
-                  label="Starts at (optional)"
-                  type="datetime-local"
-                  value={fields.startsAtLocal}
-                  onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
-                  disabled={viewOnly}
-                />
-                <TextInput
-                  label="Ends at (optional)"
-                  type="datetime-local"
-                  value={fields.endsAtLocal}
-                  onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
-                  disabled={viewOnly}
-                />
-              </Stack>
-            </Grid.Col>
-          </Grid>
-        ) : (
-          <>
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm">
+            <Select
+              label="Variant"
+              value={fields.variant}
+              onChange={(v) => fields.setVariant((v ?? "info") as never)}
+              data={[
+                { value: "info", label: "info" },
+                { value: "warning", label: "warning" },
+                { value: "success", label: "success" },
+                { value: "error", label: "error" }
+              ]}
+              disabled={viewOnly}
+            />
             <TextInput
-              label="Title"
-              value={fields.title}
-              onChange={(e) => fields.setTitle(e.currentTarget.value)}
+              label="Starts at (optional)"
+              type="datetime-local"
+              value={fields.startsAtLocal}
+              onChange={(e) => fields.setStartsAtLocal(e.currentTarget.value)}
               disabled={viewOnly}
             />
-            <Textarea
-              label="Body (Markdown)"
-              value={fields.body}
-              onChange={(e) => fields.setBody(e.currentTarget.value)}
-              autosize
-              minRows={12}
+            <TextInput
+              label="Ends at (optional)"
+              type="datetime-local"
+              value={fields.endsAtLocal}
+              onChange={(e) => fields.setEndsAtLocal(e.currentTarget.value)}
               disabled={viewOnly}
             />
-            <FormStatus loading={busy} result={status} />
-          </>
-        )}
+            <Checkbox
+              label="Dismissible"
+              checked={fields.dismissible}
+              onChange={(e) => fields.setDismissible(e.currentTarget.checked)}
+              disabled={viewOnly}
+              mt={{ md: "lg" }}
+            />
+          </SimpleGrid>
+        ) : null}
+        <Grid gutter="lg" align="flex-start">
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Stack gap="sm">
+              <TextInput
+                label="Title"
+                value={fields.title}
+                onChange={(e) => fields.setTitle(e.currentTarget.value)}
+                disabled={viewOnly}
+              />
+              <Textarea
+                label="Body (Markdown)"
+                value={fields.body}
+                onChange={(e) => fields.setBody(e.currentTarget.value)}
+                autosize
+                minRows={12}
+                disabled={viewOnly}
+              />
+              <FormStatus loading={busy} result={status} />
+            </Stack>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <Stack component="section" gap="var(--fo-space-dense-2)" aria-label="Preview">
+              <Text variant="meta" m="var(--fo-space-0)" aria-hidden="true">
+                Preview
+              </Text>
+              <Box className="admin-contentPreview">
+                {fields.body.trim() ? (
+                  <Markdown
+                    markdown={fields.body}
+                    headingBase={fields.isBanner ? undefined : 4}
+                  />
+                ) : (
+                  <Text variant="helper">Nothing to preview yet.</Text>
+                )}
+              </Box>
+            </Stack>
+          </Grid.Col>
+        </Grid>
       </Stack>
     </Stack>
   );

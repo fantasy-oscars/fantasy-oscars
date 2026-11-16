@@ -1,72 +1,84 @@
-export type StaticKey =
-  | "about"
-  | "faq"
-  | "how_it_works"
-  | "landing_blurb"
-  | "code_of_conduct"
-  | "legal_terms"
-  | "legal_privacy"
-  | "legal_disclaimer";
-
-export const STATIC_META: Record<StaticKey, { label: string; hint: string }> = {
-  landing_blurb: {
-    label: "Hero",
-    hint: "The hero card at the top of the Home page (title + tagline)."
-  },
-  about: {
-    label: "About",
-    hint: "Single-page site content shown under About."
-  },
-  faq: {
-    label: "FAQ",
-    hint: "Single-page site content shown under FAQ."
-  },
-  how_it_works: {
-    label: "How It Works",
-    hint: "Single-page site content shown under How It Works."
-  },
-  code_of_conduct: {
-    label: "Code of Conduct",
-    hint: "Legal page shown under Code of Conduct."
-  },
-  legal_terms: {
-    label: "Terms",
-    hint: "Legal page shown under Terms."
-  },
-  legal_privacy: {
-    label: "Privacy",
-    hint: "Legal page shown under Privacy."
-  },
-  legal_disclaimer: {
-    label: "Disclaimer",
-    hint: "Legal page shown under Disclaimer."
-  }
-};
-
 export type DynamicKey = "banner" | "home_main";
 
 export const DYNAMIC_META: Record<DynamicKey, { label: string; hint: string }> = {
   home_main: {
-    label: "Home main body",
-    hint: "Exactly one entry is shown on the landing page at a time."
+    label: "Home announcement",
+    hint: "Exactly one Home announcement is published at a time."
   },
   banner: {
-    label: "Banner messages",
-    hint: "Multiple banners may be shown at the same time."
+    label: "Banner announcement",
+    hint: "Several banners may be published at the same time."
   }
 };
 
-const OPERATOR_STATIC_KEYS = new Set<StaticKey>(["landing_blurb"]);
-const OPERATOR_DYNAMIC_KEYS = new Set<DynamicKey>(["home_main", "banner"]);
+/** The two announcement types, one per dynamic content key. */
+export type AnnouncementType = "home" | "banner";
+export type AnnouncementFilter = "all" | AnnouncementType;
 
-export function canEditStaticContentByRole(args: {
-  role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
-  key: StaticKey;
-}) {
-  if (args.role === "SUPER_ADMIN") return true;
-  if (args.role === "OPERATOR") return OPERATOR_STATIC_KEYS.has(args.key);
-  return false;
+export const ANNOUNCEMENT_TYPES: AnnouncementType[] = ["home", "banner"];
+
+export const ANNOUNCEMENT_TYPE_KEY: Record<AnnouncementType, DynamicKey> = {
+  home: "home_main",
+  banner: "banner"
+};
+
+export const ANNOUNCEMENT_TYPE_LABEL: Record<AnnouncementType, string> = {
+  home: "Home",
+  banner: "Banner"
+};
+
+export function announcementTypeForKey(key: string): AnnouncementType | null {
+  if (key === "home_main") return "home";
+  if (key === "banner") return "banner";
+  return null;
 }
+
+export function parseAnnouncementFilter(raw: string | null): AnnouncementFilter {
+  return raw === "home" || raw === "banner" ? raw : "all";
+}
+
+export function filterAnnouncements<T extends { key: string }>(
+  entries: T[],
+  filter: AnnouncementFilter
+): T[] {
+  if (filter === "all") return entries;
+  return entries.filter((e) => announcementTypeForKey(e.key) === filter);
+}
+
+/** Most recently updated first; ties fall back to the higher id. */
+export function sortAnnouncements<T extends { id: number; updated_at: string }>(
+  entries: T[]
+): T[] {
+  const time = (value: string) => {
+    const t = new Date(value).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+  return [...entries].sort(
+    (a, b) => time(b.updated_at) - time(a.updated_at) || b.id - a.id
+  );
+}
+
+/**
+ * Only one Home announcement is published at a time: publishing a Home entry
+ * unpublishes the current one. Returns that entry so the caller can confirm the
+ * replacement, or null when publishing `entryId` replaces nothing.
+ */
+export function homeAnnouncementToReplace<
+  T extends { id: number; key: string; status: string }
+>(entries: T[], entryId: number): T | null {
+  const target = entries.find((e) => e.id === entryId);
+  if (!target || announcementTypeForKey(target.key) !== "home") return null;
+  return (
+    entries.find(
+      (e) =>
+        e.id !== entryId &&
+        announcementTypeForKey(e.key) === "home" &&
+        e.status === "PUBLISHED"
+    ) ?? null
+  );
+}
+
+const OPERATOR_DYNAMIC_KEYS = new Set<DynamicKey>(["home_main", "banner"]);
 
 export function canEditDynamicContentByRole(args: {
   role: "NONE" | "OPERATOR" | "SUPER_ADMIN";
@@ -111,6 +123,6 @@ export function localInputToIso(value: string): string | null {
   return d.toISOString();
 }
 
-export function cmsDynamicEntryStatusLabel(status: string): "Active" | "Inactive" {
-  return status === "PUBLISHED" ? "Active" : "Inactive";
+export function announcementStatusLabel(status: string): "Published" | "Draft" {
+  return status === "PUBLISHED" ? "Published" : "Draft";
 }

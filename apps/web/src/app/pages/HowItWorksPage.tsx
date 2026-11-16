@@ -1,7 +1,6 @@
-import { useStaticContentOrchestration } from "@/orchestration/content";
+import { SITE_PAGES } from "@/content/sitePages";
 import { StaticContentScreen } from "@/features/content/screens/StaticContentScreen";
 
 export function HowItWorksPage() {
-  const { view } = useStaticContentOrchestration("how_it_works");
-  return <StaticContentScreen fallbackTitle="How It Works" view={view} />;
+  return <StaticContentScreen page={SITE_PAGES.howItWorks} />;
 }

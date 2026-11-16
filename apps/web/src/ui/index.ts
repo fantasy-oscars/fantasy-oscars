@@ -39,6 +39,7 @@ export * from "./Text";
 export * from "./TextInput";
 export * from "./Textarea";
 export * from "./Title";
+export * from "./WordmarkTitle";
 export * from "./Tooltip";
 export * from "./UnstyledButton";
 export * from "./VisuallyHidden";

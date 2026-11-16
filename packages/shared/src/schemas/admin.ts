@@ -5,7 +5,7 @@ import {
   optionalTrimmedQuery,
   positiveIdString
 } from "./common.js";
-import { contentStaticParams } from "./content.js";
+import { contentKeyParams } from "./content.js";
 
 /*
  * Admin request schemas. Admin clients have always been lenient about types
@@ -246,7 +246,7 @@ export const adminContributorParams = z.object({
 });
 
 /** `/content/.../:key`; the key is checked before the caller's access, so it parses on its own. */
-export const adminContentKeyParams = contentStaticParams;
+export const adminContentKeyParams = contentKeyParams;
 
 export const adminDraftIdParam = z.object({
   id: positiveIdString("That link doesn't look right")
@@ -773,11 +773,6 @@ export const adminUserUpdateBody = z.object({
 // ---------------------------------------------------------------------------
 // CMS content
 // ---------------------------------------------------------------------------
-
-export const adminContentStaticBody = z.object({
-  title: stringOrEmpty,
-  body_markdown: stringOrEmpty
-});
 
 export const adminContentDynamicBody = z.object({
   title: stringOrEmpty,

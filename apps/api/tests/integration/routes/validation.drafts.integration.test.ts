@@ -361,15 +361,16 @@ describe("request validation: drafts, draft plans, ceremonies, content", () => {
 
     it("rejects blank content keys", async () => {
       expectValidation(
-        await call("get", "/content/static/%20", undefined, false),
-        "Key is required",
-        ["key"]
-      );
-      expectValidation(
         await call("get", "/content/dynamic/%20", undefined, false),
         "Key is required",
         ["key"]
       );
+    });
+
+    it("no longer serves static content pages", async () => {
+      const res = await call("get", "/content/static/about", undefined, false);
+      expect(res.status).toBe(404);
+      expect(res.json.error.code).toBe("NOT_FOUND");
     });
   });
 });

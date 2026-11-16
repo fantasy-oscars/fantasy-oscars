@@ -1,5 +1,3 @@
-# Terms of Service
-
 ## Acceptance of Terms
 
 By accessing or using this app, you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not use the app.
@@ -40,4 +38,4 @@ We may update these Terms of Service from time to time. Continued use of the app
 
 If you have questions about these Terms of Service, you may contact us at:
 
-[support@fantasyoscars.com](mailto:support@fantasyoscars.com)
+[support@fantasy-oscars.com](mailto:support@fantasy-oscars.com)

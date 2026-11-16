@@ -4,168 +4,86 @@ import { bumpContentRevision } from "../../../lib/revision";
 import type { ApiResult } from "../../../lib/types";
 import { notify } from "../../../notifications";
 import {
+  ANNOUNCEMENT_TYPE_KEY,
+  ANNOUNCEMENT_TYPES,
   DYNAMIC_META,
-  STATIC_META,
+  homeAnnouncementToReplace,
   isoToLocalInput,
   localInputToIso,
-  type DynamicKey,
-  type StaticKey
+  sortAnnouncements,
+  type AnnouncementType,
+  type DynamicKey
 } from "../../../decisions/adminContent";
 import type { CmsDynamicRow } from "./types";
 export type { CmsDynamicRow } from "./types";
 
-export function useAdminStaticContentEditorOrchestration(args: {
-  key: StaticKey | null;
-}) {
-  const { key } = args;
-  const meta = key ? STATIC_META[key] : null;
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<ApiResult | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-
-  const load = useCallback(async () => {
-    if (!key) return;
-    setLoading(true);
-    setLoadError(null);
-    const res = await fetchJson<{
-      content: { key: string; title: string; body_markdown: string } | null;
-    }>(`/admin/content/static/${encodeURIComponent(key)}`, { method: "GET" });
-    setLoading(false);
-    if (!res.ok) {
-      setTitle("");
-      setBody("");
-      setLoadError(res.error ?? "Failed to load content");
-      return;
-    }
-    const content = res.data?.content;
-    setTitle(content?.title ?? meta?.label ?? "");
-    setBody(content?.body_markdown ?? "");
-  }, [key, meta?.label]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const save = useCallback(async () => {
-    if (!key) return;
-    setSaving(true);
-    setStatus(null);
-    const res = await fetchJson<{
-      content: { key: string; title: string; body_markdown: string };
-    }>(`/admin/content/static/${encodeURIComponent(key)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, body_markdown: body })
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const raw = res.error ?? "Failed to save";
-      const msg =
-        raw === "Unexpected error"
-          ? "Save failed due to an unexpected server error."
-          : raw;
-      setStatus({ ok: false, message: msg });
-      return;
-    }
-    notify({
-      id: "admin.content.static.save.success",
-      severity: "success",
-      trigger_type: "user_action",
-      scope: "local",
-      durability: "ephemeral",
-      requires_decision: false,
-      message: "Saved"
-    });
-    setStatus(null);
-    bumpContentRevision();
-  }, [body, key, title]);
-
-  return {
-    key,
-    meta,
-    loading,
-    saving,
-    status,
-    loadError,
-    title,
-    setTitle,
-    body,
-    setBody,
-    save
-  };
-}
-
-export function useAdminDynamicContentLedgerOrchestration(args: {
-  key: DynamicKey | null;
-}) {
-  const { key } = args;
-  const meta = key ? DYNAMIC_META[key] : null;
-
+export function useAdminAnnouncementsOrchestration() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ApiResult | null>(null);
   const [entriesRaw, setEntriesRaw] = useState<CmsDynamicRow[]>([]);
 
-  const entries = useMemo(() => {
-    return [...entriesRaw].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
-  }, [entriesRaw]);
+  const entries = useMemo(() => sortAnnouncements(entriesRaw), [entriesRaw]);
 
   const load = useCallback(async () => {
-    if (!key) return;
     setLoading(true);
     setStatus(null);
-    const res = await fetchJson<{ entries: CmsDynamicRow[] }>(
-      `/admin/content/dynamic/${encodeURIComponent(key)}`,
-      { method: "GET" }
+    const results = await Promise.all(
+      ANNOUNCEMENT_TYPES.map((type) =>
+        fetchJson<{ entries: CmsDynamicRow[] }>(
+          `/admin/content/dynamic/${encodeURIComponent(ANNOUNCEMENT_TYPE_KEY[type])}`,
+          { method: "GET" }
+        )
+      )
     );
     setLoading(false);
-    if (!res.ok) {
+    const failed = results.find((res) => !res.ok);
+    if (failed) {
       setEntriesRaw([]);
-      setStatus({ ok: false, message: res.error ?? "Failed to load content" });
+      setStatus({ ok: false, message: failed.error ?? "Failed to load announcements" });
       return;
     }
-    setEntriesRaw(res.data?.entries ?? []);
-  }, [key]);
+    setEntriesRaw(results.flatMap((res) => res.data?.entries ?? []));
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const createEntry = useCallback(async () => {
-    if (!key) return { ok: false as const, error: "Invalid key" };
-    setBusy(true);
-    setStatus(null);
-    const res = await fetchJson<{ draft: CmsDynamicRow }>(
-      `/admin/content/dynamic/${encodeURIComponent(key)}/drafts`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "", body_markdown: "" })
+  const createEntry = useCallback(
+    async (type: AnnouncementType) => {
+      const key = ANNOUNCEMENT_TYPE_KEY[type];
+      setBusy(true);
+      setStatus(null);
+      const res = await fetchJson<{ draft: CmsDynamicRow }>(
+        `/admin/content/dynamic/${encodeURIComponent(key)}/drafts`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: "", body_markdown: "" })
+        }
+      );
+      setBusy(false);
+      if (!res.ok) {
+        setStatus({ ok: false, message: res.error ?? "Failed to create announcement" });
+        return {
+          ok: false as const,
+          error: res.error ?? "Failed to create announcement"
+        };
       }
-    );
-    setBusy(false);
-    if (!res.ok) {
-      setStatus({ ok: false, message: res.error ?? "Failed to create entry" });
-      return { ok: false as const, error: res.error ?? "Failed to create entry" };
-    }
-    const draft = res.data?.draft;
-    await load();
-    return { ok: true as const, draftId: draft?.id ?? null };
-  }, [key, load]);
+      const draft = res.data?.draft;
+      await load();
+      return { ok: true as const, key, draftId: draft?.id ?? null };
+    },
+    [load]
+  );
 
-  const publishDraft = useCallback(
-    async (draftId: number) => {
-      if (!key) return;
+  const publishEntry = useCallback(
+    async (entry: CmsDynamicRow) => {
       setBusy(true);
       setStatus(null);
       const res = await fetchJson<{ published: CmsDynamicRow }>(
-        `/admin/content/dynamic/${encodeURIComponent(key)}/drafts/${draftId}/publish`,
+        `/admin/content/dynamic/${encodeURIComponent(entry.key)}/drafts/${entry.id}/publish`,
         { method: "POST" }
       );
       setBusy(false);
@@ -181,21 +99,20 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
         scope: "local",
         durability: "ephemeral",
         requires_decision: false,
-        message: key === "banner" ? "Banner activated" : "Entry made active"
+        message: "Announcement published"
       });
       setStatus(null);
       bumpContentRevision();
     },
-    [key, load]
+    [load]
   );
 
   const unpublishEntry = useCallback(
-    async (entryId: number) => {
-      if (!key) return;
+    async (entry: CmsDynamicRow) => {
       setBusy(true);
       setStatus(null);
       const res = await fetchJson(
-        `/admin/content/dynamic/${encodeURIComponent(key)}/entries/${entryId}/unpublish`,
+        `/admin/content/dynamic/${encodeURIComponent(entry.key)}/entries/${entry.id}/unpublish`,
         { method: "POST" }
       );
       setBusy(false);
@@ -211,23 +128,21 @@ export function useAdminDynamicContentLedgerOrchestration(args: {
         scope: "local",
         durability: "ephemeral",
         requires_decision: false,
-        message: key === "banner" ? "Banner deactivated" : "Entry deactivated"
+        message: "Announcement unpublished"
       });
       setStatus(null);
       bumpContentRevision();
     },
-    [key, load]
+    [load]
   );
 
   return {
-    key,
-    meta,
     loading,
     busy,
     status,
     entries,
     createEntry,
-    publishDraft,
+    publishEntry,
     unpublishEntry
   };
 }
@@ -243,6 +158,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<ApiResult | null>(null);
   const [entry, setEntry] = useState<CmsDynamicRow | null>(null);
+  const [siblings, setSiblings] = useState<CmsDynamicRow[]>([]);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -264,10 +180,12 @@ export function useAdminDynamicContentEditorOrchestration(args: {
     setLoading(false);
     if (!res.ok) {
       setEntry(null);
+      setSiblings([]);
       setStatus({ ok: false, message: res.error ?? "Failed to load entry" });
       return;
     }
     const list = res.data?.entries ?? [];
+    setSiblings(list);
     const found = list.find((r) => r.id === entryId) ?? null;
     setEntry(found);
     if (!found) setStatus({ ok: false, message: "Entry not found" });
@@ -410,6 +328,10 @@ export function useAdminDynamicContentEditorOrchestration(args: {
   }, [entry, key]);
 
   const isBanner = key === "banner";
+  const homeToReplace = useMemo(
+    () => (entry ? homeAnnouncementToReplace(siblings, entry.id) : null),
+    [entry, siblings]
+  );
 
   return {
     key,
@@ -418,6 +340,7 @@ export function useAdminDynamicContentEditorOrchestration(args: {
     busy,
     status,
     entry,
+    homeToReplace,
     fields: {
       title,
       setTitle,

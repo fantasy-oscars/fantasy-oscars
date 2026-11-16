@@ -7,6 +7,7 @@ import { useLocation } from "react-router-dom";
 import { useAuthContext } from "@/auth/context";
 import { normalizeAdminRole } from "@/auth/roles";
 import { PageError } from "@/shared/page-state";
+import { confirmHomeReplacement } from "./confirmHomeReplacement";
 
 export function AdminDynamicContentEditorPage() {
   const { key: keyRaw, id: idRaw } = useParams();
@@ -39,19 +40,23 @@ export function AdminDynamicContentEditorPage() {
       fields={o.fields}
       viewOnly={viewOnly}
       onSave={() => void o.actions.save()}
-      onActivate={() => void o.actions.publish()}
+      onActivate={() => {
+        void confirmHomeReplacement(o.homeToReplace).then((ok) => {
+          if (ok) void o.actions.publish();
+        });
+      }}
       onDeactivate={() => void o.actions.unpublish()}
       onDelete={() => {
         void confirm({
-          title: "Delete entry?",
-          message: "Delete this entry? This cannot be undone.",
+          title: "Delete announcement?",
+          message: "Delete this announcement? This cannot be undone.",
           confirmLabel: "Delete",
           cancelLabel: "Cancel",
           danger: true
         }).then((ok) => {
           if (!ok) return;
           void o.actions.deleteEntry().then((res) => {
-            if (res.ok) navigate(`/admin/content/dynamic/${key}`);
+            if (res.ok) navigate("/admin/content");
           });
         });
       }}

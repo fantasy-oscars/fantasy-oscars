@@ -10,8 +10,11 @@ import { CodeBlock } from "./CodeBlock";
 type Props = {
   markdown: string | null | undefined;
   /**
-   * Heading level that `#` and `##` render at (default 2). Raise it when the
-   * Markdown sits under other headings, so the outline stays in order.
+   * Heading level that `#` renders at (default 2, never lower). Deeper headings
+   * shift with it (`##` one level below, and so on, capped at h6). Raise it when
+   * the Markdown sits under other headings, so the outline stays in order.
+   * Above 2, the document's top heading takes the section size instead of the
+   * page size.
    */
   headingBase?: number;
 };
@@ -178,11 +181,54 @@ function renderInline(
   });
 }
 
+type HeadingContext = { base: number; topDepth: number };
+
+/**
+ * The rendered level of a Markdown heading: depth n sits at n + (base - 1), so `#`,
+ * `##` and `###` stay distinct levels below the page title. Capped at h6.
+ */
+function markdownHeadingLevel(depth: number, base: number): 2 | 3 | 4 | 5 | 6 {
+  return Math.min(6, depth + base - 1) as 2 | 3 | 4 | 5 | 6;
+}
+
+/**
+ * Type steps from largest to smallest: the h2, h3 and h4 sizes, then small bold
+ * capitals in the body face (smaller and a different case, so it stays distinct
+ * from the h4 step). Deeper levels stay on the last step.
+ */
+const HEADING_STEPS = ["page", "section", "card", "caps"] as const;
+type HeadingStep = (typeof HEADING_STEPS)[number];
+
+/**
+ * The size a heading takes follows its depth below the document's top heading, not
+ * its rendered level, so the first level always gets a display size and each
+ * deeper level steps down. Markdown nested under other headings (base above 2)
+ * starts one step lower, at the section size.
+ */
+function markdownHeadingStep(depth: number, headings: HeadingContext): HeadingStep {
+  const start = headings.base > 2 ? 1 : 0;
+  const index = Math.max(0, depth - headings.topDepth) + start;
+  return HEADING_STEPS[Math.min(HEADING_STEPS.length - 1, index)];
+}
+
+function topHeadingDepth(nodes: Content[] | undefined): number {
+  let top = 6;
+  for (const node of nodes ?? []) {
+    if (node.type === "heading") top = Math.min(top, node.depth);
+    else if (node.type === "blockquote")
+      top = Math.min(top, topHeadingDepth(node.children));
+    else if (node.type === "list")
+      for (const li of node.children)
+        top = Math.min(top, topHeadingDepth(li.children as Content[]));
+  }
+  return top;
+}
+
 function renderBlocks(
   nodes: Content[] | undefined,
   keyPrefix: string,
   definitions: DefinitionsMap,
-  headingBase?: number
+  headings: HeadingContext
 ): ReactNode[] {
   if (!nodes || nodes.length === 0) return [];
 
@@ -192,32 +238,36 @@ function renderBlocks(
     const key = `${keyPrefix}-blk-${i}`;
     switch (node.type) {
       case "heading": {
-        // Page-level titles must not come from Markdown; remap h1 -> h2.
-        const depth = (node.depth <= 1 ? 2 : node.depth) + ((headingBase ?? 2) - 2);
+        const level = markdownHeadingLevel(node.depth, headings.base);
+        const step = markdownHeadingStep(node.depth, headings);
+        const component = `h${level}` as const;
+        const children = renderInline(
+          node.children as PhrasingContent[],
+          key,
+          definitions
+        );
 
-        if (depth >= 5) {
+        if (step === "caps") {
+          // Below the display steps: bold body face, one size smaller, in capitals.
           out.push(
             <Text
               key={key}
-              fw="var(--fo-font-weight-medium)"
+              component={component}
+              fw="var(--fo-font-weight-bold)"
+              fz="var(--fo-font-size-xs)"
+              tt="uppercase"
               m="var(--fo-space-0)"
               mb="xs"
             >
-              {renderInline(node.children as PhrasingContent[], key, definitions)}
+              {children}
             </Text>
           );
           return;
         }
 
         out.push(
-          <Title
-            key={key}
-            order={depth as 1 | 2 | 3 | 4}
-            variant={headingBase === undefined ? undefined : "section"}
-            mt="var(--fo-space-0)"
-            mb="xs"
-          >
-            {renderInline(node.children as PhrasingContent[], key, definitions)}
+          <Title key={key} order={level} variant={step} mt="var(--fo-space-0)" mb="xs">
+            {children}
           </Title>
         );
         return;
@@ -245,7 +295,7 @@ function renderBlocks(
                   li.children as Content[],
                   `${key}-li-${liIndex}`,
                   definitions,
-                  headingBase
+                  headings
                 )}
               </List.Item>
             ))}
@@ -257,7 +307,7 @@ function renderBlocks(
         out.push(
           <Blockquote key={key} mb="sm">
             <Stack gap="var(--fo-space-0)">
-              {renderBlocks(node.children, key, definitions, headingBase)}
+              {renderBlocks(node.children, key, definitions, headings)}
             </Stack>
           </Blockquote>
         );
@@ -313,7 +363,11 @@ export function MarkdownRenderer(props: Props) {
 
   return (
     <Stack gap="var(--fo-space-0)">
-      {renderBlocks(tree.children, "md", definitions, props.headingBase)}
+      {renderBlocks(tree.children, "md", definitions, {
+        // Page-level titles must not come from Markdown, so the base is never h1.
+        base: Math.max(2, Math.floor(props.headingBase ?? 2)),
+        topDepth: topHeadingDepth(tree.children)
+      })}
     </Stack>
   );
 }

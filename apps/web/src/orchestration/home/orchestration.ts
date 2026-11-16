@@ -6,7 +6,6 @@ import {
   type HomeSeasonPreview
 } from "../../decisions/home/seasonPreviews";
 
-type StaticContent = { key: string; title: string; body_markdown: string };
 type DynamicContent = {
   id: number;
   key: string;
@@ -14,11 +13,6 @@ type DynamicContent = {
   body_markdown: string;
   published_at: string | null;
 };
-
-export type HomeLandingBlurbView =
-  | { state: "loading" }
-  | { state: "error"; message: string }
-  | { state: "ready"; content: StaticContent };
 
 export type HomeMainView =
   | { state: "loading" }
@@ -32,19 +26,9 @@ export type HomeSeasonPreviewView =
   | { state: "ready"; seasons: HomeSeasonPreview[]; total: number };
 
 export type HomeView = {
-  landingBlurb: HomeLandingBlurbView;
   homeMain: HomeMainView;
   seasons: HomeSeasonPreviewView;
 };
-
-async function loadStaticContent(key: string) {
-  return fetchJson<{ content: StaticContent }>(
-    `/content/static/${encodeURIComponent(key)}`,
-    {
-      method: "GET"
-    }
-  );
-}
 
 async function loadDynamicContent(key: string) {
   return fetchJson<{ content: DynamicContent | null }>(
@@ -76,33 +60,8 @@ async function loadSeasonPreview(): Promise<HomeSeasonPreview[]> {
 export function useHomeOrchestration(opts: { seasonsEnabled: boolean }) {
   const { seasonsEnabled } = opts;
 
-  const [landingBlurb, setLandingBlurb] = useState<HomeLandingBlurbView>({
-    state: "loading"
-  });
   const [homeMain, setHomeMain] = useState<HomeMainView>({ state: "loading" });
   const [seasons, setSeasons] = useState<HomeSeasonPreviewView>({ state: "idle" });
-
-  const refreshLandingBlurb = useCallback(async () => {
-    // Global refresh policy: keep last content visible during refresh.
-    setLandingBlurb((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
-    const res = await loadStaticContent("landing_blurb");
-    if (!res.ok) {
-      setLandingBlurb((prev) =>
-        prev.state === "ready"
-          ? prev
-          : { state: "error", message: res.error ?? "Failed to load content" }
-      );
-      return;
-    }
-    const content = res.data?.content;
-    if (!content) {
-      setLandingBlurb((prev) =>
-        prev.state === "ready" ? prev : { state: "error", message: "Content not found" }
-      );
-      return;
-    }
-    setLandingBlurb({ state: "ready", content });
-  }, []);
 
   const refreshHomeMain = useCallback(async () => {
     setHomeMain((prev) => (prev.state === "ready" ? prev : { state: "loading" }));
@@ -141,10 +100,6 @@ export function useHomeOrchestration(opts: { seasonsEnabled: boolean }) {
   }, [seasonsEnabled]);
 
   useEffect(() => {
-    void refreshLandingBlurb();
-  }, [refreshLandingBlurb]);
-
-  useEffect(() => {
     void refreshHomeMain();
   }, [refreshHomeMain]);
 
@@ -152,15 +107,11 @@ export function useHomeOrchestration(opts: { seasonsEnabled: boolean }) {
     void refreshSeasons();
   }, [refreshSeasons]);
 
-  const view: HomeView = useMemo(
-    () => ({ landingBlurb, homeMain, seasons }),
-    [landingBlurb, homeMain, seasons]
-  );
+  const view: HomeView = useMemo(() => ({ homeMain, seasons }), [homeMain, seasons]);
 
   return {
     view,
     refresh: {
-      landingBlurb: refreshLandingBlurb,
       homeMain: refreshHomeMain,
       seasons: refreshSeasons
     }
