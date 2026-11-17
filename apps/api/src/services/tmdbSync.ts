@@ -1,12 +1,12 @@
 import { Pool, PoolClient } from "pg";
-import { query, runInTransaction } from "../data/db";
+import { query, runInTransaction } from "../data/db.js";
 import {
   buildTmdbImageUrlFromConfig,
   fetchTmdbMovieDetailsWithCredits,
   fetchTmdbPersonDetails,
   getTmdbImageConfig,
   parseReleaseYear
-} from "../lib/tmdb";
+} from "../lib/tmdb.js";
 
 export type SyncTmdbMovieResult = {
   tmdbMovieId: number;
