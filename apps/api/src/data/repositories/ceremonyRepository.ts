@@ -31,34 +31,26 @@ export type CeremonyDates = {
   id: number;
   status: string;
   nominations_on: string | null;
-  results_on: string | null;
+  starts_at: Date | null;
 };
 
 /**
- * Sets the scoring occasion dates (whole days) at any status. An undefined
- * field is left as it is; null clears it. Returns null for a missing or
- * deleted ceremony.
+ * Sets the nominations date (a whole day) at any status; null clears it. The
+ * results date is not stored: it is derived from starts_at. Returns null for
+ * a missing or deleted ceremony.
  */
 export async function updateCeremonyDates(
   client: DbClient,
   ceremonyId: number,
-  dates: { nominations_on?: string | null; results_on?: string | null }
+  dates: { nominations_on: string | null }
 ): Promise<CeremonyDates | null> {
   const { rows } = await query<CeremonyDates>(
     client,
     `UPDATE ceremony
-     SET nominations_on = CASE WHEN $2::boolean THEN $3::date ELSE nominations_on END,
-         results_on = CASE WHEN $4::boolean THEN $5::date ELSE results_on END
+     SET nominations_on = $2::date
      WHERE id = $1 AND deleted_at IS NULL
-     RETURNING id::int, status, nominations_on::text AS nominations_on,
-       results_on::text AS results_on`,
-    [
-      ceremonyId,
-      dates.nominations_on !== undefined,
-      dates.nominations_on ?? null,
-      dates.results_on !== undefined,
-      dates.results_on ?? null
-    ]
+     RETURNING id::int, status, nominations_on::text AS nominations_on, starts_at`,
+    [ceremonyId, dates.nominations_on]
   );
   return rows[0] ?? null;
 }

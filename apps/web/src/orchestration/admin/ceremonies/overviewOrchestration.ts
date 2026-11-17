@@ -16,7 +16,8 @@ import type {
 /** API field -> form input, where the two differ. */
 const CEREMONY_FIELD_INPUTS = {
   starts_at: "startsAtLocal",
-  draft_warning_hours: "warningHours"
+  draft_warning_hours: "warningHours",
+  nominations_on: "nominationsOn"
 } as const;
 
 export function useAdminCeremonyOverviewOrchestration(args: {
@@ -38,6 +39,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
   const [form, setForm] = useState<CeremonyOverviewFormState>({
     code: "",
     name: "",
+    nominationsOn: "",
     startsAtLocal: "",
     warningHours: "24"
   });
@@ -69,6 +71,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
       setForm({
         code: nextCeremony.code ?? "",
         name: nextCeremony.name ?? "",
+        nominationsOn: nextCeremony.nominations_on ?? "",
         startsAtLocal: isoToLocalInput(nextCeremony.starts_at),
         warningHours: String(nextCeremony.draft_warning_hours ?? 24)
       });
@@ -107,12 +110,29 @@ export function useAdminCeremonyOverviewOrchestration(args: {
         })
       }
     );
-    setSaving(false);
     if (!res.ok) {
+      setSaving(false);
       applyFailure(res, CEREMONY_FIELD_INPUTS);
       setStatus({ ok: false, message: res.error ?? "Save failed" });
       return;
     }
+    // The nominations date has its own route; the results date is not
+    // entered, it follows the ceremony datetime.
+    const nominationsOn = form.nominationsOn || null;
+    if (nominationsOn !== (ceremony.nominations_on ?? null)) {
+      const dates = await fetchJson(`/admin/ceremonies/${ceremony.id}/dates`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nominations_on: nominationsOn })
+      });
+      if (!dates.ok) {
+        setSaving(false);
+        applyFailure(dates, CEREMONY_FIELD_INPUTS);
+        setStatus({ ok: false, message: dates.error ?? "Save failed" });
+        return;
+      }
+    }
+    setSaving(false);
     notify({
       id: "admin.ceremony.initialize.save.success",
       severity: "success",
@@ -128,6 +148,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     ceremony,
     form.code,
     form.name,
+    form.nominationsOn,
     form.startsAtLocal,
     form.warningHours,
     load,

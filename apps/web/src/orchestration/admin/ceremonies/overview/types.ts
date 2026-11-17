@@ -5,6 +5,8 @@ export type CeremonyDetail = {
   code: string | null;
   name: string | null;
   starts_at: string | null;
+  /** Whole day, `YYYY-MM-DD`; the results date is derived from `starts_at`. */
+  nominations_on?: string | null;
   status: CeremonyStatus;
   draft_warning_hours: number;
   draft_locked_at: string | null;
@@ -23,6 +25,7 @@ export type CeremonyStats = {
 export type CeremonyOverviewFormState = {
   code: string;
   name: string;
+  nominationsOn: string;
   startsAtLocal: string;
   warningHours: string;
 };

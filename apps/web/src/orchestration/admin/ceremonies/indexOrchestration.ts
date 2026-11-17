@@ -3,7 +3,8 @@ import { notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import type { CeremonyOption } from "./types";
-import { fetchAdminCeremonies, sortCeremonies } from "./fetchCeremonies";
+import { sortAdminCeremonyIndex } from "../../../decisions/admin/ceremonyIndex";
+import { fetchAdminCeremonies } from "./fetchCeremonies";
 
 type LoadState = "loading" | "error" | "ready";
 
@@ -43,7 +44,7 @@ export function useAdminCeremoniesIndexOrchestration() {
     void refresh();
   }, [refresh]);
 
-  const ceremonies = useMemo(() => sortCeremonies(rows), [rows]);
+  const ceremonies = useMemo(() => sortAdminCeremonyIndex(rows), [rows]);
 
   const createDraftCeremony = useCallback(async () => {
     setCreating(true);

@@ -68,6 +68,40 @@ export function suggestCircuitCategoryId(
   return matches.length === 1 ? matches[0]!.id : null;
 }
 
+/**
+ * `ids` with `id` moved to `index` (clamped to the list), or appended when it
+ * was not in the list. The order of the other ids is kept.
+ */
+export function moveToIndex(ids: readonly number[], id: number, index: number): number[] {
+  const rest = ids.filter((other) => other !== id);
+  const at = Math.max(0, Math.min(Math.trunc(index), rest.length));
+  return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+/** Results are announced on the ceremony's own day, in Pacific time (ADR 0007). */
+export const RESULTS_TIME_ZONE = "America/Los_Angeles";
+
+const resultsDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: RESULTS_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+});
+
+/**
+ * A ceremony's results date: the date of its ceremony datetime in
+ * America/Los_Angeles, as `YYYY-MM-DD`. Null when the datetime is unset.
+ */
+export function resultsDateOf(startsAt: Date | string | null): string | null {
+  if (startsAt === null) return null;
+  const instant = startsAt instanceof Date ? startsAt : new Date(startsAt);
+  if (Number.isNaN(instant.getTime())) return null;
+  const parts = Object.fromEntries(
+    resultsDayFormat.formatToParts(instant).map((p) => [p.type, p.value])
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** An associated ceremony with the dates that drive its scoring occasions. */
 export type CircuitCeremonyDates = {
   ceremony_id: number;
@@ -76,11 +110,20 @@ export type CircuitCeremonyDates = {
   circuit_event_id: number;
   event_code: string;
   event_sort_index: number;
+  /** Order inside the event. */
+  sort_index: number;
   /** Whole day, `YYYY-MM-DD`. */
   nominations_on: string | null;
-  /** Whole day, `YYYY-MM-DD`. */
-  results_on: string | null;
+  /** The ceremony datetime; the results date is derived from it. */
+  starts_at: Date | null;
 };
+
+/** The ceremony with its derived results date, for responses. */
+export function withResultsDate<T extends { starts_at: Date | null }>(
+  ceremony: T
+): T & { results_on: string | null } {
+  return { ...ceremony, results_on: resultsDateOf(ceremony.starts_at) };
+}
 
 export type MissingCeremonyDates = {
   ceremony_id: number;
@@ -90,12 +133,17 @@ export type MissingCeremonyDates = {
 };
 
 function byEventThenCeremony(a: CircuitCeremonyDates, b: CircuitCeremonyDates) {
-  return a.event_sort_index - b.event_sort_index || a.ceremony_id - b.ceremony_id;
+  return (
+    a.event_sort_index - b.event_sort_index ||
+    a.sort_index - b.sort_index ||
+    a.ceremony_id - b.ceremony_id
+  );
 }
 
 /**
  * Soft readiness check for activation: the associated ceremonies that lack a
- * nominations or results date. Activation never depends on the result.
+ * nominations date, or a results date because their ceremony datetime is
+ * unset. Activation never depends on the result.
  */
 export function findCeremoniesMissingDates(
   ceremonies: CircuitCeremonyDates[]
@@ -103,7 +151,7 @@ export function findCeremoniesMissingDates(
   return [...ceremonies].sort(byEventThenCeremony).flatMap((c) => {
     const missing: MissingCeremonyDates["missing"] = [];
     if (!c.nominations_on) missing.push("nominations_on");
-    if (!c.results_on) missing.push("results_on");
+    if (!resultsDateOf(c.starts_at)) missing.push("results_on");
     if (missing.length === 0) return [];
     return [
       {
@@ -151,7 +199,7 @@ export function listScoringOccasions(
     };
     return [
       { ...base, kind: "NOMINATION" as const, date: c.nominations_on },
-      { ...base, kind: "WIN" as const, date: c.results_on }
+      { ...base, kind: "WIN" as const, date: resultsDateOf(c.starts_at) }
     ];
   });
   const kindRank = (k: ScoringOccasionKind) => (k === "NOMINATION" ? 0 : 1);

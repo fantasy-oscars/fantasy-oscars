@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { screen } from "@testing-library/dom";
+import { screen, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@ui";
 import { MemoryRouter } from "react-router-dom";
@@ -20,6 +20,7 @@ describe("<AdminCeremoniesOverviewScreen />", () => {
       const [form, setForm] = React.useState({
         code: "",
         name: "",
+        nominationsOn: "",
         startsAtLocal: "",
         warningHours: "24"
       });
@@ -76,6 +77,7 @@ describe("<AdminCeremoniesOverviewScreen /> server field errors", () => {
       const [form, setForm] = React.useState({
         code: "oscars",
         name: "Oscars",
+        nominationsOn: "",
         startsAtLocal: "",
         warningHours: "24"
       });
@@ -141,5 +143,70 @@ describe("<AdminCeremoniesOverviewScreen /> server field errors", () => {
 
     await user.type(screen.getByLabelText("Draft warning (hours)"), "5");
     expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+});
+
+describe("<AdminCeremoniesOverviewScreen /> dates", () => {
+  it("has one date section with the nominations date and the ceremony datetime", async () => {
+    const user = userEvent.setup();
+    const onEditField = vi.fn();
+
+    function Harness() {
+      const [form, setForm] = React.useState({
+        code: "bafta",
+        name: "BAFTA",
+        nominationsOn: "2027-01-15",
+        startsAtLocal: "2027-02-14T19:00",
+        warningHours: "24"
+      });
+      return (
+        <AdminCeremoniesOverviewScreen
+          loading={false}
+          saving={false}
+          loadError={null}
+          status={null}
+          ceremony={{
+            id: 1,
+            status: "PUBLISHED",
+            code: "bafta",
+            name: "BAFTA",
+            starts_at: "2027-02-15T03:00:00.000Z",
+            draft_locked_at: null,
+            draft_warning_hours: 24,
+            published_at: null,
+            archived_at: null
+          }}
+          stats={{ nominees_total: 0, winners_total: 0 }}
+          form={form}
+          setForm={setForm}
+          fieldErrors={{ nominationsOn: "Enter the nominations date as YYYY-MM-DD" }}
+          onEditField={onEditField}
+          readOnly={false}
+          onSave={() => {}}
+        />
+      );
+    }
+
+    render(
+      <MantineProvider>
+        <MemoryRouter>
+          <Harness />
+        </MemoryRouter>
+      </MantineProvider>
+    );
+
+    const dates = screen.getByRole("group", { name: "Dates" });
+    expect(within(dates).getByLabelText("Nominations date")).toHaveValue("2027-01-15");
+    expect(within(dates).getByLabelText("Ceremony date & time")).toHaveValue(
+      "2027-02-14T19:00"
+    );
+    expect(screen.getAllByLabelText(/date/i)).toHaveLength(2);
+    expect(screen.queryByLabelText(/Results date/i)).toBeNull();
+    expect(
+      within(dates).getByText("Enter the nominations date as YYYY-MM-DD")
+    ).toBeInTheDocument();
+
+    await user.clear(within(dates).getByLabelText("Nominations date"));
+    expect(onEditField).toHaveBeenCalledWith("nominationsOn");
   });
 });

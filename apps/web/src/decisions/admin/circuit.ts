@@ -8,9 +8,13 @@
 
 export type CircuitDateField = "nominations_on" | "results_on";
 
+/**
+ * The results date is not entered: it is the ceremony datetime's date in
+ * America/Los_Angeles (ADR 0007), so a missing one means the ceremony date.
+ */
 export const CIRCUIT_DATE_LABELS: Record<CircuitDateField, string> = {
   nominations_on: "Nominations date",
-  results_on: "Results date"
+  results_on: "Ceremony date"
 };
 
 export function circuitStatusLabel(status: string | null | undefined): string {
@@ -38,7 +42,7 @@ export function ceremonyLabel(c: {
   return c.ceremony_name || c.ceremony_code || `Ceremony ${c.ceremony_id ?? ""}`.trim();
 }
 
-/** One line per ceremony that lacks a date, e.g. "BAFTA 2027: results date". */
+/** One line per ceremony that lacks a date, e.g. "BAFTA 2027: ceremony date". */
 export function describeMissingDates(
   missing: Array<{
     ceremony_id: number;
@@ -60,28 +64,6 @@ export function unassociatedCeremonies<T extends { id: number }>(
 ): T[] {
   const taken = new Set(associatedIds);
   return all.filter((c) => !taken.has(c.id));
-}
-
-/** Each event with its ceremonies, in the order events are given. */
-export function ceremoniesByEvent<
-  E extends { id: number },
-  C extends { circuit_event_id: number }
->(events: E[], ceremonies: C[]): Array<{ event: E; ceremonies: C[] }> {
-  return events.map((event) => ({
-    event,
-    ceremonies: ceremonies.filter((c) => c.circuit_event_id === event.id)
-  }));
-}
-
-/** Category editions grouped under their ceremony, in the order ceremonies are given. */
-export function groupEditionsByCeremony<
-  C extends { ceremony_id: number },
-  E extends { ceremony_id: number }
->(ceremonies: C[], editions: E[]): Array<{ ceremony: C; editions: E[] }> {
-  return ceremonies.map((ceremony) => ({
-    ceremony,
-    editions: editions.filter((e) => e.ceremony_id === ceremony.ceremony_id)
-  }));
 }
 
 /**
@@ -139,7 +121,7 @@ export function effectiveMapping(
 }
 
 /** True when the shown mapping differs from what is saved. */
-export function isMappingUnsaved(
+function isMappingUnsaved(
   edition: MappableEdition,
   choices: MappingChoices,
   circuitCategoryIds: number[]
@@ -163,43 +145,52 @@ export function pendingMappingChanges(
     }));
 }
 
-/**
- * Each Circuit category with the ceremony categories shown as mapped to it,
- * so a many-to-one mapping reads at a glance.
- */
-export function mappedCeremonyCategories<
-  K extends { id: number },
-  C extends { ceremony_id: number },
-  E extends MappableEdition & { ceremony_id: number }
->(
-  categories: K[],
-  ceremonies: C[],
-  editions: E[],
-  choices: MappingChoices
-): Array<{
-  category: K;
-  mapped: Array<{ ceremony: C; edition: E; unsaved: boolean }>;
-}> {
-  const ids = categories.map((c) => c.id);
-  return categories.map((category) => ({
-    category,
-    mapped: groupEditionsByCeremony(ceremonies, editions).flatMap((g) =>
-      g.editions
-        .filter((e) => effectiveMapping(e, choices, ids) === category.id)
-        .map((edition) => ({
-          ceremony: g.ceremony,
-          edition,
-          unsaved: isMappingUnsaved(edition, choices, ids)
-        }))
-    )
-  }));
-}
-
-export function occasionKindLabel(kind: string): string {
-  return kind === "NOMINATION" ? "Nominations" : "Results";
-}
-
 /** Whole-day dates are shown as stored (`YYYY-MM-DD`) so no time zone shifts them. */
 export function dateOnlyLabel(value: string | null | undefined): string {
   return value ? value : "No date";
+}
+
+/**
+ * The mapping modal's rows: one per Circuit category, with the ceremony
+ * categories shown as feeding it and those it may still take. A ceremony
+ * category feeds at most one Circuit category, so one chosen in another row
+ * is not offered.
+ */
+export function mappingModalRows<E extends MappableEdition>(
+  categoryIds: number[],
+  editions: E[],
+  choices: MappingChoices
+): Array<{ circuitCategoryId: number; selected: E[]; options: E[] }> {
+  return categoryIds.map((circuitCategoryId) => ({
+    circuitCategoryId,
+    selected: editions.filter(
+      (e) => effectiveMapping(e, choices, categoryIds) === circuitCategoryId
+    ),
+    options: editions.filter((e) => {
+      const shown = effectiveMapping(e, choices, categoryIds);
+      return shown === null || shown === circuitCategoryId;
+    })
+  }));
+}
+
+/**
+ * The choices after a row's multi-select changes: the listed ceremony
+ * categories feed `circuitCategoryId`, and any it fed before that are no
+ * longer listed are left unmapped.
+ */
+export function chooseMappingRow(
+  editions: MappableEdition[],
+  choices: MappingChoices,
+  categoryIds: number[],
+  circuitCategoryId: number,
+  editionIds: number[]
+): MappingChoices {
+  const next = { ...choices };
+  for (const e of editions) {
+    if (editionIds.includes(e.id)) next[e.id] = circuitCategoryId;
+    else if (effectiveMapping(e, choices, categoryIds) === circuitCategoryId) {
+      next[e.id] = null;
+    }
+  }
+  return next;
 }

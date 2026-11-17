@@ -21,9 +21,13 @@ async function restrictedImports(filePath: string, code: string) {
 }
 
 describe("Circuit import boundary", () => {
-  beforeAll(() => {
+  // The first lint loads the config, its plugins and the parser, which takes
+  // seconds on a busy machine; doing it here keeps that one-time cost out of
+  // the first test's timeout.
+  beforeAll(async () => {
     eslint = new ESLint({ cwd: repoRoot });
-  });
+    await restrictedImports("apps/api/src/domain/circuit.ts", "");
+  }, 60_000);
 
   it.each([
     [

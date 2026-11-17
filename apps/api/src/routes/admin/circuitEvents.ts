@@ -5,10 +5,12 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import {
   createEvent,
   deleteEvent,
+  reorderEventCeremonyOrder,
   reorderEvents,
   updateEvent
 } from "../../services/circuit/circuitEvents.js";
 import {
+  adminCircuitEventCeremonyOrderBody,
   adminCircuitEventCreateBody,
   adminCircuitEventOrderBody,
   adminCircuitEventParams,
@@ -18,8 +20,9 @@ import {
 import { parseBody, parseParams } from "../../utils/validate.js";
 import { actorOf } from "./circuitActor.js";
 
-// Admin-defined events: groups of one or more ceremonies that leagues enable
-// and weight as one unit. Deleting an event ungroups its ceremonies.
+// Events: what leagues enable and weight as one unit. Creating one makes an
+// admin-named group; single ceremonies get their own event automatically.
+// Deleting an event ungroups its ceremonies.
 export function registerAdminCircuitEventRoutes(router: Router, pool: Pool) {
   router.post(
     "/circuits/:id/events",
@@ -49,6 +52,24 @@ export function registerAdminCircuitEventRoutes(router: Router, pool: Pool) {
         const result = await reorderEvents(pool, actorOf(req), {
           circuitId: id,
           eventIds: event_ids
+        });
+        return res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.put(
+    "/circuits/:id/events/:eventId/ceremonies/order",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id, eventId } = parseParams(adminCircuitEventParams, req.params);
+        const { ceremony_ids } = parseBody(adminCircuitEventCeremonyOrderBody, req.body);
+        const result = await reorderEventCeremonyOrder(pool, actorOf(req), {
+          circuitId: id,
+          eventId,
+          ceremonyIds: ceremony_ids
         });
         return res.status(200).json(result);
       } catch (err) {

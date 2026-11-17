@@ -27,4 +27,5 @@ ADRs capture decisions that could be questioned later. They keep the project int
 - 0003 – Layered visual testing: [0003-layered-visual-testing.md](0003-layered-visual-testing.md)
 - 0004 – Measured component tolerances: [0004-measured-component-tolerances.md](0004-measured-component-tolerances.md) (supersedes the screenshot tiers of 0003)
 - 0005 – Series competition domain model: [0005-series-domain-model.md](0005-series-domain-model.md) (sections 1, 2 and 4 partly superseded by 0006)
-- 0006 – Circuit, with an admin-defined structure: [0006-circuit-admin-defined-structure.md](0006-circuit-admin-defined-structure.md)
+- 0006 – Circuit, with an admin-defined structure: [0006-circuit-admin-defined-structure.md](0006-circuit-admin-defined-structure.md) (section 3 amended by 0007)
+- 0007 – Circuit groups, a derived results date and shared waiver windows: [0007-circuit-groups-and-derived-dates.md](0007-circuit-groups-and-derived-dates.md)

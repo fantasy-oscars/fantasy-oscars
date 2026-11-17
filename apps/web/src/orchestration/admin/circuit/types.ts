@@ -17,6 +17,8 @@ export type CircuitEvent = {
   code: string;
   name: string;
   sort_index: number;
+  /** An admin-made group; any other event is one ceremony's own, hidden plumbing. */
+  is_group: boolean;
 };
 
 export type CircuitCategory = {
@@ -42,7 +44,12 @@ export type CircuitCeremony = {
   event_code: string;
   event_name: string;
   event_sort_index: number;
+  event_is_group: boolean;
+  /** Order inside the event. */
+  sort_index: number;
   nominations_on: string | null;
+  starts_at: string | null;
+  /** Derived: the ceremony datetime's date in America/Los_Angeles. */
   results_on: string | null;
 };
 
@@ -83,6 +90,15 @@ export type CircuitDetail = {
   category_editions: CircuitCategoryEdition[];
   readiness: { missing_dates: MissingCeremonyDates[] };
   occasions: ScoringOccasion[];
+  /** Add/drop windows as if every ceremony were enabled (ADR 0007). */
+  waiver_windows: WaiverWindow[];
+};
+
+export type WaiverWindow = {
+  starts_on: string;
+  ends_on: string;
+  resolves_on: string;
+  scoring_days: string[];
 };
 
 /** A category template a Circuit category can be built from. */
@@ -101,6 +117,7 @@ export type CeremonyCircuitAssociation = {
   circuit_event_id: number;
   event_code: string;
   event_name: string;
+  event_is_group: boolean;
 };
 
 export type CeremonyCircuitOption = {

@@ -22,8 +22,11 @@ import {
 import {
   findCeremoniesMissingDates,
   listScoringOccasions,
-  suggestCircuitCategoryId
+  resultsDateOf,
+  suggestCircuitCategoryId,
+  withResultsDate
 } from "../../domain/circuit.js";
+import { waiverWindows } from "../../domain/waiverWindows.js";
 import { AppError, validationError } from "../../errors.js";
 import {
   type Actor,
@@ -73,11 +76,12 @@ export async function getCircuitDetail(client: DbClient, id: number) {
     listCircuitCeremonies(client, id),
     listCircuitCategoryEditions(client, id)
   ]);
+  const occasions = listScoringOccasions(ceremonies);
   return {
     circuit,
     events,
     categories,
-    ceremonies,
+    ceremonies: ceremonies.map(withResultsDate),
     // The suggestion pre-selects a Circuit category on the mapping screen;
     // only an explicit save creates a mapping.
     category_editions: categoryEditions.map((e) => ({
@@ -85,7 +89,12 @@ export async function getCircuitDetail(client: DbClient, id: number) {
       suggested_circuit_category_id: suggestCircuitCategoryId(e.family_id, categories)
     })),
     readiness: { missing_dates: findCeremoniesMissingDates(ceremonies) },
-    occasions: listScoringOccasions(ceremonies)
+    occasions,
+    // As if every ceremony were enabled: a league that disables some
+    // ceremonies has fewer scoring days, and so fewer windows.
+    waiver_windows: waiverWindows(
+      occasions.flatMap((o) => (o.date === null ? [] : [o.date]))
+    )
   };
 }
 
@@ -209,12 +218,15 @@ export async function activate(pool: Pool, actor: Actor, circuitId: number) {
   return { circuit, readiness: { missing_dates: missing } };
 }
 
-/** Dates are routine content: editable at any ceremony status, never touching Circuit status. */
+/**
+ * The nominations date is routine content: editable at any ceremony status,
+ * never touching Circuit status. The results date is derived from starts_at.
+ */
 export async function setCeremonyDates(
   pool: Pool,
   actor: Actor,
   ceremonyId: number,
-  dates: { nominations_on?: string | null; results_on?: string | null }
+  dates: { nominations_on: string | null }
 ) {
   const ceremony = await updateCeremonyDates(pool, ceremonyId, dates);
   if (!ceremony) throw new AppError("NOT_FOUND", 404, "Ceremony not found");
@@ -222,13 +234,14 @@ export async function setCeremonyDates(
     action: "update_ceremony_dates",
     target_type: "ceremony",
     target_id: ceremonyId,
-    meta: {
-      fields: Object.keys(dates).filter(
-        (k) => dates[k as keyof typeof dates] !== undefined
-      ),
-      nominations_on: ceremony.nominations_on,
-      results_on: ceremony.results_on
-    }
+    meta: { fields: ["nominations_on"], nominations_on: ceremony.nominations_on }
   });
-  return { ceremony };
+  return {
+    ceremony: {
+      id: ceremony.id,
+      status: ceremony.status,
+      nominations_on: ceremony.nominations_on,
+      results_on: resultsDateOf(ceremony.starts_at)
+    }
+  };
 }

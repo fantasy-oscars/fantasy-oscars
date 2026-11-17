@@ -11,22 +11,32 @@ import {
   listCeremonyCircuitAssociations,
   listCircuitCodes,
   listCircuitEvents,
+  listCircuitCeremonies,
   listEventCeremonyIds,
   reorderCircuitRows,
+  reorderEventCeremonies,
   updateCircuitEvent,
   upsertCircuitCeremony,
   type CeremonySummary,
   type CircuitEventRow
 } from "../../data/repositories/circuitRepository.js";
-import { codeFromLabel, isFullOrdering, uniqueCode } from "../../domain/circuit.js";
+import {
+  codeFromLabel,
+  isFullOrdering,
+  moveToIndex,
+  uniqueCode,
+  withResultsDate
+} from "../../domain/circuit.js";
 import { AppError, validationError } from "../../errors.js";
 import { type Actor, audit, lockEditableCircuit } from "./circuitGuards.js";
 
 /*
- * Events and ceremony associations. An event is an admin-defined group of one
- * or more ceremonies that leagues enable and weight as one unit. Every
- * associated ceremony belongs to exactly one event of its Circuit, and an
- * event left with no ceremonies is deleted in the same transaction.
+ * Events and ceremony associations. An event is what leagues enable and
+ * weight as one unit, and every associated ceremony belongs to exactly one
+ * event of its Circuit (ADR 0006). An event is either a group, made by an
+ * admin, which may be empty and stays when emptied, or a one-ceremony event
+ * created for a single ceremony and deleted in the same transaction once the
+ * ceremony leaves it (ADR 0007).
  */
 
 type Via = { via: "circuit" | "ceremony" };
@@ -35,7 +45,7 @@ function ceremonyLabel(ceremony: CeremonySummary) {
   return ceremony.name?.trim() || ceremony.code?.trim() || `Ceremony ${ceremony.id}`;
 }
 
-/** A new one-ceremony event, named after the ceremony. */
+/** A new one-ceremony event, named after the ceremony, at the end of the order. */
 async function insertOwnEvent(
   tx: DbClient,
   circuitId: number,
@@ -46,7 +56,8 @@ async function insertOwnEvent(
   return insertCircuitEvent(tx, {
     circuitId,
     code: uniqueCode(codeFromLabel(ceremony.code ?? label), taken, "event"),
-    name: label
+    name: label,
+    isGroup: false
   });
 }
 
@@ -72,9 +83,10 @@ async function assertEventCodeFree(
 }
 
 /**
- * Adds a ceremony (any ceremony) to a Circuit, or moves it to another event.
- * Without an event the ceremony gets its own one-ceremony event; a ceremony
- * already alone in its event stays there. Both admin screens call this.
+ * Adds a ceremony (any ceremony) to a Circuit, or moves it into a group.
+ * Without a group the ceremony gets its own one-ceremony event, appended to
+ * the top level; a ceremony that already has one keeps it. Both admin screens
+ * call this.
  */
 export async function associateCeremony(
   pool: Pool,
@@ -95,13 +107,14 @@ export async function associateCeremony(
     let createdEventId: number | null = null;
     if (input.circuitEventId !== null) {
       const event = await getCircuitEvent(tx, input.circuitId, input.circuitEventId);
-      if (!event) {
-        throw validationError("Choose an event in this Circuit", ["circuit_event_id"]);
+      // Another ceremony's one-ceremony event is not a destination.
+      if (!event || (!event.is_group && event.id !== previous)) {
+        throw validationError("Choose a group in this Circuit", ["circuit_event_id"]);
       }
       target = event;
     } else if (
       previous !== null &&
-      (await listEventCeremonyIds(tx, input.circuitId, previous)).length === 1
+      !(await requireEvent(tx, input.circuitId, previous)).is_group
     ) {
       target = await requireEvent(tx, input.circuitId, previous);
     } else {
@@ -183,8 +196,9 @@ export async function removeCeremony(
 }
 
 /**
- * Creates an event at the end of the order. Listed ceremonies (already in the
- * Circuit) move into it, and the events they leave are deleted when empty.
+ * Creates a group, named by the admin, at the end of the order. Listed
+ * ceremonies (already in the Circuit) move into it, and the one-ceremony
+ * events they leave are deleted.
  */
 export async function createEvent(
   pool: Pool,
@@ -203,7 +217,8 @@ export async function createEvent(
     const event = await insertCircuitEvent(tx, {
       circuitId: input.circuitId,
       code,
-      name: input.name
+      name: input.name,
+      isGroup: true
     });
     const left = new Set<number>();
     for (const ceremonyId of input.ceremonyIds) {
@@ -342,4 +357,144 @@ export async function deleteEvent(
     }
   });
   return { ungrouped: result.ungrouped };
+}
+
+/**
+ * Places an associated ceremony, the one write behind drag and drop. With a
+ * group the ceremony moves into it at `index` among its ceremonies, and the
+ * one-ceremony event it leaves is deleted. Without one it goes to the top
+ * level at `index` among the Circuit's events (groups and single ceremonies
+ * together), getting its own one-ceremony event when it leaves a group. An
+ * index past the end appends.
+ */
+export async function moveCeremony(
+  pool: Pool,
+  actor: Actor,
+  input: { circuitId: number; ceremonyId: number; groupId: number | null; index: number }
+) {
+  const result = await runInTransaction(pool, async (tx) => {
+    const circuit = await lockEditableCircuit(tx, input.circuitId);
+    const previous = await getCircuitCeremonyEventId(
+      tx,
+      input.circuitId,
+      input.ceremonyId
+    );
+    if (previous === null) {
+      throw new AppError("NOT_FOUND", 404, "This ceremony is not in the Circuit");
+    }
+    const previousEvent = await requireEvent(tx, input.circuitId, previous);
+
+    let targetId: number;
+    let createdEventId: number | null = null;
+    let deletedEventId: number | null = null;
+    if (input.groupId !== null) {
+      const group = await getCircuitEvent(tx, input.circuitId, input.groupId);
+      if (!group || !group.is_group) {
+        throw validationError("Choose a group in this Circuit", ["group_id"]);
+      }
+      targetId = group.id;
+      await upsertCircuitCeremony(tx, {
+        circuitId: input.circuitId,
+        ceremonyId: input.ceremonyId,
+        circuitEventId: group.id
+      });
+      const order = moveToIndex(
+        await listEventCeremonyIds(tx, input.circuitId, group.id),
+        input.ceremonyId,
+        input.index
+      );
+      await reorderEventCeremonies(tx, input.circuitId, group.id, order);
+      if (
+        previous !== group.id &&
+        (await deleteCircuitEventIfEmpty(tx, input.circuitId, previous))
+      ) {
+        deletedEventId = previous;
+      }
+    } else {
+      targetId = previous;
+      if (previousEvent.is_group) {
+        const ceremony = (await getCeremonySummary(tx, input.ceremonyId, {
+          includeDeleted: true
+        }))!;
+        const own = await insertOwnEvent(tx, input.circuitId, ceremony);
+        await upsertCircuitCeremony(tx, {
+          circuitId: input.circuitId,
+          ceremonyId: input.ceremonyId,
+          circuitEventId: own.id
+        });
+        targetId = own.id;
+        createdEventId = own.id;
+      }
+      // The index counts what the admin sees: groups and events with a
+      // ceremony. An event left empty some other way keeps its place at the end.
+      const events = await listCircuitEvents(tx, input.circuitId);
+      const shown = new Set(
+        (await listCircuitCeremonies(tx, input.circuitId)).map((c) => c.circuit_event_id)
+      );
+      const isShown = (e: CircuitEventRow) =>
+        e.is_group || e.id === targetId || shown.has(e.id);
+      const order = [
+        ...moveToIndex(
+          events.filter(isShown).map((e) => e.id),
+          targetId,
+          input.index
+        ),
+        ...events.filter((e) => !isShown(e)).map((e) => e.id)
+      ];
+      await reorderCircuitRows(tx, "circuit_event", input.circuitId, order);
+    }
+    return { circuit, previous, targetId, createdEventId, deletedEventId };
+  });
+
+  await audit(pool, actor, {
+    action: "move_circuit_ceremony",
+    target_id: input.circuitId,
+    meta: {
+      ceremony_id: input.ceremonyId,
+      group_id: input.groupId,
+      index: input.index,
+      circuit_event_id: result.targetId,
+      previous_event_id: result.previous,
+      created_event_id: result.createdEventId,
+      deleted_event_id: result.deletedEventId,
+      circuit_status: result.circuit.status
+    }
+  });
+  const [events, ceremonies] = await Promise.all([
+    listCircuitEvents(pool, input.circuitId),
+    listCircuitCeremonies(pool, input.circuitId)
+  ]);
+  return {
+    circuit_event_id: result.targetId,
+    events,
+    ceremonies: ceremonies.map(withResultsDate)
+  };
+}
+
+/** Orders the ceremonies inside one event, listing each of them once. */
+export async function reorderEventCeremonyOrder(
+  pool: Pool,
+  actor: Actor,
+  input: { circuitId: number; eventId: number; ceremonyIds: number[] }
+) {
+  const circuit = await runInTransaction(pool, async (tx) => {
+    const circuit = await lockEditableCircuit(tx, input.circuitId);
+    await requireEvent(tx, input.circuitId, input.eventId);
+    const current = await listEventCeremonyIds(tx, input.circuitId, input.eventId);
+    if (!isFullOrdering(input.ceremonyIds, current)) {
+      throw validationError("List every ceremony of this group once", ["ceremony_ids"]);
+    }
+    await reorderEventCeremonies(tx, input.circuitId, input.eventId, input.ceremonyIds);
+    return circuit;
+  });
+  await audit(pool, actor, {
+    action: "reorder_circuit_event_ceremonies",
+    target_id: input.circuitId,
+    meta: {
+      circuit_event_id: input.eventId,
+      ceremony_ids: input.ceremonyIds,
+      circuit_status: circuit.status
+    }
+  });
+  return { ceremony_ids: input.ceremonyIds };
 }

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   canActivateCircuit,
-  ceremoniesByEvent,
+  chooseMappingRow,
   circuitCategoryKindLabel,
   circuitTemplateOptions,
   dateOnlyLabel,
   describeMissingDates,
   effectiveMapping,
-  groupEditionsByCeremony,
   isCircuitEditable,
-  mappedCeremonyCategories,
+  mappingModalRows,
   moveInOrder,
   needsStructuralEditConfirm,
   pendingMappingChanges,
@@ -59,48 +58,14 @@ describe("Circuit admin decisions", () => {
         }
       ])
     ).toEqual([
-      "BAFTA 2027: results date",
-      "oscars-2027: nominations date, results date"
+      "BAFTA 2027: ceremony date",
+      "oscars-2027: nominations date, ceremony date"
     ]);
   });
 
   it("offers only ceremonies not yet associated", () => {
     const all = [{ id: 1 }, { id: 2 }, { id: 3 }];
     expect(unassociatedCeremonies(all, [2])).toEqual([{ id: 1 }, { id: 3 }]);
-  });
-
-  it("lists each event with its ceremonies in event order", () => {
-    const groups = ceremoniesByEvent(
-      [{ id: 20 }, { id: 10 }],
-      [
-        { ceremony_id: 1, circuit_event_id: 10 },
-        { ceremony_id: 2, circuit_event_id: 20 },
-        { ceremony_id: 3, circuit_event_id: 10 }
-      ]
-    );
-    expect(
-      groups.map((g) => [g.event.id, g.ceremonies.map((c) => c.ceremony_id)])
-    ).toEqual([
-      [20, [2]],
-      [10, [1, 3]]
-    ]);
-  });
-
-  it("groups category editions under their ceremony in ceremony order", () => {
-    const groups = groupEditionsByCeremony(
-      [{ ceremony_id: 9 }, { ceremony_id: 4 }],
-      [
-        { id: 1, ceremony_id: 4 },
-        { id: 2, ceremony_id: 9 },
-        { id: 3, ceremony_id: 4 }
-      ]
-    );
-    expect(
-      groups.map((g) => [g.ceremony.ceremony_id, g.editions.map((e) => e.id)])
-    ).toEqual([
-      [9, [2]],
-      [4, [1, 3]]
-    ]);
   });
 
   it("moves an id one place and refuses to move past either end", () => {
@@ -146,24 +111,31 @@ describe("Circuit admin decisions", () => {
     ]);
   });
 
-  it("lists every ceremony category mapped to each Circuit category", () => {
-    const result = mappedCeremonyCategories(
-      [{ id: 21 }, { id: 22 }],
-      [{ ceremony_id: 1 }],
-      [edition(1, 21, null), edition(2, null, 21), edition(3, null, null)],
-      {}
-    );
+  it("maps two Golden Globes-style categories to one Circuit category, each to one row only", () => {
+    // 51 and 52 both come from the Actor template (21); 53 is saved to Actress (22).
+    const ids = [21, 22];
+    const editions = [edition(51, null, 21), edition(52, null, 21), edition(53, 22, 22)];
+    const rows = mappingModalRows(ids, editions, {});
+    expect(rows.map((r) => [r.circuitCategoryId, r.selected.map((e) => e.id)])).toEqual([
+      [21, [51, 52]],
+      [22, [53]]
+    ]);
+    // A category chosen in one row is not offered in the other.
+    expect(rows.map((r) => r.options.map((e) => e.id))).toEqual([[51, 52], [53]]);
+
+    // Dropping 52 from Actor frees it; choosing it for Actress takes it from Actor.
+    const freed = chooseMappingRow(editions, {}, ids, 21, [51]);
+    expect(freed).toEqual({ 51: 21, 52: null });
+    expect(mappingModalRows(ids, editions, freed)[1]!.options.map((e) => e.id)).toEqual([
+      52, 53
+    ]);
+    const moved = chooseMappingRow(editions, freed, ids, 22, [53, 52]);
     expect(
-      result.map((r) => [r.category.id, r.mapped.map((m) => [m.edition.id, m.unsaved])])
-    ).toEqual([
-      [
-        21,
-        [
-          [1, false],
-          [2, true]
-        ]
-      ],
-      [22, []]
+      mappingModalRows(ids, editions, moved).map((r) => r.selected.map((e) => e.id))
+    ).toEqual([[51], [52, 53]]);
+    expect(pendingMappingChanges(editions, moved, ids)).toEqual([
+      { categoryEditionId: 51, circuitCategoryId: 21 },
+      { categoryEditionId: 52, circuitCategoryId: 22 }
     ]);
   });
 

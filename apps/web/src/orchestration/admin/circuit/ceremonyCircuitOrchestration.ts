@@ -2,19 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
-import { useFieldErrors } from "../../useFieldErrors";
 import { confirmStructuralEdit } from "./structuralConfirm";
 import type { CeremonyCircuitAssociation, CeremonyCircuitOption } from "./types";
 
 type LoadState = "loading" | "error" | "ready";
-
-export type CeremonyDatesForm = { nominationsOn: string; resultsOn: string };
-
-/** API field -> form input. */
-const DATE_FIELD_INPUTS = {
-  nominations_on: "nominationsOn",
-  results_on: "resultsOn"
-} as const;
 
 function notifySuccess(id: string, message: string) {
   notify({
@@ -29,8 +20,8 @@ function notifySuccess(id: string, message: string) {
 }
 
 /**
- * The ceremony side of the Circuit association, plus the ceremony's nomination
- * and results dates. Both can be edited at any ceremony status.
+ * The ceremony side of the Circuit association: attach to a Circuit or detach
+ * from one, at any ceremony status. Grouping is done in the Circuit editor.
  */
 export function useAdminCeremonyCircuitOrchestration(args: {
   ceremonyId: number | null;
@@ -40,16 +31,8 @@ export function useAdminCeremonyCircuitOrchestration(args: {
   const [error, setError] = useState<string | null>(null);
   const [associations, setAssociations] = useState<CeremonyCircuitAssociation[]>([]);
   const [circuitOptions, setCircuitOptions] = useState<CeremonyCircuitOption[]>([]);
-  const [datesForm, setDatesForm] = useState<CeremonyDatesForm>({
-    nominationsOn: "",
-    resultsOn: ""
-  });
-  const [savingDates, setSavingDates] = useState(false);
-  const [datesStatus, setDatesStatus] = useState<ApiResult | null>(null);
   const [working, setWorking] = useState(false);
   const [associationStatus, setAssociationStatus] = useState<ApiResult | null>(null);
-  const fieldErrors = useFieldErrors();
-  const { applyFailure, reset: resetFieldErrors } = fieldErrors;
 
   const loadCircuits = useCallback(async () => {
     if (ceremonyId === null) return false;
@@ -72,22 +55,10 @@ export function useAdminCeremonyCircuitOrchestration(args: {
       setState("error");
       return;
     }
-    const [circuitsOk, ceremonyRes] = await Promise.all([
-      loadCircuits(),
-      fetchJson<{
-        ceremony: { nominations_on?: string | null; results_on?: string | null };
-      }>(`/admin/ceremonies/${ceremonyId}`, { method: "GET" })
-    ]);
-    if (!circuitsOk || !ceremonyRes.ok) {
-      if (!ceremonyRes.ok) setError(ceremonyRes.error ?? "Unable to load ceremony");
+    if (!(await loadCircuits())) {
       setState("error");
       return;
     }
-    const ceremony = ceremonyRes.data?.ceremony;
-    setDatesForm({
-      nominationsOn: ceremony?.nominations_on ?? "",
-      resultsOn: ceremony?.results_on ?? ""
-    });
     setError(null);
     setState("ready");
   }, [ceremonyId, loadCircuits]);
@@ -95,35 +66,6 @@ export function useAdminCeremonyCircuitOrchestration(args: {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const saveDates = useCallback(async () => {
-    if (ceremonyId === null) return false;
-    setSavingDates(true);
-    setDatesStatus(null);
-    resetFieldErrors();
-    const res = await fetchJson<{
-      ceremony: { nominations_on: string | null; results_on: string | null };
-    }>(`/admin/ceremonies/${ceremonyId}/dates`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nominations_on: datesForm.nominationsOn || null,
-        results_on: datesForm.resultsOn || null
-      })
-    });
-    setSavingDates(false);
-    if (!res.ok) {
-      applyFailure(res, DATE_FIELD_INPUTS);
-      setDatesStatus({ ok: false, message: res.error ?? "Could not save the dates" });
-      return false;
-    }
-    setDatesForm({
-      nominationsOn: res.data?.ceremony.nominations_on ?? "",
-      resultsOn: res.data?.ceremony.results_on ?? ""
-    });
-    notifySuccess("admin.ceremony.dates.save.success", "Dates saved.");
-    return true;
-  }, [ceremonyId, datesForm, applyFailure, resetFieldErrors]);
 
   const runCircuitWrite = useCallback(
     async (init: { path: string; method: string; body?: object }, message: string) => {
@@ -153,29 +95,21 @@ export function useAdminCeremonyCircuitOrchestration(args: {
     [loadCircuits]
   );
 
-  /**
-   * Adds this ceremony to a Circuit, or moves it to another event of one it
-   * is already in. Without an event it gets its own one-ceremony event.
-   */
+  /** Attaches this ceremony to a Circuit, ungrouped, with its own event. */
   const associate = useCallback(
-    async (circuitId: number, circuitEventId: number | null) => {
+    async (circuitId: number) => {
       if (ceremonyId === null) return false;
       const circuit = circuitOptions.find((c) => c.id === circuitId);
-      if (!circuit) return false;
-      const isNew = !associations.some((a) => a.circuit_id === circuitId);
+      if (!circuit || associations.some((a) => a.circuit_id === circuitId)) return false;
       const ok = await confirmStructuralEdit({
         circuitStatus: circuit.status,
         circuitName: circuit.name,
-        action: isNew ? "Adding this ceremony" : "Moving this ceremony to another event"
+        action: "Adding this ceremony"
       });
       if (!ok) return false;
       return runCircuitWrite(
-        {
-          path: `/admin/ceremonies/${ceremonyId}/circuits/${circuitId}`,
-          method: "PUT",
-          body: { circuit_event_id: circuitEventId }
-        },
-        isNew ? "Added to the Circuit." : "Moved to another event."
+        { path: `/admin/ceremonies/${ceremonyId}/circuits/${circuitId}`, method: "PUT" },
+        "Added to the Circuit."
       );
     },
     [ceremonyId, circuitOptions, associations, runCircuitWrite]
@@ -208,14 +142,8 @@ export function useAdminCeremonyCircuitOrchestration(args: {
     error,
     associations,
     circuitOptions,
-    datesForm,
-    setDatesForm,
-    savingDates,
-    datesStatus,
-    fieldErrors: fieldErrors.errors,
-    clearFieldError: fieldErrors.clear,
     working,
     associationStatus,
-    actions: { saveDates, associate, remove }
+    actions: { associate, remove }
   };
 }

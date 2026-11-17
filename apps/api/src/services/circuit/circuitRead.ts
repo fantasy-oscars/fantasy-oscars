@@ -6,7 +6,7 @@ import {
   listCircuitEvents,
   listCircuits
 } from "../../data/repositories/circuitRepository.js";
-import { listScoringOccasions } from "../../domain/circuit.js";
+import { listScoringOccasions, resultsDateOf } from "../../domain/circuit.js";
 import { AppError } from "../../errors.js";
 
 /*
@@ -64,7 +64,7 @@ export async function getPublicCircuitEvents(client: DbClient, id: number) {
           code: c.ceremony_code,
           name: c.ceremony_name,
           nominations_on: c.nominations_on,
-          results_on: c.results_on
+          results_on: resultsDateOf(c.starts_at)
         }))
     }))
   };

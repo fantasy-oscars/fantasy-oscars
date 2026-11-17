@@ -21,6 +21,8 @@ export type CircuitEventRow = {
   code: string;
   name: string;
   sort_index: number;
+  /** An admin-made group; any other event holds exactly one ceremony. */
+  is_group: boolean;
 };
 
 export type CircuitCategoryRow = {
@@ -40,6 +42,7 @@ export type CircuitCeremonyRow = CircuitCeremonyDates & {
   circuit_id: number;
   ceremony_status: string;
   event_name: string;
+  event_is_group: boolean;
 };
 
 export type CircuitCategoryEditionRow = {
@@ -60,6 +63,8 @@ export type CeremonyCircuitAssociationRow = {
   circuit_event_id: number;
   event_code: string;
   event_name: string;
+  /** In an admin-made group; otherwise its event is its own, hidden plumbing. */
+  event_is_group: boolean;
 };
 
 export type CategoryTemplateRow = {
@@ -74,7 +79,7 @@ export type CategoryTemplateRow = {
 const CIRCUIT_COLUMNS = `c.id::int, c.code, c.name, c.status, c.opens_on::text AS opens_on,
   c.activated_at, c.archived_at, c.created_at`;
 
-const EVENT_COLUMNS = `id::int, circuit_id::int, code, name, sort_index`;
+const EVENT_COLUMNS = `id::int, circuit_id::int, code, name, sort_index, is_group`;
 
 const CATEGORY_COLUMNS = `cc.id::int, cc.circuit_id::int, cc.code, cc.name, cc.kind,
   cc.sort_index, cc.category_family_id::int, cc.icon_id::int, i.code AS icon_code,
@@ -200,15 +205,15 @@ export async function getCircuitEvent(
 /** Appends an event after the Circuit's last one. */
 export async function insertCircuitEvent(
   client: DbClient,
-  input: { circuitId: number; code: string; name: string }
+  input: { circuitId: number; code: string; name: string; isGroup: boolean }
 ): Promise<CircuitEventRow> {
   const { rows } = await query<CircuitEventRow>(
     client,
-    `INSERT INTO circuit_event (circuit_id, code, name, sort_index)
-     SELECT $1, $2, $3, COALESCE(MAX(sort_index) + 1, 0)
+    `INSERT INTO circuit_event (circuit_id, code, name, is_group, sort_index)
+     SELECT $1, $2, $3, $4, COALESCE(MAX(sort_index) + 1, 0)
      FROM circuit_event WHERE circuit_id = $1
      RETURNING ${EVENT_COLUMNS}`,
-    [input.circuitId, input.code, input.name]
+    [input.circuitId, input.code, input.name, input.isGroup]
   );
   return rows[0]!;
 }
@@ -241,7 +246,10 @@ export async function deleteCircuitEvent(
   return (res.rowCount ?? 0) > 0;
 }
 
-/** Deletes the event when no ceremony is left in it; true when it was deleted. */
+/**
+ * Deletes a one-ceremony event when no ceremony is left in it; true when it
+ * was deleted. Groups stay, empty or not.
+ */
 export async function deleteCircuitEventIfEmpty(
   client: DbClient,
   circuitId: number,
@@ -251,6 +259,7 @@ export async function deleteCircuitEventIfEmpty(
     client,
     `DELETE FROM circuit_event e
      WHERE e.circuit_id = $1 AND e.id = $2
+       AND NOT e.is_group
        AND NOT EXISTS (
          SELECT 1 FROM circuit_ceremony cc WHERE cc.circuit_event_id = e.id
        )`,
@@ -427,17 +436,19 @@ export async function listCircuitCeremonies(
        c.name AS ceremony_name,
        c.status AS ceremony_status,
        c.nominations_on::text AS nominations_on,
-       c.results_on::text AS results_on,
+       c.starts_at,
        e.id::int AS circuit_event_id,
        e.code AS event_code,
        e.name AS event_name,
-       e.sort_index AS event_sort_index
+       e.sort_index AS event_sort_index,
+       e.is_group AS event_is_group,
+       cc.sort_index
      FROM circuit_ceremony cc
      JOIN ceremony c ON c.id = cc.ceremony_id AND c.deleted_at IS NULL
      JOIN circuit_event e ON e.id = cc.circuit_event_id
      WHERE cc.circuit_id = $1
        AND ($2::boolean IS FALSE OR c.status <> 'DRAFT')
-     ORDER BY e.sort_index, c.id`,
+     ORDER BY e.sort_index, cc.sort_index, c.id`,
     [circuitId, opts.publicOnly ?? false]
   );
   return rows;
@@ -483,7 +494,8 @@ export async function listCeremonyCircuitAssociations(
        c.status AS circuit_status,
        e.id::int AS circuit_event_id,
        e.code AS event_code,
-       e.name AS event_name
+       e.name AS event_name,
+       e.is_group AS event_is_group
      FROM circuit_ceremony cc
      JOIN circuit c ON c.id = cc.circuit_id
      JOIN circuit_event e ON e.id = cc.circuit_event_id
@@ -510,7 +522,7 @@ export async function getCircuitCeremonyEventId(
   return rows[0]?.circuit_event_id ?? null;
 }
 
-/** Ceremonies in one event, in id order. */
+/** Ceremonies in one event, in their order. */
 export async function listEventCeremonyIds(
   client: DbClient,
   circuitId: number,
@@ -520,24 +532,51 @@ export async function listEventCeremonyIds(
     client,
     `SELECT ceremony_id::int FROM circuit_ceremony
      WHERE circuit_id = $1 AND circuit_event_id = $2
-     ORDER BY ceremony_id`,
+     ORDER BY sort_index, ceremony_id`,
     [circuitId, eventId]
   );
   return rows.map((r) => r.ceremony_id);
 }
 
-/** Creates or moves an association. */
+/**
+ * Creates or moves an association. A ceremony new to the event goes after its
+ * last ceremony; one already in it keeps its place.
+ */
 export async function upsertCircuitCeremony(
   client: DbClient,
   input: { circuitId: number; ceremonyId: number; circuitEventId: number }
 ): Promise<void> {
   await query(
     client,
-    `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id)
-     VALUES ($1, $2, $3)
+    `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id, sort_index)
+     SELECT $1, $2, $3, COALESCE(MAX(sort_index) + 1, 0)
+     FROM circuit_ceremony WHERE circuit_id = $1 AND circuit_event_id = $3
      ON CONFLICT (circuit_id, ceremony_id)
-     DO UPDATE SET circuit_event_id = EXCLUDED.circuit_event_id`,
+     DO UPDATE SET
+       circuit_event_id = EXCLUDED.circuit_event_id,
+       sort_index = CASE
+         WHEN circuit_ceremony.circuit_event_id = EXCLUDED.circuit_event_id
+           THEN circuit_ceremony.sort_index
+         ELSE EXCLUDED.sort_index
+       END`,
     [input.circuitId, input.ceremonyId, input.circuitEventId]
+  );
+}
+
+/** Sets the ceremonies' order inside one event; ids are checked by the caller. */
+export async function reorderEventCeremonies(
+  client: DbClient,
+  circuitId: number,
+  eventId: number,
+  ceremonyIds: number[]
+): Promise<void> {
+  await query(
+    client,
+    `UPDATE circuit_ceremony cc
+     SET sort_index = o.ord - 1
+     FROM unnest($3::bigint[]) WITH ORDINALITY AS o(id, ord)
+     WHERE cc.circuit_id = $1 AND cc.circuit_event_id = $2 AND cc.ceremony_id = o.id`,
+    [circuitId, eventId, ceremonyIds]
   );
 }
 

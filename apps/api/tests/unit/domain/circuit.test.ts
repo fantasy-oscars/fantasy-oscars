@@ -5,15 +5,25 @@ import {
   findCeremoniesMissingDates,
   isFullOrdering,
   listScoringOccasions,
+  moveToIndex,
+  resultsDateOf,
   suggestCircuitCategoryId,
   uniqueCode,
+  withResultsDate,
   type CircuitCeremonyDates
 } from "../../../src/domain/circuit.js";
+
+/** 17:00 Pacific on a winter day, as an instant (UTC is eight hours ahead). */
+function evening(day: string) {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!, 25));
+}
 
 function ceremony(
   id: number,
   eventSort: number,
-  dates: { nominations_on?: string | null; results_on?: string | null } = {}
+  dates: { nominations_on?: string | null; results_on?: string | null } = {},
+  sortIndex = 0
 ): CircuitCeremonyDates {
   return {
     ceremony_id: id,
@@ -22,10 +32,55 @@ function ceremony(
     circuit_event_id: 100 + eventSort,
     event_code: `event-${eventSort}`,
     event_sort_index: eventSort,
+    sort_index: sortIndex,
     nominations_on: dates.nominations_on ?? null,
-    results_on: dates.results_on ?? null
+    starts_at: dates.results_on ? evening(dates.results_on) : null
   };
 }
+
+describe("resultsDateOf", () => {
+  it("is the ceremony datetime's date in America/Los_Angeles", () => {
+    // 17:00 Pacific is already the next day in UTC.
+    expect(resultsDateOf(new Date("2027-03-15T01:00:00Z"))).toBe("2027-03-14");
+    expect(resultsDateOf("2027-03-15T06:59:59Z")).toBe("2027-03-14");
+    expect(resultsDateOf("2027-03-15T07:00:00Z")).toBe("2027-03-15");
+  });
+
+  it("follows daylight saving time", () => {
+    // PST (UTC-8) in January, PDT (UTC-7) in July.
+    expect(resultsDateOf("2027-01-11T07:59:00Z")).toBe("2027-01-10");
+    expect(resultsDateOf("2027-07-11T06:59:00Z")).toBe("2027-07-10");
+    expect(resultsDateOf("2027-07-11T07:00:00Z")).toBe("2027-07-11");
+  });
+
+  it("is null without a datetime", () => {
+    expect(resultsDateOf(null)).toBeNull();
+    expect(resultsDateOf("not a date")).toBeNull();
+  });
+
+  it("is added to a ceremony for responses", () => {
+    expect(withResultsDate(ceremony(1, 0, { results_on: "2027-01-10" }))).toMatchObject({
+      ceremony_id: 1,
+      results_on: "2027-01-10"
+    });
+    expect(withResultsDate(ceremony(2, 0)).results_on).toBeNull();
+  });
+});
+
+describe("moveToIndex", () => {
+  it("moves an id to a position, keeping the others in order", () => {
+    expect(moveToIndex([1, 2, 3, 4], 4, 0)).toEqual([4, 1, 2, 3]);
+    expect(moveToIndex([1, 2, 3, 4], 1, 2)).toEqual([2, 3, 1, 4]);
+    expect(moveToIndex([1, 2, 3], 2, 1)).toEqual([1, 2, 3]);
+  });
+
+  it("inserts a new id, and clamps the position to the list", () => {
+    expect(moveToIndex([1, 2], 9, 1)).toEqual([1, 9, 2]);
+    expect(moveToIndex([1, 2], 9, 50)).toEqual([1, 2, 9]);
+    expect(moveToIndex([1, 2], 1, -3)).toEqual([1, 2]);
+    expect(moveToIndex([], 5, 0)).toEqual([5]);
+  });
+});
 
 describe("circuit category kind", () => {
   it("is FILM for a FILM template and ACTING for a PERFORMANCE template", () => {
@@ -137,6 +192,28 @@ describe("listScoringOccasions", () => {
       [5, "WIN", "2027-03-14"],
       [4, "WIN", null]
     ]);
+  });
+
+  it("derives the win date from the ceremony datetime", () => {
+    const [nomination, win] = listScoringOccasions([
+      {
+        ...ceremony(1, 0, { nominations_on: "2027-01-21" }),
+        starts_at: new Date("2027-03-15T01:00:00Z")
+      }
+    ]);
+    expect(nomination).toMatchObject({ kind: "NOMINATION", date: "2027-01-21" });
+    expect(win).toMatchObject({ kind: "WIN", date: "2027-03-14" });
+  });
+
+  it("orders ceremonies inside one event by their own order", () => {
+    const occasions = listScoringOccasions([
+      ceremony(1, 2, {}, 1),
+      ceremony(7, 2, {}, 0),
+      ceremony(3, 0)
+    ]);
+    expect(
+      occasions.filter((o) => o.kind === "NOMINATION").map((o) => o.ceremony_id)
+    ).toEqual([3, 7, 1]);
   });
 
   it("keeps undated occasions in event order", () => {

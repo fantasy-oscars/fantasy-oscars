@@ -151,7 +151,24 @@ export const adminCircuitAssociationBody = z.object({
     .transform((v) => v ?? null)
 });
 
-/** A new event, optionally taking the listed ceremonies from their events. */
+/**
+ * Moves an associated ceremony into a group at `index`, or with no group to
+ * the top level at `index`, where it gets its own one-ceremony event. An
+ * index past the end appends.
+ */
+export const adminCircuitCeremonyPositionBody = z.object({
+  group_id: positiveIdValue("Choose a group in this Circuit")
+    .nullish()
+    .transform((v) => v ?? null),
+  index: z
+    .union([z.number(), z.string().regex(/^\d+$/)], "Choose a position")
+    .transform(Number)
+    .pipe(
+      z.number("Choose a position").int("Choose a position").min(0, "Choose a position")
+    )
+});
+
+/** A new group, optionally taking the listed ceremonies from their events. */
 export const adminCircuitEventCreateBody = z.object({
   name: requiredText("Name is required"),
   code: optionalCode,
@@ -175,6 +192,10 @@ export const adminCircuitEventOrderBody = z.object({
   event_ids: idOrder("List every event of this Circuit once")
 });
 
+export const adminCircuitEventCeremonyOrderBody = z.object({
+  ceremony_ids: idOrder("List every ceremony of this group once")
+});
+
 export const adminCircuitCategoryCreateBody = z.object({
   category_family_id: positiveIdValue("Choose a category template")
 });
@@ -191,15 +212,18 @@ export const adminCircuitMappingBody = z.object({
   circuit_category_id: positiveIdValue("Choose a Circuit category")
 });
 
+/**
+ * The nominations date. The results date is not entered: it is the ceremony
+ * datetime's date in America/Los_Angeles.
+ */
 export const adminCeremonyDatesBody = z
   .object({
-    nominations_on: optionalDateOnly("Enter the nominations date as YYYY-MM-DD"),
-    results_on: optionalDateOnly("Enter the results date as YYYY-MM-DD")
+    nominations_on: optionalDateOnly("Enter the nominations date as YYYY-MM-DD")
   })
   .transform((v, ctx) => {
-    if (v.nominations_on === undefined && v.results_on === undefined) {
+    if (v.nominations_on === undefined) {
       ctx.addIssue({ code: "custom", message: "No fields to update" });
       return z.NEVER;
     }
-    return v;
+    return { nominations_on: v.nominations_on };
   });
