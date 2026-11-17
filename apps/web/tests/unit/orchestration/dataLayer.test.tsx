@@ -80,6 +80,8 @@ describe("web data layer", () => {
   it("renders a revisited league from cache and reuses its sub-requests", async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url.endsWith("/leagues/9/seasons")) return json({ seasons: [] });
+      if (url.endsWith("/leagues/9/circuits")) return json({ circuit_leagues: [] });
+      if (url.endsWith("/circuits")) return json({ circuits: [] });
       if (url.endsWith("/leagues/9/members")) {
         return json({
           members: [{ id: 1, user_id: 1, role: "OWNER", username: "alice" }]
@@ -99,14 +101,15 @@ describe("web data layer", () => {
     );
     await waitFor(() => expect(first.result.current.view.state).toBe("ready"));
     first.unmount();
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    // The league, its seasons, Circuit leagues and members, and the public Circuits.
+    expect(fetchMock).toHaveBeenCalledTimes(5);
 
     const second = renderHook(
       () => useLeagueDetailOrchestration({ leagueId: 9, userSub: "1" }),
       { wrapper }
     );
     expect(second.result.current.view.state).toBe("ready");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it("carries the request id on failed loads", async () => {

@@ -43,3 +43,12 @@ export function seasonPath(input: {
     input.ceremonyCode ?? (input.ceremonyId ? String(input.ceremonyId) : "ceremony")
   )}`;
 }
+
+/** A league's competition in one Circuit (shown to players as a season). */
+export function circuitLeaguePath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${leaguePath(input)}/circuits/${input.circuitLeagueId}`;
+}

@@ -41,6 +41,8 @@ export type VisualSeed = {
   ceremonies: { completed: number; upcoming: number; draft: number };
   leagues: { main: number; second: number };
   seasons: { completed: number; live: number; pending: number };
+  /** The main league's competition in the seeded Circuit (a season to players). */
+  circuitLeagues: { main: number };
   drafts: { completed: number; live: number };
   /** An unused id for the 404 and missing-entity screens. */
   missingId: number;
@@ -353,6 +355,74 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     userIds
   });
 
+  // A Circuit beside the main league's Seasons: one single-ceremony event, one
+  // grouped event and three categories. avery started it and left; casey and
+  // drew have joined, so avery's Home (a screenshot baseline) lists only Seasons.
+  const circuit = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit (code, name, status, activated_at, created_at)
+     VALUES ('awards-season-2035', 'Awards Season 2035', 'ACTIVE', $1, $1)
+     RETURNING id::int`,
+    [minutes(460)]
+  );
+  const circuitEvents: Array<{
+    code: string;
+    name: string;
+    group: boolean;
+    ceremony: number;
+  }> = [
+    { code: "golden-reel", name: "Golden Reel Awards", group: false, ceremony: 2 },
+    { code: "guild-awards", name: "Guild Awards", group: true, ceremony: 1 }
+  ];
+  for (const [i, e] of circuitEvents.entries()) {
+    const event = await one<{ id: number }>(
+      pool,
+      `INSERT INTO circuit_event (circuit_id, code, name, sort_index, is_group)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id::int`,
+      [circuit.id, e.code, e.name, i, e.group]
+    );
+    await pool.query(
+      `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id, sort_index)
+       VALUES ($1, $2, $3, $4)`,
+      [circuit.id, e.ceremony, event.id, i]
+    );
+  }
+  const circuitCategories: Array<[string, string, "FILM" | "ACTING"]> = [
+    ["best-picture", "Best Picture", "FILM"],
+    ["best-director", "Best Director", "FILM"],
+    ["best-actress", "Best Actress", "ACTING"]
+  ];
+  for (const [i, [code, name, kind]] of circuitCategories.entries()) {
+    await pool.query(
+      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [circuit.id, code, name, kind, i]
+    );
+  }
+  const circuitLeague = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit_league (circuit_id, league_id, created_by_user_id, created_at)
+     VALUES ($1, $2, $3, $4) RETURNING id::int`,
+    [circuit.id, main.id, userIds.avery, minutes(470)]
+  );
+  await pool.query(
+    `INSERT INTO circuit_league_event (circuit_league_id, circuit_id, circuit_event_id)
+     SELECT $1, circuit_id, id FROM circuit_event WHERE circuit_id = $2`,
+    [circuitLeague.id, circuit.id]
+  );
+  await pool.query(
+    `INSERT INTO circuit_league_category (circuit_league_id, circuit_id, circuit_category_id)
+     SELECT $1, circuit_id, id FROM circuit_category WHERE circuit_id = $2`,
+    [circuitLeague.id, circuit.id]
+  );
+  for (const [i, key] of (["casey", "drew"] as PersonaKey[]).entries()) {
+    await pool.query(
+      `INSERT INTO circuit_league_member (circuit_league_id, user_id, joined_at)
+       VALUES ($1, $2, $3)`,
+      [circuitLeague.id, userIds[key], minutes(480 + i)]
+    );
+  }
+
   // A saved draft plan for the commissioner, in the live ceremony.
   const plan = await one<{ id: number }>(
     pool,
@@ -386,6 +456,7 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
       live: live.seasonId,
       pending: pending.seasonId
     },
+    circuitLeagues: { main: circuitLeague.id },
     drafts: { completed: completed.draftId, live: live.draftId },
     missingId: 99999
   };

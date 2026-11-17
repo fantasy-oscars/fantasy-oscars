@@ -2,6 +2,9 @@ import { queryOptions } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
 import type {
   CeremonySummary,
+  CircuitLeagueDetail,
+  CircuitLeagueSummary,
+  CircuitSummary,
   InboxInvite,
   LeagueDetail,
   LeagueMember,
@@ -111,6 +114,53 @@ export function leagueMembersQuery(leagueId: number) {
         "Unable to load members"
       );
       return data?.members ?? [];
+    }
+  });
+}
+
+/** A league's Circuit competitions, listed beside its Seasons. */
+export function leagueCircuitsQuery(leagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.leagues.circuits(leagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<{ circuit_leagues: CircuitLeagueSummary[] }>(
+          `/leagues/${leagueId}/circuits`,
+          { method: "GET" }
+        ),
+        "Unable to load seasons"
+      );
+      return data?.circuit_leagues ?? [];
+    }
+  });
+}
+
+/** Public Circuits a commissioner can start in a league. */
+export function circuitsListQuery() {
+  return queryOptions({
+    queryKey: queryKeys.circuits.list(),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<{ circuits: CircuitSummary[] }>("/circuits", { method: "GET" }),
+        "Unable to load seasons"
+      );
+      return data?.circuits ?? [];
+    }
+  });
+}
+
+export function circuitLeagueQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.detail(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitLeagueDetail>(`/circuit-leagues/${circuitLeagueId}`, {
+          method: "GET"
+        }),
+        "Unable to load season"
+      );
+      if (!data) throw new ApiQueryError("Unable to load season");
+      return data;
     }
   });
 }

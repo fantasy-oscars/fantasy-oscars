@@ -17,7 +17,8 @@ import {
   formatUpdateDate,
   titleCase
 } from "@/decisions/landing";
-import { seasonPath } from "@/lib/routes";
+import { circuitLeaguePath, seasonPath } from "@/lib/routes";
+import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
 import { statusTone } from "@/decisions/statusTone";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
@@ -187,13 +188,40 @@ export function LandingScreen(props: {
               Try again
             </Button>
           </Stack>
-        ) : view.seasons.seasons.length === 0 ? (
+        ) : view.seasons.seasons.length === 0 && view.seasons.circuits.length === 0 ? (
           <EmptyState>
             No active seasons yet. Start one with New league, or accept an invite from a
             commissioner.
           </EmptyState>
         ) : (
           <Stack gap="sm">
+            {view.seasons.circuits.map((c) => {
+              const statusLabel = circuitLeagueStatusLabel(c.status);
+              return (
+                <StandardCard
+                  key={`circuit-${c.id}`}
+                  interactive
+                  component={Link}
+                  to={circuitLeaguePath({
+                    leagueId: c.league_id,
+                    leagueName: c.league_name,
+                    circuitLeagueId: c.id
+                  })}
+                >
+                  <Stack gap="var(--fo-space-dense-2)">
+                    <Title variant="card" className="baseline-wrapAnywhere">
+                      {c.circuit_name}
+                    </Title>
+                    <Group className="baseline-metaRow" gap="sm" wrap="nowrap">
+                      <Text variant="meta" className="baseline-wrapAnywhere">
+                        {c.league_name}
+                      </Text>
+                      <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
+                    </Group>
+                  </Stack>
+                </StandardCard>
+              );
+            })}
             {view.seasons.seasons.map((s) => {
               const status = computeLandingSeasonStatus({
                 draftStatus: s.draft_status,

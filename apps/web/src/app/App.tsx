@@ -67,6 +67,10 @@ const SeasonsIndexPage = lazyPage(
   "SeasonsIndexPage"
 );
 const SeasonPage = lazyPage(() => import("./pages/SeasonPage"), "SeasonPage");
+const CircuitLeaguePage = lazyPage(
+  () => import("./pages/CircuitLeaguePage"),
+  "CircuitLeaguePage"
+);
 
 const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes"));
 const DraftRoomPage = lazy(() =>
@@ -252,6 +256,16 @@ function RoutesConfig() {
             <RequireAuth>
               <LazyRoute>
                 <SeasonsIndexPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/circuits/:circuitLeagueId"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitLeaguePage />
               </LazyRoute>
             </RequireAuth>
           }

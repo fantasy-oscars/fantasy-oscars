@@ -14,6 +14,7 @@ export const queryKeys = {
     one: (leagueId: number) => ["leagues", "one", leagueId] as const,
     seasons: (leagueId: number) => ["leagues", "seasons", leagueId] as const,
     members: (leagueId: number) => ["leagues", "members", leagueId] as const,
+    circuits: (leagueId: number) => ["leagues", "circuits", leagueId] as const,
     detail: (leagueId: number) => ["leagues", "detail", leagueId] as const
   },
   seasons: {
@@ -27,6 +28,15 @@ export const queryKeys = {
     all: ["ceremonies"] as const,
     list: () => ["ceremonies", "list"] as const,
     detail: (ceremonyId: number) => ["ceremonies", "detail", ceremonyId] as const
+  },
+  circuits: {
+    all: ["circuits"] as const,
+    list: () => ["circuits", "list"] as const
+  },
+  circuitLeagues: {
+    all: ["circuitLeagues"] as const,
+    detail: (circuitLeagueId: number) =>
+      ["circuitLeagues", "detail", circuitLeagueId] as const
   },
   invites: {
     all: ["invites"] as const,

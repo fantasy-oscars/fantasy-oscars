@@ -170,6 +170,30 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    id: "circuit-league-setup",
+    persona: "avery",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/circuits/${s.circuitLeagues.main}`,
+    ready: { text: "Lock season" },
+    fullPage: true
+  },
+  {
+    id: "circuit-league-member",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/circuits/${s.circuitLeagues.main}`,
+    ready: { text: "Leave season" },
+    fullPage: true
+  },
+  {
+    // A member of the Circuit competition: Home lists it beside the Seasons.
+    id: "home-with-circuit",
+    persona: "casey",
+    path: () => "/",
+    ready: { text: "Awards Season 2035" },
+    fullPage: true
+  },
+  {
     id: "season-live",
     persona: "avery",
     path: (s) => `/seasons/${s.seasons.live}`,
