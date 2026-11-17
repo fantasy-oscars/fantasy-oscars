@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-16
 - Supersedes: [ADR 0005](0005-series-domain-model.md) section 1 (reference list and table prefix), section 2 (fixed events and categories) and section 4 (league events)
+- Amended by: [ADR 0007](0007-circuit-groups-and-derived-dates.md) (groups versus single ceremonies; derived results date; shared waiver windows)
 
 ## Context
 

@@ -8,6 +8,8 @@ import {
 } from "../../factories/db.js";
 
 const MIGRATION = "023_circuit_admin_structure.sql";
+// Later migrations reshape these rows again (025 tidies events); stop before them.
+const NEXT_MIGRATION = "024_password_reset_token.sql";
 
 // Rows written with the schema migration 022 left behind, then migrated.
 describe("023 circuit migration", () => {
@@ -90,7 +92,7 @@ describe("023 circuit migration", () => {
       [ids.circuit, ids.drama, ids.actor, ids.bestPicture, ids.picture]
     );
 
-    await applyMigrations(pool);
+    await applyMigrations(pool, { before: NEXT_MIGRATION });
   }, 120_000);
 
   afterAll(async () => {

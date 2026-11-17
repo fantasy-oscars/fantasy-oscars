@@ -60,8 +60,24 @@ function detail(status: string) {
       activated_at: null
     },
     events: [
-      { id: 11, circuit_id: 3, code: "bafta", name: "BAFTA", sort_index: 0 },
-      { id: 12, circuit_id: 3, code: "guilds", name: "Guilds", sort_index: 1 }
+      {
+        id: 11,
+        circuit_id: 3,
+        code: "bafta",
+        name: "BAFTA",
+        sort_index: 0,
+        is_group: false
+      },
+      {
+        id: 12,
+        circuit_id: 3,
+        code: "guilds",
+        name: "Guilds",
+        sort_index: 1,
+        is_group: true
+      },
+      // Left empty some other way; a reorder keeps it last.
+      { id: 13, circuit_id: 3, code: "old", name: "Old", sort_index: 2, is_group: false }
     ],
     categories: [category(21, "Actor", 40), category(22, "Actress", 41)],
     ceremonies: [],
@@ -72,7 +88,8 @@ function detail(status: string) {
       categoryEdition(53, "Best Actress – Drama", 22, 22)
     ],
     readiness: { missing_dates: [] },
-    occasions: []
+    occasions: [],
+    waiver_windows: []
   };
 }
 
@@ -124,14 +141,6 @@ function stubFetch(circuitStatus: string) {
             }
           ]
         });
-      if (url.endsWith("/admin/ceremonies/7") && method === "GET")
-        return json({
-          ceremony: { id: 7, nominations_on: "2027-01-08", results_on: null }
-        });
-      if (url.endsWith("/admin/ceremonies/7/dates"))
-        return json({
-          ceremony: { nominations_on: "2027-01-08", results_on: "2027-02-16" }
-        });
       return json({});
     })
   );
@@ -161,50 +170,61 @@ describe("Circuit admin orchestration", () => {
     expect(result.current.templates.map((t) => t.id)).toEqual([40]);
   });
 
-  it("adds a ceremony to a draft Circuit without asking, with or without an event", async () => {
+  it("adds a ceremony to a draft Circuit without asking, ungrouped", async () => {
     const calls = stubFetch("DRAFT");
     const { result } = await renderDetail();
     await act(async () => {
-      await result.current.actions.placeCeremony(7, 11);
-      await result.current.actions.placeCeremony(9, null);
+      await result.current.actions.addCeremony(9);
     });
     expect(confirmMock).not.toHaveBeenCalled();
     expect(writes(calls)).toEqual([
       expect.objectContaining({
-        url: expect.stringMatching(/\/admin\/circuits\/3\/ceremonies\/7$/),
-        method: "PUT",
-        body: JSON.stringify({ circuit_event_id: 11 })
-      }),
-      expect.objectContaining({
         url: expect.stringMatching(/\/admin\/circuits\/3\/ceremonies\/9$/),
         method: "PUT",
-        body: JSON.stringify({ circuit_event_id: null })
+        body: JSON.stringify({})
       })
     ]);
   });
 
-  it("groups ceremonies, renames, reorders and ungroups events", async () => {
+  it("adds, renames and deletes groups, and saves each drag as one write", async () => {
     const calls = stubFetch("DRAFT");
     const { result } = await renderDetail();
     await act(async () => {
-      await result.current.actions.createEvent(" Guilds ", [7, 9]);
-      await result.current.actions.renameEvent(11, "BAFTA Film Awards");
-      await result.current.actions.moveEvent(12, -1);
-      await result.current.actions.moveEvent(11, -1); // already first: no write
-      await result.current.actions.ungroupEvent(12);
+      await result.current.actions.addGroup(" Guild Awards ");
+      await result.current.actions.renameGroup(12, "Guilds");
+      // Into a group, out to the top level, and a top-level reorder.
+      await result.current.actions.applyLayout({
+        kind: "moveCeremony",
+        ceremonyId: 7,
+        groupId: 12,
+        index: 0
+      });
+      await result.current.actions.applyLayout({
+        kind: "moveCeremony",
+        ceremonyId: 7,
+        groupId: null,
+        index: 1
+      });
+      await result.current.actions.applyLayout({
+        kind: "reorderEvents",
+        eventIds: [12, 11]
+      });
+      await result.current.actions.deleteGroup(12);
     });
-    expect(writes(calls).map((c) => [c.method, c.url.replace(/^.*\/admin/, "")])).toEqual(
-      [
-        ["POST", "/circuits/3/events"],
-        ["PATCH", "/circuits/3/events/11"],
-        ["PUT", "/circuits/3/events/order"],
-        ["DELETE", "/circuits/3/events/12"]
-      ]
-    );
-    expect(writes(calls)[0]?.body).toBe(
-      JSON.stringify({ name: "Guilds", ceremony_ids: [7, 9] })
-    );
-    expect(writes(calls)[2]?.body).toBe(JSON.stringify({ event_ids: [12, 11] }));
+    const sent = writes(calls);
+    expect(sent.map((c) => [c.method, c.url.replace(/^.*\/admin/, "")])).toEqual([
+      ["POST", "/circuits/3/events"],
+      ["PATCH", "/circuits/3/events/12"],
+      ["PUT", "/circuits/3/ceremonies/7/position"],
+      ["PUT", "/circuits/3/ceremonies/7/position"],
+      ["PUT", "/circuits/3/events/order"],
+      ["DELETE", "/circuits/3/events/12"]
+    ]);
+    expect(sent[0]?.body).toBe(JSON.stringify({ name: "Guild Awards" }));
+    expect(sent[2]?.body).toBe(JSON.stringify({ group_id: 12, index: 0 }));
+    expect(sent[3]?.body).toBe(JSON.stringify({ group_id: null, index: 1 }));
+    // The order lists every event; one not shown stays last.
+    expect(sent[4]?.body).toBe(JSON.stringify({ event_ids: [12, 11, 13] }));
   });
 
   it("adds, renames, reorders and removes Circuit categories", async () => {
@@ -213,7 +233,7 @@ describe("Circuit admin orchestration", () => {
     await act(async () => {
       await result.current.actions.addCategory(40);
       await result.current.actions.renameCategory(21, "Lead Actor");
-      await result.current.actions.moveCategory(21, 1);
+      await result.current.actions.reorderCategories([22, 21]);
       await result.current.actions.removeCategory(22);
     });
     const sent = writes(calls);
@@ -227,15 +247,12 @@ describe("Circuit admin orchestration", () => {
     expect(sent[2]?.body).toBe(JSON.stringify({ category_ids: [22, 21] }));
   });
 
-  it("pre-selects mappings by template and saves nothing until the admin saves", async () => {
+  it("saves one ceremony's mapping choices, template matches included", async () => {
     const calls = stubFetch("DRAFT");
     const { result } = await renderDetail();
-    act(() => result.current.actions.chooseMapping(53, null));
-    // Choosing and the template pre-selection send no request.
-    expect(writes(calls)).toEqual([]);
-
     await act(async () => {
-      await result.current.actions.saveMappings();
+      // The modal's choices: Actress cleared; the template matches stand.
+      await result.current.actions.saveMappings(8, { 53: null });
     });
     // Both Golden Globes lead-actor categories map to Actor; the cleared
     // Actress mapping is removed.
@@ -255,7 +272,15 @@ describe("Circuit admin orchestration", () => {
         method: "DELETE"
       })
     ]);
-    expect(result.current.mappingChoices).toEqual({});
+  });
+
+  it("saves nothing for a ceremony whose mappings already match", async () => {
+    const calls = stubFetch("DRAFT");
+    const { result } = await renderDetail();
+    await act(async () => {
+      await result.current.actions.saveMappings(99, {});
+    });
+    expect(writes(calls)).toEqual([]);
   });
 
   it("asks before a structural edit on an active Circuit and stops when declined", async () => {
@@ -263,12 +288,18 @@ describe("Circuit admin orchestration", () => {
     confirmMock.mockResolvedValue(false);
     const { result } = await renderDetail();
     await act(async () => {
-      await result.current.actions.saveMappings();
+      await result.current.actions.saveMappings(8, {});
       await result.current.actions.removeCeremony(7);
       await result.current.actions.addCategory(40);
-      await result.current.actions.ungroupEvent(12);
+      await result.current.actions.deleteGroup(12);
+      await result.current.actions.applyLayout({
+        kind: "moveCeremony",
+        ceremonyId: 7,
+        groupId: 12,
+        index: 0
+      });
     });
-    expect(confirmMock).toHaveBeenCalledTimes(4);
+    expect(confirmMock).toHaveBeenCalledTimes(5);
     expect(writes(calls)).toEqual([]);
   });
 
@@ -293,34 +324,24 @@ describe("Circuit admin orchestration", () => {
     ]);
   });
 
-  it("loads and saves a ceremony's dates, and associates from the ceremony side", async () => {
+  it("attaches from the ceremony side, with no event to choose", async () => {
     const calls = stubFetch("ACTIVE");
     confirmMock.mockResolvedValue(true);
     const { result } = renderHook(() =>
       useAdminCeremonyCircuitOrchestration({ ceremonyId: 7 })
     );
     await waitFor(() => expect(result.current.state).toBe("ready"));
-    expect(result.current.datesForm).toEqual({
-      nominationsOn: "2027-01-08",
-      resultsOn: ""
-    });
+    expect(result.current).not.toHaveProperty("datesForm");
 
-    act(() => result.current.setDatesForm((p) => ({ ...p, resultsOn: "2027-02-16" })));
     await act(async () => {
-      await result.current.actions.saveDates();
-      await result.current.actions.associate(3, null);
+      await result.current.actions.associate(3);
     });
     expect(confirmMock).toHaveBeenCalledTimes(1);
     expect(writes(calls)).toEqual([
       expect.objectContaining({
-        url: expect.stringMatching(/\/admin\/ceremonies\/7\/dates$/),
-        method: "PATCH",
-        body: JSON.stringify({ nominations_on: "2027-01-08", results_on: "2027-02-16" })
-      }),
-      expect.objectContaining({
         url: expect.stringMatching(/\/admin\/ceremonies\/7\/circuits\/3$/),
         method: "PUT",
-        body: JSON.stringify({ circuit_event_id: null })
+        body: undefined
       })
     ]);
   });

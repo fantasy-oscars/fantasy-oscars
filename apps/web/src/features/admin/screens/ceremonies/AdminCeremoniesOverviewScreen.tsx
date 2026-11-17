@@ -18,6 +18,7 @@ import type { ApiResult, FieldErrors } from "@/lib/types";
 import { StandardCard } from "@/primitives";
 import "@/primitives/baseline.css";
 import type { CeremonyStatus } from "@/decisions/ceremonyLifecycle";
+import type { CeremonyOverviewFormState } from "@/orchestration/admin/ceremonies/overview/types";
 
 const INFO_ICON = String.fromCharCode(0xe88e);
 
@@ -38,15 +39,8 @@ export function AdminCeremoniesOverviewScreen(props: {
     archived_at: string | null;
   } | null;
   stats: { nominees_total: number; winners_total: number } | null;
-  form: { code: string; name: string; startsAtLocal: string; warningHours: string };
-  setForm: Dispatch<
-    SetStateAction<{
-      code: string;
-      name: string;
-      startsAtLocal: string;
-      warningHours: string;
-    }>
-  >;
+  form: CeremonyOverviewFormState;
+  setForm: Dispatch<SetStateAction<CeremonyOverviewFormState>>;
   fieldErrors: FieldErrors;
   onEditField: (name: string) => void;
   readOnly: boolean;
@@ -191,11 +185,20 @@ export function AdminCeremoniesOverviewScreen(props: {
                 </Stack>
                 <Stack gap="var(--fo-space-2)">
                   <Text fw="var(--fo-font-weight-bold)" size="sm">
+                    Nominations date
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    The day nominations are announced. Circuit scoring counts them on this
+                    day.
+                  </Text>
+                </Stack>
+                <Stack gap="var(--fo-space-2)">
+                  <Text fw="var(--fo-font-weight-bold)" size="sm">
                     Ceremony date &amp; time
                   </Text>
                   <Text size="sm" c="dimmed">
                     Scheduled start time. Entered and displayed in your local time. Stored
-                    internally in UTC.
+                    internally in UTC. Circuit results count on this date in Pacific time.
                   </Text>
                 </Stack>
                 <Stack gap="var(--fo-space-2)">
@@ -255,18 +258,6 @@ export function AdminCeremoniesOverviewScreen(props: {
             }
           />
           <TextInput
-            label="Ceremony date & time"
-            type="datetime-local"
-            value={form.startsAtLocal}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              onEditField("startsAtLocal");
-              setForm((p) => ({ ...p, startsAtLocal: v }));
-            }}
-            disabled={readOnly}
-            error={fieldErrors.startsAtLocal}
-          />
-          <TextInput
             label="Draft warning (hours)"
             type="number"
             min={0}
@@ -279,6 +270,42 @@ export function AdminCeremoniesOverviewScreen(props: {
             disabled={readOnly}
             error={fieldErrors.warningHours}
           />
+        </Box>
+
+        <Box component="fieldset" className="admin-fieldset" mt="md">
+          <Title component="legend" order={4} variant="section">
+            Dates
+          </Title>
+          <Text className="muted" size="sm">
+            Circuit scoring counts nominations on the nominations date and results on the
+            ceremony date in Pacific time.
+          </Text>
+          <Box className="grid grid-stackOnPhone">
+            <TextInput
+              label="Nominations date"
+              type="date"
+              value={form.nominationsOn}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                onEditField("nominationsOn");
+                setForm((p) => ({ ...p, nominationsOn: v }));
+              }}
+              disabled={readOnly}
+              error={fieldErrors.nominationsOn}
+            />
+            <TextInput
+              label="Ceremony date & time"
+              type="datetime-local"
+              value={form.startsAtLocal}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                onEditField("startsAtLocal");
+                setForm((p) => ({ ...p, startsAtLocal: v }));
+              }}
+              disabled={readOnly}
+              error={fieldErrors.startsAtLocal}
+            />
+          </Box>
         </Box>
 
         <Group className="inline-actions" mt="sm" wrap="wrap">

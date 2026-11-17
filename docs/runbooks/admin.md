@@ -84,19 +84,29 @@ edits stay allowed after activation; only an archived Circuit is read-only
 - `GET /admin/circuits/:id`: events, categories, associated ceremonies with their
   dates, category editions with their mapping and
   `suggested_circuit_category_id` (computed from matching templates, never
-  saved), `readiness.missing_dates` and `occasions`.
+  saved), `readiness.missing_dates`, `occasions` and `waiver_windows` (as if
+  every ceremony were enabled). Each event has `is_group`; each ceremony has
+  its order inside its event and a derived, read-only `results_on`.
 - `POST /admin/circuits/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
   `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `CIRCUIT_NOT_DRAFT`.
 - `PUT /admin/circuits/:id/ceremonies/:ceremonyId` with `{ circuit_event_id? }`,
-  and `DELETE` on the same path: add any ceremony or move it to another event;
-  without an event (omitted or `null`) it gets its own one-ceremony event. An
-  event left empty is deleted. Removal also drops its mappings in the Circuit.
-- `GET /admin/ceremonies/:id/circuits`: the ceremony's associations, plus every
-  non-archived Circuit with its events.
+  and `DELETE` on the same path: add any ceremony or move it into a group;
+  without one (omitted or `null`) it keeps or gets its own one-ceremony event.
+  Another ceremony's own event is refused (400). A one-ceremony event is
+  deleted when its ceremony leaves; a group stays, even empty. Removal also
+  drops its mappings in the Circuit.
+- `GET /admin/ceremonies/:id/circuits`: the ceremony's associations (with
+  `event_is_group`), plus every non-archived Circuit with its events.
 - `PUT /admin/ceremonies/:id/circuits/:circuitId` with `{ circuit_event_id? }`,
   and `DELETE` on the same path: the same association, from the ceremony side.
+- `PUT /admin/circuits/:id/ceremonies/:ceremonyId/position` with
+  `{ group_id, index }`: place a ceremony in a group at `index`, or with
+  `group_id: null` at the top level at `index` (its own one-ceremony event).
+  An index past the end appends.
 - `POST /admin/circuits/:id/events` with `{ name, code?, ceremony_ids? }`: create
-  an event, moving the listed ceremonies into it.
+  a group (possibly empty), moving the listed ceremonies into it.
+  `PUT /admin/circuits/:id/events/:eventId/ceremonies/order` with
+  `{ ceremony_ids }`: reorder the ceremonies inside a group (each once).
   `PATCH /admin/circuits/:id/events/:eventId` with `{ name?, code? }`: rename.
   `PUT /admin/circuits/:id/events/order` with `{ event_ids }`: reorder (every
   event once). `DELETE /admin/circuits/:id/events/:eventId`: ungroup; each of its
@@ -110,9 +120,11 @@ edits stay allowed after activation; only an archived Circuit is read-only
   `{ circuit_category_id }`, and `DELETE` on the same path: map or unmap a
   category edition. Several editions may map to one Circuit category. 409
   `CIRCUIT_CEREMONY_NOT_ASSOCIATED` until its ceremony is in the Circuit.
-- `PATCH /admin/ceremonies/:id/dates` with `{ nominations_on?, results_on? }`
+- `PATCH /admin/ceremonies/:id/dates` with `{ nominations_on }`
   (`YYYY-MM-DD`, `null` clears): works at every ceremony status and never
-  changes a Circuit's status.
+  changes a Circuit's status. The results date is the ceremony datetime's
+  date in America/Los_Angeles; set it through the ceremony datetime.
+  The Initialize step saves both from its one **Dates** section.
 
 ## Notes
 

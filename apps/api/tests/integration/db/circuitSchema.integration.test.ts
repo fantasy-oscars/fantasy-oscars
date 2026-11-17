@@ -152,7 +152,7 @@ describe("circuit schema", () => {
       expect(rows).toEqual([{ parent: "category_family", delete_rule: "SET NULL" }]);
     });
 
-    it("adds only the two nullable date columns to ceremony", async () => {
+    it("adds only the nullable nominations date to ceremony; results come from starts_at", async () => {
       const { rows } = await db.pool.query<{
         column_name: string;
         data_type: string;
@@ -165,8 +165,7 @@ describe("circuit schema", () => {
          ORDER BY column_name`
       );
       expect(rows).toEqual([
-        { column_name: "nominations_on", data_type: "date", is_nullable: "YES" },
-        { column_name: "results_on", data_type: "date", is_nullable: "YES" }
+        { column_name: "nominations_on", data_type: "date", is_nullable: "YES" }
       ]);
     });
   });

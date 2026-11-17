@@ -2,6 +2,7 @@ import type express from "express";
 import type { Router } from "express";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
+import { resultsDateOf } from "../../domain/circuit.js";
 import { AppError } from "../../errors.js";
 import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
 import { parseParams } from "../../utils/validate.js";
@@ -32,8 +33,7 @@ export function registerAdminCeremonyGetRoute(args: {
              published_at,
              archived_at,
              results_finalized_at,
-             nominations_on::text AS nominations_on,
-             results_on::text AS results_on
+             nominations_on::text AS nominations_on
            FROM ceremony
            WHERE id = $1
              AND deleted_at IS NULL`,
@@ -74,7 +74,11 @@ export function registerAdminCeremonyGetRoute(args: {
           winners_total: 0
         };
 
-        return res.status(200).json({ ceremony, stats });
+        // The results date is derived from the ceremony datetime (ADR 0007).
+        return res.status(200).json({
+          ceremony: { ...ceremony, results_on: resultsDateOf(ceremony.starts_at) },
+          stats
+        });
       } catch (err) {
         next(err);
       }

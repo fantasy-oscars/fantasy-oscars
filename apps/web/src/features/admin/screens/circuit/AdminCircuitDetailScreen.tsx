@@ -13,23 +13,24 @@ import {
   circuitStatusLabel,
   describeMissingDates,
   isCircuitEditable,
-  unassociatedCeremonies,
-  type MappingChoices
+  unassociatedCeremonies
 } from "@/decisions/admin/circuit";
 import { StandardCard } from "@/primitives";
 import {
-  CircuitCeremoniesCard,
+  CircuitCeremoniesTab,
   type CircuitCeremonyActions
-} from "@/features/admin/ui/circuit/CircuitCeremoniesCard";
+} from "@/features/admin/ui/circuit/CircuitCeremoniesTab";
 import {
-  CircuitCategoriesCard,
+  CircuitCategoriesTab,
   type CircuitCategoryActions
-} from "@/features/admin/ui/circuit/CircuitCategoriesCard";
+} from "@/features/admin/ui/circuit/CircuitCategoriesTab";
+import { CircuitScheduleTab } from "@/features/admin/ui/circuit/CircuitScheduleTab";
 import {
-  CircuitMappingsCard,
-  type CircuitMappingActions
-} from "@/features/admin/ui/circuit/CircuitMappingsCard";
-import { CircuitScheduleCard } from "@/features/admin/ui/circuit/CircuitScheduleCard";
+  CircuitEditorTabs,
+  circuitPanelId,
+  circuitTabId,
+  type CircuitEditorTab
+} from "@/features/admin/ui/circuit/CircuitEditorTabs";
 import "@/primitives/baseline.css";
 
 function MissingDatesNotice(props: { title: string; missing: MissingCeremonyDates[] }) {
@@ -58,13 +59,13 @@ export function AdminCircuitDetailScreen(props: {
   detail: CircuitDetail | null;
   ceremonies: Array<{ id: number; name: string | null; code: string | null }>;
   templates: CircuitCategoryTemplate[];
-  mappingChoices: MappingChoices;
   working: boolean;
   status: ApiResult | null;
   activationMissing: MissingCeremonyDates[] | null;
   ceremonyActions: CircuitCeremonyActions;
   categoryActions: CircuitCategoryActions;
-  mappingActions: CircuitMappingActions;
+  tab: CircuitEditorTab;
+  onTabChange: (tab: CircuitEditorTab) => void;
   onActivate: () => void;
 }) {
   const { state, error, detail, working, activationMissing } = props;
@@ -129,7 +130,7 @@ export function AdminCircuitDetailScreen(props: {
                 Activate
               </Title>
               <Text className="muted">
-                Activation does not wait for dates. Ceremonies, events, categories and
+                Activation does not wait for dates. Ceremonies, groups, categories and
                 mappings stay editable afterwards, with a confirmation step.
               </Text>
             </Box>
@@ -160,31 +161,40 @@ export function AdminCircuitDetailScreen(props: {
 
       <FormStatus loading={working} result={props.status} />
 
-      <CircuitCeremoniesCard
-        events={detail.events}
-        ceremonies={detail.ceremonies}
-        addableCeremonies={addable}
-        disabled={disabled}
-        actions={props.ceremonyActions}
-      />
-
-      <CircuitCategoriesCard
-        categories={detail.categories}
-        templates={props.templates}
-        disabled={disabled}
-        actions={props.categoryActions}
-      />
-
-      <CircuitMappingsCard
-        ceremonies={detail.ceremonies}
-        editions={detail.category_editions}
-        categories={detail.categories}
-        choices={props.mappingChoices}
-        disabled={disabled}
-        actions={props.mappingActions}
-      />
-
-      <CircuitScheduleCard occasions={detail.occasions} />
+      <StandardCard component="section" aria-label="Circuit editor">
+        <CircuitEditorTabs value={props.tab} onChange={props.onTabChange} />
+        <Box
+          role="tabpanel"
+          id={circuitPanelId(props.tab)}
+          aria-labelledby={circuitTabId(props.tab)}
+          mt="md"
+        >
+          {props.tab === "categories" ? (
+            <CircuitCategoriesTab
+              categories={detail.categories}
+              templates={props.templates}
+              disabled={disabled}
+              actions={props.categoryActions}
+            />
+          ) : props.tab === "ceremonies" ? (
+            <CircuitCeremoniesTab
+              events={detail.events}
+              ceremonies={detail.ceremonies}
+              categories={detail.categories}
+              editions={detail.category_editions}
+              addableCeremonies={addable}
+              disabled={disabled}
+              actions={props.ceremonyActions}
+            />
+          ) : (
+            <CircuitScheduleTab
+              ceremonies={detail.ceremonies}
+              occasions={detail.occasions}
+              windows={detail.waiver_windows ?? []}
+            />
+          )}
+        </Box>
+      </StandardCard>
     </Stack>
   );
 }

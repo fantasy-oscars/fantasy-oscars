@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { screen, within } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@ui";
 import { MemoryRouter } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AdminCircuitDetailScreen } from "@/features/admin/screens/circuit/AdminCircuitDetailScreen";
 import { AdminCeremonyCircuitScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyCircuitScreen";
 import type { CircuitCeremony, CircuitDetail } from "@/orchestration/adminCircuit";
+import type { CircuitEditorTab } from "@/features/admin/ui/circuit/CircuitEditorTabs";
 
 afterEach(cleanup);
 
@@ -23,7 +24,9 @@ const ceremony = (
   id: number,
   name: string,
   eventId: number,
-  eventName: string
+  eventName: string,
+  isGroup = false,
+  sortIndex = 0
 ): CircuitCeremony => ({
   circuit_id: 3,
   ceremony_id: id,
@@ -34,7 +37,10 @@ const ceremony = (
   event_code: eventName.toLowerCase(),
   event_name: eventName,
   event_sort_index: eventId,
+  event_is_group: isGroup,
+  sort_index: sortIndex,
   nominations_on: id === 7 ? "2027-01-15" : null,
+  starts_at: null,
   results_on: null
 });
 
@@ -48,8 +54,22 @@ const DETAIL: CircuitDetail = {
     activated_at: null
   },
   events: [
-    { id: 11, circuit_id: 3, code: "gg", name: "Golden Globes 2027", sort_index: 0 },
-    { id: 12, circuit_id: 3, code: "guilds", name: "Guilds", sort_index: 1 }
+    {
+      id: 11,
+      circuit_id: 3,
+      code: "gg",
+      name: "Golden Globes 2027",
+      sort_index: 0,
+      is_group: false
+    },
+    {
+      id: 12,
+      circuit_id: 3,
+      code: "guilds",
+      name: "Guilds",
+      sort_index: 1,
+      is_group: true
+    }
   ],
   categories: [
     {
@@ -79,8 +99,8 @@ const DETAIL: CircuitDetail = {
   ],
   ceremonies: [
     ceremony(7, "Golden Globes 2027", 11, "Golden Globes 2027"),
-    ceremony(8, "SAG 2027", 12, "Guilds"),
-    ceremony(9, "PGA 2027", 12, "Guilds")
+    ceremony(8, "SAG 2027", 12, "Guilds", true, 0),
+    ceremony(9, "PGA 2027", 12, "Guilds", true, 1)
   ],
   category_editions: [
     {
@@ -133,11 +153,20 @@ const DETAIL: CircuitDetail = {
       kind: "WIN",
       date: null
     }
+  ],
+  waiver_windows: [
+    {
+      starts_on: "2027-01-15",
+      ends_on: "2027-01-17",
+      resolves_on: "2027-01-18",
+      scoring_days: ["2027-01-15"]
+    }
   ]
 };
 
 function renderDetail(
-  overrides: Partial<Parameters<typeof AdminCircuitDetailScreen>[0]> = {}
+  overrides: Partial<Parameters<typeof AdminCircuitDetailScreen>[0]> = {},
+  initialTab: CircuitEditorTab = "ceremonies"
 ) {
   const props = {
     state: "ready" as const,
@@ -150,136 +179,232 @@ function renderDetail(
     templates: [
       { id: 40, code: "actor", name: "Lead Actor", default_unit_kind: "PERFORMANCE" }
     ],
-    mappingChoices: {},
     working: false,
     status: null,
     activationMissing: null,
     ceremonyActions: {
-      place: vi.fn(() => Promise.resolve(true)),
+      add: vi.fn(() => Promise.resolve(true)),
       remove: vi.fn(),
-      createEvent: vi.fn(() => Promise.resolve(true)),
-      renameEvent: vi.fn(() => Promise.resolve(true)),
-      moveEvent: vi.fn(),
-      ungroupEvent: vi.fn()
+      addGroup: vi.fn(() => Promise.resolve(true)),
+      renameGroup: vi.fn(() => Promise.resolve(true)),
+      deleteGroup: vi.fn(),
+      applyLayout: vi.fn(() => Promise.resolve(true)),
+      saveMappings: vi.fn(() => Promise.resolve(true))
     },
     categoryActions: {
       add: vi.fn(() => Promise.resolve(true)),
       rename: vi.fn(() => Promise.resolve(true)),
-      move: vi.fn(),
+      reorder: vi.fn(() => Promise.resolve(true)),
       remove: vi.fn()
     },
-    mappingActions: { choose: vi.fn(), save: vi.fn() },
     onActivate: vi.fn(),
     ...overrides
   };
-  wrap(<AdminCircuitDetailScreen {...props} />);
+  function Harness() {
+    const [tab, setTab] = useState<CircuitEditorTab>(initialTab);
+    return <AdminCircuitDetailScreen {...props} tab={tab} onTabChange={setTab} />;
+  }
+  wrap(<Harness />);
   return props;
 }
 
 describe("<AdminCircuitDetailScreen />", () => {
-  it("lists ceremonies by event, the categories, the mappings and the schedule", () => {
-    renderDetail();
-    const ceremonies = screen.getByRole("region", { name: "Ceremonies" });
-    const guilds = within(ceremonies).getByRole("group", { name: "Event: Guilds" });
-    expect(within(guilds).getByRole("link", { name: "SAG 2027" })).toHaveAttribute(
-      "href",
-      "/admin/ceremonies/8/overview"
+  it("has Categories, Ceremonies and Schedule tabs, switched by click or arrow keys", async () => {
+    const user = userEvent.setup();
+    renderDetail({}, "categories");
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Categories",
+      "Ceremonies",
+      "Schedule"
+    ]);
+    expect(screen.getByRole("tab", { name: "Categories" })).toHaveAttribute(
+      "aria-selected",
+      "true"
     );
-    expect(within(guilds).getByRole("button", { name: "Ungroup Guilds" })).toBeEnabled();
-    // A one-ceremony event has nothing to ungroup.
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Categories");
+    expect(screen.getByRole("list", { name: "Circuit categories" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Ceremonies" }));
+    expect(screen.getByRole("list", { name: "Circuit ceremonies" })).toBeInTheDocument();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Schedule" })).toHaveFocus();
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Schedule");
+  });
+
+  it("lists single ceremonies as rows and groups as named, collapsible containers", async () => {
+    const user = userEvent.setup();
+    renderDetail();
+    const list = screen.getByRole("list", { name: "Circuit ceremonies" });
     expect(
-      within(ceremonies).queryByRole("button", { name: "Ungroup Golden Globes 2027" })
+      within(list).getByRole("link", { name: "Golden Globes 2027" })
+    ).toHaveAttribute("href", "/admin/ceremonies/7/overview");
+    // The single ceremony's own event is not shown as a group.
+    expect(
+      screen.queryByRole("listitem", { name: "Group: Golden Globes 2027" })
     ).toBeNull();
-
-    const categories = screen.getByRole("region", { name: "Categories" });
-    expect(within(categories).getByText("Acting")).toBeInTheDocument();
+    const group = screen.getByRole("listitem", { name: "Group: Guilds" });
+    expect(within(group).getByText("Group · 2 ceremonies")).toBeInTheDocument();
+    const inGroup = within(group).getByRole("list", { name: "Ceremonies in Guilds" });
     expect(
-      within(categories).getByRole("button", { name: "Move Actor up" })
-    ).toBeDisabled();
+      within(inGroup)
+        .getAllByRole("link")
+        .map((l) => l.textContent)
+    ).toEqual(["SAG 2027", "PGA 2027"]);
 
-    const schedule = screen.getByRole("region", { name: "Schedule" });
-    expect(within(schedule).getByText("2027-01-15")).toBeInTheDocument();
-    expect(within(schedule).getByText("No date")).toBeInTheDocument();
-  });
-
-  it("shows the pre-selected mapping as unsaved and every category mapped to Actor", async () => {
-    const user = userEvent.setup();
-    const props = renderDetail();
-    const mappings = screen.getByRole("region", { name: "Category mappings" });
-    expect(
-      within(mappings).getByRole("textbox", { name: "Best Actor – Musical or Comedy" })
-    ).toHaveValue("Actor");
-    expect(within(mappings).getByText("Not saved")).toBeInTheDocument();
-    expect(within(mappings).getByText("1 unsaved change.")).toBeInTheDocument();
-    const summary = within(mappings).getByRole("group", {
-      name: "Mapped to each Circuit category"
+    const toggle = within(group).getByRole("button", {
+      name: "Guilds, group of 2 ceremonies"
     });
-    expect(
-      within(summary).getByText(
-        "Golden Globes 2027 · Best Actor – Drama; Golden Globes 2027 · Best Actor – Musical or Comedy (not saved)"
-      )
-    ).toBeInTheDocument();
-    expect(within(summary).getByText("Nothing mapped yet.")).toBeInTheDocument();
-    await user.click(within(mappings).getByRole("button", { name: "Save mappings" }));
-    expect(props.mappingActions.save).toHaveBeenCalledTimes(1);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(group).queryByRole("link", { name: "SAG 2027" })).toBeNull();
+    expect(within(group).getByText("2 ceremonies hidden.")).toBeInTheDocument();
   });
 
-  it("disables saving when every mapping is saved", () => {
-    renderDetail({ mappingChoices: { 32: null } });
-    const mappings = screen.getByRole("region", { name: "Category mappings" });
-    expect(within(mappings).getByText("All mappings are saved.")).toBeInTheDocument();
-    expect(
-      within(mappings).getByRole("button", { name: "Save mappings" })
-    ).toBeDisabled();
-  });
-
-  it("adds a ceremony without an event so it gets its own", async () => {
+  it("adds a ceremony from a modal, ungrouped", async () => {
     const user = userEvent.setup();
     const props = renderDetail();
-    const form = screen.getByRole("form", { name: "Add a ceremony" });
-    await user.click(within(form).getByRole("textbox", { name: "Ceremony" }));
+    await user.click(screen.getByRole("button", { name: "Add ceremony" }));
+    const addCeremony = await screen.findByRole("dialog", { name: "Add a ceremony" });
+    await user.click(within(addCeremony).getByRole("textbox", { name: "Ceremony" }));
+    // Only ceremonies not yet in the Circuit are offered.
+    expect(
+      screen.queryByRole("option", { name: "Golden Globes 2027", hidden: true })
+    ).toBeNull();
     await user.click(
       await screen.findByRole("option", { name: "BAFTA 2027", hidden: true })
     );
-    await user.click(within(form).getByRole("button", { name: "Add ceremony" }));
-    expect(props.ceremonyActions.place).toHaveBeenCalledWith(10, null);
+    await user.click(within(addCeremony).getByRole("button", { name: "Add ceremony" }));
+    expect(props.ceremonyActions.add).toHaveBeenCalledWith(10);
   });
 
-  it("renames an event and adds a category from a template", async () => {
+  it("adds an empty, named group from a modal", async () => {
     const user = userEvent.setup();
     const props = renderDetail();
-    await user.click(screen.getByRole("button", { name: "Rename Guilds" }));
-    const rename = screen.getByRole("form", { name: "Event name" });
-    const input = within(rename).getByLabelText("Event name");
-    await user.clear(input);
-    await user.type(input, "Guild Awards");
-    await user.click(within(rename).getByRole("button", { name: "Save" }));
-    expect(props.ceremonyActions.renameEvent).toHaveBeenCalledWith(12, "Guild Awards");
+    await user.click(screen.getByRole("button", { name: "Add group" }));
+    const addGroup = await screen.findByRole("dialog", { name: "Add a group" });
+    const submit = within(addGroup).getByRole("button", { name: "Add group" });
+    expect(submit).toBeDisabled();
+    await user.click(within(addGroup).getByLabelText(/Group name/));
+    await user.paste("Guild Awards");
+    await user.click(submit);
+    expect(props.ceremonyActions.addGroup).toHaveBeenCalledWith("Guild Awards");
+  });
 
-    const add = screen.getByRole("form", { name: "Add a category" });
-    await user.click(within(add).getByRole("textbox", { name: "Category template" }));
+  it("moves ceremonies into and out of groups from the row menu", async () => {
+    const user = userEvent.setup();
+    const props = renderDetail();
+    await openMenu(user, "More actions for Golden Globes 2027");
+    expect(menuItem("Move up")).toBeDisabled();
+    fireEvent.click(menuItem("Move into Guilds"));
+    expect(props.ceremonyActions.applyLayout).toHaveBeenCalledWith({
+      kind: "moveCeremony",
+      ceremonyId: 7,
+      groupId: 12,
+      index: 2
+    });
+    await waitForLayoutSaved();
+
+    await openMenu(user, "More actions for PGA 2027");
+    fireEvent.click(menuItem("Move out of the group"));
+    expect(props.ceremonyActions.applyLayout).toHaveBeenLastCalledWith({
+      kind: "moveCeremony",
+      ceremonyId: 9,
+      groupId: null,
+      index: 2
+    });
+  });
+
+  it("offers a drag handle on every row and group, and group actions in a menu", async () => {
+    const user = userEvent.setup();
+    const props = renderDetail();
+    expect(
+      screen.getByRole("button", { name: "Move Golden Globes 2027" })
+    ).toHaveAttribute("aria-roledescription", "draggable");
+    expect(screen.getByRole("button", { name: "Move group Guilds" })).toBeInTheDocument();
+    await openMenu(user, "More actions for Guilds");
+    fireEvent.click(menuItem("Move up"));
+    expect(props.ceremonyActions.applyLayout).toHaveBeenCalledWith({
+      kind: "reorderEvents",
+      eventIds: [12, 11]
+    });
+  });
+
+  it("maps several ceremony categories to one Circuit category in the modal", async () => {
+    const user = userEvent.setup();
+    const props = renderDetail();
+    await user.click(
+      screen.getByRole("button", { name: "Map categories for Golden Globes 2027" })
+    );
+    const modal = await screen.findByRole("dialog", {
+      name: "Map categories: Golden Globes 2027"
+    });
+    const rows = within(modal).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    // Both Golden Globes lead-actor categories feed Actor: one saved, one a
+    // template match that is pre-selected but not saved.
+    expect(within(rows[0]!).getByText("Best Actor – Drama")).toBeInTheDocument();
+    expect(
+      within(rows[0]!).getByText("Best Actor – Musical or Comedy")
+    ).toBeInTheDocument();
+    expect(within(modal).getByText("1 unsaved change.")).toBeInTheDocument();
+
+    // A category chosen for Actor is not offered for Picture.
+    await user.click(within(rows[1]!).getByRole("textbox", { name: "Picture" }));
+    expect(screen.queryByRole("option", { name: "Best Actor – Drama" })).toBeNull();
+    expect(
+      await screen.findByText("Every category is mapped elsewhere")
+    ).toBeInTheDocument();
+
+    await user.click(within(modal).getByRole("button", { name: "Save mappings" }));
+    expect(props.ceremonyActions.saveMappings).toHaveBeenCalledWith(7, {});
+  });
+
+  it("adds categories from templates and reorders them from the keyboard", async () => {
+    const user = userEvent.setup();
+    const props = renderDetail({}, "categories");
+    await user.click(screen.getByRole("button", { name: "Move Actor down" }));
+    expect(props.categoryActions.reorder).toHaveBeenCalledWith([22, 21]);
+    expect(screen.getByRole("button", { name: "Reorder Actor" })).toHaveAttribute(
+      "aria-roledescription",
+      "draggable"
+    );
+    // A flat list: no groups.
+    expect(screen.queryByRole("button", { name: "Add group" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+    const modal = await screen.findByRole("dialog", { name: "Add a category" });
+    await user.click(within(modal).getByRole("textbox", { name: /Category template/ }));
     await user.click(
       await screen.findByRole("option", { name: "Lead Actor", hidden: true })
     );
-    await user.click(within(add).getByRole("button", { name: "Add category" }));
+    await user.click(within(modal).getByRole("button", { name: "Add category" }));
     expect(props.categoryActions.add).toHaveBeenCalledWith(40);
   });
 
-  it("removes a ceremony and moves an event from the keyboard", async () => {
-    const user = userEvent.setup();
-    const props = renderDetail();
-    screen.getByRole("button", { name: "Remove SAG 2027" }).focus();
-    await user.keyboard("{Enter}");
-    expect(props.ceremonyActions.remove).toHaveBeenCalledWith(8);
-    screen.getByRole("button", { name: "Move Guilds up" }).focus();
-    await user.keyboard("{Enter}");
-    expect(props.ceremonyActions.moveEvent).toHaveBeenCalledWith(12, -1);
+  it("shows the schedule read-only: scoring days left, windows right, undated apart", () => {
+    renderDetail({}, "schedule");
+    const panel = screen.getByRole("tabpanel");
+    expect(
+      within(panel).getByText("Golden Globes 2027 · Nominations")
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("Fri, Jan 15, 2027")).toBeInTheDocument();
+    expect(within(panel).getByText(/Jan 15 – Jan 17/)).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/as if every ceremony were enabled/)
+    ).toBeInTheDocument();
+    const needs = within(panel).getByRole("region", { name: "Needs dates" });
+    expect(within(needs).getByText("Golden Globes 2027")).toBeInTheDocument();
+    expect(within(needs).getByText("Missing: ceremony date")).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("button")).toEqual([]);
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
   });
 
   it("shows the ceremonies that lack dates and activates without waiting for them", async () => {
     const user = userEvent.setup();
     const props = renderDetail();
-    expect(screen.getByText("Golden Globes 2027: results date")).toBeInTheDocument();
+    expect(screen.getByText("Golden Globes 2027: ceremony date")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Activate Circuit" }));
     expect(props.onActivate).toHaveBeenCalledTimes(1);
   });
@@ -295,25 +420,8 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(screen.queryByRole("button", { name: "Activate Circuit" })).toBeNull();
   });
 
-  it("offers row actions as named icon buttons and groups the add forms under headings", () => {
-    renderDetail();
-    const ceremonies = screen.getByRole("region", { name: "Ceremonies" });
-    const rename = within(ceremonies).getByRole("button", { name: "Rename Guilds" });
-    expect(rename).toHaveTextContent("edit");
-    expect(rename).toHaveAttribute("title", "Rename Guilds");
-    expect(
-      within(ceremonies).getByRole("heading", { name: "Add a ceremony" })
-    ).toBeInTheDocument();
-    expect(
-      within(ceremonies).getByRole("heading", { name: "Group ceremonies into an event" })
-    ).toBeInTheDocument();
-    const categories = screen.getByRole("region", { name: "Categories" });
-    expect(
-      within(categories).getByRole("heading", { name: "Add a category" })
-    ).toBeInTheDocument();
-  });
-
-  it("shows consistent empty states when nothing is set up", () => {
+  it("shows consistent empty states when nothing is set up", async () => {
+    const user = userEvent.setup();
     renderDetail({
       detail: {
         ...DETAIL,
@@ -322,87 +430,132 @@ describe("<AdminCircuitDetailScreen />", () => {
         categories: [],
         category_editions: [],
         occasions: [],
+        waiver_windows: [],
         readiness: { missing_dates: [] }
       }
     });
-    expect(screen.getAllByText("No ceremonies yet.")).toHaveLength(2);
+    expect(screen.getByText("No ceremonies yet.")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Categories" }));
     expect(
       screen.getByText("No categories yet. Add one from a template.")
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Add a Circuit category to map ceremony categories to it.")
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Schedule" }));
+    expect(screen.getByText("No ceremonies yet.")).toBeInTheDocument();
   });
 
-  it("disables every edit on an archived Circuit", () => {
+  it("disables every edit on an archived Circuit", async () => {
+    const user = userEvent.setup();
     renderDetail({
       detail: { ...DETAIL, circuit: { ...DETAIL.circuit, status: "ARCHIVED" } }
     });
     expect(screen.getByText("Archived Circuits are read-only.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove SAG 2027" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add ceremony" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add group" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "More actions for SAG 2027" })
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move SAG 2027" })).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: "Categories" }));
+    expect(screen.getByRole("button", { name: "Add category" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Remove Actor" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Create event" })).toBeDisabled();
   });
 });
 
+/** The list shows a move as saved once the write resolves. */
+async function waitForLayoutSaved() {
+  await screen.findByRole("button", { name: "More actions for PGA 2027" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/*
+ * A menu item by name. jsdom closes Mantine's menu as soon as it opens, so
+ * the items are found among hidden elements and clicked directly.
+ */
+async function openMenu(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(screen.getByRole("button", { name: label }));
+  await screen.findAllByRole("menuitem", { hidden: true });
+}
+
+function menuItem(name: string) {
+  return screen.getByRole("menuitem", { name, hidden: true });
+}
+
 describe("<AdminCeremonyCircuitScreen />", () => {
-  it("saves dates and lists the Circuits this ceremony feeds", async () => {
+  const association = {
+    circuit_id: 3,
+    circuit_code: "c-2027",
+    circuit_name: "Awards Run 2027",
+    circuit_status: "ACTIVE",
+    circuit_event_id: 12,
+    event_code: "guilds",
+    event_name: "Guilds",
+    event_is_group: true
+  };
+  const option = (id: number, name: string) => ({
+    id,
+    code: name.toLowerCase(),
+    name,
+    status: "DRAFT",
+    events: DETAIL.events
+  });
+
+  it("only attaches and detaches: no event or group picker", async () => {
     const user = userEvent.setup();
-    const onSaveDates = vi.fn();
     const onAssociate = vi.fn(() => Promise.resolve(true));
+    const onRemove = vi.fn();
     wrap(
       <AdminCeremonyCircuitScreen
         state="ready"
         error={null}
-        datesForm={{ nominationsOn: "2027-01-15", resultsOn: "" }}
-        setDatesForm={vi.fn()}
-        fieldErrors={{}}
-        onEditField={vi.fn()}
-        savingDates={false}
-        datesStatus={null}
-        onSaveDates={onSaveDates}
-        associations={[
-          {
-            circuit_id: 3,
-            circuit_code: "c-2027",
-            circuit_name: "Awards Run 2027",
-            circuit_status: "ACTIVE",
-            circuit_event_id: 12,
-            event_code: "guilds",
-            event_name: "Guilds"
-          }
-        ]}
-        circuitOptions={[
-          {
-            id: 3,
-            code: "c-2027",
-            name: "Awards Run 2027",
-            status: "ACTIVE",
-            events: DETAIL.events
-          }
-        ]}
+        associations={[association]}
+        circuitOptions={[option(3, "Awards Run 2027"), option(4, "Festival Run 2027")]}
         working={false}
         associationStatus={null}
         onAssociate={onAssociate}
-        onRemove={vi.fn()}
+        onRemove={onRemove}
       />
     );
-    expect(screen.getByLabelText("Nominations date")).toHaveValue("2027-01-15");
     expect(screen.getByRole("link", { name: "Awards Run 2027" })).toHaveAttribute(
       "href",
       "/admin/circuits/3"
     );
+    // A group's name is shown read-only; nothing chooses an event or a group.
     expect(screen.getByText("Guilds · ACTIVE")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add to Circuit" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Save dates" }));
-    expect(onSaveDates).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("textbox", { name: /Event/ })).toBeNull();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.queryByLabelText(/date/i)).toBeNull();
 
-    // Moving the ceremony into another event of the same Circuit.
-    await user.click(screen.getByRole("textbox", { name: "Event in Awards Run 2027" }));
+    await user.click(screen.getByRole("button", { name: "Detach from Awards Run 2027" }));
+    expect(onRemove).toHaveBeenCalledWith(3);
+
+    const attach = screen.getByRole("button", { name: "Attach" });
+    expect(attach).toBeDisabled();
+    await user.click(screen.getByRole("textbox", { name: "Attach to a Circuit" }));
+    // A Circuit it already feeds is not offered again.
+    expect(
+      screen.queryByRole("option", { name: "Awards Run 2027", hidden: true })
+    ).toBeNull();
     await user.click(
-      await screen.findByRole("option", { name: "Golden Globes 2027", hidden: true })
+      await screen.findByRole("option", { name: "Festival Run 2027", hidden: true })
     );
-    expect(onAssociate).toHaveBeenCalledWith(3, 11);
+    await user.click(attach);
+    expect(onAssociate).toHaveBeenCalledWith(4);
+  });
+
+  it("shows a single-ceremony association by its status alone", () => {
+    wrap(
+      <AdminCeremonyCircuitScreen
+        state="ready"
+        error={null}
+        associations={[{ ...association, event_name: "SAG 2027", event_is_group: false }]}
+        circuitOptions={[option(3, "Awards Run 2027")]}
+        working={false}
+        associationStatus={null}
+        onAssociate={vi.fn(() => Promise.resolve(true))}
+        onRemove={vi.fn()}
+      />
+    );
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.queryByText(/SAG 2027/)).toBeNull();
   });
 });

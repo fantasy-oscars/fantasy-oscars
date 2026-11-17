@@ -4,10 +4,10 @@ import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import {
   circuitTemplateOptions,
-  moveInOrder,
   pendingMappingChanges,
   type MappingChoices
 } from "../../../decisions/admin/circuit";
+import type { CircuitLayoutWrite } from "../../../decisions/admin/circuitLayout";
 import { fetchAdminCeremonies, sortCeremonies } from "../ceremonies/fetchCeremonies";
 import type { CeremonyOption } from "../ceremonies/types";
 import { confirmStructuralEdit } from "./structuralConfirm";
@@ -46,9 +46,6 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
   const [detail, setDetail] = useState<CircuitDetail | null>(null);
   const [ceremonies, setCeremonies] = useState<CeremonyOption[]>([]);
   const [templates, setTemplates] = useState<CircuitCategoryTemplate[]>([]);
-  // Unsaved mapping choices; the screen shows them over the saved mappings
-  // and the template suggestions until the admin saves.
-  const [mappingChoices, setMappingChoices] = useState<MappingChoices>({});
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState<ApiResult | null>(null);
   // Set by a successful activation; the response lists ceremonies lacking a date.
@@ -126,26 +123,15 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [detail, write]
   );
 
-  /**
-   * Adds a ceremony, or moves an associated one, into an event. Without an
-   * event the ceremony gets its own one-ceremony event.
-   */
-  const placeCeremony = useCallback(
-    (ceremonyId: number, circuitEventId: number | null) => {
-      const isNew = !detail?.ceremonies.some((c) => c.ceremony_id === ceremonyId);
-      return structural(
-        isNew ? "Adding a ceremony" : "Moving a ceremony to another event",
-        (base) =>
-          fetchJson(
-            `${base}/ceremonies/${ceremonyId}`,
-            jsonInit("PUT", { circuit_event_id: circuitEventId })
-          ),
-        isNew
-          ? { id: "admin.circuit.associate.success", message: "Ceremony added." }
-          : { id: "admin.circuit.move.success", message: "Ceremony moved." }
-      );
-    },
-    [detail, structural]
+  /** Appends a ceremony to the top level, ungrouped, with its own event. */
+  const addCeremony = useCallback(
+    (ceremonyId: number) =>
+      structural(
+        "Adding a ceremony",
+        (base) => fetchJson(`${base}/ceremonies/${ceremonyId}`, jsonInit("PUT", {})),
+        { id: "admin.circuit.associate.success", message: "Ceremony added." }
+      ),
+    [structural]
   );
 
   const removeCeremony = useCallback(
@@ -158,22 +144,19 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [structural]
   );
 
-  const createEvent = useCallback(
-    (name: string, ceremonyIds: number[]) =>
+  /** Creates an empty, named group; ceremonies join it from the list. */
+  const addGroup = useCallback(
+    (name: string) =>
       structural(
-        "Grouping ceremonies into an event",
-        (base) =>
-          fetchJson(
-            `${base}/events`,
-            jsonInit("POST", { name: name.trim(), ceremony_ids: ceremonyIds })
-          ),
-        { id: "admin.circuit.event.create.success", message: "Event created." }
+        "Adding a group",
+        (base) => fetchJson(`${base}/events`, jsonInit("POST", { name: name.trim() })),
+        { id: "admin.circuit.group.create.success", message: "Group added." }
       ),
     [structural]
   );
 
   /** Renames change no scoring, so they need no confirmation. */
-  const renameEvent = useCallback(
+  const renameGroup = useCallback(
     (eventId: number, name: string) => {
       if (!detail) return Promise.resolve(false);
       return write(
@@ -182,35 +165,54 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
             `/admin/circuits/${detail.circuit.id}/events/${eventId}`,
             jsonInit("PATCH", { name: name.trim() })
           ),
-        { id: "admin.circuit.event.rename.success", message: "Event renamed." }
+        { id: "admin.circuit.group.rename.success", message: "Group renamed." }
       );
     },
     [detail, write]
   );
 
-  const moveEvent = useCallback(
-    (eventId: number, delta: -1 | 1) => {
-      const order = moveInOrder(detail?.events.map((e) => e.id) ?? [], eventId, delta);
-      if (!order) return Promise.resolve(false);
+  /** Deletes a group; each of its ceremonies goes back to the top level. */
+  const deleteGroup = useCallback(
+    (eventId: number) =>
+      structural(
+        "Deleting a group",
+        (base) => fetchJson(`${base}/events/${eventId}`, { method: "DELETE" }),
+        { id: "admin.circuit.group.delete.success", message: "Group deleted." }
+      ),
+    [structural]
+  );
+
+  /**
+   * Saves one change to the Ceremonies list: a ceremony placed in a group or
+   * at the top level, or a new order of the top-level items.
+   */
+  const applyLayout = useCallback(
+    (change: CircuitLayoutWrite) => {
+      if (change.kind === "moveCeremony") {
+        return structural(
+          "Moving a ceremony",
+          (base) =>
+            fetchJson(
+              `${base}/ceremonies/${change.ceremonyId}/position`,
+              jsonInit("PUT", { group_id: change.groupId, index: change.index })
+            ),
+          { id: "admin.circuit.move.success", message: "Ceremony moved." }
+        );
+      }
+      // The order lists every event; one left empty some other way stays last.
+      const listed = new Set(change.eventIds);
+      const eventIds = [
+        ...change.eventIds,
+        ...(detail?.events ?? []).map((e) => e.id).filter((id) => !listed.has(id))
+      ];
       return structural(
-        "Reordering events",
+        "Reordering ceremonies",
         (base) =>
-          fetchJson(`${base}/events/order`, jsonInit("PUT", { event_ids: order })),
-        { id: "admin.circuit.event.order.success", message: "Events reordered." }
+          fetchJson(`${base}/events/order`, jsonInit("PUT", { event_ids: eventIds })),
+        { id: "admin.circuit.event.order.success", message: "Ceremonies reordered." }
       );
     },
     [detail, structural]
-  );
-
-  /** Deletes an event; each of its ceremonies gets its own event again. */
-  const ungroupEvent = useCallback(
-    (eventId: number) =>
-      structural(
-        "Ungrouping an event",
-        (base) => fetchJson(`${base}/events/${eventId}`, { method: "DELETE" }),
-        { id: "admin.circuit.event.ungroup.success", message: "Event ungrouped." }
-      ),
-    [structural]
   );
 
   const addCategory = useCallback(
@@ -243,22 +245,18 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [detail, write]
   );
 
-  const moveCategory = useCallback(
-    (categoryId: number, delta: -1 | 1) => {
-      const order = moveInOrder(
-        detail?.categories.map((c) => c.id) ?? [],
-        categoryId,
-        delta
-      );
-      if (!order) return Promise.resolve(false);
-      return structural(
+  const reorderCategories = useCallback(
+    (categoryIds: number[]) =>
+      structural(
         "Reordering categories",
         (base) =>
-          fetchJson(`${base}/categories/order`, jsonInit("PUT", { category_ids: order })),
+          fetchJson(
+            `${base}/categories/order`,
+            jsonInit("PUT", { category_ids: categoryIds })
+          ),
         { id: "admin.circuit.category.order.success", message: "Categories reordered." }
-      );
-    },
-    [detail, structural]
+      ),
+    [structural]
   );
 
   const removeCategory = useCallback(
@@ -271,54 +269,51 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [structural]
   );
 
-  /** Records an unsaved mapping choice; null leaves the ceremony category unmapped. */
-  const chooseMapping = useCallback(
-    (categoryEditionId: number, circuitCategoryId: number | null) => {
-      setMappingChoices((prev) => ({ ...prev, [categoryEditionId]: circuitCategoryId }));
-    },
-    []
-  );
-
-  /** Saves every shown mapping that differs from what is saved, then reloads. */
-  const saveMappings = useCallback(async () => {
-    if (!detail) return false;
-    const changes = pendingMappingChanges(
-      detail.category_editions,
-      mappingChoices,
-      detail.categories.map((c) => c.id)
-    );
-    if (changes.length === 0) return true;
-    const { circuit } = detail;
-    const ok = await confirmStructuralEdit({
-      circuitStatus: circuit.status,
-      circuitName: circuit.name,
-      action: "Changing category mappings"
-    });
-    if (!ok) return false;
-    setWorking(true);
-    setStatus(null);
-    for (const change of changes) {
-      const path = `/admin/circuits/${circuit.id}/mappings/${change.categoryEditionId}`;
-      const res =
-        change.circuitCategoryId === null
-          ? await fetchJson(path, { method: "DELETE" })
-          : await fetchJson(
-              path,
-              jsonInit("PUT", { circuit_category_id: change.circuitCategoryId })
-            );
-      if (!res.ok) {
-        setWorking(false);
-        setStatus({ ok: false, message: res.error ?? "Some mappings were not saved" });
-        await load();
-        return false;
+  /**
+   * Saves one ceremony's mapping choices from the mapping modal: every shown
+   * mapping of its categories that differs from what is saved.
+   */
+  const saveMappings = useCallback(
+    async (ceremonyId: number, choices: MappingChoices) => {
+      if (!detail) return false;
+      const changes = pendingMappingChanges(
+        detail.category_editions.filter((e) => e.ceremony_id === ceremonyId),
+        choices,
+        detail.categories.map((c) => c.id)
+      );
+      if (changes.length === 0) return true;
+      const { circuit } = detail;
+      const ok = await confirmStructuralEdit({
+        circuitStatus: circuit.status,
+        circuitName: circuit.name,
+        action: "Changing category mappings"
+      });
+      if (!ok) return false;
+      setWorking(true);
+      setStatus(null);
+      for (const change of changes) {
+        const path = `/admin/circuits/${circuit.id}/mappings/${change.categoryEditionId}`;
+        const res =
+          change.circuitCategoryId === null
+            ? await fetchJson(path, { method: "DELETE" })
+            : await fetchJson(
+                path,
+                jsonInit("PUT", { circuit_category_id: change.circuitCategoryId })
+              );
+        if (!res.ok) {
+          setWorking(false);
+          setStatus({ ok: false, message: res.error ?? "Some mappings were not saved" });
+          await load();
+          return false;
+        }
       }
-    }
-    setWorking(false);
-    setMappingChoices({});
-    notifySuccess("admin.circuit.mapping.success", "Mappings saved.");
-    await load();
-    return true;
-  }, [detail, mappingChoices, load]);
+      setWorking(false);
+      notifySuccess("admin.circuit.mapping.success", "Mappings saved.");
+      await load();
+      return true;
+    },
+    [detail, load]
+  );
 
   const activate = useCallback(async () => {
     if (!detail) return false;
@@ -344,22 +339,20 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     detail,
     ceremonies,
     templates,
-    mappingChoices,
     working,
     status,
     activationMissing,
     actions: {
-      placeCeremony,
+      addCeremony,
       removeCeremony,
-      createEvent,
-      renameEvent,
-      moveEvent,
-      ungroupEvent,
+      addGroup,
+      renameGroup,
+      deleteGroup,
+      applyLayout,
       addCategory,
       renameCategory,
-      moveCategory,
+      reorderCategories,
       removeCategory,
-      chooseMapping,
       saveMappings,
       activate
     }

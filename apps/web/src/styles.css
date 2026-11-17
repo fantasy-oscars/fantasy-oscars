@@ -4611,6 +4611,207 @@ small.error {
   opacity: var(--fo-alpha-100);
 }
 
+/* A fieldset that groups related inputs under a heading, without a frame. */
+.admin-fieldset {
+  border: 0;
+  margin-inline: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.admin-fieldset > legend {
+  padding: 0;
+}
+
+/* Circuit editor: sortable rows, groups and the schedule timeline. */
+.circuit-tabs {
+  border-bottom: var(--fo-border-width) solid var(--border);
+  padding-bottom: var(--fo-space-xs);
+}
+
+.circuit-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.circuit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fo-space-xs);
+  padding: calc(var(--fo-space-xs) + var(--fo-space-2)) 0;
+  background: var(--brand-raised);
+}
+
+.circuit-list > li + li {
+  border-top: var(--fo-border-width) solid var(--border);
+}
+
+/* Narrow enough to stay beside the grip inside a group on a phone; the
+   actions wrap below instead. */
+.circuit-rowMain {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.circuit-rowActions {
+  margin-left: auto;
+}
+
+/* The lifted row follows the pointer or the keyboard; its place stays dimmed. */
+.circuit-row.is-dragging,
+.circuit-group.is-dragging {
+  opacity: var(--fo-alpha-60);
+}
+
+.circuit-dragOverlay {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-xs);
+  padding: var(--fo-space-xs) var(--fo-space-sm);
+  border: var(--fo-border-width) solid var(--border);
+  border-radius: var(--fo-radius-small);
+  background: var(--brand-raised);
+  box-shadow: var(--fo-shadow-dragging);
+  cursor: grabbing;
+}
+
+.circuit-group {
+  padding: var(--fo-space-xs) 0;
+  background: var(--brand-raised);
+}
+
+.circuit-groupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-xs);
+}
+
+.circuit-groupToggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--fo-space-xs);
+  min-width: 0;
+  text-align: start;
+  color: inherit;
+}
+
+.circuit-groupBody {
+  margin-top: var(--fo-space-xs);
+  margin-inline-start: var(--fo-space-lg);
+  padding: var(--fo-space-xs) var(--fo-space-sm);
+  border-inline-start: var(--fo-border-width-strong) solid var(--border);
+  border-radius: var(--fo-radius-small);
+}
+
+.circuit-group.is-dropTarget > .circuit-groupBody {
+  background: var(--brand-sunken);
+  border-inline-start-color: var(--brand-text);
+}
+
+.circuit-timelineHead,
+.circuit-timelineDay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9rem minmax(0, 1fr);
+  gap: var(--fo-space-sm);
+}
+
+.circuit-timelineHead > :last-child {
+  grid-column: 3;
+}
+
+.circuit-timelineDay {
+  padding-block: var(--fo-space-xs);
+  align-items: start;
+}
+
+.circuit-timelineScoring {
+  text-align: end;
+}
+
+.circuit-timelineSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-xs);
+}
+
+.circuit-timelineMarker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fo-space-2);
+  text-align: center;
+}
+
+/* The spine: one rule through every day's marker. */
+.circuit-timelineMarker::before {
+  content: "";
+  position: absolute;
+  inset-block: calc(-1 * var(--fo-space-xs));
+  left: 50%;
+  border-left: var(--fo-border-width) solid var(--border);
+}
+
+.circuit-timelineDot {
+  position: relative;
+  width: var(--fo-space-sm);
+  height: var(--fo-space-sm);
+  border-radius: var(--fo-radius-pill);
+  background: var(--brand-text);
+}
+
+.circuit-timelineMarker > time {
+  position: relative;
+  background: var(--brand-raised);
+}
+
+.circuit-timelineWindow {
+  padding: var(--fo-space-xs) var(--fo-space-sm);
+  border-radius: var(--fo-radius-small);
+  background: var(--brand-sunken);
+}
+
+.circuit-timelineTag {
+  display: none;
+}
+
+/* On a phone the two sides stack beside the spine, each entry labelled. */
+@media (max-width: 499.98px) {
+  .circuit-timelineHead {
+    display: none;
+  }
+
+  .circuit-timelineDay {
+    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-areas:
+      "marker scoring"
+      "marker windows";
+  }
+
+  .circuit-timelineMarker {
+    grid-area: marker;
+  }
+
+  .circuit-timelineScoring {
+    grid-area: scoring;
+    text-align: start;
+  }
+
+  .circuit-timelineWindows {
+    grid-area: windows;
+  }
+
+  .circuit-timelineTag {
+    display: inline;
+  }
+
+  .circuit-groupBody {
+    margin-inline-start: var(--fo-space-sm);
+  }
+}
+
 .admin-secondary-actions {
   display: flex;
   gap: var(--fo-space-sm);
@@ -4654,22 +4855,10 @@ small.error {
   }
 }
 
+/* Each step carries one indicator, its state icon; the current step is told
+   apart by its label weight alone. */
 .wizard-step {
-  --wizard-step-bar-width: calc(var(--fo-space-2) + var(--fo-space-hairline));
   position: relative;
-  /* The active bar has its own column so it never overlaps the icon. */
-  padding-inline-start: calc(var(--wizard-step-bar-width) + var(--fo-space-8));
-}
-
-.wizard-step.is-active::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: 0;
-  top: 0;
-  height: 100%;
-  width: var(--wizard-step-bar-width);
-  border-radius: var(--fo-radius-small);
-  background: var(--brand-text);
 }
 
 .wizard-step .wizard-step-icon {

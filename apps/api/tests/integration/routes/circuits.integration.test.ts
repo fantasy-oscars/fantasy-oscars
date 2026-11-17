@@ -18,7 +18,13 @@ let token: string;
 
 const AUTH_SECRET = "test-secret";
 
-type EventRow = { id: number; code: string; name: string; sort_index: number };
+type EventRow = {
+  id: number;
+  code: string;
+  name: string;
+  sort_index: number;
+  is_group: boolean;
+};
 type CategoryRow = {
   id: number;
   code: string;
@@ -40,6 +46,7 @@ type CircuitDetail = {
     circuit_event_id: number;
     event_code: string;
     event_name: string;
+    sort_index: number;
     nominations_on: string | null;
     results_on: string | null;
   }>;
@@ -51,6 +58,18 @@ type CircuitDetail = {
   }>;
   readiness: { missing_dates: Array<{ ceremony_id: number; missing: string[] }> };
   occasions: Array<{ ceremony_id: number; kind: string; date: string | null }>;
+  waiver_windows: Array<{
+    starts_on: string;
+    ends_on: string;
+    resolves_on: string;
+    scoring_days: string[];
+  }>;
+};
+
+type Placement = {
+  circuit_event_id: number;
+  events: EventRow[];
+  ceremonies: CircuitDetail["ceremonies"];
 };
 
 type CeremonyCircuits = {
@@ -97,9 +116,10 @@ async function detailOf(circuitId: number) {
   return res.json;
 }
 
+/** A ceremony with no dates: no nominations date and no ceremony datetime. */
 async function ceremonyWithStatus(status = "PUBLISHED", fields: { name?: string } = {}) {
   const ceremony = await insertCeremony(db.pool, fields, false);
-  await db.pool.query(`UPDATE ceremony SET status = $2 WHERE id = $1`, [
+  await db.pool.query(`UPDATE ceremony SET status = $2, starts_at = NULL WHERE id = $1`, [
     ceremony.id,
     status
   ]);
@@ -115,6 +135,45 @@ async function addCeremony(circuitId: number, ceremonyId: number, eventId?: numb
   );
   expect(res.status).toBe(200);
   return res.json;
+}
+
+/** Creates an admin-named group, optionally taking ceremonies already in the Circuit. */
+async function addGroup(circuitId: number, name: string, ceremonyIds: number[] = []) {
+  const res = await send<{ event: EventRow }>(
+    "post",
+    `/admin/circuits/${circuitId}/events`,
+    {
+      name,
+      ceremony_ids: ceremonyIds
+    }
+  );
+  expect(res.status).toBe(201);
+  return res.json.event;
+}
+
+/** Places a ceremony in a group, or at the top level without one. */
+async function place(
+  circuitId: number,
+  ceremonyId: number,
+  groupId: number | null,
+  index: number
+) {
+  return send<Placement & ErrorBody>(
+    "put",
+    `/admin/circuits/${circuitId}/ceremonies/${ceremonyId}/position`,
+    { group_id: groupId, index }
+  );
+}
+
+/** The top level as the admin sees it: groups with their ceremonies, and singles. */
+async function layoutOf(circuitId: number) {
+  const detail = await detailOf(circuitId);
+  return detail.events.map((e) => {
+    const ceremonies = detail.ceremonies
+      .filter((c) => c.circuit_event_id === e.id)
+      .map((c) => c.ceremony_id);
+    return e.is_group ? { group: e.name, ceremonies } : ceremonies[0];
+  });
 }
 
 async function template(kind: "FILM" | "PERFORMANCE" | "SONG", code?: string) {
@@ -244,7 +303,8 @@ describe("circuit admin and public routes", () => {
       const ceremony = await ceremonyWithStatus();
       const other = await ceremonyWithStatus();
       const own = await addCeremony(circuitId, ceremony.id);
-      const target = await addCeremony(circuitId, other.id);
+      await addCeremony(circuitId, other.id);
+      const group = await addGroup(circuitId, "Guild Awards", [other.id]);
 
       const fromCeremony = await send<CeremonyCircuits>(
         "get",
@@ -253,7 +313,8 @@ describe("circuit admin and public routes", () => {
       expect(fromCeremony.json.associations).toEqual([
         expect.objectContaining({
           circuit_id: circuitId,
-          circuit_event_id: own.circuit_event_id
+          circuit_event_id: own.circuit_event_id,
+          event_is_group: false
         })
       ]);
       expect(fromCeremony.json.circuits[0]!.events).toHaveLength(2);
@@ -261,17 +322,24 @@ describe("circuit admin and public routes", () => {
       const moved = await send<Association>(
         "put",
         `/admin/ceremonies/${ceremony.id}/circuits/${circuitId}`,
-        { circuit_event_id: target.circuit_event_id }
+        { circuit_event_id: group.id }
       );
       expect(moved.status).toBe(200);
       expect(moved.json.created).toBe(false);
+      const grouped = await send<CeremonyCircuits>(
+        "get",
+        `/admin/ceremonies/${ceremony.id}/circuits`
+      );
+      expect(grouped.json.associations).toEqual([
+        expect.objectContaining({ event_name: "Guild Awards", event_is_group: true })
+      ]);
 
       const detail = await detailOf(circuitId);
       expect(detail.ceremonies.map((c) => c.circuit_event_id)).toEqual([
-        target.circuit_event_id,
-        target.circuit_event_id
+        group.id,
+        group.id
       ]);
-      expect(await eventIds(circuitId)).toEqual([target.circuit_event_id]);
+      expect(await eventIds(circuitId)).toEqual([group.id]);
 
       const removed = await send(
         "delete",
@@ -295,38 +363,211 @@ describe("circuit admin and public routes", () => {
       expect(await eventIds(circuitId)).toEqual([res.json.circuit_event_id]);
     });
 
-    it("moving a ceremony deletes the event it leaves only when that event is empty", async () => {
+    it("moving a ceremony into a group deletes its own event; an emptied group stays", async () => {
+      const circuitId = await createCircuit();
+      const [a, b] = [await ceremonyWithStatus(), await ceremonyWithStatus()];
+      const eventA = (await addCeremony(circuitId, a.id)).circuit_event_id;
+      const eventB = (await addCeremony(circuitId, b.id)).circuit_event_id;
+      const first = await addGroup(circuitId, "First");
+      const second = await addGroup(circuitId, "Second");
+
+      await addCeremony(circuitId, a.id, first.id);
+      expect(await eventIds(circuitId)).toEqual([eventB, first.id, second.id]);
+
+      await addCeremony(circuitId, a.id, second.id);
+      expect(await eventIds(circuitId)).toEqual([eventB, first.id, second.id]);
+      expect((await detailOf(circuitId)).events.find((e) => e.id === first.id)).toEqual(
+        expect.objectContaining({ is_group: true })
+      );
+      expect(eventA).not.toBe(eventB);
+    });
+
+    it("refuses another ceremony's own event as a destination", async () => {
+      const circuitId = await createCircuit();
+      const [a, b] = [await ceremonyWithStatus(), await ceremonyWithStatus()];
+      const eventA = (await addCeremony(circuitId, a.id)).circuit_event_id;
+      const eventB = (await addCeremony(circuitId, b.id)).circuit_event_id;
+      const res = await send<ErrorBody>(
+        "put",
+        `/admin/circuits/${circuitId}/ceremonies/${b.id}`,
+        { circuit_event_id: eventA }
+      );
+      expect(res.status).toBe(400);
+      expect(res.json.error.details).toMatchObject({ fields: ["circuit_event_id"] });
+      expect(await eventIds(circuitId)).toEqual([eventA, eventB]);
+      // Naming its own event is a no-op.
+      expect((await addCeremony(circuitId, b.id, eventB)).circuit_event_id).toBe(eventB);
+    });
+
+    it("takes a ceremony out of a group into its own event, and leaves a single where it is", async () => {
+      const circuitId = await createCircuit();
+      const a = await ceremonyWithStatus();
+      const b = await ceremonyWithStatus();
+      await addCeremony(circuitId, a.id);
+      await addCeremony(circuitId, b.id);
+      const group = await addGroup(circuitId, "Shared", [a.id, b.id]);
+
+      const ungrouped = await addCeremony(circuitId, b.id);
+      expect(ungrouped.created).toBe(false);
+      expect(ungrouped.circuit_event_id).not.toBe(group.id);
+
+      const again = await addCeremony(circuitId, b.id);
+      expect(again.circuit_event_id).toBe(ungrouped.circuit_event_id);
+      expect(await eventIds(circuitId)).toEqual([group.id, ungrouped.circuit_event_id]);
+
+      // A group's last ceremony leaving it also gets its own event; the group stays.
+      const last = await addCeremony(circuitId, a.id);
+      expect(last.circuit_event_id).not.toBe(group.id);
+      expect(await eventIds(circuitId)).toEqual([
+        group.id,
+        ungrouped.circuit_event_id,
+        last.circuit_event_id
+      ]);
+    });
+
+    it("adds an empty, named group at the end of the top level", async () => {
+      const circuitId = await createCircuit();
+      const oscars = await ceremonyWithStatus("PUBLISHED", { name: "Academy Awards" });
+      await addCeremony(circuitId, oscars.id);
+      const group = await addGroup(circuitId, "Guild Awards");
+      expect(group).toMatchObject({
+        name: "Guild Awards",
+        is_group: true,
+        sort_index: 1
+      });
+      expect(await layoutOf(circuitId)).toEqual([
+        oscars.id,
+        { group: "Guild Awards", ceremonies: [] }
+      ]);
+      // A ceremony added afterwards is appended, ungrouped.
+      const bafta = await ceremonyWithStatus();
+      await addCeremony(circuitId, bafta.id);
+      expect(await layoutOf(circuitId)).toEqual([
+        oscars.id,
+        { group: "Guild Awards", ceremonies: [] },
+        bafta.id
+      ]);
+    });
+
+    it("places ceremonies into, within and out of a group, and reorders the top level", async () => {
+      const circuitId = await createCircuit();
+      const [cc, globes, sag, dga, pga, oscars] = [
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus()
+      ];
+      for (const c of [cc, globes, sag, dga, pga, oscars]) {
+        await addCeremony(circuitId, c.id);
+      }
+      const guilds = await addGroup(circuitId, "Guild Awards");
+      const sagEvent = (await detailOf(circuitId)).ceremonies.find(
+        (c) => c.ceremony_id === sag.id
+      )!.circuit_event_id;
+
+      // Into the group: the ceremony's own event goes.
+      const intoGroup = await place(circuitId, sag.id, guilds.id, 0);
+      expect(intoGroup.status).toBe(200);
+      expect(intoGroup.json.circuit_event_id).toBe(guilds.id);
+      expect(intoGroup.json.events.map((e) => e.id)).not.toContain(sagEvent);
+      await place(circuitId, dga.id, guilds.id, 5);
+      await place(circuitId, pga.id, guilds.id, 1);
+      expect(await layoutOf(circuitId)).toEqual([
+        cc.id,
+        globes.id,
+        oscars.id,
+        { group: "Guild Awards", ceremonies: [sag.id, pga.id, dga.id] }
+      ]);
+
+      // Within the group.
+      await place(circuitId, dga.id, guilds.id, 0);
+      // The group itself, at the top level.
+      const reorder = await send("put", `/admin/circuits/${circuitId}/events/order`, {
+        event_ids: (await detailOf(circuitId)).events
+          .map((e) => e.id)
+          .sort((x, y) => (x === guilds.id ? -1 : y === guilds.id ? 1 : 0))
+      });
+      expect(reorder.status).toBe(200);
+      expect(await layoutOf(circuitId)).toEqual([
+        { group: "Guild Awards", ceremonies: [dga.id, sag.id, pga.id] },
+        cc.id,
+        globes.id,
+        oscars.id
+      ]);
+
+      // Out of the group to the top level, at a position; it gets its own event.
+      const out = await place(circuitId, pga.id, null, 3);
+      expect(out.status).toBe(200);
+      expect(
+        out.json.events.find((e) => e.id === out.json.circuit_event_id)
+      ).toMatchObject({ is_group: false });
+      // A single moves at the top level.
+      await place(circuitId, oscars.id, null, 0);
+      expect(await layoutOf(circuitId)).toEqual([
+        oscars.id,
+        { group: "Guild Awards", ceremonies: [dga.id, sag.id] },
+        cc.id,
+        globes.id,
+        pga.id
+      ]);
+      expect((await detailOf(circuitId)).events.map((e) => e.sort_index)).toEqual([
+        0, 1, 2, 3, 4
+      ]);
+    });
+
+    it("reorders the ceremonies of a group, listing each once", async () => {
       const circuitId = await createCircuit();
       const [a, b, c] = [
         await ceremonyWithStatus(),
         await ceremonyWithStatus(),
         await ceremonyWithStatus()
       ];
-      const eventA = (await addCeremony(circuitId, a.id)).circuit_event_id;
-      const eventB = (await addCeremony(circuitId, b.id)).circuit_event_id;
-      await addCeremony(circuitId, c.id, eventB);
+      for (const x of [a, b, c]) await addCeremony(circuitId, x.id);
+      const group = await addGroup(circuitId, "Guilds", [a.id, b.id, c.id]);
+      const path = `/admin/circuits/${circuitId}/events/${group.id}/ceremonies/order`;
 
-      await addCeremony(circuitId, b.id, eventA);
-      expect(await eventIds(circuitId)).toEqual([eventA, eventB]);
-
-      await addCeremony(circuitId, c.id, eventA);
-      expect(await eventIds(circuitId)).toEqual([eventA]);
+      const bad = await send<ErrorBody>("put", path, { ceremony_ids: [a.id, b.id] });
+      expect(bad.status).toBe(400);
+      const ok = await send<{ ceremony_ids: number[] }>("put", path, {
+        ceremony_ids: [c.id, a.id, b.id]
+      });
+      expect(ok.status).toBe(200);
+      expect(await layoutOf(circuitId)).toEqual([
+        { group: "Guilds", ceremonies: [c.id, a.id, b.id] }
+      ]);
+      expect(
+        (
+          await send(
+            "put",
+            `/admin/circuits/${circuitId}/events/999999/ceremonies/order`,
+            {
+              ceremony_ids: [a.id]
+            }
+          )
+        ).status
+      ).toBe(404);
     });
 
-    it("ungroups a ceremony into its own event, and leaves a lone ceremony where it is", async () => {
-      const circuitId = await createCircuit();
-      const a = await ceremonyWithStatus();
-      const b = await ceremonyWithStatus();
-      const shared = (await addCeremony(circuitId, a.id)).circuit_event_id;
-      await addCeremony(circuitId, b.id, shared);
+    it("refuses to place a ceremony in a single's event, another Circuit's group, or when not associated", async () => {
+      const circuitId = await createCircuit("circuit-a");
+      const otherCircuit = await createCircuit("circuit-b");
+      const [a, b, outsider] = [
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus(),
+        await ceremonyWithStatus()
+      ];
+      const eventA = (await addCeremony(circuitId, a.id)).circuit_event_id;
+      await addCeremony(circuitId, b.id);
+      const foreign = await addGroup(otherCircuit, "Elsewhere");
 
-      const ungrouped = await addCeremony(circuitId, b.id);
-      expect(ungrouped.created).toBe(false);
-      expect(ungrouped.circuit_event_id).not.toBe(shared);
-
-      const again = await addCeremony(circuitId, b.id);
-      expect(again.circuit_event_id).toBe(ungrouped.circuit_event_id);
-      expect(await eventIds(circuitId)).toEqual([shared, ungrouped.circuit_event_id]);
+      const intoSingle = await place(circuitId, b.id, eventA, 0);
+      expect(intoSingle.status).toBe(400);
+      expect(intoSingle.json.error.details).toMatchObject({ fields: ["group_id"] });
+      expect((await place(circuitId, b.id, foreign.id, 0)).status).toBe(400);
+      expect((await place(circuitId, outsider.id, null, 0)).status).toBe(404);
+      expect(await layoutOf(circuitId)).toEqual([a.id, b.id]);
     });
 
     it("creates an event that groups ceremonies, deleting the events they leave", async () => {
@@ -345,7 +586,8 @@ describe("circuit admin and public routes", () => {
       expect(res.json.event).toMatchObject({
         code: "guild-awards",
         name: "Guild Awards",
-        sort_index: 3
+        sort_index: 3,
+        is_group: true
       });
 
       const detail = await detailOf(circuitId);
@@ -377,8 +619,9 @@ describe("circuit admin and public routes", () => {
       const circuitId = await createCircuit();
       const a = await ceremonyWithStatus();
       const b = await ceremonyWithStatus();
-      const first = (await addCeremony(circuitId, a.id)).circuit_event_id;
-      await addCeremony(circuitId, b.id, first);
+      await addCeremony(circuitId, a.id);
+      await addCeremony(circuitId, b.id);
+      const first = (await addGroup(circuitId, "Shared", [a.id, b.id])).id;
       const solo = await ceremonyWithStatus();
       const second = (await addCeremony(circuitId, solo.id)).circuit_event_id;
       const picture = await addCategory(circuitId, (await template("FILM")).id);
@@ -666,7 +909,8 @@ describe("circuit admin and public routes", () => {
       const dated = await ceremonyWithStatus();
       const undated = await ceremonyWithStatus();
       await db.pool.query(
-        `UPDATE ceremony SET nominations_on = '2026-12-05', results_on = '2027-01-04' WHERE id = $1`,
+        `UPDATE ceremony SET nominations_on = '2026-12-05', starts_at = '2027-01-05T01:00:00Z'
+         WHERE id = $1`,
         [dated.id]
       );
       await addCeremony(circuitId, dated.id);
@@ -710,9 +954,14 @@ describe("circuit admin and public routes", () => {
         nominations_on: "2027-01-21",
         results_on: null
       });
+      // The results date is derived from the ceremony datetime, never entered.
+      await db.pool.query(
+        `UPDATE ceremony SET starts_at = '2027-03-15T01:00:00Z' WHERE id = $1`,
+        [ceremony.id]
+      );
       await send("patch", `/admin/ceremonies/${ceremony.id}/dates`, {
         nominations_on: null,
-        results_on: "2027-03-14"
+        results_on: "2027-01-01"
       });
 
       const after = await detailOf(circuitId);
@@ -730,9 +979,12 @@ describe("circuit admin and public routes", () => {
       "sets dates on a %s ceremony and shows them on the ceremony admin",
       async (status) => {
         const ceremony = await ceremonyWithStatus(status);
+        await db.pool.query(
+          `UPDATE ceremony SET starts_at = '2027-02-23T04:00:00Z' WHERE id = $1`,
+          [ceremony.id]
+        );
         const res = await send("patch", `/admin/ceremonies/${ceremony.id}/dates`, {
-          nominations_on: "2027-01-08",
-          results_on: "2027-02-22"
+          nominations_on: "2027-01-08"
         });
         expect(res.status).toBe(200);
         const get = await send<{
@@ -751,9 +1003,60 @@ describe("circuit admin and public routes", () => {
       const res = await send<ErrorBody>(
         "patch",
         `/admin/ceremonies/${ceremony.id}/dates`,
-        { results_on: "2027-02-30" }
+        { nominations_on: "2027-02-30" }
       );
       expect(res.status).toBe(400);
+      const resultsOnly = await send<ErrorBody>(
+        "patch",
+        `/admin/ceremonies/${ceremony.id}/dates`,
+        { results_on: "2027-02-22" }
+      );
+      expect(resultsOnly.status).toBe(400);
+    });
+
+    it("derives readiness, occasions and the would-be windows from the ceremony datetime", async () => {
+      const circuitId = await createCircuit();
+      const globes = await ceremonyWithStatus("PUBLISHED", { name: "Golden Globes" });
+      const oscars = await ceremonyWithStatus("PUBLISHED", { name: "Academy Awards" });
+      const undated = await ceremonyWithStatus("PUBLISHED", { name: "BAFTA" });
+      await db.pool.query(
+        `UPDATE ceremony SET nominations_on = '2026-12-07', starts_at = '2027-01-11T01:00:00Z'
+         WHERE id = $1`,
+        [globes.id]
+      );
+      await db.pool.query(
+        `UPDATE ceremony SET nominations_on = '2027-01-21', starts_at = '2027-03-15T00:00:00Z'
+         WHERE id = $1`,
+        [oscars.id]
+      );
+      for (const c of [globes, oscars, undated]) await addCeremony(circuitId, c.id);
+
+      const detail = await detailOf(circuitId);
+      expect(detail.ceremonies.map((c) => [c.ceremony_id, c.results_on])).toEqual([
+        [globes.id, "2027-01-10"],
+        [oscars.id, "2027-03-14"],
+        [undated.id, null]
+      ]);
+      expect(detail.readiness.missing_dates).toEqual([
+        expect.objectContaining({
+          ceremony_id: undated.id,
+          missing: ["nominations_on", "results_on"]
+        })
+      ]);
+      expect(
+        detail.occasions
+          .filter((o) => o.kind === "WIN")
+          .map((o) => [o.ceremony_id, o.date])
+      ).toEqual([
+        [globes.id, "2027-01-10"],
+        [oscars.id, "2027-03-14"],
+        [undated.id, null]
+      ]);
+      expect(detail.waiver_windows.map((w) => [w.starts_on, w.ends_on])).toEqual([
+        ["2026-12-07", "2026-12-09"],
+        ["2027-01-10", "2027-01-12"],
+        ["2027-01-21", "2027-01-23"]
+      ]);
     });
 
     it("keeps structural edits possible after activation", async () => {
@@ -799,7 +1102,8 @@ describe("circuit admin and public routes", () => {
       ceremonyId: number;
       editionId: number;
       eventId: number;
-      otherEventId: number;
+      otherCeremonyId: number;
+      groupId: number;
       categoryId: number;
       otherCategoryId: number;
       filmTemplateId: number;
@@ -810,7 +1114,7 @@ describe("circuit admin and public routes", () => {
       const ceremony = await ceremonyWithStatus();
       const other = await ceremonyWithStatus();
       const eventId = (await addCeremony(circuitId, ceremony.id)).circuit_event_id;
-      const otherEventId = (await addCeremony(circuitId, other.id)).circuit_event_id;
+      await addCeremony(circuitId, other.id);
       const film = await template("FILM");
       const category = await addCategory(circuitId, film.id);
       const otherCategory = await addCategory(
@@ -821,13 +1125,15 @@ describe("circuit admin and public routes", () => {
       await send("put", `/admin/circuits/${circuitId}/mappings/${edition.id}`, {
         circuit_category_id: category.id
       });
+      const group = await addGroup(circuitId, "Guilds", [other.id]);
       await db.pool.query(`DELETE FROM admin_audit_log`);
       return {
         circuitId,
         ceremonyId: ceremony.id,
         editionId: edition.id,
         eventId,
-        otherEventId,
+        otherCeremonyId: other.id,
+        groupId: group.id,
         categoryId: category.id,
         otherCategoryId: otherCategory.id,
         filmTemplateId: film.id
@@ -852,8 +1158,30 @@ describe("circuit admin and public routes", () => {
         target: (c) => ["circuit", c.circuitId],
         run: (c) =>
           send("put", `/admin/circuits/${c.circuitId}/ceremonies/${c.ceremonyId}`, {
-            circuit_event_id: c.otherEventId
+            circuit_event_id: c.groupId
           })
+      },
+      {
+        name: "PUT /admin/circuits/:id/ceremonies/:ceremonyId/position",
+        action: "move_circuit_ceremony",
+        target: (c) => ["circuit", c.circuitId],
+        run: (c) =>
+          send(
+            "put",
+            `/admin/circuits/${c.circuitId}/ceremonies/${c.ceremonyId}/position`,
+            { group_id: c.groupId, index: 0 }
+          )
+      },
+      {
+        name: "PUT /admin/circuits/:id/events/:eventId/ceremonies/order",
+        action: "reorder_circuit_event_ceremonies",
+        target: (c) => ["circuit", c.circuitId],
+        run: (c) =>
+          send(
+            "put",
+            `/admin/circuits/${c.circuitId}/events/${c.groupId}/ceremonies/order`,
+            { ceremony_ids: [c.otherCeremonyId] }
+          )
       },
       {
         name: "DELETE /admin/circuits/:id/ceremonies/:ceremonyId",
@@ -868,7 +1196,7 @@ describe("circuit admin and public routes", () => {
         target: (c) => ["circuit", c.circuitId],
         run: (c) =>
           send("put", `/admin/ceremonies/${c.ceremonyId}/circuits/${c.circuitId}`, {
-            circuit_event_id: c.otherEventId
+            circuit_event_id: c.groupId
           })
       },
       {
@@ -903,7 +1231,7 @@ describe("circuit admin and public routes", () => {
         target: (c) => ["circuit", c.circuitId],
         run: (c) =>
           send("put", `/admin/circuits/${c.circuitId}/events/order`, {
-            event_ids: [c.otherEventId, c.eventId]
+            event_ids: [c.groupId, c.eventId]
           })
       },
       {
@@ -1009,7 +1337,8 @@ describe("circuit admin and public routes", () => {
       const published = await ceremonyWithStatus("PUBLISHED", { name: "Academy Awards" });
       const hidden = await ceremonyWithStatus("DRAFT", { name: "BAFTA Film Awards" });
       await db.pool.query(
-        `UPDATE ceremony SET nominations_on = '2027-01-21', results_on = '2027-03-14' WHERE id = $1`,
+        `UPDATE ceremony SET nominations_on = '2027-01-21', starts_at = '2027-03-15T01:00:00Z'
+         WHERE id = $1`,
         [published.id]
       );
       const oscarsEvent = (await addCeremony(circuitId, published.id)).circuit_event_id;

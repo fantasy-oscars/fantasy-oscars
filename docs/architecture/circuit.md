@@ -1,14 +1,14 @@
 # Circuit
 
-A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`). Leagues, drafts, ownership, scoring and waivers come in later packages.
+A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md) and [ADR 0007](../adr/0007-circuit-groups-and-derived-dates.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`, with groups and the derived results date from `025_circuit_groups_and_derived_results_date.sql`). Leagues, drafts, ownership, scoring and waivers come in later packages.
 
 ## TL;DR
 
 - **Vocabulary.** Code, tables and admin screens say **Circuit**. Player-facing copy always says **Season**, for both competitions: a person joins a season, whether it covers one ceremony or the whole run. Admin events stay **Event**; a Circuit category is shown to players as **Category**. See [ADR 0006, section 1](../adr/0006-circuit-admin-defined-structure.md#1-vocabulary).
-- A new Circuit is **empty**. Admins add any ceremonies, group them into **events**, and build **Circuit categories** from category templates.
-- Every associated ceremony belongs to exactly one event. Leagues enable and weight whole events.
+- A new Circuit is **empty**. Admins add any ceremonies, gather some into named **groups**, and build **Circuit categories** from category templates.
+- Every associated ceremony belongs to exactly one event: a group, or its own one-ceremony event. Leagues enable and weight whole events.
 - Admins **map** each ceremony category to at most one Circuit category; several ceremony categories may map to the same one (many-to-one). A matching template pre-selects the mapping on screen, but only an explicit save creates it. Nothing is inferred from names.
-- Each ceremony has a **nominations date** and a **results date** (`ceremony.nominations_on`, `ceremony.results_on`). Every associated ceremony gives two **scoring occasions**, one per date.
+- Each ceremony has a **nominations date** (`ceremony.nominations_on`) and a **results date**, which is the date of its ceremony datetime (`ceremony.starts_at`) in America/Los_Angeles. Every associated ceremony gives two **scoring occasions**, one per date.
 - **Activation** (`DRAFT → ACTIVE`) never waits for dates. It returns the associated ceremonies that still lack one.
 - The Circuit is independent of the Season: no foreign keys either way, and no imports between Circuit code and Season, draft, scoring or realtime code.
 
@@ -17,23 +17,25 @@ A Circuit is a season-long competition across several awards ceremonies; players
 | Table              | What it holds                                                                                                     | Key constraints                                                                                                             |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `circuit`          | `code`, `name`, `status` (`DRAFT`, `ACTIVE`, `ARCHIVED`), `opens_on`                                              | `UNIQUE (code)`; `activated_at` is set when `ACTIVE`                                                                        |
-| `circuit_event`    | Admin-defined groups of one or more ceremonies, in display order                                                  | `UNIQUE (circuit_id, code)`; the code is admin-entered or generated from the name                                           |
+| `circuit_event`    | Admin-made groups (`is_group`) and one-ceremony events, in top-level order (`sort_index`)                         | `UNIQUE (circuit_id, code)`; the code is admin-entered or generated from the name                                           |
 | `circuit_category` | Categories built from templates: name, icon and `kind` copied on add, `category_family_id` as the source template | `UNIQUE (circuit_id, code)`; `kind IN ('FILM','ACTING')`; `category_family_id` is `ON DELETE SET NULL`                      |
-| `circuit_ceremony` | Which ceremony belongs to which event                                                                             | PK `(circuit_id, ceremony_id)`; the event must belong to the same Circuit                                                   |
+| `circuit_ceremony` | Which ceremony belongs to which event, and its order inside it (`sort_index`)                                     | PK `(circuit_id, ceremony_id)`; the event must belong to the same Circuit                                                   |
 | `circuit_mapping`  | Ceremony category edition → Circuit category                                                                      | PK `(circuit_id, category_edition_id)`: one edition maps to at most one Circuit category; many editions may map to the same |
 
 `circuit_ceremony` is the one shared association. The Circuit admin and the ceremony admin both read and write it; neither keeps a copy. Removing an association also removes that ceremony's mappings in the Circuit. A mapping is refused (409 `CIRCUIT_CEREMONY_NOT_ASSOCIATED`) until the edition's ceremony is associated.
 
-- **Events.** Adding a ceremony without an event creates a one-ceremony event named after it. Moving a ceremony into another event deletes the event it leaves when that event is now empty. Deleting an event ungroups it: each of its ceremonies gets its own event again and keeps its mappings.
+- **Groups and single ceremonies.** Adding a ceremony creates a one-ceremony event named after it, at the end of the top level; the admin screens show it as a plain ceremony row. Add group creates an empty, admin-named group (`is_group`). A ceremony can move into a group, never into another ceremony's own event; its own event is deleted as it leaves. Taking a ceremony out of a group gives it a new one-ceremony event. Groups are never deleted for being empty. Deleting a group ungroups it: each of its ceremonies gets its own event again and keeps its mappings.
 - **Categories.** A `FILM` template gives kind `FILM`, a `PERFORMANCE` template gives `ACTING`; `SONG` templates are rejected (400) and not offered on screen. Later template edits never change a Circuit category. Removing a category removes its mappings.
 - **Scoring with many-to-one mappings.** A selection scores at most once per occasion, even when several mapped categories of one ceremony nominate it; each mapped category's winner is a separate win match. See [ADR 0006, section 5](../adr/0006-circuit-admin-defined-structure.md#5-scoring-with-many-to-one-mappings).
 
 ## Dates and scoring occasions
 
-- `nominations_on` and `results_on` are whole days (`date`, sent as `YYYY-MM-DD`). Admins can set them at any ceremony status, archived included. Editing them never changes a Circuit's status.
+- `nominations_on` is a whole day (`date`, sent as `YYYY-MM-DD`). Admins can set it at any ceremony status, archived included. Editing it never changes a Circuit's status.
+- The results date is derived, never entered: the date of `starts_at` in America/Los_Angeles (`resultsDateOf`). Responses carry it as a read-only `results_on`.
 - A **scoring occasion** is `(ceremony, kind)` with `kind` `NOMINATION` or `WIN`. It is derived from the ceremony and its dates, never stored (`listScoringOccasions`). Dated occasions sort first, in date order, then undated ones in event order.
 - **Ownership instant.** An occasion on day `D` is evaluated against ownership at `D 00:00 America/Los_Angeles`, the instant that day's waiver window opens. Nominations and wins on the same day share one instant. See [ADR 0005, section 3](../adr/0005-series-domain-model.md#3-scoring-occasions-and-dates).
-- **Readiness** (`findCeremoniesMissingDates`) lists the associated ceremonies that lack either date. It is informational: activation proceeds regardless, and the Circuit admin shows the list.
+- **Readiness** (`findCeremoniesMissingDates`) lists the associated ceremonies that lack a nominations date or a ceremony datetime. It is informational: activation proceeds regardless, and the Circuit admin shows the list.
+- **Waiver windows** (`waiverWindows`, `apps/api/src/domain/waiverWindows.ts`) implement ADR 0005 section 9 as decided in ADR 0007. The Circuit admin detail returns `waiver_windows` from every associated ceremony's occasions, as if every ceremony were enabled; a league that disables some ceremonies gets fewer windows.
 
 ## Structural edits after activation
 
@@ -46,13 +48,12 @@ Routes are listed in the [admin runbook](../runbooks/admin.md#circuit-admin-rout
 Screens:
 
 - **Admin home → Game Content → Circuits**, and the admin nav's Game Content menu (`/admin/circuits`): the list of Circuits and a form to create one.
-- **Circuit detail** (`/admin/circuits/:id`):
-  - activation, with the missing-dates notice;
-  - **Ceremonies**: add any ceremony, with or without an event; events listed in order with rename, move up and down, and ungroup; each ceremony can move to another event or to its own, or be removed; a form groups chosen ceremonies into a new event;
-  - **Categories**: add from a category template, rename, move up and down, remove;
-  - **Category mappings**: one choice per ceremony category, pre-selected from a matching template, saved together with **Save mappings**; unsaved choices are marked, and a **By Circuit category** list shows every ceremony category mapped to each Circuit category;
-  - **Schedule** of occasions.
-- **Ceremony admin, Initialize step** (`/admin/ceremonies/:id/overview`): a **Circuit dates** form and a **Circuits** panel that adds this ceremony to a Circuit (with or without an event), moves it to another event, or removes it. Both work at every ceremony status.
+- **Circuit detail** (`/admin/circuits/:id`): activation and the missing-dates notice above three tabs; `?tab=categories|ceremonies|schedule` keeps the open tab in the URL.
+  - **Categories**: a flat list. **Add category** copies a category template (templates are made on the Category Templates screen; nothing is seeded). Rename, remove, and reorder by drag and drop or the move buttons.
+  - **Ceremonies**: **Add ceremony** appends any ceremony not yet in the Circuit, ungrouped; **Add group** creates an empty, admin-named group (the name players see). Single ceremonies show as plain rows, groups as collapsible containers. Rows and groups reorder by drag and drop; a ceremony joins or leaves a group by being dragged into or out of it. Each drag has a keyboard equivalent (focus the grip, Space, arrow keys, Space) and a row-menu item (move up or down, move into a group, move out of the group). Each ceremony row has **Map categories**.
+  - **Mapping modal** (from **Map categories**): one row per Circuit category, each a multi-select of that ceremony's categories. A ceremony category chosen in one row is not offered in the others. Template matches are pre-selected; nothing is saved until **Save mappings**.
+  - **Schedule**: read-only. Left, each ceremony's nominations and ceremony dates, labelled with its group where grouped; right, the add/drop windows from `waiverWindows` as if every ceremony were enabled. Ceremonies without dates are listed under **Needs dates**.
+- **Ceremony admin, Initialize step** (`/admin/ceremonies/:id/overview`): the Foundation details form has one **Dates** section, the nominations date and the ceremony date and time, saved together. A **Circuits** panel attaches this ceremony to a Circuit (ungrouped) or detaches it, at every ceremony status; grouping and order are set in the Circuit editor.
 
 ## Public reads
 

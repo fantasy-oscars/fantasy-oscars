@@ -4,7 +4,9 @@ import {
   adminCircuitAssociationBody,
   adminCircuitCategoryCreateBody,
   adminCircuitCategoryOrderBody,
+  adminCircuitCeremonyPositionBody,
   adminCircuitCreateBody,
+  adminCircuitEventCeremonyOrderBody,
   adminCircuitEventCreateBody,
   adminCircuitEventOrderBody,
   adminCircuitEventUpdateBody,
@@ -96,21 +98,58 @@ describe("circuit schemas", () => {
     );
   });
 
-  it("dates distinguish absent, cleared and set", () => {
+  it("dates set or clear the nominations date only", () => {
     expect(adminCeremonyDatesBody.parse({ nominations_on: "2027-01-21" })).toEqual({
-      nominations_on: "2027-01-21",
-      results_on: undefined
+      nominations_on: "2027-01-21"
     });
-    expect(adminCeremonyDatesBody.parse({ results_on: null })).toEqual({
-      nominations_on: undefined,
-      results_on: null
+    expect(adminCeremonyDatesBody.parse({ nominations_on: "" })).toEqual({
+      nominations_on: null
     });
+    // The results date is derived from the ceremony datetime, never entered.
+    expect(
+      adminCeremonyDatesBody.parse({ nominations_on: null, results_on: "2027-03-14" })
+    ).toEqual({ nominations_on: null });
     expect(adminCeremonyDatesBody.safeParse({}).error?.issues[0]?.message).toBe(
       "No fields to update"
     );
     expect(
-      adminCeremonyDatesBody.safeParse({ results_on: "21/01/2027" }).error?.issues[0]
+      adminCeremonyDatesBody.safeParse({ results_on: "2027-03-14" }).error?.issues[0]
         ?.message
-    ).toBe("Enter the results date as YYYY-MM-DD");
+    ).toBe("No fields to update");
+    expect(
+      adminCeremonyDatesBody.safeParse({ nominations_on: "21/01/2027" }).error?.issues[0]
+        ?.message
+    ).toBe("Enter the nominations date as YYYY-MM-DD");
+  });
+
+  it("ceremony position takes a group or the top level, and an index", () => {
+    expect(adminCircuitCeremonyPositionBody.parse({ group_id: "4", index: 2 })).toEqual({
+      group_id: 4,
+      index: 2
+    });
+    expect(
+      adminCircuitCeremonyPositionBody.parse({ group_id: null, index: "0" })
+    ).toEqual({ group_id: null, index: 0 });
+    expect(adminCircuitCeremonyPositionBody.parse({ index: 1 })).toEqual({
+      group_id: null,
+      index: 1
+    });
+    expect(
+      adminCircuitCeremonyPositionBody.safeParse({ index: -1 }).error?.issues[0]?.message
+    ).toBe("Choose a position");
+    expect(
+      adminCircuitCeremonyPositionBody.safeParse({ group_id: 0, index: 1 }).error
+        ?.issues[0]?.message
+    ).toBe("Choose a group in this Circuit");
+  });
+
+  it("group ceremony order lists each ceremony once", () => {
+    expect(adminCircuitEventCeremonyOrderBody.parse({ ceremony_ids: [3, "1"] })).toEqual({
+      ceremony_ids: [3, 1]
+    });
+    expect(
+      adminCircuitEventCeremonyOrderBody.safeParse({ ceremony_ids: [1, 1] }).error
+        ?.issues[0]?.message
+    ).toBe("List every ceremony of this group once");
   });
 });
