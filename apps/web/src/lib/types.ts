@@ -361,3 +361,103 @@ export type CircuitTransaction = {
   add: CircuitSelectionSummary | null;
   drop: CircuitSelectionSummary | null;
 };
+
+export type CircuitDraftStatus = "IN_PROGRESS" | "SUPPLEMENTAL" | "PAUSED" | "COMPLETED";
+
+/** The draft row as the snapshot carries it. */
+export type CircuitDraft = {
+  id: number;
+  circuit_league_id: number;
+  status: CircuitDraftStatus;
+  draft_type: string;
+  rounds: number;
+  pick_timer_seconds: number | null;
+  current_pick_number: number | null;
+  pick_deadline_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  paused_at: string | null;
+  version: number;
+};
+
+export type CircuitDraftSeat = {
+  seat_number: number;
+  member_id: number;
+  user_id: number;
+  username: string;
+};
+
+/** A pick slot that has resolved: picked (by hand or from the queue) or missed. */
+export type CircuitDraftPick = {
+  id: number;
+  pick_number: number;
+  original_pick_number: number;
+  seat_number: number;
+  member_id: number;
+  outcome: "PICKED" | "MISSED";
+  selection_id: number | null;
+  source: string;
+  request_id: string | null;
+  made_at: string;
+};
+
+/** The slot on the clock; `supplemental` once the regular rounds are over. */
+export type CircuitDraftClock = {
+  pick_number: number;
+  original_pick_number: number;
+  seat_number: number;
+  member_id: number;
+  supplemental: boolean;
+};
+
+export type CircuitChip = {
+  id: number;
+  member_id: number;
+  original_pick_number: number;
+  status: string;
+};
+
+/** `GET /circuit-leagues/:id/draft` and `GET /circuit-drafts/:id/snapshot`. */
+export type CircuitDraftSnapshot = {
+  draft: CircuitDraft;
+  seats: CircuitDraftSeat[];
+  picks: CircuitDraftPick[];
+  on_the_clock: CircuitDraftClock | null;
+  chips: CircuitChip[];
+  /** Every drafted selection, so the board can name each pick. */
+  selections: CircuitSelectionSummary[];
+  server_time: string;
+};
+
+/**
+ * A `draft:event` on the `/circuits` namespace. Every payload has `draft`
+ * (without `version`, which the message carries) and `on_the_clock`; some
+ * also carry a `pick`, its `selection`, a `chip` or the `seats`.
+ */
+export type CircuitDraftEventMessage = {
+  draft_id: number;
+  circuit_league_id: number;
+  version: number;
+  event_type: string;
+  payload: {
+    draft?: Omit<CircuitDraft, "version">;
+    on_the_clock?: CircuitDraftClock | null;
+    pick?: CircuitDraftPick;
+    selection?: CircuitSelectionSummary | null;
+    chip?: CircuitChip | null;
+    seats?: CircuitDraftSeat[];
+  } | null;
+  created_at: string;
+  server_time: string;
+};
+
+/** `POST /circuit-drafts/:id/picks`. */
+export type CircuitDraftPickResult = {
+  pick: CircuitDraftPick;
+  draft: CircuitDraft;
+};
+
+/** `GET /circuit-leagues/:id/queue`, also returned by every queue write. */
+export type CircuitQueue = {
+  items: Array<{ position: number; selection: CircuitSelectionSummary }>;
+};

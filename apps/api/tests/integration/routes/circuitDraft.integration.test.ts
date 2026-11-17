@@ -484,6 +484,9 @@ describe("circuit draft", () => {
         },
         chips: []
       });
+      expect(res.body.selections).toEqual([
+        expect.objectContaining({ id: films[0], film: expect.any(Object) })
+      ]);
       expect(typeof res.body.server_time).toBe("string");
 
       const byLeague = await leagueDraft(bob);

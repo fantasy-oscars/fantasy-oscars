@@ -2,8 +2,10 @@ import { queryOptions } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
 import type {
   CeremonySummary,
+  CircuitDraftSnapshot,
   CircuitLeagueDetail,
   CircuitLeagueSummary,
+  CircuitQueue,
   CircuitRoster,
   CircuitSummary,
   CircuitTransaction,
@@ -198,6 +200,40 @@ export function circuitTransactionsQuery(circuitLeagueId: number) {
         "Unable to load transactions"
       );
       return data?.transactions ?? [];
+    }
+  });
+}
+
+/** A league's draft snapshot, or null before the commissioner starts it. */
+export function circuitDraftQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.draft(circuitLeagueId),
+    queryFn: async (): Promise<CircuitDraftSnapshot | null> => {
+      const res = await fetchJson<CircuitDraftSnapshot>(
+        `/circuit-leagues/${circuitLeagueId}/draft`,
+        { method: "GET" }
+      );
+      if (!res.ok && res.errorCode === "CIRCUIT_DRAFT_NOT_STARTED") return null;
+      const data = unwrap(res, "Unable to load the draft");
+      if (!data) throw new ApiQueryError("Unable to load the draft");
+      return data;
+    }
+  });
+}
+
+/** The viewer's draft queue in a league's season, top first. */
+export function circuitQueueQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.queue(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitQueue>(`/circuit-leagues/${circuitLeagueId}/queue`, {
+          method: "GET"
+        }),
+        "Unable to load your queue"
+      );
+      if (!data) throw new ApiQueryError("Unable to load your queue");
+      return data;
     }
   });
 }

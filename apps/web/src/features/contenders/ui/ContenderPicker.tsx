@@ -48,6 +48,8 @@ export type ContenderPickerProps = {
     filter: string;
   };
   picking: boolean;
+  /** The confirm button's verb, as in "Draft Sunset Boulevard"; "Pick" by default. */
+  confirmVerb?: string;
   pickError: string | null;
   picked: ContenderSelection | null;
   actions: {
@@ -277,7 +279,7 @@ function ConfirmStep(props: ContenderPickerProps) {
     <Stack gap="xs">
       <Group>
         <Button onClick={actions.pick} loading={picking} autoFocus>
-          Pick {person ? person.name : film.title}
+          {props.confirmVerb ?? "Pick"} {person ? person.name : film.title}
         </Button>
       </Group>
       {pickError ? <ErrorAlert message={pickError} /> : null}

@@ -590,6 +590,21 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     ]
   };
 
+  // casey's draft queue in the main league's season, for the draft lobby:
+  // an acting pick on top, then two films.
+  for (const [i, selectionId] of [
+    sel.actress[0]!,
+    sel.picture[0]!,
+    sel.director[0]!
+  ].entries()) {
+    await pool.query(
+      `INSERT INTO circuit_queue_item (member_id, selection_id, position, created_at)
+       SELECT id, $3, $4, $5 FROM circuit_league_member
+       WHERE circuit_league_id = $1 AND user_id = $2`,
+      [circuitLeague.id, userIds.casey, selectionId, i + 1, minutes(505)]
+    );
+  }
+
   // History is written as the ownership service would write it: one
   // transaction per change, each boundary pointing at its transaction.
   const inSeasonLeague = async (input: {

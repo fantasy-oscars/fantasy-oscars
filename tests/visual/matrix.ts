@@ -92,6 +92,51 @@ export function countdownSnapshot(draft: Record<string, unknown>) {
   draft.pick_deadline_at = new Date(Date.parse(FIXED_NOW) + 4000).toISOString();
 }
 
+/**
+ * The season draft room mid-draft, from the finished draft of the in-season
+ * league: picks 1 to 3 stand (pick 2 missed), and casey (seat 1) is on the
+ * clock for pick 4 with 42 s left.
+ */
+function rewriteCircuitDraftLive(page: Page): Promise<void> {
+  return page.route("**/circuit-leagues/*/draft", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.json()) as {
+      draft: Record<string, unknown>;
+      seats: Array<{ seat_number: number; member_id: number }>;
+      picks: Array<{ pick_number: number; outcome: string; selection_id: number | null }>;
+      selections: Array<{ id: number }>;
+      on_the_clock: unknown;
+      server_time: string;
+    };
+    const picks = body.picks
+      .filter((p) => p.pick_number <= 3)
+      .map((p) =>
+        p.pick_number === 2 ? { ...p, outcome: "MISSED", selection_id: null } : p
+      );
+    Object.assign(body.draft, {
+      status: "IN_PROGRESS",
+      pick_timer_seconds: 90,
+      current_pick_number: 4,
+      pick_deadline_at: new Date(Date.parse(FIXED_NOW) + 42_000).toISOString(),
+      completed_at: null
+    });
+    body.picks = picks;
+    body.selections = body.selections.filter((s) =>
+      picks.some((p) => p.selection_id === s.id)
+    );
+    body.on_the_clock = {
+      pick_number: 4,
+      original_pick_number: 4,
+      seat_number: 1,
+      member_id: body.seats.find((s) => s.seat_number === 1)!.member_id,
+      supplemental: false
+    };
+    body.server_time = FIXED_NOW;
+    await route.fulfill({ response, json: body });
+  });
+}
+
 export const SCREENS: ScreenDef[] = [
   {
     id: "home-logged-out",
@@ -285,6 +330,34 @@ export const SCREENS: ScreenDef[] = [
     path: (s) =>
       `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/roster`,
     ready: { text: "Free agency is closed while waiver claims are open" },
+    fullPage: true
+  },
+  {
+    // Before the draft: facts, players, settings and a three-row queue with the picker.
+    id: "circuit-draft-lobby",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}/draft`,
+    ready: { text: "Add to your queue" },
+    fullPage: true
+  },
+  {
+    // A finished draft: the board by player beside the queue.
+    id: "circuit-draft-board",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "The draft is complete" },
+    fullPage: true
+  },
+  {
+    // Mid-draft: casey on the clock, the pick panel live, a missed pick on the board.
+    id: "circuit-draft-room",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "On the clock: Round 2, pick 4" },
+    beforeNavigate: (page) => rewriteCircuitDraftLive(page),
     fullPage: true
   },
   {
