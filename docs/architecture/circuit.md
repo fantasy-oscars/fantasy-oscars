@@ -14,13 +14,14 @@ A Circuit is a season-long competition across several awards ceremonies; players
 
 ## Table map
 
-| Table              | What it holds                                                                                                     | Key constraints                                                                                                             |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `circuit`          | `code`, `name`, `status` (`DRAFT`, `ACTIVE`, `ARCHIVED`), `opens_on`                                              | `UNIQUE (code)`; `activated_at` is set when `ACTIVE`                                                                        |
-| `circuit_event`    | Admin-made groups (`is_group`) and one-ceremony events, in top-level order (`sort_index`)                         | `UNIQUE (circuit_id, code)`; the code is admin-entered or generated from the name                                           |
-| `circuit_category` | Categories built from templates: name, icon and `kind` copied on add, `category_family_id` as the source template | `UNIQUE (circuit_id, code)`; `kind IN ('FILM','ACTING')`; `category_family_id` is `ON DELETE SET NULL`                      |
-| `circuit_ceremony` | Which ceremony belongs to which event, and its order inside it (`sort_index`)                                     | PK `(circuit_id, ceremony_id)`; the event must belong to the same Circuit                                                   |
-| `circuit_mapping`  | Ceremony category edition → Circuit category                                                                      | PK `(circuit_id, category_edition_id)`: one edition maps to at most one Circuit category; many editions may map to the same |
+| Table               | What it holds                                                                                                     | Key constraints                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `circuit`           | `code`, `name`, `status` (`DRAFT`, `ACTIVE`, `ARCHIVED`), `opens_on`                                              | `UNIQUE (code)`; `activated_at` is set when `ACTIVE`                                                                        |
+| `circuit_event`     | Admin-made groups (`is_group`) and one-ceremony events, in top-level order (`sort_index`)                         | `UNIQUE (circuit_id, code)`; the code is admin-entered or generated from the name                                           |
+| `circuit_category`  | Categories built from templates: name, icon and `kind` copied on add, `category_family_id` as the source template | `UNIQUE (circuit_id, code)`; `kind IN ('FILM','ACTING')`; `category_family_id` is `ON DELETE SET NULL`                      |
+| `circuit_ceremony`  | Which ceremony belongs to which event, and its order inside it (`sort_index`)                                     | PK `(circuit_id, ceremony_id)`; the event must belong to the same Circuit                                                   |
+| `circuit_mapping`   | Ceremony category edition → Circuit category                                                                      | PK `(circuit_id, category_edition_id)`: one edition maps to at most one Circuit category; many editions may map to the same |
+| `circuit_selection` | A contender in a Circuit category: TMDB film id, TMDB person id for acting, local film and person                 | `UNIQUE NULLS NOT DISTINCT (circuit_category_id, film_tmdb_id, person_tmdb_id)`; immutable (see Selections)                 |
 
 `circuit_ceremony` is the one shared association. The Circuit admin and the ceremony admin both read and write it; neither keeps a copy. Removing an association also removes that ceremony's mappings in the Circuit. A mapping is refused (409 `CIRCUIT_CEREMONY_NOT_ASSOCIATED`) until the edition's ceremony is associated.
 
@@ -58,6 +59,41 @@ Screens:
 ## Public reads
 
 `GET /circuits`, `/circuits/:id`, `/circuits/:id/events`, `/circuits/:id/categories` and `/circuits/:id/schedule`, returning the admin-defined events and categories. A `DRAFT` Circuit returns 404 and is left out of the list. Draft and deleted ceremonies are left out of events and the schedule.
+
+## Contender search
+
+Players pick contenders from TMDB before any nomination exists (`apps/api/src/routes/contenders.ts`, `services/contenderSearch.ts`).
+
+- **Routes.** `GET /contenders/films/search?q=` (one TMDB `/search/movie` call, `include_adult=false`, no per-result enrichment) and `GET /contenders/films/:tmdbId/credits` (cast and crew from TMDB). Any TMDB film is returned: no release or eligibility filter.
+- **Access.** Signed in, and a member of any league, or an operator. Membership narrows to Circuit leagues once they exist (package 04).
+- **Query.** Normalised (NFC, whitespace collapsed, trimmed, lower-cased), then 2 to 100 characters, else 400. The normalised text is what TMDB receives and the cache key.
+- **Limits.** Per route, sliding windows of one minute through the existing limiter: 30 requests per user and 120 per IP (the IP window runs before sign-in). Over the limit is 429 `RATE_LIMITED`. Limits are in process and reset on restart.
+- **Cache.** In process, per instance: search results for 1 hour keyed on the normalised query, credits for 1 day keyed on the TMDB id, each bounded to 2,000 entries (oldest evicted). Failures are not cached.
+- **TMDB failures** (all TMDB calls, admin included; `apps/api/src/lib/tmdb.ts`). Each call times out after 5 seconds. A timeout, network failure, missing token, or TMDB 429 or 503 is 503 `TMDB_UNAVAILABLE`; any other TMDB error or an unreadable body is 502 `TMDB_UPSTREAM_ERROR`; a TMDB 404 is 404 `TMDB_NOT_FOUND`. Clients get fixed messages; the upstream status and body go to the server log only.
+- **Picks.** `POST /contenders/selections` upserts a selection (below) behind the same access check and its own pair of limits, since a new selection syncs the film from TMDB.
+
+## Selections
+
+A selection says a contender exists in a Circuit category (`circuit_selection`, migration `026`; ADR 0005 section 5). It carries no ownership and is shared by every league of the Circuit.
+
+- **Identity.** `UNIQUE NULLS NOT DISTINCT (circuit_category_id, film_tmdb_id, person_tmdb_id)`. A `FILM` category takes no person; an `ACTING` category needs one (insert trigger `circuit_selection_check_kind`, plus a 400 from the service). So a film-only and an acting selection of one film, two people of one film in one acting category, and one person and film in two acting categories are all distinct rows.
+- **Upsert** (`services/circuit/circuitSelections.ts`). Body `{ circuit_category_id, film_tmdb_id, person_tmdb_id? }`. An existing identity returns its row (200) with no TMDB call. A new one syncs the film, its people and credits through `syncTmdbMovieById`, then, for acting, requires the person in the stored `film_credit` rows (cast or crew); otherwise 422 `PERSON_NOT_IN_CREDITS`. Created is 201. Any TMDB film qualifies, released or not. A category of a `DRAFT` Circuit is 404; of an `ARCHIVED` one, 409 `CIRCUIT_ARCHIVED`. TMDB failures map as in Contender search.
+- **Immutable.** No route or repository function updates a selection, and a `BEFORE UPDATE` trigger rejects any `UPDATE`. Changing a contender is a drop and a new pick. Deleting a Circuit category deletes its selections.
+
+## Matching
+
+`apps/api/src/domain/circuitMatching.ts` is pure. `matchOccasion` takes one scoring occasion (`NOMINATION` or `WIN`), the Circuit's mappings for the ceremony's categories, the ceremony's nominations (with their film and contributor TMDB ids), winners, films and selections. A nomination matches a selection when:
+
+- its category edition is mapped, to the selection's Circuit category (unmapped editions never match);
+- its film, after following `consolidated_into_film_id`, has the selection's `film_tmdb_id`;
+- for `ACTING`, a contributor has the selection's `person_tmdb_id` (both ids are required);
+- its status is `ACTIVE`, and, for a win, it is a `ceremony_winner`.
+
+It returns at most one match per selection per occasion, listing every matching nomination, so two mapped categories nominating one film (Globes Drama and Comedy into Best Picture) score once. Different selections that each win a mapped category each match. Nothing calls it yet; scoring (a later package) will.
+
+## Contender picker (web)
+
+`features/contenders/ui/ContenderPicker.tsx` (render only) with `orchestration/contenders.ts` and `decisions/contenders.ts`: category (select), film (debounced search), then person from the credits for acting categories, then pick. Every control is a native input, select or button, and focus moves to the next step's control. TMDB attribution shows under film results and credits. Operators can try it at `/admin/circuits/:circuitId/picker` (a non-`DRAFT` Circuit); player screens will mount the same hook and component.
 
 ## Independence from the Season
 

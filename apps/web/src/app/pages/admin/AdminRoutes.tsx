@@ -13,6 +13,7 @@ import { AdminCategoryTemplatesPage } from "./categoryTemplates/AdminCategoryTem
 import { AdminFilmsPage } from "./films/AdminFilmsPage";
 import { AdminCircuitIndexPage } from "./circuit/AdminCircuitIndexPage";
 import { AdminCircuitDetailPage } from "./circuit/AdminCircuitDetailPage";
+import { AdminCircuitPickerPage } from "./circuit/AdminCircuitPickerPage";
 import { AdminContentLayout } from "./content/AdminContentLayout";
 import {
   AdminAnnouncementsKeyRedirect,
@@ -56,6 +57,7 @@ export default function AdminRoutes() {
         <Route path="circuits">
           <Route index element={<AdminCircuitIndexPage />} />
           <Route path=":circuitId" element={<AdminCircuitDetailPage />} />
+          <Route path=":circuitId/picker" element={<AdminCircuitPickerPage />} />
         </Route>
 
         <Route path="content" element={<AdminContentLayout />}>

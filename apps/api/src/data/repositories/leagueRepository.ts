@@ -156,6 +156,18 @@ export async function getLeagueMember(
   return rows[0] ?? null;
 }
 
+export async function isMemberOfAnyLeague(
+  client: DbClient,
+  userId: number
+): Promise<boolean> {
+  const { rows } = await query<{ found: boolean }>(
+    client,
+    `SELECT EXISTS (SELECT 1 FROM league_member WHERE user_id = $1) AS found`,
+    [userId]
+  );
+  return rows[0]?.found === true;
+}
+
 export async function countLeagueMembers(
   client: DbClient,
   leagueId: number

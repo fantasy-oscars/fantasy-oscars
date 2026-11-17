@@ -10,3 +10,4 @@ export * from "./ceremonies.js";
 export * from "./content.js";
 export * from "./admin.js";
 export * from "./circuit.js";
+export * from "./contenders.js";

@@ -1,3 +1,6 @@
+import { AppError } from "../errors.js";
+import { log } from "../logger.js";
+
 export type TmdbImageConfig = {
   secureBaseUrl: string;
   posterSizes: string[];
@@ -53,14 +56,42 @@ type TmdbPersonSearchResult = {
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
+// Abort any TMDB call that has not answered within this long.
+export const TMDB_TIMEOUT_MS = 5000;
+
+// Upstream details go to the log only; clients get these fixed messages.
+function tmdbUpstreamError(): AppError {
+  return new AppError("TMDB_UPSTREAM_ERROR", 502, "Film data could not be loaded");
+}
+
+function tmdbUnavailable(): AppError {
+  return new AppError(
+    "TMDB_UNAVAILABLE",
+    503,
+    "Film data is unavailable right now. Try again shortly."
+  );
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")
+  );
+}
+
+function logTmdbFailure(path: string, detail: Record<string, unknown>) {
+  log({ level: "error", msg: "tmdb_request_failed", path, ...detail });
+}
+
 function requireTmdbReadToken(env: NodeJS.ProcessEnv = process.env): string {
   // Backwards-compatible: we previously used `TMDB_API_TOKEN` locally/ops.
   // Prefer the explicit "read access token" name going forward.
   const token = env.TMDB_READ_ACCESS_TOKEN ?? env.TMDB_API_TOKEN;
   if (!token || token.trim() === "") {
-    throw new Error(
-      "TMDB token env var is not set (expected TMDB_READ_ACCESS_TOKEN; falling back to TMDB_API_TOKEN)"
-    );
+    logTmdbFailure("config", {
+      error:
+        "TMDB token env var is not set (expected TMDB_READ_ACCESS_TOKEN; falling back to TMDB_API_TOKEN)"
+    });
+    throw tmdbUnavailable();
   }
   return token.trim();
 }
@@ -76,22 +107,45 @@ async function tmdbGetJson<T>(
     url.searchParams.set(k, String(v));
   }
 
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`
-    }
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      signal: AbortSignal.timeout(TMDB_TIMEOUT_MS)
+    });
+  } catch (err) {
+    // Timeouts and network failures alike mean TMDB cannot be reached.
+    logTmdbFailure(path, {
+      error: err instanceof Error ? err.message : String(err),
+      error_name: err instanceof Error ? err.name : undefined
+    });
+    throw tmdbUnavailable();
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(
-      `TMDB request failed (${res.status}) for ${path}${body ? `: ${body}` : ""}`
-    );
+    logTmdbFailure(path, { status: res.status, body: body.slice(0, 500) });
+    if (res.status === 404) {
+      throw new AppError("TMDB_NOT_FOUND", 404, "Film or person not found");
+    }
+    if (res.status === 429 || res.status === 503) throw tmdbUnavailable();
+    throw tmdbUpstreamError();
   }
 
-  return (await res.json()) as T;
+  try {
+    return (await res.json()) as T;
+  } catch (err) {
+    logTmdbFailure(path, {
+      error: err instanceof Error ? err.message : String(err),
+      error_name: err instanceof Error ? err.name : undefined
+    });
+    // The timeout also covers reading the body.
+    throw isAbortError(err) ? tmdbUnavailable() : tmdbUpstreamError();
+  }
 }
 
 let imageConfigCache: { value: TmdbImageConfig; expiresAtMs: number } | null = null;
