@@ -7,6 +7,9 @@ import {
   circuitLeagueSettingsBody,
   circuitDropBody,
   circuitFreeAgentBody,
+  circuitQueueAddBody,
+  circuitQueueItemParams,
+  circuitQueueOrderBody,
   idAndUserIdParams,
   idParam
 } from "@fantasy-oscars/shared/schemas";
@@ -28,10 +31,20 @@ import {
   getCircuitRoster,
   listCircuitLeagueTransactions
 } from "../services/circuit/circuitOwnership.js";
+import {
+  getCircuitLeagueDraftSnapshot,
+  startCircuitDraft
+} from "../services/circuit/circuitDraft.js";
+import {
+  addToCircuitQueue,
+  getCircuitQueue,
+  removeFromCircuitQueue,
+  reorderCircuitQueue
+} from "../services/circuit/circuitQueue.js";
 import { parseBody, parseParams } from "../utils/validate.js";
 
 // One Circuit competition in a league: its setup, members and initialisation,
-// then rosters and transactions. Setup responses are the league's full detail
+// then the draft queue, rosters and transactions. Setup responses are the league's full detail
 // and roster writes return the roster, so a screen can re-render from either.
 export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Router {
   const router = express.Router();
@@ -104,6 +117,29 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
     });
   }
 
+  // Starts the league's one draft; the response is the draft and its seats.
+  router.post("/:id/draft", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(201).json(await startCircuitDraft(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // The snapshot of the league's draft (as GET /circuit-drafts/:id/snapshot);
+  // 404 until the draft has started.
+  router.get("/:id/draft", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res
+        .status(200)
+        .json(await getCircuitLeagueDraftSnapshot(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get("/:id/roster", async (req: AuthedRequest, res, next) => {
     try {
       const { id } = parseParams(idParam, req.params);
@@ -157,6 +193,56 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
           dropSelectionId: body.drop_selection_id
         })
       );
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // The viewer's own draft queue, editable before and during the draft. Each
+  // write returns the whole queue, top first.
+  router.get("/:id/queue", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitQueue(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/:id/queue", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      const { selection_id } = parseBody(circuitQueueAddBody, req.body);
+      const { added, items } = await addToCircuitQueue(
+        pool,
+        id,
+        viewerOf(req),
+        selection_id
+      );
+      return res.status(added ? 201 : 200).json({ items });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put("/:id/queue", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      const { selection_ids } = parseBody(circuitQueueOrderBody, req.body);
+      return res
+        .status(200)
+        .json(await reorderCircuitQueue(pool, id, viewerOf(req), selection_ids));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete("/:id/queue/:selectionId", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id, selectionId } = parseParams(circuitQueueItemParams, req.params);
+      return res
+        .status(200)
+        .json(await removeFromCircuitQueue(pool, id, viewerOf(req), selectionId));
     } catch (err) {
       next(err);
     }

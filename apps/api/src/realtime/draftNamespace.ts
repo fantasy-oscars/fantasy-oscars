@@ -1,8 +1,5 @@
 import type { Namespace, Server, Socket } from "socket.io";
-import { parseCookies } from "../auth/cookie.js";
-import { verifyToken } from "../auth/token.js";
-import { getActiveSessionUser } from "../data/repositories/authSessionRepository.js";
-import { AUTH_SESSION_MAX_AGE_MS } from "../domain/authSession.js";
+import { authenticateSocket } from "../auth/socketSession.js";
 import { getDraftById } from "../data/repositories/draftRepository.js";
 import { getLeagueMember } from "../data/repositories/leagueRepository.js";
 import { getSeasonMember } from "../data/repositories/seasonMemberRepository.js";
@@ -31,30 +28,6 @@ function parseDraftId(socket: Socket): number {
   return num;
 }
 
-/**
- * The session credential for a socket handshake. Browsers send the HttpOnly
- * `auth_token` cookie on the same-origin websocket upgrade; that is the only
- * credential the web app uses. Bearer is for non-browser clients (same as
- * HTTP). The `auth` payload is a transition path for tabs opened before the
- * cookie-only change and for the api.fantasy-oscars.com alias; remove it when
- * that alias is retired.
- */
-function parseToken(socket: Socket): string | null {
-  const authHeader = socket.handshake.headers?.authorization;
-  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-    return authHeader.slice("Bearer ".length);
-  }
-  const cookie = parseCookies(socket.handshake.headers?.cookie).auth_token;
-  if (cookie) return cookie;
-  const authPayload = socket.handshake.auth as
-    { token?: unknown; Authorization?: unknown } | undefined;
-  const authDraft = authPayload?.token ?? authPayload?.Authorization;
-  if (typeof authDraft === "string" && authDraft.startsWith("Bearer "))
-    return authDraft.slice("Bearer ".length);
-  if (typeof authDraft === "string" && authDraft) return authDraft;
-  return null;
-}
-
 export function registerDraftNamespace(
   io: Server,
   opts: { db: DbClient; authSecret: string }
@@ -64,26 +37,7 @@ export function registerDraftNamespace(
   nsp.use(async (socket, next) => {
     try {
       const draftId = parseDraftId(socket);
-      const token = parseToken(socket);
-      if (!token) throw new AppError("UNAUTHORIZED", 401, "Missing auth token");
-      const claims = verifyToken(token, opts.authSecret);
-      const userId = Number(claims.sub);
-      if (!Number.isInteger(userId) || userId <= 0)
-        throw new AppError("UNAUTHORIZED", 401, "Invalid token");
-      const session = claims.sid
-        ? await getActiveSessionUser(opts.db, {
-            sessionId: claims.sid,
-            userId,
-            maxAgeMs: AUTH_SESSION_MAX_AGE_MS
-          })
-        : null;
-      if (!session) {
-        throw new AppError(
-          "UNAUTHORIZED",
-          401,
-          "Your session has expired. Please log in again."
-        );
-      }
+      const userId = await authenticateSocket(socket, opts);
 
       const draft = await getDraftById(opts.db, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");

@@ -14,6 +14,7 @@ import { createCeremoniesRouter } from "./routes/ceremonies.js";
 import { createContentRouter } from "./routes/content.js";
 import { createCircuitsRouter } from "./routes/circuits.js";
 import { createCircuitLeaguesRouter } from "./routes/circuitLeagues.js";
+import { createCircuitDraftsRouter } from "./routes/circuitDrafts.js";
 import { createContendersRouter } from "./routes/contenders.js";
 import { createDraftPlansRouter } from "./routes/draftPlans.js";
 import { requireAdmin, requireAuth } from "./auth/middleware.js";
@@ -134,6 +135,7 @@ export function createServer(deps?: { db?: Pool; mailer?: Mailer }): Express {
   app.use("/content", createContentRouter(pool));
   app.use("/circuits", createCircuitsRouter(pool));
   app.use("/circuit-leagues", createCircuitLeaguesRouter(pool, config.authSecret));
+  app.use("/circuit-drafts", createCircuitDraftsRouter(pool, config.authSecret));
   app.use("/contenders", createContendersRouter(pool, config.authSecret));
   app.use(
     "/admin",
