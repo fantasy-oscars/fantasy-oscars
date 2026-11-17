@@ -3,10 +3,16 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { AreaSaveResult, CircuitLeagueView } from "@/orchestration/circuitLeague";
 import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSettings";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
+import { circuitDraftLinkLabel } from "@/decisions/circuitDraft";
 import { circuitRostersVisible } from "@/decisions/circuitRoster";
 import { statusTone } from "@/decisions/statusTone";
 import type { ApiResult } from "@/lib/types";
-import { circuitRosterPath, circuitTransactionsPath, leaguePath } from "@/lib/routes";
+import {
+  circuitDraftPath,
+  circuitRosterPath,
+  circuitTransactionsPath,
+  leaguePath
+} from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
 import { StandardCard } from "@/primitives";
@@ -106,6 +112,9 @@ export function CircuitLeagueScreen(props: {
               </Group>
             </Stack>
             <Group gap="sm" wrap="wrap">
+              <Button component={Link} to={circuitDraftPath(link)} variant="outline">
+                {circuitDraftLinkLabel(detail.circuit_league.status)}
+              </Button>
               {circuitRostersVisible(detail.circuit_league.status) ? (
                 <>
                   <Button component={Link} to={circuitRosterPath(link)} variant="outline">

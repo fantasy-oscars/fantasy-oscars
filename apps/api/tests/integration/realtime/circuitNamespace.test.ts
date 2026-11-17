@@ -53,6 +53,7 @@ type EventMessage = {
     on_the_clock: unknown;
     seats?: unknown[];
     pick?: unknown;
+    selection?: unknown;
     chip?: unknown;
   };
 };
@@ -62,6 +63,7 @@ type Board = {
   picks: unknown[];
   on_the_clock: unknown;
   chips: unknown[];
+  selections: unknown[];
 };
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
@@ -141,7 +143,10 @@ function applyEvent(board: Board, event: EventMessage): Board {
     seats: payload.seats ?? board.seats,
     picks: payload.pick ? [...board.picks, payload.pick] : board.picks,
     on_the_clock: payload.on_the_clock,
-    chips: payload.chip ? [...board.chips, payload.chip] : board.chips
+    chips: payload.chip ? [...board.chips, payload.chip] : board.chips,
+    selections: payload.selection
+      ? [...board.selections, payload.selection]
+      : board.selections
   };
 }
 

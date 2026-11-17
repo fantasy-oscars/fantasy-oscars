@@ -75,3 +75,12 @@ export function circuitTransactionsPath(input: {
 }): string {
   return `${circuitLeaguePath(input)}/transactions`;
 }
+
+/** The draft of a league's season: the lobby before it starts, then the room. */
+export function circuitDraftPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${circuitLeaguePath(input)}/draft`;
+}

@@ -97,11 +97,18 @@ export type E2eStack = {
  * `webMode` builds with a named Vite mode; `enableAllBrands` turns on unreleased brands
  * and needs a non-production mode (the build refuses the flag in production);
  * `enableSpecimen` includes the test-only `/__specimen` route in the bundle.
+ * `enableDraftSweeper` runs the draft sweeper, so a pick clock that runs out
+ * auto-drafts or records a miss.
  * The API sends no real email: without `RESEND_API_KEY` outside production it uses the
  * logging mailer, whose `mail_logged` lines land in `apiLogPath`.
  */
 export async function startStack(
-  opts: { webMode?: string; enableAllBrands?: boolean; enableSpecimen?: boolean } = {}
+  opts: {
+    webMode?: string;
+    enableAllBrands?: boolean;
+    enableSpecimen?: boolean;
+    enableDraftSweeper?: boolean;
+  } = {}
 ): Promise<E2eStack> {
   const processes: Running[] = [];
   let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
@@ -133,7 +140,8 @@ export async function startStack(
         WEB_BASE_URL: E2E_WEB_ORIGIN,
         LOG_LEVEL: "info",
         LOG_FORMAT: "json",
-        DRAFT_SWEEPER_ENABLED: "false"
+        // The sweeper ends timed-out picks; seeded screens must not move.
+        DRAFT_SWEEPER_ENABLED: opts.enableDraftSweeper ? "true" : "false"
       }
     });
     processes.push(api);

@@ -1,6 +1,8 @@
 add
 add_link
 arrow_back
+arrow_downward
+arrow_upward
 autorenew
 block
 call_split

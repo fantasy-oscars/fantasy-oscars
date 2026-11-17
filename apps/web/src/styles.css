@@ -5958,3 +5958,197 @@ select {
   width: auto;
   color: var(--muted);
 }
+
+/* Season draft: the queue editor, the lobby's facts and the board. */
+.circuit-queue .mantine-ActionIcon-root .gicon {
+  font-size: var(--fo-icon-size-md);
+  line-height: 1;
+}
+
+/* Phone: the grip is a 44 px target like the row's icon buttons. */
+@media (max-width: 499.98px) {
+  .circuit-queue .nomination-drag-handle-button {
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
+  }
+}
+
+.circuit-queueRank {
+  min-width: 2ch;
+  text-align: right;
+}
+
+.circuit-row.is-drafted .circuit-rowMain {
+  color: var(--muted);
+}
+
+.circuit-row.is-drafted .circuit-rowMain > :first-child {
+  text-decoration: line-through;
+}
+
+.circuit-lobbyFacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--fo-space-sm);
+  margin: 0;
+}
+
+.circuit-lobbyFact dd {
+  margin: 0;
+}
+
+.circuit-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--fo-space-sm);
+  align-items: start;
+}
+
+.circuit-boardCell {
+  padding: var(--fo-space-xs) 0;
+}
+
+.circuit-boardCell + .circuit-boardCell {
+  border-top: var(--fo-border-width) solid var(--border);
+}
+
+.circuit-boardCell.is-missed {
+  color: var(--muted);
+}
+
+.circuit-boardCell.is-supplemental {
+  border-left: var(--fo-border-width-strong) solid var(--border);
+  padding-left: var(--fo-space-xs);
+}
+
+.circuit-boardHighlight {
+  font-weight: var(--fo-font-weight-bold);
+}
+
+/* Season draft room: the turn bar and the pick panel. */
+.circuit-turnBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fo-space-sm);
+  padding: var(--fo-space-sm);
+  border: var(--fo-border-width) solid var(--border);
+  border-radius: var(--brand-radius-sm);
+  background: var(--fo-surface-card-primary);
+}
+
+.circuit-turnBar.is-viewer {
+  border-color: var(--fo-text-primary);
+  border-width: var(--fo-border-width-strong);
+}
+
+.circuit-turnMain {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.circuit-turnTag {
+  text-transform: uppercase;
+}
+
+.circuit-turnClock {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fo-font-weight-bold);
+}
+
+.circuit-turnClock.is-urgent {
+  color: var(--fo-danger-text);
+}
+
+.circuit-pickReady {
+  font-weight: var(--fo-font-weight-bold);
+}
+
+.circuit-pickFieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.circuit-pickFieldset:disabled {
+  opacity: var(--fo-alpha-60);
+}
+
+/*
+ * Reading order is the pick, the board, then the queue, which is also the
+ * phone's order. From 501 px the board takes the wide column across both rows
+ * and the pick and queue stack in the narrow one; the queue's row takes the
+ * slack, so the two stay together however tall the board grows.
+ */
+.circuit-draftRoom {
+  row-gap: var(--fo-space-lg);
+}
+
+@media (min-width: 501px) {
+  .circuit-draftRoom {
+    grid-template-rows: auto 1fr;
+  }
+
+  .circuit-draftRoom > .circuit-draftPick {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .circuit-draftRoom > .circuit-draftQueue {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .circuit-draftRoom > .circuit-draftBoardCol {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  /* No pick panel (a viewer who has not joined): the queue note takes row 1. */
+  .circuit-draftRoom > .circuit-draftQueue:nth-child(2) {
+    grid-row: 1 / span 2;
+  }
+}
+
+/* Phone: the board toggle's segments are full touch targets. */
+@media (max-width: 499.98px) {
+  .circuit-boardToggle .mantine-SegmentedControl-label {
+    min-height: var(--fo-touch-target);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /*
+   * Phone queue rows: the contender spans the row, and the grip, rank and
+   * actions share one compact line under it.
+   */
+  .circuit-queue > .circuit-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas:
+      "main main main"
+      "grip rank actions";
+    row-gap: var(--fo-space-4);
+  }
+
+  .circuit-queue > .circuit-row > :first-child {
+    grid-area: grip;
+  }
+
+  .circuit-queue > .circuit-row > .circuit-queueRank {
+    grid-area: rank;
+    align-self: center;
+  }
+
+  .circuit-queue > .circuit-row > .circuit-rowMain {
+    grid-area: main;
+  }
+
+  .circuit-queue > .circuit-row > .circuit-rowActions {
+    grid-area: actions;
+    justify-self: end;
+  }
+}

@@ -79,6 +79,10 @@ const CircuitRosterPage = lazyPage(
   () => import("./pages/CircuitRosterPage"),
   "CircuitRosterPage"
 );
+const CircuitDraftPage = lazyPage(
+  () => import("./pages/CircuitDraftPage"),
+  "CircuitDraftPage"
+);
 const CircuitTransactionsPage = lazyPage(
   () => import("./pages/CircuitTransactionsPage"),
   "CircuitTransactionsPage"
@@ -288,6 +292,16 @@ function RoutesConfig() {
             <RequireAuth>
               <LazyRoute>
                 <CircuitRosterPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/draft"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitDraftPage />
               </LazyRoute>
             </RequireAuth>
           }

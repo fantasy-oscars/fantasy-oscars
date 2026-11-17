@@ -57,7 +57,9 @@ import { computeDeadline } from "../../domain/draftPickRules.js";
 import { AppError } from "../../errors.js";
 import { emitCircuitDraftEvents } from "./circuitDraftEvents.js";
 import { wakeForCircuitDraftDeadline } from "./circuitDraftWake.js";
+import { listCircuitSelectionsByIds } from "../../data/repositories/circuitSelectionRepository.js";
 import { applyOwnershipChange } from "./circuitOwnership.js";
+import { toPublicCircuitSelection } from "./circuitSelections.js";
 import {
   requireCommissioner,
   requireVisibleCircuitLeague,
@@ -382,6 +384,7 @@ async function resolveSlot(
   let event = picked
     ? await recordEvent(tx, events, draft.id, "draft.pick.made", {
         pick: publicPick(pick),
+        selection: await draftedSelection(tx, resolution.selectionId),
         draft: draftState(moved),
         on_the_clock: clock
       })
@@ -403,6 +406,12 @@ async function resolveSlot(
     chip: chip && publicChip(chip),
     draft: publicDraft({ ...moved, version: event.version })
   };
+}
+
+/** The drafted selection as the board names it; a pick event carries it. */
+async function draftedSelection(tx: DbClient, selectionId: number) {
+  const [row] = await listCircuitSelectionsByIds(tx, [selectionId]);
+  return row ? toPublicCircuitSelection(row) : null;
 }
 
 function publicChip(chip: CircuitChipRow) {
@@ -652,7 +661,8 @@ export async function resumeCircuitDraft(
 
 /**
  * The board as of one draft version, for first load and reconnect: the
- * draft, its seats, every pick so far, the slot on the clock and the chips.
+ * draft, its seats, every pick so far, the slot on the clock, the chips and
+ * the drafted selections, so the board can name each pick.
  * Read under a share lock on the draft row, so no pick lands halfway through
  * and `draft.version` matches the last event the board includes. A client
  * applies the `draft:event` messages with a higher version, in order, and
@@ -670,12 +680,24 @@ export async function getCircuitDraftSnapshot(
     const missed = await listMissedRegularCircuitDraftPicks(tx, draft.id);
     const picks = await listCircuitDraftPicks(tx, draft.id);
     const chips = await listCircuitChips(tx, draft.circuit_league_id);
+    // In pick order, as a client that appends each pick event's selection has them.
+    const drafted = picks.flatMap((p) =>
+      p.selection_id === null ? [] : [p.selection_id]
+    );
+    const byId = new Map(
+      (await listCircuitSelectionsByIds(tx, drafted)).map((s) => [s.id, s])
+    );
+    const selections = drafted.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [toPublicCircuitSelection(row)] : [];
+    });
     return {
       draft: publicDraft(draft),
       seats: seats.map(publicSeat),
       picks: picks.map(publicPick),
       on_the_clock: publicClock(draft, seats, missed),
       chips: chips.map(publicChip),
+      selections,
       server_time: now.toISOString()
     };
   });

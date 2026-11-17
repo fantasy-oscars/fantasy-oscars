@@ -12,7 +12,7 @@
 - Unit: pure functions, no IO.
 - Integration (API/DB): use Testcontainers Postgres; apply migrations from `database/migrations`; truncate + restart identities between tests.
 - Visual: Playwright suite in a pinned browser with three tiers: measured component tolerances, structural assertions (both baseline-free) and screenshots of Home and one sample card (see Visual Tests below).
-- E2E: Playwright. Global setup starts a Postgres Testcontainer (needs Docker), the API, and a production web build pointed at it (ports 4173/4174, override with `E2E_WEB_PORT`/`E2E_API_PORT`). Tests: a web smoke check and a two-user flow (invite, draft, winners, standings).
+- E2E: Playwright. Global setup starts a Postgres Testcontainer (needs Docker), the API, and a production web build pointed at it (ports 4173/4174, override with `E2E_WEB_PORT`/`E2E_API_PORT`). Tests: a web smoke check, a two-user flow (invite, draft, winners, standings), password reset, the Circuit admin editor, season creation and a four-player season draft (a timed-out pick drafted from the queue, an empty queue made up in the supplemental round, a dropped and restored socket). The e2e stack runs the draft sweeper so pick clocks expire (the visual stack does not, so seeded screens stay put); global setup also seeds an active Circuit with twelve contenders and the draft spec's four players. TMDB is not reachable, so that spec answers film search in the browser from the seeded films.
 
 ## Where Tests Live
 
