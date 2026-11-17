@@ -9,10 +9,11 @@
   production unless `AUTH_COOKIE_SAMESITE` says otherwise, Lax in dev). The response
   body is `{ user }` only: the token is never returned in JSON, so page scripts
   cannot read it.
-- Every authenticated request (`requireAuth`) and every `/drafts` Socket.IO handshake
-  verifies the JWT signature, then loads the user through its session in one query.
-  The request is rejected with 401 `UNAUTHORIZED` when the session is missing,
-  revoked or expired, when the user is deleted, or when the token has no `sid`
+- Every authenticated request (`requireAuth`) and every Socket.IO handshake
+  (`/drafts` and `/circuits`, through `auth/socketSession.ts`) verifies the JWT
+  signature, then loads the user through its session in one query. The request
+  is rejected with 401 `UNAUTHORIZED` when the session is missing, revoked or
+  expired, when the user is deleted, or when the token has no `sid`
   (tokens issued before sessions existed). The web treats that as a normal
   signed-out state.
 - Lifetime: 30 days, sliding. When a request arrives and the session's
@@ -122,8 +123,8 @@ without sending email.
 ## Credential transports
 
 - **Browser (the web app):** the HttpOnly `auth_token` cookie only, over HTTP and on
-  the `/drafts` Socket.IO handshake (browsers send cookies on the same-origin
-  websocket upgrade). The web keeps nothing in `localStorage` and sends no
+  the `/drafts` and `/circuits` Socket.IO handshakes (browsers send cookies on the
+  same-origin websocket upgrade). The web keeps nothing in `localStorage` and sends no
   `Authorization` header; on load it deletes the `fo_auth_token` key left by older
   builds. This needs a first-party cookie, i.e. same-origin hosting (see
   [deployment.md](deployment.md#hosting-modes)).

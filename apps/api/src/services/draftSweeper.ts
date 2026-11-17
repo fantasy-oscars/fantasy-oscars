@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 import { log } from "../logger.js";
 import { tickDraft } from "./drafting/tick.js";
@@ -28,17 +28,36 @@ const SWEEPER_LOCK_KEY = 923_701_144;
 /** Upper bound on how long the sweeper sleeps while timed drafts are in progress. */
 const MAX_SLEEP_MS = 30_000;
 
+/**
+ * Another family of timed drafts the sweeper serves in the same check, under the same
+ * advisory lock, after the ceremony drafts. The entry point supplies these, so this
+ * module imports no other draft family. `tick` must lock the draft and re-check its
+ * deadline, as `tickDraft` does.
+ */
+export type DraftSweeperPass = {
+  name: string;
+  /** Ids of running, timed drafts whose deadline has passed, earliest first. */
+  listExpired: (client: PoolClient, limit: number) => Promise<number[]>;
+  tick: (pool: Pool, id: number) => Promise<unknown>;
+  /** Milliseconds until the earliest deadline of a running, timed draft; null when none. */
+  nextWaitMs: (client: PoolClient) => Promise<number | null>;
+};
+
 export type DraftSweeper = {
   stop: () => Promise<void>;
   wake: (deadline?: Date | string | null) => void;
 };
 
 /**
- * Deadline-driven sweeper. It issues no queries while no timed draft is IN_PROGRESS:
+ * Deadline-driven sweeper for ceremony drafts and any extra `passes` (Circuit drafts).
+ * It issues no queries while no timed draft is running:
  * after each check it sleeps until the earliest pick deadline (clamped between the
  * configured interval and 30s) or goes idle until `wakeDraftSweeper` is called.
  */
-export function startDraftSweeper(pool: Pool): DraftSweeper {
+export function startDraftSweeper(
+  pool: Pool,
+  passes: readonly DraftSweeperPass[] = []
+): DraftSweeper {
   const enabled = parseOptionalBool(process.env.DRAFT_SWEEPER_ENABLED, true);
   if (!enabled) return { stop: async () => {}, wake: () => {} };
 
@@ -132,6 +151,23 @@ export function startDraftSweeper(pool: Pool): DraftSweeper {
         }
       }
 
+      // Extra draft families, under the same lock. Each tick re-checks its deadline.
+      for (const pass of passes) {
+        for (const id of await pass.listExpired(client, batchSize)) {
+          try {
+            await pass.tick(pool, id);
+          } catch (err) {
+            log({
+              level: "error",
+              msg: "draft_sweeper_tick_failed",
+              pass: pass.name,
+              draft_id: id,
+              error: err instanceof Error ? err.message : String(err)
+            });
+          }
+        }
+      }
+
       // Sleep until the earliest remaining deadline; stay idle when there is none.
       const upcoming = await client.query<{ wait_ms: string | number | null }>(
         `
@@ -144,8 +180,13 @@ export function startDraftSweeper(pool: Pool): DraftSweeper {
         `
       );
       const raw = upcoming.rows[0]?.wait_ms;
-      if (raw !== null && raw !== undefined) {
-        const waitMs = Math.min(Math.max(Number(raw), intervalMs), MAX_SLEEP_MS);
+      const waits: number[] = raw === null || raw === undefined ? [] : [Number(raw)];
+      for (const pass of passes) {
+        const passWaitMs = await pass.nextWaitMs(client);
+        if (passWaitMs !== null) waits.push(passWaitMs);
+      }
+      if (waits.length > 0) {
+        const waitMs = Math.min(Math.max(Math.min(...waits), intervalMs), MAX_SLEEP_MS);
         nextAfterCheck = Date.now() + waitMs;
       } else if (idlePollMs > 0) {
         nextAfterCheck = Date.now() + idlePollMs;

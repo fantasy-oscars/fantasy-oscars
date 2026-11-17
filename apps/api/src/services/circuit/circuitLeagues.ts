@@ -77,7 +77,7 @@ async function requireVisibleLeague(client: DbClient, leagueId: number, viewer: 
   return { league, member };
 }
 
-function requireCommissioner(
+export function requireCommissioner(
   league: LeagueRecord,
   member: { role: string } | null,
   userId: number

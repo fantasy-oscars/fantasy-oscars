@@ -17,6 +17,13 @@ import {
   registerCeremonyEventEmitter
 } from "./realtime/ceremonyEvents.js";
 import { startDraftSweeper } from "./services/draftSweeper.js";
+import { circuitDraftSweeperPass } from "./services/circuit/circuitDraft.js";
+import { registerCircuitDraftWake } from "./services/circuit/circuitDraftWake.js";
+import {
+  connectCircuitDraftEvents,
+  disconnectCircuitDraftEvents,
+  registerCircuitNamespace
+} from "./services/circuit/circuitNamespace.js";
 import { log } from "./logger.js";
 import { initSentry, flushSentry } from "./observability/sentry.js";
 import { assertMigrationsCurrent, MigrationsBehindError } from "./data/migrations.js";
@@ -56,9 +63,14 @@ if (config.realtimeEnabled) {
   });
   registerDraftEventEmitter(draftNamespace);
   registerCeremonyEventEmitter(draftNamespace);
+  // Circuit leagues have their own namespace; see services/circuit/circuitNamespace.ts.
+  connectCircuitDraftEvents(
+    registerCircuitNamespace(io, { db: app.locals.db, authSecret: config.authSecret })
+  );
 } else {
   clearDraftEventEmitter();
   clearCeremonyEventEmitter();
+  disconnectCircuitDraftEvents();
 }
 
 httpServer.listen(config.port, () => {
@@ -66,7 +78,10 @@ httpServer.listen(config.port, () => {
 });
 
 // Server-side timer enforcement: ensures timed drafts progress even if no clients are open.
-const sweeper = startDraftSweeper(app.locals.db);
+// Circuit drafts ride the same sweeper, wired here because the two families never import
+// each other.
+const sweeper = startDraftSweeper(app.locals.db, [circuitDraftSweeperPass]);
+registerCircuitDraftWake(sweeper.wake);
 
 const shutdown = createShutdown({
   httpServer,
