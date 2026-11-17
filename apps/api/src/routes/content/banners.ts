@@ -1,5 +1,6 @@
 import type express from "express";
 import type { DbClient } from "../../data/db.js";
+import { withBodyTree } from "../../services/markdownTree.js";
 import { listPublishedDynamicContentByKey } from "../../data/repositories/cmsRepository.js";
 
 export function registerContentBannersRoute(args: {
@@ -19,7 +20,7 @@ export function registerContentBannersRoute(args: {
         if (ends && Number.isFinite(ends) && ends <= now) return false;
         return true;
       });
-      return res.status(200).json({ banners: active });
+      return res.status(200).json({ banners: active.map(withBodyTree) });
     } catch (err) {
       next(err);
     }

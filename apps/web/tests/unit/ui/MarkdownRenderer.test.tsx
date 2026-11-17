@@ -1,13 +1,24 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 import { MantineProvider } from "@ui";
+import { parseMarkdown } from "@fantasy-oscars/shared/markdown";
 import { MarkdownRenderer } from "@/ui/MarkdownRenderer";
+
+/** Parses with the shared parser, as the build and the API do, then renders the tree. */
+function Md(props: { markdown: string; headingBase?: number }) {
+  return (
+    <MarkdownRenderer
+      tree={parseMarkdown(props.markdown)}
+      headingBase={props.headingBase}
+    />
+  );
+}
 
 describe("<MarkdownRenderer /> typography normalization", () => {
   test("renders --- as an em dash in normal text", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"Hello --- world"} />
+        <Md markdown={"Hello --- world"} />
       </MantineProvider>
     );
     expect(screen.getByText("Hello \u2014 world")).toBeInTheDocument();
@@ -16,7 +27,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("does not rewrite --- inside inline code", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"Use `a---b` here."} />
+        <Md markdown={"Use `a---b` here."} />
       </MantineProvider>
     );
     expect(screen.getByText("a---b")).toBeInTheDocument();
@@ -25,7 +36,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("does not rewrite --- inside code blocks", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"```txt\n---\n```"} />
+        <Md markdown={"```txt\n---\n```"} />
       </MantineProvider>
     );
     expect(screen.getByText("---")).toBeInTheDocument();
@@ -34,7 +45,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("renders ... as an ellipsis in normal text", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"Wait... now"} />
+        <Md markdown={"Wait... now"} />
       </MantineProvider>
     );
     expect(screen.getByText("Wait\u2026 now")).toBeInTheDocument();
@@ -43,7 +54,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("supports GFM strikethrough", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"Use ~~old~~ new."} />
+        <Md markdown={"Use ~~old~~ new."} />
       </MantineProvider>
     );
     expect(screen.getByText("old")).toBeInTheDocument();
@@ -53,9 +64,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("supports reference-style links", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer
-          markdown={"See [TMDB][tmdb].\n\n[tmdb]: https://www.themoviedb.org"}
-        />
+        <Md markdown={"See [TMDB][tmdb].\n\n[tmdb]: https://www.themoviedb.org"} />
       </MantineProvider>
     );
     const link = screen.getByRole("link", { name: "TMDB" });
@@ -66,7 +75,7 @@ describe("<MarkdownRenderer /> typography normalization", () => {
   test("renders thematic breaks as a divider", () => {
     render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"Above\n\n---\n\nBelow"} />
+        <Md markdown={"Above\n\n---\n\nBelow"} />
       </MantineProvider>
     );
     expect(screen.getByText("Above")).toBeInTheDocument();
@@ -87,7 +96,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("shifts each depth one level down from h2 when headingBase is omitted", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={markdown} />
+        <Md markdown={markdown} />
       </MantineProvider>
     );
     expect(headings(container)).toEqual([
@@ -101,7 +110,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("gives h2, h3 and h4 their own type steps", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={markdown} />
+        <Md markdown={markdown} />
       </MantineProvider>
     );
     const view = within(container);
@@ -115,7 +124,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("shifts from the base and caps at h6", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={markdown} headingBase={4} />
+        <Md markdown={markdown} headingBase={4} />
       </MantineProvider>
     );
     expect(headings(container)).toEqual([
@@ -129,7 +138,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("under a raised base, starts at the section size and steps down each level", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={markdown} headingBase={4} />
+        <Md markdown={markdown} headingBase={4} />
       </MantineProvider>
     );
     const view = within(container);
@@ -145,7 +154,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("sizes headings from the document's top heading, not the rendered level", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={"## Section\n\n### Subsection"} />
+        <Md markdown={"## Section\n\n### Subsection"} />
       </MantineProvider>
     );
     const view = within(container);
@@ -164,7 +173,7 @@ describe("<MarkdownRenderer /> heading levels", () => {
   test("never renders a Markdown heading as h1", () => {
     const { container } = render(
       <MantineProvider>
-        <MarkdownRenderer markdown={markdown} headingBase={1} />
+        <Md markdown={markdown} headingBase={1} />
       </MantineProvider>
     );
     expect(headings(container)[0]).toEqual(["One", "H2"]);

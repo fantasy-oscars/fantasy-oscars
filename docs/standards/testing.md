@@ -29,7 +29,7 @@
 - Tests only: `pnpm run ci:tests`
 - Docs only: `pnpm run ci:docs`
 - Non-Docker checks: `pnpm run test:unit` (plus `test:format`, `test:lint`, `test:typecheck`, `test:build`, `test:docs`).
-- Web bundle size budget (run after `pnpm run build`; budgets in `apps/web/bundle-budget.json`): `pnpm run bundle:check`
+- Web bundle size budget (run after `pnpm run build`; budgets in `apps/web/bundle-budget.json`, rules in "Bundle budgets" below): `pnpm run bundle:check`
 - Integration tests only (Docker required): `pnpm run test:integration`
 - Integration tests (bail early): `pnpm run test:integration:bail`
 - E2E tests (requires Docker; `pnpm --filter @fantasy-oscars/shared build` first): `pnpm run test:e2e`
@@ -89,6 +89,20 @@ One page per cell loads its screens once (23 cells: per brand, one phone cell an
 - When to update baselines: only when the visual change is intended (a restyle, new content on Home). A refactor meant to be pixel-neutral must pass without updating. Run `-g <id> --update` for the cells you changed (or `pnpm run test:visual:update`), then rerun without `--update`, review every changed PNG in the diff, and commit baselines in the same PR as the change. Only cells in scope should change.
 - Reviewing diffs: on failure open `playwright-report/visual/index.html` (`pnpm exec playwright show-report playwright-report/visual`); each failing screenshot has expected, actual and diff views plus a slider. In CI the same report and `test-results/visual` are uploaded as an artifact by each visual job (`visual-report`, `visual-tolerances-report`, `visual-assertions-report`). GitHub also renders PNG changes in a PR with 2-up, swipe and onion-skin modes.
 
+### Bundle budgets
+
+`pnpm run bundle:check` measures gzip sizes of the web build (`.github/scripts/bundle-budget.mjs`) against `apps/web/bundle-budget.json`:
+
+- **Entry** (`entryJsGzipKb`): the `index` chunk plus the `vendor` chunk, which is what every first visit downloads. Target: the measured value, rounded up, plus 10 kB headroom.
+- **Largest route chunk** (`largestRouteChunkGzipKb`, 60 kB): the biggest chunk that is not the entry, vendor, admin or admin preview chunk. Route groups load on navigation (`LazyRoute`), so a route stays small.
+- **Admin chunk** (`adminChunkGzipKb`): `AdminRoutes-*`. Target: the measured value plus 15 kB.
+- Reported without a budget: the admin preview chunk (`MarkdownPreview-*`), total JS and total CSS.
+- Structural checks that fail the run: the markdown parser (`micromark`) appears in any chunk other than `MarkdownPreview-*`, or any chunk inlines an SVG as a data URI (avatars are files; `assetsInlineLimit` excludes `src/assets/openmoji/animals/`).
+
+The `vendor` chunk is every `node_modules` module the entry reaches through static imports (React, React Router, Mantine, Floating UI, TanStack Query and what they import), set in `apps/web/vite.config.ts`. It never imports app code, so an app-only change leaves its file name unchanged and browsers keep it cached across deploys; only a dependency change renames it.
+
+Raising a budget needs a line in the PR saying what grew and why. A budget is not raised to make a build pass: move the code behind a lazy route first. A budget that has slack well above 10 kB (entry) or 15 kB (admin) after a size drop is lowered to the target in the same PR.
+
 ### CI selection by diff
 
 `.github/scripts/affected.mjs` holds one table (`TABLE`) from changed paths to groups: `checks` (format, lint, typecheck, unit), `api` (integration), `web` (build, bundle budget), `visual`, `e2e` and `docs`. The first matching row wins, and a path no row matches selects everything. In short:
@@ -108,6 +122,10 @@ Locally, `pnpm run ci:affected` runs the same selection against `origin/main` (`
   - Default is silent during tests (`LOG_LEVEL=silent`).
   - Opt in to readable request logs: `LOG_LEVEL=info LOG_FORMAT=pretty pnpm run test:integration --workspace @fantasy-oscars/api`
   - If you need error stack traces from the API during tests: set `LOG_STACK=1`
+
+## Unit test timing
+
+The web unit config sets `testTimeout` to 15 s: jsdom-heavy files (`App.test.tsx`, the admin screens) take about 5 s normally and 30 s or more when the cores are contended. `pnpm -r test:unit` runs the workspaces in parallel, so the web and API unit configs cap `maxWorkers` at `"50%"` of the cores each; the integration config keeps its cap of 3 (one Postgres container per file). A test that needs more than 15 s is slow on its own and should be fixed, not given a longer timeout.
 
 ## Isolation Rules
 

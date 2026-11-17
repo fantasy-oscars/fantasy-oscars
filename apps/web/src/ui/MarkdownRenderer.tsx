@@ -1,14 +1,16 @@
 import { Anchor, Blockquote, Box, Code, Divider, List, Stack, Text, Title } from "@ui";
 import { Link as RouterLink } from "react-router-dom";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
 import type { Root, Content, PhrasingContent, ListItem, Definition } from "mdast";
 import type { ReactNode } from "react";
 import { CodeBlock } from "./CodeBlock";
 
 type Props = {
-  markdown: string | null | undefined;
+  /**
+   * The parsed document: built from the repo's Markdown files at build time, or
+   * returned by the API for admin-edited content. The client never parses Markdown
+   * here, so the parser stays out of the shared bundle.
+   */
+  tree: Root | null | undefined;
   /**
    * Heading level that `#` renders at (default 2, never lower). Deeper headings
    * shift with it (`##` one level below, and so on, capped at h6). Raise it when
@@ -18,41 +20,6 @@ type Props = {
    */
   headingBase?: number;
 };
-
-function applyTypographyReplacementsToText(value: string): string {
-  // Minimal, explicit typography normalization.
-  // - We intentionally do NOT change how characters are rendered elsewhere in the app.
-  // - We only rewrite the Markdown author's ASCII punctuation into typographic glyphs.
-  // - This runs only on Markdown "text" nodes (never code/inlineCode).
-  return (
-    value
-      // Em dash: users often type `---`.
-      .replaceAll("---", "\u2014")
-      // Ellipsis: `...`.
-      .replaceAll("...", "\u2026")
-  );
-}
-
-function applyTypographyReplacements(tree: Root): Root {
-  const visit = (node: unknown) => {
-    if (!node || typeof node !== "object") return;
-    const n = node as { type?: string; value?: unknown; children?: unknown[] };
-
-    if (n.type === "text" && typeof n.value === "string") {
-      n.value = applyTypographyReplacementsToText(n.value);
-    }
-
-    // Never touch code surfaces.
-    if (n.type === "code" || n.type === "inlineCode") return;
-
-    if (Array.isArray(n.children)) {
-      for (const child of n.children) visit(child);
-    }
-  };
-
-  visit(tree);
-  return tree;
-}
 
 function isExternalUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -341,32 +308,18 @@ function renderBlocks(
   return out;
 }
 
-type ParsedMarkdown = { tree: Root; definitions: DefinitionsMap };
-
-// Avoid hooks inside UI primitives. We still want to avoid re-parsing on every render,
-// so keep a tiny module-level cache keyed by the full markdown string.
-let lastParsed: { markdown: string; parsed: ParsedMarkdown } | null = null;
-function parseMarkdown(markdown: string): ParsedMarkdown {
-  if (lastParsed?.markdown === markdown) return lastParsed.parsed;
-
-  const parsed = unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
-  const next = {
-    tree: applyTypographyReplacements(parsed),
-    definitions: collectDefinitions(parsed)
-  };
-  lastParsed = { markdown, parsed: next };
-  return next;
-}
-
 export function MarkdownRenderer(props: Props) {
-  const { tree, definitions } = parseMarkdown(props.markdown ?? "");
+  const children = props.tree?.children ?? [];
+  const definitions = props.tree
+    ? collectDefinitions(props.tree)
+    : new Map<string, Definition>();
 
   return (
     <Stack gap="var(--fo-space-0)">
-      {renderBlocks(tree.children, "md", definitions, {
+      {renderBlocks(children, "md", definitions, {
         // Page-level titles must not come from Markdown, so the base is never h1.
         base: Math.max(2, Math.floor(props.headingBase ?? 2)),
-        topDepth: topHeadingDepth(tree.children)
+        topDepth: topHeadingDepth(children)
       })}
     </Stack>
   );

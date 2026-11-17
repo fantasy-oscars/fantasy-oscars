@@ -122,7 +122,7 @@ export function LandingScreen(props: {
             </Title>
           </Stack>
           <div className="baseline-wrapAnywhere">
-            <Markdown markdown={view.updates.content.body_markdown} headingBase={4} />
+            <Markdown tree={view.updates.content.body_tree} headingBase={4} />
           </div>
         </Stack>
       ) : (

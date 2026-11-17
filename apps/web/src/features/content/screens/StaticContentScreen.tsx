@@ -6,7 +6,7 @@ export function StaticContentScreen(props: { page: SitePage }) {
   const { page } = props;
   return (
     <StaticPage title={page.title}>
-      <Markdown markdown={page.markdown} />
+      <Markdown tree={page.tree} />
     </StaticPage>
   );
 }

@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState } from "react";
+import { lazy, useEffect, useState, type ComponentType } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/auth/context";
@@ -12,30 +12,61 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { AboutPage } from "./pages/AboutPage";
-import { CodeOfConductPage } from "./pages/CodeOfConductPage";
-import { ContactPage } from "./pages/ContactPage";
-import { DisclaimerPage } from "./pages/DisclaimerPage";
-import { FeedbackPage } from "./pages/FeedbackPage";
-import { FaqPage } from "./pages/FaqPage";
-import { HowItWorksPage } from "./pages/HowItWorksPage";
-import { PrivacyPage } from "./pages/PrivacyPage";
-import { TermsPage } from "./pages/TermsPage";
-import { LeaguesPage } from "./pages/LeaguesPage";
-import { LeagueCreatePage } from "./pages/LeagueCreatePage";
-import { LeagueDetailPage } from "./pages/LeagueDetailPage";
-import { LeagueSeasonCreatePage } from "./pages/LeagueSeasonCreatePage";
-import { InviteClaimPage } from "./pages/InviteClaimPage";
-import { InvitesInboxPage } from "./pages/InvitesInboxPage";
-import { AccountPage } from "./pages/AccountPage";
-import { CeremoniesPage } from "./pages/CeremoniesPage";
-import { CeremonyPage } from "./pages/CeremonyPage";
-import { SeasonsIndexPage } from "./pages/SeasonsIndexPage";
-import { SeasonPage } from "./pages/SeasonPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LazyRoute } from "./LazyRoute";
 import { createQueryClient } from "@/orchestration/query/client";
 import { registerWriteInvalidation } from "@/orchestration/query/invalidate";
+
+// Pages export a named component; React.lazy wants a default export.
+function lazyPage<K extends string>(
+  load: () => Promise<Record<K, ComponentType>>,
+  name: K
+) {
+  return lazy(() => load().then((m) => ({ default: m[name] })));
+}
+
+// Route groups loaded on navigation: static content, leagues, seasons, ceremonies, invites, account.
+const AboutPage = lazyPage(() => import("./pages/AboutPage"), "AboutPage");
+const CodeOfConductPage = lazyPage(
+  () => import("./pages/CodeOfConductPage"),
+  "CodeOfConductPage"
+);
+const ContactPage = lazyPage(() => import("./pages/ContactPage"), "ContactPage");
+const DisclaimerPage = lazyPage(() => import("./pages/DisclaimerPage"), "DisclaimerPage");
+const FeedbackPage = lazyPage(() => import("./pages/FeedbackPage"), "FeedbackPage");
+const FaqPage = lazyPage(() => import("./pages/FaqPage"), "FaqPage");
+const HowItWorksPage = lazyPage(() => import("./pages/HowItWorksPage"), "HowItWorksPage");
+const PrivacyPage = lazyPage(() => import("./pages/PrivacyPage"), "PrivacyPage");
+const TermsPage = lazyPage(() => import("./pages/TermsPage"), "TermsPage");
+const LeaguesPage = lazyPage(() => import("./pages/LeaguesPage"), "LeaguesPage");
+const LeagueCreatePage = lazyPage(
+  () => import("./pages/LeagueCreatePage"),
+  "LeagueCreatePage"
+);
+const LeagueDetailPage = lazyPage(
+  () => import("./pages/LeagueDetailPage"),
+  "LeagueDetailPage"
+);
+const LeagueSeasonCreatePage = lazyPage(
+  () => import("./pages/LeagueSeasonCreatePage"),
+  "LeagueSeasonCreatePage"
+);
+const InviteClaimPage = lazyPage(
+  () => import("./pages/InviteClaimPage"),
+  "InviteClaimPage"
+);
+const InvitesInboxPage = lazyPage(
+  () => import("./pages/InvitesInboxPage"),
+  "InvitesInboxPage"
+);
+const AccountPage = lazyPage(() => import("./pages/AccountPage"), "AccountPage");
+const CeremoniesPage = lazyPage(() => import("./pages/CeremoniesPage"), "CeremoniesPage");
+const CeremonyPage = lazyPage(() => import("./pages/CeremonyPage"), "CeremonyPage");
+const SeasonsIndexPage = lazyPage(
+  () => import("./pages/SeasonsIndexPage"),
+  "SeasonsIndexPage"
+);
+const SeasonPage = lazyPage(() => import("./pages/SeasonPage"), "SeasonPage");
 
 const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes"));
 const DraftRoomPage = lazy(() =>
@@ -102,21 +133,86 @@ function RoutesConfig() {
       </Route>
       <Route element={<ShellLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/code-of-conduct" element={<CodeOfConductPage />} />
-        <Route path="/disclaimer" element={<DisclaimerPage />} />
-        <Route path="/faq" element={<FaqPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/how-it-works" element={<HowItWorksPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
+        <Route
+          path="/about"
+          element={
+            <LazyRoute>
+              <AboutPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/code-of-conduct"
+          element={
+            <LazyRoute>
+              <CodeOfConductPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/disclaimer"
+          element={
+            <LazyRoute>
+              <DisclaimerPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/faq"
+          element={
+            <LazyRoute>
+              <FaqPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <LazyRoute>
+              <ContactPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/feedback"
+          element={
+            <LazyRoute>
+              <FeedbackPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/how-it-works"
+          element={
+            <LazyRoute>
+              <HowItWorksPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <LazyRoute>
+              <PrivacyPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/terms"
+          element={
+            <LazyRoute>
+              <TermsPage />
+            </LazyRoute>
+          }
+        />
         <Route path="/results" element={<Navigate to="/ceremonies" replace />} />
         <Route
           path="/leagues"
           element={
             <RequireAuth>
-              <LeaguesPage />
+              <LazyRoute>
+                <LeaguesPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -124,7 +220,9 @@ function RoutesConfig() {
           path="/leagues/new"
           element={
             <RequireAuth>
-              <LeagueCreatePage />
+              <LazyRoute>
+                <LeagueCreatePage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -132,7 +230,9 @@ function RoutesConfig() {
           path="/leagues/:leagueId/:leagueSlug/seasons/new"
           element={
             <RequireAuth>
-              <LeagueSeasonCreatePage />
+              <LazyRoute>
+                <LeagueSeasonCreatePage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -140,7 +240,9 @@ function RoutesConfig() {
           path="/leagues/:id/seasons/new"
           element={
             <RequireAuth>
-              <LeagueSeasonCreatePage />
+              <LazyRoute>
+                <LeagueSeasonCreatePage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -148,7 +250,9 @@ function RoutesConfig() {
           path="/seasons"
           element={
             <RequireAuth>
-              <SeasonsIndexPage />
+              <LazyRoute>
+                <SeasonsIndexPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -156,7 +260,9 @@ function RoutesConfig() {
           path="/leagues/:leagueId/:leagueSlug/:ceremonyCode"
           element={
             <RequireAuth>
-              <SeasonPage />
+              <LazyRoute>
+                <SeasonPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -164,7 +270,9 @@ function RoutesConfig() {
           path="/leagues/:leagueId/:leagueSlug"
           element={
             <RequireAuth>
-              <LeagueDetailPage />
+              <LazyRoute>
+                <LeagueDetailPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -172,7 +280,9 @@ function RoutesConfig() {
           path="/leagues/:id"
           element={
             <RequireAuth>
-              <LeagueDetailPage />
+              <LazyRoute>
+                <LeagueDetailPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -181,16 +291,27 @@ function RoutesConfig() {
           path="/seasons/:id"
           element={
             <RequireAuth>
-              <SeasonPage />
+              <LazyRoute>
+                <SeasonPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
-        <Route path="/invites/:token" element={<InviteClaimPage />} />
+        <Route
+          path="/invites/:token"
+          element={
+            <LazyRoute>
+              <InviteClaimPage />
+            </LazyRoute>
+          }
+        />
         <Route
           path="/invites"
           element={
             <RequireAuth>
-              <InvitesInboxPage />
+              <LazyRoute>
+                <InvitesInboxPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -198,7 +319,9 @@ function RoutesConfig() {
           path="/ceremonies"
           element={
             <RequireAuth>
-              <CeremoniesPage />
+              <LazyRoute>
+                <CeremoniesPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -206,7 +329,9 @@ function RoutesConfig() {
           path="/ceremonies/:id"
           element={
             <RequireAuth>
-              <CeremonyPage />
+              <LazyRoute>
+                <CeremonyPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />
@@ -224,7 +349,9 @@ function RoutesConfig() {
           path="/account"
           element={
             <RequireAuth>
-              <AccountPage />
+              <LazyRoute>
+                <AccountPage />
+              </LazyRoute>
             </RequireAuth>
           }
         />

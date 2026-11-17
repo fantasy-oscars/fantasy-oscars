@@ -168,7 +168,7 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
     await screen.findByRole("button", { name: /account menu$/i });
-    const details = screen.getByRole("region", { name: /Account details/i });
+    const details = await screen.findByRole("region", { name: /Account details/i });
     expect(within(details).getByText("Username")).toBeInTheDocument();
     expect(within(details).getByText("alice")).toBeInTheDocument();
     expect(within(details).getByText("Email")).toBeInTheDocument();

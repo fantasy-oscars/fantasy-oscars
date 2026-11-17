@@ -1,3 +1,4 @@
+import type { Root } from "mdast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
@@ -9,6 +10,8 @@ export type BannerRow = {
   id: number;
   title: string;
   body_markdown: string;
+  /** The parsed `body_markdown`, from the API. */
+  body_tree: Root | null;
   variant: "info" | "warning" | "success" | "error";
   dismissible: boolean;
   starts_at: string | null;

@@ -59,21 +59,23 @@ function renderEditor(opts: { isBanner: boolean; body: string }) {
 }
 
 describe("<AdminDynamicContentEditorScreen /> live preview", () => {
-  it("renders the body as it will appear on Home, under the update title", () => {
+  it("renders the body as it will appear on Home, under the update title", async () => {
     renderEditor({ isBanner: false, body: "# Lead\n\n## Detail" });
     const preview = within(screen.getByRole("region", { name: "Preview" }));
-    expect(preview.getByRole("heading", { name: "Lead", level: 4 })).toBeInTheDocument();
+    expect(
+      await preview.findByRole("heading", { name: "Lead", level: 4 })
+    ).toBeInTheDocument();
     expect(
       preview.getByRole("heading", { name: "Detail", level: 5 })
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Variant")).not.toBeInTheDocument();
   });
 
-  it("renders a banner body at the default levels and shows the banner fields", () => {
+  it("renders a banner body at the default levels and shows the banner fields", async () => {
     renderEditor({ isBanner: true, body: "# Heads up" });
     const preview = within(screen.getByRole("region", { name: "Preview" }));
     expect(
-      preview.getByRole("heading", { name: "Heads up", level: 2 })
+      await preview.findByRole("heading", { name: "Heads up", level: 2 })
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Body (Markdown)" })).toBeInTheDocument();
     expect(screen.getAllByLabelText("Variant").length).toBeGreaterThan(0);

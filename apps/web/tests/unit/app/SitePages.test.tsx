@@ -44,6 +44,11 @@ const cases: Array<{
   { key: "disclaimer", Page: DisclaimerPage, title: "Disclaimer", section: "TMDB" }
 ];
 
+function plainText(node: unknown): string {
+  const n = node as { value?: string; children?: unknown[] } | undefined;
+  return n?.value ?? (n?.children ?? []).map(plainText).join("");
+}
+
 function renderPage(Page: ComponentType) {
   return render(
     <MantineProvider>
@@ -62,12 +67,11 @@ describe("site pages", () => {
     expect(screen.queryByRole("status")).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
 
-    const firstParagraph = SITE_PAGES[c.key].markdown
-      .split(/\n\s*\n/)
-      .map((block) => block.trim())
-      .find((block) => block && !block.startsWith("#"));
+    const firstParagraph = SITE_PAGES[c.key].tree.children.find(
+      (node) => node.type === "paragraph"
+    );
     expect(firstParagraph).toBeTruthy();
-    const words = (firstParagraph ?? "").split(/\s+/).slice(0, 4).join(" ");
+    const words = plainText(firstParagraph).split(/\s+/).slice(0, 4).join(" ");
     expect(container.textContent).toContain(words);
 
     if (c.section) {
@@ -87,7 +91,9 @@ describe("site pages", () => {
 
   it("keeps the owner's heading levels: sections at ##, no level skipped", () => {
     for (const page of Object.values(SITE_PAGES)) {
-      const depths = [...page.markdown.matchAll(/^(#+) /gm)].map((m) => m[1].length);
+      const depths = page.tree.children.flatMap((node) =>
+        node.type === "heading" ? [node.depth] : []
+      );
       if (depths.length === 0) continue;
       expect(depths[0]).toBe(2);
       for (let i = 1; i < depths.length; i += 1) {

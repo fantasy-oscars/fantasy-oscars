@@ -13,7 +13,7 @@ export function AboutScreen(props: { page: SitePage }) {
         <StandardCard>
           <Stack gap="sm">
             <Title variant="page">{page.title}</Title>
-            <Markdown markdown={page.markdown} />
+            <Markdown tree={page.tree} />
           </Stack>
         </StandardCard>
       </Box>

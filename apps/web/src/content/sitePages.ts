@@ -1,27 +1,28 @@
-import about from "./about.md?raw";
-import codeOfConduct from "./code-of-conduct.md?raw";
-import disclaimer from "./disclaimer.md?raw";
-import faq from "./faq.md?raw";
-import howItWorks from "./how-it-works.md?raw";
-import privacy from "./privacy.md?raw";
-import terms from "./terms.md?raw";
+import type { Root } from "mdast";
+import about from "./about.md?mdast";
+import codeOfConduct from "./code-of-conduct.md?mdast";
+import disclaimer from "./disclaimer.md?mdast";
+import faq from "./faq.md?mdast";
+import howItWorks from "./how-it-works.md?mdast";
+import privacy from "./privacy.md?mdast";
+import terms from "./terms.md?mdast";
 
 export type SitePageKey =
   "about" | "faq" | "howItWorks" | "codeOfConduct" | "terms" | "privacy" | "disclaimer";
 
-export type SitePage = { title: string; markdown: string };
+export type SitePage = { title: string; tree: Root };
 
 /**
- * The site and legal pages, bundled from the markdown files beside this module.
+ * The site and legal pages, bundled from the markdown files beside this module, parsed at build time.
  * The files keep the owner's levels: sections at `##` render one level below the
  * page title (h3) and take the largest Markdown heading size.
  */
 export const SITE_PAGES: Record<SitePageKey, SitePage> = {
-  about: { title: "About", markdown: about },
-  faq: { title: "FAQ", markdown: faq },
-  howItWorks: { title: "How It Works", markdown: howItWorks },
-  codeOfConduct: { title: "Code of Conduct", markdown: codeOfConduct },
-  terms: { title: "Terms", markdown: terms },
-  privacy: { title: "Privacy", markdown: privacy },
-  disclaimer: { title: "Disclaimer", markdown: disclaimer }
+  about: { title: "About", tree: about },
+  faq: { title: "FAQ", tree: faq },
+  howItWorks: { title: "How It Works", tree: howItWorks },
+  codeOfConduct: { title: "Code of Conduct", tree: codeOfConduct },
+  terms: { title: "Terms", tree: terms },
+  privacy: { title: "Privacy", tree: privacy },
+  disclaimer: { title: "Disclaimer", tree: disclaimer }
 };
