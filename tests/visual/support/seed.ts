@@ -558,7 +558,26 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
         )
       ).id;
     }
+    // The draft is over: seats in member order, and each DRAFT transaction
+    // below points at its own pick, as the draft service writes them.
+    const draft = await one<{ id: number }>(
+      pool,
+      `INSERT INTO circuit_draft
+         (circuit_league_id, status, rounds, version, started_at, completed_at, created_at)
+       VALUES ($1, 'COMPLETED', $2, 0, $3, $3, $3) RETURNING id::int`,
+      [row.id, input.rosterSize, historyAt(input.at + 10)]
+    );
+    const seatOf = {} as Record<PersonaKey, number>;
+    for (const [i, key] of input.members.entries()) {
+      seatOf[key] = i + 1;
+      await pool.query(
+        `INSERT INTO circuit_draft_seat (draft_id, circuit_league_id, seat_number, member_id)
+         VALUES ($1, $2, $3, $4)`,
+        [draft.id, row.id, i + 1, memberIds[key]]
+      );
+    }
     let step = 0;
+    let pickNumber = 0;
     const record = async (
       key: PersonaKey,
       kind: "DRAFT" | "FREE_AGENT" | "DROP",
@@ -567,22 +586,37 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     ) => {
       step += 1;
       const at = historyAt(input.at + 10 + step);
+      let draftPickId: number | null = null;
+      if (kind === "DRAFT") {
+        pickNumber += 1;
+        draftPickId = (
+          await one<{ id: number }>(
+            pool,
+            `INSERT INTO circuit_draft_pick
+               (draft_id, pick_number, original_pick_number, seat_number, member_id,
+                outcome, selection_id, source, request_id, actor_user_id, made_at)
+             VALUES ($1, $2, $2, $3, $4, 'PICKED', $5, 'MANUAL', $6, $7, $8)
+             RETURNING id::int`,
+            [
+              draft.id,
+              pickNumber,
+              seatOf[key],
+              memberIds[key],
+              add,
+              `seed-${pickNumber}`,
+              userIds[key],
+              at
+            ]
+          )
+        ).id;
+      }
       const tx = await one<{ id: number }>(
         pool,
         `INSERT INTO circuit_transaction
            (circuit_league_id, member_id, kind, add_selection_id, drop_selection_id,
             draft_pick_id, occurred_at, actor_user_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id::int`,
-        [
-          row.id,
-          memberIds[key],
-          kind,
-          add,
-          drop,
-          kind === "DRAFT" ? step : null,
-          at,
-          userIds[key]
-        ]
+        [row.id, memberIds[key], kind, add, drop, draftPickId, at, userIds[key]]
       );
       if (drop !== null) {
         await pool.query(
