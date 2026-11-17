@@ -96,6 +96,36 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
+    screen: [
+      "season-create-choice",
+      "season-create-full-unavailable",
+      "season-create-ceremony",
+      "season-create-full",
+      "season-create-full-select",
+      "season-create-full-scoring-open",
+      "season-create-full-events-open"
+    ],
+    brand: "*",
+    mode: "*",
+    viewport: "mobile",
+    match: "mantine-Radio-radio",
+    reason:
+      "The option's label and description are the target, at least 44px tall; the ring is a visual mark.",
+    date: "2026-11-17"
+  },
+  {
+    check: "touch-target",
+    screen: ["season-create-full-unavailable", "season-create-ceremony"],
+    brand: "*",
+    mode: "*",
+    viewport: "mobile",
+    match: "mantine-NumberInput-control",
+    reason:
+      "The single-ceremony form's Seconds per pick accepts typing on touch; the steppers are a convenience.",
+    date: "2026-11-17"
+  },
+  {
+    check: "touch-target",
     screen: "specimen",
     brand: "*",
     mode: "*",

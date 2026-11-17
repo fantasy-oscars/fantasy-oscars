@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
-import type { CircuitLeagueView } from "@/orchestration/circuitLeague";
-import type { CircuitLeagueForm } from "@/decisions/circuitLeague";
+import type { AreaSaveResult, CircuitLeagueView } from "@/orchestration/circuitLeague";
+import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSettings";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
 import { circuitRostersVisible } from "@/decisions/circuitRoster";
 import { statusTone } from "@/decisions/statusTone";
@@ -12,7 +12,7 @@ import { StatusPill } from "@/shared/pills";
 import { StandardCard } from "@/primitives";
 import { CircuitLeagueMembersSection } from "@/features/circuitLeagues/ui/CircuitLeagueMembersSection";
 import { CircuitLeagueMembershipBar } from "@/features/circuitLeagues/ui/CircuitLeagueMembershipBar";
-import { CircuitLeagueSettingsForm } from "@/features/circuitLeagues/ui/CircuitLeagueSettingsForm";
+import { FullSeasonSettingsSection } from "./FullSeasonSettingsSection";
 import "@/primitives/baseline.css";
 
 function CircuitLeagueSkeleton() {
@@ -44,14 +44,10 @@ function CircuitLeagueSkeleton() {
 
 export function CircuitLeagueScreen(props: {
   view: CircuitLeagueView;
-  saving: boolean;
   acting: boolean;
-  settingsStatus: ApiResult | null;
   memberStatus: ApiResult | null;
   lockStatus: ApiResult | null;
-  onChange: (patch: (prev: CircuitLeagueForm) => CircuitLeagueForm) => void;
-  onSave: () => void;
-  onReset: () => void;
+  onSaveArea: (area: SettingsArea, next: FullSeasonSettings) => Promise<AreaSaveResult>;
   onJoin: () => void;
   onLeave: () => void;
   onInitialize: () => void;
@@ -79,7 +75,7 @@ export function CircuitLeagueScreen(props: {
     );
   }
 
-  const { detail, form, editable, dirty } = view;
+  const { detail, settings, editable } = view;
   const { league, viewer } = detail;
   const statusLabel = circuitLeagueStatusLabel(detail.circuit_league.status);
   const link = {
@@ -145,19 +141,10 @@ export function CircuitLeagueScreen(props: {
           />
 
           <Box className="baseline-grid2Wide">
-            <CircuitLeagueSettingsForm
-              form={form}
-              settings={detail.circuit_league}
-              events={detail.events}
-              categories={detail.categories}
-              canManage={viewer.can_manage}
-              editable={editable}
-              dirty={dirty}
-              saving={props.saving}
-              status={props.settingsStatus}
-              onChange={props.onChange}
-              onSave={props.onSave}
-              onReset={props.onReset}
+            <FullSeasonSettingsSection
+              detail={detail}
+              settings={settings}
+              onSave={props.onSaveArea}
             />
             <CircuitLeagueMembersSection
               members={detail.members}

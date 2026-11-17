@@ -6,7 +6,8 @@ import { CircuitRosterScreen } from "@/features/circuitLeagues/screens/CircuitRo
 import { CircuitTransactionsScreen } from "@/features/circuitLeagues/screens/CircuitTransactionsScreen";
 import { CircuitLeagueScreen } from "@/features/circuitLeagues/screens/CircuitLeagueScreen";
 import type { ContenderPickerProps } from "@/features/contenders/ui/ContenderPicker";
-import { circuitLeagueEditable, circuitLeagueFormFrom } from "@/decisions/circuitLeague";
+import { circuitLeagueEditable } from "@/decisions/circuitLeague";
+import { fullSeasonSettingsFrom } from "@/decisions/fullSeasonSettings";
 import { circuitFreeAgencyNote } from "@/decisions/circuitRoster";
 import type { CircuitRoster, CircuitSelectionSummary } from "@/lib/types";
 import {
@@ -234,18 +235,13 @@ describe("circuit league screen links", () => {
         view={{
           state: "ready",
           detail,
-          form: circuitLeagueFormFrom(detail),
-          editable: circuitLeagueEditable(status),
-          dirty: false
+          settings: fullSeasonSettingsFrom(detail),
+          editable: circuitLeagueEditable(status)
         }}
-        saving={false}
         acting={false}
-        settingsStatus={null}
         memberStatus={null}
         lockStatus={null}
-        onChange={vi.fn()}
-        onSave={vi.fn()}
-        onReset={vi.fn()}
+        onSaveArea={vi.fn()}
         onJoin={vi.fn()}
         onLeave={vi.fn()}
         onInitialize={vi.fn()}
@@ -256,10 +252,10 @@ describe("circuit league screen links", () => {
   it("links to the roster and transactions once the season is under way", () => {
     renderLeague("IN_SEASON");
     expect(screen.getByRole("link", { name: "Your roster" }).getAttribute("href")).toBe(
-      "/leagues/3/film-club/circuits/4/roster"
+      "/leagues/3/film-club/seasons/full/4/roster"
     );
     expect(screen.getByRole("link", { name: "Transactions" }).getAttribute("href")).toBe(
-      "/leagues/3/film-club/circuits/4/transactions"
+      "/leagues/3/film-club/seasons/full/4/transactions"
     );
   });
 

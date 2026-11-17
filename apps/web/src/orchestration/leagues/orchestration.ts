@@ -4,9 +4,7 @@ import { fetchJson } from "../../lib/api";
 import { notify } from "../../notifications";
 import type {
   ApiResult,
-  CircuitLeagueDetail,
   CircuitLeagueSummary,
-  CircuitSummary,
   LeagueDetail,
   LeagueMember,
   LeagueSummary,
@@ -23,7 +21,6 @@ import {
 import { queryKeys } from "../query/keys";
 import { useFieldErrors } from "../useFieldErrors";
 import {
-  circuitsListQuery,
   leagueCircuitsQuery,
   leagueMembersQuery,
   leagueQuery,
@@ -120,8 +117,6 @@ export type LeagueDetailView =
       league: LeagueDetail;
       seasons: SeasonSummary[];
       circuitLeagues: CircuitLeagueSummary[];
-      /** Public Circuits; the screen offers the ones not started here. */
-      circuits: CircuitSummary[];
       roster: LeagueMember[] | null;
       isCommissioner: boolean;
       isOwner: boolean;
@@ -131,7 +126,6 @@ type LeagueDetailData = {
   league: LeagueDetail;
   seasons: SeasonSummary[];
   circuitLeagues: CircuitLeagueSummary[];
-  circuits: CircuitSummary[];
   roster: LeagueMember[] | null;
 };
 
@@ -150,21 +144,20 @@ export function useLeagueDetailOrchestration(input: {
     queryKey: queryKeys.leagues.detail(leagueId),
     enabled: !Number.isNaN(leagueId),
     queryFn: async (): Promise<LeagueDetailData> => {
-      const [league, seasons, circuitLeagues, circuits, roster] = await Promise.all([
+      const [league, seasons, circuitLeagues, roster] = await Promise.all([
         queryClient.fetchQuery(leagueQuery(leagueId)),
         queryClient.fetchQuery(leagueSeasonsQuery(leagueId)).catch(() => []),
         queryClient.fetchQuery(leagueCircuitsQuery(leagueId)).catch(() => []),
-        queryClient.fetchQuery(circuitsListQuery()).catch(() => []),
         queryClient.fetchQuery(leagueMembersQuery(leagueId)).catch(() => null)
       ]);
-      return { league, seasons, circuitLeagues, circuits, roster };
+      return { league, seasons, circuitLeagues, roster };
     }
   });
 
   const view = useMemo<LeagueDetailView>(() => {
     if (Number.isNaN(leagueId)) return { state: "error", message: "Invalid league id" };
     if (query.data) {
-      const { league, seasons, circuitLeagues, circuits, roster } = query.data;
+      const { league, seasons, circuitLeagues, roster } = query.data;
       const isCommissioner =
         Number.isFinite(userId) &&
         !!roster?.some(
@@ -178,7 +171,6 @@ export function useLeagueDetailOrchestration(input: {
         league,
         seasons,
         circuitLeagues,
-        circuits,
         roster,
         isCommissioner,
         isOwner
@@ -238,27 +230,6 @@ export function useLeagueDetailOrchestration(input: {
     }
   });
 
-  const startCircuitMutation = useMutation({
-    mutationFn: async (vars: { leagueId: number; circuitId: number }) =>
-      unwrap(
-        await fetchJson<CircuitLeagueDetail>(`/leagues/${vars.leagueId}/circuits`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ circuit_id: vars.circuitId })
-        }),
-        "Could not start the season"
-      ),
-    onSuccess: (detail) => {
-      if (detail) {
-        queryClient.setQueryData(
-          queryKeys.circuitLeagues.detail(detail.circuit_league.id),
-          detail
-        );
-      }
-      return queryClient.invalidateQueries({ queryKey: queryKeys.leagues.all });
-    }
-  });
-
   const working = transferMutation.isPending || deleteMutation.isPending;
 
   const transferOwnershipTo = useCallback(
@@ -312,38 +283,11 @@ export function useLeagueDetailOrchestration(input: {
     return { ok: true as const };
   }, [deleteMutation, view]);
 
-  const [circuitStatus, setCircuitStatus] = useState<ApiResult | null>(null);
-  const startCircuit = useCallback(
-    async (circuitId: number) => {
-      if (view.state !== "ready") return { ok: false as const };
-      setCircuitStatus(null);
-      try {
-        const detail = await startCircuitMutation.mutateAsync({
-          leagueId: view.league.id,
-          circuitId
-        });
-        if (!detail) return { ok: false as const };
-        return { ok: true as const, circuitLeagueId: detail.circuit_league.id };
-      } catch (err) {
-        setCircuitStatus({
-          ok: false,
-          message: errorMessage(err, "Could not start the season"),
-          requestId: errorRequestId(err)
-        });
-        return { ok: false as const };
-      }
-    },
-    [startCircuitMutation, view]
-  );
-
   return {
     view,
     refresh,
     working,
     rosterStatus,
-    startingCircuit: startCircuitMutation.isPending,
-    circuitStatus,
-    startCircuit,
     transferOwnershipTo,
     deleteLeague
   };

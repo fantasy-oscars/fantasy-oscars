@@ -65,76 +65,119 @@ afterEach(() => {
 });
 
 describe("circuit league settings", () => {
-  it("writes only the changed parts, settings before events, and shows the result", async () => {
-    const saved = circuitLeagueDetail();
-    saved.circuit_league.roster_size = 12;
-    saved.events[1]!.enabled = false;
-    const calls = stubApi(circuitLeagueDetail(), {
-      "PATCH /settings": {
-        status: 200,
-        body: { ...saved, events: circuitLeagueDetail().events }
-      },
-      "PUT /events": { status: 200, body: saved }
+  it("saves the roster area as a settings patch, then the changed limits with their saved weights", async () => {
+    const detail = circuitLeagueDetail();
+    detail.categories[0]!.weight = 2;
+    const afterSettings = structuredClone(detail);
+    afterSettings.circuit_league.roster_size = 12;
+    const afterCategories = structuredClone(afterSettings);
+    afterCategories.categories[0]!.max_owned = 3;
+    const calls = stubApi(detail, {
+      "PATCH /settings": { status: 200, body: afterSettings },
+      "PUT /categories": { status: 200, body: afterCategories }
     });
     const { result } = render();
-    await ready(result);
+    const view = await ready(result);
 
-    act(() =>
-      result.current.updateForm((f) => ({
-        ...f,
-        rosterSize: 12,
-        events: { ...f.events, 11: { enabled: false, weight: 1 } }
-      }))
-    );
-    expect((await ready(result)).dirty).toBe(true);
-    await act(() => result.current.save());
+    const next = {
+      ...view.settings,
+      rosterSize: 12,
+      categories: { ...view.settings.categories, 20: { weight: 2, maxOwned: 3 } }
+    };
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.saveArea("roster", next);
+    });
 
-    const writes = calls.filter((c) => c.method !== "GET");
-    expect(writes).toEqual([
+    expect(outcome).toEqual({ ok: true });
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([
       { method: "PATCH", path: "/circuit-leagues/4/settings", body: { roster_size: 12 } },
       {
         method: "PUT",
-        path: "/circuit-leagues/4/events",
-        body: { events: [{ circuit_event_id: 10, weight: 1 }] }
+        path: "/circuit-leagues/4/categories",
+        body: { categories: [{ circuit_category_id: 20, weight: 2, max_owned: 3 }] }
       }
     ]);
-    const view = await ready(result);
-    expect(view.dirty).toBe(false);
-    expect(view.form.events[11]!.enabled).toBe(false);
-    expect(result.current.settingsStatus).toBeNull();
+    const saved = await ready(result);
+    expect(saved.settings.rosterSize).toBe(12);
+    expect(saved.settings.categories[20]).toEqual({ weight: 2, maxOwned: 3 });
   });
 
-  it("keeps unsaved edits when a later write is refused", async () => {
+  it("sends the full enabled set when events change", async () => {
+    const calls = stubApi(circuitLeagueDetail(), {
+      "PUT /events": { status: 200, body: circuitLeagueDetail() }
+    });
+    const { result } = render();
+    const view = await ready(result);
+    await act(async () => {
+      await result.current.saveArea("events", {
+        ...view.settings,
+        events: { 10: { enabled: true, weight: 1.5 }, 11: { enabled: false, weight: 1 } }
+      });
+    });
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([
+      {
+        method: "PUT",
+        path: "/circuit-leagues/4/events",
+        body: { events: [{ circuit_event_id: 10, weight: 1.5 }] }
+      }
+    ]);
+  });
+
+  it("says which part did not save, returns the stored values and refreshes after a lock", async () => {
     const afterSettings = circuitLeagueDetail();
-    afterSettings.circuit_league.roster_size = 12;
-    stubApi(circuitLeagueDetail(), {
+    afterSettings.circuit_league.nomination_points = 3;
+    const calls = stubApi(circuitLeagueDetail(), {
       "PATCH /settings": { status: 200, body: afterSettings },
-      "PUT /events": {
+      "PUT /categories": {
         status: 409,
         body: {
-          error: { code: "CIRCUIT_LEAGUE_LOCKED", message: "This season is locked" }
+          error: {
+            code: "CIRCUIT_LEAGUE_SETTINGS_LOCKED",
+            message: "This season is locked"
+          }
         }
       }
     });
     const { result } = render();
-    await ready(result);
-    act(() =>
-      result.current.updateForm((f) => ({
-        ...f,
-        rosterSize: 12,
-        events: { ...f.events, 11: { enabled: false, weight: 1 } }
-      }))
-    );
-    await act(() => result.current.save());
-
-    expect(result.current.settingsStatus).toMatchObject({
-      ok: false,
-      message: "This season is locked"
-    });
     const view = await ready(result);
-    expect(view.detail.circuit_league.roster_size).toBe(12);
-    expect(view.form.events[11]!.enabled).toBe(false);
-    expect(view.dirty).toBe(true);
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.saveArea("scoring", {
+        ...view.settings,
+        nominationPoints: 3,
+        categories: { ...view.settings.categories, 20: { weight: 2, maxOwned: null } }
+      });
+    });
+
+    expect(outcome).toMatchObject({
+      ok: false,
+      message: "Some changes weren't saved: This season is locked",
+      latest: { nominationPoints: 3 }
+    });
+    // The lock landed meanwhile: the detail is read again, so the area turns read-only.
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === "GET").length).toBeGreaterThan(1)
+    );
+  });
+
+  it("returns the server's message alone when nothing saved", async () => {
+    stubApi(circuitLeagueDetail(), {
+      "PATCH /settings": {
+        status: 400,
+        body: { error: { code: "VALIDATION_FAILED", message: "Roster size is wrong" } }
+      }
+    });
+    const { result } = render();
+    const view = await ready(result);
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.saveArea("roster", {
+        ...view.settings,
+        rosterSize: 9
+      });
+    });
+    expect(outcome).toEqual({ ok: false, message: "Roster size is wrong" });
   });
 });
 

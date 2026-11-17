@@ -81,7 +81,6 @@ describe("web data layer", () => {
     const fetchMock = vi.fn((url: string) => {
       if (url.endsWith("/leagues/9/seasons")) return json({ seasons: [] });
       if (url.endsWith("/leagues/9/circuits")) return json({ circuit_leagues: [] });
-      if (url.endsWith("/circuits")) return json({ circuits: [] });
       if (url.endsWith("/leagues/9/members")) {
         return json({
           members: [{ id: 1, user_id: 1, role: "OWNER", username: "alice" }]
@@ -101,15 +100,16 @@ describe("web data layer", () => {
     );
     await waitFor(() => expect(first.result.current.view.state).toBe("ready"));
     first.unmount();
-    // The league, its seasons, Circuit leagues and members, and the public Circuits.
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // The league, its seasons, Circuit leagues and members. The public Circuits are
+    // not fetched: the league page offers none of them.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
 
     const second = renderHook(
       () => useLeagueDetailOrchestration({ leagueId: 9, userSub: "1" }),
       { wrapper }
     );
     expect(second.result.current.view.state).toBe("ready");
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("carries the request id on failed loads", async () => {

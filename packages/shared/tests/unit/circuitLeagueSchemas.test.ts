@@ -15,6 +15,30 @@ describe("circuit league schemas", () => {
     expect(message(circuitLeagueCreateBody.safeParse({}))).toBe("Choose a season");
   });
 
+  it("create takes optional initial settings, events and categories", () => {
+    expect(
+      circuitLeagueCreateBody.parse({
+        circuit_id: 3,
+        settings: { roster_size: "10", pick_timer_seconds: null },
+        events: [{ circuit_event_id: 4 }],
+        categories: [{ circuit_category_id: 5, weight: "1.5", max_owned: 2 }]
+      })
+    ).toEqual({
+      circuit_id: 3,
+      settings: { roster_size: 10, pick_timer_seconds: null },
+      events: [{ circuit_event_id: 4, weight: 1 }],
+      categories: [{ circuit_category_id: 5, weight: 1.5, max_owned: 2 }]
+    });
+    expect(
+      circuitLeagueCreateBody.parse({ circuit_id: 3, settings: {}, events: [] })
+    ).toEqual({ circuit_id: 3, settings: {}, events: [] });
+    expect(
+      message(
+        circuitLeagueCreateBody.safeParse({ circuit_id: 3, settings: { roster_size: 0 } })
+      )
+    ).toBe("Roster size must be between 1 and 64");
+  });
+
   it("settings accept a partial edit and need at least one field", () => {
     expect(circuitLeagueSettingsBody.parse({ roster_size: "12" })).toEqual({
       roster_size: 12

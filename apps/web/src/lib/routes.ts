@@ -44,13 +44,16 @@ export function seasonPath(input: {
   )}`;
 }
 
-/** A league's competition in one Circuit (shown to players as a season). */
+/**
+ * A league's competition in one Circuit. Players see it as a full awards
+ * season, so its URL sits under the league's seasons and never says "circuit".
+ */
 export function circuitLeaguePath(input: {
   leagueId: number;
   leagueName?: string | null;
   circuitLeagueId: number;
 }): string {
-  return `${leaguePath(input)}/circuits/${input.circuitLeagueId}`;
+  return `${leaguePath(input)}/seasons/full/${input.circuitLeagueId}`;
 }
 
 /** A member's roster in a league's season; no member shows the viewer's own. */

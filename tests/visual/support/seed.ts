@@ -47,6 +47,11 @@ export type VisualSeed = {
    * league's in season inside a waiver window.
    */
   circuitLeagues: { main: number; inSeason: number; inWindow: number };
+  /**
+   * A league avery commissions that plays no full season, so Create season
+   * offers both open awards seasons.
+   */
+  matineeLeague: number;
   drafts: { completed: number; live: number };
   /** An unused id for the 404 and missing-entity screens. */
   missingId: number;
@@ -427,6 +432,77 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     );
   }
 
+  // A second open awards season, newer than the first, with a grouped event
+  // that spans two ceremonies. The main league already plays it too (nobody
+  // has joined, so no Home lists it), so Create season there offers no full
+  // season; the second league plays only the first, so it is offered this one.
+  const nextCircuit = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit (code, name, status, activated_at, created_at)
+     VALUES ('awards-season-2036', 'Awards Season 2036', 'ACTIVE', $1, $1)
+     RETURNING id::int`,
+    [minutes(490)]
+  );
+  const nextEvents: Array<{ code: string; name: string; group: boolean }> = [
+    { code: "critics-circle", name: "Critics Circle Awards", group: false },
+    {
+      code: "guild-week",
+      name: "Producers, Directors, Writers and Actors Guild Awards",
+      group: true
+    }
+  ];
+  for (const [i, e] of nextEvents.entries()) {
+    const event = await one<{ id: number }>(
+      pool,
+      `INSERT INTO circuit_event (circuit_id, code, name, sort_index, is_group)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id::int`,
+      [nextCircuit.id, e.code, e.name, i, e.group]
+    );
+    if (e.group) {
+      for (const [j, ceremonyId] of [1, 2].entries()) {
+        await pool.query(
+          `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id, sort_index)
+           VALUES ($1, $2, $3, $4)`,
+          [nextCircuit.id, ceremonyId, event.id, j]
+        );
+      }
+    }
+  }
+  for (const [i, [code, name, kind]] of [
+    ["best-picture", "Best Picture", "FILM"],
+    ["best-international-feature", "Best International Feature Film", "FILM"],
+    ["best-actor", "Best Actor", "ACTING"]
+  ].entries()) {
+    await pool.query(
+      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [nextCircuit.id, code, name, kind, i]
+    );
+  }
+  const mainNext = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit_league (circuit_id, league_id, created_by_user_id, created_at)
+     VALUES ($1, $2, $3, $4) RETURNING id::int`,
+    [nextCircuit.id, main.id, userIds.avery, minutes(495)]
+  );
+  await pool.query(
+    `INSERT INTO circuit_league_event (circuit_league_id, circuit_id, circuit_event_id)
+     SELECT $1, circuit_id, id FROM circuit_event WHERE circuit_id = $2`,
+    [mainNext.id, nextCircuit.id]
+  );
+  await pool.query(
+    `INSERT INTO circuit_league_category (circuit_league_id, circuit_id, circuit_category_id)
+     SELECT $1, circuit_id, id FROM circuit_category WHERE circuit_id = $2`,
+    [mainNext.id, nextCircuit.id]
+  );
+  const matinee = await makeLeague(
+    "sunday-matinee-club",
+    "Sunday Matinee Club",
+    "avery",
+    500
+  );
+  await addMembers(matinee.id, ["avery", "casey"], 505);
+
   // Two in-season competitions with rosters and a transaction log. The
   // second league enables only the Golden Reel event, whose one dated occasion
   // is its final one, so it never has a waiver window and free agency is open.
@@ -703,6 +779,7 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
       inSeason: openLeague.id,
       inWindow: windowLeague.id
     },
+    matineeLeague: matinee.id,
     drafts: { completed: completed.draftId, live: live.draftId },
     missingId: 99999
   };

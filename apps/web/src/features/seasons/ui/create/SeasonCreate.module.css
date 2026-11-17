@@ -1,0 +1,59 @@
+/* A fieldset that groups related inputs under a heading, without a frame. */
+.fieldset {
+  border: 0;
+  margin-inline: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.fieldset > legend {
+  padding: 0;
+  /* A legend sits outside the Stack's gap; match it. */
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+/* The one awards season on offer: label beside its name, stacked on phone. */
+.awardsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--fo-space-sm);
+}
+
+.awardsLabel {
+  flex: none;
+}
+
+.awardsValue {
+  min-width: var(--fo-space-0);
+  text-align: end;
+}
+
+@media (max-width: 499.98px) {
+  .awardsRow {
+    flex-direction: column;
+    gap: var(--fo-space-dense-2);
+  }
+
+  .awardsValue {
+    text-align: start;
+  }
+}
+
+/* The kind's name and description sit in one label, so the whole area selects it. */
+.kindName {
+  display: block;
+}
+
+.kindDescription {
+  display: block;
+  margin-top: var(--fo-space-dense-2);
+  color: var(--brand-muted);
+  font-size: var(--fo-font-size-sm);
+  font-weight: var(--fo-font-weight-regular);
+}
+
+/* Lines up a follow-up action with the option's label, past the radio. */
+.optionAction {
+  padding-inline-start: calc(var(--radio-size-sm, 1.25rem) + var(--mantine-spacing-sm));
+}

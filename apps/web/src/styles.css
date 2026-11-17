@@ -2951,6 +2951,51 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   opacity: var(--fo-alpha-50);
 }
 
+/* Radio mirrors the Switch: ink for the checked state, because the brand primary
+   is below 3:1 on raised surfaces in some brands. */
+.mantine-Radio-radio {
+  background: var(--brand-sunken);
+  border: var(--fo-border-width) solid var(--brand-rule-strong);
+}
+
+.mantine-Radio-radio:checked {
+  background: var(--brand-text);
+  border-color: var(--brand-text);
+}
+
+.mantine-Radio-icon {
+  --radio-icon-color: var(--brand-page);
+}
+
+.mantine-Radio-radio:focus-visible {
+  outline: var(--fo-focus-ring-width) solid var(--brand-focus-ring);
+  outline-offset: var(--fo-focus-ring-offset);
+}
+
+.mantine-Radio-radio:disabled {
+  background: var(--brand-sunken);
+  border-color: var(--brand-rule-strong);
+  opacity: var(--fo-alpha-50);
+}
+
+.mantine-Radio-radio:disabled + .mantine-Radio-icon {
+  --radio-icon-color: var(--brand-page);
+}
+
+.mantine-Radio-label {
+  color: var(--brand-text);
+  font-family: var(--brand-font-body);
+  font-size: var(--fo-font-size-sm);
+  font-weight: var(--fo-font-weight-semibold);
+}
+
+/* An unavailable option keeps full-strength muted ink so its reason stays readable;
+   only the control fades. */
+.mantine-Radio-label[data-disabled] {
+  color: var(--brand-muted);
+  cursor: not-allowed;
+}
+
 /* Header icon button: a bounded box in the brand's card edge and button shape. */
 .fo-headerIconBtn {
   display: inline-flex;

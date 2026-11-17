@@ -245,12 +245,25 @@ export async function getCircuitLeagueDetail(
 // ---------------------------------------------------------------------------
 
 /**
- * Starts a Circuit competition in a league, with the defaults, and makes its
- * creator the first member. League owners and co-owners only.
+ * Starts a Circuit competition in a league and makes its creator the first
+ * member. League owners and co-owners only. Optional initial settings, enabled
+ * events and category settings apply in the same transaction, so a custom
+ * season is created in one step; anything left out keeps the defaults.
  */
 export async function createCircuitLeague(
   pool: Pool,
-  input: { leagueId: number; circuitId: number; viewer: Viewer }
+  input: {
+    leagueId: number;
+    circuitId: number;
+    viewer: Viewer;
+    settings?: CircuitLeagueSettingsPatch;
+    events?: ReadonlyArray<{ circuit_event_id: number; weight: number }>;
+    categories?: ReadonlyArray<{
+      circuit_category_id: number;
+      weight: number;
+      max_owned: number | null;
+    }>;
+  }
 ) {
   const id = await runInTransaction(pool, async (tx) => {
     const { league, member } = await requireVisibleLeague(
@@ -277,6 +290,32 @@ export async function createCircuitLeague(
         409,
         "This league already plays this season"
       );
+    }
+    const settings = Object.fromEntries(
+      Object.entries(input.settings ?? {}).filter(([, value]) => value !== undefined)
+    ) as CircuitLeagueSettingsPatch;
+    if (Object.keys(settings).length > 0) {
+      await updateCircuitLeagueSettings(tx, created.id, settings);
+    }
+    if (input.events) {
+      const known = await listCircuitEvents(tx, circuit.id);
+      assertIdsInCircuit(
+        input.events.map((e) => e.circuit_event_id),
+        known.map((e) => e.id),
+        "Choose events in this season",
+        "events"
+      );
+      await replaceCircuitLeagueEvents(tx, created, input.events);
+    }
+    if (input.categories) {
+      const known = await listCircuitCategories(tx, circuit.id);
+      assertIdsInCircuit(
+        input.categories.map((c) => c.circuit_category_id),
+        known.map((c) => c.id),
+        "Choose categories in this season",
+        "categories"
+      );
+      await upsertCircuitLeagueCategories(tx, created, input.categories);
     }
     if (member) await addMember(tx, created, input.viewer.userId);
     return created.id;

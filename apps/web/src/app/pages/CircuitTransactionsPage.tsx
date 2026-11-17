@@ -3,7 +3,7 @@ import { useCircuitTransactionsOrchestration } from "@/orchestration/circuitRost
 import { CircuitTransactionsScreen } from "@/features/circuitLeagues/screens/CircuitTransactionsScreen";
 
 export function CircuitTransactionsPage() {
-  const { circuitLeagueId } = useParams();
+  const { fullSeasonId: circuitLeagueId } = useParams();
   const o = useCircuitTransactionsOrchestration({
     circuitLeagueId: Number(circuitLeagueId)
   });
