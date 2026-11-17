@@ -1,9 +1,16 @@
 import type { Root } from "mdast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../lib/api";
-import type { LeagueSummary, SeasonSummary, CeremonySummary } from "../../lib/types";
+import type {
+  CircuitLeagueSummary,
+  LeagueSummary,
+  SeasonSummary,
+  CeremonySummary
+} from "../../lib/types";
 import {
   computeActiveLandingSeasonPreviews,
+  computeLandingCircuitPreviews,
+  type LandingCircuitPreview,
   type LandingSeasonPreview
 } from "../../decisions/landing/seasonPreviews";
 
@@ -26,7 +33,13 @@ export type LandingSeasonsView =
   | { state: "idle" }
   | { state: "loading" }
   | { state: "error"; message: string }
-  | { state: "ready"; seasons: LandingSeasonPreview[]; total: number };
+  | {
+      state: "ready";
+      seasons: LandingSeasonPreview[];
+      /** The viewer's Circuit competitions, listed beside the Seasons. */
+      circuits: LandingCircuitPreview[];
+      total: number;
+    };
 
 export type LandingView = {
   updates: LandingUpdatesView;
@@ -50,22 +63,39 @@ async function loadCeremonies(): Promise<CeremonySummary[]> {
   return res.data?.ceremonies ?? [];
 }
 
-async function loadSeasonPreview(
-  ceremonyNameById: Map<number, string>
-): Promise<LandingSeasonPreview[]> {
+async function loadSeasonPreview(ceremonyNameById: Map<number, string>): Promise<{
+  seasons: LandingSeasonPreview[];
+  circuits: LandingCircuitPreview[];
+}> {
   const leaguesRes = await fetchJson<{ leagues: LeagueSummary[] }>("/leagues");
   if (!leaguesRes.ok) throw new Error(leaguesRes.error ?? "Failed to load leagues");
   const leagues = leaguesRes.data?.leagues ?? [];
 
-  const seasonResults = await Promise.all(
-    leagues.map(async (league) => {
-      const res = await fetchJson<{ seasons: SeasonSummary[] }>(
-        `/leagues/${league.id}/seasons`
-      );
-      return { league, seasons: res.ok ? (res.data?.seasons ?? []) : [] };
-    })
-  );
-  return computeActiveLandingSeasonPreviews(seasonResults, ceremonyNameById);
+  const [seasonResults, circuitResults] = await Promise.all([
+    Promise.all(
+      leagues.map(async (league) => {
+        const res = await fetchJson<{ seasons: SeasonSummary[] }>(
+          `/leagues/${league.id}/seasons`
+        );
+        return { league, seasons: res.ok ? (res.data?.seasons ?? []) : [] };
+      })
+    ),
+    Promise.all(
+      leagues.map(async (league) => {
+        const res = await fetchJson<{ circuit_leagues: CircuitLeagueSummary[] }>(
+          `/leagues/${league.id}/circuits`
+        );
+        return {
+          league,
+          circuitLeagues: res.ok ? (res.data?.circuit_leagues ?? []) : []
+        };
+      })
+    )
+  ]);
+  return {
+    seasons: computeActiveLandingSeasonPreviews(seasonResults, ceremonyNameById),
+    circuits: computeLandingCircuitPreviews(circuitResults)
+  };
 }
 
 export function useLandingOrchestration(opts: { seasonsEnabled: boolean }) {
@@ -99,7 +129,12 @@ export function useLandingOrchestration(opts: { seasonsEnabled: boolean }) {
       const nameById = new Map<number, string>();
       for (const c of ceremonies) nameById.set(c.id, c.name);
       const active = await loadSeasonPreview(nameById);
-      setSeasons({ state: "ready", total: active.length, seasons: active.slice(0, 2) });
+      setSeasons({
+        state: "ready",
+        total: active.seasons.length + active.circuits.length,
+        seasons: active.seasons.slice(0, 2),
+        circuits: active.circuits.slice(0, 2)
+      });
     } catch (err) {
       setSeasons((prev) =>
         prev.state === "ready"

@@ -1,6 +1,6 @@
 # Circuit
 
-A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md) and [ADR 0007](../adr/0007-circuit-groups-and-derived-dates.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`, with groups and the derived results date from `025_circuit_groups_and_derived_results_date.sql`). Leagues, drafts, ownership, scoring and waivers come in later packages.
+A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md) and [ADR 0007](../adr/0007-circuit-groups-and-derived-dates.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`, with groups and the derived results date from `025_circuit_groups_and_derived_results_date.sql`), contender selections (`026`) and league competitions (`027_circuit_league.sql`). Drafts, ownership, scoring and waivers come in later packages.
 
 ## TL;DR
 
@@ -10,6 +10,7 @@ A Circuit is a season-long competition across several awards ceremonies; players
 - Admins **map** each ceremony category to at most one Circuit category; several ceremony categories may map to the same one (many-to-one). A matching template pre-selects the mapping on screen, but only an explicit save creates it. Nothing is inferred from names.
 - Each ceremony has a **nominations date** (`ceremony.nominations_on`) and a **results date**, which is the date of its ceremony datetime (`ceremony.starts_at`) in America/Los_Angeles. Every associated ceremony gives two **scoring occasions**, one per date.
 - **Activation** (`DRAFT → ACTIVE`) never waits for dates. It returns the associated ceremonies that still lack one.
+- A league runs a **Circuit league** beside its Seasons, with its own members, enabled events, roster and scoring. Membership and events freeze at **initialisation**, through one guard (`assertCircuitLeagueOpen`).
 - The Circuit is independent of the Season: no foreign keys either way, and no imports between Circuit code and Season, draft, scoring or realtime code.
 
 ## Table map
@@ -22,6 +23,8 @@ A Circuit is a season-long competition across several awards ceremonies; players
 | `circuit_ceremony`  | Which ceremony belongs to which event, and its order inside it (`sort_index`)                                     | PK `(circuit_id, ceremony_id)`; the event must belong to the same Circuit                                                   |
 | `circuit_mapping`   | Ceremony category edition → Circuit category                                                                      | PK `(circuit_id, category_edition_id)`: one edition maps to at most one Circuit category; many editions may map to the same |
 | `circuit_selection` | A contender in a Circuit category: TMDB film id, TMDB person id for acting, local film and person                 | `UNIQUE NULLS NOT DISTINCT (circuit_category_id, film_tmdb_id, person_tmdb_id)`; immutable (see Selections)                 |
+| `circuit_league`    | One league's competition in a Circuit: status, roster size, draft type, pick clock, auto-draft, points            | `UNIQUE (circuit_id, league_id)`; `(status = 'SETUP') = (initialized_at IS NULL)`; see Leagues and membership               |
+| `circuit_league_*`  | `_event` (an enabled event and its weight), `_category` (weight, limit), `_member` (a player)                     | Composite keys keep events and categories inside the league's own Circuit; a member row is unique per user                  |
 
 `circuit_ceremony` is the one shared association. The Circuit admin and the ceremony admin both read and write it; neither keeps a copy. Removing an association also removes that ceremony's mappings in the Circuit. A mapping is refused (409 `CIRCUIT_CEREMONY_NOT_ASSOCIATED`) until the edition's ceremony is associated.
 
@@ -94,6 +97,32 @@ It returns at most one match per selection per occasion, listing every matching 
 ## Contender picker (web)
 
 `features/contenders/ui/ContenderPicker.tsx` (render only) with `orchestration/contenders.ts` and `decisions/contenders.ts`: category (select), film (debounced search), then person from the credits for acting categories, then pick. Every control is a native input, select or button, and focus moves to the next step's control. TMDB attribution shows under film results and credits. Operators can try it at `/admin/circuits/:circuitId/picker` (a non-`DRAFT` Circuit); player screens will mount the same hook and component.
+
+## Leagues and membership
+
+A league can hold a Season and a Circuit league at once; the two never share members (`circuit_league_member` is separate from `season_member`, and an integration test changes one and checks the other). Code is `domain/circuitLeague.ts` (pure), `data/repositories/circuitLeagueRepository.ts`, `services/circuit/circuitLeagues.ts`, `routes/circuitLeagues.ts` and `routes/leagues/circuitLeagues.ts`.
+
+- **Defaults** (ADR 0005 section 4). Creating one enables every event of the Circuit with weight 1, gives every category weight 1 and no limit, and sets roster 16, 1 point per nomination, 2 per win, a 90-second pick clock and auto-draft on. A category added to the Circuit later reads as the defaults; an event added later reads as disabled.
+- **Events toggle as units.** A grouped event (several ceremonies) is one row, so it is enabled or disabled whole. The events write replaces the enabled set; any subset, including none, saves.
+- **Draft type** is stored (`SNAKE`) and not offered: snake is the only draft (owner questions 2 and 3).
+- **Lifecycle.** `SETUP → INITIALIZED`, by a commissioner, with at least one member. `DRAFTING`, `IN_SEASON` and `COMPLETE` come with the draft and scoring packages.
+- **The initialisation guard.** `assertCircuitLeagueOpen` (409 `CIRCUIT_LEAGUE_LOCKED` outside `SETUP`) is the only check on member and event writes: join, leave, the events write and initialise all run inside `lockOpenCircuitLeague`, which locks the row `FOR UPDATE` and then calls the guard. `tests/unit/architecture/circuitLeagueGuard.test.ts` fails if any other file calls the guarded repository writes, and the integration suite has one locked test per route, each asserting the guard threw.
+- **Settings after initialisation** (owner question 11). Everything is editable in `SETUP`. Once `INITIALIZED`, only the pick clock and auto-draft can change; roster, points, weights and limits are frozen (409 `CIRCUIT_LEAGUE_SETTINGS_LOCKED`). Nothing changes once the draft starts.
+- **Who.** Any league member can read and join; non-members get 404, and a super admin who is not a member cannot join (403 `LEAGUE_MEMBERSHIP_REQUIRED`). League owners and co-owners (and the league creator) create, configure and initialise; the creator joins on create.
+
+| Route                                 | Does                                                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET /leagues/:id/circuits`           | The league's Circuit leagues, with Circuit name and status, member count and whether the viewer joined |
+| `POST /leagues/:id/circuits`          | `{ circuit_id }` → 201 with the detail. A `DRAFT` Circuit is 404, `ARCHIVED` 409, a duplicate 409      |
+| `GET /circuit-leagues/:id`            | The detail: settings, every event (enabled, weight, ceremonies), categories, members, viewer flags     |
+| `PATCH /circuit-leagues/:id/settings` | Partial settings; the pick clock takes null or 0 for untimed                                           |
+| `PUT /circuit-leagues/:id/events`     | `{ events: [{ circuit_event_id, weight? }] }`, the full enabled set                                    |
+| `PUT /circuit-leagues/:id/categories` | `{ categories: [{ circuit_category_id, weight?, max_owned? }] }`; unlisted categories keep theirs      |
+| `POST /circuit-leagues/:id/join`      | Join (`SETUP` only); also `/leave` and `/initialize`                                                   |
+
+Every write returns the full detail.
+
+**Web.** The league page lists Circuit leagues in its Seasons section, above the ceremony Seasons, and offers commissioners each active Circuit not yet started there (Start). Home's Active seasons lists the viewer's own Circuit leagues (joined, Circuit `ACTIVE`) above their Seasons. Both link to `/leagues/:leagueId/:leagueSlug/circuits/:circuitLeagueId`, the setup screen (`features/circuitLeagues`, `orchestration/circuitLeague.ts`, `decisions/circuitLeague.ts`): Join or Leave season under the header, settings that commissioners edit while they are open (players, and commissioners once a section is frozen, read the saved values as text), the member list, and Lock season in its own commissioner row (initialise, after a confirm). Players always read "season".
 
 ## Independence from the Season
 

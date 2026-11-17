@@ -6,6 +6,7 @@ import { registerLeaguePublicRoutes } from "./leagues/public.js";
 import { registerLeagueJoinRoutes } from "./leagues/join.js";
 import { registerLeagueMemberRoutes } from "./leagues/members.js";
 import { registerLeagueSeasonRoutes } from "./leagues/seasons.js";
+import { registerLeagueCircuitRoutes } from "./leagues/circuitLeagues.js";
 import { registerLeaguesCreateRoute } from "./leagues/leaguesCreate.js";
 import { registerLeaguesGetRoute } from "./leagues/leaguesGet.js";
 import { registerLeaguesListRoute } from "./leagues/leaguesList.js";
@@ -23,6 +24,7 @@ export function createLeaguesRouter(client: DbClient, authSecret: string): Route
   registerLeagueJoinRoutes({ router, client, authSecret, joinRateLimiter });
   registerLeagueMemberRoutes({ router, client, authSecret });
   registerLeagueSeasonRoutes({ router, client, authSecret });
+  registerLeagueCircuitRoutes({ router, client, authSecret });
   registerLeaguesCreateRoute({ router, client, authSecret });
   registerLeaguesGetRoute({ router, client, authSecret });
   registerLeaguesListRoute({ router, client, authSecret });

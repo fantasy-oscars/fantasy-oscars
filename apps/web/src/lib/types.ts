@@ -226,3 +226,80 @@ export type DraftEventMessage = {
   /** Server clock when the event was emitted (ISO); used to correct local clock skew. */
   server_time?: string;
 };
+
+/** A public Circuit; players see it as a season. */
+export type CircuitSummary = {
+  id: number;
+  code: string;
+  name: string;
+  status: string;
+  opens_on: string | null;
+  activated_at: string | null;
+};
+
+export type CircuitLeagueStatus =
+  "SETUP" | "INITIALIZED" | "DRAFTING" | "IN_SEASON" | "COMPLETE";
+
+/** A league's settings for one Circuit competition. */
+export type CircuitLeagueSettings = {
+  id: number;
+  circuit_id: number;
+  league_id: number;
+  status: CircuitLeagueStatus;
+  roster_size: number;
+  draft_type: string;
+  pick_timer_seconds: number | null;
+  auto_draft_enabled: boolean;
+  nomination_points: number;
+  win_bonus_points: number;
+  initialized_at: string | null;
+  created_at: string;
+};
+
+/** A row of `GET /leagues/:id/circuits`. */
+export type CircuitLeagueSummary = CircuitLeagueSettings & {
+  circuit_code: string;
+  circuit_name: string;
+  circuit_status: string;
+  member_count: number;
+  is_member: boolean;
+};
+
+export type CircuitLeagueEvent = {
+  id: number;
+  code: string;
+  name: string;
+  is_group: boolean;
+  sort_index: number;
+  enabled: boolean;
+  weight: number;
+  ceremonies: Array<{ id: number; code: string; name: string }>;
+};
+
+export type CircuitLeagueCategory = {
+  id: number;
+  code: string;
+  name: string;
+  kind: string;
+  sort_index: number;
+  weight: number;
+  max_owned: number | null;
+};
+
+export type CircuitLeagueMember = {
+  user_id: number;
+  username: string;
+  avatar_key: string | null;
+  joined_at: string;
+};
+
+/** `GET /circuit-leagues/:id`, also returned by every write on it. */
+export type CircuitLeagueDetail = {
+  circuit_league: CircuitLeagueSettings;
+  circuit: { id: number; code: string; name: string; status: string } | null;
+  league: { id: number; code: string; name: string };
+  events: CircuitLeagueEvent[];
+  categories: CircuitLeagueCategory[];
+  members: CircuitLeagueMember[];
+  viewer: { is_league_member: boolean; is_member: boolean; can_manage: boolean };
+};

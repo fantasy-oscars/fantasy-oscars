@@ -1,11 +1,16 @@
 import { Box, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { AuthUser } from "@/auth/context";
 import { PageError } from "@/shared/page-state";
-import type { LeagueMember } from "@/lib/types";
+import type { ApiResult, LeagueMember } from "@/lib/types";
 import type { LeagueDetailView } from "@/orchestration/leagues";
 import { useMemo, useState } from "react";
 import { computeSeasonCeremonyLabel } from "@/decisions/league";
 import { computeSeasonLifecycleLabelFromRow } from "@/decisions/season";
+import {
+  circuitLeagueMemberCountLabel,
+  circuitLeagueStatusLabel,
+  startableCircuits
+} from "@/decisions/circuitLeague";
 import { DeleteLeagueModal } from "@/features/leagues/ui/modals/DeleteLeagueModal";
 import { TransferLeagueOwnershipModal } from "@/features/leagues/ui/modals/TransferLeagueOwnershipModal";
 import { LeagueMembersSection } from "@/features/leagues/ui/LeagueMembersSection";
@@ -84,6 +89,9 @@ export function LeagueDetailScreen(props: {
   working: boolean;
   rosterStatus: { ok: boolean; message: string } | null;
   onTransferOwnershipTo: (userId: number) => void | Promise<unknown>;
+  startingCircuit: boolean;
+  circuitStatus: ApiResult | null;
+  onStartCircuit: (circuitId: number) => void | Promise<unknown>;
   onDeleteLeague: () => Promise<{ ok: boolean }> | { ok: boolean };
 }) {
   const {
@@ -93,6 +101,9 @@ export function LeagueDetailScreen(props: {
     working,
     rosterStatus,
     onTransferOwnershipTo,
+    startingCircuit,
+    circuitStatus,
+    onStartCircuit,
     onDeleteLeague
   } = props;
 
@@ -166,6 +177,19 @@ export function LeagueDetailScreen(props: {
     };
   });
 
+  const circuitCards = view.circuitLeagues.map((c) => ({
+    id: c.id,
+    name: c.circuit_name,
+    statusLabel: circuitLeagueStatusLabel(c.status),
+    meta: circuitLeagueMemberCountLabel(c.member_count)
+  }));
+  const startable = view.isCommissioner
+    ? startableCircuits(view.circuits, view.circuitLeagues).map((c) => ({
+        id: c.id,
+        name: c.name
+      }))
+    : [];
+
   return (
     <Box className="baseline-page">
       <Box className="baseline-pageInner">
@@ -187,6 +211,11 @@ export function LeagueDetailScreen(props: {
               leagueName={league.name}
               canCreateSeason={view.isCommissioner}
               seasons={seasonCards}
+              circuits={circuitCards}
+              startableCircuits={startable}
+              startingCircuit={startingCircuit}
+              circuitStatus={circuitStatus}
+              onStartCircuit={onStartCircuit}
             />
 
             <Stack gap="md">
