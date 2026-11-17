@@ -1,4 +1,5 @@
 {
-  "entryJsGzipKb": 301,
-  "totalJsGzipKb": 435
+  "entryJsGzipKb": 227,
+  "largestRouteChunkGzipKb": 60,
+  "adminChunkGzipKb": 73
 }

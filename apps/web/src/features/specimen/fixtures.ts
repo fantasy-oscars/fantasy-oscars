@@ -1,4 +1,9 @@
 import type { BannerRow } from "@/orchestration/chrome";
+import bannerError from "./content/banner-error.md?mdast";
+import bannerInfo from "./content/banner-info.md?mdast";
+import bannerSuccess from "./content/banner-success.md?mdast";
+import bannerWarning from "./content/banner-warning.md?mdast";
+import markdownSample from "./content/markdown-sample.md?mdast";
 
 // Static data for the specimen page. The long names mirror the visual suite's seed
 // (tests/visual/support/seed.ts and dataset.ts) so a brand's truncation is judged on
@@ -70,15 +75,16 @@ export const SEASONS = [
 
 export const BANNERS: BannerRow[] = (
   [
-    ["info", "Draft night moves to Saturday."],
-    ["warning", "Picks lock at **8:00 pm** tonight."],
-    ["success", "Your league is ready. [Open it](/leagues)."],
-    ["error", "Live results are delayed; refresh in a minute."]
+    ["info", "Draft night moves to Saturday.", bannerInfo],
+    ["warning", "Picks lock at **8:00 pm** tonight.", bannerWarning],
+    ["success", "Your league is ready. [Open it](/leagues).", bannerSuccess],
+    ["error", "Live results are delayed; refresh in a minute.", bannerError]
   ] as const
-).map(([variant, body], id) => ({
+).map(([variant, body, tree], id) => ({
   id,
   title: variant,
   body_markdown: body,
+  body_tree: tree,
   variant,
   dismissible: true,
   starts_at: null,
@@ -86,14 +92,8 @@ export const BANNERS: BannerRow[] = (
   published_at: null
 }));
 
-export const MARKDOWN_SAMPLE = [
-  "# Draft rules",
-  "## Picks",
-  "### Timer",
-  "Each pick has ninety seconds, then the room drafts for you.",
-  "- Snake order\n- Two picks in the last round",
-  "Read the [full rules](https://example.com/rules)."
-].join("\n\n");
+/** The sample's Markdown is in `content/markdown-sample.md`, parsed at build time. */
+export const MARKDOWN_SAMPLE_TREE = markdownSample;
 
 export const SELECT_OPTIONS = ["Best Picture", "Best Director", "Best Original Score"];
 

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   Box,
   Checkbox,
@@ -11,7 +12,6 @@ import {
   TextInput,
   Textarea
 } from "@ui";
-import { Markdown } from "@ui/Markdown";
 import { FormStatus } from "@/shared/forms";
 import { PageError } from "@/shared/page-state";
 import type { ApiResult } from "@/lib/types";
@@ -19,6 +19,13 @@ import type { CmsDynamicRow } from "@/orchestration/adminContent";
 import { announcementStatusLabel, type DynamicKey } from "@/decisions/adminContent";
 import { DynamicContentEditorHeader } from "@/features/admin/ui/content/DynamicContentEditorHeader";
 import "@/primitives/baseline.css";
+
+// Parsing happens in the browser only here; keep the parser out of the editor chunk.
+const MarkdownPreview = lazy(() =>
+  import("@/features/admin/ui/content/MarkdownPreview").then((m) => ({
+    default: m.MarkdownPreview
+  }))
+);
 
 export function AdminDynamicContentEditorScreen(props: {
   contentKey: DynamicKey | null;
@@ -171,10 +178,12 @@ export function AdminDynamicContentEditorScreen(props: {
               </Text>
               <Box className="admin-contentPreview">
                 {fields.body.trim() ? (
-                  <Markdown
-                    markdown={fields.body}
-                    headingBase={fields.isBanner ? undefined : 4}
-                  />
+                  <Suspense fallback={null}>
+                    <MarkdownPreview
+                      markdown={fields.body}
+                      headingBase={fields.isBanner ? undefined : 4}
+                    />
+                  </Suspense>
                 ) : (
                   <Text variant="helper">Nothing to preview yet.</Text>
                 )}

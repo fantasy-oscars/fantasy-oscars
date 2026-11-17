@@ -3,6 +3,7 @@ import path from "node:path";
 import { cleanup, render, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
+import { parseMarkdown } from "@fantasy-oscars/shared/markdown";
 import { MantineProvider } from "@ui";
 import { LandingScreen } from "@/features/home/screens/LandingScreen";
 import { HERO_TAGLINE } from "@/decisions/landing";
@@ -37,6 +38,7 @@ function renderHome() {
                 key: "home_main",
                 title: "Thank you for playing",
                 body_markdown: "See you next year.",
+                body_tree: parseMarkdown("See you next year."),
                 published_at: "2026-01-31T00:00:00Z"
               }
             },

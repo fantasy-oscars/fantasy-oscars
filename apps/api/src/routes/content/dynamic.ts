@@ -1,6 +1,7 @@
 import type express from "express";
 import type { DbClient } from "../../data/db.js";
 import { getPublishedDynamicContent } from "../../data/repositories/cmsRepository.js";
+import { withBodyTree } from "../../services/markdownTree.js";
 import { parseParams } from "../../utils/validate.js";
 import { contentDynamicParams } from "@fantasy-oscars/shared/schemas";
 
@@ -14,7 +15,7 @@ export function registerContentDynamicRoute(args: {
     try {
       const { key } = parseParams(contentDynamicParams, req.params);
       const content = await getPublishedDynamicContent(client, key);
-      return res.status(200).json({ content });
+      return res.status(200).json({ content: content ? withBodyTree(content) : null });
     } catch (err) {
       next(err);
     }

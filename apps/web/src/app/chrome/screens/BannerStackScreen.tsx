@@ -28,7 +28,7 @@ export function BannerStackScreen(props: {
         >
           {/* Title is admin-only metadata; the banner shows only the content body. */}
           <Box w="100%" ta="center">
-            <Markdown markdown={b.body_markdown} />
+            <Markdown tree={b.body_tree} />
           </Box>
         </Alert>
       ))}

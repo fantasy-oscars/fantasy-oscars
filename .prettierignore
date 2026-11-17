@@ -8,3 +8,4 @@ coverage
 *.log
 apps/*/dist
 packages/*/dist
+apps/web/tests/unit/ui/fixtures

@@ -1,3 +1,4 @@
+import type { Root } from "mdast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../lib/api";
 import type { LeagueSummary, SeasonSummary } from "../../lib/types";
@@ -11,6 +12,8 @@ type DynamicContent = {
   key: string;
   title: string;
   body_markdown: string;
+  /** The parsed `body_markdown`, from the API. */
+  body_tree: Root | null;
   published_at: string | null;
 };
 

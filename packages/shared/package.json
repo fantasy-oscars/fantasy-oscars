@@ -21,6 +21,11 @@
       "types": "./dist/schemas/index.d.ts",
       "import": "./dist/schemas/index.js",
       "require": "./dist/schemas/index.js"
+    },
+    "./markdown": {
+      "types": "./dist/markdown.d.ts",
+      "import": "./dist/markdown.js",
+      "require": "./dist/markdown.js"
     }
   },
   "main": "./dist/index.js",
@@ -47,6 +52,10 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@types/mdast": "^4.0.4",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "zod": "^4.6.7"
   }
 }

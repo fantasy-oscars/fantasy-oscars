@@ -1,3 +1,4 @@
+import type { Root } from "mdast";
 import { useCallback, useEffect, useState } from "react";
 import { fetchJson } from "../../lib/api";
 
@@ -6,6 +7,8 @@ export type DynamicContent = {
   key: string;
   title: string;
   body_markdown: string;
+  /** The parsed `body_markdown`, from the API. */
+  body_tree: Root | null;
   published_at: string | null;
 };
 

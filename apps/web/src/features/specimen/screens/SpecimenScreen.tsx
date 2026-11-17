@@ -53,7 +53,7 @@ import {
   FORCED_PILLS,
   HOVER_MATCH_IDS,
   LONG_FILM_TITLE,
-  MARKDOWN_SAMPLE,
+  MARKDOWN_SAMPLE_TREE,
   NAV_LINKS,
   PILL_CARD_TITLE,
   PILL_STATES,
@@ -1090,7 +1090,7 @@ export function SpecimenScreen() {
             <BannerStackScreen banners={BANNERS} onDismiss={noop} />
           </Cell>
           <Cell label="markdown" hook="markdown">
-            <Markdown markdown={MARKDOWN_SAMPLE} />
+            <Markdown tree={MARKDOWN_SAMPLE_TREE} />
           </Cell>
         </Section>
 

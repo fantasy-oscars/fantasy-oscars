@@ -32,6 +32,21 @@
 
 - Console logs for now; promote to structured logs when we add infra.
 
+## Markdown content
+
+The web client renders Markdown trees and never parses outside the admin editor.
+`parseMarkdown` (`packages/shared/src/markdown.ts`, subpath `@fantasy-oscars/shared/markdown`) is the
+single parser: remark with GFM, typography rewrites on text nodes, source positions dropped.
+
+- Repo pages (`apps/web/src/content/*.md`): parsed at build time by the `?mdast` import
+  (`apps/web/vite/markdownTree.ts`), so the bundle carries the tree.
+- Admin-edited content (banners, the landing update): `GET /content/banners` and
+  `GET /content/dynamic/:key` return `body_tree` beside `body_markdown`. The API parses on read and
+  keeps recent trees in memory, keyed by the source text. Nothing is stored, so there is no column to
+  back-fill and no stale tree after a parser change. Admin list and draft routes return markdown only.
+- The editor's live preview parses in the browser from a lazily loaded module
+  (`features/admin/ui/content/MarkdownPreview.tsx`).
+
 ## Links
 
 - Architecture overview: [overview.md](overview.md)
