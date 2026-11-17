@@ -4,6 +4,7 @@ export * from "./appearance.js";
 export * from "./avatars.js";
 export * from "./brands.js";
 export * from "./ceremonyLifecycle.js";
+export * from "./contenders.js";
 export * from "./draftState.js";
 export * from "./draftOrder.js";
 export * from "./search.js";
