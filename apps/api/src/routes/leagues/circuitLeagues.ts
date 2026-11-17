@@ -10,7 +10,8 @@ import {
 } from "../../services/circuit/circuitLeagues.js";
 import { parseBody, parseParams } from "../../utils/validate.js";
 
-// A league's Circuit competitions, listed beside its Seasons, and creating one.
+// A league's Circuit competitions, listed beside its Seasons, and creating one
+// (optionally with initial settings, events and categories).
 export function registerLeagueCircuitRoutes(args: {
   router: express.Router;
   client: DbClient;
@@ -41,7 +42,10 @@ export function registerLeagueCircuitRoutes(args: {
     async (req: AuthedRequest, res, next) => {
       try {
         const { id } = parseParams(idParam, req.params);
-        const { circuit_id } = parseBody(circuitLeagueCreateBody, req.body);
+        const { circuit_id, settings, events, categories } = parseBody(
+          circuitLeagueCreateBody,
+          req.body
+        );
         const viewer = {
           userId: Number(req.auth?.sub),
           isSuperAdmin: hasSuperAdminAccess(req.auth)
@@ -49,7 +53,10 @@ export function registerLeagueCircuitRoutes(args: {
         const detail = await createCircuitLeague(client as Pool, {
           leagueId: id,
           circuitId: circuit_id,
-          viewer
+          viewer,
+          settings,
+          events,
+          categories
         });
         return res.status(201).json(detail);
       } catch (err) {

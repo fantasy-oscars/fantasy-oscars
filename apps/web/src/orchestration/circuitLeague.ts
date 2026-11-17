@@ -3,21 +3,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "../lib/api";
 import { confirm, notify } from "../notifications";
 import type { ApiResult, CircuitLeagueDetail } from "../lib/types";
+import { circuitLeagueEditable } from "../decisions/circuitLeague";
 import {
-  circuitLeagueChanges,
-  circuitLeagueEditable,
-  circuitLeagueFormFrom,
-  hasCircuitLeagueChanges,
-  type CircuitLeagueForm
-} from "../decisions/circuitLeague";
+  fullSeasonSettingsFrom,
+  fullSeasonWrites,
+  type FullSeasonSettings,
+  type SettingsArea
+} from "../decisions/fullSeasonSettings";
 import { errorCode, errorMessage, errorRequestId, unwrap } from "./query/errors";
 import { queryKeys } from "./query/keys";
 import { circuitLeagueQuery } from "./query/queries";
 
 /*
- * One league's competition in a Circuit (a "season" to players): its settings
- * form, members, join and leave, and initialisation. Every write returns the
- * full detail, which replaces the cached read.
+ * One league's competition in a Circuit (a "season" to players): its settings,
+ * saved one area at a time, members, join and leave, and initialisation. Every
+ * write returns the full detail, which replaces the cached read.
  */
 
 export type CircuitLeagueView =
@@ -26,10 +26,23 @@ export type CircuitLeagueView =
   | {
       state: "ready";
       detail: CircuitLeagueDetail;
-      form: CircuitLeagueForm;
+      settings: FullSeasonSettings;
       editable: { all: boolean; draftClock: boolean };
-      dirty: boolean;
     };
+
+/** The outcome of saving one settings area. */
+export type AreaSaveResult =
+  | { ok: true }
+  | {
+      ok: false;
+      message: string;
+      requestId?: string;
+      /** The stored values when only part of the save landed. */
+      latest?: FullSeasonSettings;
+    };
+
+/** The season was locked while the commissioner was editing. */
+const LOCKED_CODES = new Set(["CIRCUIT_LEAGUE_SETTINGS_LOCKED", "CIRCUIT_LEAGUE_LOCKED"]);
 
 type Action = "join" | "leave" | "initialize";
 
@@ -58,23 +71,6 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
   const query = useQuery({ ...circuitLeagueQuery(circuitLeagueId), enabled: valid });
   const data = query.data;
 
-  // Edits belong to the detail they started from; a new detail (after a save)
-  // starts a fresh form.
-  const [edit, setEdit] = useState<{
-    source: CircuitLeagueDetail;
-    form: CircuitLeagueForm;
-  } | null>(null);
-  const form = useMemo(
-    () =>
-      data
-        ? edit && edit.source === data
-          ? edit.form
-          : circuitLeagueFormFrom(data)
-        : null,
-    [data, edit]
-  );
-
-  const [settingsStatus, setSettingsStatus] = useState<ApiResult | null>(null);
   // Join and leave report under the header; locking reports beside its button.
   const [memberStatus, setMemberStatus] = useState<ApiResult | null>(null);
   const [lockStatus, setLockStatus] = useState<ApiResult | null>(null);
@@ -116,25 +112,37 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
   const saveMutation = useMutation({
     mutationFn: async (vars: {
       detail: CircuitLeagueDetail;
-      form: CircuitLeagueForm;
+      next: FullSeasonSettings;
     }) => {
-      const changes = circuitLeagueChanges(vars.detail, vars.form);
-      let latest: CircuitLeagueDetail | undefined;
+      const { detail, next } = vars;
+      const writes = fullSeasonWrites(
+        fullSeasonSettingsFrom(detail),
+        next,
+        detail.events,
+        detail.categories
+      );
       // Each write returns the full detail; apply it as soon as it lands so a
-      // later failure leaves the earlier parts saved and shown.
-      if (changes.settings) {
-        latest = await send("/settings", "PATCH", changes.settings);
-        apply(latest);
+      // later failure leaves the earlier part saved and shown.
+      let done = 0;
+      try {
+        if (writes.settings) {
+          apply(await send("/settings", "PATCH", writes.settings));
+          done += 1;
+        }
+        if (writes.events) {
+          apply(await send("/events", "PUT", { events: writes.events }));
+          done += 1;
+        }
+        if (writes.categories) {
+          apply(await send("/categories", "PUT", { categories: writes.categories }));
+          done += 1;
+        }
+      } catch (err) {
+        throw Object.assign(new Error(errorMessage(err, "Could not save settings")), {
+          cause: err,
+          partial: done > 0
+        });
       }
-      if (changes.events) {
-        latest = await send("/events", "PUT", { events: changes.events });
-        apply(latest);
-      }
-      if (changes.categories) {
-        latest = await send("/categories", "PUT", { categories: changes.categories });
-        apply(latest);
-      }
-      return latest;
     }
   });
 
@@ -147,13 +155,12 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
     if (!valid) {
       return { state: "error", message: "Season not found", notFound: true };
     }
-    if (data && form) {
+    if (data) {
       return {
         state: "ready",
         detail: data,
-        form,
-        editable: circuitLeagueEditable(data.circuit_league.status),
-        dirty: hasCircuitLeagueChanges(circuitLeagueChanges(data, form))
+        settings: fullSeasonSettingsFrom(data),
+        editable: circuitLeagueEditable(data.circuit_league.status)
       };
     }
     if (query.isError) {
@@ -166,41 +173,42 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
       };
     }
     return { state: "loading" };
-  }, [valid, data, form, query.isError, query.error]);
+  }, [valid, data, query.isError, query.error]);
 
-  const updateForm = useCallback(
-    (patch: (prev: CircuitLeagueForm) => CircuitLeagueForm) => {
-      if (!data || !form) return;
-      setSettingsStatus(null);
-      setEdit({ source: data, form: patch(form) });
+  /**
+   * Saves one area: its settings patch first, then its events or categories.
+   * A lock that landed meanwhile refreshes the detail, so the area turns
+   * read-only.
+   */
+  const saveArea = useCallback(
+    async (_area: SettingsArea, next: FullSeasonSettings): Promise<AreaSaveResult> => {
+      if (!data) return { ok: false, message: "Season not loaded" };
+      try {
+        await saveMutation.mutateAsync({ detail: data, next });
+        return { ok: true };
+      } catch (err) {
+        const { cause, partial } = err as Error & { cause?: unknown; partial?: boolean };
+        if (LOCKED_CODES.has(errorCode(cause) ?? "")) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.circuitLeagues.detail(circuitLeagueId)
+          });
+        }
+        const message = errorMessage(cause, "Could not save settings");
+        const latest = partial
+          ? queryClient.getQueryData<CircuitLeagueDetail>(
+              queryKeys.circuitLeagues.detail(circuitLeagueId)
+            )
+          : undefined;
+        return {
+          ok: false,
+          message: partial ? `Some changes weren't saved: ${message}` : message,
+          requestId: errorRequestId(cause),
+          ...(latest ? { latest: fullSeasonSettingsFrom(latest) } : {})
+        };
+      }
     },
-    [data, form]
+    [data, saveMutation, queryClient, circuitLeagueId]
   );
-
-  const resetForm = useCallback(() => {
-    setSettingsStatus(null);
-    setEdit(null);
-  }, []);
-
-  const save = useCallback(async () => {
-    if (!data || !form) return;
-    setSettingsStatus(null);
-    try {
-      await saveMutation.mutateAsync({ detail: data, form });
-      success("circuitLeague.settings.saved", "Settings saved");
-    } catch (err) {
-      // Keep the unsaved edits on top of whatever parts did save.
-      const latest = queryClient.getQueryData<CircuitLeagueDetail>(
-        queryKeys.circuitLeagues.detail(circuitLeagueId)
-      );
-      if (latest) setEdit({ source: latest, form });
-      setSettingsStatus({
-        ok: false,
-        message: errorMessage(err, "Could not save settings"),
-        requestId: errorRequestId(err)
-      });
-    }
-  }, [data, form, saveMutation, queryClient, circuitLeagueId]);
 
   const runAction = useCallback(
     async (action: Action) => {
@@ -232,14 +240,10 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
 
   return {
     view,
-    saving: saveMutation.isPending,
     acting: actionMutation.isPending,
-    settingsStatus,
     memberStatus,
     lockStatus,
-    updateForm,
-    resetForm,
-    save,
+    saveArea,
     join: () => runAction("join"),
     leave: () => runAction("leave"),
     initialize: () => runAction("initialize")

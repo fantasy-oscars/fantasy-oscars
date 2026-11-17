@@ -1,16 +1,10 @@
 import { Box, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { AuthUser } from "@/auth/context";
 import { PageError } from "@/shared/page-state";
-import type { ApiResult, LeagueMember } from "@/lib/types";
+import type { LeagueMember } from "@/lib/types";
 import type { LeagueDetailView } from "@/orchestration/leagues";
 import { useMemo, useState } from "react";
-import { computeSeasonCeremonyLabel } from "@/decisions/league";
-import { computeSeasonLifecycleLabelFromRow } from "@/decisions/season";
-import {
-  circuitLeagueMemberCountLabel,
-  circuitLeagueStatusLabel,
-  startableCircuits
-} from "@/decisions/circuitLeague";
+import { buildSeasonList } from "@/decisions/seasonList";
 import { DeleteLeagueModal } from "@/features/leagues/ui/modals/DeleteLeagueModal";
 import { TransferLeagueOwnershipModal } from "@/features/leagues/ui/modals/TransferLeagueOwnershipModal";
 import { LeagueMembersSection } from "@/features/leagues/ui/LeagueMembersSection";
@@ -89,9 +83,6 @@ export function LeagueDetailScreen(props: {
   working: boolean;
   rosterStatus: { ok: boolean; message: string } | null;
   onTransferOwnershipTo: (userId: number) => void | Promise<unknown>;
-  startingCircuit: boolean;
-  circuitStatus: ApiResult | null;
-  onStartCircuit: (circuitId: number) => void | Promise<unknown>;
   onDeleteLeague: () => Promise<{ ok: boolean }> | { ok: boolean };
 }) {
   const {
@@ -101,9 +92,6 @@ export function LeagueDetailScreen(props: {
     working,
     rosterStatus,
     onTransferOwnershipTo,
-    startingCircuit,
-    circuitStatus,
-    onStartCircuit,
     onDeleteLeague
   } = props;
 
@@ -160,35 +148,10 @@ export function LeagueDetailScreen(props: {
   }
 
   const league = view.league;
-  const seasonCards = view.seasons.map((s) => {
-    const ceremonyLabel = computeSeasonCeremonyLabel(s);
-    const statusLabel = computeSeasonLifecycleLabelFromRow({
-      seasonStatus: s.status,
-      draftStatus: s.draft_status,
-      isActiveCeremony: s.is_active_ceremony
-    });
-    return {
-      id: s.id,
-      ceremonyId: s.ceremony_id,
-      ceremonyCode: s.ceremony_code ?? null,
-      ceremonyLabel,
-      statusLabel,
-      isNavigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED"
-    };
+  const seasonList = buildSeasonList({
+    seasons: view.seasons,
+    circuitLeagues: view.circuitLeagues
   });
-
-  const circuitCards = view.circuitLeagues.map((c) => ({
-    id: c.id,
-    name: c.circuit_name,
-    statusLabel: circuitLeagueStatusLabel(c.status),
-    meta: circuitLeagueMemberCountLabel(c.member_count)
-  }));
-  const startable = view.isCommissioner
-    ? startableCircuits(view.circuits, view.circuitLeagues).map((c) => ({
-        id: c.id,
-        name: c.name
-      }))
-    : [];
 
   return (
     <Box className="baseline-page">
@@ -210,12 +173,7 @@ export function LeagueDetailScreen(props: {
               leagueId={leagueId}
               leagueName={league.name}
               canCreateSeason={view.isCommissioner}
-              seasons={seasonCards}
-              circuits={circuitCards}
-              startableCircuits={startable}
-              startingCircuit={startingCircuit}
-              circuitStatus={circuitStatus}
-              onStartCircuit={onStartCircuit}
+              seasons={seasonList}
             />
 
             <Stack gap="md">

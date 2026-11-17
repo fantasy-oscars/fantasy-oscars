@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Button, Group, Modal, Text } from "@ui";
+import { Button, Group, Modal, Text, getDefaultZIndex } from "@ui";
+
+// A confirm can be asked from inside another modal (discarding a settings
+// modal's changes), so it stacks above any open modal.
+const CONFIRM_Z_INDEX = getDefaultZIndex("modal") + 1;
 
 export type ConfirmRequest = {
   title: string;
@@ -71,6 +75,7 @@ export function ConfirmProvider(props: { children: React.ReactNode }) {
         title={pending?.req.title ?? "Confirm"}
         centered
         withCloseButton
+        zIndex={CONFIRM_Z_INDEX}
       >
         <Text>{pending?.req.message ?? ""}</Text>
         <Group justify="flex-end" mt="md">

@@ -14,6 +14,10 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LazyRoute } from "./LazyRoute";
+import {
+  LEGACY_FULL_SEASON_ROUTE,
+  LegacyFullSeasonRedirect
+} from "./pages/LegacyFullSeasonRedirect";
 import { createQueryClient } from "@/orchestration/query/client";
 import { registerWriteInvalidation } from "@/orchestration/query/invalidate";
 
@@ -269,7 +273,7 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/leagues/:leagueId/:leagueSlug/circuits/:circuitLeagueId"
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId"
           element={
             <RequireAuth>
               <LazyRoute>
@@ -279,7 +283,7 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/leagues/:leagueId/:leagueSlug/circuits/:circuitLeagueId/roster"
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/roster"
           element={
             <RequireAuth>
               <LazyRoute>
@@ -289,7 +293,7 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/leagues/:leagueId/:leagueSlug/circuits/:circuitLeagueId/transactions"
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/transactions"
           element={
             <RequireAuth>
               <LazyRoute>
@@ -298,6 +302,7 @@ function RoutesConfig() {
             </RequireAuth>
           }
         />
+        <Route path={LEGACY_FULL_SEASON_ROUTE} element={<LegacyFullSeasonRedirect />} />
         <Route
           path="/leagues/:leagueId/:leagueSlug/:ceremonyCode"
           element={

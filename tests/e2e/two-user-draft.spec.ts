@@ -60,6 +60,10 @@ test("two users run a league from invite to final standings", async ({ browser }
   await pageA.getByRole("button", { name: "Create league" }).click();
   await expect(pageA.getByRole("heading", { name: `League ${suffix}` })).toBeVisible();
   await pageA.getByRole("link", { name: "Create season" }).click();
+  // Another spec may have opened an awards season, so choose the kind.
+  // The choice lives in the URL, so the radio checks once the route updates.
+  await pageA.getByRole("radio", { name: "Single ceremony" }).click();
+  await expect(pageA.getByRole("radio", { name: "Single ceremony" })).toBeChecked();
   await pageA.getByRole("textbox", { name: "Ceremony" }).click();
   await pageA.getByRole("option", { name: CEREMONY_NAME }).click();
   // Untimed draft.

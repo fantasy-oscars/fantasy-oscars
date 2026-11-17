@@ -267,6 +267,80 @@ describe("circuit leagues", () => {
       expect((await create(owner, {})).status).toBe(400);
     });
 
+    it("applies initial settings, events and categories in the same request", async () => {
+      const res = await create(owner, {
+        circuit_id: circuitId,
+        settings: {
+          roster_size: 10,
+          nomination_points: 0,
+          win_bonus_points: 5,
+          pick_timer_seconds: null,
+          auto_draft_enabled: false
+        },
+        events: [{ circuit_event_id: baftaEvent, weight: 1.5 }],
+        categories: [{ circuit_category_id: actor, weight: 2, max_owned: 3 }]
+      });
+      expect(res.status).toBe(201);
+      const detail = res.body as Detail;
+      expect(detail.circuit_league).toMatchObject({
+        status: "SETUP",
+        roster_size: 10,
+        pick_timer_seconds: null,
+        auto_draft_enabled: false,
+        nomination_points: 0,
+        win_bonus_points: 5
+      });
+      expect(detail.events).toEqual([
+        expect.objectContaining({ id: guildEvent, enabled: false }),
+        expect.objectContaining({ id: baftaEvent, enabled: true, weight: 1.5 })
+      ]);
+      expect(detail.categories).toEqual([
+        expect.objectContaining({ id: picture, weight: 1, max_owned: null }),
+        expect.objectContaining({ id: actor, weight: 2, max_owned: 3 })
+      ]);
+      expect(detail.members.map((m) => m.user_id)).toEqual([owner.id]);
+    });
+
+    it("creates nothing when an initial value is invalid or belongs to another Circuit", async () => {
+      const other = await insertCircuit();
+      const otherEvent = await insertEvent(other, "elsewhere", 0, false);
+      const badEvent = await create(owner, {
+        circuit_id: circuitId,
+        events: [{ circuit_event_id: otherEvent, weight: 1 }]
+      });
+      expect(badEvent.status).toBe(400);
+      const badRoster = await create(owner, {
+        circuit_id: circuitId,
+        settings: { roster_size: 0 }
+      });
+      expect(badRoster.status).toBe(400);
+
+      const { rows } = await db.pool.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count FROM circuit_league`
+      );
+      expect(rows[0]).toEqual({ count: 0 });
+    });
+
+    it("starts nothing in any league when an admin activates a Circuit", async () => {
+      const admin = await insertUser(db.pool, { username: "admin" });
+      await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [
+        admin.id
+      ]);
+      const draft = await insertCircuit("DRAFT");
+      const activated = await api
+        .post(`/admin/circuits/${draft}/activate`)
+        .set(auth(admin));
+      expect(activated.status).toBe(200);
+
+      const { rows } = await db.pool.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count FROM circuit_league`
+      );
+      expect(rows[0]).toEqual({ count: 0 });
+      const listed = await api.get(`/leagues/${leagueId}/circuits`).set(auth(owner));
+      expect(listed.status).toBe(200);
+      expect(listed.body.circuit_leagues).toEqual([]);
+    });
+
     it("lists the league's competitions for its members only", async () => {
       const id = await createId();
       const res = await api.get(`/leagues/${leagueId}/circuits`).set(auth(member));

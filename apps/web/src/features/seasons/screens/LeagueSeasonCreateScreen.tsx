@@ -1,27 +1,29 @@
 import { Link } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Group,
-  NumberInput,
-  Select,
-  Skeleton,
-  Stack,
-  Switch,
-  Text,
-  Title
-} from "@ui";
+import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
-import { FormStatus } from "@/shared/forms";
+import { selectedSeasonKind, type SeasonKind } from "@/decisions/seasonKinds";
 import { PageError } from "@/shared/page-state";
 import { StandardCard } from "@/primitives";
 import { leaguePath } from "@/lib/routes";
+import { SeasonKindChoice } from "@/features/seasons/ui/create/SeasonKindChoice";
+import { CeremonySeasonForm } from "@/features/seasons/ui/create/CeremonySeasonForm";
+import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSettings";
+import { FullSeasonCreateSection } from "./FullSeasonCreateSection";
 import "@/primitives/baseline.css";
 
 export function LeagueSeasonCreateScreen(props: {
   leagueId: number;
   view: LeagueSeasonCreateView;
+  /** The kind asked for in the URL; ignored when it is unavailable. */
+  requestedKind: SeasonKind | null;
   actions: {
+    chooseKind: (kind: SeasonKind) => void;
+    retryFull: () => void;
+    setFullCircuitId: (v: number | null) => void;
+    resetFull: () => void;
+    submitFull: () => void;
+    retryFullOptions: () => void;
+    applyFullArea: (area: SettingsArea, next: FullSeasonSettings) => { ok: true };
     setCeremonyId: (v: number | null) => void;
     setScoringStrategy: (v: "fixed" | "negative" | "category_weighted") => void;
     setRemainderStrategy: (v: "UNDRAFTED" | "FULL_POOL") => void;
@@ -31,7 +33,7 @@ export function LeagueSeasonCreateScreen(props: {
     submit: () => void;
   };
 }) {
-  const { leagueId, view, actions } = props;
+  const { leagueId, view, requestedKind, actions } = props;
 
   if (view.state === "loading") {
     return (
@@ -52,6 +54,13 @@ export function LeagueSeasonCreateScreen(props: {
               </Box>
               <Skeleton height="36px" width="120px" />
             </Group>
+            <StandardCard>
+              <Stack gap="sm">
+                <Skeleton height="var(--fo-font-size-lg)" width="20%" />
+                <Skeleton height="44px" width="100%" />
+                <Skeleton height="44px" width="100%" />
+              </Stack>
+            </StandardCard>
             <StandardCard>
               <Stack gap="sm">
                 <Skeleton height="56px" width="100%" />
@@ -110,6 +119,7 @@ export function LeagueSeasonCreateScreen(props: {
   }
 
   const leagueName = view.league?.name ?? "this league";
+  const kind = selectedSeasonKind({ requested: requestedKind, availability: view.kinds });
 
   return (
     <Box className="baseline-page">
@@ -132,106 +142,26 @@ export function LeagueSeasonCreateScreen(props: {
             <Button
               component={Link}
               to={leaguePath({ leagueId, leagueName: view.league?.name })}
-              variant="outline"
+              variant="secondary"
             >
               Back to league
             </Button>
           </Group>
 
-          <StandardCard>
-            <Stack gap="sm">
-              <Select
-                label="Ceremony"
-                error={view.fieldErrors.ceremony_id}
-                placeholder="Select ceremony…"
-                value={view.ceremonyId ? String(view.ceremonyId) : null}
-                onChange={(v) => actions.setCeremonyId(v ? Number(v) : null)}
-                disabled={view.working}
-                data={view.ceremonies.map((c) => ({
-                  value: String(c.id),
-                  label: c.name
-                }))}
-              />
-              {view.ceremonies.length === 0 && (
-                <Text className="baseline-textMeta">
-                  No ceremonies are open for leagues yet.
-                </Text>
-              )}
+          <SeasonKindChoice
+            kinds={view.kinds}
+            selected={kind}
+            onChoose={actions.chooseKind}
+            checkingFull={view.checkingFull}
+            onRetryFull={actions.retryFull}
+            disabled={view.working || view.fullWorking}
+          />
 
-              <Select
-                label="Scoring strategy"
-                error={view.fieldErrors.scoring_strategy_name}
-                value={view.scoringStrategy}
-                onChange={(v) =>
-                  actions.setScoringStrategy(
-                    (v ?? "fixed") as "fixed" | "negative" | "category_weighted"
-                  )
-                }
-                disabled={view.working}
-                data={[
-                  { value: "fixed", label: "Standard" },
-                  { value: "negative", label: "Negative" },
-                  { value: "category_weighted", label: "Category-weighted" }
-                ]}
-              />
-
-              <Select
-                label="Leftover picks"
-                error={view.fieldErrors.remainder_strategy}
-                value={view.remainderStrategy}
-                onChange={(v) =>
-                  actions.setRemainderStrategy(
-                    (v ?? "UNDRAFTED") as "UNDRAFTED" | "FULL_POOL"
-                  )
-                }
-                disabled={view.working}
-                data={[
-                  { value: "UNDRAFTED", label: "Leave extras undrafted" },
-                  { value: "FULL_POOL", label: "Use full pool (extras drafted)" }
-                ]}
-              />
-
-              <Group justify="space-between" align="end" wrap="wrap">
-                <Switch
-                  label="Pick timer"
-                  checked={view.timerEnabled}
-                  onChange={(e) => actions.setTimerEnabled(e.currentTarget.checked)}
-                  disabled={view.working}
-                />
-                <NumberInput
-                  label="Seconds per pick"
-                  error={view.fieldErrors.pick_timer_seconds}
-                  value={view.pickTimerSeconds}
-                  onChange={(v) => actions.setPickTimerSeconds(Number(v) || 0)}
-                  min={0}
-                  step={5}
-                  clampBehavior="strict"
-                  disabled={view.working || !view.timerEnabled}
-                />
-              </Group>
-
-              <Group wrap="wrap" justify="flex-start">
-                <Button
-                  type="button"
-                  onClick={actions.submit}
-                  disabled={!view.canSubmit}
-                  variant="filled"
-                >
-                  {view.working ? "Creating..." : "Create season"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={actions.reset}
-                  disabled={view.working}
-                >
-                  Reset
-                </Button>
-              </Group>
-
-              <FormStatus loading={view.working} result={view.status} />
-            </Stack>
-          </StandardCard>
+          {kind === "ceremony" ? (
+            <CeremonySeasonForm view={view} actions={actions} />
+          ) : kind === "full" ? (
+            <FullSeasonCreateSection view={view} actions={actions} />
+          ) : null}
         </Stack>
       </Box>
     </Box>

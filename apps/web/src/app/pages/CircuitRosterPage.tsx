@@ -14,7 +14,7 @@ function positiveInt(raw: string | null | undefined): number | null {
 }
 
 export function CircuitRosterPage() {
-  const { circuitLeagueId } = useParams();
+  const { fullSeasonId: circuitLeagueId } = useParams();
   const [search, setSearch] = useSearchParams();
   const { user } = useAuthContext();
   const viewerUserId = positiveInt(user?.sub);

@@ -1,4 +1,5 @@
 import type { BannerRow } from "@/orchestration/chrome";
+import type { SeasonListItem } from "@/decisions/seasonList";
 import bannerError from "./content/banner-error.md?mdast";
 import bannerInfo from "./content/banner-info.md?mdast";
 import bannerSuccess from "./content/banner-success.md?mdast";
@@ -54,21 +55,25 @@ export const STATUS_LABELS = [
   { label: "Pre-draft", note: "neutral" }
 ] as const;
 
-export const SEASONS = [
+export const SEASONS: SeasonListItem[] = [
   {
+    kind: "ceremony",
     id: 1,
+    title: "Golden Reel Awards 2035",
+    statusLabel: "Drafting",
+    createdAt: "2035-01-10T00:00:00Z",
     ceremonyId: 1,
     ceremonyCode: "golden-reel-2035",
-    ceremonyLabel: "Golden Reel Awards 2035",
-    statusLabel: "Drafting",
     isNavigable: true
   },
   {
+    kind: "ceremony",
     id: 2,
+    title: "Golden Reel Awards 2034",
+    statusLabel: "Complete",
+    createdAt: "2034-01-10T00:00:00Z",
     ceremonyId: 2,
     ceremonyCode: "golden-reel-2034",
-    ceremonyLabel: "Golden Reel Awards 2034",
-    statusLabel: "Complete",
     isNavigable: false
   }
 ];

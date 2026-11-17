@@ -170,27 +170,112 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    id: "circuit-league-setup",
+    id: "league-detail-member",
+    persona: "casey",
+    path: (s) => `/leagues/${s.leagues.main}`,
+    ready: { text: "Friday Night Film Club" },
+    fullPage: true
+  },
+  {
+    // Both kinds open, neither chosen: the kind card alone.
+    id: "season-create-choice",
+    persona: "avery",
+    path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new`,
+    ready: { text: "Kind of season" },
+    fullPage: true
+  },
+  {
+    // The main league already plays every open awards season.
+    id: "season-create-full-unavailable",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.main}/friday-night-film-club/seasons/new`,
+    ready: { text: "This league already plays every open awards season." },
+    fullPage: true
+  },
+  {
+    id: "season-create-ceremony",
     persona: "avery",
     path: (s) =>
-      `/leagues/${s.leagues.main}/friday-night-film-club/circuits/${s.circuitLeagues.main}`,
+      `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=ceremony`,
+    ready: { text: "Seconds per pick" },
+    fullPage: true
+  },
+  {
+    // One open awards season: a static row, then the four settings summaries.
+    id: "season-create-full",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
+    ready: { text: "Snake draft, 90 seconds per pick." },
+    fullPage: true
+  },
+  {
+    // Two open awards seasons: picked by name, the newest first.
+    id: "season-create-full-select",
+    persona: "avery",
+    path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=full`,
+    ready: { text: "1 point per nomination, 2 per win." },
+    fullPage: true
+  },
+  {
+    id: "season-create-full-scoring-open",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
+    ready: { text: "1 point per nomination, 2 per win." },
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Edit scoring" }).click();
+      await expect(page.getByRole("dialog", { name: "Scoring" })).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
+    // A grouped event's ceremonies as its switch description, at phone width.
+    id: "season-create-full-events-open",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
+    ready: { text: "All 2 events count equally." },
+    viewports: ["mobile"],
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Edit events" }).click();
+      await expect(page.getByRole("dialog", { name: "Events" })).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
+    id: "full-season-setup",
+    persona: "avery",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}`,
     ready: { text: "Lock season" },
     fullPage: true
   },
   {
-    id: "circuit-league-member",
+    id: "full-season-member",
     persona: "casey",
     path: (s) =>
-      `/leagues/${s.leagues.main}/friday-night-film-club/circuits/${s.circuitLeagues.main}`,
+      `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}`,
     ready: { text: "Leave season" },
     fullPage: true
+  },
+  {
+    // A player's read-only modal: saved values as rows and a single Close.
+    id: "full-season-member-view-open",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}`,
+    ready: { text: "Leave season" },
+    viewports: ["desktop"],
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "View roster" }).click();
+      await expect(page.getByRole("dialog", { name: "Roster" })).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
   },
   {
     // A full roster (3 of 3) with free agency open: drops, the drop select and the picker.
     id: "circuit-roster-own",
     persona: "casey",
     path: (s) =>
-      `/leagues/${s.leagues.second}/weekend-cinephiles/circuits/${s.circuitLeagues.inSeason}/roster`,
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/roster`,
     ready: { text: "Add a free agent" },
     fullPage: true
   },
@@ -198,7 +283,7 @@ export const SCREENS: ScreenDef[] = [
     id: "circuit-roster-window",
     persona: "blake",
     path: (s) =>
-      `/leagues/${s.leagues.third}/late-show-society/circuits/${s.circuitLeagues.inWindow}/roster`,
+      `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/roster`,
     ready: { text: "Free agency is closed while waiver claims are open" },
     fullPage: true
   },
@@ -206,7 +291,7 @@ export const SCREENS: ScreenDef[] = [
     id: "circuit-transactions",
     persona: "casey",
     path: (s) =>
-      `/leagues/${s.leagues.second}/weekend-cinephiles/circuits/${s.circuitLeagues.inSeason}/transactions`,
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/transactions`,
     ready: { text: "Free agent" },
     fullPage: true
   },
