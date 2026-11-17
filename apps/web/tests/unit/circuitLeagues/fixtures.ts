@@ -1,4 +1,9 @@
-import type { CircuitLeagueDetail, CircuitLeagueStatus } from "@/lib/types";
+import type {
+  CircuitLeagueDetail,
+  CircuitLeagueStatus,
+  CircuitRoster,
+  CircuitSelectionSummary
+} from "@/lib/types";
 
 /** A Circuit league in setup with the defaults: two events (one grouped), two categories. */
 export function circuitLeagueDetail(
@@ -86,3 +91,73 @@ export function circuitLeagueDetail(
     }
   };
 }
+
+/** A film pick (category 20) or, with a person, an acting pick (category 21). */
+export function circuitSelection(
+  id: number,
+  title: string,
+  person: string | null = null
+): CircuitSelectionSummary {
+  return {
+    id,
+    circuit_category_id: person ? 21 : 20,
+    film_tmdb_id: 1000 + id,
+    person_tmdb_id: person ? 2000 + id : null,
+    film: { id: 100 + id, title, release_year: 2026, poster_url: null },
+    person: person ? { id: 200 + id, name: person, profile_url: null } : null
+  };
+}
+
+/** avery's roster in the in-season league: two picks out of `roster_size`. */
+export function circuitRoster(
+  overrides: {
+    rosterSize?: number;
+    maxActing?: number | null;
+    freeAgency?: CircuitRoster["free_agency"];
+    entries?: CircuitSelectionSummary[];
+  } = {}
+): CircuitRoster {
+  const entries = overrides.entries ?? [
+    circuitSelection(1, "Night Train"),
+    circuitSelection(2, "Paper Moon", "Ada Lane")
+  ];
+  const owned = (categoryId: number) =>
+    entries.filter((e) => e.circuit_category_id === categoryId).length;
+  return {
+    member: { user_id: 5, username: "avery" },
+    status: "IN_SEASON",
+    roster_size: overrides.rosterSize ?? 16,
+    free_agency: overrides.freeAgency ?? { open: true, window: null },
+    categories: [
+      {
+        id: 20,
+        code: "picture",
+        name: "Best Picture",
+        kind: "FILM",
+        max_owned: null,
+        owned: owned(20)
+      },
+      {
+        id: 21,
+        code: "actress",
+        name: "Best Actress",
+        kind: "ACTING",
+        max_owned: overrides.maxActing ?? null,
+        owned: owned(21)
+      }
+    ],
+    entries: entries.map((selection, i) => ({
+      ownership_id: 50 + i,
+      acquired_at: "2026-12-01T08:00:00Z",
+      acquired_transaction_id: 70 + i,
+      selection
+    }))
+  };
+}
+
+export const OPEN_WINDOW = {
+  starts_on: "2027-01-08",
+  ends_on: "2027-01-10",
+  resolves_on: "2027-01-11",
+  scoring_days: ["2027-01-08"]
+};

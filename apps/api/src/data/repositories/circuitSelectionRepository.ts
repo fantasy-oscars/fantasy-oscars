@@ -79,6 +79,24 @@ export async function findCircuitSelection(
   return rows[0] ?? null;
 }
 
+/** Selections by id, in no particular order; unknown ids are skipped. */
+export async function listCircuitSelectionsByIds(
+  client: DbClient,
+  ids: readonly number[]
+): Promise<CircuitSelectionRow[]> {
+  if (ids.length === 0) return [];
+  const { rows } = await query<CircuitSelectionRow>(
+    client,
+    `SELECT ${SELECTION_COLUMNS}
+     FROM circuit_selection s
+     JOIN film f ON f.id = s.film_id
+     LEFT JOIN person p ON p.id = s.person_id
+     WHERE s.id = ANY($1::bigint[])`,
+    [ids]
+  );
+  return rows;
+}
+
 /**
  * Inserts a selection unless its identity exists, then returns the stored row
  * either way, so concurrent upserts of one identity share one row. `inserted`

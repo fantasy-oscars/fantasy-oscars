@@ -7,6 +7,8 @@
  * Circuit for the windows it would have with every ceremony enabled.
  */
 
+import { instantOfDay } from "./circuit.js";
+
 export type WaiverWindow = {
   /** First covered day, `YYYY-MM-DD`: the scoring day that opens the window. */
   starts_on: string;
@@ -72,4 +74,39 @@ export function waiverWindows(scoringDays: Iterable<string>): WaiverWindow[] {
     resolves_on: fromDayNumber(w.end + 1),
     scoring_days: w.days.map(fromDayNumber)
   }));
+}
+
+/**
+ * A league's windows: the scoring days of the occasions in its enabled
+ * events. Undated occasions open nothing until a date is entered, and the
+ * league's own final dated occasion opens no window.
+ */
+export function leagueWaiverWindows(
+  occasions: ReadonlyArray<{ circuit_event_id: number; date: string | null }>,
+  enabledEventIds: Iterable<number>
+): WaiverWindow[] {
+  const enabled = new Set(enabledEventIds);
+  return waiverWindows(
+    occasions.flatMap((o) =>
+      o.date !== null && enabled.has(o.circuit_event_id) ? [o.date] : []
+    )
+  );
+}
+
+/**
+ * The window open at `at`, or null. A window is open from 00:00
+ * America/Los_Angeles on its first day until 00:00 on its resolution day.
+ */
+export function waiverWindowAt(
+  windows: readonly WaiverWindow[],
+  at: Date
+): WaiverWindow | null {
+  const t = at.getTime();
+  return (
+    windows.find(
+      (w) =>
+        instantOfDay(w.starts_on).getTime() <= t &&
+        t < instantOfDay(w.resolves_on).getTime()
+    ) ?? null
+  );
 }

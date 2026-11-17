@@ -186,6 +186,31 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // A full roster (3 of 3) with free agency open: drops, the drop select and the picker.
+    id: "circuit-roster-own",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/circuits/${s.circuitLeagues.inSeason}/roster`,
+    ready: { text: "Add a free agent" },
+    fullPage: true
+  },
+  {
+    id: "circuit-roster-window",
+    persona: "blake",
+    path: (s) =>
+      `/leagues/${s.leagues.third}/late-show-society/circuits/${s.circuitLeagues.inWindow}/roster`,
+    ready: { text: "Free agency is closed while waiver claims are open" },
+    fullPage: true
+  },
+  {
+    id: "circuit-transactions",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/circuits/${s.circuitLeagues.inSeason}/transactions`,
+    ready: { text: "Free agent" },
+    fullPage: true
+  },
+  {
     // A member of the Circuit competition: Home lists it beside the Seasons.
     id: "home-with-circuit",
     persona: "casey",

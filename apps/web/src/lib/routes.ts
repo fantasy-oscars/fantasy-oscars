@@ -52,3 +52,23 @@ export function circuitLeaguePath(input: {
 }): string {
   return `${leaguePath(input)}/circuits/${input.circuitLeagueId}`;
 }
+
+/** A member's roster in a league's season; no member shows the viewer's own. */
+export function circuitRosterPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+  memberUserId?: number | null;
+}): string {
+  const base = `${circuitLeaguePath(input)}/roster`;
+  return input.memberUserId ? `${base}?member=${input.memberUserId}` : base;
+}
+
+/** The transaction log of a league's season. */
+export function circuitTransactionsPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${circuitLeaguePath(input)}/transactions`;
+}
