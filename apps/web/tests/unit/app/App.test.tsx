@@ -369,15 +369,17 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    // Both pages load lazily; on a contended runner the first load can take
+    // longer than the default second (as at the inbox test below).
     renderApp();
-    await screen.findByRole("heading", { name: /Oscars 2026/i });
+    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
 
     cleanup();
     window.history.pushState({}, "", "/invites/token123");
     renderApp();
-    await screen.findByRole("heading", { name: /Claim invitation/i });
+    await screen.findByRole("heading", { name: /Claim invitation/i }, { timeout: 3000 });
     await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
-    await screen.findByRole("heading", { name: /Oscars 2026/i });
+    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) =>
