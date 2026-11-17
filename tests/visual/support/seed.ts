@@ -39,10 +39,14 @@ export const FIXED_NOW = "2035-02-10T18:00:00.000Z";
 export type VisualSeed = {
   tokens: Record<PersonaKey, string>;
   ceremonies: { completed: number; upcoming: number; draft: number };
-  leagues: { main: number; second: number };
+  leagues: { main: number; second: number; third: number };
   seasons: { completed: number; live: number; pending: number };
-  /** The main league's competition in the seeded Circuit (a season to players). */
-  circuitLeagues: { main: number };
+  /**
+   * Competitions in the seeded Circuit (seasons to players): the main league's
+   * in setup; the second league's in season with free agency open; the third
+   * league's in season inside a waiver window.
+   */
+  circuitLeagues: { main: number; inSeason: number; inWindow: number };
   drafts: { completed: number; live: number };
   /** An unused id for the 404 and missing-entity screens. */
   missingId: number;
@@ -423,6 +427,210 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     );
   }
 
+  // Two in-season competitions with rosters and a transaction log. The
+  // second league enables only the Golden Reel event, whose one dated occasion
+  // is its final one, so it never has a waiver window and free agency is open.
+  // A third league (blake's, so avery's Home is unchanged) enables both events.
+  // Waiver windows are judged by the server's real clock, not FIXED_NOW, so
+  // the Guild Awards nomination day is today in Pacific time: that league is
+  // always inside a window and free agency is refused there.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles"
+  }).format(new Date());
+  await pool.query(`UPDATE ceremony SET nominations_on = $1 WHERE id = 1`, [today]);
+  // Roster history is dated three days before the real clock for the same
+  // reason: the server closes an interval at its own now(), which must not
+  // fall before the interval opened.
+  const historyStart = Date.now() - 3 * 24 * 60 * 60_000;
+  const historyAt = (n: number) => new Date(historyStart + n * 60_000).toISOString();
+  const third = await one<{ id: number }>(
+    pool,
+    `INSERT INTO league (code, name, max_members, roster_size, is_public, created_by_user_id, created_at)
+     VALUES ('late-show-society', 'Late Show Society', 12, 6, FALSE, $1, $2) RETURNING id::int`,
+    [userIds.blake, minutes(312)]
+  );
+  for (const [i, key] of (["blake", "drew"] as PersonaKey[]).entries()) {
+    await pool.query(
+      `INSERT INTO league_member (league_id, user_id, role, joined_at)
+       VALUES ($1, $2, $3, $4)`,
+      [third.id, userIds[key], key === "blake" ? "OWNER" : "MEMBER", minutes(360 + i)]
+    );
+  }
+
+  // Contenders: seeded films and people get TMDB ids, so a pick of one of them
+  // resolves to its existing selection without calling TMDB.
+  const films = (
+    await pool.query<{ id: number }>(`SELECT id::int FROM film ORDER BY id LIMIT 7`)
+  ).rows;
+  const people = (
+    await pool.query<{ id: number }>(`SELECT id::int FROM person ORDER BY id LIMIT 2`)
+  ).rows;
+  for (const [i, f] of films.entries()) {
+    await pool.query(`UPDATE film SET tmdb_id = $1 WHERE id = $2`, [910001 + i, f.id]);
+  }
+  for (const [i, p] of people.entries()) {
+    await pool.query(`UPDATE person SET tmdb_id = $1 WHERE id = $2`, [920001 + i, p.id]);
+  }
+  const categoryId = async (code: string) =>
+    (
+      await one<{ id: number }>(
+        pool,
+        `SELECT id::int FROM circuit_category WHERE circuit_id = $1 AND code = $2`,
+        [circuit.id, code]
+      )
+    ).id;
+  const addSelection = async (code: string, film: number, person: number | null) =>
+    (
+      await one<{ id: number }>(
+        pool,
+        `INSERT INTO circuit_selection
+           (circuit_category_id, film_tmdb_id, person_tmdb_id, film_id, person_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id::int`,
+        [
+          await categoryId(code),
+          910001 + film,
+          person === null ? null : 920001 + person,
+          films[film]!.id,
+          person === null ? null : people[person]!.id,
+          minutes(500)
+        ]
+      )
+    ).id;
+  const sel = {
+    picture: [
+      await addSelection("best-picture", 0, null),
+      await addSelection("best-picture", 1, null),
+      await addSelection("best-picture", 2, null),
+      await addSelection("best-picture", 3, null),
+      await addSelection("best-picture", 4, null)
+    ],
+    director: [
+      await addSelection("best-director", 5, null),
+      await addSelection("best-director", 6, null)
+    ],
+    actress: [
+      await addSelection("best-actress", 0, 0),
+      await addSelection("best-actress", 1, 1)
+    ]
+  };
+
+  // History is written as the ownership service would write it: one
+  // transaction per change, each boundary pointing at its transaction.
+  const inSeasonLeague = async (input: {
+    leagueId: number;
+    rosterSize: number;
+    eventCodes: string[];
+    members: PersonaKey[];
+    at: number;
+  }) => {
+    const row = await one<{ id: number }>(
+      pool,
+      `INSERT INTO circuit_league
+         (circuit_id, league_id, created_by_user_id, created_at, status, initialized_at, roster_size)
+       VALUES ($1, $2, $3, $4, 'IN_SEASON', $4, $5) RETURNING id::int`,
+      [
+        circuit.id,
+        input.leagueId,
+        userIds[input.members[0]!],
+        historyAt(input.at),
+        input.rosterSize
+      ]
+    );
+    await pool.query(
+      `INSERT INTO circuit_league_event (circuit_league_id, circuit_id, circuit_event_id)
+       SELECT $1, circuit_id, id FROM circuit_event WHERE circuit_id = $2 AND code = ANY($3)`,
+      [row.id, circuit.id, input.eventCodes]
+    );
+    await pool.query(
+      `INSERT INTO circuit_league_category (circuit_league_id, circuit_id, circuit_category_id, max_owned)
+       SELECT $1, circuit_id, id, CASE WHEN kind = 'ACTING' THEN 1 END
+       FROM circuit_category WHERE circuit_id = $2`,
+      [row.id, circuit.id]
+    );
+    const memberIds = {} as Record<PersonaKey, number>;
+    for (const [i, key] of input.members.entries()) {
+      memberIds[key] = (
+        await one<{ id: number }>(
+          pool,
+          `INSERT INTO circuit_league_member (circuit_league_id, user_id, joined_at)
+           VALUES ($1, $2, $3) RETURNING id::int`,
+          [row.id, userIds[key], historyAt(input.at + 1 + i)]
+        )
+      ).id;
+    }
+    let step = 0;
+    const record = async (
+      key: PersonaKey,
+      kind: "DRAFT" | "FREE_AGENT" | "DROP",
+      add: number | null,
+      drop: number | null
+    ) => {
+      step += 1;
+      const at = historyAt(input.at + 10 + step);
+      const tx = await one<{ id: number }>(
+        pool,
+        `INSERT INTO circuit_transaction
+           (circuit_league_id, member_id, kind, add_selection_id, drop_selection_id,
+            draft_pick_id, occurred_at, actor_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id::int`,
+        [
+          row.id,
+          memberIds[key],
+          kind,
+          add,
+          drop,
+          kind === "DRAFT" ? step : null,
+          at,
+          userIds[key]
+        ]
+      );
+      if (drop !== null) {
+        await pool.query(
+          `UPDATE circuit_ownership SET released_at = $1, released_transaction_id = $2
+           WHERE circuit_league_id = $3 AND selection_id = $4 AND released_at IS NULL`,
+          [at, tx.id, row.id, drop]
+        );
+      }
+      if (add !== null) {
+        await pool.query(
+          `INSERT INTO circuit_ownership
+             (circuit_league_id, member_id, selection_id, acquired_at, acquired_transaction_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [row.id, memberIds[key], add, at, tx.id]
+        );
+      }
+    };
+    return { id: row.id, record };
+  };
+
+  // avery stays out, so the Home baseline lists only Seasons. casey fills the
+  // roster (3 of 3); jo drops a pick and adds a free agent.
+  const openLeague = await inSeasonLeague({
+    leagueId: second.id,
+    rosterSize: 3,
+    eventCodes: ["golden-reel"],
+    members: ["casey", "jo"],
+    at: 520
+  });
+  await openLeague.record("casey", "DRAFT", sel.picture[0]!, null);
+  await openLeague.record("jo", "DRAFT", sel.picture[1]!, null);
+  await openLeague.record("jo", "DRAFT", sel.picture[2]!, null);
+  await openLeague.record("casey", "DRAFT", sel.director[0]!, null);
+  await openLeague.record("jo", "DRAFT", sel.actress[1]!, null);
+  await openLeague.record("casey", "DRAFT", sel.actress[0]!, null);
+  await openLeague.record("jo", "DROP", null, sel.picture[2]!);
+  await openLeague.record("jo", "FREE_AGENT", sel.picture[3]!, null);
+
+  const windowLeague = await inSeasonLeague({
+    leagueId: third.id,
+    rosterSize: 3,
+    eventCodes: ["golden-reel", "guild-awards"],
+    members: ["blake", "drew"],
+    at: 540
+  });
+  await windowLeague.record("blake", "DRAFT", sel.picture[0]!, null);
+  await windowLeague.record("drew", "DRAFT", sel.picture[1]!, null);
+
   // A saved draft plan for the commissioner, in the live ceremony.
   const plan = await one<{ id: number }>(
     pool,
@@ -450,13 +658,17 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   return {
     tokens,
     ceremonies: { completed: 1, upcoming: 2, draft: 3 },
-    leagues: { main: main.id, second: second.id },
+    leagues: { main: main.id, second: second.id, third: third.id },
     seasons: {
       completed: completed.seasonId,
       live: live.seasonId,
       pending: pending.seasonId
     },
-    circuitLeagues: { main: circuitLeague.id },
+    circuitLeagues: {
+      main: circuitLeague.id,
+      inSeason: openLeague.id,
+      inWindow: windowLeague.id
+    },
     drafts: { completed: completed.draftId, live: live.draftId },
     missingId: 99999
   };

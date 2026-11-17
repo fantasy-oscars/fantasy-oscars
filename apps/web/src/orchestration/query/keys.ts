@@ -36,7 +36,14 @@ export const queryKeys = {
   circuitLeagues: {
     all: ["circuitLeagues"] as const,
     detail: (circuitLeagueId: number) =>
-      ["circuitLeagues", "detail", circuitLeagueId] as const
+      ["circuitLeagues", "detail", circuitLeagueId] as const,
+    /** A member's roster; `null` is the viewer's own. */
+    roster: (circuitLeagueId: number, userId: number | null) =>
+      ["circuitLeagues", "roster", circuitLeagueId, userId] as const,
+    rosters: (circuitLeagueId: number) =>
+      ["circuitLeagues", "roster", circuitLeagueId] as const,
+    transactions: (circuitLeagueId: number) =>
+      ["circuitLeagues", "transactions", circuitLeagueId] as const
   },
   invites: {
     all: ["invites"] as const,

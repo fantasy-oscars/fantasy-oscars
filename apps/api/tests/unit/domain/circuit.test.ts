@@ -3,6 +3,7 @@ import {
   circuitCategoryKindForUnitKind,
   codeFromLabel,
   findCeremoniesMissingDates,
+  instantOfDay,
   isFullOrdering,
   listScoringOccasions,
   moveToIndex,
@@ -228,5 +229,45 @@ describe("listScoringOccasions", () => {
       circuit_event_id: 101,
       event_code: "event-1"
     });
+  });
+});
+
+describe("instantOfDay", () => {
+  const iso = (day: string) => instantOfDay(day).toISOString();
+
+  it("is 00:00 Pacific: UTC-8 in winter and UTC-7 in summer", () => {
+    expect(iso("2027-01-21")).toBe("2027-01-21T08:00:00.000Z");
+    expect(iso("2026-07-04")).toBe("2026-07-04T07:00:00.000Z");
+  });
+
+  it("follows the spring change (2027-03-14, 02:00 PST to 03:00 PDT)", () => {
+    expect(iso("2027-03-13")).toBe("2027-03-13T08:00:00.000Z");
+    // Midnight on the change day is still standard time.
+    expect(iso("2027-03-14")).toBe("2027-03-14T08:00:00.000Z");
+    expect(iso("2027-03-15")).toBe("2027-03-15T07:00:00.000Z");
+    // The change day is 23 hours long.
+    expect(
+      instantOfDay("2027-03-15").getTime() - instantOfDay("2027-03-14").getTime()
+    ).toBe(23 * 3600 * 1000);
+  });
+
+  it("follows the autumn change (2026-11-01, 02:00 PDT to 01:00 PST)", () => {
+    expect(iso("2026-10-31")).toBe("2026-10-31T07:00:00.000Z");
+    expect(iso("2026-11-01")).toBe("2026-11-01T07:00:00.000Z");
+    expect(iso("2026-11-02")).toBe("2026-11-02T08:00:00.000Z");
+    expect(
+      instantOfDay("2026-11-02").getTime() - instantOfDay("2026-11-01").getTime()
+    ).toBe(25 * 3600 * 1000);
+  });
+
+  it("round-trips with the Pacific results date", () => {
+    for (const day of ["2026-11-01", "2027-03-14", "2027-12-31", "2028-02-29"]) {
+      expect(resultsDateOf(instantOfDay(day))).toBe(day);
+      expect(resultsDateOf(new Date(instantOfDay(day).getTime() - 1))).not.toBe(day);
+    }
+  });
+
+  it("rejects a malformed day", () => {
+    expect(() => instantOfDay("2027-1-5")).toThrow();
   });
 });

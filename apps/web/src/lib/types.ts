@@ -303,3 +303,61 @@ export type CircuitLeagueDetail = {
   members: CircuitLeagueMember[];
   viewer: { is_league_member: boolean; is_member: boolean; can_manage: boolean };
 };
+
+/** A contender in a Circuit category, as the picker and rosters show it. */
+export type CircuitSelectionSummary = {
+  id: number;
+  circuit_category_id: number;
+  film_tmdb_id: number;
+  person_tmdb_id: number | null;
+  film: {
+    id: number;
+    title: string;
+    release_year: number | null;
+    poster_url: string | null;
+  };
+  person: { id: number; name: string; profile_url: string | null } | null;
+};
+
+/** A waiver window: free agency is closed from `starts_on` until `resolves_on`. */
+export type CircuitWaiverWindow = {
+  starts_on: string;
+  ends_on: string;
+  resolves_on: string;
+  scoring_days: string[];
+};
+
+/** `GET /circuit-leagues/:id/roster`, also returned by drops and free-agent adds. */
+export type CircuitRoster = {
+  member: { user_id: number; username: string };
+  status: CircuitLeagueStatus;
+  roster_size: number;
+  free_agency: { open: boolean; window: CircuitWaiverWindow | null };
+  categories: Array<{
+    id: number;
+    code: string;
+    name: string;
+    kind: string;
+    max_owned: number | null;
+    owned: number;
+  }>;
+  entries: Array<{
+    ownership_id: number;
+    acquired_at: string;
+    acquired_transaction_id: number;
+    selection: CircuitSelectionSummary;
+  }>;
+};
+
+export type CircuitTransactionKind =
+  "DRAFT" | "SUPPLEMENTAL" | "WAIVER" | "FREE_AGENT" | "DROP";
+
+/** A row of `GET /circuit-leagues/:id/transactions`, newest first. */
+export type CircuitTransaction = {
+  id: number;
+  kind: CircuitTransactionKind | string;
+  occurred_at: string;
+  member: { user_id: number; username: string };
+  add: CircuitSelectionSummary | null;
+  drop: CircuitSelectionSummary | null;
+};

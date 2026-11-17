@@ -102,6 +102,49 @@ export function resultsDateOf(startsAt: Date | string | null): string | null {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+const zoneClockFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: RESULTS_TIME_ZONE,
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit"
+});
+
+/** How far America/Los_Angeles wall time is ahead of UTC at `instant` (negative). */
+function zoneOffsetMs(instant: number): number {
+  const p = Object.fromEntries(
+    zoneClockFormat.formatToParts(new Date(instant)).map((x) => [x.type, x.value])
+  );
+  const wall = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour),
+    Number(p.minute),
+    Number(p.second)
+  );
+  return wall - Math.floor(instant / 1000) * 1000;
+}
+
+/**
+ * The instant a day stands for: 00:00 America/Los_Angeles on `day`
+ * (`YYYY-MM-DD`). Ownership at an occasion and waiver-window boundaries use
+ * it (owner question 9). Pacific clocks change at 02:00, so midnight always
+ * exists and is unambiguous; its UTC offset follows daylight saving time.
+ */
+export function instantOfDay(day: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) throw new Error(`Not a YYYY-MM-DD day: ${day}`);
+  const wall = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  // The offset at the first guess can be an hour off on a change day; the
+  // second pass uses the offset at the guessed instant itself.
+  const guess = wall - zoneOffsetMs(wall);
+  return new Date(wall - zoneOffsetMs(guess));
+}
+
 /** An associated ceremony with the dates that drive its scoring occasions. */
 export type CircuitCeremonyDates = {
   ceremony_id: number;

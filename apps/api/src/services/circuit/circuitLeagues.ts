@@ -88,7 +88,7 @@ function requireCommissioner(
 }
 
 /** The Circuit league and its league, for a viewer who may see them. */
-async function requireVisibleCircuitLeague(
+export async function requireVisibleCircuitLeague(
   client: DbClient,
   id: number,
   viewer: Viewer,

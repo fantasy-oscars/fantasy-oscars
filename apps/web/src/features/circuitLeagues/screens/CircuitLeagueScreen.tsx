@@ -3,9 +3,10 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { CircuitLeagueView } from "@/orchestration/circuitLeague";
 import type { CircuitLeagueForm } from "@/decisions/circuitLeague";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
+import { circuitRostersVisible } from "@/decisions/circuitRoster";
 import { statusTone } from "@/decisions/statusTone";
 import type { ApiResult } from "@/lib/types";
-import { leaguePath } from "@/lib/routes";
+import { circuitRosterPath, circuitTransactionsPath, leaguePath } from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
 import { StandardCard } from "@/primitives";
@@ -81,6 +82,11 @@ export function CircuitLeagueScreen(props: {
   const { detail, form, editable, dirty } = view;
   const { league, viewer } = detail;
   const statusLabel = circuitLeagueStatusLabel(detail.circuit_league.status);
+  const link = {
+    leagueId: league.id,
+    leagueName: league.name,
+    circuitLeagueId: detail.circuit_league.id
+  };
 
   return (
     <Box className="baseline-page">
@@ -103,13 +109,29 @@ export function CircuitLeagueScreen(props: {
                 <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
               </Group>
             </Stack>
-            <Button
-              component={Link}
-              to={leaguePath({ leagueId: league.id, leagueName: league.name })}
-              variant="outline"
-            >
-              Back to league
-            </Button>
+            <Group gap="sm" wrap="wrap">
+              {circuitRostersVisible(detail.circuit_league.status) ? (
+                <>
+                  <Button component={Link} to={circuitRosterPath(link)} variant="outline">
+                    {viewer.is_member ? "Your roster" : "Rosters"}
+                  </Button>
+                  <Button
+                    component={Link}
+                    to={circuitTransactionsPath(link)}
+                    variant="outline"
+                  >
+                    Transactions
+                  </Button>
+                </>
+              ) : null}
+              <Button
+                component={Link}
+                to={leaguePath({ leagueId: league.id, leagueName: league.name })}
+                variant="outline"
+              >
+                Back to league
+              </Button>
+            </Group>
           </Group>
 
           <CircuitLeagueMembershipBar

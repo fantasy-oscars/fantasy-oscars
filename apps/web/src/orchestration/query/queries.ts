@@ -4,7 +4,9 @@ import type {
   CeremonySummary,
   CircuitLeagueDetail,
   CircuitLeagueSummary,
+  CircuitRoster,
   CircuitSummary,
+  CircuitTransaction,
   InboxInvite,
   LeagueDetail,
   LeagueMember,
@@ -161,6 +163,41 @@ export function circuitLeagueQuery(circuitLeagueId: number) {
       );
       if (!data) throw new ApiQueryError("Unable to load season");
       return data;
+    }
+  });
+}
+
+/** A member's roster in a league's season; `userId` null reads the viewer's own. */
+export function circuitRosterQuery(circuitLeagueId: number, userId: number | null) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.roster(circuitLeagueId, userId),
+    queryFn: async () => {
+      const path =
+        userId === null
+          ? `/circuit-leagues/${circuitLeagueId}/roster`
+          : `/circuit-leagues/${circuitLeagueId}/members/${userId}/roster`;
+      const data = unwrap(
+        await fetchJson<CircuitRoster>(path, { method: "GET" }),
+        "Unable to load roster"
+      );
+      if (!data) throw new ApiQueryError("Unable to load roster");
+      return data;
+    }
+  });
+}
+
+export function circuitTransactionsQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.transactions(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<{ transactions: CircuitTransaction[] }>(
+          `/circuit-leagues/${circuitLeagueId}/transactions`,
+          { method: "GET" }
+        ),
+        "Unable to load transactions"
+      );
+      return data?.transactions ?? [];
     }
   });
 }

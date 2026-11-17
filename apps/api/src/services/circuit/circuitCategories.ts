@@ -138,11 +138,29 @@ export async function removeCategory(
   const result = await runInTransaction(pool, async (tx) => {
     const circuit = await lockEditableCircuit(tx, input.circuitId);
     const category = await requireCategory(tx, input.circuitId, input.categoryId);
-    const mappingsRemoved = (await deleteCircuitCategory(
-      tx,
-      input.circuitId,
-      input.categoryId
-    ))!;
+    let mappingsRemoved: number;
+    try {
+      mappingsRemoved = (await deleteCircuitCategory(
+        tx,
+        input.circuitId,
+        input.categoryId
+      ))!;
+    } catch (err) {
+      // Ownership history references the category's selections and is never
+      // deleted, so a category that has been owned in a league stays.
+      const pg = err as { code?: string; table?: string };
+      if (
+        pg.code === "23503" &&
+        (pg.table === "circuit_ownership" || pg.table === "circuit_transaction")
+      ) {
+        throw new AppError(
+          "CIRCUIT_CATEGORY_IN_USE",
+          409,
+          "Players have owned contenders in this category, so it can't be removed"
+        );
+      }
+      throw err;
+    }
     return { circuit, category, mappingsRemoved };
   });
   await audit(pool, actor, {

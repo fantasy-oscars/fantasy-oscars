@@ -30,7 +30,9 @@ export type PublicCircuitSelection = {
   person: { id: number; name: string; profile_url: string | null } | null;
 };
 
-function toPublic(row: CircuitSelectionRow): PublicCircuitSelection {
+export function toPublicCircuitSelection(
+  row: CircuitSelectionRow
+): PublicCircuitSelection {
   return {
     id: row.id,
     circuit_category_id: row.circuit_category_id,
@@ -77,7 +79,7 @@ export async function upsertCircuitSelection(
   }
 
   const existing = await findCircuitSelection(pool, identity);
-  if (existing) return { selection: toPublic(existing), created: false };
+  if (existing) return { selection: toPublicCircuitSelection(existing), created: false };
 
   const { filmId } = await syncTmdbMovieById(pool, identity.film_tmdb_id);
 
@@ -98,5 +100,5 @@ export async function upsertCircuitSelection(
     film_id: filmId,
     person_id: personId
   });
-  return { selection: toPublic(row), created: inserted };
+  return { selection: toPublicCircuitSelection(row), created: inserted };
 }
