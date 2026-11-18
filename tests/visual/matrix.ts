@@ -333,16 +333,17 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    // Before the draft: facts, players, settings and a three-row queue with the picker.
+    // Before the draft: the room with the contender form, facts, players and
+    // settings in the middle and a three-row queue in the staging rail.
     id: "circuit-draft-lobby",
     persona: "casey",
     path: (s) =>
       `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}/draft`,
-    ready: { text: "Add to your queue" },
+    ready: { text: "Prepare your picks" },
     fullPage: true
   },
   {
-    // A finished draft: the board by player beside the queue.
+    // A finished draft: the board by player alone, as the ceremony room's roster view.
     id: "circuit-draft-board",
     persona: "casey",
     path: (s) =>
@@ -351,13 +352,29 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    // Mid-draft: casey on the clock, the pick panel live, a missed pick on the board.
+    // Mid-draft: casey on the clock, the form and the staging rail's Draft
+    // buttons live, a missed pick in the draft history.
     id: "circuit-draft-room",
     persona: "casey",
     path: (s) =>
       `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
-    ready: { text: "On the clock: Round 2, pick 4" },
+    ready: { text: "You're on the clock." },
     beforeNavigate: (page) => rewriteCircuitDraftLive(page),
+    fullPage: true
+  },
+  {
+    // The same draft on a phone with the staging rail open from the bottom bar.
+    id: "circuit-draft-staging",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "You're on the clock." },
+    viewports: ["mobile"],
+    beforeNavigate: (page) => rewriteCircuitDraftLive(page),
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Staging" }).click();
+      await expect(page.getByTestId("circuit-staging-note")).toBeVisible();
+    },
     fullPage: true
   },
   {

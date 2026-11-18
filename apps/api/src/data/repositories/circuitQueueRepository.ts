@@ -118,3 +118,54 @@ export async function setCircuitQueueOrder(
     [memberId, selectionIdsInOrder]
   );
 }
+
+/*
+ * Staged selections (migration 032): set aside to draft by hand, unranked and
+ * never read by the auto-pick. Writes take lockCircuitQueue too, so a move
+ * between the queue and staging is serialised with every other queue write.
+ */
+
+export async function listCircuitStaged(
+  client: DbClient,
+  memberId: number
+): Promise<Array<{ selection_id: number }>> {
+  const { rows } = await query<{ selection_id: number }>(
+    client,
+    `SELECT selection_id::int
+     FROM circuit_staged_item
+     WHERE member_id = $1
+     ORDER BY created_at, selection_id`,
+    [memberId]
+  );
+  return rows;
+}
+
+/** Stages a selection; false when it was already staged. */
+export async function insertCircuitStagedItem(
+  client: DbClient,
+  memberId: number,
+  selectionId: number
+): Promise<boolean> {
+  const { rowCount } = await query(
+    client,
+    `INSERT INTO circuit_staged_item (member_id, selection_id)
+     VALUES ($1, $2)
+     ON CONFLICT (member_id, selection_id) DO NOTHING`,
+    [memberId, selectionId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/** Unstages a selection; false when it was not staged. */
+export async function deleteCircuitStagedItem(
+  client: DbClient,
+  memberId: number,
+  selectionId: number
+): Promise<boolean> {
+  const { rowCount } = await query(
+    client,
+    `DELETE FROM circuit_staged_item WHERE member_id = $1 AND selection_id = $2`,
+    [memberId, selectionId]
+  );
+  return (rowCount ?? 0) > 0;
+}

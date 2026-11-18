@@ -752,6 +752,28 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   await openLeague.record("casey", "DRAFT", sel.actress[0]!, null);
   await openLeague.record("jo", "DROP", null, sel.picture[2]!);
   await openLeague.record("jo", "FREE_AGENT", sel.picture[3]!, null);
+  // casey's queue and staged contenders here, for the live draft room cells
+  // (which rewind the draft to pick 4): undrafted and drafted rows in each.
+  for (const [i, selectionId] of [
+    sel.director[0]!,
+    sel.actress[0]!,
+    sel.picture[0]!
+  ].entries()) {
+    await pool.query(
+      `INSERT INTO circuit_queue_item (member_id, selection_id, position, created_at)
+       SELECT id, $3, $4, $5 FROM circuit_league_member
+       WHERE circuit_league_id = $1 AND user_id = $2`,
+      [openLeague.id, userIds.casey, selectionId, i + 1, minutes(530)]
+    );
+  }
+  for (const [i, selectionId] of [sel.picture[3]!, sel.picture[1]!].entries()) {
+    await pool.query(
+      `INSERT INTO circuit_staged_item (member_id, selection_id, created_at)
+       SELECT id, $3, $4 FROM circuit_league_member
+       WHERE circuit_league_id = $1 AND user_id = $2`,
+      [openLeague.id, userIds.casey, selectionId, minutes(531 + i)]
+    );
+  }
 
   const windowLeague = await inSeasonLeague({
     leagueId: third.id,

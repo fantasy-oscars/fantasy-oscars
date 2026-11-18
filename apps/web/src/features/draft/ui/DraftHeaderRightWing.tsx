@@ -24,6 +24,8 @@ export function DraftHeaderRightWing(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
+  /** The room has a "Show drafted" filter at all (the season room has no nominee board). */
+  showDraftedFilter?: boolean;
   soundEnabled: boolean;
   onToggleSound: () => void;
   showCursorSpyToggle: boolean;
@@ -83,25 +85,27 @@ export function DraftHeaderRightWing(props: {
                 disabled={!props.canToggleView}
               />
             </Box>
-            <Box className="drh-controlRow">
-              {props.showDraftedVisible ? (
-                <Switch
-                  size="sm"
-                  label="Show drafted"
-                  labelPosition="left"
-                  classNames={{ root: "drh-switchRoot", label: "drh-label" }}
-                  checked={props.showDrafted}
-                  onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
-                />
-              ) : (
-                <>
-                  <Text className="drh-label">Show drafted</Text>
-                  <Box className="drh-toggleSlot">
-                    <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                  </Box>
-                </>
-              )}
-            </Box>
+            {props.showDraftedFilter !== false ? (
+              <Box className="drh-controlRow">
+                {props.showDraftedVisible ? (
+                  <Switch
+                    size="sm"
+                    label="Show drafted"
+                    labelPosition="left"
+                    classNames={{ root: "drh-switchRoot", label: "drh-label" }}
+                    checked={props.showDrafted}
+                    onChange={(e) => props.onToggleShowDrafted(e.currentTarget.checked)}
+                  />
+                ) : (
+                  <>
+                    <Text className="drh-label">Show drafted</Text>
+                    <Box className="drh-toggleSlot">
+                      <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                    </Box>
+                  </>
+                )}
+              </Box>
+            ) : null}
             <Box className="drh-toggleBtns">
               <Tooltip label={`Draft sounds: ${soundState}`} position="bottom" withArrow>
                 <Button

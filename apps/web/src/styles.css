@@ -5959,7 +5959,7 @@ select {
   color: var(--muted);
 }
 
-/* Season draft: the queue editor, the lobby's facts and the board. */
+/* Season draft: queue rows, the lobby's facts and the board. */
 .circuit-queue .mantine-ActionIcon-root .gicon {
   font-size: var(--fo-icon-size-md);
   line-height: 1;
@@ -5967,7 +5967,8 @@ select {
 
 /* Phone: the grip is a 44 px target like the row's icon buttons. */
 @media (max-width: 499.98px) {
-  .circuit-queue .nomination-drag-handle-button {
+  .circuit-queue .nomination-drag-handle-button,
+  .circuit-stageList .nomination-drag-handle-button {
     min-width: var(--fo-touch-target);
     min-height: var(--fo-touch-target);
   }
@@ -6025,40 +6026,26 @@ select {
   font-weight: var(--fo-font-weight-bold);
 }
 
-/* Season draft room: the turn bar and the pick panel. */
-.circuit-turnBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--fo-space-sm);
+/*
+ * Season draft room, in the ceremony room's frame: the contender form takes
+ * the nominee board's column, and the staging rail lists the queue and the
+ * staged contenders.
+ */
+.circuit-roomMiddle,
+.circuit-roomBoard {
   padding: var(--fo-space-sm);
-  border: var(--fo-border-width) solid var(--border);
-  border-radius: var(--brand-radius-sm);
-  background: var(--fo-surface-card-primary);
 }
 
-.circuit-turnBar.is-viewer {
-  border-color: var(--fo-text-primary);
-  border-width: var(--fo-border-width-strong);
+.circuit-roomPanel {
+  max-width: 40rem;
+  margin-inline: auto;
 }
 
-.circuit-turnMain {
-  flex: 1 1 16rem;
-  min-width: 0;
-}
-
-.circuit-turnTag {
-  text-transform: uppercase;
-}
-
-.circuit-turnClock {
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--fo-font-weight-bold);
-}
-
-.circuit-turnClock.is-urgent {
-  color: var(--fo-danger-text);
+.circuit-roomPanel.is-wide {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-sm);
 }
 
 .circuit-pickReady {
@@ -6072,43 +6059,95 @@ select {
   border: 0;
 }
 
-.circuit-pickFieldset:disabled {
-  opacity: var(--fo-alpha-60);
+/* A rail pill with the contender's category under it. */
+.circuit-railPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-2);
+  min-width: 0;
+}
+
+.circuit-railSub {
+  font-size: var(--fo-db-pill-font);
+  color: var(--fo-text-deemphasized);
+  overflow-wrap: anywhere;
+}
+
+/* A roster row with a category line: the round-pick label stays level with the pill. */
+.dr-rosterRow:has(> .circuit-railPick) {
+  align-items: start;
+}
+
+.dr-rosterRow:has(> .circuit-railPick) > .dr-railMeta {
+  line-height: var(--dr-pill-height);
+}
+
+/* The staging rail reads at the rails' dense sizes. */
+.circuit-stageNote {
+  font-size: var(--fo-db-meta-font);
+  color: var(--fo-text-deemphasized);
+}
+
+.circuit-stageHeading {
+  margin: 0;
+  text-align: start;
+}
+
+.circuit-stageLabel {
+  font-size: var(--fo-db-pill-font);
+  font-weight: var(--fo-font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+/* Staging rows are narrow: the contender spans the row, the grip, rank and actions share a line under it. */
+.circuit-stageRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "main main main"
+    "grip rank actions";
+  align-items: center;
+  column-gap: var(--fo-space-xs);
+  row-gap: var(--fo-space-4);
+}
+
+.circuit-stageRow > .circuit-rowMain {
+  grid-area: main;
+}
+
+.circuit-stageRow > .circuit-stageGrip {
+  grid-area: grip;
+}
+
+.circuit-stageRow > .circuit-queueRank {
+  grid-area: rank;
+}
+
+.circuit-stageRow > .circuit-rowActions {
+  grid-area: actions;
+  justify-self: end;
+}
+
+.circuit-stageList .mantine-ActionIcon-root .gicon {
+  font-size: var(--fo-icon-size-md);
+  line-height: 1;
 }
 
 /*
- * Reading order is the pick, the board, then the queue, which is also the
- * phone's order. From 501 px the board takes the wide column across both rows
- * and the pick and queue stack in the narrow one; the queue's row takes the
- * slack, so the two stay together however tall the board grows.
+ * Phone: the season room sits in the draft layout, outside the shell's 44 px
+ * rules, so its form and staging controls take them here.
  */
-.circuit-draftRoom {
-  row-gap: var(--fo-space-lg);
-}
-
-@media (min-width: 501px) {
-  .circuit-draftRoom {
-    grid-template-rows: auto 1fr;
+@media (max-width: 499.98px) {
+  .circuit-roomMiddle .mantine-Button-root,
+  .circuit-stageList .mantine-Button-root {
+    --button-height-xs: var(--fo-touch-target) !important;
+    --button-height-sm: var(--fo-touch-target) !important;
+    --button-height-md: var(--fo-touch-target) !important;
   }
 
-  .circuit-draftRoom > .circuit-draftPick {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .circuit-draftRoom > .circuit-draftQueue {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .circuit-draftRoom > .circuit-draftBoardCol {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  /* No pick panel (a viewer who has not joined): the queue note takes row 1. */
-  .circuit-draftRoom > .circuit-draftQueue:nth-child(2) {
-    grid-row: 1 / span 2;
+  .circuit-stageList .mantine-ActionIcon-root {
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
   }
 }
 

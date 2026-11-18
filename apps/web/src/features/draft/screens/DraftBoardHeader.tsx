@@ -37,6 +37,8 @@ export function DraftBoardHeader(props: {
   showDrafted: boolean;
   onToggleShowDrafted: (next: boolean) => void;
   showDraftedVisible: boolean;
+  /** False where the room has no "Show drafted" filter (the season draft room). */
+  showDraftedFilter?: boolean;
   showDraftControls: boolean;
   canManageDraft: boolean;
   onStartDraft: () => void;
@@ -165,6 +167,7 @@ export function DraftBoardHeader(props: {
               showDrafted={props.showDrafted}
               onToggleShowDrafted={props.onToggleShowDrafted}
               showDraftedVisible={props.showDraftedVisible}
+              showDraftedFilter={props.showDraftedFilter}
               onStartDraft={props.onStartDraft}
               onPauseDraft={props.onPauseDraft}
               onResumeDraft={props.onResumeDraft}
@@ -196,6 +199,7 @@ export function DraftBoardHeader(props: {
           canToggleView={props.canToggleView}
           showDraftedVisible={props.showDraftedVisible}
           showDrafted={props.showDrafted}
+          showDraftedFilter={props.showDraftedFilter}
           showCursorSpyToggle={props.showCursorSpyToggle}
           userLabel={props.userLabel}
           userAvatarKey={props.userAvatarKey}

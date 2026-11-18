@@ -23,6 +23,7 @@ import {
   type CircuitPickGate,
   type CircuitQueueRow
 } from "../decisions/circuitDraft";
+import { circuitStagedRows } from "../decisions/circuitDraftRoom";
 import { describeConnection, nextConnectionState } from "../decisions/draft/connection";
 import { estimateServerOffsetMs } from "../decisions/draft/clockSkew";
 import { makeRequestId } from "./draft/helpers";
@@ -39,10 +40,11 @@ import {
 /*
  * The draft of a league's season: the lobby until the commissioner starts it,
  * then the board from the snapshot, kept live by useCircuitDraftSocket. The
- * viewer's queue sits beside both and can change at any time. Every queue
- * write returns the whole queue, which replaces the cached read; a reorder
- * shows its new order while it saves. The member on the clock picks through
- * the contender picker; the commissioner pauses and resumes.
+ * viewer's queue and staged contenders sit beside both and can change at any
+ * time. Every queue or staging write returns both lists, which replace the
+ * cached read; a reorder shows its new order while it saves. The member on
+ * the clock picks through the contender picker or from the queue and staged
+ * lists; the commissioner pauses and resumes.
  */
 
 export type CircuitDraftView =
@@ -56,6 +58,8 @@ export type CircuitDraftView =
       snapshot: CircuitDraftSnapshot | null;
       /** The viewer's queue; null when they have not joined the season. */
       queue: CircuitQueueRow[] | null;
+      /** The viewer's staged contenders; null when they have not joined the season. */
+      staged: CircuitQueueRow[] | null;
       canStart: boolean;
       /** Whether the viewer may pick now, and why not; null for non-members or no draft. */
       gate: CircuitPickGate | null;
@@ -173,6 +177,26 @@ export function useCircuitDraftOrchestration(input: {
       send("DELETE", `/${selectionId}`, undefined, "Could not remove that contender"),
     onSuccess: applyQueue
   });
+  const stageMutation = useMutation({
+    mutationFn: (selectionId: number) =>
+      send(
+        "POST",
+        "/staged",
+        { selection_id: selectionId },
+        "Could not stage that contender"
+      ),
+    onSuccess: applyQueue
+  });
+  const unstageMutation = useMutation({
+    mutationFn: (selectionId: number) =>
+      send(
+        "DELETE",
+        `/staged/${selectionId}`,
+        undefined,
+        "Could not remove that contender"
+      ),
+    onSuccess: applyQueue
+  });
   const reorderMutation = useMutation({
     mutationFn: (selectionIds: number[]) =>
       send("PUT", "", { selection_ids: selectionIds }, "Could not reorder your queue"),
@@ -223,6 +247,34 @@ export function useCircuitDraftOrchestration(input: {
       return true;
     },
     [addMutation, queueWriteFailed]
+  );
+
+  /** Stages a contender, taking it out of the queue if queued; true once staged. */
+  const stageSelection = useCallback(
+    async (selection: CircuitSelectionSummary): Promise<boolean> => {
+      setQueueStatus(null);
+      try {
+        await stageMutation.mutateAsync(selection.id);
+      } catch (err) {
+        queueWriteFailed(err, "Could not stage that contender");
+        return false;
+      }
+      success("circuitDraft.queue.stage", `Staged ${circuitSelectionLabel(selection)}`);
+      return true;
+    },
+    [stageMutation, queueWriteFailed]
+  );
+
+  const unstage = useCallback(
+    async (selectionId: number) => {
+      setQueueStatus(null);
+      try {
+        await unstageMutation.mutateAsync(selectionId);
+      } catch (err) {
+        queueWriteFailed(err, "Could not remove that contender");
+      }
+    },
+    [unstageMutation, queueWriteFailed]
   );
 
   const removeFromQueue = useCallback(
@@ -382,6 +434,7 @@ export function useCircuitDraftOrchestration(input: {
       phase,
       snapshot,
       queue: rows,
+      staged: queue ? circuitStagedRows(queue, detail.categories, snapshot) : null,
       canStart:
         snapshot === null &&
         detail.viewer.can_manage &&
@@ -418,10 +471,17 @@ export function useCircuitDraftOrchestration(input: {
     view,
     queueStatus,
     startStatus,
-    queueBusy: addMutation.isPending || removeMutation.isPending || pendingOrder !== null,
+    queueBusy:
+      addMutation.isPending ||
+      removeMutation.isPending ||
+      stageMutation.isPending ||
+      unstageMutation.isPending ||
+      pendingOrder !== null,
     removingSelectionId: removeMutation.isPending
       ? (removeMutation.variables ?? null)
-      : null,
+      : unstageMutation.isPending
+        ? (unstageMutation.variables ?? null)
+        : null,
     starting: startMutation.isPending,
     connection,
     connectionState,
@@ -433,6 +493,8 @@ export function useCircuitDraftOrchestration(input: {
     draftSelection,
     togglePause: () => void togglePause(),
     addToQueue,
+    stageSelection,
+    unstage: (selectionId: number) => void unstage(selectionId),
     removeFromQueue: (selectionId: number) => void removeFromQueue(selectionId),
     reorderQueue: (selectionIds: number[]) => void reorderQueue(selectionIds),
     startDraft: () => void startDraft()

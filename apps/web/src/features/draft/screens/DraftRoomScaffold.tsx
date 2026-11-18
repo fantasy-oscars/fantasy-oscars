@@ -1,17 +1,16 @@
 import { Box } from "@ui";
 import type { RefObject } from "react";
-import { createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createRef, useRef, useState } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import {
   computeMasonry,
   estimateCategoryCardHeightPx
 } from "@/decisions/draftRoomLayout";
-import { pickDraftDivisor } from "@/decisions/draftRoomUnits";
 import { DraftAutoDraftRail } from "@/features/draft/ui/DraftAutoDraftRail";
 import { DraftLedgerRail } from "@/features/draft/ui/DraftLedgerRail";
 import { DraftMasonryBoard } from "@/features/draft/ui/DraftMasonryBoard";
 import { DraftMyRosterRail } from "@/features/draft/ui/DraftMyRosterRail";
-import { useCssVars } from "@/shared/dom/useCssVars";
+import { useDraftRailLayout } from "./useDraftRailLayout";
 
 export function DraftRoomScaffold(props: {
   categories: Array<{
@@ -99,110 +98,23 @@ export function DraftRoomScaffold(props: {
   // A11y: tab order defaults to category headers; entering a category makes its pills tabbable.
   const [keyboardCategoryId, setKeyboardCategoryId] = useState<string | null>(null);
 
-  const [viewportWidthPx, setViewportWidthPx] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth : 0
-  );
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let raf: number | null = null;
-    const onResize = () => {
-      if (raf) window.cancelAnimationFrame(raf);
-      raf = window.requestAnimationFrame(() => {
-        setViewportWidthPx(window.innerWidth);
-        raf = null;
-      });
-    };
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => {
-      if (raf) window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
-
-  const unitDivisor = useMemo(() => pickDraftDivisor(viewportWidthPx), [viewportWidthPx]);
-
-  const [ledgerOpen, setLedgerOpenState] = useState(
-    props.railPreferences.ledger ?? !isPre
-  );
-  const [myRosterOpen, setMyRosterOpenState] = useState(
-    props.railPreferences.roster ?? !isPre
-  );
-  const [autoDraftOpen, setAutoDraftOpenState] = useState(
-    props.railPreferences.autodraft ?? true
-  );
-
-  // Stopgap: narrow desktop keeps board visible but prevents "all rails open" squeeze.
-  // (Mobile uses a separate layout path.)
-  const compactRails = viewportWidthPx > 0 && viewportWidthPx < 665;
-
-  // Only deliberate toggles on a regular layout are remembered; the forced states
-  // (pre-draft, compact exclusivity) are layout constraints, not preferences.
-  const rememberRail = useCallback(
-    (rail: "ledger" | "roster" | "autodraft", open: boolean) => {
-      if (!isPre && !compactRails) onRailOpenChange(rail, open);
-    },
-    [compactRails, isPre, onRailOpenChange]
-  );
-  const setLedgerOpen = useCallback(
-    (open: boolean) => {
-      setLedgerOpenState(open);
-      rememberRail("ledger", open);
-    },
-    [rememberRail]
-  );
-  const setMyRosterOpen = useCallback(
-    (open: boolean) => {
-      setMyRosterOpenState(open);
-      rememberRail("roster", open);
-    },
-    [rememberRail]
-  );
-  const setAutoDraftOpen = useCallback(
-    (open: boolean) => {
-      setAutoDraftOpenState(open);
-      rememberRail("autodraft", open);
-    },
-    [rememberRail]
-  );
-
-  const openRailExclusive = useCallback(
-    (rail: "ledger" | "roster" | "auto") => {
-      if (!compactRails) return;
-      setLedgerOpenState(rail === "ledger");
-      setMyRosterOpenState(rail === "roster");
-      setAutoDraftOpenState(rail === "auto");
-    },
-    [compactRails]
-  );
-
-  useEffect(() => {
-    if (isPre) {
-      setLedgerOpenState(false);
-      setMyRosterOpenState(false);
-      setAutoDraftOpenState(true);
-      return;
-    }
-    if (isLiveOrPaused) {
-      // Leave user toggles as-is once the draft is live/paused.
-      return;
-    }
-  }, [isLiveOrPaused, isPre]);
-
-  useEffect(() => {
-    if (!compactRails) return;
-    // Enforce mutual exclusivity if we enter compact mode with multiple rails open.
-    const openCount =
-      (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
-    if (openCount <= 1) return;
-    // Prefer the most recently-relevant rail: auto-draft pre-draft, otherwise roster.
-    if (isPre) openRailExclusive("auto");
-    else openRailExclusive(myRosterOpen ? "roster" : ledgerOpen ? "ledger" : "auto");
-  }, [autoDraftOpen, compactRails, isPre, ledgerOpen, myRosterOpen, openRailExclusive]);
-
-  const expandedCount =
-    (ledgerOpen ? 1 : 0) + (myRosterOpen ? 1 : 0) + (autoDraftOpen ? 1 : 0);
-  const midColsMax = Math.max(1, Math.round(unitDivisor - 0.75)); // 0.75 = 3 collapsed rails
-  const midCols = Math.max(1, midColsMax - expandedCount);
+  const {
+    layoutRef,
+    midCols,
+    compactRails,
+    openRailExclusive,
+    ledgerOpen,
+    setLedgerOpen,
+    myRosterOpen,
+    setMyRosterOpen,
+    autoDraftOpen,
+    setAutoDraftOpen
+  } = useDraftRailLayout({
+    isPre,
+    isLiveOrPaused,
+    railPreferences: props.railPreferences,
+    onRailOpenChange
+  });
 
   const categoriesForBoxes = props.hideEmptyCategories
     ? props.categories.filter((c) => c.nominees.length > 0)
@@ -231,19 +143,6 @@ export function DraftRoomScaffold(props: {
       firstPillRefByCategoryId.current[c.id] = createRef<HTMLButtonElement>();
     }
   }
-
-  const layoutRef = useRef<HTMLDivElement | null>(null);
-  const layoutVars = useMemo(
-    () => ({
-      "--d": unitDivisor,
-      "--rail-ledger": ledgerOpen ? 1.25 : 0.25,
-      "--rail-roster": myRosterOpen ? 1.25 : 0.25,
-      "--rail-auto": autoDraftOpen ? 1.25 : 0.25,
-      "--mid-cols": midCols
-    }),
-    [autoDraftOpen, ledgerOpen, midCols, myRosterOpen, unitDivisor]
-  );
-  useCssVars(layoutRef, layoutVars);
 
   return (
     <Box ref={layoutRef} className="dr-layout">

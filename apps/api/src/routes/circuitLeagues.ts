@@ -43,7 +43,9 @@ import {
   addToCircuitQueue,
   getCircuitQueue,
   removeFromCircuitQueue,
-  reorderCircuitQueue
+  reorderCircuitQueue,
+  stageInCircuitQueue,
+  unstageFromCircuitQueue
 } from "../services/circuit/circuitQueue.js";
 import {
   createCircuitWaiverClaim,
@@ -226,17 +228,49 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
     try {
       const { id } = parseParams(idParam, req.params);
       const { selection_id } = parseBody(circuitQueueAddBody, req.body);
-      const { added, items } = await addToCircuitQueue(
+      const { added, ...queue } = await addToCircuitQueue(
         pool,
         id,
         viewerOf(req),
         selection_id
       );
-      return res.status(added ? 201 : 200).json({ items });
+      return res.status(added ? 201 : 200).json(queue);
     } catch (err) {
       next(err);
     }
   });
+
+  // Staged selections: set aside to draft by hand, never auto-picked. Staging
+  // a queued selection moves it out of the queue.
+  router.post("/:id/queue/staged", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      const { selection_id } = parseBody(circuitQueueAddBody, req.body);
+      const { added, ...queue } = await stageInCircuitQueue(
+        pool,
+        id,
+        viewerOf(req),
+        selection_id
+      );
+      return res.status(added ? 201 : 200).json(queue);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete(
+    "/:id/queue/staged/:selectionId",
+    async (req: AuthedRequest, res, next) => {
+      try {
+        const { id, selectionId } = parseParams(circuitQueueItemParams, req.params);
+        return res
+          .status(200)
+          .json(await unstageFromCircuitQueue(pool, id, viewerOf(req), selectionId));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   router.put("/:id/queue", async (req: AuthedRequest, res, next) => {
     try {

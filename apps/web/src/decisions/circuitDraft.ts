@@ -252,7 +252,7 @@ export function circuitDraftStartNote(input: {
       : "The draft opens once the commissioner locks the season.";
   }
   return input.canManage
-    ? "Start the draft when everyone is ready. The draft order is drawn at random when it starts."
+    ? "Start the draft when everyone is ready, with Start draft at the top of the room. The draft order is drawn at random when it starts."
     : "The commissioner starts the draft. The draft order is drawn at random when it starts.";
 }
 

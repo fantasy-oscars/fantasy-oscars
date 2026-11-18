@@ -183,6 +183,72 @@ describe("circuit draft orchestration", () => {
     });
   });
 
+  it("stages and unstages contenders, each write replacing both lists", async () => {
+    const calls = stubApi({
+      "GET /draft": NOT_STARTED,
+      "GET /queue": { status: 200, body: circuitQueue([gaslight, sunset]) },
+      "POST /queue/staged": { status: 201, body: circuitQueue([gaslight], [sunset]) },
+      "DELETE /queue/staged/31": { status: 200, body: circuitQueue([gaslight]) }
+    });
+    const { result } = renderDraft();
+    await ready(result);
+
+    let staged = false;
+    await act(async () => {
+      staged = await result.current.stageSelection(sunset);
+    });
+    expect(staged).toBe(true);
+    expect(calls.at(-1)).toMatchObject({
+      method: "POST",
+      path: "/circuit-leagues/4/queue/staged",
+      body: { selection_id: 31 }
+    });
+    await waitFor(() => {
+      const view = result.current.view;
+      expect(view.state === "ready" && view.staged?.map((r) => r.selection.id)).toEqual([
+        31
+      ]);
+      expect(view.state === "ready" && view.queue?.map((r) => r.selection.id)).toEqual([
+        33
+      ]);
+    });
+
+    await act(async () => {
+      result.current.unstage(31);
+    });
+    await waitFor(() => {
+      const view = result.current.view;
+      expect(view.state === "ready" && view.staged).toEqual([]);
+    });
+    expect(calls.at(-1)).toMatchObject({
+      method: "DELETE",
+      path: "/circuit-leagues/4/queue/staged/31"
+    });
+  });
+
+  it("reports a refused staging write without changing the lists", async () => {
+    stubApi({
+      "GET /draft": NOT_STARTED,
+      "GET /queue": { status: 200, body: circuitQueue([gaslight]) },
+      "POST /queue/staged": {
+        status: 404,
+        body: {
+          error: { code: "NOT_FOUND", message: "That contender isn't in this season" }
+        }
+      }
+    });
+    const { result } = renderDraft();
+    await ready(result);
+    let staged = true;
+    await act(async () => {
+      staged = await result.current.stageSelection(laura);
+    });
+    expect(staged).toBe(false);
+    expect(result.current.queueStatus).toMatchObject({ ok: false });
+    const view = result.current.view;
+    expect(view.state === "ready" && view.staged).toEqual([]);
+  });
+
   it("reloads the queue when a reorder finds it changed elsewhere", async () => {
     const calls = stubApi({
       "GET /draft": NOT_STARTED,

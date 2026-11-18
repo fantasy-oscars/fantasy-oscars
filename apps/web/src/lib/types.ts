@@ -546,7 +546,9 @@ export type CircuitDraftPickResult = {
   draft: CircuitDraft;
 };
 
-/** `GET /circuit-leagues/:id/queue`, also returned by every queue write. */
+/** `GET /circuit-leagues/:id/queue`, also returned by every queue and staging write. */
 export type CircuitQueue = {
   items: Array<{ position: number; selection: CircuitSelectionSummary }>;
+  /** Staged selections, oldest first: drafted by hand only, never auto-picked. */
+  staged: Array<{ selection: CircuitSelectionSummary }>;
 };
