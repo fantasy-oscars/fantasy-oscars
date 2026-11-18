@@ -76,6 +76,15 @@ export function circuitTransactionsPath(input: {
   return `${circuitLeaguePath(input)}/transactions`;
 }
 
+/** Waiver claims, priority, chips and results of a league's season. */
+export function circuitWaiversPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${circuitLeaguePath(input)}/waivers`;
+}
+
 /** The draft of a league's season: the lobby before it starts, then the room. */
 export function circuitDraftPath(input: {
   leagueId: number;

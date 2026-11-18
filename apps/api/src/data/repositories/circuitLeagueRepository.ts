@@ -108,12 +108,13 @@ export async function insertCircuitLeague(
 export async function getCircuitLeagueById(
   client: DbClient,
   id: number,
-  opts: { forUpdate?: boolean } = {}
+  opts: { forUpdate?: boolean; forShare?: boolean } = {}
 ): Promise<CircuitLeagueRow | null> {
+  const lock = opts.forUpdate ? "FOR UPDATE" : opts.forShare ? "FOR SHARE" : "";
   const { rows } = await query<CircuitLeagueRow>(
     client,
     `SELECT ${LEAGUE_COLUMNS} FROM circuit_league cl WHERE cl.id = $1
-     ${opts.forUpdate ? "FOR UPDATE" : ""}`,
+     ${lock}`,
     [id]
   );
   return rows[0] ?? null;

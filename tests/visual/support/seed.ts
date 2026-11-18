@@ -725,7 +725,14 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
         );
       }
     };
-    return { id: row.id, record };
+    // Rolling priority as the draft's completion sets it: last seat first.
+    for (const [i, key] of input.members.entries()) {
+      await pool.query(
+        `UPDATE circuit_league_member SET waiver_priority = $1 WHERE id = $2`,
+        [input.members.length - i, memberIds[key]]
+      );
+    }
+    return { id: row.id, memberIds, record };
   };
 
   // avery stays out, so the Home baseline lists only Seasons. casey fills the
@@ -755,6 +762,35 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   });
   await windowLeague.record("blake", "DRAFT", sel.picture[0]!, null);
   await windowLeague.record("drew", "DRAFT", sel.picture[1]!, null);
+  // blake's private claims in today's window: a chipped first choice, then a
+  // claim with a conditional drop.
+  const blakeChip = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit_chip (circuit_league_id, member_id, original_pick_number, created_at)
+     VALUES ($1, $2, 3, $3) RETURNING id::int`,
+    [windowLeague.id, windowLeague.memberIds.blake, historyAt(560)]
+  );
+  for (const [i, claim] of [
+    { selection: sel.picture[2]!, drop: null, chip: blakeChip.id },
+    { selection: sel.actress[0]!, drop: sel.picture[0]!, chip: null }
+  ].entries()) {
+    await pool.query(
+      `INSERT INTO circuit_waiver_claim
+         (circuit_league_id, member_id, window_starts_on, selection_id, drop_selection_id,
+          chip_id, rank, created_at, updated_at)
+       VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, $8)`,
+      [
+        windowLeague.id,
+        windowLeague.memberIds.blake,
+        today,
+        claim.selection,
+        claim.drop,
+        claim.chip,
+        i + 1,
+        historyAt(561 + i)
+      ]
+    );
+  }
 
   // A saved draft plan for the commissioner, in the live ceremony.
   const plan = await one<{ id: number }>(

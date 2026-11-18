@@ -149,6 +149,8 @@ docker run --rm -p 4000:4000 \
 
 The sweeper issues no queries while no timed draft is in progress. It checks once at start, then sleeps until the earliest `pick_deadline_at` (between `DRAFT_SWEEPER_INTERVAL_MS` and 30 seconds) and goes idle when none remain. Starting, resuming or advancing a timed draft wakes it. This lets a managed Postgres that suspends when idle actually suspend. `DRAFT_SWEEPER_ENABLED=false` still disables it. With several API instances, each instance wakes for drafts changed through it; the advisory lock keeps expiry processing single-worker. To cover a draft advanced by an old instance during a deploy overlap, an idle sweeper also polls every `DRAFT_SWEEPER_IDLE_POLL_MS` (default `600000`, 10 minutes; `0` disables). Trade-off: a suspend-on-idle database may wake every 10 minutes; set `0` if relying on client ticks is acceptable.
 
+Circuit waiver windows run on a separate scheduler, under its own advisory lock, so one instance processes them at a time. It checks once at start, just after each midnight Pacific (windows resolve only then), and every `CIRCUIT_WAIVER_SCHEDULER_INTERVAL_MS` (default `600000`, 10 minutes; `0` leaves only the startup and midnight checks). Each check runs every window whose resolution has passed and that has no run, so a check after downtime catches up. `CIRCUIT_WAIVER_SCHEDULER_ENABLED=false` disables it.
+
 ## Recommended response headers
 
 The API sets security headers itself (`helmet`). Render static sites take headers from the dashboard (Static Site → Settings → Headers), so add these for the web app. Replace the API origin if it changes.

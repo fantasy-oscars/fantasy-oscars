@@ -12,10 +12,13 @@ import {
 import { io as createClient, type Socket } from "socket.io-client";
 import { createServer } from "../../../src/server.js";
 import { tickCircuitDraft } from "../../../src/services/circuit/circuitDraft.js";
+import { emitCircuitWaiverResult } from "../../../src/services/circuit/circuitWaiverEvents.js";
 import {
   CIRCUIT_NAMESPACE,
   connectCircuitDraftEvents,
+  connectCircuitWaiverEvents,
   disconnectCircuitDraftEvents,
+  disconnectCircuitWaiverEvents,
   registerCircuitNamespace
 } from "../../../src/services/circuit/circuitNamespace.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
@@ -230,9 +233,12 @@ describe("circuits namespace", () => {
     api = createApiAgent(createServer({ db: db.pool }));
     try {
       server = await startSocketTestServer((io) => {
-        connectCircuitDraftEvents(
-          registerCircuitNamespace(io, { db: db.pool, authSecret: AUTH_SECRET })
-        );
+        const nsp = registerCircuitNamespace(io, {
+          db: db.pool,
+          authSecret: AUTH_SECRET
+        });
+        connectCircuitDraftEvents(nsp);
+        connectCircuitWaiverEvents(nsp);
       });
     } catch (err) {
       if (err instanceof ListenPermissionError) return;
@@ -252,6 +258,7 @@ describe("circuits namespace", () => {
     await Promise.all(clients.map(disconnectClient));
     clients = [];
     disconnectCircuitDraftEvents();
+    disconnectCircuitWaiverEvents();
     if (server) {
       await server.close();
       server = undefined;
@@ -343,6 +350,29 @@ describe("circuits namespace", () => {
       event_type: "draft.started"
     });
     expect(eventsB.map((e) => e.draft_id)).toEqual([b.body.draft.id]);
+  });
+
+  it("sends a completed waiver run to its own league's room", async () => {
+    if (!server) return;
+    const inA = await connect(alice, leagueA.id);
+    const inB = await connect(outsider, leagueB.id);
+    await waitForEvent(inA, "joined");
+    await waitForEvent(inB, "joined");
+
+    const run = {
+      circuit_league_id: leagueA.id,
+      run_id: 7,
+      window_starts_on: "2026-12-04",
+      won: 1,
+      lost: 2,
+      chips_expired: 0
+    };
+    const heard = waitForEvent(inA, "waiver:result");
+    emitCircuitWaiverResult(run);
+    const [message] = (await heard) as [Record<string, unknown>];
+    expect(message).toMatchObject(run);
+    expect(typeof message.server_time).toBe("string");
+    expect(inB.events.some((e) => e.event === "waiver:result")).toBe(false);
   });
 
   it("rebuilds the board after a reconnect from the snapshot and the events after it", async () => {

@@ -2,6 +2,10 @@ import express from "express";
 import type { Router } from "express";
 import type { Pool } from "pg";
 import {
+  circuitClaimBody,
+  circuitClaimEditBody,
+  circuitClaimOrderBody,
+  circuitClaimParams,
   circuitLeagueCategoriesBody,
   circuitLeagueEventsBody,
   circuitLeagueSettingsBody,
@@ -41,10 +45,19 @@ import {
   removeFromCircuitQueue,
   reorderCircuitQueue
 } from "../services/circuit/circuitQueue.js";
+import {
+  createCircuitWaiverClaim,
+  getCircuitWaiverClaims,
+  getCircuitWaiverResults,
+  getCircuitWaivers,
+  rankCircuitWaiverClaims,
+  updateCircuitWaiverClaimFor,
+  withdrawCircuitWaiverClaimFor
+} from "../services/circuit/circuitWaivers.js";
 import { parseBody, parseParams } from "../utils/validate.js";
 
 // One Circuit competition in a league: its setup, members and initialisation,
-// then the draft queue, rosters and transactions. Setup responses are the league's full detail
+// then the draft queue, rosters, transactions and waiver claims. Setup responses are the league's full detail
 // and roster writes return the roster, so a screen can re-render from either.
 export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Router {
   const router = express.Router();
@@ -243,6 +256,91 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
       return res
         .status(200)
         .json(await removeFromCircuitQueue(pool, id, viewerOf(req), selectionId));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Rolling priority, chips and the open window, for anyone in the league.
+  router.get("/:id/waivers", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitWaivers(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Completed waiver runs and their resolved claims, for anyone in the league.
+  router.get("/:id/waivers/results", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitWaiverResults(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // The viewer's own waiver claims in the open window; nobody else's are
+  // ever returned. Each write returns the viewer's claims, first choice first.
+  router.get("/:id/claims", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitWaiverClaims(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post("/:id/claims", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      const body = parseBody(circuitClaimBody, req.body);
+      return res.status(201).json(
+        await createCircuitWaiverClaim(pool, id, viewerOf(req), {
+          selectionId: body.selection_id,
+          dropSelectionId: body.drop_selection_id,
+          chipId: body.chip_id
+        })
+      );
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put("/:id/claims", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      const { claim_ids } = parseBody(circuitClaimOrderBody, req.body);
+      return res
+        .status(200)
+        .json(await rankCircuitWaiverClaims(pool, id, viewerOf(req), claim_ids));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.patch("/:id/claims/:claimId", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id, claimId } = parseParams(circuitClaimParams, req.params);
+      const body = parseBody(circuitClaimEditBody, req.body);
+      return res.status(200).json(
+        await updateCircuitWaiverClaimFor(pool, id, viewerOf(req), claimId, {
+          dropSelectionId: body.drop_selection_id,
+          chipId: body.chip_id
+        })
+      );
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete("/:id/claims/:claimId", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id, claimId } = parseParams(circuitClaimParams, req.params);
+      return res
+        .status(200)
+        .json(await withdrawCircuitWaiverClaimFor(pool, id, viewerOf(req), claimId));
     } catch (err) {
       next(err);
     }

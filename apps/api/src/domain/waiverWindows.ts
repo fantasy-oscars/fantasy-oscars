@@ -31,6 +31,11 @@ function fromDayNumber(n: number): string {
   return new Date(n * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** The day `n` days after `day` (`YYYY-MM-DD`); `n` may be negative. */
+export function addDays(day: string, n: number): string {
+  return fromDayNumber(toDayNumber(day) + n);
+}
+
 /**
  * The waiver windows for a set of scoring days (any order, repeats allowed).
  *

@@ -101,7 +101,10 @@ export function circuitFreeAgencyNote(freeAgency: {
   window: CircuitWaiverWindow | null;
 }): string | null {
   if (freeAgency.open) return null;
-  if (!freeAgency.window) return "Free agency is closed.";
+  // Closed with no window: the window has resolved and its claims have not run yet.
+  if (!freeAgency.window) {
+    return "Free agency is closed while waiver claims are processed. It reopens once they have run.";
+  }
   return `Free agency is closed while waiver claims are open. It reopens at midnight Pacific on ${circuitDayLabel(freeAgency.window.resolves_on)}.`;
 }
 

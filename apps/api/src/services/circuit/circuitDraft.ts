@@ -36,6 +36,7 @@ import {
   listOpenOwnershipsForMember
 } from "../../data/repositories/circuitOwnershipRepository.js";
 import { listCircuitQueueForAutoPick } from "../../data/repositories/circuitQueueRepository.js";
+import { setCircuitWaiverPriorities } from "../../data/repositories/circuitWaiverRepository.js";
 import {
   assertCircuitDraftPausable,
   assertCircuitDraftResumable,
@@ -53,6 +54,7 @@ import {
   type CircuitDraftSlot,
   type MissedRegularPick
 } from "../../domain/circuitDraft.js";
+import { initialWaiverPriorities } from "../../domain/circuitWaivers.js";
 import { computeDeadline } from "../../domain/draftPickRules.js";
 import { AppError } from "../../errors.js";
 import { emitCircuitDraftEvents } from "./circuitDraftEvents.js";
@@ -306,8 +308,8 @@ type PickOutcome =
  * ownership change (a DRAFT or SUPPLEMENTAL transaction, in this database
  * transaction) or, for a supplemental pick missed again, its one chip. Then
  * moves the clock to the next slot, into the supplemental round when the
- * regular rounds end with missed picks, or completes the draft and moves the
- * league to IN_SEASON.
+ * regular rounds end with missed picks, or completes the draft, moves the
+ * league to IN_SEASON and sets rolling waiver priority in reverse draft order.
  */
 async function resolveSlot(
   tx: DbClient,
@@ -396,6 +398,7 @@ async function resolveSlot(
       });
   if (!next) {
     await moveCircuitLeagueStatus(tx, league.id, "DRAFTING", "IN_SEASON");
+    await setCircuitWaiverPriorities(tx, league.id, initialWaiverPriorities(seats));
     event = await recordEvent(tx, events, draft.id, "draft.completed", {
       draft: draftState(moved),
       on_the_clock: null

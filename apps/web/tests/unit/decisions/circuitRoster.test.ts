@@ -71,6 +71,9 @@ describe("circuit roster labels", () => {
 describe("free agency", () => {
   it("says nothing while open and names the reopening day inside a window", () => {
     expect(circuitFreeAgencyNote({ open: true, window: null })).toBeNull();
+    expect(circuitFreeAgencyNote({ open: false, window: null })).toBe(
+      "Free agency is closed while waiver claims are processed. It reopens once they have run."
+    );
     expect(circuitFreeAgencyNote({ open: false, window: OPEN_WINDOW })).toBe(
       "Free agency is closed while waiver claims are open. It reopens at midnight Pacific on Jan 11, 2027."
     );

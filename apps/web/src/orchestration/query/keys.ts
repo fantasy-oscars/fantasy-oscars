@@ -49,7 +49,13 @@ export const queryKeys = {
       ["circuitLeagues", "draft", circuitLeagueId] as const,
     /** The viewer's own draft queue. */
     queue: (circuitLeagueId: number) =>
-      ["circuitLeagues", "queue", circuitLeagueId] as const
+      ["circuitLeagues", "queue", circuitLeagueId] as const,
+    waivers: (circuitLeagueId: number) =>
+      ["circuitLeagues", "waivers", circuitLeagueId] as const,
+    waiverResults: (circuitLeagueId: number) =>
+      ["circuitLeagues", "waiverResults", circuitLeagueId] as const,
+    claims: (circuitLeagueId: number) =>
+      ["circuitLeagues", "claims", circuitLeagueId] as const
   },
   invites: {
     all: ["invites"] as const,

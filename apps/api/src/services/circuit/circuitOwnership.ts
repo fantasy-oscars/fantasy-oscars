@@ -24,6 +24,11 @@ import {
   listCircuitCeremonies
 } from "../../data/repositories/circuitRepository.js";
 import { listCircuitSelectionsByIds } from "../../data/repositories/circuitSelectionRepository.js";
+import {
+  getCircuitDraftCompletedAt,
+  listCircuitWaiverRunStarts,
+  listPendingCircuitWaiverClaimStarts
+} from "../../data/repositories/circuitWaiverRepository.js";
 import { listScoringOccasions } from "../../domain/circuit.js";
 import {
   assertAcquisitionFits,
@@ -32,6 +37,7 @@ import {
   assertTransactionShape,
   type CircuitTransactionKind
 } from "../../domain/circuitOwnership.js";
+import { dueWaiverWindows, type DueWaiverWindow } from "../../domain/circuitWaivers.js";
 import {
   leagueWaiverWindows,
   waiverWindowAt,
@@ -161,10 +167,38 @@ export async function getCircuitLeagueWaiverWindows(
   );
 }
 
-/** Free agency is open while no waiver window is. */
+/**
+ * The league's windows that have resolved but not yet run, oldest first.
+ * Empty before the league's draft completes.
+ */
+export async function getCircuitLeagueDueWaiverWindows(
+  client: DbClient,
+  league: CircuitLeagueRow,
+  now: Date,
+  windows?: readonly WaiverWindow[]
+): Promise<DueWaiverWindow[]> {
+  const draftCompletedAt = await getCircuitDraftCompletedAt(client, league.id);
+  if (!draftCompletedAt) return [];
+  return dueWaiverWindows({
+    windows: windows ?? (await getCircuitLeagueWaiverWindows(client, league)),
+    draftCompletedAt,
+    runStarts: new Set(await listCircuitWaiverRunStarts(client, league.id)),
+    pendingClaimStarts: await listPendingCircuitWaiverClaimStarts(client, league.id),
+    now
+  });
+}
+
+/**
+ * Free agency is open while no waiver window is, and once every resolved
+ * window has run, so a free agent cannot jump a claim between a window's
+ * resolution instant and its run.
+ */
 async function freeAgencyAt(client: DbClient, league: CircuitLeagueRow, now: Date) {
-  const window = waiverWindowAt(await getCircuitLeagueWaiverWindows(client, league), now);
-  return { open: window === null, window };
+  const windows = await getCircuitLeagueWaiverWindows(client, league);
+  const window = waiverWindowAt(windows, now);
+  if (window) return { open: false, window };
+  const due = await getCircuitLeagueDueWaiverWindows(client, league, now, windows);
+  return { open: due.length === 0, window: null };
 }
 
 async function requireOwnMember(
@@ -303,6 +337,14 @@ export async function addCircuitFreeAgent(
         409,
         "Free agency is closed while waiver claims are open",
         { window: freeAgency.window }
+      );
+    }
+    if (!freeAgency.open) {
+      throw new AppError(
+        "CIRCUIT_WAIVER_WINDOW_OPEN",
+        409,
+        "Free agency reopens once the last waiver claims are processed",
+        { window: null }
       );
     }
     await applyOwnershipChange(tx, circuitLeague, {

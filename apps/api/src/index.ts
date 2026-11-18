@@ -19,9 +19,12 @@ import {
 import { startDraftSweeper } from "./services/draftSweeper.js";
 import { circuitDraftSweeperPass } from "./services/circuit/circuitDraft.js";
 import { registerCircuitDraftWake } from "./services/circuit/circuitDraftWake.js";
+import { startCircuitWaiverScheduler } from "./services/circuit/circuitWaiverScheduler.js";
 import {
   connectCircuitDraftEvents,
+  connectCircuitWaiverEvents,
   disconnectCircuitDraftEvents,
+  disconnectCircuitWaiverEvents,
   registerCircuitNamespace
 } from "./services/circuit/circuitNamespace.js";
 import { log } from "./logger.js";
@@ -64,13 +67,17 @@ if (config.realtimeEnabled) {
   registerDraftEventEmitter(draftNamespace);
   registerCeremonyEventEmitter(draftNamespace);
   // Circuit leagues have their own namespace; see services/circuit/circuitNamespace.ts.
-  connectCircuitDraftEvents(
-    registerCircuitNamespace(io, { db: app.locals.db, authSecret: config.authSecret })
-  );
+  const circuitNamespace = registerCircuitNamespace(io, {
+    db: app.locals.db,
+    authSecret: config.authSecret
+  });
+  connectCircuitDraftEvents(circuitNamespace);
+  connectCircuitWaiverEvents(circuitNamespace);
 } else {
   clearDraftEventEmitter();
   clearCeremonyEventEmitter();
   disconnectCircuitDraftEvents();
+  disconnectCircuitWaiverEvents();
 }
 
 httpServer.listen(config.port, () => {
@@ -82,11 +89,17 @@ httpServer.listen(config.port, () => {
 // each other.
 const sweeper = startDraftSweeper(app.locals.db, [circuitDraftSweeperPass]);
 registerCircuitDraftWake(sweeper.wake);
+// Circuit waiver windows run on their own loop, under their own advisory lock.
+const waiverScheduler = startCircuitWaiverScheduler(app.locals.db);
 
 const shutdown = createShutdown({
   httpServer,
   io,
-  sweeper,
+  sweeper: {
+    stop: async () => {
+      await Promise.all([sweeper.stop(), waiverScheduler.stop()]);
+    }
+  },
   pool: app.locals.db,
   timeoutMs: parseShutdownTimeoutMs(process.env.SHUTDOWN_TIMEOUT_MS),
   onDone: () => flushSentry()

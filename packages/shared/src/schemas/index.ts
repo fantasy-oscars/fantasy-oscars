@@ -14,3 +14,4 @@ export * from "./circuitLeague.js";
 export * from "./circuitOwnership.js";
 export * from "./circuitDraft.js";
 export * from "./contenders.js";
+export * from "./circuitWaivers.js";
