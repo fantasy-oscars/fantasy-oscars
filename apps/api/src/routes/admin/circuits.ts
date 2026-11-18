@@ -9,6 +9,7 @@ import {
   getCircuitDetail,
   listCircuitsForAdmin
 } from "../../services/circuit/circuitAdmin.js";
+import { rebuildCircuitScoresAsAdmin } from "../../services/circuit/circuitScoring.js";
 import {
   adminCircuitCreateBody,
   adminCircuitIdParam
@@ -64,6 +65,22 @@ export function registerAdminCircuitRoutes(router: Router, client: DbClient) {
       try {
         const { id } = parseParams(adminCircuitIdParam, req.params);
         return res.status(200).json(await activate(pool, actorOf(req), id));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // Rebuilds the scoring ledger of every league of the Circuit from stored
+  // history. Safe to repeat: the result depends only on the stored inputs.
+  router.post(
+    "/circuits/:id/scores/rebuild",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id } = parseParams(adminCircuitIdParam, req.params);
+        return res
+          .status(200)
+          .json(await rebuildCircuitScoresAsAdmin(pool, actorOf(req), id));
       } catch (err) {
         next(err);
       }

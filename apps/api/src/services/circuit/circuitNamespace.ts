@@ -4,6 +4,7 @@ import type { DbClient } from "../../data/db.js";
 import { getCircuitLeagueMemberByUser } from "../../data/repositories/circuitOwnershipRepository.js";
 import { AppError, validationError } from "../../errors.js";
 import { registerCircuitDraftEventEmitter } from "./circuitDraftEvents.js";
+import { registerCircuitScoreEventEmitter } from "./circuitScoreEvents.js";
 import { registerCircuitWaiverEventEmitter } from "./circuitWaiverEvents.js";
 
 /*
@@ -11,8 +12,8 @@ import { registerCircuitWaiverEventEmitter } from "./circuitWaiverEvents.js";
  * Circuit league in its handshake and joins that league's room, after the
  * same session check as the /drafts namespace, only when the user is a member
  * of that Circuit league. The league's draft events go to the room as
- * `draft:event` and completed waiver runs as `waiver:result`; later league
- * events (scoring) will share it. It lives with the Circuit services because
+ * `draft:event`, completed waiver runs as `waiver:result` and ledger
+ * changes as `score:update`. It lives with the Circuit services because
  * the realtime modules and Circuit modules never import each other; the
  * entry point wires it.
  */
@@ -100,4 +101,15 @@ export function connectCircuitWaiverEvents(nsp: Namespace): void {
 
 export function disconnectCircuitWaiverEvents(): void {
   registerCircuitWaiverEventEmitter(null);
+}
+
+/** Sends ledger changes to their league's room. */
+export function connectCircuitScoreEvents(nsp: Namespace): void {
+  registerCircuitScoreEventEmitter((message) =>
+    emitToCircuitLeague(nsp, message.circuit_league_id, "score:update", message)
+  );
+}
+
+export function disconnectCircuitScoreEvents(): void {
+  registerCircuitScoreEventEmitter(null);
 }

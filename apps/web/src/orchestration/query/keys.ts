@@ -55,7 +55,12 @@ export const queryKeys = {
     waiverResults: (circuitLeagueId: number) =>
       ["circuitLeagues", "waiverResults", circuitLeagueId] as const,
     claims: (circuitLeagueId: number) =>
-      ["circuitLeagues", "claims", circuitLeagueId] as const
+      ["circuitLeagues", "claims", circuitLeagueId] as const,
+    /** Cumulative standings; prefixes every ceremony breakdown of the league. */
+    standings: (circuitLeagueId: number) =>
+      ["circuitLeagues", "standings", circuitLeagueId] as const,
+    ceremonyBreakdown: (circuitLeagueId: number, ceremonyId: number) =>
+      ["circuitLeagues", "standings", circuitLeagueId, "ceremony", ceremonyId] as const
   },
   invites: {
     all: ["invites"] as const,

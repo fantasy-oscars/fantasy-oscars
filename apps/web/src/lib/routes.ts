@@ -85,6 +85,25 @@ export function circuitWaiversPath(input: {
   return `${circuitLeaguePath(input)}/waivers`;
 }
 
+/** Cumulative standings of a league's season. */
+export function circuitStandingsPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${circuitLeaguePath(input)}/standings`;
+}
+
+/** One ceremony's points per member in a league's season. */
+export function circuitCeremonyPointsPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+  ceremonyId: number;
+}): string {
+  return `${circuitStandingsPath(input)}/${input.ceremonyId}`;
+}
+
 /** The draft of a league's season: the lobby before it starts, then the room. */
 export function circuitDraftPath(input: {
   leagueId: number;

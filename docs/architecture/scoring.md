@@ -3,6 +3,10 @@
 Seasons choose one scoring strategy. Scoring is applied at the season level once
 ceremony winners are known.
 
+This page covers single-ceremony Seasons. Full seasons (Circuit leagues) score
+nominations and wins across many ceremonies from a derived ledger; see
+[Circuit, scoring and standings](circuit.md#scoring-and-standings).
+
 - **Standard** (`fixed`, default): +1 point for each winning nominee drafted.
 - **Negative** (`negative`): -1 point for each winning nominee drafted (avoid-winner mode).
 - **Category-weighted** (`category_weighted`): points are based on the season's

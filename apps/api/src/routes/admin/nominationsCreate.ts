@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError, validationError } from "../../errors.js";
 import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
@@ -316,6 +317,12 @@ export function registerAdminNominationCreateRoute(args: {
             }
           });
         }
+
+        await rebuildCircuitScoresAfterWrite(
+          client as Pool,
+          { ceremonyId },
+          "create_nomination_manual"
+        );
 
         return res.status(201).json({ ok: true, ...result });
       } catch (err) {

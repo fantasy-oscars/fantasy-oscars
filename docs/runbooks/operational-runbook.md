@@ -139,6 +139,12 @@ It runs every due window under the scheduler's advisory lock and prints what it 
 
 Never delete a `circuit_waiver_run` row to force a re-run: its wins are already in the transaction log and rosters.
 
+## Circuit score rebuild
+
+Full-season points live in `circuit_score_entry`, a ledger rebuilt from ownership history, nominations, winners and league weights (see [Circuit, scoring and standings](../architecture/circuit.md#scoring-and-standings)). Writes rebuild it automatically; a failed automatic rebuild logs `circuit_score_rebuild_failed` (or `circuit_score_day_rebuild_failed` from the scheduler) and leaves the write in place.
+
+**Repair a Circuit's points** after such a failure, or after a film consolidation or TMDB person-id change (neither triggers a rebuild): as an admin, `POST /admin/circuits/<id>/scores/rebuild`. It rebuilds every league of the Circuit, returns `{ "rebuild": { "leagues", "occasions", "entries" } }` and writes a `rebuild_circuit_scores` audit row. It is idempotent, so running it again is safe; members see the new standings live.
+
 ## Bootstrap First Production Admin (one-time, safe path)
 
 Goal: create/promote a single admin without direct SQL. Uses a one-time secret stored in Render.

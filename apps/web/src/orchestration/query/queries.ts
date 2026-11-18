@@ -2,12 +2,14 @@ import { queryOptions } from "@tanstack/react-query";
 import { fetchJson } from "../../lib/api";
 import type {
   CeremonySummary,
+  CircuitCeremonyBreakdown,
   CircuitDraftSnapshot,
   CircuitLeagueDetail,
   CircuitClaims,
   CircuitLeagueSummary,
   CircuitQueue,
   CircuitRoster,
+  CircuitStandings,
   CircuitSummary,
   CircuitTransaction,
   CircuitWaiverRun,
@@ -203,6 +205,43 @@ export function circuitTransactionsQuery(circuitLeagueId: number) {
         "Unable to load transactions"
       );
       return data?.transactions ?? [];
+    }
+  });
+}
+
+export function circuitStandingsQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.standings(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitStandings>(
+          `/circuit-leagues/${circuitLeagueId}/standings`,
+          { method: "GET" }
+        ),
+        "Unable to load standings"
+      );
+      if (!data) throw new ApiQueryError("Unable to load standings");
+      return data;
+    }
+  });
+}
+
+export function circuitCeremonyBreakdownQuery(
+  circuitLeagueId: number,
+  ceremonyId: number
+) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.ceremonyBreakdown(circuitLeagueId, ceremonyId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitCeremonyBreakdown>(
+          `/circuit-leagues/${circuitLeagueId}/standings/ceremonies/${ceremonyId}`,
+          { method: "GET" }
+        ),
+        "Unable to load the ceremony's points"
+      );
+      if (!data) throw new ApiQueryError("Unable to load the ceremony's points");
+      return data;
     }
   });
 }

@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { AuthedRequest } from "../../auth/middleware.js";
 import { type DbClient, query, runInTransaction } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
 import { hasDraftsStartedForCeremony } from "../../data/repositories/draftRepository.js";
 import { AppError } from "../../errors.js";
 import { assertCeremonyContentEditable } from "../../domain/ceremonyLifecycle.js";
@@ -26,7 +27,7 @@ export function registerAdminNominationContributorsDeleteRoute({
           req.params
         );
 
-        await runInTransaction(client as Pool, async (tx) => {
+        const ceremonyId = await runInTransaction(client as Pool, async (tx) => {
           const { rows: metaRows } = await query<{ ceremony_id: number; status: string }>(
             tx,
             `SELECT ce.ceremony_id::int AS ceremony_id, c.status
@@ -55,6 +56,7 @@ export function registerAdminNominationContributorsDeleteRoute({
             [contributorId, nominationId]
           );
           if (!rowCount) throw new AppError("NOT_FOUND", 404, "Contributor not found");
+          return meta.ceremony_id;
         });
 
         if (req.auth?.sub) {
@@ -66,6 +68,12 @@ export function registerAdminNominationContributorsDeleteRoute({
             meta: { nomination_contributor_id: contributorId }
           });
         }
+
+        await rebuildCircuitScoresAfterWrite(
+          client as Pool,
+          { ceremonyId },
+          "remove_nomination_contributor"
+        );
 
         return res.status(200).json({ ok: true });
       } catch (err) {
