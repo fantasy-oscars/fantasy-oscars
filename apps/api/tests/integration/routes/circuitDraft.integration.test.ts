@@ -284,6 +284,16 @@ describe("circuit draft", () => {
       expect(after.rows[0]!.completed_at).not.toBeNull();
       expect(await leagueStatus()).toBe("IN_SEASON");
 
+      // Rolling waiver priority starts in reverse draft order: last seat first.
+      const priority = await db.pool.query<{ member_id: number }>(
+        `SELECT id::int AS member_id FROM circuit_league_member
+         WHERE circuit_league_id = $1 ORDER BY waiver_priority`,
+        [circuitLeagueId]
+      );
+      expect(priority.rows.map((r) => r.member_id)).toEqual(
+        [...seats].sort((a, b) => b.seat_number - a.seat_number).map((s) => s.member_id)
+      );
+
       const events = await db.pool.query<{ version: number; event_type: string }>(
         `SELECT version, event_type FROM circuit_draft_event
          WHERE draft_id = $1 ORDER BY version`,

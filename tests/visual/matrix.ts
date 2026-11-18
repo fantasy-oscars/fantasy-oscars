@@ -369,6 +369,24 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // No window open: the note, rolling priority and no results yet.
+    id: "circuit-waivers",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/waivers`,
+    ready: { text: "There is no waiver window open" },
+    fullPage: true
+  },
+  {
+    // Inside a window: blake's two ranked claims (one chipped, one with a drop) and the picker.
+    id: "circuit-waivers-window",
+    persona: "blake",
+    path: (s) =>
+      `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/waivers`,
+    ready: { text: "Claim a contender" },
+    fullPage: true
+  },
+  {
     // A member of the Circuit competition: Home lists it beside the Seasons.
     id: "home-with-circuit",
     persona: "casey",

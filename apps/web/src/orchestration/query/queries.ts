@@ -4,11 +4,14 @@ import type {
   CeremonySummary,
   CircuitDraftSnapshot,
   CircuitLeagueDetail,
+  CircuitClaims,
   CircuitLeagueSummary,
   CircuitQueue,
   CircuitRoster,
   CircuitSummary,
   CircuitTransaction,
+  CircuitWaiverRun,
+  CircuitWaivers,
   InboxInvite,
   LeagueDetail,
   LeagueMember,
@@ -233,6 +236,57 @@ export function circuitQueueQuery(circuitLeagueId: number) {
         "Unable to load your queue"
       );
       if (!data) throw new ApiQueryError("Unable to load your queue");
+      return data;
+    }
+  });
+}
+
+/** A league's open waiver window, rolling priority and every chip. */
+export function circuitWaiversQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.waivers(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitWaivers>(`/circuit-leagues/${circuitLeagueId}/waivers`, {
+          method: "GET"
+        }),
+        "Unable to load waivers"
+      );
+      if (!data) throw new ApiQueryError("Unable to load waivers");
+      return data;
+    }
+  });
+}
+
+/** A league's completed waiver runs, newest first. */
+export function circuitWaiverResultsQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.waiverResults(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<{ runs: CircuitWaiverRun[] }>(
+          `/circuit-leagues/${circuitLeagueId}/waivers/results`,
+          { method: "GET" }
+        ),
+        "Unable to load waiver results"
+      );
+      return data?.runs ?? [];
+    }
+  });
+}
+
+/** The viewer's own claims in the open window, and their chips. */
+export function circuitClaimsQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.claims(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitClaims>(`/circuit-leagues/${circuitLeagueId}/claims`, {
+          method: "GET"
+        }),
+        "Unable to load your claims"
+      );
+      if (!data) throw new ApiQueryError("Unable to load your claims");
       return data;
     }
   });

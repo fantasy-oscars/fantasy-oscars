@@ -362,6 +362,95 @@ export type CircuitTransaction = {
   drop: CircuitSelectionSummary | null;
 };
 
+/** A waiver window as the claims and waivers reads carry it. */
+export type CircuitClaimWindow = {
+  starts_on: string;
+  ends_on: string;
+  resolves_on: string;
+};
+
+export type CircuitChipStatus = "AVAILABLE" | "CONSUMED" | "EXPIRED";
+
+export type CircuitWaiverFailureReason =
+  "SELECTION_OWNED" | "DROP_NOT_OWNED" | "ROSTER_FULL" | "CATEGORY_LIMIT";
+
+export type CircuitPriorityRow = {
+  user_id: number;
+  username: string;
+  waiver_priority: number | null;
+};
+
+/** `GET /circuit-leagues/:id/waivers`: the open window, priority and every chip. */
+export type CircuitWaivers = {
+  window: CircuitClaimWindow | null;
+  priority: CircuitPriorityRow[];
+  chips: Array<{
+    id: number;
+    member: { user_id: number; username: string };
+    original_pick_number: number;
+    status: CircuitChipStatus | string;
+  }>;
+};
+
+/** One of the viewer's own claims, first choice first. */
+export type CircuitClaim = {
+  id: number;
+  rank: number;
+  status: "PENDING" | "WON" | "LOST" | "WITHDRAWN" | string;
+  failure_reason: CircuitWaiverFailureReason | string | null;
+  selection: CircuitSelectionSummary;
+  drop: CircuitSelectionSummary | null;
+  chip: { id: number; original_pick_number: number } | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** `GET /circuit-leagues/:id/claims`, also returned by every claim write. */
+export type CircuitClaims = {
+  window: CircuitClaimWindow | null;
+  /** The processor has started this window; claims no longer change. */
+  locked: boolean;
+  claims: CircuitClaim[];
+  chips: Array<{
+    id: number;
+    original_pick_number: number;
+    status: CircuitChipStatus | string;
+    /** The pending claim the chip rides on, if any. */
+    claim_id: number | null;
+  }>;
+};
+
+/** A completed run in `GET /circuit-leagues/:id/waivers/results`, newest first. */
+export type CircuitWaiverRun = {
+  id: number;
+  window: { starts_on: string; ends_on: string };
+  completed_at: string;
+  priority_before: CircuitPriorityRow[];
+  priority_after: CircuitPriorityRow[];
+  claims: Array<{
+    id: number;
+    /** The order the run evaluated the claims in, from 1. */
+    order: number;
+    member: { user_id: number; username: string };
+    status: "WON" | "LOST" | string;
+    failure_reason: CircuitWaiverFailureReason | string | null;
+    selection: CircuitSelectionSummary;
+    drop: CircuitSelectionSummary | null;
+    chip: { original_pick_number: number } | null;
+  }>;
+};
+
+/** A `waiver:result` message on the league's room. */
+export type CircuitWaiverResultMessage = {
+  circuit_league_id: number;
+  run_id: number;
+  window_starts_on: string;
+  won: number;
+  lost: number;
+  chips_expired: number;
+  server_time: string;
+};
+
 export type CircuitDraftStatus = "IN_PROGRESS" | "SUPPLEMENTAL" | "PAUSED" | "COMPLETED";
 
 /** The draft row as the snapshot carries it. */

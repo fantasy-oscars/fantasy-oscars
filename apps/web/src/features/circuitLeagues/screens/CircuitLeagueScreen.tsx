@@ -5,12 +5,14 @@ import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSet
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
 import { circuitDraftLinkLabel } from "@/decisions/circuitDraft";
 import { circuitRostersVisible } from "@/decisions/circuitRoster";
+import { circuitWaiversVisible } from "@/decisions/circuitWaivers";
 import { statusTone } from "@/decisions/statusTone";
 import type { ApiResult } from "@/lib/types";
 import {
   circuitDraftPath,
   circuitRosterPath,
   circuitTransactionsPath,
+  circuitWaiversPath,
   leaguePath
 } from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
@@ -127,6 +129,15 @@ export function CircuitLeagueScreen(props: {
                   >
                     Transactions
                   </Button>
+                  {circuitWaiversVisible(detail.circuit_league.status) ? (
+                    <Button
+                      component={Link}
+                      to={circuitWaiversPath(link)}
+                      variant="outline"
+                    >
+                      Waivers
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
               <Button

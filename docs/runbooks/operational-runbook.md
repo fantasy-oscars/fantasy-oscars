@@ -108,6 +108,37 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
 - Admin UI: Winners page shows empty winners and unlocked state.
 - Communicate to commissioners that drafts for the new ceremony are now open; remind them drafting will lock immediately when the first winner is saved.
 
+## Circuit waiver runs
+
+Waiver windows of full seasons (Circuit leagues) run in the API's waiver scheduler, just after midnight Pacific on each window's resolution day (see [Circuit, waivers](../architecture/circuit.md#waivers-priority-and-chips) and the scheduler settings in the [deployment runbook](deployment.md)).
+
+**Check a run.** In the API logs, search for `circuit_waiver_run_completed` (one line per league and window, with `won`, `lost` and `chips_expired`) and `circuit_waiver_run_failed` (with the error). In the database (`psql "$DATABASE_URL"`):
+
+```sql
+-- Runs of one league, newest first.
+SELECT id, window_starts_on, status, started_at, completed_at
+FROM circuit_waiver_run WHERE circuit_league_id = <id>
+ORDER BY window_starts_on DESC;
+
+-- Claims still pending in windows that should have run.
+SELECT circuit_league_id, window_starts_on, count(*)
+FROM circuit_waiver_claim WHERE status = 'PENDING'
+GROUP BY 1, 2 ORDER BY 2;
+```
+
+A run is one transaction, so a committed run is always `COMPLETED`; there is no half-finished run to repair. A window that resolved but has no run either has not been checked yet (the next check is within `CIRCUIT_WAIVER_SCHEDULER_INTERVAL_MS`, default 10 minutes) or failed and rolled back. Players see free agency closed until it runs.
+
+**Re-run a stuck window.** Find the error in `circuit_waiver_run_failed` and fix its cause first; the scheduler retries on every check and stops that league's later windows until the failing one succeeds. To run now instead of waiting, from a shell on the API service:
+
+```bash
+cd apps/api
+DATABASE_URL="$DATABASE_URL" pnpm exec tsx src/scripts/run-circuit-waivers.ts
+```
+
+It runs every due window under the scheduler's advisory lock and prints what it ran; `Another instance holds the waiver lock` means a check is already running, so wait and look again. Repeating it is safe: a window with a completed run is never run twice. Restarting the API also runs a check at startup. A run from the script sends no live update; players see the results when they next load the page.
+
+Never delete a `circuit_waiver_run` row to force a re-run: its wins are already in the transaction log and rosters.
+
 ## Bootstrap First Production Admin (one-time, safe path)
 
 Goal: create/promote a single admin without direct SQL. Uses a one-time secret stored in Render.

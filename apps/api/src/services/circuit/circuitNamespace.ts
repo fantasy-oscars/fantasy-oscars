@@ -4,15 +4,17 @@ import type { DbClient } from "../../data/db.js";
 import { getCircuitLeagueMemberByUser } from "../../data/repositories/circuitOwnershipRepository.js";
 import { AppError, validationError } from "../../errors.js";
 import { registerCircuitDraftEventEmitter } from "./circuitDraftEvents.js";
+import { registerCircuitWaiverEventEmitter } from "./circuitWaiverEvents.js";
 
 /*
  * The /circuits Socket.IO namespace (ADR 0005, section 6). A socket names one
  * Circuit league in its handshake and joins that league's room, after the
  * same session check as the /drafts namespace, only when the user is a member
  * of that Circuit league. The league's draft events go to the room as
- * `draft:event`; later league events (rosters, waivers, scoring) will share
- * it. It lives with the Circuit services because the realtime modules and
- * Circuit modules never import each other; the entry point wires it.
+ * `draft:event` and completed waiver runs as `waiver:result`; later league
+ * events (scoring) will share it. It lives with the Circuit services because
+ * the realtime modules and Circuit modules never import each other; the
+ * entry point wires it.
  */
 
 export const CIRCUIT_NAMESPACE = "/circuits";
@@ -87,4 +89,15 @@ export function connectCircuitDraftEvents(nsp: Namespace): void {
 
 export function disconnectCircuitDraftEvents(): void {
   registerCircuitDraftEventEmitter(null);
+}
+
+/** Sends completed waiver runs to their league's room. */
+export function connectCircuitWaiverEvents(nsp: Namespace): void {
+  registerCircuitWaiverEventEmitter((message) =>
+    emitToCircuitLeague(nsp, message.circuit_league_id, "waiver:result", message)
+  );
+}
+
+export function disconnectCircuitWaiverEvents(): void {
+  registerCircuitWaiverEventEmitter(null);
 }

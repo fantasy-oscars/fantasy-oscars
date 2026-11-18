@@ -92,7 +92,7 @@ export async function requireVisibleCircuitLeague(
   client: DbClient,
   id: number,
   viewer: Viewer,
-  opts: { forUpdate?: boolean } = {}
+  opts: { forUpdate?: boolean; forShare?: boolean } = {}
 ) {
   const circuitLeague = await getCircuitLeagueById(client, id, opts);
   if (!circuitLeague) throw NOT_FOUND();

@@ -4,7 +4,12 @@ import type { ContenderPickerProps } from "@/features/contenders/ui/ContenderPic
 import type { CircuitRosterView } from "@/orchestration/circuitRoster";
 import type { CircuitRosterEntry } from "@/decisions/circuitRoster";
 import type { ApiResult, CircuitSelectionSummary } from "@/lib/types";
-import { circuitLeaguePath, circuitTransactionsPath } from "@/lib/routes";
+import {
+  circuitLeaguePath,
+  circuitTransactionsPath,
+  circuitWaiversPath
+} from "@/lib/routes";
+import { circuitWaiversVisible } from "@/decisions/circuitWaivers";
 import {
   CircuitPageError,
   CircuitPageFrame,
@@ -64,6 +69,11 @@ export function CircuitRosterScreen(props: {
           <Button component={Link} to={circuitTransactionsPath(link)} variant="outline">
             Transactions
           </Button>
+          {circuitWaiversVisible(detail.circuit_league.status) ? (
+            <Button component={Link} to={circuitWaiversPath(link)} variant="outline">
+              Waivers
+            </Button>
+          ) : null}
           <Button component={Link} to={circuitLeaguePath(link)} variant="outline">
             Back to season
           </Button>
