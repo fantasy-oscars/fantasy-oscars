@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Group, Modal, Text, UnstyledButton } from "@ui";
+import { ActionIcon, Box, Button, Modal, Text } from "@ui";
 import { useState } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { RuntimeBannerStack } from "@/notifications";
@@ -8,6 +8,7 @@ import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { useCategoryKeyboardFocus } from "./useCategoryKeyboardFocus";
 import { MobileDraftHeader } from "./MobileDraftHeader";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
+import { DraftMobileRailBar } from "@/features/draft/ui/mobile/DraftMobileRailBar";
 import { MobileRosterBoard } from "./MobileRosterBoard";
 import { FO_MODAL_OVERLAY_OPACITY } from "@/tokens/overlays";
 
@@ -221,75 +222,36 @@ export function MobileDraftRoom(props: {
       </Box>
 
       {!isCompleted && o.header.view !== "roster" ? (
-        <Box className="dr-mobileBottomBar" role="navigation" aria-label="Draft rails">
-          <Group justify="space-between" gap="var(--fo-space-0)" wrap="nowrap">
-            <UnstyledButton
-              type="button"
-              className={[
-                "dr-mobileRailBtn",
-                activeRail === "ledger" ? "is-active" : "",
-                canOpenLedger ? "" : "is-disabled"
-              ].join(" ")}
-              aria-label="Draft history"
-              aria-disabled={!canOpenLedger}
-              title={
-                canOpenLedger
-                  ? "Draft history"
-                  : "Draft history (available after draft starts)"
-              }
-              onClick={() => {
-                if (!canOpenLedger) return;
-                setActiveRail((r) => (r === "ledger" ? null : "ledger"));
-              }}
-            >
-              <Text component="span" className="mi-icon" aria-hidden="true">
-                history
-              </Text>
-            </UnstyledButton>
-            <UnstyledButton
-              type="button"
-              className={[
-                "dr-mobileRailBtn",
-                activeRail === "roster" ? "is-active" : "",
-                canOpenRosterRail ? "" : "is-disabled"
-              ].join(" ")}
-              aria-label="My roster"
-              aria-disabled={!canOpenRosterRail}
-              title={
-                canOpenRosterRail
-                  ? "My roster"
-                  : "My roster (available after draft starts)"
-              }
-              onClick={() => {
-                if (!canOpenRosterRail) return;
-                setActiveRail((r) => (r === "roster" ? null : "roster"));
-              }}
-            >
-              <Text component="span" className="mi-icon" aria-hidden="true">
-                patient_list
-              </Text>
-            </UnstyledButton>
-            <UnstyledButton
-              type="button"
-              className={[
-                "dr-mobileRailBtn",
-                activeRail === "autodraft" ? "is-active" : "",
-                canOpenAutodraft ? "" : "is-disabled"
-              ].join(" ")}
-              aria-label="Auto-draft"
-              aria-disabled={!canOpenAutodraft}
-              title="Auto-draft"
-              onClick={() => {
-                if (!canOpenAutodraft) return;
-                setActiveRail((r) => (r === "autodraft" ? null : "autodraft"));
-              }}
-            >
-              <Text component="span" className="mi-icon" aria-hidden="true">
-                smart_toy
-              </Text>
-            </UnstyledButton>
-          </Group>
-        </Box>
+        <DraftMobileRailBar
+          activeRail={activeRail}
+          onToggle={(rail) => setActiveRail((r) => (r === rail ? null : rail))}
+          rails={[
+            {
+              id: "ledger",
+              icon: "history",
+              label: "Draft history",
+              enabled: canOpenLedger,
+              title: canOpenLedger
+                ? "Draft history"
+                : "Draft history (available after draft starts)"
+            },
+            {
+              id: "roster",
+              icon: "patient_list",
+              label: "My roster",
+              enabled: canOpenRosterRail,
+              title: canOpenRosterRail
+                ? "My roster"
+                : "My roster (available after draft starts)"
+            },
+            {
+              id: "autodraft",
+              icon: "smart_toy",
+              label: "Auto-draft",
+              enabled: canOpenAutodraft
+            }
+          ]}
+        />
       ) : null}
 
       <Box component="footer" className="dr-footer">

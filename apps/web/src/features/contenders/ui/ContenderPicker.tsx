@@ -25,6 +25,14 @@ import type { ContenderSelection } from "@/orchestration/contenders";
 
 type LoadState = "idle" | "loading" | "error" | "ready";
 
+export type ContenderConfirmAction = {
+  verb: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  /** This action is the one under way. */
+  loading?: boolean;
+};
+
 export type ContenderPickerProps = {
   categoriesState: "loading" | "error" | "ready" | "idle";
   categoriesError: string | null;
@@ -50,6 +58,11 @@ export type ContenderPickerProps = {
   picking: boolean;
   /** The confirm button's verb, as in "Draft Sunset Boulevard"; "Pick" by default. */
   confirmVerb?: string;
+  /**
+   * Several confirm buttons in place of the one, as in "Draft …", "Queue …"
+   * and "Stage …". Each runs its own action; the first is the primary one.
+   */
+  confirmActions?: ContenderConfirmAction[];
   pickError: string | null;
   picked: ContenderSelection | null;
   actions: {
@@ -275,13 +288,32 @@ function ConfirmStep(props: ContenderPickerProps) {
       </Stack>
     );
   }
+  const name = person ? person.name : film.title;
+  const firstEnabled = props.confirmActions?.findIndex((a) => !a.disabled) ?? -1;
   return (
     <Stack gap="xs">
-      <Group>
-        <Button onClick={actions.pick} loading={picking} autoFocus>
-          {props.confirmVerb ?? "Pick"} {person ? person.name : film.title}
-        </Button>
-      </Group>
+      {props.confirmActions ? (
+        <Group gap="xs" wrap="wrap">
+          {props.confirmActions.map((action, idx) => (
+            <Button
+              key={action.verb}
+              variant={idx === 0 ? "filled" : "default"}
+              onClick={action.onConfirm}
+              loading={action.loading}
+              disabled={action.disabled || (picking && !action.loading)}
+              autoFocus={idx === firstEnabled}
+            >
+              {action.verb} {name}
+            </Button>
+          ))}
+        </Group>
+      ) : (
+        <Group>
+          <Button onClick={actions.pick} loading={picking} autoFocus>
+            {props.confirmVerb ?? "Pick"} {name}
+          </Button>
+        </Group>
+      )}
       {pickError ? <ErrorAlert message={pickError} /> : null}
     </Stack>
   );

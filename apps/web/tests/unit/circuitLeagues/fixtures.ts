@@ -256,7 +256,13 @@ function draftPick(
   };
 }
 
-/** A queue in the given order, top first. */
-export function circuitQueue(selections: CircuitSelectionSummary[]): CircuitQueue {
-  return { items: selections.map((selection, i) => ({ position: i + 1, selection })) };
+/** A queue in the given order, top first, and the staged selections. */
+export function circuitQueue(
+  selections: CircuitSelectionSummary[],
+  staged: CircuitSelectionSummary[] = []
+): CircuitQueue {
+  return {
+    items: selections.map((selection, i) => ({ position: i + 1, selection })),
+    staged: staged.map((selection) => ({ selection }))
+  };
 }

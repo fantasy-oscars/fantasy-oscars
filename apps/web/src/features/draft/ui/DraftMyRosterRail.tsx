@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Box, Text, Tooltip, UnstyledButton } from "@ui";
+import { Box, Text, Tooltip } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { useCssVars } from "@/shared/dom/useCssVars";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
@@ -9,7 +9,7 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "./nomineeTooltip";
-import { useRailFocusReturn } from "./useRailFocusReturn";
+import { DraftRail } from "./DraftRail";
 import type { DraftNomineeMeta, DraftRosterPick } from "./types";
 
 export function DraftMyRosterRail(props: {
@@ -23,7 +23,6 @@ export function DraftMyRosterRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
-  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.myPicks.map((p) => p.roundPick)) }),
@@ -32,150 +31,102 @@ export function DraftMyRosterRail(props: {
   useCssVars(listRef, railVars);
 
   return (
-    <Box
-      className={["dr-rail", "dr-rail-roster", open ? "is-open" : "is-collapsed"].join(
-        " "
-      )}
+    <DraftRail
+      kind="roster"
+      open={open}
+      setOpen={setOpen}
+      icon="patient_list"
+      title="My roster"
+      side="right"
+      disabled={isPre}
+      disabledTitle="My roster (available after draft starts)"
+      compactRails={compactRails}
+      openExclusive={() => openRailExclusive("roster")}
     >
-      {open ? (
-        <Box className="dr-railPane">
-          <Box className="dr-railPaneHeader">
-            <Box className="dr-railPaneTitleRow">
-              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-                patient_list
-              </Text>
-              <Text className="dr-railPaneTitle" title="My roster">
-                My roster
-              </Text>
-            </Box>
-            <UnstyledButton
-              type="button"
-              ref={closeRef}
-              className="dr-railClose"
-              aria-label="Collapse my roster"
-              onClick={close}
-            >
-              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-                chevron_right
-              </Text>
-            </UnstyledButton>
-          </Box>
-          <Box
-            className="dr-railPaneBody"
-            role="region"
-            aria-label="My roster"
-            tabIndex={0}
-          >
-            <Box className="dr-railList" ref={listRef}>
-              {props.myPicks.length === 0 ? (
-                <Text className="dr-railEmpty">No picks yet</Text>
-              ) : (
-                props.myPicks.map((p) => {
-                  const nominee = props.nomineeById.get(p.nominationId) ?? null;
-                  const pill = (
-                    <Box
-                      className={[
-                        "dr-pill",
-                        "dr-pill-static",
-                        props.hoveredNominationIds.has(p.nominationId)
-                          ? "is-hoverMatch"
-                          : "",
-                        p.winner ? "is-winner" : "",
-                        p.pending ? "is-pending" : ""
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      tabIndex={nominee ? 0 : undefined}
-                      role={nominee ? "group" : undefined}
-                      aria-label={
-                        nominee
-                          ? `${nominee.categoryName}: ${p.label}${p.pending ? " (pending)" : ""}`
-                          : undefined
-                      }
-                    >
-                      {nominee ? (
-                        <DraftCategoryIcon
-                          icon={nominee.categoryIcon}
-                          variant={nominee.categoryIconVariant}
-                          className="dr-pill-icon"
-                        />
-                      ) : p.icon ? (
-                        <DraftCategoryIcon
-                          icon={p.icon}
-                          variant="default"
-                          className="dr-pill-icon"
-                        />
-                      ) : null}
-                      <Text component="span" className="dr-pill-text" lineClamp={1}>
-                        {p.label}
-                      </Text>
-                    </Box>
-                  );
-                  return (
-                    <Box key={p.pickNumber} className="dr-railRow dr-rosterRow">
-                      <Text className="dr-railMeta">{p.roundPick}</Text>
-                      {nominee ? (
-                        <Tooltip
-                          events={NOMINEE_TOOLTIP_EVENTS}
-                          withArrow={false}
-                          position="bottom-start"
-                          multiline
-                          offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                          styles={NOMINEE_CARD_TOOLTIP_STYLES}
-                          label={
-                            <NomineeTooltipCard
-                              unitKind={nominee.unitKind}
-                              categoryName={nominee.categoryName}
-                              filmTitle={nominee.filmTitle}
-                              filmYear={nominee.filmYear}
-                              filmPosterUrl={nominee.filmPosterUrl}
-                              contributors={nominee.contributors}
-                              performerName={nominee.performerName}
-                              performerCharacter={nominee.performerCharacter}
-                              performerProfileUrl={nominee.performerProfileUrl}
-                              performerProfilePath={nominee.performerProfilePath}
-                              performerContributors={nominee.performerContributors}
-                              songTitle={nominee.songTitle}
-                              draftedByLabel={nominee.draftedByLabel}
-                              draftedByAvatarKey={nominee.draftedByAvatarKey}
-                              draftedRoundPick={nominee.draftedRoundPick}
-                            />
-                          }
-                        >
-                          {pill}
-                        </Tooltip>
-                      ) : (
-                        pill
-                      )}
-                    </Box>
-                  );
-                })
-              )}
-            </Box>
-          </Box>
-        </Box>
-      ) : (
-        <UnstyledButton
-          type="button"
-          ref={toggleRef}
-          className={["dr-railToggle", isPre ? "is-disabled" : ""]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label="Expand my roster"
-          aria-disabled={isPre}
-          title={isPre ? "My roster (available after draft starts)" : "My roster"}
-          onClick={() => {
-            if (isPre) return;
-            noteExpand();
-            if (compactRails) openRailExclusive("roster");
-            else setOpen(true);
-          }}
-        >
-          <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
-            patient_list
-          </Text>
-        </UnstyledButton>
-      )}
-    </Box>
+      <Box className="dr-railList" ref={listRef}>
+        {props.myPicks.length === 0 ? (
+          <Text className="dr-railEmpty">No picks yet</Text>
+        ) : (
+          props.myPicks.map((p) => {
+            const nominee = props.nomineeById.get(p.nominationId) ?? null;
+            const pill = (
+              <Box
+                className={[
+                  "dr-pill",
+                  "dr-pill-static",
+                  props.hoveredNominationIds.has(p.nominationId) ? "is-hoverMatch" : "",
+                  p.winner ? "is-winner" : "",
+                  p.pending ? "is-pending" : ""
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                tabIndex={nominee ? 0 : undefined}
+                role={nominee ? "group" : undefined}
+                aria-label={
+                  nominee
+                    ? `${nominee.categoryName}: ${p.label}${p.pending ? " (pending)" : ""}`
+                    : undefined
+                }
+              >
+                {nominee ? (
+                  <DraftCategoryIcon
+                    icon={nominee.categoryIcon}
+                    variant={nominee.categoryIconVariant}
+                    className="dr-pill-icon"
+                  />
+                ) : p.icon ? (
+                  <DraftCategoryIcon
+                    icon={p.icon}
+                    variant="default"
+                    className="dr-pill-icon"
+                  />
+                ) : null}
+                <Text component="span" className="dr-pill-text" lineClamp={1}>
+                  {p.label}
+                </Text>
+              </Box>
+            );
+            return (
+              <Box key={p.pickNumber} className="dr-railRow dr-rosterRow">
+                <Text className="dr-railMeta">{p.roundPick}</Text>
+                {nominee ? (
+                  <Tooltip
+                    events={NOMINEE_TOOLTIP_EVENTS}
+                    withArrow={false}
+                    position="bottom-start"
+                    multiline
+                    offset={NOMINEE_TOOLTIP_OFFSET_PX}
+                    styles={NOMINEE_CARD_TOOLTIP_STYLES}
+                    label={
+                      <NomineeTooltipCard
+                        unitKind={nominee.unitKind}
+                        categoryName={nominee.categoryName}
+                        filmTitle={nominee.filmTitle}
+                        filmYear={nominee.filmYear}
+                        filmPosterUrl={nominee.filmPosterUrl}
+                        contributors={nominee.contributors}
+                        performerName={nominee.performerName}
+                        performerCharacter={nominee.performerCharacter}
+                        performerProfileUrl={nominee.performerProfileUrl}
+                        performerProfilePath={nominee.performerProfilePath}
+                        performerContributors={nominee.performerContributors}
+                        songTitle={nominee.songTitle}
+                        draftedByLabel={nominee.draftedByLabel}
+                        draftedByAvatarKey={nominee.draftedByAvatarKey}
+                        draftedRoundPick={nominee.draftedRoundPick}
+                      />
+                    }
+                  >
+                    {pill}
+                  </Tooltip>
+                ) : (
+                  pill
+                )}
+              </Box>
+            );
+          })
+        )}
+      </Box>
+    </DraftRail>
   );
 }

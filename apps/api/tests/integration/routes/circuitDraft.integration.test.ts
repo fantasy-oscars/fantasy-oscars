@@ -589,6 +589,62 @@ describe("circuit draft", () => {
       ]);
     });
 
+    it("stages selections beside the queue, moving each between the two", async () => {
+      const stage = (user: User, selectionId: number) =>
+        api
+          .post(`${queueUrl()}/staged`)
+          .set(auth(user))
+          .send({ selection_id: selectionId });
+      const staged = (body: { staged: Array<{ selection: { id: number } }> }) =>
+        body.staged.map((i) => i.selection.id);
+
+      await enqueue(alice, films[0]!);
+      await enqueue(alice, films[1]!);
+      const first = await stage(alice, films[2]!);
+      expect(first.status).toBe(201);
+      expect(staged(first.body)).toEqual([films[2]]);
+      expect(queued(first.body)).toEqual([films[0], films[1]]);
+      expect((await stage(alice, films[2]!)).status).toBe(200);
+
+      // Staging a queued selection takes it out of the queue and closes the gap.
+      const moved = await stage(alice, films[0]!);
+      expect(moved.status).toBe(201);
+      expect(queued(moved.body)).toEqual([films[1]]);
+      expect(moved.body.items[0].position).toBe(1);
+      expect(staged(moved.body)).toEqual([films[2], films[0]]);
+
+      // Queueing a staged selection moves it to the bottom of the queue.
+      const back = await enqueue(alice, films[2]!);
+      expect(back.status).toBe(201);
+      expect(queued(back.body)).toEqual([films[1], films[2]]);
+      expect(staged(back.body)).toEqual([films[0]]);
+
+      const removed = await api
+        .delete(`${queueUrl()}/staged/${films[0]}`)
+        .set(auth(alice));
+      expect(removed.status).toBe(200);
+      expect(staged(removed.body)).toEqual([]);
+      expect(queued(removed.body)).toEqual([films[1], films[2]]);
+      expect(
+        (await api.delete(`${queueUrl()}/staged/${films[0]}`).set(auth(alice))).status
+      ).toBe(404);
+      expect((await stage(alice, 999_999)).status).toBe(404);
+      expect((await stage(dana, films[3]!)).status).toBe(403);
+      expect(staged((await api.get(queueUrl()).set(auth(bob))).body)).toEqual([]);
+    });
+
+    it("never auto-picks a staged selection", async () => {
+      const { draft, seats } = await started();
+      const first = onTheClock(seats, 1);
+      await enqueue(first, films[0]!);
+      await api
+        .post(`${queueUrl()}/staged`)
+        .set(auth(first))
+        .send({ selection_id: films[0] });
+      const missed = await tick(draft.id);
+      expect(missed?.pick).toMatchObject({ pick_number: 1, outcome: "MISSED" });
+    });
+
     it("auto-picks the first queued selection nobody has, skipping drafted rows without deleting them", async () => {
       const { draft, seats } = await started();
       expect((await pick(draft.id, onTheClock(seats, 1), films[0]!, "r-1")).status).toBe(

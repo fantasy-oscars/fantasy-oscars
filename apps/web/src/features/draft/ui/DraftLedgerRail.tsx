@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Box, Text, Tooltip, UnstyledButton } from "@ui";
+import { Box, Text, Tooltip } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { useCssVars } from "@/shared/dom/useCssVars";
 import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
@@ -10,7 +10,7 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "./nomineeTooltip";
-import { useRailFocusReturn } from "./useRailFocusReturn";
+import { DraftRail } from "./DraftRail";
 import type { DraftLedgerRow, DraftNomineeMeta } from "./types";
 
 export function DraftLedgerRail(props: {
@@ -25,7 +25,6 @@ export function DraftLedgerRail(props: {
   hoveredNominationIds: Set<number>;
 }) {
   const { open, setOpen, isPre, compactRails, openRailExclusive } = props;
-  const { toggleRef, closeRef, close, noteExpand } = useRailFocusReturn(open, setOpen);
   const listRef = useRef<HTMLDivElement>(null);
   const railVars = useMemo(
     () => ({ "--dr-meta-ch": railMetaCh(props.ledgerRows.map((r) => r.roundPick)) }),
@@ -34,162 +33,115 @@ export function DraftLedgerRail(props: {
   useCssVars(listRef, railVars);
 
   return (
-    <Box
-      className={["dr-rail", "dr-rail-ledger", open ? "is-open" : "is-collapsed"].join(
-        " "
-      )}
+    <DraftRail
+      kind="ledger"
+      open={open}
+      setOpen={setOpen}
+      icon="history"
+      title="Draft history"
+      side="left"
+      disabled={isPre}
+      disabledTitle="Draft history (available after draft starts)"
+      compactRails={compactRails}
+      openExclusive={() => openRailExclusive("ledger")}
     >
-      {open ? (
-        <Box className="dr-railPane">
-          <Box className="dr-railPaneHeader">
-            <Box className="dr-railPaneTitleRow">
-              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-                history
-              </Text>
-              <Text className="dr-railPaneTitle" title="Draft history">
-                Draft history
-              </Text>
-            </Box>
-            <UnstyledButton
-              type="button"
-              ref={closeRef}
-              className="dr-railClose"
-              aria-label="Collapse draft history"
-              onClick={close}
+      <Box className="dr-railList" ref={listRef}>
+        {props.ledgerRows.map((r) => {
+          const nominee = r.nominationId
+            ? (props.nomineeById.get(r.nominationId) ?? null)
+            : null;
+          const avatarKey =
+            r.seatNumber !== null
+              ? (props.avatarKeyBySeat.get(r.seatNumber) ?? null)
+              : null;
+          const pill = (
+            <Box
+              className={[
+                "dr-pill",
+                "dr-pill-static",
+                r.nominationId != null && props.hoveredNominationIds.has(r.nominationId)
+                  ? "is-hoverMatch"
+                  : "",
+                r.label === "—" ? "is-muted" : "",
+                r.winner ? "is-winner" : "",
+                r.pending ? "is-pending" : ""
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              tabIndex={nominee ? 0 : undefined}
+              role={nominee ? "group" : undefined}
+              aria-label={
+                nominee
+                  ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
+                  : undefined
+              }
             >
-              <Text component="span" className="mi-icon mi-icon-tiny" aria-hidden="true">
-                chevron_left
+              {nominee ? (
+                <DraftCategoryIcon
+                  icon={nominee.categoryIcon}
+                  variant={nominee.categoryIconVariant}
+                  className="dr-pill-icon"
+                />
+              ) : r.icon ? (
+                <DraftCategoryIcon
+                  icon={r.icon}
+                  variant="default"
+                  className="dr-pill-icon"
+                />
+              ) : null}
+              <Text component="span" className="dr-pill-text" lineClamp={1}>
+                {r.label}
               </Text>
-            </UnstyledButton>
-          </Box>
-          <Box
-            className="dr-railPaneBody"
-            role="region"
-            aria-label="Draft history"
-            tabIndex={0}
-          >
-            <Box className="dr-railList" ref={listRef}>
-              {props.ledgerRows.map((r) => {
-                const nominee = r.nominationId
-                  ? (props.nomineeById.get(r.nominationId) ?? null)
-                  : null;
-                const avatarKey =
-                  r.seatNumber !== null
-                    ? (props.avatarKeyBySeat.get(r.seatNumber) ?? null)
-                    : null;
-                const pill = (
-                  <Box
-                    className={[
-                      "dr-pill",
-                      "dr-pill-static",
-                      r.nominationId != null &&
-                      props.hoveredNominationIds.has(r.nominationId)
-                        ? "is-hoverMatch"
-                        : "",
-                      r.label === "—" ? "is-muted" : "",
-                      r.winner ? "is-winner" : "",
-                      r.pending ? "is-pending" : ""
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    tabIndex={nominee ? 0 : undefined}
-                    role={nominee ? "group" : undefined}
-                    aria-label={
-                      nominee
-                        ? `${nominee.categoryName}: ${r.label}${r.pending ? " (pending)" : ""}`
-                        : undefined
-                    }
-                  >
-                    {nominee ? (
-                      <DraftCategoryIcon
-                        icon={nominee.categoryIcon}
-                        variant={nominee.categoryIconVariant}
-                        className="dr-pill-icon"
-                      />
-                    ) : r.icon ? (
-                      <DraftCategoryIcon
-                        icon={r.icon}
-                        variant="default"
-                        className="dr-pill-icon"
-                      />
-                    ) : null}
-                    <Text component="span" className="dr-pill-text" lineClamp={1}>
-                      {r.label}
-                    </Text>
-                  </Box>
-                );
-
-                return (
-                  <Box
-                    key={r.pickNumber}
-                    className="dr-railRow dr-ledgerRow"
-                    data-active={r.active ? "true" : "false"}
-                  >
-                    <Text className="dr-railMeta">{r.roundPick}</Text>
-                    <Box className="dr-railAvatar">
-                      <AnimalAvatarIcon avatarKey={avatarKey} />
-                    </Box>
-                    {nominee ? (
-                      <Tooltip
-                        events={NOMINEE_TOOLTIP_EVENTS}
-                        withArrow={false}
-                        position="bottom-start"
-                        multiline
-                        offset={NOMINEE_TOOLTIP_OFFSET_PX}
-                        styles={NOMINEE_CARD_TOOLTIP_STYLES}
-                        label={
-                          <NomineeTooltipCard
-                            unitKind={nominee.unitKind}
-                            categoryName={nominee.categoryName}
-                            filmTitle={nominee.filmTitle}
-                            filmYear={nominee.filmYear}
-                            filmPosterUrl={nominee.filmPosterUrl}
-                            contributors={nominee.contributors}
-                            performerName={nominee.performerName}
-                            performerCharacter={nominee.performerCharacter}
-                            performerProfileUrl={nominee.performerProfileUrl}
-                            performerProfilePath={nominee.performerProfilePath}
-                            performerContributors={nominee.performerContributors}
-                            songTitle={nominee.songTitle}
-                            draftedByLabel={nominee.draftedByLabel}
-                            draftedByAvatarKey={nominee.draftedByAvatarKey}
-                            draftedRoundPick={nominee.draftedRoundPick}
-                          />
-                        }
-                      >
-                        {pill}
-                      </Tooltip>
-                    ) : (
-                      pill
-                    )}
-                  </Box>
-                );
-              })}
             </Box>
-          </Box>
-        </Box>
-      ) : (
-        <UnstyledButton
-          type="button"
-          ref={toggleRef}
-          className={["dr-railToggle", isPre ? "is-disabled" : ""]
-            .filter(Boolean)
-            .join(" ")}
-          aria-label="Expand draft history"
-          aria-disabled={isPre}
-          title={isPre ? "Draft history (available after draft starts)" : "Draft history"}
-          onClick={() => {
-            if (isPre) return;
-            noteExpand();
-            if (compactRails) openRailExclusive("ledger");
-            else setOpen(true);
-          }}
-        >
-          <Text component="span" className="mi-icon dr-railStubIcon" aria-hidden="true">
-            history
-          </Text>
-        </UnstyledButton>
-      )}
-    </Box>
+          );
+
+          return (
+            <Box
+              key={r.pickNumber}
+              className="dr-railRow dr-ledgerRow"
+              data-active={r.active ? "true" : "false"}
+            >
+              <Text className="dr-railMeta">{r.roundPick}</Text>
+              <Box className="dr-railAvatar">
+                <AnimalAvatarIcon avatarKey={avatarKey} />
+              </Box>
+              {nominee ? (
+                <Tooltip
+                  events={NOMINEE_TOOLTIP_EVENTS}
+                  withArrow={false}
+                  position="bottom-start"
+                  multiline
+                  offset={NOMINEE_TOOLTIP_OFFSET_PX}
+                  styles={NOMINEE_CARD_TOOLTIP_STYLES}
+                  label={
+                    <NomineeTooltipCard
+                      unitKind={nominee.unitKind}
+                      categoryName={nominee.categoryName}
+                      filmTitle={nominee.filmTitle}
+                      filmYear={nominee.filmYear}
+                      filmPosterUrl={nominee.filmPosterUrl}
+                      contributors={nominee.contributors}
+                      performerName={nominee.performerName}
+                      performerCharacter={nominee.performerCharacter}
+                      performerProfileUrl={nominee.performerProfileUrl}
+                      performerProfilePath={nominee.performerProfilePath}
+                      performerContributors={nominee.performerContributors}
+                      songTitle={nominee.songTitle}
+                      draftedByLabel={nominee.draftedByLabel}
+                      draftedByAvatarKey={nominee.draftedByAvatarKey}
+                      draftedRoundPick={nominee.draftedRoundPick}
+                    />
+                  }
+                >
+                  {pill}
+                </Tooltip>
+              ) : (
+                pill
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    </DraftRail>
   );
 }

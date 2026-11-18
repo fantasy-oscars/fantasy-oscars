@@ -133,11 +133,11 @@ function contender(category: string, title: string) {
   return found!;
 }
 
-/** The player on the clock drafts through the contender picker. */
+/** The player on the clock drafts through the contender form in the middle of the room. */
 async function draftThroughPicker(page: Page, category: string, title: string) {
   const panel = page.getByRole("region", { name: "Your pick" });
   await expect(panel.getByTestId("circuit-pick-reason")).toHaveText(/on the clock/);
-  const picker = panel.getByRole("group", { name: "Draft a contender" });
+  const picker = panel.getByRole("group", { name: "Choose a contender" });
   await picker.getByRole("textbox", { name: "Category" }).click();
   await page.getByRole("option", { name: category, exact: true }).click();
   await picker.getByRole("textbox", { name: "Search films" }).fill(title);
@@ -216,7 +216,7 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
   for (const p of players) {
     await serveFilmSearch(p.page);
     await p.page.goto(`/leagues/${league.id}/${slug}/seasons/full/${seasonId}/draft`);
-    await expect(p.page.getByRole("heading", { name: "Draft lobby" })).toBeVisible();
+    await expect(p.page.getByRole("heading", { name: "Draft lobby" })).toBeAttached();
   }
   await expect(
     commish.page.getByText(DRAFT_CIRCUIT_NAME, { exact: false })
@@ -229,10 +229,15 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
     .getByRole("button", { name: "Start draft" })
     .click();
   for (const p of players) {
-    await expect(p.page.getByRole("heading", { name: "Draft room" })).toBeVisible();
-    await expect(p.page.getByTestId("circuit-turn-bar")).toContainText(
-      "On the clock: Round 1, pick 1"
-    );
+    await expect(p.page.getByRole("heading", { name: "Draft room" })).toBeAttached();
+    // The draft history (collapsed in the lobby, as in the ceremony room)
+    // marks the first slot as the one on the clock.
+    await p.page.getByRole("button", { name: "Expand draft history" }).click();
+    await expect(
+      p.page
+        .getByRole("region", { name: "Draft history" })
+        .locator('[data-active="true"]')
+    ).toContainText("1-1");
   }
 
   // Pia reorders her queue by keyboard during the draft.
@@ -274,7 +279,8 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
     const seat = snap.seats.find((s) => s.seat_number === clock.seat_number)!;
     const player = byName.get(seat.username)!;
 
-    // Everyone else sees the picker disabled, with the reason.
+    // Everyone else sees whose pick it is; the form stays open for queueing
+    // and staging, and only its Draft action waits for their turn.
     for (const other of players.filter((p) => p !== player && p !== pia)) {
       const panel = other.page.getByRole("region", { name: "Your pick" });
       await expect(panel.getByTestId("circuit-pick-reason")).toHaveText(
@@ -282,9 +288,9 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
       );
       await expect(
         panel
-          .getByRole("group", { name: "Draft a contender" })
+          .getByRole("group", { name: "Choose a contender" })
           .getByRole("textbox", { name: "Category" })
-      ).toBeDisabled();
+      ).toBeEnabled();
     }
 
     const waitsOut = player === theo || (player === emmy && !emmyMissed);
@@ -307,14 +313,14 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
       .not.toBe(clock.pick_number);
 
     if (dropPia) {
-      // Back online: the board catches up without a reload.
+      // Back online: the draft history catches up without a reload.
       pias.restore();
       await expect(pia.page.getByTestId("draft-connection-indicator")).toBeHidden({
         timeout: 20_000
       });
       await expect(
         pia.page
-          .getByRole("region", { name: new RegExp(`^${seat.username}`) })
+          .getByRole("region", { name: "Draft history" })
           .getByText(title!, { exact: false })
       ).toBeVisible();
       expect(

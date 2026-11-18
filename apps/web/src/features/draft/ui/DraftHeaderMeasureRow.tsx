@@ -29,6 +29,7 @@ export function DraftHeaderMeasureRow(props: {
   canToggleView: boolean;
   showDraftedVisible: boolean;
   showDrafted: boolean;
+  showDraftedFilter?: boolean;
   showCursorSpyToggle: boolean;
   userLabel: string;
   userAvatarKey: string | null;
@@ -84,25 +85,27 @@ export function DraftHeaderMeasureRow(props: {
                   disabled={!props.canToggleView}
                 />
               </Box>
-              <Box className="drh-controlRow">
-                {props.showDraftedVisible ? (
-                  <Switch
-                    size="sm"
-                    label="Show drafted"
-                    labelPosition="left"
-                    classNames={{ root: "drh-switchRoot", label: "drh-label" }}
-                    checked={props.showDrafted}
-                    onChange={() => {}}
-                  />
-                ) : (
-                  <>
-                    <Text className="drh-label">Show drafted</Text>
-                    <Box className="drh-toggleSlot">
-                      <Box className="drh-togglePlaceholder" aria-hidden="true" />
-                    </Box>
-                  </>
-                )}
-              </Box>
+              {props.showDraftedFilter !== false ? (
+                <Box className="drh-controlRow">
+                  {props.showDraftedVisible ? (
+                    <Switch
+                      size="sm"
+                      label="Show drafted"
+                      labelPosition="left"
+                      classNames={{ root: "drh-switchRoot", label: "drh-label" }}
+                      checked={props.showDrafted}
+                      onChange={() => {}}
+                    />
+                  ) : (
+                    <>
+                      <Text className="drh-label">Show drafted</Text>
+                      <Box className="drh-toggleSlot">
+                        <Box className="drh-togglePlaceholder" aria-hidden="true" />
+                      </Box>
+                    </>
+                  )}
+                </Box>
+              ) : null}
               <Box className="drh-toggleBtns">
                 <Button
                   type="button"

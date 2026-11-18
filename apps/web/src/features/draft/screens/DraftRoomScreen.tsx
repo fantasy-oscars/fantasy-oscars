@@ -6,7 +6,6 @@ import { useMediaQuery } from "@ui/hooks";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
 import { useAuthContext } from "@/auth/context";
 import { RuntimeBannerStack } from "@/notifications";
-import { playTurnStartChime } from "@/lib/draftAudio";
 import { DraftConnectionIndicator } from "@/features/draft/ui/DraftConnectionIndicator";
 import { DraftLiveRegion } from "@/features/draft/ui/DraftLiveRegion";
 import { DraftBoardHeader } from "./DraftBoardHeader";
@@ -14,6 +13,7 @@ import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
 import { MobileDraftRoom } from "./mobile/MobileDraftRoom";
 import { useDraftAudioUnlock } from "./useDraftAudioUnlock";
+import { useTurnStartChime } from "./useTurnStartChime";
 import { useEscapeClearsSelection } from "./useEscapeClearsSelection";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import { PageError } from "@/shared/page-state";
@@ -113,22 +113,14 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
 
   const { audioControllerRef, audioUnlocked } = useDraftAudioUnlock();
 
-  // Turn-start chime: invoke on "turn ownership" transitions (active seat flips to me),
-  // not on click/draft actions. This naturally suppresses snake double-picks because
-  // `isMyTurn` stays true across the back-to-back pick.
-  const prevIsMyTurnRef = useRef<boolean | null>(null);
-  useEffect(() => {
-    if (isPreview) return;
-    if (draftStatus !== "IN_PROGRESS") {
-      prevIsMyTurnRef.current = isMyTurn;
-      return;
-    }
-    const prev = prevIsMyTurnRef.current;
-    if (soundEnabled && audioUnlocked && prev !== null && !prev && isMyTurn) {
-      playTurnStartChime(audioControllerRef.current);
-    }
-    prevIsMyTurnRef.current = isMyTurn;
-  }, [audioControllerRef, audioUnlocked, draftStatus, isMyTurn, isPreview, soundEnabled]);
+  useTurnStartChime({
+    disabled: isPreview,
+    running: draftStatus === "IN_PROGRESS",
+    isMyTurn,
+    soundEnabled,
+    audioUnlocked,
+    audioControllerRef
+  });
 
   // Draft actions are available during live drafts when it's "my turn".
   // Note: `myRoster.canPick` is selection-dependent; we want click-to-confirm

@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
+import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import type { ApiResult } from "@/lib/types";
 
@@ -6,17 +6,15 @@ export type CircuitLobbySummary = { title: string; line1: string; line2: string 
 
 /**
  * Before the draft: when it starts, how it runs, who is in it and a summary
- * of the season's settings. The commissioner starts it from here.
+ * of the season's settings. The commissioner starts it from the room's
+ * header, as in the ceremony draft room; a failed start is reported here.
  */
 export function CircuitDraftLobby(props: {
   startNote: string;
   facts: Array<{ label: string; value: string }>;
   summaries: CircuitLobbySummary[];
   members: Array<{ userId: number; username: string; isViewer: boolean }>;
-  canStart: boolean;
-  starting: boolean;
   startStatus: ApiResult | null;
-  onStart: () => void;
 }) {
   return (
     <Stack gap="lg">
@@ -38,13 +36,6 @@ export function CircuitDraftLobby(props: {
             </Box>
           ))}
         </Box>
-        {props.canStart ? (
-          <Group gap="sm" wrap="wrap">
-            <Button onClick={props.onStart} loading={props.starting}>
-              Start draft
-            </Button>
-          </Group>
-        ) : null}
         <FormStatus loading={false} result={props.startStatus} />
       </Stack>
 

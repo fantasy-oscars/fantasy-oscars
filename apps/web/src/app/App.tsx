@@ -301,16 +301,6 @@ function RoutesConfig() {
           }
         />
         <Route
-          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/draft"
-          element={
-            <RequireAuth>
-              <LazyRoute>
-                <CircuitDraftPage />
-              </LazyRoute>
-            </RequireAuth>
-          }
-        />
-        <Route
           path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/transactions"
           element={
             <RequireAuth>
@@ -443,6 +433,17 @@ function RoutesConfig() {
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route element={<DraftLayout />}>
+        {/* The season draft room shares the ceremony draft room's full-screen frame. */}
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/draft"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitDraftPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
         <Route
           path="/drafts/preview/ceremonies/:ceremonyId"
           element={
