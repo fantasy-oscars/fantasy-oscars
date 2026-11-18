@@ -7,6 +7,7 @@ import {
   circuitClaimOrderBody,
   circuitClaimParams,
   circuitLeagueCategoriesBody,
+  circuitLeagueCeremonyParams,
   circuitLeagueEventsBody,
   circuitLeagueSettingsBody,
   circuitDropBody,
@@ -48,6 +49,10 @@ import {
   unstageFromCircuitQueue
 } from "../services/circuit/circuitQueue.js";
 import {
+  getCircuitCeremonyBreakdown,
+  getCircuitStandings
+} from "../services/circuit/circuitStandings.js";
+import {
   createCircuitWaiverClaim,
   getCircuitWaiverClaims,
   getCircuitWaiverResults,
@@ -59,7 +64,7 @@ import {
 import { parseBody, parseParams } from "../utils/validate.js";
 
 // One Circuit competition in a league: its setup, members and initialisation,
-// then the draft queue, rosters, transactions and waiver claims. Setup responses are the league's full detail
+// then the draft queue, rosters, transactions, waiver claims and standings. Setup responses are the league's full detail
 // and roster writes return the roster, so a screen can re-render from either.
 export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Router {
   const router = express.Router();
@@ -294,6 +299,31 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
       next(err);
     }
   });
+
+  // Cumulative standings from the scoring ledger, for anyone in the league.
+  router.get("/:id/standings", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitStandings(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // One ceremony's points per member, with the ledger rows behind them.
+  router.get(
+    "/:id/standings/ceremonies/:ceremonyId",
+    async (req: AuthedRequest, res, next) => {
+      try {
+        const { id, ceremonyId } = parseParams(circuitLeagueCeremonyParams, req.params);
+        return res
+          .status(200)
+          .json(await getCircuitCeremonyBreakdown(pool, id, ceremonyId, viewerOf(req)));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   // Rolling priority, chips and the open window, for anyone in the league.
   router.get("/:id/waivers", async (req: AuthedRequest, res, next) => {

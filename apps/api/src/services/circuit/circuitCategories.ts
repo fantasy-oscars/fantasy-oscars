@@ -17,6 +17,7 @@ import {
 } from "../../domain/circuit.js";
 import { AppError, validationError } from "../../errors.js";
 import { type Actor, audit, lockEditableCircuit } from "./circuitGuards.js";
+import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
 
 /*
  * Circuit categories. Each is built from a category template: name, icon and
@@ -173,5 +174,12 @@ export async function removeCategory(
       circuit_status: result.circuit.status
     }
   });
+  if (result.mappingsRemoved > 0) {
+    await rebuildCircuitScoresAfterWrite(
+      pool,
+      { circuitId: input.circuitId },
+      "remove_circuit_category"
+    );
+  }
   return { mappings_removed: result.mappingsRemoved };
 }

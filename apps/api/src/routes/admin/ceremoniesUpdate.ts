@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
 import { AppError, validationError } from "../../errors.js";
 import {
   adminCeremonyIdParam,
@@ -78,6 +79,15 @@ export function registerAdminCeremoniesUpdateRoute(args: {
             target_id: id,
             meta: { fields: definedKeys(body) }
           });
+        }
+
+        // The results date, and so the win occasion, follows starts_at.
+        if (startsAt !== undefined) {
+          await rebuildCircuitScoresAfterWrite(
+            client as Pool,
+            { ceremonyId: id, kinds: ["WIN"] },
+            "update_ceremony"
+          );
         }
 
         return res.status(200).json({ ceremony });

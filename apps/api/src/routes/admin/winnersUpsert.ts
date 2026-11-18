@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
 import {
   getCeremonyDraftLockedAt,
   lockCeremonyDraft
@@ -139,6 +140,12 @@ export function registerAdminWinnersUpsertRoute(args: {
           categoryEditionId,
           nominationIds
         });
+
+        await rebuildCircuitScoresAfterWrite(
+          client as Pool,
+          { ceremonyId: result.ceremony_id, kinds: ["WIN"] },
+          "winner_upsert"
+        );
 
         return res.status(200).json({
           winners: result.winners,

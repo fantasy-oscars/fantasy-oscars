@@ -91,6 +91,14 @@ const CircuitTransactionsPage = lazyPage(
   () => import("./pages/CircuitTransactionsPage"),
   "CircuitTransactionsPage"
 );
+const CircuitStandingsPage = lazyPage(
+  () => import("./pages/CircuitStandingsPage"),
+  "CircuitStandingsPage"
+);
+const CircuitScoreBreakdownPage = lazyPage(
+  () => import("./pages/CircuitScoreBreakdownPage"),
+  "CircuitScoreBreakdownPage"
+);
 
 const AdminRoutes = lazy(() => import("./pages/admin/AdminRoutes"));
 const DraftRoomPage = lazy(() =>
@@ -306,6 +314,26 @@ function RoutesConfig() {
             <RequireAuth>
               <LazyRoute>
                 <CircuitTransactionsPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/standings"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitStandingsPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/standings/:ceremonyId"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitScoreBreakdownPage />
               </LazyRoute>
             </RequireAuth>
           }

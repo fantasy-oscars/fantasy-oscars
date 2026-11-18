@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { positiveIdValue } from "./common.js";
+import { positiveIdString, positiveIdValue } from "./common.js";
 
 /*
  * Circuit league request schemas. Players see a Circuit as a Season, so the
@@ -151,4 +151,10 @@ export const circuitLeagueCreateBody = z.object({
   settings: settingsFields.optional(),
   events: eventsList.optional(),
   categories: categoriesList.optional()
+});
+
+/** `/circuit-leagues/:id/standings/ceremonies/:ceremonyId` */
+export const circuitLeagueCeremonyParams = z.object({
+  id: positiveIdString(),
+  ceremonyId: positiveIdString()
 });

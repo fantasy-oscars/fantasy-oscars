@@ -12,12 +12,15 @@ import {
 import { io as createClient, type Socket } from "socket.io-client";
 import { createServer } from "../../../src/server.js";
 import { tickCircuitDraft } from "../../../src/services/circuit/circuitDraft.js";
+import { emitCircuitScoreUpdates } from "../../../src/services/circuit/circuitScoreEvents.js";
 import { emitCircuitWaiverResult } from "../../../src/services/circuit/circuitWaiverEvents.js";
 import {
   CIRCUIT_NAMESPACE,
   connectCircuitDraftEvents,
+  connectCircuitScoreEvents,
   connectCircuitWaiverEvents,
   disconnectCircuitDraftEvents,
+  disconnectCircuitScoreEvents,
   disconnectCircuitWaiverEvents,
   registerCircuitNamespace
 } from "../../../src/services/circuit/circuitNamespace.js";
@@ -239,6 +242,7 @@ describe("circuits namespace", () => {
         });
         connectCircuitDraftEvents(nsp);
         connectCircuitWaiverEvents(nsp);
+        connectCircuitScoreEvents(nsp);
       });
     } catch (err) {
       if (err instanceof ListenPermissionError) return;
@@ -259,6 +263,7 @@ describe("circuits namespace", () => {
     clients = [];
     disconnectCircuitDraftEvents();
     disconnectCircuitWaiverEvents();
+    disconnectCircuitScoreEvents();
     if (server) {
       await server.close();
       server = undefined;
@@ -373,6 +378,28 @@ describe("circuits namespace", () => {
     expect(message).toMatchObject(run);
     expect(typeof message.server_time).toBe("string");
     expect(inB.events.some((e) => e.event === "waiver:result")).toBe(false);
+  });
+
+  it("sends ledger changes to their own league's room", async () => {
+    if (!server) return;
+    const inA = await connect(alice, leagueA.id);
+    const inB = await connect(outsider, leagueB.id);
+    await waitForEvent(inA, "joined");
+    await waitForEvent(inB, "joined");
+
+    const heard = waitForEvent(inA, "score:update");
+    emitCircuitScoreUpdates([
+      { circuit_league_id: leagueA.id, ceremony_id: 12 },
+      { circuit_league_id: leagueA.id, ceremony_id: 3 },
+      { circuit_league_id: leagueA.id, ceremony_id: 12 }
+    ]);
+    const [message] = (await heard) as [Record<string, unknown>];
+    expect(message).toMatchObject({
+      circuit_league_id: leagueA.id,
+      ceremony_ids: [3, 12]
+    });
+    expect(typeof message.server_time).toBe("string");
+    expect(inB.events.some((e) => e.event === "score:update")).toBe(false);
   });
 
   it("rebuilds the board after a reconnect from the snapshot and the events after it", async () => {

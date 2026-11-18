@@ -451,6 +451,58 @@ export type CircuitWaiverResultMessage = {
   server_time: string;
 };
 
+/** A member's place in `GET /circuit-leagues/:id/standings` or a ceremony breakdown. */
+export type CircuitStandingRow = {
+  /** Shared by tied members; the next rank skips (1, 1, 3). */
+  rank: number;
+  member: { user_id: number; username: string; avatar_key: string };
+  points: number;
+  nomination_points: number;
+  win_points: number;
+};
+
+/** A ceremony that counts toward the season, as the standings list it. */
+export type CircuitScoredCeremony = {
+  id: number;
+  code: string | null;
+  name: string | null;
+  /** The admin-given name of the ceremony's group, such as "Guild Awards". */
+  event: { id: number; name: string };
+  nominations_on: string | null;
+  results_on: string | null;
+};
+
+/** `GET /circuit-leagues/:id/standings`: cumulative, from the scoring ledger. */
+export type CircuitStandings = {
+  standings: CircuitStandingRow[];
+  /** Ceremonies of the league's enabled events, in date order. */
+  ceremonies: Array<CircuitScoredCeremony & { points_awarded: number }>;
+};
+
+export type CircuitScoreKind = "NOMINATION" | "WIN";
+
+/** `GET /circuit-leagues/:id/standings/ceremonies/:ceremonyId`. */
+export type CircuitCeremonyBreakdown = {
+  ceremony: CircuitScoredCeremony;
+  standings: Array<
+    CircuitStandingRow & {
+      entries: Array<{
+        selection: CircuitSelectionSummary;
+        kind: CircuitScoreKind | string;
+        occasion_date: string;
+        points: number;
+      }>;
+    }
+  >;
+};
+
+/** A `score:update` message on the league's room: its standings changed. */
+export type CircuitScoreUpdateMessage = {
+  circuit_league_id: number;
+  ceremony_ids: number[];
+  server_time: string;
+};
+
 export type CircuitDraftStatus = "IN_PROGRESS" | "SUPPLEMENTAL" | "PAUSED" | "COMPLETED";
 
 /** The draft row as the snapshot carries it. */

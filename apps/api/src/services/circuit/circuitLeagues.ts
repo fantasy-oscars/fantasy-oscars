@@ -37,6 +37,7 @@ import {
   type CircuitLeagueSettingKey
 } from "../../domain/circuitLeague.js";
 import { AppError } from "../../errors.js";
+import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
 
 /*
  * Circuit competitions inside a league (ADR 0005, section 4). Players see a
@@ -347,6 +348,13 @@ export async function updateCircuitLeagueSettingsFor(
     assertCircuitLeagueSettingsEditable(circuitLeague, keys);
     await updateCircuitLeagueSettings(tx, id, patch);
   });
+  if (patch.nomination_points !== undefined || patch.win_bonus_points !== undefined) {
+    await rebuildCircuitScoresAfterWrite(
+      pool,
+      { circuitLeagueId: id },
+      "update_circuit_league_points"
+    );
+  }
   return getCircuitLeagueDetail(pool, id, viewer);
 }
 
@@ -369,6 +377,11 @@ export async function setCircuitLeagueEvents(
     );
     await replaceCircuitLeagueEvents(tx, circuitLeague, events);
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitLeagueId: id },
+    "set_circuit_league_events"
+  );
   return getCircuitLeagueDetail(pool, id, viewer);
 }
 
@@ -401,6 +414,11 @@ export async function setCircuitLeagueCategories(
     );
     await upsertCircuitLeagueCategories(tx, circuitLeague, categories);
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitLeagueId: id },
+    "set_circuit_league_categories"
+  );
   return getCircuitLeagueDetail(pool, id, viewer);
 }
 

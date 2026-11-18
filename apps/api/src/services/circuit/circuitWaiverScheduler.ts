@@ -5,6 +5,7 @@ import { instantOfDay, resultsDateOf } from "../../domain/circuit.js";
 import { addDays } from "../../domain/waiverWindows.js";
 import { log } from "../../logger.js";
 import { getCircuitLeagueDueWaiverWindows } from "./circuitOwnership.js";
+import { rebuildCircuitScoresForDay } from "./circuitScoring.js";
 import {
   processCircuitWaiverWindow,
   type CircuitWaiverRunResult
@@ -115,6 +116,10 @@ export function nextWaiverResolutionCheckAt(now: Date): Date {
  * past; it matches the draft sweeper's idle poll, so the database is woken no
  * more often than it already is, and 0 turns it off. `onRun` hears about
  * each completed run.
+ *
+ * The first check of each Pacific day, midnight being the scoring instant,
+ * also rebuilds the scoring ledger for that day's occasions, so nominations
+ * or winners entered ahead of their day score once the day begins.
  */
 export function startCircuitWaiverScheduler(
   pool: Pool,
@@ -130,6 +135,23 @@ export function startCircuitWaiverScheduler(
   let stopped = false;
   let timer: NodeJS.Timeout | null = null;
   let running: Promise<void> | null = null;
+  let scoredDay: string | null = null;
+
+  async function rebuildTodaysScores() {
+    const today = resultsDateOf(new Date())!;
+    if (today === scoredDay) return;
+    try {
+      await rebuildCircuitScoresForDay(pool, today);
+      scoredDay = today;
+    } catch (err) {
+      log({
+        level: "error",
+        msg: "circuit_score_day_rebuild_failed",
+        day: today,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
 
   async function check() {
     try {
@@ -143,6 +165,7 @@ export function startCircuitWaiverScheduler(
         error: err instanceof Error ? err.message : String(err)
       });
     }
+    await rebuildTodaysScores();
   }
 
   function schedule(delayMs: number) {

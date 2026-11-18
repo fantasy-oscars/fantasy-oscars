@@ -22,8 +22,10 @@ import { registerCircuitDraftWake } from "./services/circuit/circuitDraftWake.js
 import { startCircuitWaiverScheduler } from "./services/circuit/circuitWaiverScheduler.js";
 import {
   connectCircuitDraftEvents,
+  connectCircuitScoreEvents,
   connectCircuitWaiverEvents,
   disconnectCircuitDraftEvents,
+  disconnectCircuitScoreEvents,
   disconnectCircuitWaiverEvents,
   registerCircuitNamespace
 } from "./services/circuit/circuitNamespace.js";
@@ -73,11 +75,13 @@ if (config.realtimeEnabled) {
   });
   connectCircuitDraftEvents(circuitNamespace);
   connectCircuitWaiverEvents(circuitNamespace);
+  connectCircuitScoreEvents(circuitNamespace);
 } else {
   clearDraftEventEmitter();
   clearCeremonyEventEmitter();
   disconnectCircuitDraftEvents();
   disconnectCircuitWaiverEvents();
+  disconnectCircuitScoreEvents();
 }
 
 httpServer.listen(config.port, () => {

@@ -1,6 +1,6 @@
 # Circuit
 
-A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md) and [ADR 0007](../adr/0007-circuit-groups-and-derived-dates.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`, with groups and the derived results date from `025_circuit_groups_and_derived_results_date.sql`), contender selections (`026`), league competitions (`027_circuit_league.sql`), ownership with transactions (`028_circuit_ownership.sql`), the draft (`029_circuit_draft.sql`, with the queue and chips in `030_circuit_queue_and_chip.sql` and staged contenders in `032_circuit_staged_item.sql`) and waiver claims (`031_circuit_waiver.sql`). Scoring comes in a later package.
+A Circuit is a season-long competition across several awards ceremonies; players see it as a Season. The domain model and its reasoning are in [ADR 0005](../adr/0005-series-domain-model.md), as amended by [ADR 0006](../adr/0006-circuit-admin-defined-structure.md) and [ADR 0007](../adr/0007-circuit-groups-and-derived-dates.md); the build order is in the [plan](../planning/series/plan.md). This page describes what exists today: the foundation (migration `022_series_foundation.sql`, renamed and made admin-defined by `023_circuit_admin_structure.sql`, with groups and the derived results date from `025_circuit_groups_and_derived_results_date.sql`), contender selections (`026`), league competitions (`027_circuit_league.sql`), ownership with transactions (`028_circuit_ownership.sql`), the draft (`029_circuit_draft.sql`, with the queue and chips in `030_circuit_queue_and_chip.sql` and staged contenders in `032_circuit_staged_item.sql`) waiver claims (`031_circuit_waiver.sql`) and the scoring ledger (`033_circuit_score_entry.sql`).
 
 ## TL;DR
 
@@ -14,6 +14,7 @@ A Circuit is a season-long competition across several awards ceremonies; players
 - **Ownership** is append-only history: half-open intervals per (league, selection), each boundary pointing at one transaction. One service (`applyOwnershipChange`) is the only writer; it enforces exclusivity, roster capacity and category limits. Free agency is open only while no waiver window is.
 - The **draft** is a live snake draft of selections, separate from the ceremony draft. Every pick writes ownership through `applyOwnershipChange`. Auto-draft takes only from the member's queue and never invents a pick; a missed pick gets one supplemental pick, and a second miss becomes a chip. Live changes go to the league's room in the `/circuits` Socket.IO namespace.
 - **Waivers.** Inside each waiver window, acquisitions are private ranked claims, run in one batch per (league, window) when the window resolves: chipped claims first by pick number, then rolling priority, then each member's rank. Every member who wins moves to the bottom of priority once.
+- **Scoring** is a derived ledger: points are a pure function of ownership at each occasion's instant, the official nominations and winners and the league's weights. Every write that changes those inputs rebuilds the affected occasions after it commits, and standings are the ledger's sum.
 - The Circuit is independent of the Season: no foreign keys either way, and no imports between Circuit code and Season, draft, scoring or realtime code.
 
 ## Table map
@@ -39,6 +40,7 @@ A Circuit is a season-long competition across several awards ceremonies; players
 | `circuit_chip`         | A supplemental pick missed again, valued at its original pick number; `AVAILABLE`, then `CONSUMED` by a winning claim or `EXPIRED`         | `UNIQUE (circuit_league_id, original_pick_number)`; `consumed_claim_id` is the winning claim, unique; see Waivers                                                |
 | `circuit_waiver_run`   | One processed (league, window): status, priority before and after                                                                          | `UNIQUE (circuit_league_id, window_starts_on)` makes processing idempotent; `priority_after` exactly when `COMPLETED`                                            |
 | `circuit_waiver_claim` | A member's ranked claim in one window: selection, conditional drop, chip, `PENDING`, `WON`, `LOST` or `WITHDRAWN`, failure reason          | One live claim per (member, window, selection); a chip on at most one pending claim; `run_id` exactly when won or lost                                           |
+| `circuit_score_entry`  | Derived points: member, selection, ceremony, `kind`, occasion date, `points` and the ownership interval that earned them                   | `UNIQUE (circuit_league_id, selection_id, ceremony_id, kind)`; only the scoring rebuild writes it; see Scoring and standings                                     |
 
 `circuit_ceremony` is the one shared association. The Circuit admin and the ceremony admin both read and write it; neither keeps a copy. Removing an association also removes that ceremony's mappings in the Circuit. A mapping is refused (409 `CIRCUIT_CEREMONY_NOT_ASSOCIATED`) until the edition's ceremony is associated.
 
@@ -248,6 +250,40 @@ Once the draft has finished, the season page and the roster link to `…/seasons
 - **Priority and chips**: members in priority order, the viewer marked, with each member's chips and their status.
 - **Results**: each completed run, newest first, with its claims in the order they ran, the outcome and reason, and priority after.
 - **Live updates**: members connect to `/circuits`; a `waiver:result`, or a reconnect, refetches results, priority, claims, rosters and transactions. The roster's closed free-agency note says when claims are being processed.
+
+## Scoring and standings
+
+ADR 0005 section 8, under the ADR 0006 names. Code is `domain/circuitScoring.ts` (pure: `scoreOccasion` and `rankStandings`), `data/repositories/circuitScoreRepository.ts`, `services/circuit/circuitScoring.ts` (the rebuild), `circuitStandings.ts` (the reads) and `circuitScoreEvents.ts`. Matching is `domain/circuitMatching.ts` (see Matching); ownership at an instant is `isHeldAt` from `domain/circuitOwnership.ts`.
+
+- **The rule.** For one occasion, each matched selection scores once, for the member who held it at the occasion's instant (00:00 Pacific on its date): `base × category weight × event weight`, rounded to two decimals. The base is the league's `nomination_points` or `win_bonus_points` (owner question 11: weights multiply). A nominated winner held throughout scores both, 1 + 2 by default; a selection dropped between nomination and win scores the nomination for its first owner and the win for its second.
+- **Nothing scores** when the occasion has no date, the league has not enabled its event, nobody held the selection at the instant (a league that drafted on or after the occasion's day gets nothing for it), or the instant is still ahead of now. The last rule keeps data entered ahead of its day from crediting whoever holds the selection today.
+- **The ledger** (`circuit_score_entry`) stores `scoreOccasion`'s output and nothing else. A rebuild of one (league, ceremony, kind) is one transaction: an advisory lock on (league, ceremony), delete the occasion's rows, read the inputs, insert. It reads only stored history, so it is idempotent and the table can be emptied and rebuilt at any time.
+- **Rebuild triggers**, all after the triggering write commits (a failed rebuild is logged as `circuit_score_rebuild_failed` and does not fail the request):
+  - nominations: create, delete, revoke, restore, replace, contributor add and delete;
+  - winners: every winner write (win occasions);
+  - dates: the nominations date (nomination occasions) and a changed ceremony datetime (win occasions);
+  - mappings: set and remove, and removing a category that had mappings;
+  - Circuit structure: associating or removing a ceremony, creating a group with ceremonies, deleting an event, moving a ceremony to another event;
+  - league: enabled events, category weights and points settings;
+  - the day's start: the waiver scheduler's first check of each Pacific day rebuilds that day's occasions (`rebuildCircuitScoresForDay`), so data entered ahead of its day scores once the instant passes;
+  - the admin action `POST /admin/circuits/:id/scores/rebuild`: every league and ceremony of the Circuit, removing rows of ceremonies that left it, audit-logged as `rebuild_circuit_scores` with `{ leagues, occasions, entries }`. See the [operational runbook](../runbooks/operational-runbook.md#circuit-score-rebuild).
+- **Not triggered** (repaired by the admin action): film consolidation, a TMDB sync that changes a person's TMDB id, and a ceremony soft-delete.
+- **Winner entry** locks only the ceremony, as for any ceremony; it never reads or changes `circuit_draft`.
+- **Standings.** A member's total is the sum of their ledger rows, taken in hundredths so it equals the ledger exactly. Every member is listed, highest first; tied members share a rank (1, 1, 3) and sort by username.
+- **The event.** After a rebuild, each league whose rows changed hears `score:update` in its `/circuits` room, with `circuit_league_id`, the changed `ceremony_ids` and `server_time`. A rebuild that removed and inserted nothing sends nothing.
+
+| Route                                                       | Does                                                                                                                                                                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /circuit-leagues/:id/standings`                        | Any league viewer: `standings` (rank, member, `points`, `nomination_points`, `win_points`) and `ceremonies`, the published ceremonies of the league's enabled events in date order, each with its event and `points_awarded` |
+| `GET /circuit-leagues/:id/standings/ceremonies/:ceremonyId` | Any league viewer: the ceremony, and per member their points there with the ledger `entries` behind them (selection, `kind`, `occasion_date`, `points`). 404 for a ceremony that is not a published part of the Circuit      |
+
+### Standings screens (web)
+
+Once the draft has finished, the season page links to `…/seasons/full/:fullSeasonId/standings`, and each ceremony there to `…/standings/:ceremonyId`. Code is `decisions/circuitStandings.ts`, `orchestration/circuitStandings.ts`, `orchestration/useCircuitScoreSocket.ts`, `CircuitStandingsScreen`, `CircuitScoreBreakdownScreen` and the `CircuitStandingsList`, `CircuitCeremonyPointsList` and `CircuitScoreBreakdown` components in `features/circuitLeagues/ui`.
+
+- **Standings**: the leaderboard (rank, player, the viewer marked, nomination and win points, total), then each counting ceremony with its group name, dates and the points it has awarded.
+- **Ceremony points**: each member in order of their points at that ceremony, with the picks that scored and whether for a nomination or a win.
+- **Live updates**: members connect to `/circuits`; a `score:update`, or a reconnect, refetches the standings and every ceremony breakdown.
 
 ## Independence from the Season
 

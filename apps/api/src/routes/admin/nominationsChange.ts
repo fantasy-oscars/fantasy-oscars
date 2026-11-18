@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
+import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
 import {
   insertNominationChangeAudit,
   updateNominationStatus
@@ -30,10 +31,13 @@ export function registerAdminNominationChangeRoute(args: {
           adminNominationChangeBody,
           req.body
         );
-        await runInTransaction(client as Pool, async (tx) => {
-          const { rows: nomRows } = await query<{ id: number }>(
+        const ceremonyId = await runInTransaction(client as Pool, async (tx) => {
+          const { rows: nomRows } = await query<{ ceremony_id: number }>(
             tx,
-            `SELECT id FROM nomination WHERE id = $1`,
+            `SELECT ce.ceremony_id::int AS ceremony_id
+             FROM nomination n
+             JOIN category_edition ce ON ce.id = n.category_edition_id
+             WHERE n.id = $1`,
             [nominationId]
           );
           if (nomRows.length === 0) {
@@ -74,6 +78,7 @@ export function registerAdminNominationChangeRoute(args: {
             reason,
             created_by_user_id: Number(req.auth?.sub)
           });
+          return nomRows[0]!.ceremony_id;
         });
 
         if (req.auth?.sub) {
@@ -85,6 +90,12 @@ export function registerAdminNominationChangeRoute(args: {
             meta: { action, origin, impact, reason, replacement_nomination_id }
           });
         }
+
+        await rebuildCircuitScoresAfterWrite(
+          client as Pool,
+          { ceremonyId },
+          "nomination_change"
+        );
 
         return res.status(200).json({ ok: true });
       } catch (err) {

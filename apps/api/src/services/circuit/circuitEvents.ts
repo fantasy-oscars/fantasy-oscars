@@ -29,6 +29,7 @@ import {
 } from "../../domain/circuit.js";
 import { AppError, validationError } from "../../errors.js";
 import { type Actor, audit, lockEditableCircuit } from "./circuitGuards.js";
+import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
 
 /*
  * Events and ceremony associations. An event is what leagues enable and
@@ -150,6 +151,11 @@ export async function associateCeremony(
       via: actor.via
     }
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
+    "associate_circuit_ceremony"
+  );
   return {
     created: result.previous === null,
     circuit_event_id: result.target.id,
@@ -192,6 +198,11 @@ export async function removeCeremony(
       via: actor.via
     }
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
+    "remove_circuit_ceremony"
+  );
   return { mappings_removed: result.mappings_removed };
 }
 
@@ -255,6 +266,13 @@ export async function createEvent(
       circuit_status: result.circuit.status
     }
   });
+  if (input.ceremonyIds.length > 0) {
+    await rebuildCircuitScoresAfterWrite(
+      pool,
+      { circuitId: input.circuitId },
+      "create_circuit_event"
+    );
+  }
   return { event: result.event };
 }
 
@@ -356,6 +374,13 @@ export async function deleteEvent(
       circuit_status: result.circuit.status
     }
   });
+  if (result.ungrouped.length > 0) {
+    await rebuildCircuitScoresAfterWrite(
+      pool,
+      { circuitId: input.circuitId },
+      "delete_circuit_event"
+    );
+  }
   return { ungrouped: result.ungrouped };
 }
 
@@ -460,6 +485,14 @@ export async function moveCeremony(
       circuit_status: result.circuit.status
     }
   });
+  // A ceremony that changes event scores under the new event's league setting.
+  if (result.targetId !== result.previous) {
+    await rebuildCircuitScoresAfterWrite(
+      pool,
+      { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
+      "move_circuit_ceremony"
+    );
+  }
   const [events, ceremonies] = await Promise.all([
     listCircuitEvents(pool, input.circuitId),
     listCircuitCeremonies(pool, input.circuitId)

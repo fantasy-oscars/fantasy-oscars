@@ -34,6 +34,7 @@ import {
   lockEditableCircuit,
   requireCircuit
 } from "./circuitGuards.js";
+import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
 
 /*
  * Circuit lifecycle, reads for the admin screens, mappings and ceremony dates.
@@ -131,7 +132,7 @@ export async function setMapping(
   actor: Actor,
   input: { circuitId: number; categoryEditionId: number; circuitCategoryId: number }
 ) {
-  const { circuit, category } = await runInTransaction(pool, async (tx) => {
+  const { circuit, category, ceremonyId } = await runInTransaction(pool, async (tx) => {
     const circuit = await lockEditableCircuit(tx, input.circuitId);
     const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
     if (ceremonyId === null) throw new AppError("NOT_FOUND", 404, "Category not found");
@@ -152,7 +153,7 @@ export async function setMapping(
       throw validationError("Choose a category in this Circuit", ["circuit_category_id"]);
     }
     await upsertCircuitMapping(tx, input);
-    return { circuit, category };
+    return { circuit, category, ceremonyId };
   });
   await audit(pool, actor, {
     action: "set_circuit_mapping",
@@ -164,6 +165,11 @@ export async function setMapping(
       circuit_status: circuit.status
     }
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitId: input.circuitId, ceremonyId },
+    "set_circuit_mapping"
+  );
   return {
     mapping: {
       circuit_id: input.circuitId,
@@ -178,18 +184,26 @@ export async function removeMapping(
   actor: Actor,
   input: { circuitId: number; categoryEditionId: number }
 ) {
-  const circuit = await runInTransaction(pool, async (tx) => {
+  const { circuit, ceremonyId } = await runInTransaction(pool, async (tx) => {
     const circuit = await lockEditableCircuit(tx, input.circuitId);
+    const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
     if (!(await deleteCircuitMapping(tx, input.circuitId, input.categoryEditionId))) {
       throw new AppError("NOT_FOUND", 404, "This category is not mapped");
     }
-    return circuit;
+    return { circuit, ceremonyId };
   });
   await audit(pool, actor, {
     action: "remove_circuit_mapping",
     target_id: input.circuitId,
     meta: { category_edition_id: input.categoryEditionId, circuit_status: circuit.status }
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    ceremonyId === null
+      ? { circuitId: input.circuitId }
+      : { circuitId: input.circuitId, ceremonyId },
+    "remove_circuit_mapping"
+  );
 }
 
 /**
@@ -236,6 +250,11 @@ export async function setCeremonyDates(
     target_id: ceremonyId,
     meta: { fields: ["nominations_on"], nominations_on: ceremony.nominations_on }
   });
+  await rebuildCircuitScoresAfterWrite(
+    pool,
+    { ceremonyId, kinds: ["NOMINATION"] },
+    "update_ceremony_dates"
+  );
   return {
     ceremony: {
       id: ceremony.id,
