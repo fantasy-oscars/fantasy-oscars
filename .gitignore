@@ -35,3 +35,6 @@ pnpm-debug.log*
 
 # Local data files
 .data/
+
+# player tour screenshots (pnpm run tour)
+tour-output/

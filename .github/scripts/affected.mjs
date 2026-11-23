@@ -60,6 +60,11 @@ export const TABLE = [
     why: "e2e suite"
   },
   {
+    patterns: ["tests/tour/**", "playwright.tour.config.ts"],
+    groups: ["checks"],
+    why: "player tour (run by hand, not in CI)"
+  },
+  {
     patterns: ["tests/unit/**"],
     groups: ["checks"],
     why: "tooling unit tests"
