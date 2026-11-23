@@ -36,13 +36,17 @@ function mockReq(opts: {
   body?: unknown;
   headers?: Record<string, string>;
   params?: Record<string, string>;
+  auth?: { sub: string; username: string };
 }) {
   return {
     body: opts.body ?? {},
     headers: opts.headers ?? {},
-    params: opts.params ?? {}
-  } as Request;
+    params: opts.params ?? {},
+    auth: opts.auth
+  } as unknown as Request;
 }
+
+const viewer = { sub: "1", username: "tester" };
 
 function mockRes() {
   const state: { status?: number; body?: unknown } = {};
@@ -501,7 +505,16 @@ describe("POST /drafts/:id/results", () => {
   const upsertDraftResultsSpy = vi.spyOn(draftRepo, "upsertDraftResults");
   const handler = buildDraftResultsHandler({} as unknown as Pool);
 
+  const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+
   beforeEach(() => {
+    getLeagueMemberSpy.mockResolvedValue({
+      id: 10,
+      league_id: 9,
+      user_id: 1,
+      role: "OWNER",
+      joined_at: new Date("2024-01-01T00:00:00Z")
+    });
     getDraftByIdSpy.mockResolvedValue({
       id: 55,
       league_id: 9,
@@ -524,6 +537,7 @@ describe("POST /drafts/:id/results", () => {
 
   it("rejects invalid draft id", async () => {
     const req = mockReq({
+      auth: viewer,
       params: { id: "abc" },
       body: { results: [] }
     });
@@ -542,6 +556,7 @@ describe("POST /drafts/:id/results", () => {
   it("rejects unknown nominations", async () => {
     listNominationIdsSpy.mockResolvedValueOnce([100]);
     const req = mockReq({
+      auth: viewer,
       params: { id: "55" },
       body: {
         results: [
@@ -565,6 +580,7 @@ describe("POST /drafts/:id/results", () => {
 
   it("upserts results", async () => {
     const req = mockReq({
+      auth: viewer,
       params: { id: "55" },
       body: {
         results: [
@@ -593,7 +609,16 @@ describe("GET /drafts/:id/export", () => {
   const listDraftPicksSpy = vi.spyOn(draftRepo, "listDraftPicks");
   const handler = buildExportDraftHandler({} as unknown as Pool);
 
+  const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+
   beforeEach(() => {
+    getLeagueMemberSpy.mockResolvedValue({
+      id: 10,
+      league_id: 9,
+      user_id: 1,
+      role: "OWNER",
+      joined_at: new Date("2024-01-01T00:00:00Z")
+    });
     getDraftByIdSpy.mockResolvedValue({
       id: 99,
       league_id: 5,
@@ -656,6 +681,7 @@ describe("GET /drafts/:id/export", () => {
 
   it("exports draft participants, picks, and final state", async () => {
     const req = mockReq({
+      auth: viewer,
       params: { id: "99" },
       headers: { authorization: authHeader() }
     });
@@ -704,7 +730,16 @@ describe("GET /drafts/:id/standings", () => {
   const getNominationWithStatusSpy = vi.spyOn(nominationRepo, "getNominationWithStatus");
   const handler = buildDraftStandingsHandler({} as unknown as Pool);
 
+  const getLeagueMemberSpy = vi.spyOn(leagueRepo, "getLeagueMember");
+
   beforeEach(() => {
+    getLeagueMemberSpy.mockResolvedValue({
+      id: 10,
+      league_id: 9,
+      user_id: 1,
+      role: "OWNER",
+      joined_at: new Date("2024-01-01T00:00:00Z")
+    });
     getDraftByIdSpy.mockResolvedValue({
       id: 77,
       league_id: 5,
@@ -792,7 +827,7 @@ describe("GET /drafts/:id/standings", () => {
   });
 
   it("returns standings with points and picks", async () => {
-    const req = mockReq({ params: { id: "77" } });
+    const req = mockReq({ params: { id: "77" }, auth: viewer });
     const { res, state } = mockRes();
     const next = vi.fn();
 

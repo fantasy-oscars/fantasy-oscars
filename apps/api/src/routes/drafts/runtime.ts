@@ -11,6 +11,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { hasSuperAdminAccess } from "../../auth/roles.js";
 import {
   createDraftEvent,
+  getDraftById,
   getDraftByIdForUpdate,
   setDraftLockOverride
 } from "../../data/repositories/draftRepository.js";
@@ -22,6 +23,7 @@ import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { getCeremonyDraftLockedAt } from "../../data/repositories/ceremonyRepository.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
 import { runImmediateAutodraftIfEnabled } from "../../services/drafting/autoPick.js";
+import { assertDraftReadAccess } from "../../services/drafting/draftAccess.js";
 import { tickDraft } from "../../services/drafting/tick.js";
 import { getDraftRuntimeSnapshot } from "../../services/drafting/runtimeSnapshot.js";
 
@@ -124,6 +126,13 @@ export function buildTickDraftHandler(pool: Pool) {
   ) {
     try {
       const { id: draftId } = parseParams(draftIdParam, req.params);
+
+      const draft = await getDraftById(pool, draftId);
+      if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      await assertDraftReadAccess(pool, draft, {
+        userId: req.auth?.sub ? Number(req.auth.sub) : null,
+        isSuperAdmin: hasSuperAdminAccess(req.auth)
+      });
 
       const updatedDraft = await tickDraft(pool, draftId);
 

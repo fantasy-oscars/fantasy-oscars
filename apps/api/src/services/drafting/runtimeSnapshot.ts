@@ -26,6 +26,7 @@ import {
 import { transitionDraftState } from "../../domain/draftState.js";
 import { getWisdomBenchmarkForCeremony } from "../../data/repositories/wisdomBenchmarkRepository.js";
 import { recomputeWisdomBenchmarkForCeremony } from "../benchmarking/wisdomOfCrowds.js";
+import { assertDraftReadAccess } from "./draftAccess.js";
 import { autoPickIfExpired, runImmediateAutodraftIfEnabled } from "./autoPick.js";
 
 type RemainderStrategy = "UNDRAFTED" | "FULL_POOL";
@@ -38,7 +39,15 @@ export async function getDraftRuntimeSnapshot(args: {
 }) {
   const { pool, draftId, viewerUserId, viewerIsSuperAdmin = false } = args;
 
-  // First: enforce pick timers and any timer-driven auto picks, within a DB lock.
+  // Authorize before anything is written: non-members get the missing-draft 404.
+  const existing = await getDraftById(pool, draftId);
+  if (!existing) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+  await assertDraftReadAccess(pool, existing, {
+    userId: viewerUserId,
+    isSuperAdmin: viewerIsSuperAdmin
+  });
+
+  // Then: enforce pick timers and any timer-driven auto picks, within a DB lock.
   await runInTransaction(pool, async (tx) => {
     const lockedDraft = await getDraftByIdForUpdate(tx, draftId);
     if (!lockedDraft) return;
@@ -161,9 +170,6 @@ export async function getDraftRuntimeSnapshot(args: {
     viewerUserId && league ? await getLeagueMember(pool, league.id, viewerUserId) : null;
   const viewerSeasonMember =
     viewerUserId && season ? await getSeasonMember(pool, season.id, viewerUserId) : null;
-  if (!viewerIsSuperAdmin && !viewerLeagueMember && !viewerSeasonMember) {
-    throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
-  }
   const ceremonyStatus = String(
     (season as { ceremony_status?: string | null } | null)?.ceremony_status ?? ""
   ).toUpperCase();

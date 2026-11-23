@@ -187,27 +187,13 @@ export function buildSubmitPickHandler(pool: Pool) {
           throw new AppError("TURN_RESOLUTION_ERROR", 500, "Seat not found for turn");
         }
 
-        // If this is the final required pick, allow it to proceed even if the in-memory
-        // turn resolver drifted (prevents getting stuck on completion edge cases).
-        const isFinalRequiredPick =
-          totalRequiredPicks > 0 && currentPick >= totalRequiredPicks;
+        // The turn check applies to every pick, including the last one.
         const userSeat = await getDraftSeatForUser(tx, draftIdNum, userId);
-        if (!isFinalRequiredPick) {
-          if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
-            const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
-            if (priorPick) return { pick: priorPick, reused: true };
-            throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
-          }
-        } else if (!userSeat) {
+        if (!userSeat || userSeat.seat_number !== assignment.seat_number) {
           const priorPick = await getPickByRequestId(tx, draftIdNum, requestIdVal);
           if (priorPick) return { pick: priorPick, reused: true };
           throw new AppError("NOT_ACTIVE_TURN", 409, "It is not your turn");
         }
-
-        const seatNumberForPick =
-          isFinalRequiredPick && userSeat ? userSeat.seat_number : assignment.seat_number;
-        const seatForInsert =
-          seats.find((s) => s.seat_number === seatNumberForPick) ?? expectedSeat;
 
         const now = new Date();
         let pick: DraftPickRecord;
@@ -216,8 +202,8 @@ export function buildSubmitPickHandler(pool: Pool) {
             draft_id: draftIdNum,
             pick_number: currentPick,
             round_number: assignment.round_number,
-            seat_number: seatNumberForPick,
-            league_member_id: seatForInsert.league_member_id,
+            seat_number: expectedSeat.seat_number,
+            league_member_id: expectedSeat.league_member_id,
             user_id: userId,
             nomination_id: nominationIdNum,
             made_at: now,
