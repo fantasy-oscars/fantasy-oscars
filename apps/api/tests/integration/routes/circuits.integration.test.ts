@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createServer } from "../../../src/server.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
 import {
@@ -6,11 +7,16 @@ import {
   insertCategoryFamily,
   insertCeremony,
   insertIcon,
+  insertLeague,
   insertUser
 } from "../../factories/db.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
 import { signTestToken } from "../../support/session.js";
 import { resetAllRateLimiters } from "../../../src/utils/rateLimiter.js";
+import {
+  registerCircuitScheduleEventEmitter,
+  type CircuitAdminEvent
+} from "../../../src/services/circuit/circuitScheduleEvents.js";
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
@@ -57,6 +63,7 @@ type CircuitDetail = {
     suggested_circuit_category_id: number | null;
   }>;
   readiness: { missing_dates: Array<{ ceremony_id: number; missing: string[] }> };
+  initialized_leagues: Array<{ circuit_league_id: number; name: string }>;
   occasions: Array<{ ceremony_id: number; kind: string; date: string | null }>;
   waiver_windows: Array<{
     starts_on: string;
@@ -213,6 +220,38 @@ async function auditActions() {
   );
   return rows;
 }
+
+type Readiness = {
+  ready: boolean;
+  gaps: {
+    missing_dates: Array<{ ceremony_id: number; missing: string[] }>;
+    ceremonies_without_mappings: Array<{ ceremony_id: number }>;
+    categories_without_ceremony: Array<{ id: number }>;
+    unmapped_edition_count: number;
+  };
+  coverage: {
+    ceremonies: Array<{
+      ceremony_id: number;
+      edition_count: number;
+      supplies: Array<{ circuit_category_id: number; edition_ids: number[] }>;
+      unmapped_editions: Array<{ id: number }>;
+    }>;
+    categories_without_ceremony: Array<{ id: number }>;
+  };
+  occasions: CircuitDetail["occasions"];
+  waiver_windows: CircuitDetail["waiver_windows"];
+};
+
+const readinessOf = async (circuitId: number) => {
+  const res = await send<Readiness>("get", `/admin/circuits/${circuitId}/readiness`);
+  expect(res.status).toBe(200);
+  return res.json;
+};
+
+const map = (circuitId: number, editionId: number, categoryId: number) =>
+  send("put", `/admin/circuits/${circuitId}/mappings/${editionId}`, {
+    circuit_category_id: categoryId
+  });
 
 describe("circuit admin and public routes", () => {
   beforeAll(async () => {
@@ -1096,6 +1135,269 @@ describe("circuit admin and public routes", () => {
     });
   });
 
+  describe("readiness and coverage", () => {
+    it("lists the categories each ceremony supplies and the editions left unmapped", async () => {
+      const circuitId = await createCircuit();
+      const picture = await addCategory(circuitId, (await template("FILM")).id);
+      const acting = await addCategory(circuitId, (await template("PERFORMANCE")).id);
+      const orphan = await addCategory(circuitId, (await template("FILM")).id);
+      const globes = await ceremonyWithStatus("PUBLISHED", { name: "Golden Globes" });
+      const bafta = await ceremonyWithStatus("PUBLISHED", { name: "BAFTA" });
+      const bare = await ceremonyWithStatus("PUBLISHED", { name: "WGA" });
+      const outside = await ceremonyWithStatus("PUBLISHED", { name: "Not in Circuit" });
+      for (const c of [globes, bafta, bare]) await addCeremony(circuitId, c.id);
+
+      const drama = await insertCategoryEdition(db.pool, { ceremony_id: globes.id });
+      const comedy = await insertCategoryEdition(db.pool, { ceremony_id: globes.id });
+      const lead = await insertCategoryEdition(db.pool, { ceremony_id: globes.id });
+      const film = await insertCategoryEdition(db.pool, { ceremony_id: bafta.id });
+      const stray = await insertCategoryEdition(db.pool, { ceremony_id: bare.id });
+      await insertCategoryEdition(db.pool, { ceremony_id: outside.id });
+      // Two Globes editions feed one Circuit category; one stays unmapped.
+      expect((await map(circuitId, drama.id, picture.id)).status).toBe(200);
+      expect((await map(circuitId, comedy.id, picture.id)).status).toBe(200);
+      expect((await map(circuitId, film.id, acting.id)).status).toBe(200);
+
+      const report = await readinessOf(circuitId);
+      const byCeremony = new Map(
+        report.coverage.ceremonies.map((c) => [c.ceremony_id, c])
+      );
+
+      expect(byCeremony.get(globes.id)).toMatchObject({
+        edition_count: 3,
+        supplies: [
+          { circuit_category_id: picture.id, edition_ids: [drama.id, comedy.id] }
+        ],
+        unmapped_editions: [{ id: lead.id }]
+      });
+      expect(byCeremony.get(bafta.id)).toMatchObject({
+        supplies: [{ circuit_category_id: acting.id, edition_ids: [film.id] }],
+        unmapped_editions: []
+      });
+      expect(byCeremony.get(bare.id)).toMatchObject({
+        supplies: [],
+        unmapped_editions: [{ id: stray.id }]
+      });
+      expect(byCeremony.has(outside.id)).toBe(false);
+      expect(report.coverage.categories_without_ceremony).toEqual([
+        expect.objectContaining({ id: orphan.id })
+      ]);
+      expect(report.gaps.ceremonies_without_mappings).toEqual([
+        expect.objectContaining({ ceremony_id: bare.id })
+      ]);
+      expect(report.gaps.unmapped_edition_count).toBe(2);
+      expect(report.ready).toBe(false);
+    });
+
+    it("is ready once every date, ceremony and category is covered", async () => {
+      const circuitId = await createCircuit();
+      expect((await readinessOf(circuitId)).ready).toBe(false);
+
+      const picture = await addCategory(circuitId, (await template("FILM")).id);
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      await addCeremony(circuitId, ceremony.id);
+      const edition = await insertCategoryEdition(db.pool, { ceremony_id: ceremony.id });
+      await map(circuitId, edition.id, picture.id);
+      let report = await readinessOf(circuitId);
+      expect(report.gaps.missing_dates).toEqual([
+        expect.objectContaining({
+          ceremony_id: ceremony.id,
+          missing: ["nominations_on", "results_on"]
+        })
+      ]);
+      expect(report.ready).toBe(false);
+
+      await db.pool.query(
+        `UPDATE ceremony SET nominations_on = '2026-12-07', starts_at = '2027-01-11T01:00:00Z'
+         WHERE id = $1`,
+        [ceremony.id]
+      );
+      report = await readinessOf(circuitId);
+      expect(report.gaps.missing_dates).toEqual([]);
+      expect(report.ready).toBe(true);
+    });
+
+    it("is admin-only", async () => {
+      const circuitId = await createCircuit();
+      const user = await insertUser(db.pool, { id: 2 });
+      const res = await api.get(`/admin/circuits/${circuitId}/readiness`).set({
+        Authorization: `Bearer ${signTestToken({ sub: "2", username: user.username }, AUTH_SECRET)}`
+      });
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("schedule changes", () => {
+    let events: CircuitAdminEvent[] = [];
+
+    beforeEach(() => {
+      events = [];
+      registerCircuitScheduleEventEmitter((e) => events.push(e));
+    });
+
+    afterEach(() => registerCircuitScheduleEventEmitter(null));
+
+    /** An initialised league of the Circuit with every event enabled. */
+    async function leagueOf(circuitId: number, status = "IN_SEASON") {
+      const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+      const created = await db.pool.query<{ id: number }>(
+        `INSERT INTO circuit_league
+           (circuit_id, league_id, status, initialized_at, created_by_user_id)
+         VALUES ($1, $2, $3, CASE WHEN $3 = 'SETUP' THEN NULL ELSE now() END, 1)
+         RETURNING id::int`,
+        [circuitId, league.id, status]
+      );
+      const id = created.rows[0]!.id;
+      await db.pool.query(
+        `INSERT INTO circuit_league_event (circuit_league_id, circuit_id, circuit_event_id)
+         SELECT $1, circuit_id, id FROM circuit_event WHERE circuit_id = $2`,
+        [id, circuitId]
+      );
+      return { id, name: league.name };
+    }
+
+    it("a date change emits a schedule event and shifts the derived windows", async () => {
+      const circuitId = await createCircuit();
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      await db.pool.query(
+        `UPDATE ceremony SET starts_at = '2027-01-11T01:00:00Z' WHERE id = $1`,
+        [ceremony.id]
+      );
+      await addCeremony(circuitId, ceremony.id);
+      const league = await leagueOf(circuitId);
+      const windowsOf = async () => (await detailOf(circuitId)).waiver_windows;
+
+      const nominationsOn = (day: string) =>
+        send("patch", `/admin/ceremonies/${ceremony.id}/dates`, { nominations_on: day });
+
+      expect((await nominationsOn("2026-12-07")).status).toBe(200);
+      expect((await windowsOf()).map((w) => [w.starts_on, w.ends_on])).toEqual([
+        ["2026-12-07", "2026-12-09"]
+      ]);
+      events = [];
+
+      expect((await nominationsOn("2026-12-20")).status).toBe(200);
+      expect((await windowsOf()).map((w) => [w.starts_on, w.ends_on])).toEqual([
+        ["2026-12-20", "2026-12-22"]
+      ]);
+      expect(events).toEqual([
+        {
+          event: "schedule:update",
+          message: expect.objectContaining({
+            circuit_league_id: league.id,
+            circuit_id: circuitId,
+            reason: "update_ceremony_dates",
+            ceremony_ids: [ceremony.id],
+            waiver_windows: [
+              expect.objectContaining({ starts_on: "2026-12-20", ends_on: "2026-12-22" })
+            ]
+          })
+        }
+      ]);
+      expect((await readinessOf(circuitId)).waiver_windows).toEqual(await windowsOf());
+
+      // Moving the ceremony datetime moves the win occasion, and so a window.
+      events = [];
+      const moved = await send("patch", `/admin/ceremonies/${ceremony.id}`, {
+        starts_at: "2027-01-25T01:00:00Z"
+      });
+      expect(moved.status).toBe(200);
+      expect(events).toHaveLength(1);
+      expect((await windowsOf()).map((w) => w.starts_on)).toEqual(["2026-12-20"]);
+      expect(
+        (await detailOf(circuitId)).occasions.find((o) => o.kind === "WIN")?.date
+      ).toBe("2027-01-24");
+    });
+
+    it("also announces ceremonies added and removed, and activation, to each league", async () => {
+      const circuitId = await createCircuit();
+      const league = await leagueOf(circuitId, "SETUP");
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      await addCeremony(circuitId, ceremony.id);
+      await send("delete", `/admin/circuits/${circuitId}/ceremonies/${ceremony.id}`);
+      await send("post", `/admin/circuits/${circuitId}/activate`);
+      expect(events.map((e) => [e.event, e.message.circuit_league_id])).toEqual([
+        ["schedule:update", league.id],
+        ["schedule:update", league.id],
+        ["circuit:status", league.id]
+      ]);
+      expect(
+        events.map((e) => ("reason" in e.message ? e.message.reason : e.message.status))
+      ).toEqual(["associate_circuit_ceremony", "remove_circuit_ceremony", "ACTIVE"]);
+    });
+
+    describe("structural edits that affect initialised leagues", () => {
+      it("name the leagues and refuse until confirmed, then record who was affected", async () => {
+        const circuitId = await createCircuit();
+        const picture = await addCategory(circuitId, (await template("FILM")).id);
+        const ceremony = await ceremonyWithStatus("PUBLISHED");
+        const extra = await ceremonyWithStatus("PUBLISHED");
+        await addCeremony(circuitId, ceremony.id);
+        const edition = await insertCategoryEdition(db.pool, {
+          ceremony_id: ceremony.id
+        });
+        // A league still in SETUP does not count.
+        await leagueOf(circuitId, "SETUP");
+        expect((await map(circuitId, edition.id, picture.id)).status).toBe(200);
+        const live = await leagueOf(circuitId);
+        const detail = await detailOf(circuitId);
+        expect(detail.initialized_leagues).toEqual([
+          expect.objectContaining({ circuit_league_id: live.id, name: live.name })
+        ]);
+
+        const refused: Array<
+          [Parameters<typeof send>[0], string, Record<string, unknown>?]
+        > = [
+          ["put", `/admin/circuits/${circuitId}/ceremonies/${extra.id}`, {}],
+          ["delete", `/admin/circuits/${circuitId}/ceremonies/${ceremony.id}`],
+          ["put", `/admin/ceremonies/${extra.id}/circuits/${circuitId}`, {}],
+          ["delete", `/admin/ceremonies/${ceremony.id}/circuits/${circuitId}`],
+          [
+            "put",
+            `/admin/circuits/${circuitId}/mappings/${edition.id}`,
+            { circuit_category_id: picture.id }
+          ],
+          ["delete", `/admin/circuits/${circuitId}/mappings/${edition.id}`]
+        ];
+        for (const [method, path, body] of refused) {
+          const res = await send<ErrorBody>(method, path, body);
+          expect(res.status, path).toBe(409);
+          expect(res.json.error.code).toBe("CIRCUIT_EDIT_NEEDS_CONFIRMATION");
+          expect(res.json.error.details?.affected_leagues).toEqual([
+            expect.objectContaining({ circuit_league_id: live.id, name: live.name })
+          ]);
+        }
+        expect(await detailOf(circuitId)).toMatchObject({
+          ceremonies: [expect.objectContaining({ ceremony_id: ceremony.id })]
+        });
+
+        await db.pool.query(`DELETE FROM admin_audit_log`);
+        const added = await send(
+          "put",
+          `/admin/circuits/${circuitId}/ceremonies/${extra.id}?confirm=true`,
+          {}
+        );
+        expect(added.status).toBe(200);
+        const { rows } = await db.pool.query<{
+          meta: { confirmed_circuit_league_ids: number[] };
+        }>(
+          `SELECT meta FROM admin_audit_log WHERE action = 'associate_circuit_ceremony'`
+        );
+        expect(rows[0]!.meta.confirmed_circuit_league_ids).toEqual([live.id]);
+
+        // Moving a ceremony already in the Circuit changes no scoring.
+        const group = await addGroup(circuitId, "Guilds");
+        expect(
+          (
+            await send("put", `/admin/circuits/${circuitId}/ceremonies/${extra.id}`, {
+              circuit_event_id: group.id
+            })
+          ).status
+        ).toBe(200);
+      });
+    });
+  });
+
   describe("audit log", () => {
     type Ctx = {
       circuitId: number;
@@ -1297,6 +1599,21 @@ describe("circuit admin and public routes", () => {
         run: (c) => send("post", `/admin/circuits/${c.circuitId}/activate`)
       },
       {
+        name: "POST /admin/circuits/:id/scores/rebuild",
+        action: "rebuild_circuit_scores",
+        target: (c) => ["circuit", c.circuitId],
+        run: (c) => send("post", `/admin/circuits/${c.circuitId}/scores/rebuild`)
+      },
+      {
+        name: "PATCH /admin/ceremonies/:id",
+        action: "update_ceremony",
+        target: (c) => ["ceremony", c.ceremonyId],
+        run: (c) =>
+          send("patch", `/admin/ceremonies/${c.ceremonyId}`, {
+            starts_at: "2027-01-11T01:00:00Z"
+          })
+      },
+      {
         name: "PATCH /admin/ceremonies/:id/dates",
         action: "update_ceremony_dates",
         target: (c) => ["ceremony", c.ceremonyId],
@@ -1320,6 +1637,31 @@ describe("circuit admin and public routes", () => {
         actor_user_id: 1
       });
       if (targetId !== "new") expect(rows[0]!.target_id).toBe(targetId);
+    });
+
+    // The table above is the audit contract: a write route added without a row
+    // here fails this test.
+    it("has a row for every write route of the Circuit admin", () => {
+      const sources = [
+        "circuits",
+        "circuitAssociations",
+        "circuitEvents",
+        "circuitCategories",
+        "circuitMappings",
+        "ceremoniesUpdate",
+        "ceremonyDatesUpdate"
+      ];
+      const found = sources.flatMap((file) => {
+        const text = readFileSync(
+          new URL(`../../../src/routes/admin/${file}.ts`, import.meta.url),
+          "utf8"
+        );
+        return [...text.matchAll(/router\.(post|put|patch|delete)\(\s*"([^"]+)"/g)].map(
+          (m) => `${m[1]!.toUpperCase()} /admin${m[2]}`
+        );
+      });
+      expect(found.length).toBeGreaterThan(15);
+      expect(writes.map((w) => w.name).sort()).toEqual([...new Set(found)].sort());
     });
   });
 

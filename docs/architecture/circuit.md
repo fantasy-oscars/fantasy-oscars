@@ -54,12 +54,14 @@ A Circuit is a season-long competition across several awards ceremonies; players
 - The results date is derived, never entered: the date of `starts_at` in America/Los_Angeles (`resultsDateOf`). Responses carry it as a read-only `results_on`.
 - A **scoring occasion** is `(ceremony, kind)` with `kind` `NOMINATION` or `WIN`. It is derived from the ceremony and its dates, never stored (`listScoringOccasions`). Dated occasions sort first, in date order, then undated ones in event order.
 - **Ownership instant.** An occasion on day `D` is evaluated against ownership at `D 00:00 America/Los_Angeles`, the instant that day's waiver window opens. Nominations and wins on the same day share one instant. See [ADR 0005, section 3](../adr/0005-series-domain-model.md#3-scoring-occasions-and-dates).
-- **Readiness** (`findCeremoniesMissingDates`) lists the associated ceremonies that lack a nominations date or a ceremony datetime. It is informational: activation proceeds regardless, and the Circuit admin shows the list.
+- **Readiness** (`findCeremoniesMissingDates`) lists the associated ceremonies that lack a nominations date or a ceremony datetime. It is informational: activation proceeds regardless, and the Circuit admin shows the list. The fuller report (`GET /admin/circuits/:id/readiness`, pure rules in `apps/api/src/domain/circuitReadiness.ts`) adds mapping coverage: the Circuit categories each ceremony supplies, the editions mapped to none, ceremonies that supply nothing and Circuit categories no ceremony supplies. The Circuit is `ready` when it has a ceremony, no missing date, no ceremony without a mapping and no category without a ceremony; unmapped editions are listed but never block it, since a ceremony may carry categories the Circuit does not score.
 - **Waiver windows** (`waiverWindows`, `apps/api/src/domain/waiverWindows.ts`) implement ADR 0005 section 9 as decided in ADR 0007. The Circuit admin detail returns `waiver_windows` from every associated ceremony's occasions, as if every ceremony were enabled; a league that disables some ceremonies gets fewer windows. A league's own windows come from `leagueWaiverWindows(occasions, enabledEventIds)`, and `waiverWindowAt(windows, at)` returns the window open at an instant, if any (see Ownership and transactions).
 
 ## Structural edits after activation
 
 Owner question 6 is built to the recommended answer. Ceremonies, events, categories and mappings stay editable while a Circuit is `ACTIVE`. The admin screens ask for confirmation first (renames excepted, since they change no scoring), and every audit row records the Circuit status at the time of the edit. Only an `ARCHIVED` Circuit is read-only (409 `CIRCUIT_ARCHIVED`).
+
+Adding or removing a ceremony and changing a mapping also move points in every initialised league (any status past `SETUP`). The server enforces a confirmation for those: `assertStructuralEditConfirmed` (`circuitGuards.ts`) refuses with 409 `CIRCUIT_EDIT_NEEDS_CONFIRMATION`, naming the leagues in `details.affected_leagues`, unless the request has `?confirm=true`. The admin screens show the leagues (from `initialized_leagues` on the Circuit detail, or from the refusal on the ceremony screen) and resend confirmed; the audit row records `confirmed_circuit_league_ids`, and the usual ledger rebuild follows.
 
 ## Admin
 
@@ -68,11 +70,12 @@ Routes are listed in the [admin runbook](../runbooks/admin.md#circuit-admin-rout
 Screens:
 
 - **Admin home → Game Content → Circuits**, and the admin nav's Game Content menu (`/admin/circuits`): the list of Circuits and a form to create one.
-- **Circuit detail** (`/admin/circuits/:id`): activation and the missing-dates notice above three tabs; `?tab=categories|ceremonies|schedule` keeps the open tab in the URL.
+- **Circuit detail** (`/admin/circuits/:id`): activation and the missing-dates notice above four tabs; `?tab=categories|ceremonies|schedule|readiness` keeps the open tab in the URL.
   - **Categories**: a flat list. **Add category** copies a category template (templates are made on the Category Templates screen; nothing is seeded). Rename, remove, and reorder by drag and drop or the move buttons.
   - **Ceremonies**: **Add ceremony** appends any ceremony not yet in the Circuit, ungrouped; **Add group** creates an empty, admin-named group (the name players see). Single ceremonies show as plain rows, groups as collapsible containers. Rows and groups reorder by drag and drop; a ceremony joins or leaves a group by being dragged into or out of it. Each drag has a keyboard equivalent (focus the grip, Space, arrow keys, Space) and a row-menu item (move up or down, move into a group, move out of the group). Each ceremony row has **Map categories**.
   - **Mapping modal** (from **Map categories**): one row per Circuit category, each a multi-select of that ceremony's categories. A ceremony category chosen in one row is not offered in the others. Template matches are pre-selected; nothing is saved until **Save mappings**.
   - **Schedule**: read-only. Left, each ceremony's nominations and ceremony dates, labelled with its group where grouped; right, the add/drop windows from `waiverWindows` as if every ceremony were enabled. Ceremonies without dates are listed under **Needs dates**.
+  - **Readiness**: read-only. A ready or not-ready banner with what is left to do (dates, ceremonies that supply no category, categories no ceremony supplies), then **Coverage**: per ceremony, the Circuit categories it supplies (with the number of its categories feeding each) and its categories mapped to none.
 - **Ceremony admin, Initialize step** (`/admin/ceremonies/:id/overview`): the Foundation details form has one **Dates** section, the nominations date and the ceremony date and time, saved together. A **Circuits** panel attaches this ceremony to a Circuit (ungrouped) or detaches it, at every ceremony status; grouping and order are set in the Circuit editor.
 
 ## Public reads
@@ -271,6 +274,7 @@ ADR 0005 section 8, under the ADR 0006 names. Code is `domain/circuitScoring.ts`
 - **Winner entry** locks only the ceremony, as for any ceremony; it never reads or changes `circuit_draft`.
 - **Standings.** A member's total is the sum of their ledger rows, taken in hundredths so it equals the ledger exactly. Every member is listed, highest first; tied members share a rank (1, 1, 3) and sort by username.
 - **The event.** After a rebuild, each league whose rows changed hears `score:update` in its `/circuits` room, with `circuit_league_id`, the changed `ceremony_ids` and `server_time`. A rebuild that removed and inserted nothing sends nothing.
+- **Schedule and status events** (`circuitScheduleEvents.ts`, `circuitSchedule.ts`). After a change to the nominations date, to a ceremony's datetime, or to which ceremonies are in the Circuit, and after the write's ledger rebuild, each league of the affected Circuit hears `schedule:update` with `circuit_league_id`, `circuit_id`, `reason` (the audit action), the named `ceremony_ids` (empty for the whole Circuit), the league's `waiver_windows` re-derived from the new dates and its enabled events, and `server_time`. Activating a Circuit sends each of its leagues `circuit:status` with the new `status`. Windows always follow the current dates; the rule that an open window's start is fixed is the waiver processor's, not this event's. Emission is best effort: a failure is logged, and clients reload on reconnect.
 
 | Route                                                       | Does                                                                                                                                                                                                                         |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -284,6 +288,10 @@ Once the draft has finished, the season page links to `…/seasons/full/:fullSea
 - **Standings**: the leaderboard (rank, player, the viewer marked, nomination and win points, total), then each counting ceremony with its group name, dates and the points it has awarded.
 - **Ceremony points**: each member in order of their points at that ceremony, with the picks that scored and whether for a nomination or a win.
 - **Live updates**: members connect to `/circuits`; a `score:update`, or a reconnect, refetches the standings and every ceremony breakdown.
+
+### Rules screen (web)
+
+Every season page has a Rules button to `…/seasons/full/:fullSeasonId/rules`, readable by anyone who can see the league. It states the two conventions players cannot infer: the ownership instant (midnight Pacific at the start of the announcement day) and the window rule (free agency closes when a scoring day opens a window and reopens at midnight Pacific after its last day; drops are always allowed). Then it lists the league's own settings from `GET /circuit-leagues/:id`, never the defaults: the enabled events with weights and their ceremonies' dates, the events not counted, points per nomination and per win, roster size, and each category's weight and limit. Code is `decisions/circuitRules.ts` (the fixed wording and `circuitRulesFrom`), `orchestration/circuitRules.ts` and `CircuitRulesScreen`.
 
 ## Independence from the Season
 

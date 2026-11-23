@@ -1,4 +1,4 @@
-import type { CircuitDateField } from "../../../decisions/admin/circuit";
+import type { AffectedLeague, CircuitDateField } from "../../../decisions/admin/circuit";
 
 /** Response shapes of the `/admin/circuits` and `/admin/ceremonies/:id/circuits` routes. */
 
@@ -89,8 +89,46 @@ export type CircuitDetail = {
   ceremonies: CircuitCeremony[];
   category_editions: CircuitCategoryEdition[];
   readiness: { missing_dates: MissingCeremonyDates[] };
+  /** Leagues past SETUP: a ceremony or mapping change affects what they score. */
+  initialized_leagues: AffectedLeague[];
   occasions: ScoringOccasion[];
   /** Add/drop windows as if every ceremony were enabled (ADR 0007). */
+  waiver_windows: WaiverWindow[];
+};
+
+export type CoverageCeremony = {
+  ceremony_id: number;
+  ceremony_code: string | null;
+  ceremony_name: string | null;
+  circuit_event_id: number;
+};
+
+export type CeremonyCoverage = CoverageCeremony & {
+  supplies: Array<{
+    circuit_category_id: number;
+    code: string;
+    name: string;
+    edition_ids: number[];
+  }>;
+  unmapped_editions: Array<{ id: number; code: string; name: string }>;
+  edition_count: number;
+};
+
+/** `GET /admin/circuits/:id/readiness`: what is left to do, and what each ceremony supplies. */
+export type CircuitReadiness = {
+  circuit: { id: number; code: string; name: string; status: string };
+  ready: boolean;
+  gaps: {
+    missing_dates: MissingCeremonyDates[];
+    ceremonies_without_mappings: CoverageCeremony[];
+    categories_without_ceremony: Array<{ id: number; code: string; name: string }>;
+    unmapped_edition_count: number;
+  };
+  coverage: {
+    ceremonies: CeremonyCoverage[];
+    categories_without_ceremony: Array<{ id: number; code: string; name: string }>;
+  };
+  occasions: ScoringOccasion[];
   waiver_windows: WaiverWindow[];
 };
 

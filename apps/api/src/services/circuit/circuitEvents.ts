@@ -28,8 +28,14 @@ import {
   withResultsDate
 } from "../../domain/circuit.js";
 import { AppError, validationError } from "../../errors.js";
-import { type Actor, audit, lockEditableCircuit } from "./circuitGuards.js";
+import {
+  type Actor,
+  assertStructuralEditConfirmed,
+  audit,
+  lockEditableCircuit
+} from "./circuitGuards.js";
 import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
+import { announceScheduleChange } from "./circuitSchedule.js";
 
 /*
  * Events and ceremony associations. An event is what leagues enable and
@@ -92,7 +98,13 @@ async function assertEventCodeFree(
 export async function associateCeremony(
   pool: Pool,
   actor: Actor & Via,
-  input: { circuitId: number; ceremonyId: number; circuitEventId: number | null }
+  input: {
+    circuitId: number;
+    ceremonyId: number;
+    circuitEventId: number | null;
+    /** The admin confirmed a change that affects initialised leagues. */
+    confirmed?: boolean;
+  }
 ) {
   const result = await runInTransaction(pool, async (tx) => {
     const circuit = await lockEditableCircuit(tx, input.circuitId);
@@ -103,6 +115,15 @@ export async function associateCeremony(
       input.circuitId,
       input.ceremonyId
     );
+    // Only a new ceremony changes scoring; moving one between groups does not.
+    const confirmedLeagues =
+      previous === null
+        ? await assertStructuralEditConfirmed(
+            tx,
+            input.circuitId,
+            input.confirmed ?? false
+          )
+        : [];
 
     let target: CircuitEventRow;
     let createdEventId: number | null = null;
@@ -134,7 +155,14 @@ export async function associateCeremony(
       (await deleteCircuitEventIfEmpty(tx, input.circuitId, previous))
         ? previous
         : null;
-    return { circuit, target, previous, createdEventId, deletedEventId };
+    return {
+      circuit,
+      target,
+      previous,
+      createdEventId,
+      deletedEventId,
+      confirmedLeagues
+    };
   });
 
   await audit(pool, actor, {
@@ -148,10 +176,16 @@ export async function associateCeremony(
       created_event_id: result.createdEventId,
       deleted_event_id: result.deletedEventId,
       circuit_status: result.circuit.status,
+      confirmed_circuit_league_ids: result.confirmedLeagues,
       via: actor.via
     }
   });
   await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
+    "associate_circuit_ceremony"
+  );
+  await announceScheduleChange(
     pool,
     { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
     "associate_circuit_ceremony"
@@ -167,10 +201,15 @@ export async function associateCeremony(
 export async function removeCeremony(
   pool: Pool,
   actor: Actor & Via,
-  input: { circuitId: number; ceremonyId: number }
+  input: { circuitId: number; ceremonyId: number; confirmed?: boolean }
 ) {
   const result = await runInTransaction(pool, async (tx) => {
     const circuit = await lockEditableCircuit(tx, input.circuitId);
+    const confirmedLeagues = await assertStructuralEditConfirmed(
+      tx,
+      input.circuitId,
+      input.confirmed ?? false
+    );
     const eventId = await getCircuitCeremonyEventId(
       tx,
       input.circuitId,
@@ -184,7 +223,8 @@ export async function removeCeremony(
     return {
       circuit,
       mappings_removed: removed.mappings_removed,
-      deleted_event_id: eventDeleted ? eventId : null
+      deleted_event_id: eventDeleted ? eventId : null,
+      confirmedLeagues
     };
   });
   await audit(pool, actor, {
@@ -195,10 +235,16 @@ export async function removeCeremony(
       mappings_removed: result.mappings_removed,
       deleted_event_id: result.deleted_event_id,
       circuit_status: result.circuit.status,
+      confirmed_circuit_league_ids: result.confirmedLeagues,
       via: actor.via
     }
   });
   await rebuildCircuitScoresAfterWrite(
+    pool,
+    { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
+    "remove_circuit_ceremony"
+  );
+  await announceScheduleChange(
     pool,
     { circuitId: input.circuitId, ceremonyId: input.ceremonyId },
     "remove_circuit_ceremony"

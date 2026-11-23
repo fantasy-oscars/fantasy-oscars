@@ -29,9 +29,56 @@ export function canActivateCircuit(status: string | null | undefined): boolean {
   return circuitStatusLabel(status) === "DRAFT";
 }
 
-/** Owner question 6: structural edits on an ACTIVE Circuit are confirmed first. */
-export function needsStructuralEditConfirm(status: string | null | undefined): boolean {
-  return circuitStatusLabel(status) === "ACTIVE";
+/** An initialised league of the Circuit: a structural edit changes what it scores. */
+export type AffectedLeague = { circuit_league_id: number; name: string; status: string };
+
+/**
+ * Owner question 6: structural edits are confirmed first on an ACTIVE
+ * Circuit, and on any Circuit with initialised leagues.
+ */
+export function needsStructuralEditConfirm(
+  status: string | null | undefined,
+  leagueCount = 0
+): boolean {
+  return circuitStatusLabel(status) === "ACTIVE" || leagueCount > 0;
+}
+
+/** The confirmation text: names the initialised leagues the edit affects, if any. */
+export function structuralEditMessage(args: {
+  circuitName: string;
+  action: string;
+  leagues: readonly AffectedLeague[];
+}): string {
+  const { circuitName, action, leagues } = args;
+  if (leagues.length === 0) {
+    return `${circuitName} is active. ${action} changes how it is scored, and the change is recorded in the audit log.`;
+  }
+  const noun = leagues.length === 1 ? "league" : "leagues";
+  return `${action} changes how ${leagues.length} initialised ${noun} score: ${leagues
+    .map((l) => l.name)
+    .join(", ")}. Their points are rebuilt, and the change is recorded in the audit log.`;
+}
+
+/** The leagues named in a "needs confirmation" error's details; empty when malformed. */
+export function parseAffectedLeagues(
+  details: Record<string, unknown> | undefined
+): AffectedLeague[] {
+  const raw = details?.affected_leagues;
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((l) => {
+    const league = l as Partial<AffectedLeague> | null;
+    return league &&
+      typeof league.circuit_league_id === "number" &&
+      typeof league.name === "string"
+      ? [
+          {
+            circuit_league_id: league.circuit_league_id,
+            name: league.name,
+            status: String(league.status ?? "")
+          }
+        ]
+      : [];
+  });
 }
 
 export function ceremonyLabel(c: {

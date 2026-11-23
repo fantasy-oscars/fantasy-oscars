@@ -31,10 +31,10 @@ Purpose: quick reference for deploying, rolling back, validating health, and bas
 
 Run these after deploys or incidents:
 
-1) API health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health`
-2) Auth unauth path: `curl -i https://api.fantasy-oscars.com/auth/me` (expect 401 JSON)
-3) 404 JSON: `curl -i https://api.fantasy-oscars.com/does-not-exist` (expect JSON NOT_FOUND)
-4) CORS preflight (frontend):
+1. API health: `curl -sS https://fantasy-oscars-api-prod.onrender.com/health`
+2. Auth unauth path: `curl -i https://api.fantasy-oscars.com/auth/me` (expect 401 JSON)
+3. 404 JSON: `curl -i https://api.fantasy-oscars.com/does-not-exist` (expect JSON NOT_FOUND)
+4. CORS preflight (frontend):
 
 ```bash
 curl -i -X OPTIONS 'https://api.fantasy-oscars.com/auth/me' \
@@ -81,32 +81,55 @@ Goal: close out the prior ceremony, keep its data readable, and stand up the nex
 
 ### Steps
 
-1) **Freeze the outgoing ceremony (e.g., 2026)**
+1. **Freeze the outgoing ceremony (e.g., 2026)**
    - Ensure all winners are entered in Admin → Results/Winners.
    - Finalize winners (Admin → Results → Finalize winners). This sets `results_finalized_at`; the ceremony stays `LOCKED` and winners become read-only.
    - Archive the ceremony (Admin → Archive). Archive is refused until results are finalized.
 
-2) **Create the new ceremony record**
+2. **Create the new ceremony record**
    - Use Admin → Ceremonies → New ceremony (preferred).
    - Fill identity (name/code/year) and the ceremony date.
 
-3) **Publish the ceremony**
+3. **Publish the ceremony**
    - Publishing needs only the name and code, so the ceremony can go out with its date before nominations are announced. It is visible to users but leagues cannot create seasons yet.
    - Add categories and populate nominees; both stay editable while the ceremony is `PUBLISHED`.
 
-4) **Open for leagues**
+4. **Open for leagues**
    - Admin → Open for leagues. It is refused (`409 CEREMONY_INCOMPLETE`) while any category has no nominee, and the error lists those categories.
    - Opening freezes categories and nominees. Commissioners can now create seasons for the new ceremony and draft as usual.
 
-5) **Smoke**
+5. **Smoke**
    - Confirm old seasons remain visible.
    - Confirm new ceremony is visible in the Ceremonies index and can be selected when creating a season.
 
-6) **Post-rollover checklist**
+6. **Post-rollover checklist**
 
 - Admin UI: upload nominees success message logged; categories render with radio buttons.
 - Admin UI: Winners page shows empty winners and unlocked state.
 - Communicate to commissioners that drafts for the new ceremony are now open; remind them drafting will lock immediately when the first winner is saved.
+
+## Circuit nomination and ceremony days
+
+The owner is the only global admin, so these steps are the owner's. Dates and the plan behind them are in the [series plan](../planning/series/plan.md#7-operational-work-outside-code).
+
+**Before opening a Circuit to players.** Create the ceremonies in `DRAFT` with only the mapped categories, create the Circuit, add the ceremonies, group any that share an event, build the Circuit categories, map every edition and enter every nomination and ceremony date. Open the Circuit's **Readiness** tab (`?tab=readiness`): it must show no missing dates, no ceremony without a mapping and no Circuit category that no ceremony supplies (unmapped editions are listed but do not block). Activate the Circuit, then announce it and its rules page (the **Rules** button on each season page) to players.
+
+**On each nomination day:**
+
+1. Import any new films and people from TMDB. Admin film search costs nine TMDB calls per search, so search sparingly.
+2. Enter the nominations. The bulk upload works while the ceremony is `DRAFT`.
+3. Check the list against the announcement, then publish the ceremony, so winners can be entered later. Until package 01 lands, a published nomination can only be revoked or replaced.
+4. On the Circuit's **Readiness** tab, check the ceremony's editions are all mapped; an unmapped edition scores nothing.
+
+**On each ceremony day:**
+
+1. Enter the winner of each mapped category. The first winner locks the ceremony.
+2. Finalise when complete.
+3. Standings rebuild by themselves after each write and members see them live. If a rebuild failed (`circuit_score_rebuild_failed` in the logs), run the [score rebuild](#circuit-score-rebuild).
+
+**If a date moves.** Change it in the ceremony admin (nominations date or ceremony datetime). The league's windows re-derive at once, scores rebuild and members get a `schedule:update`. Moving a ceremony that an initialised league already uses, or changing a mapping, asks for confirmation naming the affected leagues (409 `CIRCUIT_EDIT_NEEDS_CONFIRMATION` without `?confirm=true`).
+
+**At each window resolution.** Watch the [waiver run](#circuit-waiver-runs) for every league at 00:00 Pacific of the window's resolution day.
 
 ## Circuit waiver runs
 
@@ -173,9 +196,9 @@ Behavior:
 
 Post-steps:
 
-1) Log in via web UI with the admin creds; open Admin section to confirm access.
-2) Call an admin endpoint (e.g., set active ceremony) to verify authorization.
-3) Rotate `ADMIN_BOOTSTRAP_SECRET` to a new random value or remove it to disable further use.
+1. Log in via web UI with the admin creds; open Admin section to confirm access.
+2. Call an admin endpoint (e.g., set active ceremony) to verify authorization.
+3. Rotate `ADMIN_BOOTSTRAP_SECRET` to a new random value or remove it to disable further use.
 
 ## Observability (Render)
 

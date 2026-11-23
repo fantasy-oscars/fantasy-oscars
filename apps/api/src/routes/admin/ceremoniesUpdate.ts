@@ -5,6 +5,7 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 import { query, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { rebuildCircuitScoresAfterWrite } from "../../services/circuit/circuitScoring.js";
+import { announceScheduleChange } from "../../services/circuit/circuitSchedule.js";
 import { AppError, validationError } from "../../errors.js";
 import {
   adminCeremonyIdParam,
@@ -86,6 +87,11 @@ export function registerAdminCeremoniesUpdateRoute(args: {
           await rebuildCircuitScoresAfterWrite(
             client as Pool,
             { ceremonyId: id, kinds: ["WIN"] },
+            "update_ceremony"
+          );
+          await announceScheduleChange(
+            client as Pool,
+            { ceremonyId: id },
             "update_ceremony"
           );
         }

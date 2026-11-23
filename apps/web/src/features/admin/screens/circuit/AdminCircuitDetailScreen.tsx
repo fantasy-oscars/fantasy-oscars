@@ -6,6 +6,7 @@ import type { ApiResult } from "@/lib/types";
 import type {
   CircuitCategoryTemplate,
   CircuitDetail,
+  CircuitReadiness,
   MissingCeremonyDates
 } from "@/orchestration/adminCircuit";
 import {
@@ -24,6 +25,7 @@ import {
   CircuitCategoriesTab,
   type CircuitCategoryActions
 } from "@/features/admin/ui/circuit/CircuitCategoriesTab";
+import { CircuitReadinessTab } from "@/features/admin/ui/circuit/CircuitReadinessTab";
 import { CircuitScheduleTab } from "@/features/admin/ui/circuit/CircuitScheduleTab";
 import {
   CircuitEditorTabs,
@@ -57,6 +59,7 @@ export function AdminCircuitDetailScreen(props: {
   state: "loading" | "error" | "ready";
   error: string | null;
   detail: CircuitDetail | null;
+  readiness: CircuitReadiness | null;
   ceremonies: Array<{ id: number; name: string | null; code: string | null }>;
   templates: CircuitCategoryTemplate[];
   working: boolean;
@@ -186,6 +189,8 @@ export function AdminCircuitDetailScreen(props: {
               disabled={disabled}
               actions={props.ceremonyActions}
             />
+          ) : props.tab === "readiness" ? (
+            <CircuitReadinessTab readiness={props.readiness} />
           ) : (
             <CircuitScheduleTab
               ceremonies={detail.ceremonies}

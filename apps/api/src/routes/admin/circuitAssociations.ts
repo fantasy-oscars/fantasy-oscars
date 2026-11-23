@@ -16,7 +16,7 @@ import {
   adminCircuitCeremonyPositionBody
 } from "@fantasy-oscars/shared/schemas";
 import { parseBody, parseParams } from "../../utils/validate.js";
-import { actorOf } from "./circuitActor.js";
+import { actorOf, confirmedOf } from "./circuitActor.js";
 
 // The Circuit–ceremony association, managed from either admin screen. Both
 // sides read and write the one circuit_ceremony table. Without a group the
@@ -32,7 +32,12 @@ export function registerAdminCircuitAssociationRoutes(router: Router, pool: Pool
         const result = await associateCeremony(
           pool,
           { ...actorOf(req), via: "circuit" },
-          { circuitId: id, ceremonyId, circuitEventId: circuit_event_id }
+          {
+            circuitId: id,
+            ceremonyId,
+            circuitEventId: circuit_event_id,
+            confirmed: confirmedOf(req)
+          }
         );
         return res.status(200).json(result);
       } catch (err) {
@@ -68,7 +73,7 @@ export function registerAdminCircuitAssociationRoutes(router: Router, pool: Pool
         const result = await removeCeremony(
           pool,
           { ...actorOf(req), via: "circuit" },
-          { circuitId: id, ceremonyId }
+          { circuitId: id, ceremonyId, confirmed: confirmedOf(req) }
         );
         return res.status(200).json(result);
       } catch (err) {
@@ -98,7 +103,12 @@ export function registerAdminCircuitAssociationRoutes(router: Router, pool: Pool
         const result = await associateCeremony(
           pool,
           { ...actorOf(req), via: "ceremony" },
-          { circuitId, ceremonyId: id, circuitEventId: circuit_event_id }
+          {
+            circuitId,
+            ceremonyId: id,
+            circuitEventId: circuit_event_id,
+            confirmed: confirmedOf(req)
+          }
         );
         return res.status(200).json(result);
       } catch (err) {
@@ -115,7 +125,7 @@ export function registerAdminCircuitAssociationRoutes(router: Router, pool: Pool
         const result = await removeCeremony(
           pool,
           { ...actorOf(req), via: "ceremony" },
-          { circuitId, ceremonyId: id }
+          { circuitId, ceremonyId: id, confirmed: confirmedOf(req) }
         );
         return res.status(200).json(result);
       } catch (err) {

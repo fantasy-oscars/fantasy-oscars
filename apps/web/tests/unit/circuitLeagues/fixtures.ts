@@ -41,7 +41,15 @@ export function circuitLeagueDetail(
         sort_index: 0,
         enabled: true,
         weight: 1,
-        ceremonies: [{ id: 1, code: "golden-2027", name: "Golden Reel 2027" }]
+        ceremonies: [
+          {
+            id: 1,
+            code: "golden-2027",
+            name: "Golden Reel 2027",
+            nominations_on: "2026-12-07",
+            results_on: "2027-01-10"
+          }
+        ]
       },
       {
         id: 11,
@@ -52,8 +60,20 @@ export function circuitLeagueDetail(
         enabled: true,
         weight: 1,
         ceremonies: [
-          { id: 2, code: "dga", name: "Directors Guild" },
-          { id: 3, code: "sag", name: "Actors Guild" }
+          {
+            id: 2,
+            code: "dga",
+            name: "Directors Guild",
+            nominations_on: "2027-01-07",
+            results_on: "2027-01-30"
+          },
+          {
+            id: 3,
+            code: "sag",
+            name: "Actors Guild",
+            nominations_on: null,
+            results_on: null
+          }
         ]
       }
     ],

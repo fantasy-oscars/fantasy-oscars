@@ -7,6 +7,7 @@ import {
   activate,
   createCircuit,
   getCircuitDetail,
+  getCircuitReadiness,
   listCircuitsForAdmin
 } from "../../services/circuit/circuitAdmin.js";
 import { rebuildCircuitScoresAsAdmin } from "../../services/circuit/circuitScoring.js";
@@ -53,6 +54,19 @@ export function registerAdminCircuitRoutes(router: Router, client: DbClient) {
       try {
         const { id } = parseParams(adminCircuitIdParam, req.params);
         return res.status(200).json(await getCircuitDetail(client, id));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // What each ceremony still lacks and supplies: dates, mappings, schedule.
+  router.get(
+    "/circuits/:id/readiness",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id } = parseParams(adminCircuitIdParam, req.params);
+        return res.status(200).json(await getCircuitReadiness(client, id));
       } catch (err) {
         next(err);
       }

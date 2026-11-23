@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
-import { confirmStructuralEdit } from "./structuralConfirm";
+import { confirmQuery, runStructuralWrite } from "./structuralConfirm";
 import type { CeremonyCircuitAssociation, CeremonyCircuitOption } from "./types";
 
 type LoadState = "loading" | "error" | "ready";
@@ -68,19 +68,31 @@ export function useAdminCeremonyCircuitOrchestration(args: {
   }, [load]);
 
   const runCircuitWrite = useCallback(
-    async (init: { path: string; method: string; body?: object }, message: string) => {
+    async (
+      init: { path: string; method: string; body?: object },
+      circuit: { status: string; name: string; action: string },
+      message: string
+    ) => {
       setWorking(true);
       setAssociationStatus(null);
-      const res = await fetchJson(init.path, {
-        method: init.method,
-        ...(init.body
-          ? {
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(init.body)
-            }
-          : {})
+      const res = await runStructuralWrite({
+        circuitStatus: circuit.status,
+        circuitName: circuit.name,
+        action: circuit.action,
+        run: (confirmed) =>
+          fetchJson(`${init.path}${confirmQuery(confirmed)}`, {
+            method: init.method,
+            ...(init.body
+              ? {
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(init.body)
+                }
+              : {})
+          })
       });
       setWorking(false);
+      // The admin declined the confirmation.
+      if (res === null) return false;
       if (!res.ok) {
         setAssociationStatus({
           ok: false,
@@ -101,14 +113,9 @@ export function useAdminCeremonyCircuitOrchestration(args: {
       if (ceremonyId === null) return false;
       const circuit = circuitOptions.find((c) => c.id === circuitId);
       if (!circuit || associations.some((a) => a.circuit_id === circuitId)) return false;
-      const ok = await confirmStructuralEdit({
-        circuitStatus: circuit.status,
-        circuitName: circuit.name,
-        action: "Adding this ceremony"
-      });
-      if (!ok) return false;
       return runCircuitWrite(
         { path: `/admin/ceremonies/${ceremonyId}/circuits/${circuitId}`, method: "PUT" },
+        { status: circuit.status, name: circuit.name, action: "Adding this ceremony" },
         "Added to the Circuit."
       );
     },
@@ -120,16 +127,15 @@ export function useAdminCeremonyCircuitOrchestration(args: {
       if (ceremonyId === null) return false;
       const association = associations.find((a) => a.circuit_id === circuitId);
       if (!association) return false;
-      const ok = await confirmStructuralEdit({
-        circuitStatus: association.circuit_status,
-        circuitName: association.circuit_name,
-        action: "Removing this ceremony and its mappings"
-      });
-      if (!ok) return false;
       return runCircuitWrite(
         {
           path: `/admin/ceremonies/${ceremonyId}/circuits/${circuitId}`,
           method: "DELETE"
+        },
+        {
+          status: association.circuit_status,
+          name: association.circuit_name,
+          action: "Removing this ceremony and its mappings"
         },
         "Removed from the Circuit."
       );

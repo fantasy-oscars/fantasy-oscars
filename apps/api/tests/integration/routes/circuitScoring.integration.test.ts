@@ -427,7 +427,7 @@ describe("circuit scoring ledger", () => {
 
     let res = await send(
       "put",
-      `/admin/circuits/${circuitId}/mappings/${secondEditionId}`,
+      `/admin/circuits/${circuitId}/mappings/${secondEditionId}?confirm=true`,
       {
         circuit_category_id: pictureId
       }
@@ -443,12 +443,15 @@ describe("circuit scoring ledger", () => {
       }
     ]);
 
-    res = await send("delete", `/admin/circuits/${circuitId}/mappings/${editionId}`);
+    res = await send(
+      "delete",
+      `/admin/circuits/${circuitId}/mappings/${editionId}?confirm=true`
+    );
     expect(res.status).toBe(204);
     expect(await ledger()).toHaveLength(1);
     res = await send(
       "delete",
-      `/admin/circuits/${circuitId}/mappings/${secondEditionId}`
+      `/admin/circuits/${circuitId}/mappings/${secondEditionId}?confirm=true`
     );
     expect(res.status).toBe(204);
     expect(await ledger()).toEqual([]);
@@ -460,7 +463,7 @@ describe("circuit scoring ledger", () => {
     expect(await ledger()).toHaveLength(1);
     const res = await send(
       "delete",
-      `/admin/circuits/${circuitId}/ceremonies/${ceremonyId}`
+      `/admin/circuits/${circuitId}/ceremonies/${ceremonyId}?confirm=true`
     );
     expect(res.status).toBe(200);
     expect(await ledger()).toEqual([]);

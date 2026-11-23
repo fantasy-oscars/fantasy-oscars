@@ -273,7 +273,13 @@ export type CircuitLeagueEvent = {
   sort_index: number;
   enabled: boolean;
   weight: number;
-  ceremonies: Array<{ id: number; code: string; name: string }>;
+  ceremonies: Array<{
+    id: number;
+    code: string;
+    name: string;
+    nominations_on: string | null;
+    results_on: string | null;
+  }>;
 };
 
 export type CircuitLeagueCategory = {

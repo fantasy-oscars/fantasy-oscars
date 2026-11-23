@@ -21,6 +21,7 @@ export function AdminCircuitDetailPage() {
       state={o.state}
       error={o.error}
       detail={o.detail}
+      readiness={o.readiness}
       ceremonies={o.ceremonies}
       templates={o.templates}
       working={o.working}
