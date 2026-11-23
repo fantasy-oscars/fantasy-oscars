@@ -10,6 +10,14 @@ export type SeasonKind = "ceremony" | "full";
 
 export const SEASON_KIND_ORDER: readonly SeasonKind[] = ["ceremony", "full"];
 
+/**
+ * Full awards seasons are behind a gate: only a super admin is offered them.
+ * Everyone else sees single ceremony alone.
+ */
+export function visibleSeasonKinds(fullSeasonEnabled: boolean): readonly SeasonKind[] {
+  return fullSeasonEnabled ? SEASON_KIND_ORDER : ["ceremony"];
+}
+
 export const SEASON_KIND_COPY: Record<SeasonKind, { name: string; description: string }> =
   {
     ceremony: {
@@ -90,10 +98,13 @@ export function parseSeasonKind(raw: string | null | undefined): SeasonKind | nu
 export function selectedSeasonKind(input: {
   requested: SeasonKind | null;
   availability: Record<SeasonKind, SeasonKindAvailability>;
+  order?: readonly SeasonKind[];
 }): SeasonKind | null {
-  const { requested, availability } = input;
-  if (requested && availability[requested].available) return requested;
-  const open = SEASON_KIND_ORDER.filter((k) => availability[k].available);
+  const { requested, availability, order = SEASON_KIND_ORDER } = input;
+  if (requested && order.includes(requested) && availability[requested].available) {
+    return requested;
+  }
+  const open = order.filter((k) => availability[k].available);
   return open.length === 1 ? open[0]! : null;
 }
 

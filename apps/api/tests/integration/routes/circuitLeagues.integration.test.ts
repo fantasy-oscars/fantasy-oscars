@@ -195,8 +195,21 @@ describe("circuit leagues", () => {
     actor = await insertCategory(circuitId, "actor", "ACTING");
   });
 
+  async function setSuperAdmin(user: User, on: boolean) {
+    await db.pool.query(
+      `UPDATE app_user SET is_admin = $2, admin_role = $3 WHERE id = $1`,
+      [user.id, on, on ? "SUPER_ADMIN" : null]
+    );
+  }
+
+  // Creating is gated to super admins, so the user is one only for the request.
   async function create(user: User = owner, body: object = { circuit_id: circuitId }) {
-    return api.post(`/leagues/${leagueId}/circuits`).set(auth(user)).send(body);
+    await setSuperAdmin(user, true);
+    try {
+      return await api.post(`/leagues/${leagueId}/circuits`).set(auth(user)).send(body);
+    } finally {
+      await setSuperAdmin(user, false);
+    }
   }
 
   async function createId() {
@@ -251,8 +264,19 @@ describe("circuit leagues", () => {
 
     it("lets a co-owner create, but not a plain member or someone outside the league", async () => {
       expect((await create(member)).status).toBe(403);
-      expect((await create(outsider)).status).toBe(404);
+      expect((await create(outsider)).status).toBe(403);
       expect((await create(coOwner)).status).toBe(201);
+    });
+
+    it("is gated to super admins, even for the league's owner", async () => {
+      const res = await api
+        .post(`/leagues/${leagueId}/circuits`)
+        .set(auth(owner))
+        .send({ circuit_id: circuitId });
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("FORBIDDEN");
+      const listed = await api.get(`/leagues/${leagueId}/circuits`).set(auth(owner));
+      expect(listed.body.circuit_leagues).toEqual([]);
     });
 
     it("refuses a second competition for the same Circuit, a draft Circuit and an unknown one", async () => {

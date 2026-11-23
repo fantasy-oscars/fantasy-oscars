@@ -5,6 +5,7 @@ import {
   fullKindAvailability,
   parseSeasonKind,
   selectedSeasonKind,
+  visibleSeasonKinds,
   SEASON_KIND_COPY,
   type SeasonKindAvailability
 } from "@/decisions/seasonKinds";
@@ -98,6 +99,23 @@ describe("full awards season availability", () => {
     expect(fullKindAvailability({ circuits: [circuit(1)], started: null })).toEqual(
       failed
     );
+  });
+});
+
+describe("gated kinds", () => {
+  it("offers the full awards season only when enabled", () => {
+    expect(visibleSeasonKinds(true)).toEqual(["ceremony", "full"]);
+    expect(visibleSeasonKinds(false)).toEqual(["ceremony"]);
+  });
+
+  it("ignores a request for a kind that is not offered", () => {
+    expect(
+      selectedSeasonKind({
+        requested: "full",
+        availability: { ceremony: open, full: open },
+        order: ["ceremony"]
+      })
+    ).toBe("ceremony");
   });
 });
 

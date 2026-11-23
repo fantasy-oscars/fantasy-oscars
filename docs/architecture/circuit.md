@@ -119,6 +119,8 @@ It returns at most one match per selection per occasion, listing every matching 
 
 ## Leagues and membership
 
+**Feature gate.** Starting a Circuit competition in a league (`POST /leagues/:id/circuits`) is for super admins only; anyone else gets `403 FORBIDDEN`. Create season on the web offers the full awards season only to a super admin. Competitions that already exist stay readable and playable for their members.
+
 A league can hold a Season and a Circuit league at once; the two never share members (`circuit_league_member` is separate from `season_member`, and an integration test changes one and checks the other). Code is `domain/circuitLeague.ts` (pure), `data/repositories/circuitLeagueRepository.ts`, `services/circuit/circuitLeagues.ts`, `routes/circuitLeagues.ts` and `routes/leagues/circuitLeagues.ts`.
 
 - **Defaults** (ADR 0005 section 4). Creating one enables every event of the Circuit with weight 1, gives every category weight 1 and no limit, and sets roster 16, 1 point per nomination, 2 per win, a 90-second pick clock and auto-draft on. A category added to the Circuit later reads as the defaults; an event added later reads as disabled.
