@@ -480,18 +480,22 @@ describe("circuit waiver claims", () => {
       const viewer = { userId: alice.id, isSuperAdmin: false };
       const resolved = instantOfDay(window.resolves_on);
 
+      // One attempt at a time: started together, the two transactions race for the
+      // claimant lock, and when the second wins it rejects before anything awaits it.
       for (const attempt of [
-        updateCircuitWaiverClaimFor(
-          db.pool,
-          circuitLeagueId,
-          viewer,
-          id,
-          { chipId: null },
-          resolved
-        ),
-        withdrawCircuitWaiverClaimFor(db.pool, circuitLeagueId, viewer, id, resolved)
+        () =>
+          updateCircuitWaiverClaimFor(
+            db.pool,
+            circuitLeagueId,
+            viewer,
+            id,
+            { chipId: null },
+            resolved
+          ),
+        () =>
+          withdrawCircuitWaiverClaimFor(db.pool, circuitLeagueId, viewer, id, resolved)
       ]) {
-        await expect(attempt).rejects.toMatchObject({
+        await expect(attempt()).rejects.toMatchObject({
           code: "CIRCUIT_WAIVER_CLAIMS_LOCKED"
         });
       }
