@@ -321,7 +321,8 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
       await expect(
         pia.page
           .getByRole("region", { name: "Draft history" })
-          .getByText(title!, { exact: false })
+          // Anchor on the picker: a queued pick elsewhere can share the title.
+          .getByText(`${player.name}: ${title}`, { exact: true })
       ).toBeVisible();
       expect(
         await pia.page.evaluate(
