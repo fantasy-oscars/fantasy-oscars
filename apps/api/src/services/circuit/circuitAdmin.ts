@@ -16,6 +16,7 @@ import {
   listCircuitEvents,
   listCircuitEventsForCircuits,
   listCircuits,
+  listInitializedCircuitLeagues,
   upsertCircuitMapping,
   type CircuitRow
 } from "../../data/repositories/circuitRepository.js";
@@ -26,15 +27,22 @@ import {
   suggestCircuitCategoryId,
   withResultsDate
 } from "../../domain/circuit.js";
+import {
+  circuitCoverage,
+  isCircuitReady,
+  readinessGaps
+} from "../../domain/circuitReadiness.js";
 import { waiverWindows } from "../../domain/waiverWindows.js";
 import { AppError, validationError } from "../../errors.js";
 import {
   type Actor,
+  assertStructuralEditConfirmed,
   audit,
   lockEditableCircuit,
   requireCircuit
 } from "./circuitGuards.js";
 import { rebuildCircuitScoresAfterWrite } from "./circuitScoring.js";
+import { announceCircuitStatus, announceScheduleChange } from "./circuitSchedule.js";
 
 /*
  * Circuit lifecycle, reads for the admin screens, mappings and ceremony dates.
@@ -71,12 +79,14 @@ export async function createCircuit(
 
 export async function getCircuitDetail(client: DbClient, id: number) {
   const circuit = await requireCircuit(client, id);
-  const [events, categories, ceremonies, categoryEditions] = await Promise.all([
-    listCircuitEvents(client, id),
-    listCircuitCategories(client, id),
-    listCircuitCeremonies(client, id),
-    listCircuitCategoryEditions(client, id)
-  ]);
+  const [events, categories, ceremonies, categoryEditions, initializedLeagues] =
+    await Promise.all([
+      listCircuitEvents(client, id),
+      listCircuitCategories(client, id),
+      listCircuitCeremonies(client, id),
+      listCircuitCategoryEditions(client, id),
+      listInitializedCircuitLeagues(client, id)
+    ]);
   const occasions = listScoringOccasions(ceremonies);
   return {
     circuit,
@@ -90,9 +100,50 @@ export async function getCircuitDetail(client: DbClient, id: number) {
       suggested_circuit_category_id: suggestCircuitCategoryId(e.family_id, categories)
     })),
     readiness: { missing_dates: findCeremoniesMissingDates(ceremonies) },
+    // The leagues a structural edit would affect; the screens name them when
+    // they ask the admin to confirm.
+    initialized_leagues: initializedLeagues.map((l) => ({
+      circuit_league_id: l.circuit_league_id,
+      league_id: l.league_id,
+      name: l.league_name,
+      status: l.status
+    })),
     occasions,
     // As if every ceremony were enabled: a league that disables some
     // ceremonies has fewer scoring days, and so fewer windows.
+    waiver_windows: waiverWindows(
+      occasions.flatMap((o) => (o.date === null ? [] : [o.date]))
+    )
+  };
+}
+
+/**
+ * What an admin still has to do before the Circuit can score, and what each
+ * ceremony supplies: missing dates, ceremonies and categories with no
+ * mappings, the editions left unmapped, and the dated schedule (every
+ * occasion, and the windows as if every ceremony were enabled).
+ */
+export async function getCircuitReadiness(client: DbClient, id: number) {
+  const circuit = await requireCircuit(client, id);
+  const [categories, ceremonies, categoryEditions] = await Promise.all([
+    listCircuitCategories(client, id),
+    listCircuitCeremonies(client, id),
+    listCircuitCategoryEditions(client, id)
+  ]);
+  const coverage = circuitCoverage(ceremonies, categories, categoryEditions);
+  const gaps = readinessGaps(coverage, findCeremoniesMissingDates(ceremonies));
+  const occasions = listScoringOccasions(ceremonies);
+  return {
+    circuit: {
+      id: circuit.id,
+      code: circuit.code,
+      name: circuit.name,
+      status: circuit.status
+    },
+    ready: isCircuitReady(ceremonies.length, gaps),
+    gaps,
+    coverage,
+    occasions,
     waiver_windows: waiverWindows(
       occasions.flatMap((o) => (o.date === null ? [] : [o.date]))
     )
@@ -130,31 +181,46 @@ export async function getCeremonyCircuits(client: DbClient, ceremonyId: number) 
 export async function setMapping(
   pool: Pool,
   actor: Actor,
-  input: { circuitId: number; categoryEditionId: number; circuitCategoryId: number }
+  input: {
+    circuitId: number;
+    categoryEditionId: number;
+    circuitCategoryId: number;
+    confirmed?: boolean;
+  }
 ) {
-  const { circuit, category, ceremonyId } = await runInTransaction(pool, async (tx) => {
-    const circuit = await lockEditableCircuit(tx, input.circuitId);
-    const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
-    if (ceremonyId === null) throw new AppError("NOT_FOUND", 404, "Category not found");
-    if (!(await isCeremonyInCircuit(tx, input.circuitId, ceremonyId))) {
-      throw new AppError(
-        "CIRCUIT_CEREMONY_NOT_ASSOCIATED",
-        409,
-        "Add this category's ceremony to the Circuit before mapping it",
-        { ceremony_id: ceremonyId }
+  const { circuit, category, ceremonyId, confirmedLeagues } = await runInTransaction(
+    pool,
+    async (tx) => {
+      const circuit = await lockEditableCircuit(tx, input.circuitId);
+      const confirmedLeagues = await assertStructuralEditConfirmed(
+        tx,
+        input.circuitId,
+        input.confirmed ?? false
       );
+      const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
+      if (ceremonyId === null) throw new AppError("NOT_FOUND", 404, "Category not found");
+      if (!(await isCeremonyInCircuit(tx, input.circuitId, ceremonyId))) {
+        throw new AppError(
+          "CIRCUIT_CEREMONY_NOT_ASSOCIATED",
+          409,
+          "Add this category's ceremony to the Circuit before mapping it",
+          { ceremony_id: ceremonyId }
+        );
+      }
+      const category = await getCircuitCategory(
+        tx,
+        input.circuitId,
+        input.circuitCategoryId
+      );
+      if (!category) {
+        throw validationError("Choose a category in this Circuit", [
+          "circuit_category_id"
+        ]);
+      }
+      await upsertCircuitMapping(tx, input);
+      return { circuit, category, ceremonyId, confirmedLeagues };
     }
-    const category = await getCircuitCategory(
-      tx,
-      input.circuitId,
-      input.circuitCategoryId
-    );
-    if (!category) {
-      throw validationError("Choose a category in this Circuit", ["circuit_category_id"]);
-    }
-    await upsertCircuitMapping(tx, input);
-    return { circuit, category, ceremonyId };
-  });
+  );
   await audit(pool, actor, {
     action: "set_circuit_mapping",
     target_id: input.circuitId,
@@ -162,7 +228,8 @@ export async function setMapping(
       category_edition_id: input.categoryEditionId,
       circuit_category_id: input.circuitCategoryId,
       category_code: category.code,
-      circuit_status: circuit.status
+      circuit_status: circuit.status,
+      confirmed_circuit_league_ids: confirmedLeagues
     }
   });
   await rebuildCircuitScoresAfterWrite(
@@ -182,20 +249,32 @@ export async function setMapping(
 export async function removeMapping(
   pool: Pool,
   actor: Actor,
-  input: { circuitId: number; categoryEditionId: number }
+  input: { circuitId: number; categoryEditionId: number; confirmed?: boolean }
 ) {
-  const { circuit, ceremonyId } = await runInTransaction(pool, async (tx) => {
-    const circuit = await lockEditableCircuit(tx, input.circuitId);
-    const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
-    if (!(await deleteCircuitMapping(tx, input.circuitId, input.categoryEditionId))) {
-      throw new AppError("NOT_FOUND", 404, "This category is not mapped");
+  const { circuit, ceremonyId, confirmedLeagues } = await runInTransaction(
+    pool,
+    async (tx) => {
+      const circuit = await lockEditableCircuit(tx, input.circuitId);
+      const confirmedLeagues = await assertStructuralEditConfirmed(
+        tx,
+        input.circuitId,
+        input.confirmed ?? false
+      );
+      const ceremonyId = await getCategoryEditionCeremonyId(tx, input.categoryEditionId);
+      if (!(await deleteCircuitMapping(tx, input.circuitId, input.categoryEditionId))) {
+        throw new AppError("NOT_FOUND", 404, "This category is not mapped");
+      }
+      return { circuit, ceremonyId, confirmedLeagues };
     }
-    return { circuit, ceremonyId };
-  });
+  );
   await audit(pool, actor, {
     action: "remove_circuit_mapping",
     target_id: input.circuitId,
-    meta: { category_edition_id: input.categoryEditionId, circuit_status: circuit.status }
+    meta: {
+      category_edition_id: input.categoryEditionId,
+      circuit_status: circuit.status,
+      confirmed_circuit_league_ids: confirmedLeagues
+    }
   });
   await rebuildCircuitScoresAfterWrite(
     pool,
@@ -229,6 +308,7 @@ export async function activate(pool: Pool, actor: Actor, circuitId: number) {
     target_id: circuitId,
     meta: { missing_dates_ceremony_ids: missing.map((m) => m.ceremony_id) }
   });
+  await announceCircuitStatus(pool, circuitId, circuit.status);
   return { circuit, readiness: { missing_dates: missing } };
 }
 
@@ -255,6 +335,7 @@ export async function setCeremonyDates(
     { ceremonyId, kinds: ["NOMINATION"] },
     "update_ceremony_dates"
   );
+  await announceScheduleChange(pool, { ceremonyId }, "update_ceremony_dates");
   return {
     ceremony: {
       id: ceremony.id,

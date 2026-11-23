@@ -91,6 +91,10 @@ const CircuitTransactionsPage = lazyPage(
   () => import("./pages/CircuitTransactionsPage"),
   "CircuitTransactionsPage"
 );
+const CircuitRulesPage = lazyPage(
+  () => import("./pages/CircuitRulesPage"),
+  "CircuitRulesPage"
+);
 const CircuitStandingsPage = lazyPage(
   () => import("./pages/CircuitStandingsPage"),
   "CircuitStandingsPage"
@@ -314,6 +318,16 @@ function RoutesConfig() {
             <RequireAuth>
               <LazyRoute>
                 <CircuitTransactionsPage />
+              </LazyRoute>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/leagues/:leagueId/:leagueSlug/seasons/full/:fullSeasonId/rules"
+          element={
+            <RequireAuth>
+              <LazyRoute>
+                <CircuitRulesPage />
               </LazyRoute>
             </RequireAuth>
           }

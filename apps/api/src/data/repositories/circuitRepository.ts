@@ -679,3 +679,28 @@ export async function getCategoryEditionCeremonyId(
   );
   return rows[0]?.ceremony_id ?? null;
 }
+
+export type InitializedCircuitLeagueRow = {
+  circuit_league_id: number;
+  league_id: number;
+  league_name: string;
+  status: string;
+};
+
+/** Leagues of the Circuit past SETUP: their membership and scoring are in play. */
+export async function listInitializedCircuitLeagues(
+  client: DbClient,
+  circuitId: number
+): Promise<InitializedCircuitLeagueRow[]> {
+  const { rows } = await query<InitializedCircuitLeagueRow>(
+    client,
+    `SELECT cl.id::int AS circuit_league_id, cl.league_id::int,
+       l.name AS league_name, cl.status
+     FROM circuit_league cl
+     JOIN league l ON l.id = cl.league_id
+     WHERE cl.circuit_id = $1 AND cl.status <> 'SETUP'
+     ORDER BY cl.id`,
+    [circuitId]
+  );
+  return rows;
+}

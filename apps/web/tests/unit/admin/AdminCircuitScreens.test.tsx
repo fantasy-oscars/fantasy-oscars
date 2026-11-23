@@ -7,7 +7,11 @@ import { MemoryRouter } from "react-router-dom";
 import { useState, type ReactNode } from "react";
 import { AdminCircuitDetailScreen } from "@/features/admin/screens/circuit/AdminCircuitDetailScreen";
 import { AdminCeremonyCircuitScreen } from "@/features/admin/screens/ceremonies/AdminCeremonyCircuitScreen";
-import type { CircuitCeremony, CircuitDetail } from "@/orchestration/adminCircuit";
+import type {
+  CircuitCeremony,
+  CircuitDetail,
+  CircuitReadiness
+} from "@/orchestration/adminCircuit";
 import type { CircuitEditorTab } from "@/features/admin/ui/circuit/CircuitEditorTabs";
 
 afterEach(cleanup);
@@ -124,6 +128,7 @@ const DETAIL: CircuitDetail = {
       suggested_circuit_category_id: 21
     }
   ],
+  initialized_leagues: [],
   readiness: {
     missing_dates: [
       {
@@ -172,6 +177,7 @@ function renderDetail(
     state: "ready" as const,
     error: null,
     detail: DETAIL,
+    readiness: null,
     ceremonies: [
       { id: 7, name: "Golden Globes 2027", code: "gg-2027" },
       { id: 10, name: "BAFTA 2027", code: "bafta-2027" }
@@ -209,14 +215,15 @@ function renderDetail(
 }
 
 describe("<AdminCircuitDetailScreen />", () => {
-  it("has Categories, Ceremonies and Schedule tabs, switched by click or arrow keys", async () => {
+  it("has Categories, Ceremonies, Schedule and Readiness tabs, switched by click or arrow keys", async () => {
     const user = userEvent.setup();
     renderDetail({}, "categories");
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((t) => t.textContent)).toEqual([
       "Categories",
       "Ceremonies",
-      "Schedule"
+      "Schedule",
+      "Readiness"
     ]);
     expect(screen.getByRole("tab", { name: "Categories" })).toHaveAttribute(
       "aria-selected",
@@ -401,6 +408,111 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(within(panel).queryAllByRole("textbox")).toEqual([]);
   });
 
+  it("shows what is left to do and what each ceremony supplies, read-only", () => {
+    const readiness: CircuitReadiness = {
+      circuit: { id: 3, code: "c", name: "Awards Run", status: "ACTIVE" },
+      ready: false,
+      gaps: {
+        missing_dates: [
+          {
+            ceremony_id: 7,
+            ceremony_code: null,
+            ceremony_name: "Golden Globes 2027",
+            missing: ["results_on"]
+          }
+        ],
+        ceremonies_without_mappings: [
+          {
+            ceremony_id: 9,
+            ceremony_code: null,
+            ceremony_name: "PGA 2027",
+            circuit_event_id: 12
+          }
+        ],
+        categories_without_ceremony: [{ id: 22, code: "anim", name: "Animated" }],
+        unmapped_edition_count: 1
+      },
+      coverage: {
+        ceremonies: [
+          {
+            ceremony_id: 7,
+            ceremony_code: null,
+            ceremony_name: "Golden Globes 2027",
+            circuit_event_id: 11,
+            supplies: [
+              {
+                circuit_category_id: 21,
+                code: "actor",
+                name: "Lead Actor",
+                edition_ids: [31, 32]
+              }
+            ],
+            unmapped_editions: [{ id: 33, code: "score", name: "Best Score" }],
+            edition_count: 3
+          },
+          {
+            ceremony_id: 9,
+            ceremony_code: null,
+            ceremony_name: "PGA 2027",
+            circuit_event_id: 12,
+            supplies: [],
+            unmapped_editions: [],
+            edition_count: 0
+          }
+        ],
+        categories_without_ceremony: [{ id: 22, code: "anim", name: "Animated" }]
+      },
+      occasions: [],
+      waiver_windows: []
+    };
+    renderDetail({ readiness }, "readiness");
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText("Not ready yet:")).toBeInTheDocument();
+    expect(
+      within(panel).getByText("Needs a date: Golden Globes 2027: ceremony date")
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("Supplies no category: PGA 2027")).toBeInTheDocument();
+    expect(within(panel).getByText("No ceremony supplies Animated")).toBeInTheDocument();
+    const coverage = within(panel).getByRole("region", { name: "Coverage" });
+    expect(within(coverage).getByText("Supplies: Lead Actor (2)")).toBeInTheDocument();
+    expect(within(coverage).getByText("Not mapped: Best Score")).toBeInTheDocument();
+    expect(
+      within(coverage).getByText("Supplies no Circuit category.")
+    ).toBeInTheDocument();
+    expect(within(panel).queryAllByRole("button")).toEqual([]);
+  });
+
+  it("says a Circuit with no ceremonies is not ready, with the empty state shown once", () => {
+    renderDetail(
+      {
+        readiness: {
+          circuit: { id: 3, code: "c", name: "Awards Run", status: "DRAFT" },
+          ready: false,
+          gaps: {
+            missing_dates: [],
+            ceremonies_without_mappings: [],
+            categories_without_ceremony: [],
+            unmapped_edition_count: 0
+          },
+          coverage: { ceremonies: [] },
+          occasions: [],
+          waiver_windows: []
+        }
+      },
+      "readiness"
+    );
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText("Not ready yet: add a ceremony.")).toBeInTheDocument();
+    expect(within(panel).getAllByText("No ceremonies yet.")).toHaveLength(1);
+  });
+
+  it("says so when the readiness report could not be loaded", () => {
+    renderDetail({ readiness: null }, "readiness");
+    expect(
+      screen.getByText("The readiness report could not be loaded.")
+    ).toBeInTheDocument();
+  });
+
   it("shows the ceremonies that lack dates and activates without waiting for them", async () => {
     const user = userEvent.setup();
     const props = renderDetail();
@@ -431,7 +543,8 @@ describe("<AdminCircuitDetailScreen />", () => {
         category_editions: [],
         occasions: [],
         waiver_windows: [],
-        readiness: { missing_dates: [] }
+        readiness: { missing_dates: [] },
+        initialized_leagues: []
       }
     });
     expect(screen.getByText("No ceremonies yet.")).toBeInTheDocument();

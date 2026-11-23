@@ -4,3 +4,8 @@ import type { AuthedRequest } from "../../auth/middleware.js";
 export function actorOf(req: AuthedRequest) {
   return { actorUserId: req.auth?.sub ? Number(req.auth.sub) : null };
 }
+
+/** True when the admin confirmed a change that affects initialised leagues (`?confirm=true`). */
+export function confirmedOf(req: AuthedRequest): boolean {
+  return req.query?.confirm === "true";
+}

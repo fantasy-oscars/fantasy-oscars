@@ -11,7 +11,9 @@ import {
   mappingModalRows,
   moveInOrder,
   needsStructuralEditConfirm,
+  parseAffectedLeagues,
   pendingMappingChanges,
+  structuralEditMessage,
   unassociatedCeremonies
 } from "@/decisions/admin/circuit";
 
@@ -142,5 +144,55 @@ describe("Circuit admin decisions", () => {
   it("shows whole-day dates as stored", () => {
     expect(dateOnlyLabel("2027-01-11")).toBe("2027-01-11");
     expect(dateOnlyLabel(null)).toBe("No date");
+  });
+});
+
+describe("structural edit confirmation", () => {
+  const leagues = [
+    { circuit_league_id: 1, name: "Friends", status: "IN_SEASON" },
+    { circuit_league_id: 2, name: "Work", status: "INITIALIZED" }
+  ];
+
+  it("also confirms a draft Circuit once a league has initialised", () => {
+    expect(needsStructuralEditConfirm("DRAFT")).toBe(false);
+    expect(needsStructuralEditConfirm("DRAFT", 1)).toBe(true);
+    expect(needsStructuralEditConfirm("ACTIVE", 0)).toBe(true);
+  });
+
+  it("names the affected leagues and their count", () => {
+    const message = structuralEditMessage({
+      circuitName: "2026-27",
+      action: "Adding a ceremony",
+      leagues
+    });
+    expect(message).toContain("2 initialised leagues");
+    expect(message).toContain("Friends, Work");
+    expect(
+      structuralEditMessage({
+        circuitName: "2026-27",
+        action: "Adding a ceremony",
+        leagues: leagues.slice(0, 1)
+      })
+    ).toContain("1 initialised league score");
+  });
+
+  it("falls back to the generic text without leagues", () => {
+    expect(
+      structuralEditMessage({
+        circuitName: "2026-27",
+        action: "Adding a ceremony",
+        leagues: []
+      })
+    ).toContain("2026-27 is active");
+  });
+
+  it("reads the leagues from the error details and ignores malformed ones", () => {
+    expect(
+      parseAffectedLeagues({
+        affected_leagues: [...leagues, { name: "no id" }, null]
+      })
+    ).toEqual(leagues);
+    expect(parseAffectedLeagues(undefined)).toEqual([]);
+    expect(parseAffectedLeagues({ affected_leagues: "x" })).toEqual([]);
   });
 });

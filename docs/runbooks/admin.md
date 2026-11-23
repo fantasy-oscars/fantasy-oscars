@@ -87,6 +87,17 @@ edits stay allowed after activation; only an archived Circuit is read-only
   saved), `readiness.missing_dates`, `occasions` and `waiver_windows` (as if
   every ceremony were enabled). Each event has `is_group`; each ceremony has
   its order inside its event and a derived, read-only `results_on`.
+  `initialized_leagues` lists the Circuit's leagues past `SETUP`, which the
+  screens name when they ask for a confirmation (see below).
+- `GET /admin/circuits/:id/readiness`: what the Circuit still lacks.
+  `ready` is true when it has a ceremony, every ceremony has both dates and
+  supplies at least one Circuit category, and every Circuit category has a
+  supplying ceremony. `gaps` lists `missing_dates`, `ceremonies_without_mappings`,
+  `categories_without_ceremony` and `unmapped_edition_count` (unmapped editions
+  never block readiness). `coverage.ceremonies` gives, for each associated
+  ceremony, the Circuit categories it `supplies` (with the edition ids feeding
+  each), its `unmapped_editions` and its `edition_count`. `occasions` and
+  `waiver_windows` are the same as in the detail.
 - `POST /admin/circuits/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
   `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `CIRCUIT_NOT_DRAFT`.
 - `PUT /admin/circuits/:id/ceremonies/:ceremonyId` with `{ circuit_event_id? }`,
@@ -94,7 +105,8 @@ edits stay allowed after activation; only an archived Circuit is read-only
   without one (omitted or `null`) it keeps or gets its own one-ceremony event.
   Another ceremony's own event is refused (400). A one-ceremony event is
   deleted when its ceremony leaves; a group stays, even empty. Removal also
-  drops its mappings in the Circuit.
+  drops its mappings in the Circuit. Adding a ceremony that was not yet in the
+  Circuit, and removing one, need the confirmation below.
 - `GET /admin/ceremonies/:id/circuits`: the ceremony's associations (with
   `event_is_group`), plus every non-archived Circuit with its events.
 - `PUT /admin/ceremonies/:id/circuits/:circuitId` with `{ circuit_event_id? }`,
@@ -120,6 +132,14 @@ edits stay allowed after activation; only an archived Circuit is read-only
   `{ circuit_category_id }`, and `DELETE` on the same path: map or unmap a
   category edition. Several editions may map to one Circuit category. 409
   `CIRCUIT_CEREMONY_NOT_ASSOCIATED` until its ceremony is in the Circuit.
+- **Confirming a change to initialised leagues.** Adding or removing a ceremony
+  (from either side) and setting or removing a mapping change what every
+  initialised league of the Circuit scores. While any league is past `SETUP`,
+  these writes are refused with 409 `CIRCUIT_EDIT_NEEDS_CONFIRMATION`, whose
+  `details.affected_leagues` names each league, until the request carries
+  `?confirm=true`. The audit row then records
+  `confirmed_circuit_league_ids`. Moving a ceremony already in the Circuit
+  changes no scoring and needs none.
 - `PATCH /admin/ceremonies/:id/dates` with `{ nominations_on }`
   (`YYYY-MM-DD`, `null` clears): works at every ceremony status and never
   changes a Circuit's status. The results date is the ceremony datetime's

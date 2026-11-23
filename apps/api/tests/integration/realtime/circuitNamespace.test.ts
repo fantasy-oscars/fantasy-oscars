@@ -17,15 +17,19 @@ import { emitCircuitWaiverResult } from "../../../src/services/circuit/circuitWa
 import {
   CIRCUIT_NAMESPACE,
   connectCircuitDraftEvents,
+  connectCircuitScheduleEvents,
   connectCircuitScoreEvents,
   connectCircuitWaiverEvents,
   disconnectCircuitDraftEvents,
+  disconnectCircuitScheduleEvents,
   disconnectCircuitScoreEvents,
   disconnectCircuitWaiverEvents,
   registerCircuitNamespace
 } from "../../../src/services/circuit/circuitNamespace.js";
 import { startTestDatabase, truncateAllTables } from "../../db.js";
+import { announceCircuitStatus } from "../../../src/services/circuit/circuitSchedule.js";
 import {
+  insertCeremony,
   insertFilm,
   insertLeague,
   insertLeagueMember,
@@ -243,6 +247,7 @@ describe("circuits namespace", () => {
         connectCircuitDraftEvents(nsp);
         connectCircuitWaiverEvents(nsp);
         connectCircuitScoreEvents(nsp);
+        connectCircuitScheduleEvents(nsp);
       });
     } catch (err) {
       if (err instanceof ListenPermissionError) return;
@@ -264,6 +269,7 @@ describe("circuits namespace", () => {
     disconnectCircuitDraftEvents();
     disconnectCircuitWaiverEvents();
     disconnectCircuitScoreEvents();
+    disconnectCircuitScheduleEvents();
     if (server) {
       await server.close();
       server = undefined;
@@ -400,6 +406,83 @@ describe("circuits namespace", () => {
     });
     expect(typeof message.server_time).toBe("string");
     expect(inB.events.some((e) => e.event === "score:update")).toBe(false);
+  });
+
+  it("sends a date change's re-derived windows, and a status change, to the league's room only", async () => {
+    if (!server) return;
+    await db.pool.query(`UPDATE app_user SET is_admin = TRUE WHERE id = $1`, [alice.id]);
+    const { rows } = await db.pool.query<{ id: number; circuit_id: number }>(
+      `SELECT id::int, circuit_id::int FROM circuit_league WHERE id = $1`,
+      [leagueA.id]
+    );
+    const circuitId = rows[0]!.circuit_id;
+    const ceremony = await insertCeremony(db.pool, {}, false);
+    await db.pool.query(
+      `UPDATE ceremony SET status = 'PUBLISHED', starts_at = '2027-01-11T01:00:00Z'
+       WHERE id = $1`,
+      [ceremony.id]
+    );
+    const event = await db.pool.query<{ id: number }>(
+      `INSERT INTO circuit_event (circuit_id, code, name, sort_index)
+       VALUES ($1, 'globes', 'Globes', 0) RETURNING id::int`,
+      [circuitId]
+    );
+    const eventId = event.rows[0]!.id;
+    await db.pool.query(
+      `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id, sort_index)
+       VALUES ($1, $2, $3, 0)`,
+      [circuitId, ceremony.id, eventId]
+    );
+    await db.pool.query(
+      `INSERT INTO circuit_league_event (circuit_league_id, circuit_id, circuit_event_id)
+       VALUES ($1, $2, $3)`,
+      [leagueA.id, circuitId, eventId]
+    );
+    const inA = await connect(alice, leagueA.id);
+    const inB = await connect(outsider, leagueB.id);
+    await waitForEvent(inA, "joined");
+    await waitForEvent(inB, "joined");
+
+    const setDate = (day: string) =>
+      api
+        .patch(`/admin/ceremonies/${ceremony.id}/dates`)
+        .set(auth(alice))
+        .send({ nominations_on: day });
+
+    let heard = waitForEvent(inA, "schedule:update");
+    expect((await setDate("2026-12-07")).status).toBe(200);
+    let [message] = (await heard) as [Record<string, unknown>];
+    expect(message).toMatchObject({
+      circuit_league_id: leagueA.id,
+      circuit_id: circuitId,
+      reason: "update_ceremony_dates",
+      ceremony_ids: [ceremony.id]
+    });
+    expect(message.waiver_windows).toEqual([
+      expect.objectContaining({ starts_on: "2026-12-07", ends_on: "2026-12-09" })
+    ]);
+
+    // waitForEvent returns the first matching event already heard.
+    inA.events.splice(0, inA.events.length);
+    heard = waitForEvent(inA, "schedule:update");
+    expect((await setDate("2026-12-20")).status).toBe(200);
+    [message] = (await heard) as [Record<string, unknown>];
+    expect(message.waiver_windows).toEqual([
+      expect.objectContaining({ starts_on: "2026-12-20", ends_on: "2026-12-22" })
+    ]);
+
+    const status = waitForEvent(inA, "circuit:status");
+    await announceCircuitStatus(db.pool, circuitId, "ACTIVE");
+    expect((await status)[0]).toMatchObject({
+      circuit_league_id: leagueA.id,
+      circuit_id: circuitId,
+      status: "ACTIVE"
+    });
+    expect(
+      inB.events.some(
+        (e) => e.event === "schedule:update" || e.event === "circuit:status"
+      )
+    ).toBe(false);
   });
 
   it("rebuilds the board after a reconnect from the snapshot and the events after it", async () => {

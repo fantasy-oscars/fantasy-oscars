@@ -8,7 +8,7 @@ import {
   adminCircuitMappingParams
 } from "@fantasy-oscars/shared/schemas";
 import { parseBody, parseParams } from "../../utils/validate.js";
-import { actorOf } from "./circuitActor.js";
+import { actorOf, confirmedOf } from "./circuitActor.js";
 
 // Explicit mappings from a ceremony's category edition to a Circuit category.
 // Many ceremony categories may map to one Circuit category; a template match
@@ -26,7 +26,8 @@ export function registerAdminCircuitMappingRoutes(router: Router, pool: Pool) {
         const result = await setMapping(pool, actorOf(req), {
           circuitId: id,
           categoryEditionId,
-          circuitCategoryId: circuit_category_id
+          circuitCategoryId: circuit_category_id,
+          confirmed: confirmedOf(req)
         });
         return res.status(200).json(result);
       } catch (err) {
@@ -43,7 +44,11 @@ export function registerAdminCircuitMappingRoutes(router: Router, pool: Pool) {
           adminCircuitMappingParams,
           req.params
         );
-        await removeMapping(pool, actorOf(req), { circuitId: id, categoryEditionId });
+        await removeMapping(pool, actorOf(req), {
+          circuitId: id,
+          categoryEditionId,
+          confirmed: confirmedOf(req)
+        });
         return res.status(204).end();
       } catch (err) {
         next(err);

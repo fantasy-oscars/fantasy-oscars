@@ -1,12 +1,13 @@
 import { useRef, type KeyboardEvent } from "react";
 import { Group, UnstyledButton } from "@ui";
 
-export type CircuitEditorTab = "categories" | "ceremonies" | "schedule";
+export type CircuitEditorTab = "categories" | "ceremonies" | "schedule" | "readiness";
 
 export const CIRCUIT_EDITOR_TABS: Array<{ value: CircuitEditorTab; label: string }> = [
   { value: "categories", label: "Categories" },
   { value: "ceremonies", label: "Ceremonies" },
-  { value: "schedule", label: "Schedule" }
+  { value: "schedule", label: "Schedule" },
+  { value: "readiness", label: "Readiness" }
 ];
 
 export function circuitTabId(tab: CircuitEditorTab) {

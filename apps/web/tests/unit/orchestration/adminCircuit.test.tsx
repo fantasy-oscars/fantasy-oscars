@@ -49,7 +49,9 @@ const categoryEdition = (
   suggested_circuit_category_id: suggested
 });
 
-function detail(status: string) {
+const LEAGUE = { circuit_league_id: 4, name: "Friends League", status: "IN_SEASON" };
+
+function detail(status: string, leagues: unknown[] = []) {
   return {
     circuit: {
       id: 3,
@@ -88,12 +90,16 @@ function detail(status: string) {
       categoryEdition(53, "Best Actress – Drama", 22, 22)
     ],
     readiness: { missing_dates: [] },
+    initialized_leagues: leagues,
     occasions: [],
     waiver_windows: []
   };
 }
 
-function stubFetch(circuitStatus: string) {
+function stubFetch(
+  circuitStatus: string,
+  opts: { leagues?: unknown[]; refuseUnconfirmed?: boolean } = {}
+) {
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   vi.stubGlobal(
     "fetch",
@@ -102,7 +108,19 @@ function stubFetch(circuitStatus: string) {
       const method = String(init?.method ?? "GET");
       calls.push({ url, method, body: init?.body as string | undefined });
       if (url.endsWith("/admin/circuits/3") && method === "GET")
-        return json(detail(circuitStatus));
+        return json(detail(circuitStatus, opts.leagues));
+      // The server refuses an edit that affects initialised leagues until confirmed.
+      if (opts.refuseUnconfirmed && method !== "GET" && !url.includes("confirm=true"))
+        return json(
+          {
+            error: {
+              code: "CIRCUIT_EDIT_NEEDS_CONFIRMATION",
+              message: "This change affects 1 initialised league. Confirm to continue.",
+              details: { affected_leagues: [LEAGUE] }
+            }
+          },
+          409
+        );
       if (url.endsWith("/admin/ceremonies") && method === "GET")
         return json({
           ceremonies: [{ id: 7, code: "bafta", name: "BAFTA", starts_at: null }]
@@ -339,10 +357,80 @@ describe("Circuit admin orchestration", () => {
     expect(confirmMock).toHaveBeenCalledTimes(1);
     expect(writes(calls)).toEqual([
       expect.objectContaining({
-        url: expect.stringMatching(/\/admin\/ceremonies\/7\/circuits\/3$/),
+        url: expect.stringMatching(/\/admin\/ceremonies\/7\/circuits\/3\?confirm=true$/),
         method: "PUT",
         body: undefined
       })
     ]);
+  });
+
+  describe("changes that affect initialised leagues", () => {
+    const confirmedText = () =>
+      (confirmMock.mock.calls[0] as unknown as [{ message: string }])[0].message;
+
+    it("names the leagues in the confirmation, even on a draft Circuit, and sends it", async () => {
+      const calls = stubFetch("DRAFT", { leagues: [LEAGUE] });
+      confirmMock.mockResolvedValue(true);
+      const { result } = await renderDetail();
+      await act(async () => {
+        await result.current.actions.removeCeremony(7);
+      });
+      expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(confirmedText()).toContain("1 initialised league");
+      expect(confirmedText()).toContain("Friends League");
+      expect(writes(calls)).toEqual([
+        expect.objectContaining({
+          url: expect.stringMatching(
+            /\/admin\/circuits\/3\/ceremonies\/7\?confirm=true$/
+          ),
+          method: "DELETE"
+        })
+      ]);
+    });
+
+    it("sends the mapping saves with the confirmation", async () => {
+      const calls = stubFetch("DRAFT", { leagues: [LEAGUE] });
+      confirmMock.mockResolvedValue(true);
+      const { result } = await renderDetail();
+      await act(async () => {
+        await result.current.actions.saveMappings(8, {});
+      });
+      expect(confirmedText()).toContain("Friends League");
+      const sent = writes(calls);
+      expect(sent.length).toBeGreaterThan(0);
+      for (const call of sent) expect(call.url).toMatch(/\?confirm=true$/);
+    });
+
+    it("on the ceremony screen, learns the leagues from the server's refusal, then asks and retries", async () => {
+      const calls = stubFetch("DRAFT", { refuseUnconfirmed: true });
+      confirmMock.mockResolvedValue(true);
+      const { result } = renderHook(() =>
+        useAdminCeremonyCircuitOrchestration({ ceremonyId: 7 })
+      );
+      await waitFor(() => expect(result.current.state).toBe("ready"));
+      await act(async () => {
+        await result.current.actions.associate(3);
+      });
+      expect(confirmMock).toHaveBeenCalledTimes(1);
+      expect(confirmedText()).toContain("Friends League");
+      expect(writes(calls).map((c) => c.url.replace(/^.*\/admin/, "/admin"))).toEqual([
+        "/admin/ceremonies/7/circuits/3",
+        "/admin/ceremonies/7/circuits/3?confirm=true"
+      ]);
+    });
+
+    it("stops when the admin declines the server's confirmation", async () => {
+      const calls = stubFetch("DRAFT", { refuseUnconfirmed: true });
+      confirmMock.mockResolvedValue(false);
+      const { result } = renderHook(() =>
+        useAdminCeremonyCircuitOrchestration({ ceremonyId: 7 })
+      );
+      await waitFor(() => expect(result.current.state).toBe("ready"));
+      await act(async () => {
+        await result.current.actions.associate(3);
+      });
+      expect(writes(calls)).toHaveLength(1);
+      expect(result.current.associationStatus).toBeNull();
+    });
   });
 });

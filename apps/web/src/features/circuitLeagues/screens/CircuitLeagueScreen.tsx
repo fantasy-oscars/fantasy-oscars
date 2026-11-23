@@ -12,6 +12,7 @@ import type { ApiResult } from "@/lib/types";
 import {
   circuitDraftPath,
   circuitRosterPath,
+  circuitRulesPath,
   circuitStandingsPath,
   circuitTransactionsPath,
   circuitWaiversPath,
@@ -151,6 +152,9 @@ export function CircuitLeagueScreen(props: {
                   ) : null}
                 </>
               ) : null}
+              <Button component={Link} to={circuitRulesPath(link)} variant="outline">
+                Rules
+              </Button>
               <Button
                 component={Link}
                 to={leaguePath({ leagueId: league.id, leagueName: league.name })}

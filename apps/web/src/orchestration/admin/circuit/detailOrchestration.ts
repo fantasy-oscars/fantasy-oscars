@@ -10,10 +10,15 @@ import {
 import type { CircuitLayoutWrite } from "../../../decisions/admin/circuitLayout";
 import { fetchAdminCeremonies, sortCeremonies } from "../ceremonies/fetchCeremonies";
 import type { CeremonyOption } from "../ceremonies/types";
-import { confirmStructuralEdit } from "./structuralConfirm";
+import {
+  confirmQuery,
+  confirmStructuralEdit,
+  runStructuralWrite
+} from "./structuralConfirm";
 import type {
   CircuitCategoryTemplate,
   CircuitDetail,
+  CircuitReadiness,
   MissingCeremonyDates
 } from "./types";
 
@@ -44,6 +49,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<CircuitDetail | null>(null);
+  const [readiness, setReadiness] = useState<CircuitReadiness | null>(null);
   const [ceremonies, setCeremonies] = useState<CeremonyOption[]>([]);
   const [templates, setTemplates] = useState<CircuitCategoryTemplate[]>([]);
   const [working, setWorking] = useState(false);
@@ -59,8 +65,11 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       setState("error");
       return;
     }
-    const [res, ceremoniesRes, templatesRes] = await Promise.all([
+    const [res, readinessRes, ceremoniesRes, templatesRes] = await Promise.all([
       fetchJson<CircuitDetail>(`/admin/circuits/${circuitId}`, { method: "GET" }),
+      fetchJson<CircuitReadiness>(`/admin/circuits/${circuitId}/readiness`, {
+        method: "GET"
+      }),
       fetchAdminCeremonies(),
       fetchJson<{ families: CircuitCategoryTemplate[] }>("/admin/category-families", {
         method: "GET"
@@ -72,6 +81,8 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       return;
     }
     setDetail(res.data);
+    // The report is a read-only aid: a failure leaves the editor usable.
+    setReadiness(readinessRes.ok ? (readinessRes.data ?? null) : null);
     setCeremonies(sortCeremonies(ceremoniesRes.data?.ceremonies ?? []));
     setTemplates(circuitTemplateOptions(templatesRes.data?.families ?? []));
     setError(null);
@@ -85,13 +96,15 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
   /** Runs one write, reports a failure inline, and reloads on success. */
   const write = useCallback(
     async (
-      run: () => ReturnType<typeof fetchJson>,
+      run: () => Promise<Awaited<ReturnType<typeof fetchJson>> | null>,
       success: { id: string; message: string }
     ) => {
       setWorking(true);
       setStatus(null);
       const res = await run();
       setWorking(false);
+      // The admin declined the confirmation.
+      if (res === null) return false;
       if (!res.ok) {
         setStatus({ ok: false, message: res.error ?? "The change was not saved" });
         return false;
@@ -123,25 +136,59 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [detail, write]
   );
 
+  /**
+   * Confirms and runs a write that changes what initialised leagues score:
+   * the confirmation names those leagues, and the write carries it.
+   */
+  const scoringWrite = useCallback(
+    async (
+      action: string,
+      run: (base: string, confirmed: boolean) => ReturnType<typeof fetchJson>,
+      success: { id: string; message: string }
+    ) => {
+      if (!detail) return false;
+      const { circuit } = detail;
+      return write(
+        () =>
+          runStructuralWrite({
+            circuitStatus: circuit.status,
+            circuitName: circuit.name,
+            action,
+            leagues: detail.initialized_leagues,
+            run: (confirmed) => run(`/admin/circuits/${circuit.id}`, confirmed)
+          }),
+        success
+      );
+    },
+    [detail, write]
+  );
+
   /** Appends a ceremony to the top level, ungrouped, with its own event. */
   const addCeremony = useCallback(
     (ceremonyId: number) =>
-      structural(
+      scoringWrite(
         "Adding a ceremony",
-        (base) => fetchJson(`${base}/ceremonies/${ceremonyId}`, jsonInit("PUT", {})),
+        (base, confirmed) =>
+          fetchJson(
+            `${base}/ceremonies/${ceremonyId}${confirmQuery(confirmed)}`,
+            jsonInit("PUT", {})
+          ),
         { id: "admin.circuit.associate.success", message: "Ceremony added." }
       ),
-    [structural]
+    [scoringWrite]
   );
 
   const removeCeremony = useCallback(
     (ceremonyId: number) =>
-      structural(
+      scoringWrite(
         "Removing a ceremony and its mappings",
-        (base) => fetchJson(`${base}/ceremonies/${ceremonyId}`, { method: "DELETE" }),
+        (base, confirmed) =>
+          fetchJson(`${base}/ceremonies/${ceremonyId}${confirmQuery(confirmed)}`, {
+            method: "DELETE"
+          }),
         { id: "admin.circuit.remove.success", message: "Ceremony removed." }
       ),
-    [structural]
+    [scoringWrite]
   );
 
   /** Creates an empty, named group; ceremonies join it from the list. */
@@ -283,29 +330,44 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       );
       if (changes.length === 0) return true;
       const { circuit } = detail;
-      const ok = await confirmStructuralEdit({
-        circuitStatus: circuit.status,
-        circuitName: circuit.name,
-        action: "Changing category mappings"
-      });
-      if (!ok) return false;
       setWorking(true);
       setStatus(null);
-      for (const change of changes) {
-        const path = `/admin/circuits/${circuit.id}/mappings/${change.categoryEditionId}`;
-        const res =
-          change.circuitCategoryId === null
-            ? await fetchJson(path, { method: "DELETE" })
-            : await fetchJson(
-                path,
-                jsonInit("PUT", { circuit_category_id: change.circuitCategoryId })
-              );
-        if (!res.ok) {
-          setWorking(false);
-          setStatus({ ok: false, message: res.error ?? "Some mappings were not saved" });
-          await load();
-          return false;
+      // The confirmation precedes the first change, so a refusal for
+      // unconfirmed leagues leaves every mapping as it was.
+      const result = await runStructuralWrite({
+        circuitStatus: circuit.status,
+        circuitName: circuit.name,
+        action: "Changing category mappings",
+        leagues: detail.initialized_leagues,
+        run: async (confirmed) => {
+          for (const change of changes) {
+            const path = `/admin/circuits/${circuit.id}/mappings/${change.categoryEditionId}${confirmQuery(confirmed)}`;
+            const res =
+              change.circuitCategoryId === null
+                ? await fetchJson(path, { method: "DELETE" })
+                : await fetchJson(
+                    path,
+                    jsonInit("PUT", { circuit_category_id: change.circuitCategoryId })
+                  );
+            if (!res.ok) return res;
+          }
+          return { ok: true };
         }
+      });
+      if (result === null) {
+        setWorking(false);
+        return false;
+      }
+      if (!result.ok) {
+        setWorking(false);
+        setStatus({
+          ok: false,
+          message:
+            ("error" in result ? result.error : undefined) ??
+            "Some mappings were not saved"
+        });
+        await load();
+        return false;
       }
       setWorking(false);
       notifySuccess("admin.circuit.mapping.success", "Mappings saved.");
@@ -337,6 +399,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     state,
     error,
     detail,
+    readiness,
     ceremonies,
     templates,
     working,

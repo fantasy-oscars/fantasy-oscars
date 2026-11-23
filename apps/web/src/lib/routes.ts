@@ -76,6 +76,15 @@ export function circuitTransactionsPath(input: {
   return `${circuitLeaguePath(input)}/transactions`;
 }
 
+/** The rules of a league's season: ownership instant, window rule and its settings. */
+export function circuitRulesPath(input: {
+  leagueId: number;
+  leagueName?: string | null;
+  circuitLeagueId: number;
+}): string {
+  return `${circuitLeaguePath(input)}/rules`;
+}
+
 /** Waiver claims, priority, chips and results of a league's season. */
 export function circuitWaiversPath(input: {
   leagueId: number;
