@@ -1,6 +1,5 @@
 import { startStack } from "../e2e/support/stack";
-import { assertionCells } from "./matrix";
-import { STRESS_TEST_COUNT } from "./assertions/stressRuns";
+import { sweepCells } from "./assertions/sweep";
 import { clearResults, reportResults } from "./assertions/results";
 import { seedVisual } from "./support/seed";
 import { BRANDS } from "./matrix";
@@ -26,7 +25,7 @@ export default async function globalSetup() {
   }
   return async () => {
     await stack.stop();
-    reportResults(assertionCells().length + STRESS_TEST_COUNT);
+    reportResults(sweepCells().length);
     reportToleranceResults(BRANDS.length * 2);
   };
 }

@@ -1,18 +1,17 @@
 import type { Finding } from "./pageChecks";
 
 /**
- * Pre-existing assertion failures, each with a reason and a date. An entry that no longer
- * matches any finding fails the run, so fix the app and delete the entry in one change.
- * Keep entries specific: a check, a screen, a scope and part of the element's description.
- * Do not add an entry for a failure a change introduced; fix the change.
+ * Pre-existing layout failures of the screen sweep, each with a reason and a date. The
+ * sweep runs in the probe-stress theme only, so an entry is scoped by screen and viewport.
+ * An entry that no longer matches any finding fails the run, so fix the app and delete the
+ * entry in one change. Keep entries specific: a check, a screen, a viewport and part of the
+ * element's description. Do not add an entry for a failure a change introduced; fix the
+ * change.
  */
 export type AllowlistEntry = {
   check: Finding["check"];
   /** Screen id, a list of screen ids, or "*". */
   screen: string | readonly string[];
-  /** Brand id from the matrix (`default` is refined-gold), or "*". */
-  brand: string;
-  mode: "light" | "dark" | "*";
   viewport: "desktop" | "mobile" | "*";
   /** Part of the finding's description; omit to match every finding of the check. */
   match?: string;
@@ -34,8 +33,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: "specimen",
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "Dismiss announcement",
     reason:
@@ -45,8 +42,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: ["admin-films", "specimen"],
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "Checkbox-input",
     reason: "The row or label is the target; the box is a visual mark.",
@@ -55,8 +50,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: "admin-ceremony-nominees",
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "nomination-drag-handle-button",
     reason:
@@ -66,8 +59,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: "admin-ceremony-nominees",
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "mantine-Stepper-step",
     reason: "Admin-only and dense by design; 44px per step adds a screen of chrome.",
@@ -76,8 +67,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: [...DRAFT_POOL_PILL_SCREENS, "specimen"],
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "dr-pill",
     reason:
@@ -87,8 +76,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: [...DRAFT_ROOM_SCREENS, "specimen"],
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "dr-card-titleRow",
     reason: "It is the keyboard entry to pill mode; touch users tap pills directly.",
@@ -105,8 +92,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
       "season-create-full-scoring-open",
       "season-create-full-events-open"
     ],
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "mantine-Radio-radio",
     reason:
@@ -116,8 +101,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: ["season-create-full-unavailable", "season-create-ceremony"],
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "mantine-NumberInput-control",
     reason:
@@ -127,8 +110,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: "specimen",
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "mantine-NumberInput-control",
     reason: "The field accepts typing on touch; the steppers are a convenience.",
@@ -137,8 +118,6 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
     screen: "specimen",
-    brand: "*",
-    mode: "*",
     viewport: "mobile",
     match: "fo-tip-tmdbLink",
     reason:
@@ -147,7 +126,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   }
 ];
 
-export type Scope = { screen: string; brand: string; mode: string; viewport: string };
+export type Scope = { screen: string; viewport: string };
 
 export function entryMatches(entry: AllowlistEntry, scope: Scope, finding: Finding) {
   const same = (want: string, got: string) => want === "*" || want === got;
@@ -158,9 +137,25 @@ export function entryMatches(entry: AllowlistEntry, scope: Scope, finding: Findi
   return (
     entry.check === finding.check &&
     screenMatches &&
-    same(entry.brand, scope.brand) &&
-    same(entry.mode, scope.mode) &&
     same(entry.viewport, scope.viewport) &&
     (entry.match === undefined || finding.description.includes(entry.match))
   );
 }
+
+/**
+ * Pre-existing contrast rule failures: a registry pair (part of its key, as the failure
+ * prints it) allowed to miss its threshold in one theme or every theme, with a reason and a
+ * date. An exception that no longer matches a failure of its theme fails that theme's test.
+ */
+export type ContrastException = {
+  /** Theme id (`slug/mode`) or "*". */
+  theme: string;
+  /** Part of the pair's key. */
+  pair: string;
+  reason: string;
+  /** ISO date the exception was recorded. */
+  date: string;
+};
+
+/** The old tier had no contrast entries, so none were migrated. */
+export const CONTRAST_EXCEPTIONS: readonly ContrastException[] = [];

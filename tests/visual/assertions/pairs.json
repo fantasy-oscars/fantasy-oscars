@@ -1,0 +1,1638 @@
+{
+  "regenerate": "node tests/visual/run.mjs --tier assertions --update",
+  "pairs": [
+    {
+      "fg": "rgba(var(--brand-text-rgb), 0.65)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed", "draft-live-focus-disabled"]
+    },
+    {
+      "fg": "rgba(var(--brand-text-rgb), 0.65)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-home-aside-heading-color)",
+      "inherit": "var(--brand-text)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-home-cta-fg)",
+      "layers": ["var(--brand-page)", "var(--brand-home-cta-bg)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-home-hero-fg)",
+      "layers": ["var(--brand-page)", "var(--brand-home-hero-bg)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-home-hero-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-home-hero-bg)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-home-hero-tone-color)",
+      "inherit": "var(--brand-home-hero-fg)",
+      "layers": ["var(--brand-page)", "var(--brand-home-hero-bg)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-link-hover)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-link)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-link)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, var(--fo-status-complete) 8%, transparent)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-link)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["forgot-password"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "leagues-empty",
+        "leagues-list",
+        "not-found",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["full-season-member-view-open", "season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-home-updates-bg)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-draft-lobby", "circuit-draft-room"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed", "draft-live-focus-disabled"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "placeholder",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-draft-lobby", "circuit-draft-room"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-sunken)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-home",
+        "circuit-waivers-window",
+        "draft-plans",
+        "forgot-password",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "login",
+        "register",
+        "reset-password",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "draft-plans",
+        "home-logged-in",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-sunken)"],
+      "bucket": "placeholder",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "season-create-ceremony",
+        "season-create-full-unavailable",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "league-detail",
+        "season-completed",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "placeholder",
+      "modes": ["dark", "light"],
+      "screens": [
+        "admin-films",
+        "circuit-roster-own",
+        "circuit-waivers-window",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-surface)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-surface)", "var(--brand-sunken)"],
+      "bucket": "placeholder",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in oklab, var(--brand-primary) 84%, black)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in oklab, var(--brand-primary) 92%, black)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-primary)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-primary)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)",
+        "var(--brand-primary)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-draft-room"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)",
+        "var(--brand-raised)",
+        "var(--brand-primary)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": ["var(--brand-page)", "var(--brand-primary)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "league-detail",
+        "season-completed",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-raised)",
+        "var(--brand-primary)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-primary)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "forgot-password",
+        "leagues-empty",
+        "leagues-list",
+        "login",
+        "register",
+        "reset-password",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-page)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-text)"
+      ],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed"]
+    },
+    {
+      "fg": "var(--brand-page)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-text)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed", "specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans",
+        "forgot-password",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "leagues-empty",
+        "leagues-list",
+        "login",
+        "not-found",
+        "register",
+        "reset-password",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "league-detail",
+        "league-detail-member",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["full-season-member-view-open", "season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["full-season-member-view-open", "season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["full-season-member-view-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, var(--fo-danger) 8%, transparent)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, var(--fo-status-complete) 8%, transparent)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-home-updates-bg)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-home-updates-bg)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)"],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-page)"],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed (stress data)"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "rgb(255, 255, 255)"
+      ],
+      "bucket": "non-text",
+      "modes": ["light"],
+      "screens": ["draft-completed (stress data)"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "rgb(46, 46, 46)"
+      ],
+      "bucket": "non-text",
+      "modes": ["dark"],
+      "screens": ["draft-completed (stress data)"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "rgba(var(--brand-text-rgb), 0.1)"
+      ],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-hover-match"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "rgba(var(--brand-text-rgb), 0.1)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-hover-match", "specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed", "draft-live-focus-disabled"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-live-armed",
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "draft-paused"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-board",
+        "circuit-draft-lobby",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-paused",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-sunken)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-draft-board"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "draft-plans",
+        "forgot-password",
+        "login",
+        "not-found",
+        "register",
+        "reset-password"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "leagues-empty",
+        "leagues-list",
+        "not-found",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["full-season-member-view-open", "season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "color-mix(in srgb, rgba(0, 0, 0, 0.6) 30%, transparent)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "rgb(241, 243, 245)"],
+      "bucket": "normal",
+      "modes": ["light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "rgb(66, 66, 66)"],
+      "bucket": "normal",
+      "modes": ["dark"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "draft-plans",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-out",
+        "not-found",
+        "season-create-ceremony",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-plans",
+        "home-logged-in",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "season-create-ceremony",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--brand-sunken)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["account", "account-appearance-open", "specimen"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "login",
+        "register",
+        "season-completed",
+        "season-live",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["login", "register"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-surface)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "layers": ["var(--brand-page)", "var(--brand-surface)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees"]
+    },
+    {
+      "fg": "var(--brand-wordmark-tone-color)",
+      "inherit": "var(--brand-text)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "large",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans",
+        "forgot-password",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "leagues-empty",
+        "leagues-list",
+        "login",
+        "not-found",
+        "register",
+        "reset-password",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--fo-danger-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-danger)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--fo-danger-on)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--fo-danger)"],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-countdown", "draft-live-countdown (stress data)"]
+    },
+    {
+      "fg": "var(--fo-danger-on)",
+      "layers": ["var(--brand-page)", "var(--brand-page)", "var(--fo-danger)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--fo-danger-text)",
+      "layers": ["var(--brand-page)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["league-detail", "season-live", "season-pending", "specimen"]
+    },
+    {
+      "fg": "var(--fo-danger-text)",
+      "layers": [
+        "var(--brand-page)",
+        "color-mix(in srgb, var(--fo-danger) 6%, transparent)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--fo-danger-text)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["account", "account-appearance-open", "specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-medal-bronze)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-medal-silver)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-win-gold)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--fo-win-gold)"
+      ],
+      "bucket": "non-text",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed", "draft-completed (stress data)"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
+        "var(--fo-win-gold)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed", "draft-completed (stress data)", "specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-medal-bronze)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed", "draft-completed (stress data)", "specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-medal-silver)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed", "draft-completed (stress data)", "specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--fo-win-gold)",
+        "var(--fo-win-gold)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["draft-completed", "draft-completed (stress data)", "specimen"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--fo-win-gold)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["ceremony-detail-results"]
+    },
+    {
+      "fg": "var(--fo-win-gold-on)",
+      "layers": ["var(--brand-page)", "var(--fo-win-gold)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    }
+  ],
+  "unchecked": [
+    {
+      "fg": "var(--brand-home-cta-button-fg)",
+      "reason": "pseudoContent",
+      "modes": ["dark", "light"],
+      "screens": [
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit"
+      ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "reason": "bgOverlap",
+      "modes": ["dark", "light"],
+      "screens": ["account-appearance-open", "draft-live-armed"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "reason": "elmPartiallyObscuring",
+      "modes": ["dark", "light"],
+      "screens": ["season-create-full-scoring-open"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "reason": "nonBmp",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees", "admin-home"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "reason": "pseudoContent",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "reason": "shortTextContent",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans"
+      ]
+    },
+    {
+      "fg": "var(--brand-nav-active-fg)",
+      "reason": "equalRatio",
+      "modes": ["dark", "light"],
+      "screens": [
+        "admin-ceremony-nominees",
+        "admin-films",
+        "admin-home",
+        "ceremonies-index",
+        "ceremony-detail",
+        "ceremony-detail-results",
+        "circuit-roster-own",
+        "circuit-roster-window",
+        "circuit-transactions",
+        "circuit-waivers",
+        "circuit-waivers-window",
+        "draft-plans",
+        "full-season-member",
+        "full-season-member-view-open",
+        "full-season-setup",
+        "home-logged-in",
+        "home-logged-out",
+        "home-new-user",
+        "home-with-circuit",
+        "league-detail",
+        "league-detail-member",
+        "leagues-empty",
+        "leagues-list",
+        "season-completed",
+        "season-create-ceremony",
+        "season-create-choice",
+        "season-create-full",
+        "season-create-full-scoring-open",
+        "season-create-full-select",
+        "season-create-full-unavailable",
+        "season-live",
+        "season-pending",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-nav-active-fg)",
+      "reason": "nonBmp",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees", "admin-films"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "reason": "nonBmp",
+      "modes": ["dark", "light"],
+      "screens": ["admin-ceremony-nominees"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "reason": "pseudoContent",
+      "modes": ["dark", "light"],
+      "screens": ["specimen"]
+    },
+    {
+      "fg": "var(--brand-on-primary)",
+      "reason": "shortTextContent",
+      "modes": ["dark", "light"],
+      "screens": [
+        "circuit-draft-room",
+        "draft-live-armed",
+        "draft-live-your-turn",
+        "draft-live-your-turn (stress data)",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "reason": "bgOverlap",
+      "modes": ["dark", "light"],
+      "screens": ["draft-live-armed", "draft-live-focus-disabled"]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "reason": "emptyValue",
+      "modes": ["dark", "light"],
+      "screens": [
+        "account",
+        "account-appearance-open",
+        "admin-ceremony-nominees",
+        "admin-films",
+        "circuit-draft-lobby",
+        "circuit-draft-room",
+        "circuit-roster-own",
+        "circuit-waivers-window",
+        "forgot-password",
+        "login",
+        "register",
+        "reset-password",
+        "season-create-ceremony",
+        "season-create-full-unavailable",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--brand-text)",
+      "reason": "shortTextContent",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-completed",
+        "draft-completed (stress data)",
+        "draft-live-focus-disabled",
+        "draft-live-hover-match",
+        "draft-live-not-your-turn",
+        "draft-paused",
+        "specimen"
+      ]
+    },
+    {
+      "fg": "var(--fo-danger-on)",
+      "reason": "shortTextContent",
+      "modes": ["dark", "light"],
+      "screens": [
+        "draft-live-countdown",
+        "draft-live-countdown (stress data)",
+        "specimen"
+      ]
+    }
+  ]
+}

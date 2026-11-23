@@ -6,7 +6,7 @@ import { runFrozenIntervals } from "../support/page";
 // axe-core is the engine @axe-core/playwright drives; its source is injected here directly.
 // The wrapper's per-call setup (a second page and frame handling) costs about a second per
 // scan against about 0.1 s for the run itself.
-const AXE_SOURCE = (
+export const AXE_SOURCE = (
   createRequire(createRequire(import.meta.url).resolve("@axe-core/playwright"))(
     "axe-core"
   ) as { source: string }
@@ -562,9 +562,13 @@ export async function roomTabWidthFindings(page: Page): Promise<Finding[]> {
  * a loaded draft screen. Each rule is skipped when its subject is not on the screen, except
  * where REQUIRE_ROOM_ELEMENTS makes the tab and the roster track mandatory.
  */
-export async function roomFindings(page: Page, phone: boolean): Promise<Finding[]> {
+export async function roomFindings(
+  page: Page,
+  phone: boolean,
+  { iconContrast = true }: { iconContrast?: boolean } = {}
+): Promise<Finding[]> {
   return page.evaluate(
-    ([isPhone, requireElements]) => {
+    ([isPhone, requireElements, withIconContrast]) => {
       const out: { check: string; description: string }[] = [];
       const TOL = 0.5;
       const visible = (el: Element) =>
@@ -881,8 +885,11 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
       }
 
       // 6. Icon colour against the nearest opaque background, and the punchout circle.
+      // Skipped under probe colours, where the sweep records these as contrast pairs.
       const seen = new Set<string>();
-      for (const icon of all(".dr-frame .mi-icon, .dr-frame .gicon")) {
+      for (const icon of withIconContrast
+        ? all(".dr-frame .mi-icon, .dr-frame .gicon")
+        : []) {
         const style = getComputedStyle(icon);
         const ink = rgba(style.color);
         const back = backdrop(icon);
@@ -953,6 +960,6 @@ export async function roomFindings(page: Page, phone: boolean): Promise<Finding[
       }
       return out;
     },
-    [phone, REQUIRE_ROOM_ELEMENTS] as const
+    [phone, REQUIRE_ROOM_ELEMENTS, iconContrast] as const
   ) as Promise<Finding[]>;
 }

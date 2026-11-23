@@ -13,8 +13,10 @@
 //   sample card (every brand x mode, desktop), plus the baseline orphan check;
 // - `tolerances`: the specimen's components measured against declared bounds, with the
 //   stale-allowlist judgement;
-// - `assertions`: structural and contrast checks on every screen and the specimen, with
-//   the stale-allowlist judgement.
+// - `assertions`: the screen sweep (layout checks and contrast pair recording, in the
+//   probe-stress theme), then per theme the contrast rule, geometry limits and specimen
+//   backstop, with the stale-allowlist and pair-registry judgements. With --update it
+//   rewrites tests/visual/assertions/pairs.json from the sweep instead.
 // Default: all three.
 import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
@@ -148,13 +150,18 @@ let code = 1;
 try {
   await waitForPort(port, 60_000);
   const pwArgs = ["exec", "playwright", "test", "-c", "playwright.visual.config.ts"];
-  if (update) pwArgs.push("--update-snapshots");
+  // The bare flag means "changed"; spelling it out stops a following path being read as its value.
+  if (update) pwArgs.push("--update-snapshots=changed");
   pwArgs.push(...passthrough, ...(tier ? TIER_FILES[tier] : []));
   code = await new Promise((resolve) => {
     const child = spawn("pnpm", pwArgs, {
       cwd: repoRoot,
       stdio: "inherit",
-      env: { ...process.env, VISUAL_BROWSER_WS: `ws://127.0.0.1:${port}/pw` }
+      env: {
+        ...process.env,
+        VISUAL_BROWSER_WS: `ws://127.0.0.1:${port}/pw`,
+        ...(update ? { VISUAL_UPDATE_PAIRS: "1" } : {})
+      }
     });
     child.on("exit", (c) => resolve(c ?? 1));
   });
