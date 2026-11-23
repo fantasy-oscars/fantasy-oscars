@@ -108,7 +108,8 @@ jobs:
   # The three visual jobs run Chromium in the pinned Playwright Docker image (see
   # docs/standards/testing.md), so the runner needs no browser install. They are not part
   # of `pnpm run ci`: they need the Docker daemon on the host and take minutes on a
-  # laptop. They run in parallel.
+  # laptop. They run in parallel. `pnpm run ci:affected` runs the same commands locally,
+  # and tests/unit/tooling/ci-parity.test.mjs keeps the two in step.
   visual-screenshots:
     # Pixel-compares Home and the sample card against tests/visual/__screenshots__ and
     # checks for orphaned baselines.
