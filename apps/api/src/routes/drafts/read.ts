@@ -15,10 +15,25 @@ import { getSeasonById } from "../../data/repositories/seasonRepository.js";
 import { listWinnersByCeremony } from "../../data/repositories/winnerRepository.js";
 import { getNominationWithStatus } from "../../data/repositories/nominationRepository.js";
 import { scoreDraft } from "../../domain/scoring.js";
+import type { AuthedRequest } from "../../auth/middleware.js";
+import { hasSuperAdminAccess } from "../../auth/roles.js";
+import {
+  assertDraftCommissionerAccess,
+  assertDraftReadAccess,
+  type DraftViewer
+} from "../../services/drafting/draftAccess.js";
+
+function viewerFromRequest(req: AuthedRequest): DraftViewer {
+  const userId = Number(req.auth?.sub);
+  return {
+    userId: Number.isInteger(userId) && userId > 0 ? userId : null,
+    isSuperAdmin: hasSuperAdminAccess(req.auth)
+  };
+}
 
 export function buildExportDraftHandler(pool: Pool) {
   return async function handleExportDraft(
-    req: express.Request,
+    req: AuthedRequest,
     res: express.Response,
     next: express.NextFunction
   ) {
@@ -27,6 +42,7 @@ export function buildExportDraftHandler(pool: Pool) {
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      await assertDraftReadAccess(pool, draft, viewerFromRequest(req));
 
       const seats = await listDraftSeats(pool, draftId);
       const picks = await listDraftPicks(pool, draftId);
@@ -68,7 +84,7 @@ export function buildExportDraftHandler(pool: Pool) {
 
 export function buildDraftResultsHandler(pool: Pool) {
   return async function handleDraftResults(
-    req: express.Request,
+    req: AuthedRequest,
     res: express.Response,
     next: express.NextFunction
   ) {
@@ -78,6 +94,7 @@ export function buildDraftResultsHandler(pool: Pool) {
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      await assertDraftCommissionerAccess(pool, draft, viewerFromRequest(req));
 
       const nominationIds = parsed.map((entry) => entry.nomination_id);
       const existing = await listNominationIds(pool, nominationIds);
@@ -104,7 +121,7 @@ export function buildDraftResultsHandler(pool: Pool) {
 
 export function buildDraftStandingsHandler(pool: Pool) {
   return async function handleDraftStandings(
-    req: express.Request,
+    req: AuthedRequest,
     res: express.Response,
     next: express.NextFunction
   ) {
@@ -113,6 +130,7 @@ export function buildDraftStandingsHandler(pool: Pool) {
 
       const draft = await getDraftById(pool, draftId);
       if (!draft) throw new AppError("DRAFT_NOT_FOUND", 404, "Draft not found");
+      await assertDraftReadAccess(pool, draft, viewerFromRequest(req));
 
       const seats = await listDraftSeats(pool, draftId);
       const picks = await listDraftPicks(pool, draftId);

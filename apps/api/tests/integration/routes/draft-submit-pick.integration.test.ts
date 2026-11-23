@@ -14,6 +14,7 @@ import { startTestDatabase, truncateAllTables } from "../../db.js";
 import { createApiAgent, type ApiAgent } from "../../support/supertest.js";
 import {
   insertDraft,
+  insertDraftPick,
   insertDraftSeat,
   insertLeague,
   insertLeagueMember,
@@ -305,6 +306,62 @@ describe("draft submit pick integration", () => {
     );
     expect(rows[0].current_pick_number).toBe(2);
     expect(rows[0].status).toBe("IN_PROGRESS");
+  });
+
+  it("keeps the turn check on the final pick", async () => {
+    const league = await insertLeague(db.pool, { roster_size: 1 });
+    await insertUser(db.pool, { id: 1 });
+    await insertUser(db.pool, { id: 2 });
+    const member1 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 1
+    });
+    const member2 = await insertLeagueMember(db.pool, {
+      league_id: league.id,
+      user_id: 2
+    });
+    const draft = await insertDraft(db.pool, {
+      league_id: league.id,
+      status: "IN_PROGRESS",
+      current_pick_number: 2
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member1.id,
+      seat_number: 1
+    });
+    await insertDraftSeat(db.pool, {
+      draft_id: draft.id,
+      league_member_id: member2.id,
+      seat_number: 2
+    });
+    const first = await insertNomination(db.pool);
+    const last = await insertNomination(db.pool);
+    await insertDraftPick(db.pool, {
+      draft_id: draft.id,
+      pick_number: 1,
+      round_number: 1,
+      seat_number: 1,
+      league_member_id: member1.id,
+      user_id: 1,
+      nomination_id: first.id
+    });
+
+    const offTurn = await post<{ error?: { code?: string } }>(
+      `/drafts/${draft.id}/picks`,
+      { nomination_id: last.id, request_id: "final-off-turn" },
+      { authUserId: 1 }
+    );
+    expect(offTurn.status).toBe(409);
+    expect(offTurn.json.error?.code).toBe("NOT_ACTIVE_TURN");
+
+    const onTurn = await post<{ pick: { pick_number: number; seat_number: number } }>(
+      `/drafts/${draft.id}/picks`,
+      { nomination_id: last.id, request_id: "final-on-turn" },
+      { authUserId: 2 }
+    );
+    expect(onTurn.status).toBe(201);
+    expect(onTurn.json.pick.seat_number).toBe(2);
   });
 
   it("returns the existing pick for duplicate request_id (idempotent)", async () => {
