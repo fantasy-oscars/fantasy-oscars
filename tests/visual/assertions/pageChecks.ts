@@ -1,7 +1,16 @@
 import type { Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import { createRequire } from "node:module";
 import { FIXED_NOW } from "../support/seed";
 import { runFrozenIntervals } from "../support/page";
+
+// axe-core is the engine @axe-core/playwright drives; its source is injected here directly.
+// The wrapper's per-call setup (a second page and frame handling) costs about a second per
+// scan against about 0.1 s for the run itself.
+const AXE_SOURCE = (
+  createRequire(createRequire(import.meta.url).resolve("@axe-core/playwright"))(
+    "axe-core"
+  ) as { source: string }
+).source;
 
 /** One failing element on one screen; `description` is what an allowlist entry matches. */
 export type Finding = {
@@ -317,13 +326,34 @@ async function placeholderFindings(page: Page): Promise<Finding[]> {
 
 /** axe color-contrast, plus the placeholder pairs axe skips: the contrast checks this tier enforces. */
 export async function contrastFindings(page: Page): Promise<Finding[]> {
-  const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
-  const axe = results.violations.flatMap((violation) =>
-    violation.nodes.map((node) => ({
-      check: "contrast" as const,
-      description: `${node.target.join(" ")} | ${node.html.slice(0, 100)}`
-    }))
-  );
+  // A scan after a repaint finds axe already in the page; a new document has none.
+  await page.evaluate((source) => {
+    if (!(window as unknown as { axe?: unknown }).axe) (0, eval)(source);
+  }, AXE_SOURCE);
+  const violations = await page.evaluate(async () => {
+    const axe = (
+      window as unknown as {
+        axe: {
+          run: (
+            context: Document,
+            options: { runOnly: { type: "rule"; values: string[] } }
+          ) => Promise<{
+            violations: { nodes: { target: unknown[]; html: string }[] }[];
+          }>;
+        };
+      }
+    ).axe;
+    const results = await axe.run(document, {
+      runOnly: { type: "rule", values: ["color-contrast"] }
+    });
+    return results.violations.flatMap((violation) =>
+      violation.nodes.map((node) => ({ target: node.target.join(" "), html: node.html }))
+    );
+  });
+  const axe = violations.map((node) => ({
+    check: "contrast" as const,
+    description: `${node.target} | ${node.html.slice(0, 100)}`
+  }));
   return [...axe, ...(await placeholderFindings(page))];
 }
 
