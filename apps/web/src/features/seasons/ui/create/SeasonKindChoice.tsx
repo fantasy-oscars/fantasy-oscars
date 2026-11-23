@@ -3,7 +3,6 @@ import { StandardCard } from "@/primitives";
 import {
   NO_SEASON_KIND_NOTE,
   SEASON_KIND_COPY,
-  SEASON_KIND_ORDER,
   type SeasonKind,
   type SeasonKindAvailability
 } from "@/decisions/seasonKinds";
@@ -16,6 +15,8 @@ const descriptionId = (kind: SeasonKind) => `season-kind-${kind}-description`;
 /** Card 1 of Create season: which kind of season to create. */
 export function SeasonKindChoice(props: {
   kinds: Record<SeasonKind, SeasonKindAvailability>;
+  /** The kinds offered, in display order. */
+  order: readonly SeasonKind[];
   selected: SeasonKind | null;
   onChoose: (kind: SeasonKind) => void;
   checkingFull: boolean;
@@ -24,14 +25,15 @@ export function SeasonKindChoice(props: {
 }) {
   const {
     kinds,
+    order,
     selected,
     onChoose,
     checkingFull,
     onRetryFull,
     disabled = false
   } = props;
-  const unavailable = SEASON_KIND_ORDER.filter((k) => !kinds[k].available);
-  const noneAvailable = unavailable.length === SEASON_KIND_ORDER.length;
+  const unavailable = order.filter((k) => !kinds[k].available);
+  const noneAvailable = unavailable.length === order.length;
   // Disabled radios are skipped by the arrow keys, so the group itself carries the reasons.
   const describedBy = [
     ...unavailable.map(descriptionId),
@@ -57,7 +59,7 @@ export function SeasonKindChoice(props: {
           }}
         >
           <Stack gap="sm">
-            {SEASON_KIND_ORDER.map((kind) => {
+            {order.map((kind) => {
               const availability = kinds[kind];
               const copy = SEASON_KIND_COPY[kind];
               return (

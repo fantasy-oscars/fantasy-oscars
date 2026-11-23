@@ -3,7 +3,7 @@ import type { BrandId } from "@fantasy-oscars/shared/brands";
 // A relative path: the repo root does not depend on the shared package, and the
 // catalog is plain data with no imports.
 import { BRAND_CATALOG } from "../../packages/shared/src/brands";
-import { waitForAnimationsIdle } from "./support/page";
+import { SUPER_ADMIN_HEADER, waitForAnimationsIdle } from "./support/page";
 import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
 
 /**
@@ -89,6 +89,18 @@ export function rewriteDraftSnapshot(
     edit(body.draft, body);
     await route.fulfill({ response, json: body });
   });
+}
+
+/**
+ * Reports the signed-in persona as a super admin on this screen, so the gated
+ * full awards season is offered. Other screens keep the persona's own role.
+ */
+export function asSuperAdmin(page: Page): Promise<void> {
+  return page.route("**/auth/me", (route) =>
+    route.fallback({
+      headers: { ...route.request().headers(), [SUPER_ADMIN_HEADER]: "1" }
+    })
+  );
 }
 
 /** The countdown screen's edit: a 90 s timer with 4 s left. */
@@ -230,6 +242,7 @@ export const SCREENS: ScreenDef[] = [
     // Both kinds open, neither chosen: the kind card alone.
     id: "season-create-choice",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new`,
     ready: { text: "Kind of season" },
     fullPage: true
@@ -238,6 +251,7 @@ export const SCREENS: ScreenDef[] = [
     // The main league already plays every open awards season.
     id: "season-create-full-unavailable",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.leagues.main}/friday-night-film-club/seasons/new`,
     ready: { text: "This league already plays every open awards season." },
     fullPage: true
@@ -254,6 +268,7 @@ export const SCREENS: ScreenDef[] = [
     // One open awards season: a static row, then the four settings summaries.
     id: "season-create-full",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
     ready: { text: "Snake draft, 90 seconds per pick." },
     fullPage: true
@@ -262,6 +277,7 @@ export const SCREENS: ScreenDef[] = [
     // Two open awards seasons: picked by name, the newest first.
     id: "season-create-full-select",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=full`,
     ready: { text: "1 point per nomination, 2 per win." },
     fullPage: true
@@ -269,6 +285,7 @@ export const SCREENS: ScreenDef[] = [
   {
     id: "season-create-full-scoring-open",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
     ready: { text: "1 point per nomination, 2 per win." },
     prepare: async (page) => {
@@ -281,6 +298,7 @@ export const SCREENS: ScreenDef[] = [
     // A grouped event's ceremonies as its switch description, at phone width.
     id: "season-create-full-events-open",
     persona: "avery",
+    beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/new?kind=full`,
     ready: { text: "All 2 events count equally." },
     viewports: ["mobile"],

@@ -67,6 +67,7 @@ function readyView(overrides: Partial<ReadyView> = {}): ReadyView {
     pickTimerSeconds: 60,
     canSubmit: false,
     kinds: { ceremony: OPEN, full: OPEN },
+    kindOrder: ["ceremony", "full"],
     checkingFull: false,
     openCircuits: [circuit(5, "Awards Season 2036")],
     fullCircuitId: 5,
@@ -138,6 +139,12 @@ function renderScreen(view: ReadyView, initialKind: SeasonKind | null = null) {
 const kindGroup = () => screen.getByRole("group", { name: "Kind of season" });
 
 describe("Create season kind choice", () => {
+  it("offers only single ceremony, and preselects it, when full seasons are gated", () => {
+    renderScreen(readyView({ kindOrder: ["ceremony"] }), "full");
+    expect(screen.queryByRole("radio", { name: /full awards season/i })).toBeNull();
+    expect(screen.getByRole("radio", { name: /single ceremony/i })).toBeChecked();
+  });
+
   it("offers both kinds with their descriptions and preselects neither", () => {
     renderScreen(readyView());
     const ceremony = screen.getByRole("radio", { name: "Single ceremony" });

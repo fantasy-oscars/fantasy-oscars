@@ -23,6 +23,7 @@ import {
   canCreateSeasons,
   ceremonyKindAvailability,
   fullKindAvailability,
+  visibleSeasonKinds,
   type SeasonKind,
   type SeasonKindAvailability
 } from "../../decisions/seasonKinds";
@@ -68,6 +69,8 @@ export type LeagueSeasonCreateView =
       canSubmit: boolean;
       /** Which kinds of season can be created here, and why not. */
       kinds: Record<SeasonKind, SeasonKindAvailability>;
+      /** The kinds offered, in display order. */
+      kindOrder: readonly SeasonKind[];
       /** True while a failed check for open awards seasons is being retried. */
       checkingFull: boolean;
       /** Active Circuits not yet running in this league, in API order. */
@@ -86,8 +89,10 @@ export function useLeagueSeasonCreateOrchestration(input: {
   leagueId: number;
   /** The signed-in viewer; only the league's commissioners may create. */
   userSub?: string;
+  /** Full awards seasons are gated; only a super admin is offered them. */
+  fullSeasonEnabled?: boolean;
 }) {
-  const { leagueId, userSub } = input;
+  const { leagueId, userSub, fullSeasonEnabled = false } = input;
 
   const [state, setState] = useState<"loading" | "error" | "ready" | "forbidden">(
     "loading"
@@ -169,13 +174,14 @@ export function useLeagueSeasonCreateOrchestration(input: {
   );
 
   const loadFullOptions = useCallback(async () => {
+    if (!fullSeasonEnabled) return;
     const [circuitList, startedList] = await Promise.all([
       queryClient.fetchQuery(circuitsListQuery()).catch(() => null),
       queryClient.fetchQuery(leagueCircuitsQuery(leagueId)).catch(() => null)
     ]);
     setCircuits(circuitList);
     setStarted(startedList);
-  }, [leagueId, queryClient]);
+  }, [fullSeasonEnabled, leagueId, queryClient]);
 
   const retryFull = useCallback(async () => {
     setCheckingFull(true);
@@ -461,6 +467,7 @@ export function useLeagueSeasonCreateOrchestration(input: {
               timerEnabled,
               pickTimerSeconds,
               canSubmit,
+              kindOrder: visibleSeasonKinds(fullSeasonEnabled),
               kinds: {
                 ceremony: ceremonyKindAvailability(ceremonies.length),
                 full: fullKindAvailability({ circuits, started })

@@ -119,7 +119,11 @@ export function LeagueSeasonCreateScreen(props: {
   }
 
   const leagueName = view.league?.name ?? "this league";
-  const kind = selectedSeasonKind({ requested: requestedKind, availability: view.kinds });
+  const kind = selectedSeasonKind({
+    requested: requestedKind,
+    availability: view.kinds,
+    order: view.kindOrder
+  });
 
   return (
     <Box className="baseline-page">
@@ -150,6 +154,7 @@ export function LeagueSeasonCreateScreen(props: {
 
           <SeasonKindChoice
             kinds={view.kinds}
+            order={view.kindOrder}
             selected={kind}
             onChoose={actions.chooseKind}
             checkingFull={view.checkingFull}
