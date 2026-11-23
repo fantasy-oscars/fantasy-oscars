@@ -166,9 +166,11 @@ jobs:
           retention-days: 7
 
   visual-assertions:
-    # Structural, touch-target and colour-contrast checks on every screen and the specimen
-    # in every brand, both modes and both viewports, plus the stale-allowlist judgement.
-    # No baselines.
+    # Rule-based assertions (docs/adr/0008-rule-based-visual-assertions.md): one sweep of
+    # every screen in the probe-stress theme (layout checks and contrast pair recording
+    # against tests/visual/assertions/pairs.json), then per theme the contrast rule,
+    # geometry limits and specimen backstop, plus the stale-allowlist and stale-pair
+    # judgements. No baselines.
     needs: changes
     if: needs.changes.outputs.visual == 'true'
     runs-on: ubuntu-latest
@@ -183,8 +185,8 @@ jobs:
       - name: Visual assertions
         run: node tests/visual/run.mjs --tier assertions
         env:
-          # The 23 cells total about 11 minutes of test time locally; six workers bring
-          # the job to about 4 minutes.
+          # The six sweep cells cost the same for any number of themes; each theme adds
+          # a specimen test (about 15 s), a geometry test and a contrast-rule row.
           VISUAL_WORKERS: 6
       - name: Upload visual assertion report
         if: failure()

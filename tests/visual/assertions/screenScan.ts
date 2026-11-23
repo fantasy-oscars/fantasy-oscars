@@ -5,7 +5,6 @@ import type { ScreenDef, ViewportName } from "../matrix";
 import type { VisualSeed } from "../support/seed";
 import { settle, signIn, switchAppearance } from "../support/page";
 import {
-  contrastFindings,
   isDraftRoomScreen,
   roomFindings,
   roomTabWidthFindings,
@@ -60,10 +59,12 @@ export async function repaintInMode(
 }
 
 /**
- * Colour contrast does not depend on width: axe runs on every screen at desktop and on the
- * specimen at both widths. Structural checks run everywhere.
+ * The layout checks of the screen sweep: structure everywhere, the draft room geometry on
+ * draft screens, the tooltip chip on the specimen and the tab width on the countdown.
+ * Colour checks are not here: in the probe-stress theme the room icons' contrast is
+ * recorded as pairs (pairs.ts) instead.
  */
-export async function scanScreen(
+export async function scanLayout(
   page: Page,
   screen: ScreenDef,
   viewport: ViewportName,
@@ -72,12 +73,9 @@ export async function scanScreen(
   return [
     ...(await structuralFindings(page, viewport === "mobile")),
     ...(isDraftRoomScreen(screen.id)
-      ? await roomFindings(page, viewport === "mobile")
+      ? await roomFindings(page, viewport === "mobile", { iconContrast: false })
       : []),
     ...(screen.id === specimenId ? await tooltipChipFindings(page) : []),
-    ...(screen.id === "draft-live-countdown" ? await roomTabWidthFindings(page) : []),
-    ...(viewport === "desktop" || screen.id === specimenId
-      ? await contrastFindings(page)
-      : [])
+    ...(screen.id === "draft-live-countdown" ? await roomTabWidthFindings(page) : [])
   ];
 }

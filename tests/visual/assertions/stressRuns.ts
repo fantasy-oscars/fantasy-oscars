@@ -2,23 +2,17 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
-import { generateBrandCss } from "../../../apps/web/src/theme/brands";
-import { stressBrand } from "../fixtures/stressBrand";
 import {
   countdownSnapshot,
   rewriteDraftSnapshot,
   SCREENS,
-  STRESS_BRAND,
   type ScreenDef,
   type ViewportName
 } from "../matrix";
 import { settle } from "../support/page";
 
-// The draft room stress theme (fixtures/stressBrand.ts) in the assertion tier: the same
-// geometry, overflow, clipped-text, overlap and contrast checks, run on the draft screens
-// that make its extremes visible.
-
-export { STRESS_BRAND };
+// Painting the probe-stress theme (fixtures/probeStressTheme.ts) over a loaded page, and
+// the stress data: the draft screens rewritten to twelve seats with long names.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const MONTSERRAT = readFileSync(
@@ -33,22 +27,37 @@ export const MONTSERRAT_FACE_CSS = `@font-face {
   src: url(data:font/woff2;base64,${MONTSERRAT}) format("woff2");
 }`;
 
-const STRESS_CSS = generateBrandCss([stressBrand], stressBrand);
+/** Id of the style element that holds the painted theme, so its palette can be swapped. */
+export const THEME_STYLE_ID = "fo-probe-stress";
 
 /**
- * Paints the stress theme over a loaded page. The font is declared and loaded first, so
- * the theme lands in one step: the header decides whether to collapse its wings from what
- * it measures (with hysteresis), and a pass through fallback-font widths could leave it
- * collapsed in one run and open in the next.
+ * Paints a stress theme's stylesheet over a loaded page. The font is declared and loaded
+ * first, so the theme lands in one step: the draft room header decides whether to collapse
+ * its wings from what it measures (with hysteresis), and a pass through fallback-font
+ * widths could leave it collapsed in one run and open in the next. `draftRoom` resets that
+ * header (below); other screens have nothing to reset.
  */
-export async function applyStressTheme(page: Page, inFlight: () => number) {
+export async function applyStressTheme(
+  page: Page,
+  inFlight: () => number,
+  css: string,
+  { draftRoom }: { draftRoom: boolean }
+) {
   await page.addStyleTag({ content: MONTSERRAT_FACE_CSS });
   await page.evaluate(() =>
     Promise.all(
       [400, 500, 600, 700].map((w) => document.fonts.load(`${w} 16px Montserrat`))
     ).then(() => document.fonts.ready)
   );
-  await page.addStyleTag({ content: STRESS_CSS });
+  await page.evaluate(
+    ([id, content]) => {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = content;
+      document.head.append(style);
+    },
+    [THEME_STYLE_ID, css] as const
+  );
   await settle(page, inFlight, { quietPolls: 2, networkIdle: false, pollMs: 60 });
   // The stress header sits near the collapse threshold, where the hysteresis makes the
   // result depend on the widths passed through. Opening the wings at a wide viewport and
@@ -56,7 +65,7 @@ export async function applyStressTheme(page: Page, inFlight: () => number) {
   // The phone header has no wings to collapse, and widening past the 500 px phone
   // breakpoint would remount the room as the desktop layout, so only desktop is widened.
   const size = page.viewportSize();
-  if (size && size.width > 500) {
+  if (draftRoom && size && size.width > 500) {
     await page.setViewportSize({ width: size.width + 640, height: size.height });
     await settle(page, inFlight, { quietPolls: 2, networkIdle: false, pollMs: 60 });
     await page.setViewportSize(size);
@@ -122,15 +131,12 @@ function stressSnapshot(snapshot: Record<string, unknown>, podium: boolean) {
   snapshot.winners = winners;
 }
 
-/** Draft screens that show the states the stress theme is for. */
+/** Draft screens that show the states the stress data is for. */
 const STRESS_SCREEN_IDS = [
   "draft-live-your-turn",
   "draft-live-countdown",
   "draft-completed"
 ] as const;
-
-/** Assertion tests the stress runs add: one per viewport. */
-export const STRESS_TEST_COUNT = 2;
 
 /** A draft screen with its snapshot rewritten to the stress data (12 seats, long names). */
 export function stressScreen(id: string): ScreenDef {

@@ -19,13 +19,18 @@ import { FIXED_NOW, type PersonaKey, type VisualSeed } from "./support/seed";
  * - tolerances (tolerances.spec.ts, tolerances/): every representative component on the
  *   specimen (`/__specimen`) measured against declared bounds in every brand x mode x
  *   viewport. No baselines.
- * - assertions (assertions.spec.ts): structure, overflow, clipping, overlap and contrast
- *   checks on every row of SCREENS, the specimen and the draft stress cells (see
- *   assertionCells), in every brand, mode and viewport. No baselines.
+ * - assertions (assertions.spec.ts): rules checked against theme parameters, and the
+ *   screens checked once (docs/adr/0008-rule-based-visual-assertions.md). The screen
+ *   sweep walks every row of SCREENS, the specimen and the draft stress data at both
+ *   viewports in the probe-stress theme only (assertions/sweep.ts): layout checks, plus
+ *   the contrast pairs each screen paints, recorded in assertions/pairs.json. Per theme
+ *   (a brand in one mode): the contrast rule over those pairs (no browser), the geometry
+ *   limits against the probe-stress theme, and the specimen backstop. No baselines.
  *
- * Add a row to SCREENS for a new screen (it joins the assertion tier); add an entry to
- * BRANDS when a brand lands (its modes come from the brand catalog, and screens.spec.ts
- * pins each with selectAppearance). A new brand or mode adds Home and sample-card cells.
+ * Add a row to SCREENS for a new screen (it joins the sweep); add an entry to BRANDS
+ * when a brand lands (its modes come from the brand catalog, and screens.spec.ts pins
+ * each with selectAppearance). A new brand or mode adds Home and sample-card cells and
+ * per-theme assertion tests; the sweep does not grow.
  */
 
 export type ScreenDef = {
@@ -662,10 +667,10 @@ export function modesOf(brand: Brand): readonly Mode[] {
 }
 
 /**
- * The draft room stress theme's own brand: it borrows the default brand's slug (the
- * generated blocks target it) and is painted over a loaded page, never selected.
+ * The page the probe-stress theme is painted over: the default brand, whose slug the
+ * generated blocks target. The theme itself is never selected.
  */
-export const STRESS_BRAND: Brand = { id: "stress", slug: "refined-gold" };
+export const SWEEP_BRAND: Brand = { id: "default", slug: "refined-gold" };
 
 /** The component specimen page; a screen like any other, walked by the assertion tier. */
 export const SPECIMEN_SCREEN: ScreenDef = {
@@ -757,39 +762,4 @@ function sampleCaptures(): Capture[] {
 /** Every screenshot the suite takes: Home, then the sample cards. */
 export function allCaptures(): Capture[] {
   return [...homeCaptures(), ...sampleCaptures()];
-}
-
-/**
- * One assertion-tier test: a brand at a viewport over a slice of that viewport's
- * screens. Desktop runs axe on every screen and takes about twice as long as mobile, so
- * it is cut into two halves to keep every cell near the same length. Longest first, so
- * the runner starts the long cells early.
- */
-export type AssertionCell = {
-  brand: Brand;
-  viewport: ViewportName;
-  part: number;
-  parts: number;
-  screens: ScreenDef[];
-};
-
-export function assertionCells(): AssertionCell[] {
-  const cells = BRANDS.flatMap((brand) =>
-    VIEWPORT_NAMES.flatMap((viewport) => {
-      const screens = [...SCREENS, SPECIMEN_SCREEN].filter(
-        (s) => !s.viewports || s.viewports.includes(viewport)
-      );
-      const parts = viewport === "desktop" ? 2 : 1;
-      const size = Math.ceil(screens.length / parts);
-      return Array.from({ length: parts }, (_, part) => ({
-        brand,
-        viewport,
-        part,
-        parts,
-        screens: screens.slice(part * size, (part + 1) * size)
-      }));
-    })
-  );
-  const weight = (c: AssertionCell) => (c.viewport === "desktop" ? 2 : 1);
-  return cells.sort((a, b) => weight(b) - weight(a));
 }

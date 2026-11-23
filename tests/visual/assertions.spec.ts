@@ -1,23 +1,25 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
-  assertionCells,
-  type Brand,
   MODES,
-  type Mode,
-  type ScreenDef,
   SPECIMEN_SCREEN,
+  SWEEP_BRAND,
   VIEWPORTS,
   type ViewportName
 } from "./matrix";
-import { ALLOWLIST, entryMatches } from "./assertions/allowlist";
-import { RESULTS_DIR, type ResultFile } from "./assertions/results";
-import type { Finding } from "./assertions/pageChecks";
+import { ALLOWLIST, CONTRAST_EXCEPTIONS, entryMatches } from "./assertions/allowlist";
+import { RESULTS_DIR, UPDATE_PAIRS, type ResultFile } from "./assertions/results";
+import {
+  contrastFindings,
+  isDraftRoomScreen,
+  structuralFindings,
+  type Finding
+} from "./assertions/pageChecks";
 import {
   loadScreen,
   repaintInMode,
-  scanScreen,
+  scanLayout,
   type SessionState
 } from "./assertions/screenScan";
 import {
@@ -27,7 +29,33 @@ import {
   measureFonts,
   WIDTH_CHECK_FAMILIES
 } from "./assertions/widthCheck";
-import { applyStressTheme, STRESS_BRAND, stressScreens } from "./assertions/stressRuns";
+import { applyStressTheme } from "./assertions/stressRuns";
+import { sweepCells } from "./assertions/sweep";
+import {
+  loadRegistry,
+  observedKey,
+  observedUncheckedKey,
+  recordPairs,
+  REGENERATE_COMMAND,
+  REGISTRY_PATH,
+  registryKeys,
+  type ObservedPair,
+  type ObservedUnchecked
+} from "./assertions/pairs";
+import { evaluateTheme } from "./assertions/contrastRule";
+import {
+  fontSlots,
+  fontWidthProblems,
+  measureFontSlots,
+  slotLimitProblems
+} from "./assertions/geometryLimits";
+import { THEMES, type Theme } from "./assertions/themes";
+import { parseColor, resolveColor, themeDeclarations } from "./assertions/colors";
+import {
+  COLOR_TOKENS,
+  probeStressBrand,
+  probeStressCss
+} from "./fixtures/probeStressTheme";
 import {
   freezeClock,
   installNetworkGuards,
@@ -36,13 +64,18 @@ import {
   trackInFlight
 } from "./support/page";
 
-// Assertion tier: every screen and the specimen in every brand, both modes, both
-// viewports, with no baselines. One page per cell (a brand, a viewport and a slice of
-// its screens) loads each screen once, scans it in the first mode, repaints it in the
-// other and scans again.
+// Assertion tier (docs/adr/0008-rule-based-visual-assertions.md). Screens are checked
+// once, in the probe-stress theme; themes are checked through rules on their values:
+// - sweep: every screen at both viewports, layout checks once and the contrast pairs it
+//   paints in each mode, compared with the committed registry;
+// - contrast rule: every registry pair in every theme, in Node;
+// - geometry limits: every theme's geometry slots inside the probe-stress theme's;
+// - specimen: every theme's specimen at both viewports, with real colours, as a backstop.
 
 // A screen that has not finished by now is a failure of that screen, not of the cell.
 const SCREEN_BUDGET_MS = 90_000;
+
+const PROBE_CSS = probeStressCss(0);
 
 /** One line, with the repeated "name: name:" prefixes Playwright adds to a re-thrown error collapsed. */
 function describeFailure(err: unknown) {
@@ -64,71 +97,77 @@ function withBudget<T>(work: Promise<T>, ms: number, what: string): Promise<T> {
   return Promise.race([work, expired]).finally(() => clearTimeout(timer));
 }
 
-type Cell = {
-  brand: Brand;
-  viewport: ViewportName;
-  part: number;
-  parts: number;
-  screens: ScreenDef[];
-  /** Paint the draft room stress theme over every screen after it loads. */
-  stress?: boolean;
-};
+function capped(failures: string[], where: string) {
+  return failures
+    .slice(0, 25)
+    .concat(
+      failures.length > 25 ? [`... and ${failures.length - 25} more (see ${where})`] : []
+    );
+}
 
-const cells: Cell[] = [
-  ...assertionCells(),
-  ...(["desktop", "mobile"] as const).map((viewport) => ({
-    brand: STRESS_BRAND,
-    viewport,
-    part: 0,
-    parts: 1,
-    screens: stressScreens(viewport),
-    stress: true
-  }))
-];
+const registry = loadRegistry();
+const registered = registryKeys(registry);
 
-for (const { brand, viewport: viewportName, part, parts, screens, stress } of cells) {
-  const label = parts > 1 ? ` part ${part + 1}` : "";
-  test.describe(`assertions ${brand.id} ${viewportName}${label}`, () => {
+for (const { viewport: viewportName, part, parts, screens } of sweepCells()) {
+  test.describe(`sweep ${viewportName} part ${part + 1} of ${parts}`, () => {
     test.use({ viewport: VIEWPORTS[viewportName], colorScheme: MODES[0] });
 
-    test("every screen, both modes", async ({ page: firstPage, context }) => {
+    test("layout once, contrast pairs in each mode", async ({
+      page: firstPage,
+      context
+    }) => {
       test.setTimeout(300_000);
       const seed = readSeed();
       const blocked = await installNetworkGuards(context);
-      await selectAppearance(context, brand.slug, MODES[0]);
+      await selectAppearance(context, SWEEP_BRAND.slug, MODES[0]);
 
       let page = firstPage;
       let inFlight = trackInFlight(page);
       await freezeClock(page);
 
       const failures: string[] = [];
-      const seen: { screen: string; mode: Mode; finding: Finding }[] = [];
+      const seen: { screen: string; finding: Finding }[] = [];
+      const pairs: ObservedPair[] = [];
+      const unchecked: ObservedUnchecked[] = [];
+      const timings: ResultFile["timings"] = [];
       const session: SessionState = { persona: undefined };
-      for (const screen of screens) {
+      for (const { def: screen, label } of screens) {
         for (let attempt = 1; attempt <= 2; attempt++) {
-          const found: { mode: Mode; finding: Finding }[] = [];
           try {
-            await withBudget(
+            const found = await withBudget(
               (async () => {
+                const t0 = Date.now();
                 await loadScreen(page, context, screen, seed, inFlight, session);
-                if (stress) await applyStressTheme(page, inFlight);
-                for (const mode of MODES) {
-                  if (mode !== MODES[0])
-                    await repaintInMode(page, brand.slug, mode, inFlight);
-                  for (const finding of await scanScreen(
-                    page,
-                    screen,
-                    viewportName,
-                    SPECIMEN_SCREEN.id
-                  ))
-                    found.push({ mode, finding });
-                }
+                const draftRoom = isDraftRoomScreen(screen.id);
+                await applyStressTheme(page, inFlight, PROBE_CSS, { draftRoom });
+                const t1 = Date.now();
+                const layout = await scanLayout(
+                  page,
+                  screen,
+                  viewportName,
+                  SPECIMEN_SCREEN.id
+                );
+                const t2 = Date.now();
+                // Pairs are recorded where the old tier ran axe: every screen at desktop,
+                // and the specimen at both widths.
+                const recorded =
+                  viewportName === "desktop" || screen.id === SPECIMEN_SCREEN.id
+                    ? await recordPairs(page, label, draftRoom, MODES, (mode) =>
+                        repaintInMode(page, SWEEP_BRAND.slug, mode, inFlight)
+                      )
+                    : { pairs: [], unchecked: [], problems: [] };
+                const ms = { load: t1 - t0, layout: t2 - t1, record: Date.now() - t2 };
+                return { layout, recorded, ms };
               })(),
               SCREEN_BUDGET_MS,
-              `screen ${screen.id}`
+              `screen ${label}`
             );
-            for (const { mode, finding } of found)
-              seen.push({ screen: screen.id, mode, finding });
+            for (const finding of found.layout) seen.push({ screen: screen.id, finding });
+            pairs.push(...found.recorded.pairs);
+            unchecked.push(...found.recorded.unchecked);
+            for (const problem of found.recorded.problems)
+              failures.push(`[contrast-probe] ${label}: ${problem}`);
+            timings.push({ screen: label, ...found.ms });
             break;
           } catch (err) {
             const reason = describeFailure(err);
@@ -141,12 +180,11 @@ for (const { brand, viewport: viewportName, part, parts, screens, stress } of ce
             session.persona = undefined;
             if (attempt === 1) {
               console.error(
-                `RETRY: ${brand.id} ${viewportName} ${screen.id} failed to load (${reason}); retrying once on a fresh page`
+                `RETRY: sweep ${viewportName} ${label} failed to load (${reason}); retrying once on a fresh page`
               );
             } else {
               seen.push({
                 screen: screen.id,
-                mode: MODES[0],
                 finding: { check: "load", description: reason }
               });
             }
@@ -154,64 +192,213 @@ for (const { brand, viewport: viewportName, part, parts, screens, stress } of ce
         }
       }
 
-      const scope = (screen: string, mode: Mode) => ({
-        screen,
-        brand: brand.id,
-        mode,
-        viewport: viewportName
-      });
       const matchedEntries = new Set<number>();
       const touch: string[] = [];
-      for (const { screen, mode, finding } of seen) {
-        const index = ALLOWLIST.findIndex((e) =>
-          entryMatches(e, scope(screen, mode), finding)
-        );
+      const findings: ResultFile["findings"] = [];
+      for (const { screen, finding } of seen) {
+        const scope = { screen, viewport: viewportName };
+        const index = ALLOWLIST.findIndex((e) => entryMatches(e, scope, finding));
         if (index >= 0) matchedEntries.add(index);
         if (finding.check === "touch-target") {
           touch.push(
             `${screen}: ${finding.description}${index >= 0 ? " (allowlisted)" : ""}`
           );
         }
-        if (index < 0) {
-          failures.push(`[${finding.check}] ${screen} (${mode}): ${finding.description}`);
+        if (index < 0)
+          failures.push(`[${finding.check}] ${screen}: ${finding.description}`);
+        findings.push({ screen, ...finding, allowlisted: index >= 0 });
+      }
+
+      if (!UPDATE_PAIRS) {
+        const missing = new Map<string, string>();
+        for (const p of pairs) {
+          const key = observedKey(p);
+          if (!registered.has(key)) missing.set(key, p.screen);
+        }
+        for (const u of unchecked) {
+          const key = observedUncheckedKey(u);
+          if (!registered.has(key)) missing.set(key, u.screen);
+        }
+        for (const [key, screen] of missing) {
+          failures.push(
+            `[contrast-registry] ${screen}: ${key} is not in ${REGISTRY_PATH}; regenerate it with ${REGENERATE_COMMAND} and review the diff`
+          );
         }
       }
 
       const result: ResultFile = {
-        brand: brand.id,
         viewport: viewportName,
+        part,
         matched: [...matchedEntries],
         touchTargets: touch,
-        findings: seen.map(({ screen, mode, finding }) => ({
-          screen,
-          mode,
-          check: finding.check,
-          description: finding.description,
-          allowlisted: ALLOWLIST.some((e) =>
-            entryMatches(e, scope(screen, mode), finding)
-          )
-        }))
+        findings,
+        pairs,
+        unchecked,
+        timings,
+        failures
       };
       mkdirSync(RESULTS_DIR, { recursive: true });
       writeFileSync(
-        path.join(RESULTS_DIR, `${brand.id}-${viewportName}-${part}.json`),
+        path.join(RESULTS_DIR, `sweep-${viewportName}-${part}.json`),
         JSON.stringify(result)
       );
 
       expect(blocked, "requests that left the machine").toEqual([]);
       expect(
-        failures
-          .slice(0, 25)
-          .concat(
-            failures.length > 25
-              ? [`... and ${failures.length - 25} more (see ${RESULTS_DIR})`]
-              : []
-          ),
-        `${failures.length} assertion failures not in the allowlist`
+        capped(failures, RESULTS_DIR),
+        `${failures.length} sweep failures not in the allowlist or registry`
       ).toEqual([]);
     });
   });
 }
+
+// The contrast rule: one test per theme, no browser.
+test.describe("contrast rule", () => {
+  for (const theme of THEMES) {
+    test(theme.id, () => {
+      const { failures, checked } = evaluateTheme(registry, theme);
+      expect(checked, `pairs checked in ${theme.id}`).toBeGreaterThan(0);
+      const exceptions = CONTRAST_EXCEPTIONS.filter(
+        (e) => e.theme === "*" || e.theme === theme.id
+      );
+      const used = new Set<number>();
+      const open = failures.filter((f) => {
+        const index = exceptions.findIndex((e) => f.key.includes(e.pair));
+        if (index >= 0) used.add(index);
+        return index < 0;
+      });
+      expect(
+        capped(
+          open.map(
+            (f) =>
+              `${theme.id}: ${f.key} is ${f.ratio.toFixed(2)}:1, needs ${f.threshold}:1 (e.g. ${f.screen})`
+          ),
+          REGISTRY_PATH
+        ),
+        `${open.length} registry pairs miss their contrast threshold in ${theme.id}`
+      ).toEqual([]);
+      expect(
+        exceptions.filter((_, i) => !used.has(i)).map((e) => `${e.theme} ${e.pair}`),
+        "stale contrast exceptions (no longer failing; delete them from tests/visual/assertions/allowlist.ts)"
+      ).toEqual([]);
+    });
+  }
+});
+
+/** Loads the login page and the pinned Montserrat, where every catalog family can be measured. */
+async function fontPage(page: Page) {
+  await page.goto("/login");
+  await expect(page.getByText("Sign in").first()).toBeVisible();
+  await addStressFont(page);
+}
+
+// Geometry limits: one test per theme.
+test.describe("geometry limits", () => {
+  for (const theme of THEMES) {
+    test(theme.id, async ({ page, context }) => {
+      const blocked = await installNetworkGuards(context);
+      await fontPage(page);
+      const own = await measureFontSlots(page, fontSlots(theme.definition));
+      const stress = await measureFontSlots(page, fontSlots(probeStressBrand));
+      expect(blocked, "requests that left the machine").toEqual([]);
+      expect([
+        ...slotLimitProblems(theme.definition),
+        ...fontWidthProblems(own, stress)
+      ]).toEqual([]);
+    });
+  }
+});
+
+/**
+ * The contrast rule resolves colour properties in Node; here the browser resolves the same
+ * properties for the theme it is showing, and the two must agree to a channel level.
+ */
+async function resolverMismatches(page: Page, theme: Theme): Promise<string[]> {
+  const computed = await page.evaluate((tokens) => {
+    const probe = document.createElement("div");
+    document.body.append(probe);
+    const out = tokens.map((token) => {
+      probe.style.color = `var(${token})`;
+      return getComputedStyle(probe).color;
+    });
+    probe.remove();
+    return out;
+  }, COLOR_TOKENS);
+  const decls = themeDeclarations(theme.definition, theme.mode);
+  let compared = 0;
+  const out = COLOR_TOKENS.flatMap((token, i) => {
+    const rule = resolveColor(`var(${token})`, decls);
+    const browser = parseColor(computed[i]!);
+    if (rule === "inherit" || rule === null || !browser) return [];
+    compared++;
+    const off =
+      Math.max(
+        Math.abs(rule.r - browser.r),
+        Math.abs(rule.g - browser.g),
+        Math.abs(rule.b - browser.b)
+      ) > 1.01 || Math.abs(rule.a - browser.a) > 0.01;
+    return off
+      ? [
+          `[resolver] ${token}: the browser paints ${computed[i]}, the contrast rule resolves rgba(${[rule.r, rule.g, rule.b].map(Math.round).join(", ")}, ${rule.a})`
+        ]
+      : [];
+  });
+  return compared > COLOR_TOKENS.length / 2
+    ? out
+    : [
+        `[resolver] only ${compared} of ${COLOR_TOKENS.length} colour properties could be compared`
+      ];
+}
+
+// The specimen backstop: every theme with its real colours and geometry, both viewports.
+test.describe("specimen", () => {
+  for (const theme of THEMES) {
+    test(theme.id, async ({ context }) => {
+      test.setTimeout(180_000);
+      const seed = readSeed();
+      const blocked = await installNetworkGuards(context);
+      await selectAppearance(context, theme.brand.slug, theme.mode);
+      const failures: string[] = [];
+      // A fresh page per viewport: requests left over from one load must not hold the next.
+      // A load that fails is retried once on another fresh page, as in the sweep.
+      for (const viewport of Object.keys(VIEWPORTS) as ViewportName[]) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const page = await context.newPage();
+          try {
+            await page.setViewportSize(VIEWPORTS[viewport]);
+            await page.emulateMedia({ colorScheme: theme.mode });
+            const inFlight = trackInFlight(page);
+            await freezeClock(page);
+            const session: SessionState = { persona: undefined };
+            await loadScreen(page, context, SPECIMEN_SCREEN, seed, inFlight, session);
+          } catch (err) {
+            await page.close();
+            if (attempt === 2) throw err;
+            console.error(
+              `RETRY: specimen ${theme.id} ${viewport} failed to load (${describeFailure(err)}); retrying once on a fresh page`
+            );
+            continue;
+          }
+          const layout = (await structuralFindings(page, viewport === "mobile")).filter(
+            (f) => f.check === "overflow" || f.check === "clipped-text"
+          );
+          for (const f of [...layout, ...(await contrastFindings(page))]) {
+            failures.push(`[${f.check}] ${viewport}: ${f.description}`);
+          }
+          if (viewport === "desktop")
+            failures.push(...(await resolverMismatches(page, theme)));
+          await page.close();
+          break;
+        }
+      }
+      expect(blocked, "requests that left the machine").toEqual([]);
+      expect(
+        capped(failures, "the report"),
+        `${failures.length} specimen failures in ${theme.id}`
+      ).toEqual([]);
+    });
+  }
+});
 
 // The working-text width check (5.6): every family in ROOM_WORK_FONTS, and the stress
 // theme's Montserrat, measured in the browser from the files the app serves (the pinned
@@ -219,9 +406,7 @@ for (const { brand, viewport: viewportName, part, parts, screens, stress } of ce
 test.describe("assertions fonts", () => {
   test("working fonts pass the width check", async ({ page, context }) => {
     const blocked = await installNetworkGuards(context);
-    await page.goto("/login");
-    await expect(page.getByText("Sign in").first()).toBeVisible();
-    await addStressFont(page);
+    await fontPage(page);
     const rows = judgeWidths(await measureFonts(page, WIDTH_CHECK_FAMILIES));
     console.log(
       `\nWorking font width check (100 px, weight 500, kerning on):\n${formatWidthTable(rows)}`

@@ -1,8 +1,19 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  configure,
+  render,
+  screen,
+  waitFor,
+  within
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/app/App";
+
+// The routes load lazily; under a parallel full run the first render of a route can take
+// longer than Testing Library's default one-second wait.
+configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
