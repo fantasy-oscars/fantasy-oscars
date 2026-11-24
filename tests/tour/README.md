@@ -12,7 +12,10 @@ open tour-output/index.html
 
 It reuses the e2e stack (a throwaway Postgres container, the API and a test build of the
 web app) and takes about ten minutes, most of it waiting out pick clocks. Set
-`E2E_WEB_PORT` and `E2E_API_PORT` to run it next to the e2e suite. Output goes to
+`E2E_WEB_PORT` and `E2E_API_PORT` to run it next to the e2e suite. If either port (4173 and
+4174 by default) is already in use, the run stops at once with a message naming the port;
+free it (`lsof -nP -iTCP:<port> -sTCP:LISTEN`) or pick other ports. The stack's servers stop
+with the run, even when it is killed. Output goes to
 `tour-output/` (ignored by git; `TOUR_OUTPUT_DIR` overrides): numbered PNGs, a
 `manifest.json`, `skipped.txt` and the `index.html` gallery.
 

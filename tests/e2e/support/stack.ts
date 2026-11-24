@@ -1,9 +1,17 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startTestDatabase } from "../../../apps/api/tests/db";
+import {
+  assertPortsFree,
+  runToCompletion,
+  startProcess,
+  stopProcess,
+  waitForHttp,
+  type Running
+} from "./processes";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -12,76 +20,8 @@ export const E2E_API_PORT = Number(process.env.E2E_API_PORT ?? 4174);
 export const E2E_WEB_ORIGIN = `http://127.0.0.1:${E2E_WEB_PORT}`;
 export const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
 
-type Running = { name: string; child: ChildProcess; output: string[] };
-
-function run(
-  name: string,
-  command: string,
-  args: string[],
-  opts: { cwd: string; env: NodeJS.ProcessEnv }
-): Running {
-  const child = spawn(command, args, {
-    cwd: opts.cwd,
-    env: opts.env,
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-  const output: string[] = [];
-  const collect = (chunk: Buffer) => {
-    output.push(chunk.toString());
-    if (output.length > 200) output.shift();
-  };
-  child.stdout?.on("data", collect);
-  child.stderr?.on("data", collect);
-  return { name, child, output };
-}
-
-function hasExited(p: Running): boolean {
-  return p.child.exitCode !== null || p.child.signalCode !== null;
-}
-
-function exited(p: Running): Promise<number | null> {
-  return new Promise((resolve) => {
-    if (hasExited(p)) {
-      resolve(p.child.exitCode);
-      return;
-    }
-    p.child.once("exit", (code) => resolve(code));
-  });
-}
-
-async function runToCompletion(p: Running) {
-  const code = await exited(p);
-  if (code !== 0) {
-    throw new Error(`${p.name} exited with code ${code}\n${p.output.join("")}`);
-  }
-}
-
-async function stopProcess(p: Running) {
-  if (hasExited(p)) return;
-  p.child.kill("SIGTERM");
-  const killTimer = setTimeout(() => p.child.kill("SIGKILL"), 5_000);
-  await exited(p);
-  clearTimeout(killTimer);
-}
-
-async function waitForHttp(url: string, p: Running, timeoutMs: number) {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    if (hasExited(p)) {
-      throw new Error(`${p.name} exited early\n${p.output.join("")}`);
-    }
-    try {
-      const res = await fetch(url);
-      if (res.status < 500) return;
-    } catch {
-      // not listening yet
-    }
-    if (Date.now() > deadline) {
-      throw new Error(`Timed out waiting for ${url}\n${p.output.join("")}`);
-    }
-    await new Promise((r) => setTimeout(r, 200));
-  }
-}
+/** Served from the build output so readiness can tell this run's preview from another. */
+const WEB_TOKEN_FILE = "fo-e2e-token.txt";
 
 export type E2eStack = {
   pool: Awaited<ReturnType<typeof startTestDatabase>>["pool"];
@@ -110,6 +50,10 @@ export async function startStack(
     enableDraftSweeper?: boolean;
   } = {}
 ): Promise<E2eStack> {
+  await assertPortsFree([
+    { env: "E2E_WEB_PORT", port: E2E_WEB_PORT },
+    { env: "E2E_API_PORT", port: E2E_API_PORT }
+  ]);
   const processes: Running[] = [];
   let db: Awaited<ReturnType<typeof startTestDatabase>> | null = null;
   let webDist: string | null = null;
@@ -129,28 +73,34 @@ export async function startStack(
     delete baseEnv.NODE_ENV;
     delete baseEnv.RESEND_API_KEY;
 
-    const api = run("api", process.execPath, ["--import", "tsx", "src/index.ts"], {
-      cwd: path.join(repoRoot, "apps/api"),
-      env: {
-        ...baseEnv,
-        DATABASE_URL: db.connectionString,
-        PORT: String(E2E_API_PORT),
-        AUTH_SECRET: "e2e-auth-secret",
-        CORS_ALLOWED_ORIGINS: E2E_WEB_ORIGIN,
-        WEB_BASE_URL: E2E_WEB_ORIGIN,
-        LOG_LEVEL: "info",
-        LOG_FORMAT: "json",
-        // The sweeper ends timed-out picks; seeded screens must not move.
-        DRAFT_SWEEPER_ENABLED: opts.enableDraftSweeper ? "true" : "false"
+    const api = startProcess(
+      "api",
+      process.execPath,
+      ["--import", "tsx", "src/index.ts"],
+      {
+        cwd: path.join(repoRoot, "apps/api"),
+        env: {
+          ...baseEnv,
+          DATABASE_URL: db.connectionString,
+          PORT: String(E2E_API_PORT),
+          AUTH_SECRET: "e2e-auth-secret",
+          CORS_ALLOWED_ORIGINS: E2E_WEB_ORIGIN,
+          WEB_BASE_URL: E2E_WEB_ORIGIN,
+          LOG_LEVEL: "info",
+          LOG_FORMAT: "json",
+          // The sweeper ends timed-out picks; seeded screens must not move.
+          DRAFT_SWEEPER_ENABLED: opts.enableDraftSweeper ? "true" : "false"
+        },
+        tied: true
       }
-    });
+    );
     processes.push(api);
     api.child.stdout?.on("data", (chunk: Buffer) => appendFileSync(apiLogPath, chunk));
 
     webDist = mkdtempSync(path.join(tmpdir(), "fo-e2e-web-"));
     const webDir = path.join(repoRoot, "apps/web");
     const viteBin = path.join(webDir, "node_modules/vite/bin/vite.js");
-    const build = run(
+    const build = startProcess(
       "web build",
       process.execPath,
       [
@@ -172,8 +122,10 @@ export async function startStack(
       }
     );
     await runToCompletion(build);
+    const webToken = randomUUID();
+    writeFileSync(path.join(webDist, WEB_TOKEN_FILE), webToken);
 
-    const web = run(
+    const web = startProcess(
       "web preview",
       process.execPath,
       [
@@ -187,13 +139,15 @@ export async function startStack(
         String(E2E_WEB_PORT),
         "--strictPort"
       ],
-      { cwd: webDir, env: baseEnv }
+      { cwd: webDir, env: baseEnv, tied: true }
     );
     processes.push(web);
 
     await Promise.all([
       waitForHttp(`${E2E_API_ORIGIN}/health`, api, 60_000),
-      waitForHttp(E2E_WEB_ORIGIN, web, 60_000)
+      waitForHttp(`${E2E_WEB_ORIGIN}/${WEB_TOKEN_FILE}`, web, 60_000, {
+        accept: async (res) => (await res.text()) === webToken
+      })
     ]);
 
     return { pool: db.pool, databaseUrl: db.connectionString, apiLogPath, stop };
