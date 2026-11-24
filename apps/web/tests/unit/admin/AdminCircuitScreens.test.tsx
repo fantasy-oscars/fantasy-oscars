@@ -85,7 +85,7 @@ const DETAIL: CircuitDetail = {
       sort_index: 0,
       category_family_id: 40,
       icon_id: 1,
-      icon_code: "film",
+      icon_code: "movie",
       icon_variant: "default"
     },
     {
@@ -96,8 +96,8 @@ const DETAIL: CircuitDetail = {
       kind: "FILM",
       sort_index: 1,
       category_family_id: 41,
-      icon_id: 1,
-      icon_code: "film",
+      icon_id: 2,
+      icon_code: "theaters",
       icon_variant: "default"
     }
   ],
@@ -185,6 +185,7 @@ function renderDetail(
     templates: [
       { id: 40, code: "actor", name: "Lead Actor", default_unit_kind: "PERFORMANCE" }
     ],
+    iconCodes: ["face", "movie", "theaters"],
     working: false,
     status: null,
     activationMissing: null,
@@ -200,6 +201,7 @@ function renderDetail(
     categoryActions: {
       add: vi.fn(() => Promise.resolve(true)),
       rename: vi.fn(() => Promise.resolve(true)),
+      setIcon: vi.fn(() => Promise.resolve(true)),
       reorder: vi.fn(() => Promise.resolve(true)),
       remove: vi.fn()
     },
@@ -390,6 +392,26 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(props.categoryActions.add).toHaveBeenCalledWith(40);
   });
 
+  it("changes a category's icon, offering none another category uses", async () => {
+    const user = userEvent.setup();
+    const props = renderDetail({}, "categories");
+    await user.click(screen.getByRole("button", { name: "Change icon for Actor" }));
+    const modal = await screen.findByRole("dialog", { name: "Icon for Actor" });
+    const save = within(modal).getByRole("button", { name: "Save icon" });
+    // The current icon is chosen, so there is nothing to save yet.
+    expect(save).toBeDisabled();
+    await user.click(within(modal).getByRole("textbox", { name: /Icon/ }));
+    expect(
+      await screen.findByRole("option", {
+        name: "theaters (used by Picture)",
+        hidden: true
+      })
+    ).toHaveAttribute("data-combobox-disabled", "true");
+    await user.click(await screen.findByRole("option", { name: "face", hidden: true }));
+    await user.click(save);
+    expect(props.categoryActions.setIcon).toHaveBeenCalledWith(21, "face");
+  });
+
   it("shows the schedule read-only: scoring days left, windows right, undated apart", () => {
     renderDetail({}, "schedule");
     const panel = screen.getByRole("tabpanel");
@@ -430,7 +452,17 @@ describe("<AdminCircuitDetailScreen />", () => {
           }
         ],
         categories_without_ceremony: [{ id: 22, code: "anim", name: "Animated" }],
-        unmapped_edition_count: 1
+        unmapped_edition_count: 1,
+        categories_without_icon: [{ id: 22, code: "anim", name: "Animated" }],
+        shared_icons: [
+          {
+            icon_code: "movie",
+            categories: [
+              { id: 21, code: "actor", name: "Lead Actor" },
+              { id: 23, code: "director", name: "Director" }
+            ]
+          }
+        ]
       },
       coverage: {
         ceremonies: [
@@ -479,6 +511,16 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(
       within(coverage).getByText("Supplies no Circuit category.")
     ).toBeInTheDocument();
+    // Icon flags sit apart from what blocks readiness.
+    const icons = within(panel).getByRole("region", { name: "Category icons" });
+    expect(
+      within(icons).getByText(
+        "Animated has no icon, so its pills show the neutral trophy"
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(icons).getByText("Lead Actor, Director share the icon movie")
+    ).toBeInTheDocument();
     expect(within(panel).queryAllByRole("button")).toEqual([]);
   });
 
@@ -492,7 +534,9 @@ describe("<AdminCircuitDetailScreen />", () => {
             missing_dates: [],
             ceremonies_without_mappings: [],
             categories_without_ceremony: [],
-            unmapped_edition_count: 0
+            unmapped_edition_count: 0,
+            categories_without_icon: [],
+            shared_icons: []
           },
           coverage: { ceremonies: [] },
           occasions: [],
@@ -504,6 +548,9 @@ describe("<AdminCircuitDetailScreen />", () => {
     const panel = screen.getByRole("tabpanel");
     expect(within(panel).getByText("Not ready yet: add a ceremony.")).toBeInTheDocument();
     expect(within(panel).getAllByText("No ceremonies yet.")).toHaveLength(1);
+    expect(
+      within(panel).getByText("Every category has its own icon.")
+    ).toBeInTheDocument();
   });
 
   it("says so when the readiness report could not be loaded", () => {

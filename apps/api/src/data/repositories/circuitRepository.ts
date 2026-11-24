@@ -364,6 +364,30 @@ export async function renameCircuitCategory(
   return (res.rowCount ?? 0) > 0;
 }
 
+/** An icon's id by its code, or null when no template icon has that code. */
+export async function findIconIdByCode(
+  client: DbClient,
+  code: string
+): Promise<number | null> {
+  const { rows } = await query<{ id: number }>(
+    client,
+    `SELECT id::int FROM icon WHERE code = $1`,
+    [code]
+  );
+  return rows[0]?.id ?? null;
+}
+
+export async function setCircuitCategoryIcon(
+  client: DbClient,
+  input: { circuitId: number; categoryId: number; iconId: number }
+): Promise<void> {
+  await query(
+    client,
+    `UPDATE circuit_category SET icon_id = $3 WHERE circuit_id = $1 AND id = $2`,
+    [input.circuitId, input.categoryId, input.iconId]
+  );
+}
+
 /** Deletes a category; its mappings go with it. Returns the mappings removed, or null. */
 export async function deleteCircuitCategory(
   client: DbClient,

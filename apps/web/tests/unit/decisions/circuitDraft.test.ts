@@ -6,9 +6,9 @@ import {
   circuitPickGate,
   circuitSelectionDrafted,
   circuitTurnAnnouncement,
-  circuitBoardByCategory,
-  circuitBoardBySeat,
+  circuitBoardCategoryCards,
   circuitBoardCells,
+  circuitBoardRosters,
   circuitDraftErrorMessage,
   circuitDraftLinkLabel,
   circuitDraftLobbyFacts,
@@ -106,25 +106,91 @@ describe("circuit draft board", () => {
     const cells = circuitBoardCells(circuitDraftSnapshot({ picks: 3 }), categories);
     expect(cells[2]!.note).toBe("A supplemental pick follows the last round");
   });
+});
 
-  it("groups by seat in draft order, counting drafted picks only", () => {
-    const seats = circuitBoardBySeat(circuitDraftSnapshot({ picks: 4 }), categories, 5);
-    expect(seats.map((s) => [s.username, s.isViewer, s.countLabel])).toEqual([
-      ["avery", true, "2 of 2"],
-      ["blake", false, "1 of 2"]
+describe("circuit completed board as rosters", () => {
+  const members = [
+    { user_id: 5, avatar_key: "owl" },
+    { user_id: 6, avatar_key: null }
+  ];
+  /** blake made up missed pick 3 in the supplemental round (pick 5). */
+  function madeUpSnapshot() {
+    const base = circuitDraftSnapshot();
+    return {
+      ...base,
+      picks: base.picks.map((p) =>
+        p.pick_number === 5
+          ? { ...p, outcome: "PICKED" as const, selection_id: 34, source: "MANUAL" }
+          : p
+      ),
+      chips: [],
+      selections: [...base.selections, circuitSelection(34, "Rebecca")]
+    };
+  }
+
+  it("puts a supplemental pick in the slot it made up, like any other pick", () => {
+    const rosters = circuitBoardRosters(madeUpSnapshot(), members, 5);
+    expect(
+      rosters.map((r) => [
+        r.username,
+        r.avatarKey,
+        r.isViewer,
+        r.countLabel,
+        r.picks.map((p) => [p.roundPick, p.label])
+      ])
+    ).toEqual([
+      [
+        "avery",
+        "owl",
+        true,
+        "2 of 2",
+        [
+          ["1-1", "Sunset Boulevard (2026)"],
+          ["2-2", "Ingrid Bergman, Gaslight (2026)"]
+        ]
+      ],
+      [
+        "blake",
+        null,
+        false,
+        "2 of 2",
+        [
+          ["1-2", "All About Eve (2026)"],
+          ["2-1", "Rebecca (2026)"]
+        ]
+      ]
     ]);
-    expect(seats[1]!.onTheClock).toBe(true);
-    expect(seats[1]!.cells.map((c) => c.pickNumber)).toEqual([2, 3]);
   });
 
-  it("groups drafted picks by category in the league's order", () => {
-    const byCategory = circuitBoardByCategory(
-      circuitDraftSnapshot(),
-      [...categories].reverse()
+  it("leaves out a slot never filled", () => {
+    const blake = circuitBoardRosters(circuitDraftSnapshot(), members, 5)[1]!;
+    expect(blake.picks.map((p) => p.roundPick)).toEqual(["1-2"]);
+    expect(blake.countLabel).toBe("1 of 2");
+  });
+
+  it("groups the drafted picks by category, in the league's order", () => {
+    const cards = circuitBoardCategoryCards(
+      madeUpSnapshot(),
+      [...categories].reverse(),
+      members
     );
-    expect(byCategory.map((c) => [c.name, c.cells.map((x) => x.username)])).toEqual([
-      ["Best Picture", ["avery", "blake"]],
-      ["Best Actress", ["avery"]]
+    expect(
+      cards.map((c) => [
+        c.name,
+        c.iconCode,
+        c.picks.map((p) => [p.roundPick, p.username, p.label])
+      ])
+    ).toEqual([
+      [
+        "Best Picture",
+        "movie",
+        [
+          ["1-1", "avery", "Sunset Boulevard (2026)"],
+          ["1-2", "blake", "All About Eve (2026)"],
+          ["2-1", "blake", "Rebecca (2026)"]
+        ]
+      ],
+      ["Best Actress", "person", [["2-2", "avery", "Ingrid Bergman, Gaslight (2026)"]]]
     ]);
   });
 });

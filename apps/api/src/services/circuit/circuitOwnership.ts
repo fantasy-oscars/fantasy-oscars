@@ -3,26 +3,31 @@ import { type DbClient, runInTransaction } from "../../data/db.js";
 import {
   listCircuitLeagueCategories,
   listCircuitLeagueEvents,
+  listCircuitLeagueMembers,
   type CircuitLeagueRow
 } from "../../data/repositories/circuitLeagueRepository.js";
 import {
   closeCircuitOwnership,
   findOpenOwnershipOfSelection,
+  findSelectionOwner,
   getCategoryMaxOwned,
   getCircuitLeagueMemberByUser,
   getSelectionPlacement,
   insertCircuitOwnership,
   insertCircuitTransaction,
   listCircuitTransactions,
+  listOpenOwnershipsForLeague,
   listOpenOwnershipsForMember,
   lockCircuitLeagueMember,
   type CircuitMemberRow,
-  type CircuitTransactionRow
+  type CircuitTransactionRow,
+  type OpenOwnershipRow
 } from "../../data/repositories/circuitOwnershipRepository.js";
 import {
   listCircuitCategories,
   listCircuitCeremonies
 } from "../../data/repositories/circuitRepository.js";
+import { listScoreEntries } from "../../data/repositories/circuitScoreRepository.js";
 import { listCircuitSelectionsByIds } from "../../data/repositories/circuitSelectionRepository.js";
 import {
   getCircuitDraftCompletedAt,
@@ -37,6 +42,11 @@ import {
   assertTransactionShape,
   type CircuitTransactionKind
 } from "../../domain/circuitOwnership.js";
+import {
+  ceremonyOrderOf,
+  memberRosterPoints,
+  type SelectionPoints
+} from "../../domain/circuitPoints.js";
 import { dueWaiverWindows, type DueWaiverWindow } from "../../domain/circuitWaivers.js";
 import {
   leagueWaiverWindows,
@@ -45,7 +55,10 @@ import {
 } from "../../domain/waiverWindows.js";
 import { AppError } from "../../errors.js";
 import { requireVisibleCircuitLeague, type Viewer } from "./circuitLeagues.js";
-import { toPublicCircuitSelection } from "./circuitSelections.js";
+import {
+  toPublicCircuitSelection,
+  type PublicCircuitSelection
+} from "./circuitSelections.js";
 
 /*
  * Ownership and transactions (ADR 0005, section 7). applyOwnershipChange is
@@ -217,49 +230,104 @@ async function requireOwnMember(
   return member;
 }
 
-async function rosterOf(
-  client: DbClient,
+/** What every roster of a league shares, read once per request. */
+async function loadRosterContext(client: DbClient, league: CircuitLeagueRow, now: Date) {
+  const [categories, categorySettings, freeAgency, ceremonies, entries] =
+    await Promise.all([
+      listCircuitCategories(client, league.circuit_id),
+      listCircuitLeagueCategories(client, league.id),
+      freeAgencyAt(client, league, now),
+      listCircuitCeremonies(client, league.circuit_id),
+      listScoreEntries(client, league.id)
+    ]);
+  return {
+    categories,
+    maxOwned: new Map(categorySettings.map((c) => [c.circuit_category_id, c.max_owned])),
+    freeAgency,
+    ceremonyOrder: ceremonyOrderOf(ceremonies),
+    ceremonyNames: new Map(ceremonies.map((c) => [c.ceremony_id, c.ceremony_name])),
+    entries
+  };
+}
+
+type RosterContext = Awaited<ReturnType<typeof loadRosterContext>>;
+
+/**
+ * One member's roster. Each held entry carries the ledger points it scored
+ * for this member; `points_total` is the member's standings total and
+ * `dropped_points` the part from selections they no longer hold.
+ */
+function composeRoster(
   league: CircuitLeagueRow,
+  ctx: RosterContext,
   member: CircuitMemberRow,
-  now: Date
+  held: readonly OpenOwnershipRow[],
+  selections: ReadonlyMap<number, PublicCircuitSelection>
 ) {
-  const [held, categories, categorySettings, freeAgency] = await Promise.all([
-    listOpenOwnershipsForMember(client, league.id, member.id),
-    listCircuitCategories(client, league.circuit_id),
-    listCircuitLeagueCategories(client, league.id),
-    freeAgencyAt(client, league, now)
-  ]);
-  const selections = new Map(
-    (
-      await listCircuitSelectionsByIds(
-        client,
-        held.map((h) => h.selection_id)
-      )
-    ).map((s) => [s.id, toPublicCircuitSelection(s)])
+  const points = memberRosterPoints(
+    ctx.entries,
+    member.id,
+    held.map((h) => h.selection_id),
+    ctx.ceremonyOrder
   );
-  const maxOwned = new Map(
-    categorySettings.map((c) => [c.circuit_category_id, c.max_owned])
-  );
+  const withNames = (p: SelectionPoints) => ({
+    total: p.total,
+    by_ceremony: p.by_ceremony.map((c) => ({
+      ceremony_id: c.ceremony_id,
+      ceremony_name: ctx.ceremonyNames.get(c.ceremony_id) ?? null,
+      nomination: c.nomination,
+      win: c.win
+    }))
+  });
   return {
     member: { user_id: member.user_id, username: member.username },
     status: league.status,
     roster_size: league.roster_size,
-    free_agency: freeAgency,
-    categories: categories.map((c) => ({
+    free_agency: ctx.freeAgency,
+    categories: ctx.categories.map((c) => ({
       id: c.id,
       code: c.code,
       name: c.name,
       kind: c.kind,
-      max_owned: maxOwned.get(c.id) ?? null,
+      max_owned: ctx.maxOwned.get(c.id) ?? null,
       owned: held.filter((h) => h.category_id === c.id).length
     })),
     entries: held.map((h) => ({
       ownership_id: h.id,
       acquired_at: h.acquired_at,
       acquired_transaction_id: h.acquired_transaction_id,
-      selection: selections.get(h.selection_id)!
-    }))
+      selection: selections.get(h.selection_id)!,
+      points: withNames(points.by_selection.get(h.selection_id)!)
+    })),
+    points_total: points.points_total,
+    dropped_points: points.dropped_points
   };
+}
+
+async function publicSelections(client: DbClient, ids: readonly number[]) {
+  return new Map(
+    (await listCircuitSelectionsByIds(client, [...new Set(ids)])).map((s) => [
+      s.id,
+      toPublicCircuitSelection(s)
+    ])
+  );
+}
+
+async function rosterOf(
+  client: DbClient,
+  league: CircuitLeagueRow,
+  member: CircuitMemberRow,
+  now: Date
+) {
+  const [held, ctx] = await Promise.all([
+    listOpenOwnershipsForMember(client, league.id, member.id),
+    loadRosterContext(client, league, now)
+  ]);
+  const selections = await publicSelections(
+    client,
+    held.map((h) => h.selection_id)
+  );
+  return composeRoster(league, ctx, member, held, selections);
 }
 
 /** A member's roster; any viewer of the league may read any member's. */
@@ -281,6 +349,65 @@ export async function getCircuitRoster(
     throw new AppError("NOT_FOUND", 404, "Player not found in this season");
   }
   return rosterOf(client, circuitLeague, member, now);
+}
+
+/**
+ * Every member's roster in the shape of `getCircuitRoster`, in join order,
+ * from one read of the league's open intervals and one of its ledger.
+ */
+export async function getCircuitRosters(
+  client: DbClient,
+  circuitLeagueId: number,
+  viewer: Viewer,
+  now: Date = new Date()
+) {
+  const { circuitLeague } = await requireVisibleCircuitLeague(
+    client,
+    circuitLeagueId,
+    viewer
+  );
+  const [members, held, ctx] = await Promise.all([
+    listCircuitLeagueMembers(client, circuitLeague.id),
+    listOpenOwnershipsForLeague(client, circuitLeague.id),
+    loadRosterContext(client, circuitLeague, now)
+  ]);
+  const selections = await publicSelections(
+    client,
+    held.map((h) => h.selection_id)
+  );
+  return {
+    rosters: members.map((m) =>
+      composeRoster(
+        circuitLeague,
+        ctx,
+        m,
+        held.filter((h) => h.member_id === m.id),
+        selections
+      )
+    )
+  };
+}
+
+/**
+ * Who holds a selection in the league now, for the contender picker's
+ * preview. Refuses a selection of another Circuit.
+ */
+export async function getCircuitSelectionOwner(
+  client: DbClient,
+  circuitLeagueId: number,
+  viewer: Viewer,
+  selectionId: number
+): Promise<{ user_id: number; username: string } | null> {
+  const { circuitLeague } = await requireVisibleCircuitLeague(
+    client,
+    circuitLeagueId,
+    viewer
+  );
+  const placement = await getSelectionPlacement(client, selectionId);
+  if (!placement || placement.circuit_id !== circuitLeague.circuit_id) {
+    throw new AppError("NOT_FOUND", 404, "That contender isn't in this season");
+  }
+  return findSelectionOwner(client, circuitLeague.id, selectionId);
 }
 
 /** Drops a selection from the viewer's roster at once; allowed in a window too. */

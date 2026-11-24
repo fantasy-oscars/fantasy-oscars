@@ -7,6 +7,7 @@ import { circuitDraftLinkLabel } from "@/decisions/circuitDraft";
 import { circuitRostersVisible } from "@/decisions/circuitRoster";
 import { circuitStandingsVisible } from "@/decisions/circuitStandings";
 import { circuitWaiversVisible } from "@/decisions/circuitWaivers";
+import type { CircuitAddDropTarget } from "@/decisions/circuitAddDrop";
 import { statusTone } from "@/decisions/statusTone";
 import type { ApiResult } from "@/lib/types";
 import {
@@ -25,6 +26,8 @@ import { CircuitLeagueMembersSection } from "@/features/circuitLeagues/ui/Circui
 import { CircuitLeagueMembershipBar } from "@/features/circuitLeagues/ui/CircuitLeagueMembershipBar";
 import { FullSeasonSettingsSection } from "./FullSeasonSettingsSection";
 import "@/primitives/baseline.css";
+
+const ADD_DROP_NOTE_ID = "full-season-add-drop-note";
 
 function CircuitLeagueSkeleton() {
   return (
@@ -55,6 +58,8 @@ function CircuitLeagueSkeleton() {
 
 export function CircuitLeagueScreen(props: {
   view: CircuitLeagueView;
+  /** Where Add/drop leads; null hides it (not in season, not a member, or loading). */
+  addDrop?: CircuitAddDropTarget | null;
   acting: boolean;
   memberStatus: ApiResult | null;
   lockStatus: ApiResult | null;
@@ -94,6 +99,12 @@ export function CircuitLeagueScreen(props: {
     leagueName: league.name,
     circuitLeagueId: detail.circuit_league.id
   };
+  const addDrop = props.addDrop ?? null;
+  const addDropPath = addDrop
+    ? `${addDrop.page === "roster" ? circuitRosterPath(link) : circuitWaiversPath(link)}${
+        addDrop.hash ? `#${addDrop.hash}` : ""
+      }`
+    : null;
 
   return (
     <Box className="baseline-page">
@@ -116,53 +127,80 @@ export function CircuitLeagueScreen(props: {
                 <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
               </Group>
             </Stack>
-            <Group gap="sm" wrap="wrap">
-              <Button component={Link} to={circuitDraftPath(link)} variant="outline">
-                {circuitDraftLinkLabel(detail.circuit_league.status)}
-              </Button>
-              {circuitRostersVisible(detail.circuit_league.status) ? (
-                <>
-                  <Button component={Link} to={circuitRosterPath(link)} variant="outline">
-                    {viewer.is_member ? "Your roster" : "Rosters"}
-                  </Button>
+            <Stack gap="xs" className="full-season-actions">
+              <Group gap="sm" wrap="wrap">
+                {addDrop && addDropPath ? (
                   <Button
                     component={Link}
-                    to={circuitTransactionsPath(link)}
-                    variant="outline"
+                    to={addDropPath}
+                    variant="filled"
+                    className="full-season-addDrop"
+                    aria-describedby={addDrop.note ? ADD_DROP_NOTE_ID : undefined}
                   >
-                    Transactions
+                    Add/drop
                   </Button>
-                  {circuitWaiversVisible(detail.circuit_league.status) ? (
+                ) : null}
+                <Button component={Link} to={circuitDraftPath(link)} variant="outline">
+                  {circuitDraftLinkLabel(detail.circuit_league.status)}
+                </Button>
+                {circuitRostersVisible(detail.circuit_league.status) ? (
+                  <>
                     <Button
                       component={Link}
-                      to={circuitWaiversPath(link)}
+                      to={circuitRosterPath(link)}
                       variant="outline"
                     >
-                      Waivers
+                      {viewer.is_member ? "Your roster" : "Rosters"}
                     </Button>
-                  ) : null}
-                  {circuitStandingsVisible(detail.circuit_league.status) ? (
                     <Button
                       component={Link}
-                      to={circuitStandingsPath(link)}
+                      to={circuitTransactionsPath(link)}
                       variant="outline"
                     >
-                      Standings
+                      Transactions
                     </Button>
-                  ) : null}
-                </>
+                    {circuitWaiversVisible(detail.circuit_league.status) ? (
+                      <Button
+                        component={Link}
+                        to={circuitWaiversPath(link)}
+                        variant="outline"
+                      >
+                        Waivers
+                      </Button>
+                    ) : null}
+                    {circuitStandingsVisible(detail.circuit_league.status) ? (
+                      <Button
+                        component={Link}
+                        to={circuitStandingsPath(link)}
+                        variant="outline"
+                      >
+                        Standings
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+                <Button component={Link} to={circuitRulesPath(link)} variant="outline">
+                  Rules
+                </Button>
+                <Button
+                  component={Link}
+                  to={leaguePath({ leagueId: league.id, leagueName: league.name })}
+                  variant="outline"
+                >
+                  Back to league
+                </Button>
+              </Group>
+              {addDrop?.note ? (
+                <Text
+                  id={ADD_DROP_NOTE_ID}
+                  role="status"
+                  variant="muted"
+                  className="baseline-textBody"
+                >
+                  {addDrop.note}
+                </Text>
               ) : null}
-              <Button component={Link} to={circuitRulesPath(link)} variant="outline">
-                Rules
-              </Button>
-              <Button
-                component={Link}
-                to={leaguePath({ leagueId: league.id, leagueName: league.name })}
-                variant="outline"
-              >
-                Back to league
-              </Button>
-            </Group>
+            </Stack>
           </Group>
 
           <CircuitLeagueMembershipBar

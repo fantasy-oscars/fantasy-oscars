@@ -46,11 +46,14 @@ export const contenderFilmParam = z.object({
 /**
  * A selection upsert: a Circuit category and a TMDB film, plus a TMDB person
  * for acting categories. Whether a person is needed depends on the category.
+ * With `circuit_league_id`, the response also says who holds the selection
+ * in that league.
  */
 export const contenderSelectionBody = z.object({
   circuit_category_id: positiveIdValue("Choose a category"),
   film_tmdb_id: positiveIdValue("Choose a film"),
   person_tmdb_id: positiveIdValue("Choose a person")
     .nullish()
-    .transform((v) => v ?? null)
+    .transform((v) => v ?? null),
+  circuit_league_id: positiveIdValue("Choose a season").optional()
 });

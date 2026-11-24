@@ -6,15 +6,23 @@ import {
   circuitClaimDropError,
   circuitClaimChipOptions,
   circuitClaimErrorMessage,
+  circuitClaimMenu,
   circuitClaimOutcomeLabel,
+  circuitClaimRows,
   circuitClaimsNote,
   circuitPendingClaims,
   circuitPriorityEntries,
+  circuitWaiverResultRows,
   circuitWaiversVisible,
   circuitWindowLabel
 } from "@/decisions/circuitWaivers";
 import type { CircuitClaims } from "@/lib/types";
-import { circuitRoster, circuitSelection, OPEN_WINDOW } from "../circuitLeagues/fixtures";
+import {
+  circuitLeagueDetail,
+  circuitRoster,
+  circuitSelection,
+  OPEN_WINDOW
+} from "../circuitLeagues/fixtures";
 
 const nightTrain = circuitSelection(1, "Night Train");
 const paperMoon = circuitSelection(2, "Paper Moon", "Ada Lane");
@@ -183,5 +191,119 @@ describe("circuit claims and priority", () => {
     expect(entries.map((e) => e.username)).toEqual(["blake", "avery"]);
     expect(entries[0]!.chips.map((c) => c.original_pick_number)).toEqual([3, 5]);
     expect(entries[1]!.chips).toEqual([]);
+    expect(entries.map((e) => e.avatarKey)).toEqual([null, null]);
+  });
+
+  it("takes each member's avatar from the league's members", () => {
+    const entries = circuitPriorityEntries(
+      {
+        window: null,
+        priority: [
+          { user_id: 5, username: "avery", waiver_priority: 1 },
+          { user_id: 6, username: "blake", waiver_priority: 2 }
+        ],
+        chips: []
+      },
+      [{ user_id: 5, avatar_key: "owl" }]
+    );
+    expect(entries.map((e) => e.avatarKey)).toEqual(["owl", null]);
+  });
+});
+
+describe("circuit claim and result rows", () => {
+  const categories = circuitLeagueDetail({ status: "IN_SEASON" }).categories;
+
+  it("draws a claim as its pill, the drop pill and the chip", () => {
+    const [withDrop, bare] = circuitClaimRows(
+      [
+        {
+          id: 8,
+          rank: 1,
+          status: "PENDING",
+          failure_reason: null,
+          selection: paperMoon,
+          drop: nightTrain,
+          chip: { id: 31, original_pick_number: 7 },
+          created_at: "",
+          updated_at: ""
+        },
+        {
+          id: 9,
+          rank: 2,
+          status: "PENDING",
+          failure_reason: null,
+          selection: harbor,
+          drop: null,
+          chip: null,
+          created_at: "",
+          updated_at: ""
+        }
+      ],
+      categories
+    );
+    expect(withDrop!.label).toBe("Ada Lane, Paper Moon (2026)");
+    expect(withDrop!.pill).toMatchObject({
+      categoryName: "Best Actress",
+      iconCode: "person",
+      tooltip: { unitKind: "PERFORMANCE", performerName: "Ada Lane" }
+    });
+    expect(withDrop!.drop).toMatchObject({
+      label: "Night Train (2026)",
+      iconCode: "movie"
+    });
+    expect(withDrop!.chipLabel).toBe("Pick 7 chip");
+    expect(bare!.drop).toBeNull();
+    expect(bare!.chipLabel).toBeNull();
+  });
+
+  it("offers the phone menu's moves only where the claim can move", () => {
+    expect(circuitClaimMenu({ idx: 0, count: 2, disabled: false })).toEqual([
+      { key: "up", label: "Move up", disabled: true },
+      { key: "down", label: "Move down", disabled: false },
+      { key: "edit", label: "Edit claim", disabled: false },
+      { key: "withdraw", label: "Withdraw", disabled: false }
+    ]);
+    expect(
+      circuitClaimMenu({ idx: 1, count: 2, disabled: true }).every((i) => i.disabled)
+    ).toBe(true);
+  });
+
+  it("puts the chip in a result's outcome and marks the winner", () => {
+    const rows = circuitWaiverResultRows(
+      {
+        claims: [
+          {
+            id: 1,
+            order: 1,
+            member: { user_id: 5, username: "avery" },
+            status: "WON",
+            failure_reason: null,
+            selection: harbor,
+            drop: nightTrain,
+            chip: { original_pick_number: 7 }
+          },
+          {
+            id: 2,
+            order: 2,
+            member: { user_id: 6, username: "blake" },
+            status: "LOST",
+            failure_reason: "SELECTION_OWNED",
+            selection: harbor,
+            drop: null,
+            chip: null
+          }
+        ]
+      },
+      categories,
+      [{ user_id: 5, avatar_key: "owl" }]
+    );
+    expect(rows.map((r) => [r.order, r.username, r.avatarKey, r.outcome, r.won])).toEqual(
+      [
+        [1, "avery", "owl", "Won · Pick 7 chip", true],
+        [2, "blake", null, "Lost: Someone ahead of them got it", false]
+      ]
+    );
+    expect(rows[0]!.drop?.label).toBe("Night Train (2026)");
+    expect(rows[1]!.drop).toBeNull();
   });
 });

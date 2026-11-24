@@ -1,13 +1,18 @@
 import { Box, Stack, Text, Title } from "@ui";
 import { EmptyState } from "@/primitives";
-import { coverageRows, readinessTodos } from "@/decisions/admin/circuitReadiness";
+import {
+  coverageRows,
+  readinessIconFlags,
+  readinessTodos
+} from "@/decisions/admin/circuitReadiness";
 import type { CircuitReadiness } from "@/orchestration/adminCircuit";
 
 /**
  * Read-only. First what still blocks the Circuit (dates, mappings), then for
  * each ceremony the Circuit categories it supplies and its categories that
  * map to nothing. Mappings are edited on the Ceremonies tab and dates on each
- * ceremony's admin page.
+ * ceremony's admin page. Category icon flags follow; they never block, and
+ * icons are changed on the Categories tab.
  */
 export function CircuitReadinessTab(props: { readiness: CircuitReadiness | null }) {
   const { readiness } = props;
@@ -16,6 +21,7 @@ export function CircuitReadinessTab(props: { readiness: CircuitReadiness | null 
   }
   const todos = readinessTodos(readiness);
   const rows = coverageRows(readiness);
+  const iconFlags = readinessIconFlags(readiness);
 
   return (
     <Stack gap="md">
@@ -40,6 +46,29 @@ export function CircuitReadinessTab(props: { readiness: CircuitReadiness | null 
           </Stack>
         </Box>
       )}
+
+      <Box component="section" aria-labelledby="circuit-icons-title">
+        <Title order={4} variant="section" id="circuit-icons-title">
+          Category icons
+        </Title>
+        {iconFlags.length === 0 ? (
+          <Text className="muted">Every category has its own icon.</Text>
+        ) : (
+          <Stack gap="var(--fo-space-4)" mt="sm">
+            <Text className="muted">
+              Season pills show a category only by its icon. Change icons on the
+              Categories tab.
+            </Text>
+            <Stack component="ul" gap="var(--fo-space-2)" className="fo-listReset">
+              {iconFlags.map((f) => (
+                <Text key={f.key} component="li">
+                  {f.text}
+                </Text>
+              ))}
+            </Stack>
+          </Stack>
+        )}
+      </Box>
 
       <Box component="section" aria-labelledby="circuit-coverage-title">
         <Title order={4} variant="section" id="circuit-coverage-title">

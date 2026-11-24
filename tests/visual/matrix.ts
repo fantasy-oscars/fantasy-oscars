@@ -114,6 +114,44 @@ export function countdownSnapshot(draft: Record<string, unknown>) {
  * league: picks 1 to 3 stand (pick 2 missed), and casey (seat 1) is on the
  * clock for pick 4 with 42 s left.
  */
+/** Reports the viewer's claims as locked: the window is being processed. */
+function lockCircuitClaims(page: Page): Promise<void> {
+  return page.route("**/circuit-leagues/*/claims", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.json()) as Record<string, unknown>;
+    await route.fulfill({ response, json: { ...body, locked: true } });
+  });
+}
+
+/**
+ * Gives the first pick of the viewer's roster points at two ceremonies (a
+ * nomination at one, a win at the other), with the roster total to match,
+ * so its nominee card shows the breakdown.
+ */
+function scoreFirstRosterPick(page: Page): Promise<void> {
+  return page.route("**/circuit-leagues/*/roster", async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.json()) as {
+      entries: Array<{ points: { total: number; by_ceremony: unknown[] } }>;
+      points_total: number;
+    };
+    const first = body.entries[0];
+    if (first) {
+      first.points = {
+        total: 3,
+        by_ceremony: [
+          { ceremony_id: 1, ceremony_name: "Guild Awards", nomination: 1, win: 0 },
+          { ceremony_id: 2, ceremony_name: "Critics Prize", nomination: 0, win: 2 }
+        ]
+      };
+      body.points_total += 3;
+    }
+    await route.fulfill({ response, json: body });
+  });
+}
+
 function rewriteCircuitDraftLive(page: Page): Promise<void> {
   return page.route("**/circuit-leagues/*/draft", async (route) => {
     if (route.request().method() !== "GET") return route.fallback();
@@ -339,6 +377,25 @@ export const SCREENS: ScreenDef[] = [
     }
   },
   {
+    // In season, free agency open: Add/drop leads the header group.
+    id: "full-season-in-season",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}`,
+    ready: { text: "Add/drop" },
+    fullPage: true
+  },
+  {
+    // The window's claims are being processed: the caption under the header group.
+    id: "full-season-processing",
+    persona: "blake",
+    path: (s) =>
+      `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}`,
+    beforeNavigate: (page) => lockCircuitClaims(page),
+    ready: { text: "Claims are being processed." },
+    fullPage: true
+  },
+  {
     // A full roster (3 of 3) with free agency open: drops, the drop select and the picker.
     id: "circuit-roster-own",
     persona: "casey",
@@ -354,6 +411,36 @@ export const SCREENS: ScreenDef[] = [
       `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/roster`,
     ready: { text: "Free agency is closed while waiver claims are open" },
     fullPage: true
+  },
+  {
+    // Another player's roster: pills with points, no actions and no free agency panel.
+    id: "circuit-roster-other",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/roster`,
+    ready: { text: "Add a free agent" },
+    prepare: async (page) => {
+      await page.getByRole("textbox", { name: "Player" }).click();
+      await page.getByRole("option").filter({ hasNotText: "(you)" }).first().click();
+      await expect(page.getByRole("heading", { name: /'s roster$/ })).toBeVisible();
+      await waitForAnimationsIdle(page);
+    },
+    fullPage: true
+  },
+  {
+    // A pick's nominee card with its points: two ceremony lines and a total.
+    id: "circuit-roster-tooltip",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/roster`,
+    beforeNavigate: (page) => scoreFirstRosterPick(page),
+    ready: { text: "Add a free agent" },
+    viewports: ["desktop"],
+    prepare: async (page) => {
+      await page.locator(".circuit-rosterRow .dr-pill").first().focus();
+      await expect(page.getByText("Points for casey")).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
   },
   {
     // Before the draft: the room with the contender form, facts, players and
@@ -372,6 +459,19 @@ export const SCREENS: ScreenDef[] = [
     path: (s) =>
       `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
     ready: { text: "The draft is complete" },
+    fullPage: true
+  },
+  {
+    // The finished board by category: category cards of ledger rows.
+    id: "circuit-draft-board-category",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "The draft is complete" },
+    prepare: async (page) => {
+      await page.getByText("By category", { exact: true }).click();
+      await expect(page.getByRole("region", { name: "Best Picture" })).toBeVisible();
+    },
     fullPage: true
   },
   {
@@ -401,6 +501,46 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // casey on the clock with a queued contender armed: the inverted pill and the confirm toast.
+    id: "circuit-draft-armed",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "You're on the clock." },
+    viewports: ["desktop"],
+    beforeNavigate: (page) => rewriteCircuitDraftLive(page),
+    prepare: async (page) => {
+      await page
+        .getByRole("list", { name: "Your queue" })
+        .locator('.dr-pill-btn:not([aria-disabled="true"])')
+        .first()
+        .click();
+      await expect(page.getByText("Confirm draft pick")).toBeVisible();
+      await waitForAnimationsIdle(page);
+    },
+    fullPage: true
+  },
+  {
+    // The same draft on a phone: a staging pill's nominee card with Draft, Move and Remove.
+    id: "circuit-draft-card",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/draft`,
+    ready: { text: "You're on the clock." },
+    viewports: ["mobile"],
+    beforeNavigate: (page) => rewriteCircuitDraftLive(page),
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Staging" }).click();
+      await page
+        .getByRole("list", { name: "Your queue" })
+        .locator(".dr-pill-btn:not(.is-muted)")
+        .first()
+        .click();
+      await expect(page.getByRole("dialog", { name: "Nominee details" })).toBeVisible();
+      await waitForAnimationsIdle(page);
+    }
+  },
+  {
     id: "circuit-transactions",
     persona: "casey",
     path: (s) =>
@@ -409,7 +549,7 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    // No window open: the note, rolling priority and no results yet.
+    // No window open: the note, rolling priority and one processed window's results.
     id: "circuit-waivers",
     persona: "casey",
     path: (s) =>
@@ -424,6 +564,52 @@ export const SCREENS: ScreenDef[] = [
     path: (s) =>
       `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/waivers`,
     ready: { text: "Claim a contender" },
+    fullPage: true
+  },
+  {
+    // The window's claims are being processed: the locked note and read-only claim pills.
+    id: "circuit-waivers-processing",
+    persona: "blake",
+    path: (s) =>
+      `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/waivers`,
+    beforeNavigate: (page) => lockCircuitClaims(page),
+    ready: { text: "being processed" },
+    fullPage: true
+  },
+  {
+    // A finished season's Guild Awards points by player: jo's dropped pick dashed.
+    id: "circuit-points-player",
+    persona: "drew",
+    path: (s) =>
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings/${s.ceremonies.completed}`,
+    ready: { selector: '[aria-label="Points by player"] .dr-pill.is-dropped' },
+    fullPage: true
+  },
+  {
+    // The same points by category: Nominations and Wins columns, gold pills in Wins.
+    id: "circuit-points-category",
+    persona: "drew",
+    path: (s) =>
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings/${s.ceremonies.completed}?view=category`,
+    ready: { selector: '[aria-label="Points by category"] .dr-pill' },
+    fullPage: true
+  },
+  {
+    // A complete season: Final results with every scoring contender and its players.
+    id: "circuit-standings-final",
+    persona: "drew",
+    path: (s) =>
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings`,
+    ready: { selector: '[aria-label="All scoring contenders"] .dr-pill' },
+    fullPage: true
+  },
+  {
+    // Final rosters: jo's card carries the points from the pick dropped mid-season.
+    id: "circuit-standings-final-rosters",
+    persona: "drew",
+    path: (s) =>
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings?results=rosters`,
+    ready: { text: "from picks dropped during the season" },
     fullPage: true
   },
   {

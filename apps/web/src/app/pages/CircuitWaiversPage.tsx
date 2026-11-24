@@ -34,6 +34,7 @@ export function CircuitWaiversPage() {
     <WaiversWithPicker
       key={circuitId}
       circuitId={circuitId}
+      circuitLeagueId={Number(circuitLeagueId)}
       o={o}
       viewerUserId={viewerUserId}
       phone={phone}
@@ -47,10 +48,13 @@ type ScreenInput = {
   phone: boolean;
 };
 
-function WaiversWithPicker(props: ScreenInput & { circuitId: number }) {
+function WaiversWithPicker(
+  props: ScreenInput & { circuitId: number; circuitLeagueId: number }
+) {
   const { o } = props;
   const picker = useContenderPickerOrchestration({
     circuitId: props.circuitId,
+    circuitLeagueId: props.circuitLeagueId,
     onPicked: (selection) => {
       // The claim's options are set in the modal; the picker starts over either way.
       o.startClaim(selection);

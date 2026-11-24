@@ -2,9 +2,9 @@ import { Box, Group, Text, Tooltip } from "@ui";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
-import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import { FO_TOOLTIP_OFFSET_LG_PX } from "@/tokens/overlays";
-import { NOMINEE_CARD_TOOLTIP_STYLES } from "@/features/draft/ui/nomineeTooltip";
+import { NOMINEE_CARD_TOOLTIP_STYLES } from "@/shared/nominee/nomineeTooltip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSortableInlineStyle } from "@/shared/dnd/useSortableInlineStyle";
 

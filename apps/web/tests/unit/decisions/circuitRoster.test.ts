@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CIRCUIT_NO_DROP_LABEL,
+  circuitDropPlaceholder,
   circuitAddBlockedReason,
   circuitAddNeedsDrop,
   circuitCategoryCountLabel,
-  circuitCategoryNames,
   circuitDayLabel,
   circuitDropOptions,
   circuitFreeAgencyNote,
@@ -12,7 +13,6 @@ import {
   circuitRosterErrorMessage,
   circuitRostersVisible,
   circuitRosterWritable,
-  circuitSelectionCategoryLabel,
   circuitSelectionLabel,
   circuitTransactionKindLabel
 } from "@/decisions/circuitRoster";
@@ -25,22 +25,6 @@ describe("circuit roster labels", () => {
     );
     expect(circuitSelectionLabel(circuitSelection(2, "Paper Moon", "Ada Lane"))).toBe(
       "Ada Lane, Paper Moon (2026)"
-    );
-  });
-
-  it("names the category after a contender, so one film in two categories differs", () => {
-    const names = circuitCategoryNames([
-      { id: 20, name: "Best Picture" },
-      { id: 21, name: "Best Actress" }
-    ]);
-    expect(circuitSelectionCategoryLabel(circuitSelection(1, "Static"), names)).toBe(
-      "Static (2026) in Best Picture"
-    );
-    expect(
-      circuitSelectionCategoryLabel(circuitSelection(2, "Static", "Ada Lane"), names)
-    ).toBe("Ada Lane, Static (2026) in Best Actress");
-    expect(circuitSelectionCategoryLabel(circuitSelection(1, "Static"), new Map())).toBe(
-      "Static (2026)"
     );
   });
 
@@ -146,5 +130,23 @@ describe("free agency", () => {
       "Server said no"
     );
     expect(circuitRosterErrorMessage({}, "Could not add")).toBe("Could not add");
+  });
+});
+
+describe("circuit free agency drop placeholder", () => {
+  it("asks for a drop when the roster is full", () => {
+    expect(circuitDropPlaceholder(circuitRoster({ rosterSize: 2 }), null)).toBe(
+      "Select a pick to drop"
+    );
+  });
+
+  it("asks for a drop when the chosen category is at its limit", () => {
+    const roster = circuitRoster({ maxActing: 1 });
+    expect(circuitDropPlaceholder(roster, 21)).toBe("Select a pick to drop");
+    expect(circuitDropPlaceholder(roster, 20)).toBe(CIRCUIT_NO_DROP_LABEL);
+  });
+
+  it("offers no drop while there is room", () => {
+    expect(circuitDropPlaceholder(circuitRoster(), null)).toBe("Don't drop anyone");
   });
 });

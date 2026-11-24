@@ -2,13 +2,17 @@ import type {
   CircuitDraftSnapshot,
   CircuitLeagueCategory,
   CircuitLeagueMember,
-  CircuitQueue
+  CircuitQueue,
+  CircuitSelectionSummary
 } from "../lib/types";
 import { circuitSelectionLabel } from "./circuitRoster";
+import { contenderFilmLabel } from "./contenders";
+import type { ContenderPillState } from "./contenderPill";
 import {
   circuitBoardCells,
   circuitPickIsSupplemental,
   type CircuitDraftClockView,
+  type CircuitPickGate,
   type CircuitQueueRow
 } from "./circuitDraft";
 import { computeRoundPickLabel, computeSeatNumberForPickNumber } from "./draft";
@@ -146,6 +150,10 @@ export type CircuitHistoryRow = {
   auto: boolean;
   /** The slot on the clock. */
   active: boolean;
+  /** The drafted contender, for its pill and nominee card; null for a missed or open slot. */
+  selection: CircuitSelectionSummary | null;
+  /** The nominee card's drafted chip: "1-3", or "1-3 · from queue" for an auto-pick. */
+  draftedRoundPick: string;
 };
 
 /**
@@ -164,6 +172,7 @@ export function circuitHistoryRows(
     circuitBoardCells(snapshot, categories).map((c) => [c.pickNumber, c])
   );
   const seatOf = new Map(snapshot.picks.map((p) => [p.pick_number, p.seat_number]));
+  const selectionOf = circuitPickSelections(snapshot);
   const clock = snapshot.on_the_clock;
   const regular = seatCount * rounds;
   const last = Math.max(
@@ -181,11 +190,12 @@ export function circuitHistoryRows(
       seatOf.get(pickNumber) ??
       (onClock ? (clock?.seat_number ?? null) : null) ??
       (supplemental ? null : computeSeatNumberForPickNumber({ pickNumber, seatCount }));
+    const roundPick = supplemental
+      ? `S-${pickNumber - regular}`
+      : computeRoundPickLabel({ pickNumber, seatCount });
     rows.push({
       pickNumber,
-      roundPick: supplemental
-        ? `S-${pickNumber - regular}`
-        : computeRoundPickLabel({ pickNumber, seatCount }),
+      roundPick,
       seatNumber,
       username: seatNumber === null ? "—" : (usernames.get(seatNumber) ?? "Player"),
       label: cell ? cell.label : "—",
@@ -193,13 +203,35 @@ export function circuitHistoryRows(
       missed: cell?.missed ?? false,
       picked: Boolean(cell && !cell.missed),
       auto: cell?.auto ?? false,
-      active: onClock
+      active: onClock,
+      selection: cell && !cell.missed ? (selectionOf.get(pickNumber) ?? null) : null,
+      draftedRoundPick: cell?.auto ? `${roundPick} · from queue` : roundPick
     });
   }
   return rows;
 }
 
-/** The viewer's resolved picks, in pick order, as the roster rail lists them. */
+/** The drafted selection of each picked slot, by pick number. */
+function circuitPickSelections(
+  snapshot: Pick<CircuitDraftSnapshot, "picks" | "selections">
+): Map<number, CircuitSelectionSummary> {
+  const selections = new Map(snapshot.selections.map((s) => [s.id, s]));
+  const out = new Map<number, CircuitSelectionSummary>();
+  for (const pick of snapshot.picks) {
+    const selection =
+      pick.outcome === "PICKED" && pick.selection_id !== null
+        ? selections.get(pick.selection_id)
+        : undefined;
+    if (selection) out.set(pick.pick_number, selection);
+  }
+  return out;
+}
+
+/**
+ * The viewer's resolved picks, in pick order, as the roster rail lists them.
+ * A supplemental pick shows the round-pick of the slot it made up ("1-2"),
+ * not its "S-n": on a roster a pick is a pick.
+ */
 export function circuitMyRosterRows(
   snapshot: CircuitDraftSnapshot,
   categories: readonly Pick<CircuitLeagueCategory, "id" | "name">[],
@@ -207,9 +239,223 @@ export function circuitMyRosterRows(
 ): CircuitHistoryRow[] {
   const seat = snapshot.seats.find((s) => s.user_id === viewerUserId);
   if (!seat) return [];
-  return circuitHistoryRows(snapshot, categories).filter(
-    (r) => r.seatNumber === seat.seat_number && r.picked
+  const seatCount = snapshot.seats.length;
+  const original = new Map(
+    snapshot.picks.map((p) => [p.pick_number, p.original_pick_number])
   );
+  return circuitHistoryRows(snapshot, categories)
+    .filter((r) => r.seatNumber === seat.seat_number && r.picked)
+    .map((r) => ({
+      ...r,
+      roundPick: computeRoundPickLabel({
+        pickNumber: original.get(r.pickNumber) ?? r.pickNumber,
+        seatCount
+      })
+    }));
+}
+
+/** Who drafted a contender, for the nominee card's drafted chip. */
+export type CircuitDraftedBy = {
+  userId: number;
+  username: string;
+  avatarKey: string | null;
+  /** "1-3", or "S-1" for a supplemental pick; "· from queue" for an auto-pick. */
+  roundPick: string;
+};
+
+/** Every drafted contender of the snapshot, by selection id. */
+export function circuitDraftedBy(
+  snapshot: CircuitDraftSnapshot,
+  categories: readonly Pick<CircuitLeagueCategory, "id" | "name">[],
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[]
+): Map<number, CircuitDraftedBy> {
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
+  const userOf = new Map(snapshot.seats.map((s) => [s.seat_number, s.user_id]));
+  const out = new Map<number, CircuitDraftedBy>();
+  for (const row of circuitHistoryRows(snapshot, categories)) {
+    if (!row.selection || row.seatNumber === null) continue;
+    const userId = userOf.get(row.seatNumber);
+    if (userId === undefined) continue;
+    out.set(row.selection.id, {
+      userId,
+      username: row.username,
+      avatarKey: avatars.get(userId) ?? null,
+      roundPick: row.draftedRoundPick
+    });
+  }
+  return out;
+}
+
+/** A staging pill's look and whether its gestures act (`aria-disabled` when not). */
+export type CircuitStagingPill = { state: ContenderPillState; disabled: boolean };
+
+/**
+ * A staging pill's state: drafted contenders are muted, the one being
+ * drafted is pending (and every other pill waits for it), and only the
+ * viewer on the clock can arm one. Arming shows the inverted pill.
+ */
+export function circuitStagingPill(input: {
+  selectionId: number;
+  drafted: boolean;
+  canDraft: boolean;
+  armedId: number | null;
+  pendingId: number | null;
+}): CircuitStagingPill {
+  if (input.drafted) return { state: "muted", disabled: true };
+  if (input.pendingId === input.selectionId) return { state: "pending", disabled: true };
+  if (input.pendingId !== null || !input.canDraft) {
+    return { state: "default", disabled: true };
+  }
+  return {
+    state: input.armedId === input.selectionId ? "armed" : "default",
+    disabled: false
+  };
+}
+
+export type CircuitStagingMenuKey =
+  "draft" | "up" | "down" | "stage" | "removeQueued" | "queue" | "removeStaged";
+
+export type CircuitStagingMenuItem = {
+  key: CircuitStagingMenuKey;
+  label: string;
+  disabled: boolean;
+};
+
+/**
+ * A staging row's menu: Draft first while the viewer can draft it (the
+ * discoverable path beside the double-click), then the list's own moves. A
+ * drafted contender can only come off the list.
+ */
+export function circuitStagingMenu(input: {
+  list: "queue" | "staged";
+  drafted: boolean;
+  canDraft: boolean;
+  /** A queue or staging write is under way. */
+  busy: boolean;
+  removing: boolean;
+  /** The row's place in the queue. */
+  index: number;
+  count: number;
+}): CircuitStagingMenuItem[] {
+  const { busy } = input;
+  const remove: CircuitStagingMenuItem =
+    input.list === "queue"
+      ? {
+          key: "removeQueued",
+          label: "Remove from queue",
+          disabled: busy || input.removing
+        }
+      : {
+          key: "removeStaged",
+          label: "Remove from staged",
+          disabled: busy || input.removing
+        };
+  if (input.drafted) return [remove];
+  const draft: CircuitStagingMenuItem[] = input.canDraft
+    ? [{ key: "draft", label: "Draft", disabled: false }]
+    : [];
+  if (input.list === "staged") {
+    return [...draft, { key: "queue", label: "Add to queue", disabled: busy }, remove];
+  }
+  return [
+    ...draft,
+    { key: "up", label: "Move up", disabled: busy || input.index === 0 },
+    {
+      key: "down",
+      label: "Move down",
+      disabled: busy || input.index === input.count - 1
+    },
+    { key: "stage", label: "Move to staged", disabled: busy },
+    remove
+  ];
+}
+
+/** The polite note when an armed contender is drafted before the viewer confirms it. */
+export function circuitSelectionClearedNote(label: string): string {
+  return `Selection cleared: ${label} is no longer available`;
+}
+
+/** The form's preview pill for the contender being built. */
+export type CircuitDraftPreview = {
+  label: string;
+  categoryName: string;
+  iconCode: string | null;
+  iconVariant: string;
+  /** Muted with a caption when someone has drafted it already. */
+  owned: boolean;
+  /** "Owned by pia" or "Already on your roster"; null for a free contender. */
+  caption: string | null;
+  /** The same words for the pill's accessible name: "owned by pia". */
+  stateSuffix: string | null;
+};
+
+/**
+ * The contender the form has built (category, film and, for acting, the
+ * person) as a pill. In the draft room a contender is owned once drafted,
+ * so the snapshot says who holds it without asking the server.
+ */
+export function circuitDraftPreview(input: {
+  category: { id: number; name: string; kind: string } | null;
+  film: { tmdb_id: number; title: string; release_year: number | null } | null;
+  person: { tmdb_id: number; name: string } | null;
+  categories: readonly Pick<
+    CircuitLeagueCategory,
+    "id" | "name" | "icon_code" | "icon_variant"
+  >[];
+  snapshot: Pick<CircuitDraftSnapshot, "picks" | "seats" | "selections"> | null;
+  viewerUserId: number | null;
+}): CircuitDraftPreview | null {
+  const { category, film } = input;
+  if (!category || !film) return null;
+  const person = category.kind === "ACTING" ? input.person : null;
+  if (category.kind === "ACTING" && !person) return null;
+  const leagueCategory = input.categories.find((c) => c.id === category.id) ?? null;
+  const filmLabel = contenderFilmLabel(film);
+  const selection = input.snapshot?.selections.find(
+    (s) =>
+      s.circuit_category_id === category.id &&
+      s.film_tmdb_id === film.tmdb_id &&
+      (s.person_tmdb_id ?? null) === (person?.tmdb_id ?? null)
+  );
+  const pick = selection
+    ? input.snapshot?.picks.find(
+        (p) => p.outcome === "PICKED" && p.selection_id === selection.id
+      )
+    : undefined;
+  const seat = pick
+    ? input.snapshot?.seats.find((s) => s.seat_number === pick.seat_number)
+    : undefined;
+  const caption = seat
+    ? seat.user_id === input.viewerUserId
+      ? "Already on your roster"
+      : `Owned by ${seat.username}`
+    : null;
+  return {
+    label: person ? `${person.name}, ${filmLabel}` : filmLabel,
+    categoryName: leagueCategory?.name ?? category.name,
+    iconCode: leagueCategory?.icon_code ?? null,
+    iconVariant: leagueCategory?.icon_variant ?? "default",
+    owned: Boolean(seat),
+    caption,
+    stateSuffix: caption ? caption.charAt(0).toLowerCase() + caption.slice(1) : null
+  };
+}
+
+/**
+ * The staging lists' note: how to draft from them while the viewer is on the
+ * clock (double-click or select and confirm; on a phone, tap then Draft),
+ * otherwise why they cannot yet.
+ */
+export function circuitStagingNote(input: {
+  gate: Pick<CircuitPickGate, "canPick" | "reason">;
+  phone: boolean;
+}): string {
+  if (!input.gate.canPick) {
+    return `${input.gate.reason} You can draft from here when you're on the clock.`;
+  }
+  return input.phone
+    ? "You're on the clock. Tap a contender, then Draft."
+    : "You're on the clock. Double-click a contender to draft it, or select it and confirm.";
 }
 
 /** The viewer's staged contenders, oldest first, marked when drafted. */

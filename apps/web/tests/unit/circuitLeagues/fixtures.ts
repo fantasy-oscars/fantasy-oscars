@@ -85,7 +85,9 @@ export function circuitLeagueDetail(
         kind: "FILM",
         sort_index: 0,
         weight: 1,
-        max_owned: null
+        max_owned: null,
+        icon_code: "movie",
+        icon_variant: "default"
       },
       {
         id: 21,
@@ -94,7 +96,9 @@ export function circuitLeagueDetail(
         kind: "ACTING",
         sort_index: 1,
         weight: 1,
-        max_owned: null
+        max_owned: null,
+        icon_code: "person",
+        icon_variant: "default"
       }
     ],
     members: [
@@ -172,8 +176,11 @@ export function circuitRoster(
       ownership_id: 50 + i,
       acquired_at: "2026-12-01T08:00:00Z",
       acquired_transaction_id: 70 + i,
-      selection
-    }))
+      selection,
+      points: { total: 0, by_ceremony: [] }
+    })),
+    points_total: 0,
+    dropped_points: 0
   };
 }
 

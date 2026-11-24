@@ -3,16 +3,16 @@ import { useMemo } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { pickDeterministicAvatarKey } from "@/decisions/avatars";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import { RosterTrack } from "@/features/draft/ui/RosterTrack";
 import { useRosterRotation } from "@/orchestration/draft/useRosterRotation";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
-} from "@/features/draft/ui/nomineeTooltip";
+} from "@/shared/nominee/nomineeTooltip";
 
 export function RosterBoardScaffold(props: {
   o: DraftRoomOrchestration;

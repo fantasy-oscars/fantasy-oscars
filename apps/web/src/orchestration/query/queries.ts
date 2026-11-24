@@ -9,6 +9,8 @@ import type {
   CircuitLeagueSummary,
   CircuitQueue,
   CircuitRoster,
+  CircuitRosters,
+  CircuitScoringContenders,
   CircuitStandings,
   CircuitSummary,
   CircuitTransaction,
@@ -242,6 +244,39 @@ export function circuitCeremonyBreakdownQuery(
       );
       if (!data) throw new ApiQueryError("Unable to load the ceremony's points");
       return data;
+    }
+  });
+}
+
+/** Every contender that scored in the season (Final results); under the standings key. */
+export function circuitScoringContendersQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.scoringContenders(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitScoringContenders>(
+          `/circuit-leagues/${circuitLeagueId}/standings/contenders`,
+          { method: "GET" }
+        ),
+        "Unable to load the results"
+      );
+      return data?.contenders ?? [];
+    }
+  });
+}
+
+/** Every member's roster with its points (Final rosters); under the standings key. */
+export function circuitFinalRostersQuery(circuitLeagueId: number) {
+  return queryOptions({
+    queryKey: queryKeys.circuitLeagues.finalRosters(circuitLeagueId),
+    queryFn: async () => {
+      const data = unwrap(
+        await fetchJson<CircuitRosters>(`/circuit-leagues/${circuitLeagueId}/rosters`, {
+          method: "GET"
+        }),
+        "Unable to load the results"
+      );
+      return data?.rosters ?? [];
     }
   });
 }

@@ -101,15 +101,26 @@ function defaultRoute(path: string, init?: RequestInit): Reply | undefined {
   return undefined;
 }
 
-function Harness(props: { onPicked?: (s: unknown) => void }) {
-  const o = useContenderPickerOrchestration({ circuitId: 3, onPicked: props.onPicked });
-  return <ContenderPicker {...o} />;
+function Harness(props: { onPicked?: (s: unknown) => void; circuitLeagueId?: number }) {
+  const o = useContenderPickerOrchestration({
+    circuitId: 3,
+    circuitLeagueId: props.circuitLeagueId,
+    onPicked: props.onPicked
+  });
+  return (
+    <>
+      <ContenderPicker {...o} />
+      <span data-testid="owner">
+        {o.owner === undefined ? "unknown" : (o.owner?.username ?? "free")}
+      </span>
+    </>
+  );
 }
 
-function renderPicker(onPicked?: (s: unknown) => void) {
+function renderPicker(onPicked?: (s: unknown) => void, circuitLeagueId?: number) {
   return render(
     <MantineProvider>
-      <Harness onPicked={onPicked} />
+      <Harness onPicked={onPicked} circuitLeagueId={circuitLeagueId} />
     </MantineProvider>
   );
 }
@@ -258,5 +269,66 @@ describe("ContenderPicker", () => {
         String(url).includes("/contenders/films/search")
       )
     ).toBe(false);
+  });
+
+  describe("in a season", () => {
+    function withOwner(owner: { user_id: number; username: string } | null) {
+      route = (path, init) => {
+        const r = defaultRoute(path, init);
+        if (path.endsWith("/contenders/selections") && r) {
+          return { ...r, body: { ...(r.body as object), owner } };
+        }
+        return r;
+      };
+    }
+
+    async function chooseGodfather(user: ReturnType<typeof userEvent.setup>) {
+      await chooseCategory(user, "Best Picture");
+      await user.type(
+        await screen.findByRole("textbox", { name: "Search films" }),
+        "god"
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "The Godfather (1972)" })
+      );
+    }
+
+    it("reads the owner once the contender is chosen and picks a free agent", async () => {
+      withOwner(null);
+      const user = userEvent.setup();
+      const onPicked = vi.fn();
+      renderPicker(onPicked, 4);
+      await chooseGodfather(user);
+      await waitFor(() => expect(screen.getByTestId("owner")).toHaveTextContent("free"));
+      expect(posts()[0]).toEqual({
+        circuit_category_id: 1,
+        film_tmdb_id: 238,
+        person_tmdb_id: null,
+        circuit_league_id: 4
+      });
+      await user.click(screen.getByRole("button", { name: "Pick The Godfather" }));
+      await waitFor(() => expect(onPicked).toHaveBeenCalled());
+    });
+
+    it("never picks a contender someone holds", async () => {
+      withOwner({ user_id: 6, username: "pia" });
+      const user = userEvent.setup();
+      const onPicked = vi.fn();
+      renderPicker(onPicked, 4);
+      await chooseGodfather(user);
+      await waitFor(() => expect(screen.getByTestId("owner")).toHaveTextContent("pia"));
+      await user.click(screen.getByRole("button", { name: "Pick The Godfather" }));
+      await waitFor(() => expect(posts()).toHaveLength(2));
+      expect(onPicked).not.toHaveBeenCalled();
+      expect(screen.queryByText(/^Picked /)).toBeNull();
+    });
+
+    it("leaves the owner out of the request outside a season", async () => {
+      const user = userEvent.setup();
+      renderPicker(vi.fn());
+      await chooseGodfather(user);
+      expect(screen.getByTestId("owner")).toHaveTextContent("unknown");
+      expect(posts()).toEqual([]);
+    });
   });
 });

@@ -47,6 +47,7 @@ export function CircuitRosterPage() {
     <RosterWithPicker
       key={circuitId}
       circuitId={circuitId}
+      circuitLeagueId={Number(circuitLeagueId)}
       o={o}
       memberUserId={memberUserId}
       viewerUserId={viewerUserId}
@@ -62,10 +63,13 @@ type ScreenInput = {
   onSelectMember: (userId: number | null) => void;
 };
 
-function RosterWithPicker(props: ScreenInput & { circuitId: number }) {
+function RosterWithPicker(
+  props: ScreenInput & { circuitId: number; circuitLeagueId: number }
+) {
   const { o } = props;
   const picker = useContenderPickerOrchestration({
     circuitId: props.circuitId,
+    circuitLeagueId: props.circuitLeagueId,
     onPicked: (selection) => {
       void o.addFreeAgent(selection).then((added) => {
         if (added) picker.actions.startOver();

@@ -19,7 +19,7 @@ import type { useDraftPlansOrchestration } from "@/orchestration/draftPlans";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { useMemo, useState, type ReactNode } from "react";
 import { EmptyState, StandardCard } from "@/primitives";
 import { SortableNomineeRow } from "@/features/ceremonies/ui/draftPlans/SortableNomineeRow";

@@ -2,14 +2,14 @@ import { useMemo, useRef } from "react";
 import { Box, Text, Tooltip } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { useCssVars } from "@/shared/dom/useCssVars";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { DraftCategoryIcon } from "./DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import {
   NOMINEE_CARD_TOOLTIP_STYLES,
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
-} from "./nomineeTooltip";
+} from "@/shared/nominee/nomineeTooltip";
 import { DraftRail } from "./DraftRail";
 import type { DraftLedgerRow, DraftNomineeMeta } from "./types";
 

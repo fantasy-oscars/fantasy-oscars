@@ -3,7 +3,7 @@ import { Box, Checkbox, Select, Stack, Text } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { useCssVars } from "@/shared/dom/useCssVars";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { DraftCategoryIcon } from "../DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import { nomineePillProps } from "./nomineePillProps";
 import type {
   AutoDraftState,

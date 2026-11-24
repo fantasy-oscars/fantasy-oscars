@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Box, Button, Select, Stack, Text } from "@ui";
-import type { ContenderPickerProps } from "@/features/contenders/ui/ContenderPicker";
+import { useMediaQuery } from "@ui/hooks";
 import type { CircuitRosterView } from "@/orchestration/circuitRoster";
-import type { CircuitRosterEntry } from "@/decisions/circuitRoster";
+import {
+  circuitDropPlaceholder,
+  type CircuitRosterEntry
+} from "@/decisions/circuitRoster";
+import type { CircuitRosterPick } from "@/decisions/circuitPoints";
 import type { ApiResult, CircuitSelectionSummary } from "@/lib/types";
+import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import {
   circuitLeaguePath,
   circuitTransactionsPath,
@@ -16,7 +22,19 @@ import {
   CircuitPageSkeleton
 } from "@/features/circuitLeagues/ui/CircuitPageFrame";
 import { CircuitRosterList } from "@/features/circuitLeagues/ui/CircuitRosterList";
-import { CircuitFreeAgentPanel } from "@/features/circuitLeagues/ui/CircuitFreeAgentPanel";
+import {
+  CIRCUIT_FREE_AGENCY_HEADING_ID,
+  CircuitFreeAgentPanel
+} from "@/features/circuitLeagues/ui/CircuitFreeAgentPanel";
+import { ContenderCardModal } from "@/features/circuitLeagues/ui/ContenderCardModal";
+import {
+  withContenderPreview,
+  type CircuitSeasonPicker
+} from "@/features/circuitLeagues/ui/ContenderPreviewRow";
+import { useHashFocus } from "./useHashFocus";
+
+/** The season's contender picker, with the chosen contender's owner once it is read. */
+export type CircuitRosterPicker = CircuitSeasonPicker;
 
 export function CircuitRosterScreen(props: {
   view: CircuitRosterView;
@@ -24,7 +42,7 @@ export function CircuitRosterScreen(props: {
   memberUserId: number | null;
   viewerUserId: number | null;
   /** The contender picker, once the season is known. */
-  picker: ContenderPickerProps | null;
+  picker: CircuitRosterPicker | null;
   pending: CircuitSelectionSummary | null;
   dropSelectionId: number | null;
   dropOptions: CircuitRosterEntry[];
@@ -39,6 +57,16 @@ export function CircuitRosterScreen(props: {
   onDrop: (entry: CircuitRosterEntry) => void;
 }) {
   const { view } = props;
+  const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const [card, setCard] = useState<CircuitRosterPick | null>(null);
+  const panelShown =
+    view.state === "ready" &&
+    view.writable &&
+    props.picker !== null &&
+    view.freeAgencyNote === null;
+  useHashFocus("add", CIRCUIT_FREE_AGENCY_HEADING_ID, panelShown);
+
   if (view.state === "loading") return <CircuitPageSkeleton label="Loading roster" />;
   if (view.state === "error") {
     return (
@@ -58,6 +86,10 @@ export function CircuitRosterScreen(props: {
     circuitLeagueId: detail.circuit_league.id
   };
   const selectedMember = props.memberUserId ?? props.viewerUserId;
+  const phoneCard = Boolean(isMobile || coarse);
+  const chosenDrop =
+    roster?.entries.find((e) => e.selection.id === props.dropSelectionId)?.selection ??
+    null;
   const title = own ? "Your roster" : `${roster?.member.username ?? "Player"}'s roster`;
 
   return (
@@ -108,17 +140,29 @@ export function CircuitRosterScreen(props: {
         <Box className="baseline-grid2Wide">
           <CircuitRosterList
             roster={roster}
+            categories={detail.categories}
             canDrop={writable}
             droppingSelectionId={props.droppingSelectionId}
             dropStatus={props.dropStatus}
             onDrop={props.onDrop}
+            onOpenCard={phoneCard ? setCard : undefined}
           />
           {writable && props.picker ? (
             <CircuitFreeAgentPanel
               closedNote={freeAgencyNote}
-              picker={props.picker}
+              picker={withContenderPreview({
+                picker: props.picker,
+                categories: detail.categories,
+                viewerUserId: props.viewerUserId,
+                drop: chosenDrop,
+                busy: props.adding
+              })}
               dropOptions={props.dropOptions}
               dropSelectionId={props.dropSelectionId}
+              dropPlaceholder={circuitDropPlaceholder(
+                roster,
+                props.pending?.circuit_category_id ?? props.picker.category?.id ?? null
+              )}
               pending={props.pending}
               adding={props.adding}
               status={props.addStatus}
@@ -135,6 +179,30 @@ export function CircuitRosterScreen(props: {
           ) : null}
         </Box>
       )}
+      <ContenderCardModal
+        card={
+          card
+            ? {
+                tooltip: card.view.tooltip,
+                pointsSection: card.pill.pointsSection,
+                actions: writable
+                  ? [
+                      {
+                        key: "drop",
+                        label: "Drop",
+                        danger: true,
+                        onClick: () => {
+                          setCard(null);
+                          props.onDrop(card.entry);
+                        }
+                      }
+                    ]
+                  : []
+              }
+            : null
+        }
+        onClose={() => setCard(null)}
+      />
     </CircuitPageFrame>
   );
 }

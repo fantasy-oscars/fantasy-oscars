@@ -62,6 +62,8 @@ export function AdminCircuitDetailScreen(props: {
   readiness: CircuitReadiness | null;
   ceremonies: Array<{ id: number; name: string | null; code: string | null }>;
   templates: CircuitCategoryTemplate[];
+  /** Template icon codes a Circuit category's icon can be set to. */
+  iconCodes: string[];
   working: boolean;
   status: ApiResult | null;
   activationMissing: MissingCeremonyDates[] | null;
@@ -176,6 +178,7 @@ export function AdminCircuitDetailScreen(props: {
             <CircuitCategoriesTab
               categories={detail.categories}
               templates={props.templates}
+              iconCodes={props.iconCodes}
               disabled={disabled}
               actions={props.categoryActions}
             />

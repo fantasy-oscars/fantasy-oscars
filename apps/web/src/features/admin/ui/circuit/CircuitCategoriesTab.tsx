@@ -4,7 +4,12 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { Box, Button, Group, Select, Text } from "@ui";
 import { EmptyState } from "@/primitives";
 import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
-import { circuitCategoryKindLabel, moveInOrder } from "@/decisions/admin/circuit";
+import {
+  circuitCategoryIconOptions,
+  circuitCategoryKindLabel,
+  moveInOrder
+} from "@/decisions/admin/circuit";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import type {
   CircuitCategory,
   CircuitCategoryTemplate
@@ -17,6 +22,7 @@ import { CircuitRowIconButton } from "./CircuitRowIconButton";
 export type CircuitCategoryActions = {
   add: (templateId: number) => Promise<boolean>;
   rename: (categoryId: number, name: string) => Promise<boolean>;
+  setIcon: (categoryId: number, icon: string) => Promise<boolean>;
   reorder: (categoryIds: number[]) => Promise<boolean>;
   remove: (categoryId: number) => void;
 };
@@ -31,6 +37,7 @@ function CategoryRow(props: {
   renaming: boolean;
   onRename: () => void;
   onCloseRename: () => void;
+  onChangeIcon: () => void;
   onMove: (delta: -1 | 1) => void;
   actions: CircuitCategoryActions;
 }) {
@@ -59,6 +66,10 @@ function CategoryRow(props: {
             disabled={disabled}
             handle={handle}
           />
+          <DraftCategoryIcon
+            icon={c.icon_code ?? ""}
+            variant={c.icon_variant === "inverted" ? "inverted" : "default"}
+          />
           <Box className="fo-flex1Minw0">
             <Text fw="var(--fo-font-weight-bold)" lineClamp={1}>
               {c.name}
@@ -73,6 +84,12 @@ function CategoryRow(props: {
               label={`Rename ${c.name}`}
               disabled={disabled}
               onClick={props.onRename}
+            />
+            <CircuitRowIconButton
+              icon="palette"
+              label={`Change icon for ${c.name}`}
+              disabled={disabled}
+              onClick={props.onChangeIcon}
             />
             <CircuitRowIconButton
               icon="arrow_upward"
@@ -101,19 +118,23 @@ function CategoryRow(props: {
 
 /**
  * The Circuit's categories: a flat list, reordered by drag and drop or the
- * move buttons. Adding one copies a category template's name, icon and kind.
+ * move buttons. Adding one copies a category template's name, icon and kind;
+ * the icon can then be changed to any template icon no other category uses.
  */
 export function CircuitCategoriesTab(props: {
   categories: CircuitCategory[];
   templates: CircuitCategoryTemplate[];
+  iconCodes: string[];
   disabled: boolean;
   actions: CircuitCategoryActions;
 }) {
-  const { categories, templates, disabled, actions } = props;
+  const { categories, templates, iconCodes, disabled, actions } = props;
   const sensors = useReorderSensors(4);
   const [adding, setAdding] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<number | null>(null);
+  const [iconFor, setIconFor] = useState<CircuitCategory | null>(null);
+  const [iconChoice, setIconChoice] = useState<string | null>(null);
   // The order shown while a reorder saves, so the row does not jump back.
   const [pending, setPending] = useState<number[] | null>(null);
   const byId = new Map(categories.map((c) => [c.id, c]));
@@ -138,6 +159,16 @@ export function CircuitCategoriesTab(props: {
     const next = [...ids];
     next.splice(to, 0, next.splice(from, 1)[0]!);
     reorder(next);
+  }
+
+  function openIcon(category: CircuitCategory) {
+    setIconFor(category);
+    setIconChoice(category.icon_code);
+  }
+
+  async function submitIcon() {
+    if (!iconFor || !iconChoice) return;
+    if (await actions.setIcon(iconFor.id, iconChoice)) setIconFor(null);
   }
 
   async function submitAdd() {
@@ -183,6 +214,7 @@ export function CircuitCategoriesTab(props: {
                   renaming={renaming === c.id}
                   onRename={() => setRenaming(c.id)}
                   onCloseRename={() => setRenaming(null)}
+                  onChangeIcon={() => openIcon(c)}
                   onMove={(delta) => reorder(moveInOrder(ids, c.id, delta))}
                   actions={actions}
                 />
@@ -212,6 +244,36 @@ export function CircuitCategoriesTab(props: {
           comboboxProps={{ withinPortal: true }}
           data={templates.map((t) => ({ value: String(t.id), label: t.name }))}
         />
+      </CircuitFormModal>
+
+      <CircuitFormModal
+        opened={iconFor !== null}
+        title={iconFor ? `Icon for ${iconFor.name}` : "Icon"}
+        submitLabel="Save icon"
+        canSubmit={
+          !disabled && iconChoice !== null && iconChoice !== (iconFor?.icon_code ?? null)
+        }
+        onClose={() => setIconFor(null)}
+        onSubmit={() => void submitIcon()}
+      >
+        <Group gap="sm" wrap="nowrap" align="flex-end">
+          <DraftCategoryIcon icon={iconChoice ?? ""} variant="default" />
+          <Select
+            flex={1}
+            label="Icon"
+            description="Season pills show a category only by its icon, so each category needs its own."
+            placeholder="Choose an icon"
+            value={iconChoice}
+            onChange={setIconChoice}
+            searchable
+            data-autofocus
+            nothingFoundMessage="No matching icons"
+            comboboxProps={{ withinPortal: true }}
+            data={
+              iconFor ? circuitCategoryIconOptions(iconCodes, categories, iconFor.id) : []
+            }
+          />
+        </Group>
       </CircuitFormModal>
     </Box>
   );

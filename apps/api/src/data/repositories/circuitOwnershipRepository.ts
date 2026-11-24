@@ -115,6 +115,43 @@ export async function listOpenOwnershipsForMember(
   return rows;
 }
 
+/** Every member's open intervals in a league, by member and then oldest first. */
+export async function listOpenOwnershipsForLeague(
+  client: DbClient,
+  circuitLeagueId: number
+): Promise<OpenOwnershipRow[]> {
+  const { rows } = await query<OpenOwnershipRow>(
+    client,
+    `SELECT o.id::int, o.member_id::int, o.selection_id::int,
+            s.circuit_category_id::int AS category_id,
+            o.acquired_at, o.acquired_transaction_id::int
+     FROM circuit_ownership o
+     JOIN circuit_selection s ON s.id = o.selection_id
+     WHERE o.circuit_league_id = $1 AND o.released_at IS NULL
+     ORDER BY o.member_id, o.acquired_at, o.id`,
+    [circuitLeagueId]
+  );
+  return rows;
+}
+
+/** The user who holds a selection in a league now, if anyone does. */
+export async function findSelectionOwner(
+  client: DbClient,
+  circuitLeagueId: number,
+  selectionId: number
+): Promise<{ user_id: number; username: string } | null> {
+  const { rows } = await query<{ user_id: number; username: string }>(
+    client,
+    `SELECT m.user_id::int, u.username
+     FROM circuit_ownership o
+     JOIN circuit_league_member m ON m.id = o.member_id
+     JOIN app_user u ON u.id = m.user_id
+     WHERE o.circuit_league_id = $1 AND o.selection_id = $2 AND o.released_at IS NULL`,
+    [circuitLeagueId, selectionId]
+  );
+  return rows[0] ?? null;
+}
+
 /** The open interval for a selection in a league, if anyone holds it. */
 export async function findOpenOwnershipOfSelection(
   client: DbClient,

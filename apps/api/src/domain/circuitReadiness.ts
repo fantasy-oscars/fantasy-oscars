@@ -130,3 +130,35 @@ export function readinessGaps(
     )
   };
 }
+
+export type CategoryIconGaps = {
+  /** Categories with no icon: their season pills fall back to a neutral glyph. */
+  categories_without_icon: CoverageCategory[];
+  /** Icons that more than one category uses, with those categories in Circuit order. */
+  shared_icons: Array<{ icon_code: string; categories: CoverageCategory[] }>;
+};
+
+/**
+ * Icon flags for the readiness report. They never block readiness: a season
+ * still plays, but its pills cannot tell those categories apart at a glance.
+ */
+export function categoryIconGaps(
+  categories: ReadonlyArray<CoverageCategory & { icon_code: string | null }>
+): CategoryIconGaps {
+  const strip = (c: CoverageCategory): CoverageCategory => ({
+    id: c.id,
+    code: c.code,
+    name: c.name
+  });
+  const byIcon = new Map<string, CoverageCategory[]>();
+  for (const c of categories) {
+    if (c.icon_code === null) continue;
+    byIcon.set(c.icon_code, [...(byIcon.get(c.icon_code) ?? []), strip(c)]);
+  }
+  return {
+    categories_without_icon: categories.filter((c) => c.icon_code === null).map(strip),
+    shared_icons: [...byIcon.entries()]
+      .filter(([, shared]) => shared.length > 1)
+      .map(([icon_code, shared]) => ({ icon_code, categories: shared }))
+  };
+}

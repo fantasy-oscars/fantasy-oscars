@@ -34,6 +34,7 @@ import {
   addCircuitFreeAgent,
   dropCircuitSelection,
   getCircuitRoster,
+  getCircuitRosters,
   listCircuitLeagueTransactions
 } from "../services/circuit/circuitOwnership.js";
 import {
@@ -50,6 +51,7 @@ import {
 } from "../services/circuit/circuitQueue.js";
 import {
   getCircuitCeremonyBreakdown,
+  getCircuitScoringContenders,
   getCircuitStandings
 } from "../services/circuit/circuitStandings.js";
 import {
@@ -175,6 +177,16 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
       return res
         .status(200)
         .json(await getCircuitRoster(pool, id, viewerOf(req), userId));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Every member's roster with its points, for the final rosters.
+  router.get("/:id/rosters", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res.status(200).json(await getCircuitRosters(pool, id, viewerOf(req)));
     } catch (err) {
       next(err);
     }
@@ -324,6 +336,18 @@ export function createCircuitLeaguesRouter(pool: Pool, authSecret: string): Rout
       }
     }
   );
+
+  // Every selection that scored in the season, with its points per member.
+  router.get("/:id/standings/contenders", async (req: AuthedRequest, res, next) => {
+    try {
+      const { id } = parseParams(idParam, req.params);
+      return res
+        .status(200)
+        .json(await getCircuitScoringContenders(pool, id, viewerOf(req)));
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // Rolling priority, chips and the open window, for anyone in the league.
   router.get("/:id/waivers", async (req: AuthedRequest, res, next) => {

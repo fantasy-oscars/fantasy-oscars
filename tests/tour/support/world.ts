@@ -218,6 +218,12 @@ export async function seedWorld(stack: E2eStack): Promise<World> {
       [ADMIN_USERNAME, username]
     );
   }
+  // Starting a full awards season is gated to super admins (as in the e2e
+  // suite's `grantSuperAdmin`), so the commissioner needs the role.
+  await pool.query(
+    `UPDATE app_user SET is_admin = TRUE, admin_role = 'SUPER_ADMIN' WHERE username = $1`,
+    [YOU]
+  );
   const token = await apiLogin(ADMIN_USERNAME);
   const today = pacificToday();
 
@@ -363,9 +369,13 @@ export async function seedWorld(stack: E2eStack): Promise<World> {
   }
   const selections = {} as World["selections"];
   for (const [i, category] of CATEGORIES.entries()) {
+    // The template's icon is copied, as an admin add does.
     const row = await pool.query<{ id: number }>(
-      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index, category_family_id)
-       VALUES ($1, $2, $3, 'FILM', $4, $5) RETURNING id::int`,
+      `INSERT INTO circuit_category
+         (circuit_id, code, name, kind, sort_index, category_family_id, icon_id, icon_variant)
+       SELECT $1, $2, $3, 'FILM', $4, cf.id, cf.icon_id, cf.icon_variant
+       FROM category_family cf WHERE cf.id = $5
+       RETURNING id::int`,
       [circuitId, category.toLowerCase().replace(/\s+/g, "-"), category, i, i + 1]
     );
     const circuitCategoryId = row.rows[0]!.id;

@@ -60,7 +60,12 @@ export const queryKeys = {
     standings: (circuitLeagueId: number) =>
       ["circuitLeagues", "standings", circuitLeagueId] as const,
     ceremonyBreakdown: (circuitLeagueId: number, ceremonyId: number) =>
-      ["circuitLeagues", "standings", circuitLeagueId, "ceremony", ceremonyId] as const
+      ["circuitLeagues", "standings", circuitLeagueId, "ceremony", ceremonyId] as const,
+    /** Final results: every contender that scored, and every final roster. */
+    scoringContenders: (circuitLeagueId: number) =>
+      ["circuitLeagues", "standings", circuitLeagueId, "contenders"] as const,
+    finalRosters: (circuitLeagueId: number) =>
+      ["circuitLeagues", "standings", circuitLeagueId, "rosters"] as const
   },
   invites: {
     all: ["invites"] as const,

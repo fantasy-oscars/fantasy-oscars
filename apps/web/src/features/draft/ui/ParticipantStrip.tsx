@@ -2,7 +2,7 @@ import { Box, Group, Text, Tooltip } from "@ui";
 import type { RefObject } from "react";
 import { AvatarToken } from "./AvatarToken";
 import { DirectionChevron } from "./DirectionChevron";
-import { NOMINEE_TOOLTIP_EVENTS } from "./nomineeTooltip";
+import { NOMINEE_TOOLTIP_EVENTS } from "@/shared/nominee/nomineeTooltip";
 
 /** "3 more: a, b, c": the hidden names belong in the chip's accessible name. */
 function moreLabel(hidden: Array<{ label: string }>): string {

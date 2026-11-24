@@ -24,6 +24,7 @@ export function AdminCircuitDetailPage() {
       readiness={o.readiness}
       ceremonies={o.ceremonies}
       templates={o.templates}
+      iconCodes={o.iconCodes}
       working={o.working}
       status={o.status}
       activationMissing={o.activationMissing}
@@ -50,6 +51,7 @@ export function AdminCircuitDetailPage() {
       categoryActions={{
         add: a.addCategory,
         rename: a.renameCategory,
+        setIcon: a.setCategoryIcon,
         reorder: a.reorderCategories,
         remove: (categoryId) => void a.removeCategory(categoryId)
       }}

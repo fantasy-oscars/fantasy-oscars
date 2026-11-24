@@ -9,6 +9,7 @@ export function CircuitLeaguePage() {
   return (
     <CircuitLeagueScreen
       view={o.view}
+      addDrop={o.addDrop}
       acting={o.acting}
       memberStatus={o.memberStatus}
       lockStatus={o.lockStatus}

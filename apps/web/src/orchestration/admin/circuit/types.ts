@@ -123,6 +123,13 @@ export type CircuitReadiness = {
     ceremonies_without_mappings: CoverageCeremony[];
     categories_without_ceremony: Array<{ id: number; code: string; name: string }>;
     unmapped_edition_count: number;
+    /** Never blocks readiness: these categories' pills show the neutral glyph. */
+    categories_without_icon: Array<{ id: number; code: string; name: string }>;
+    /** Icons more than one category uses, so their pills look alike. */
+    shared_icons: Array<{
+      icon_code: string;
+      categories: Array<{ id: number; code: string; name: string }>;
+    }>;
   };
   coverage: {
     ceremonies: CeremonyCoverage[];

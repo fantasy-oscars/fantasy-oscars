@@ -3,13 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import type {
   CircuitCeremonyBreakdown,
   CircuitLeagueDetail,
+  CircuitRoster,
+  CircuitScoringContender,
   CircuitStandings
 } from "../lib/types";
 import { circuitStandingsVisible } from "../decisions/circuitStandings";
 import { errorCode, errorMessage, errorRequestId } from "./query/errors";
 import {
   circuitCeremonyBreakdownQuery,
+  circuitFinalRostersQuery,
   circuitLeagueQuery,
+  circuitScoringContendersQuery,
   circuitStandingsQuery
 } from "./query/queries";
 import { useCircuitScoreSocket } from "./useCircuitScoreSocket";
@@ -27,12 +31,28 @@ type LoadError = {
   notFound: boolean;
 };
 
+/** The final results section, read once the season is complete. */
+export type CircuitFinalResultsView =
+  | { state: "loading" }
+  | { state: "error"; message: string }
+  | {
+      state: "ready";
+      contenders: CircuitScoringContender[];
+      rosters: CircuitRoster[];
+    };
+
 export type CircuitStandingsView =
   | { state: "loading" }
   | LoadError
   /** Before the draft finishes there is nothing to rank. */
   | { state: "not-started"; detail: CircuitLeagueDetail }
-  | { state: "ready"; detail: CircuitLeagueDetail; standings: CircuitStandings };
+  | {
+      state: "ready";
+      detail: CircuitLeagueDetail;
+      standings: CircuitStandings;
+      /** Null until the season is complete: there are no final results before. */
+      finalResults: CircuitFinalResultsView | null;
+    };
 
 export type CircuitCeremonyBreakdownView =
   | { state: "loading" }
@@ -74,6 +94,38 @@ export function useCircuitStandingsOrchestration(input: { circuitLeagueId: numbe
     ...circuitStandingsQuery(circuitLeagueId),
     enabled: valid && visible
   });
+  const complete = detail?.circuit_league.status === "COMPLETE";
+  const contendersQuery = useQuery({
+    ...circuitScoringContendersQuery(circuitLeagueId),
+    enabled: valid && complete
+  });
+  const rostersQuery = useQuery({
+    ...circuitFinalRostersQuery(circuitLeagueId),
+    enabled: valid && complete
+  });
+
+  const finalResults = useMemo<CircuitFinalResultsView | null>(() => {
+    if (!complete) return null;
+    const failed = contendersQuery.error ?? rostersQuery.error;
+    if (failed) {
+      return {
+        state: "error",
+        message: errorMessage(failed, "Unable to load the results")
+      };
+    }
+    if (!contendersQuery.data || !rostersQuery.data) return { state: "loading" };
+    return {
+      state: "ready",
+      contenders: contendersQuery.data,
+      rosters: rostersQuery.data
+    };
+  }, [
+    complete,
+    contendersQuery.data,
+    contendersQuery.error,
+    rostersQuery.data,
+    rostersQuery.error
+  ]);
 
   const view = useMemo<CircuitStandingsView>(() => {
     if (!valid) return { state: "error", message: "Season not found", notFound: true };
@@ -84,11 +136,12 @@ export function useCircuitStandingsOrchestration(input: { circuitLeagueId: numbe
       return loadError(standingsQuery.error, "Unable to load standings");
     }
     if (!standingsQuery.data) return { state: "loading" };
-    return { state: "ready", detail, standings: standingsQuery.data };
+    return { state: "ready", detail, standings: standingsQuery.data, finalResults };
   }, [
     valid,
     detail,
     visible,
+    finalResults,
     detailQuery.isError,
     detailQuery.error,
     standingsQuery.data,

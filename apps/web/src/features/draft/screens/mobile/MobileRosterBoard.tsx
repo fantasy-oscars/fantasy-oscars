@@ -5,7 +5,7 @@ import { RosterTrack } from "@/features/draft/ui/RosterTrack";
 import { useRosterRotation } from "@/orchestration/draft/useRosterRotation";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 import { pickDeterministicAvatarKey } from "@/decisions/avatars";
-import { DraftCategoryIcon } from "@/features/draft/ui/DraftCategoryIcon";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import { formatSignedInt } from "@/decisions/draftRoomLayout";
 import { nomineePillProps } from "@/features/draft/ui/mobile/nomineePillProps";
 

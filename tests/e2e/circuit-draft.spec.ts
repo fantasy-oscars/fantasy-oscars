@@ -324,7 +324,10 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
         pia.page
           .getByRole("region", { name: "Draft history" })
           // Anchor on the picker: a queued pick elsewhere can share the title.
-          .getByText(`${player.name}: ${title}`, { exact: true })
+          .getByRole("group", {
+            name: `Best Picture: ${title}, drafted by ${player.name}`,
+            exact: true
+          })
       ).toBeVisible();
       expect(
         await pia.page.evaluate(
@@ -336,18 +339,341 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
   }
   expect(reconnectChecked).toBe(true);
 
-  // Every room shows the finished draft: Theo's picks came from his queue, and
-  // Emmy's missed pick was made up in the supplemental round.
+  // Every room shows the finished draft as rosters: Theo's queued picks and
+  // Emmy's pick made up in the supplemental round read like any other pick.
   for (const p of players) {
     await expect(
       p.page.getByText("Rosters now change through waivers", { exact: false })
     ).toBeVisible();
-    const theoColumn = p.page.getByRole("region", { name: new RegExp(`^${theo.name}`) });
-    await expect(theoColumn.getByText(/From queue/)).toHaveCount(2);
-    const emmyColumn = p.page.getByRole("region", { name: new RegExp(`^${emmy.name}`) });
-    await expect(emmyColumn.getByText("Made up in the supplemental round")).toBeVisible();
-    await expect(emmyColumn.getByText(/^Supplemental, for pick \d+/)).toBeVisible();
+    const theoCard = p.page.getByRole("region", { name: new RegExp(`^${theo.name}`) });
+    await expect(theoCard.getByRole("group", { name: /^Best Director: / })).toHaveCount(
+      2
+    );
+    const emmyCard = p.page.getByRole("region", { name: new RegExp(`^${emmy.name}`) });
+    await expect(emmyCard.getByText("2 of 2")).toBeVisible();
+    await expect(emmyCard.getByText(/Missed|Supplemental|From queue/)).toHaveCount(0);
   }
   const final = await snapshot();
   expect(final.picks.filter((pick) => pick.outcome === "MISSED")).toHaveLength(1);
+});
+
+test("drafting from the queue by double-click, keyboard, phone card and confirm toast", async ({
+  browser
+}) => {
+  test.setTimeout(120_000);
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  await grantSuperAdmin(DRAFT_PLAYERS[0]);
+  const [commish, pia] = await Promise.all(
+    [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
+  );
+  const players = [commish, pia];
+
+  // Two players, two rounds, a long clock and no auto-draft: every pick is by hand.
+  const leagueName = `Gesture League ${suffix}`;
+  const { league } = await api<{ league: { id: number } }>(commish, "POST", "/leagues", {
+    name: leagueName
+  });
+  const { season } = await api<{ season: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/seasons`,
+    { ceremony_id: Number(process.env.E2E_CEREMONY_ID), pick_timer_seconds: null }
+  );
+  await api(commish, "POST", `/seasons/${season.id}/members`, { username: pia.name });
+  const created = await api<{ circuit_league: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/circuits`,
+    {
+      circuit_id: draftCircuit.circuitId,
+      settings: { roster_size: 2, pick_timer_seconds: 600, auto_draft_enabled: false }
+    }
+  );
+  const seasonId = created.circuit_league.id;
+  await api(pia, "POST", `/circuit-leagues/${seasonId}/join`);
+  const queued = new Map<Player, string[]>([
+    [commish, ["Film A", "Film B"]],
+    [pia, ["Film C", "Film D"]]
+  ]);
+  for (const [player, titles] of queued) {
+    for (const title of titles) {
+      await api(player, "POST", `/circuit-leagues/${seasonId}/queue`, {
+        selection_id: contender("Best Picture", title).selectionId
+      });
+    }
+  }
+  await api(commish, "POST", `/circuit-leagues/${seasonId}/initialize`);
+
+  const slug = leagueName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  for (const p of players) {
+    await p.page.goto(`/leagues/${league.id}/${slug}/seasons/full/${seasonId}/draft`);
+    await expect(p.page.getByRole("heading", { name: "Draft lobby" })).toBeAttached();
+  }
+  await commish.page.getByRole("button", { name: "Start draft" }).click();
+  await commish.page
+    .getByRole("dialog", { name: "Start the draft?" })
+    .getByRole("button", { name: "Start draft" })
+    .click();
+  for (const p of players) {
+    await expect(p.page.getByRole("heading", { name: "Draft room" })).toBeAttached();
+  }
+
+  const snapshot = () =>
+    api<Snapshot>(commish, "GET", `/circuit-leagues/${seasonId}/draft`);
+  const byName = new Map(players.map((p) => [p.name, p]));
+  const onTheClock = async () => {
+    const snap = await snapshot();
+    const seat = snap.seats.find(
+      (s) => s.seat_number === snap.on_the_clock!.seat_number
+    )!;
+    return {
+      player: byName.get(seat.username)!,
+      pickNumber: snap.on_the_clock!.pick_number
+    };
+  };
+  const pickLands = (pickNumber: number) =>
+    expect
+      .poll(async () => (await snapshot()).draft.current_pick_number)
+      .not.toBe(pickNumber);
+  const queuePill = (player: Player, title: string) =>
+    player.page
+      .getByRole("list", { name: "Your queue" })
+      .getByRole("button", { name: `Best Picture: ${title}`, exact: true });
+
+  // Pick 1: a double-click on the first queued contender drafts it.
+  const first = await onTheClock();
+  const firstTitles = queued.get(first.player)!;
+  await expect(first.player.page.getByTestId("circuit-staging-note")).toHaveText(
+    "You're on the clock. Double-click a contender to draft it, or select it and confirm."
+  );
+  await queuePill(first.player, firstTitles[0]!).dblclick();
+  await pickLands(first.pickNumber);
+
+  // Pick 2 (the snake turns, so the other player): Enter arms, Shift+Enter drafts.
+  const second = await onTheClock();
+  expect(second.player).not.toBe(first.player);
+  const secondTitles = queued.get(second.player)!;
+  await expect(second.player.page.getByTestId("circuit-staging-note")).toHaveText(
+    /^You're on the clock\./
+  );
+  const keyed = queuePill(second.player, secondTitles[0]!);
+  await keyed.focus();
+  await second.player.page.keyboard.press("Enter");
+  await expect(keyed).toHaveAttribute("aria-pressed", "true");
+  await second.player.page.keyboard.press("Shift+Enter");
+  await pickLands(second.pickNumber);
+
+  // Pick 3 (the same player again), on a phone: tap the pill, then Draft in the card.
+  const third = await onTheClock();
+  expect(third.player).toBe(second.player);
+  const phone = third.player.page;
+  await phone.setViewportSize({ width: 390, height: 844 });
+  await phone.getByRole("button", { name: "Staging" }).click();
+  await expect(phone.getByTestId("circuit-staging-note")).toHaveText(
+    "You're on the clock. Tap a contender, then Draft."
+  );
+  await queuePill(third.player, secondTitles[1]!).click();
+  const card = phone.getByRole("dialog", { name: "Nominee details" });
+  await card.getByRole("button", { name: "Draft", exact: true }).click();
+  await pickLands(third.pickNumber);
+
+  // Pick 4: a click arms the contender and the confirm toast drafts it.
+  const fourth = await onTheClock();
+  expect(fourth.player).toBe(first.player);
+  const armed = queuePill(fourth.player, firstTitles[1]!);
+  await armed.click();
+  await expect(armed).toHaveAttribute("aria-pressed", "true");
+  await fourth.player.page.getByText("Confirm draft pick").click();
+
+  await expect.poll(async () => (await snapshot()).draft.status).toBe("COMPLETED");
+  const final = await snapshot();
+  expect(final.picks.map((pick) => pick.outcome)).toEqual([
+    "PICKED",
+    "PICKED",
+    "PICKED",
+    "PICKED"
+  ]);
+  for (const p of players) {
+    await expect(
+      p.page.getByText("Rosters now change through waivers", { exact: false })
+    ).toBeVisible();
+  }
+});
+
+test("Add/drop goes to free agency outside a window, to claims inside one, and waits while claims run", async ({
+  browser
+}) => {
+  test.setTimeout(120_000);
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  await grantSuperAdmin(DRAFT_PLAYERS[0]);
+  const [commish, pia] = await Promise.all(
+    [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
+  );
+  const byName = new Map([commish, pia].map((p) => [p.name, p]));
+
+  // Two players with one pick each: the draft is over after two picks.
+  const leagueName = `Add Drop League ${suffix}`;
+  const { league } = await api<{ league: { id: number } }>(commish, "POST", "/leagues", {
+    name: leagueName
+  });
+  const { season } = await api<{ season: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/seasons`,
+    { ceremony_id: Number(process.env.E2E_CEREMONY_ID), pick_timer_seconds: null }
+  );
+  await api(commish, "POST", `/seasons/${season.id}/members`, { username: pia.name });
+  const created = await api<{ circuit_league: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/circuits`,
+    {
+      circuit_id: draftCircuit.circuitId,
+      settings: { roster_size: 1, pick_timer_seconds: 600, auto_draft_enabled: false }
+    }
+  );
+  const seasonId = created.circuit_league.id;
+  await api(pia, "POST", `/circuit-leagues/${seasonId}/join`);
+  await api(commish, "POST", `/circuit-leagues/${seasonId}/initialize`);
+  await api(commish, "POST", `/circuit-leagues/${seasonId}/draft`);
+  for (const title of ["Film A", "Film B"]) {
+    const snap = await api<Snapshot & { draft: { id: number } }>(
+      commish,
+      "GET",
+      `/circuit-leagues/${seasonId}/draft`
+    );
+    const seat = snap.seats.find((s) => s.seat_number === snap.on_the_clock?.seat_number);
+    const player = byName.get(seat?.username ?? "");
+    expect(player, "player on the clock").toBeDefined();
+    await api(player!, "POST", `/circuit-drafts/${snap.draft.id}/picks`, {
+      selection_id: contender("Best Picture", title).selectionId,
+      request_id: `${suffix}-${title}`
+    });
+  }
+
+  const slug = leagueName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const seasonPath = `/leagues/${league.id}/${slug}/seasons/full/${seasonId}`;
+  const { page } = commish;
+  await serveFilmSearch(page);
+
+  // Free agency is open: Add/drop leads the header and opens "Add a free agent".
+  await page.goto(seasonPath);
+  const addDrop = page.getByRole("link", { name: "Add/drop" });
+  await expect(addDrop).toHaveAttribute("href", `${seasonPath}/roster#add`);
+  await expect(
+    page.getByRole("main").locator("header").getByRole("link").first()
+  ).toHaveText("Add/drop");
+  await addDrop.click();
+  await expect(page).toHaveURL(new RegExp(`${seasonPath}/roster#add$`));
+  await expect(page.getByRole("heading", { name: "Add a free agent" })).toBeFocused();
+
+  // The roster is full, so the drop select asks for a drop; the add icon adds with it.
+  const ownTitle = (
+    await api<{ entries: Array<{ selection: { film: { title: string } } }> }>(
+      commish,
+      "GET",
+      `/circuit-leagues/${seasonId}/roster`
+    )
+  ).entries[0]!.selection.film.title;
+  const drop = page.getByRole("textbox", { name: "Drop to make room" });
+  await expect(drop).toHaveAttribute("placeholder", "Select a pick to drop");
+  await drop.click();
+  await page.getByRole("option", { name: ownTitle }).click();
+  await page.getByRole("textbox", { name: "Category" }).click();
+  await page.getByRole("option", { name: "Best Picture", exact: true }).click();
+  await page.getByRole("textbox", { name: "Search films" }).fill("Film E");
+  await page
+    .getByRole("list", { name: "Films" })
+    .getByRole("button", { name: "Film E" })
+    .click();
+  const add = page.getByRole("button", { name: "Add Best Picture: Film E" });
+  await add.hover();
+  await expect(page.getByRole("tooltip")).toHaveText(`Add, dropping ${ownTitle}`);
+  await add.focus();
+  await page.keyboard.press("Enter");
+  const picks = page.getByRole("region", { name: "Picks" });
+  await expect(picks.getByRole("group", { name: /^Best Picture: Film E/ })).toBeVisible();
+  await expect(
+    picks.getByRole("group", { name: new RegExp(`: ${ownTitle}`) })
+  ).toHaveCount(0);
+
+  // A contender someone holds is muted, and its add icon only says who has it.
+  const piaTitle = ownTitle === "Film A" ? "Film B" : "Film A";
+  await page.getByRole("textbox", { name: "Search films" }).fill(piaTitle);
+  await page
+    .getByRole("list", { name: "Films" })
+    .getByRole("button", { name: piaTitle })
+    .click();
+  await expect(page.getByText(`Owned by ${pia.name}`)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `Add Best Picture: ${piaTitle}` })
+  ).toHaveAttribute("aria-disabled", "true");
+
+  // Inside a window whose claims can change, Add/drop opens "Claim a contender".
+  const window = {
+    starts_on: "2035-02-08",
+    ends_on: "2035-02-12",
+    resolves_on: "2035-02-13",
+    scoring_days: ["2035-02-08"]
+  };
+  let locked = false;
+  await page.route(
+    `${E2E_API_ORIGIN}/circuit-leagues/${seasonId}/roster`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const response = await route.fetch();
+      const body = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({
+        response,
+        json: { ...body, free_agency: { open: false, window } }
+      });
+    }
+  );
+  await page.route(
+    `${E2E_API_ORIGIN}/circuit-leagues/${seasonId}/claims`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const response = await route.fetch();
+      const body = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({
+        response,
+        json: {
+          ...body,
+          window: {
+            starts_on: window.starts_on,
+            ends_on: window.ends_on,
+            resolves_on: window.resolves_on
+          },
+          locked
+        }
+      });
+    }
+  );
+  await page.goto(seasonPath);
+  await expect(page.getByRole("link", { name: "Add/drop" })).toHaveAttribute(
+    "href",
+    `${seasonPath}/waivers#claim`
+  );
+  await expect(
+    page.getByText("Claims are being processed.", { exact: false })
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: "Add/drop" }).click();
+  await expect(page).toHaveURL(new RegExp(`${seasonPath}/waivers#claim$`));
+  await expect(page.getByRole("heading", { name: "Claim a contender" })).toBeFocused();
+
+  // Once the window's claims are locked, Add/drop leads to the waivers page and says why.
+  locked = true;
+  await page.goto(seasonPath);
+  const processing = page.getByRole("link", { name: "Add/drop" });
+  await expect(processing).toHaveAttribute("href", `${seasonPath}/waivers`);
+  const caption = page.getByRole("status").filter({
+    hasText: "Claims are being processed. Add/drop reopens once they have run."
+  });
+  await expect(caption).toBeVisible();
+  await expect(processing).toHaveAttribute(
+    "aria-describedby",
+    (await caption.getAttribute("id"))!
+  );
+  await processing.click();
+  await expect(page).toHaveURL(new RegExp(`${seasonPath}/waivers$`));
 });
