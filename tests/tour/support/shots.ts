@@ -1,14 +1,18 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { selectAppearance } from "../../visual/support/page";
 import { E2E_API_ORIGIN, E2E_WEB_ORIGIN } from "../../e2e/support/stack";
 import { PASSWORD, type World } from "./world";
+import { createRun, linkLatest, outputOverride } from "./run-dirs.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-export const OUTPUT_DIR =
-  process.env.TOUR_OUTPUT_DIR ?? path.join(repoRoot, "tour-output");
+let outputDir = "";
+
+/** The directory of the run in progress; set by `startRun`. */
+export function runDir() {
+  if (!outputDir) throw new Error("startRun() has not been called");
+  return outputDir;
+}
 
 export type Shot = {
   file: string;
@@ -24,9 +28,21 @@ const shots: Shot[] = [];
 let section = "";
 let day = 0;
 
-export function resetOutput() {
-  rmSync(OUTPUT_DIR, { recursive: true, force: true });
-  mkdirSync(OUTPUT_DIR, { recursive: true });
+/**
+ * Starts a run in its own directory under tests/tour/runs and points `latest` at it, so
+ * earlier runs survive. TOUR_OUTPUT_DIR names one directory instead, emptied first.
+ */
+export function startRun() {
+  const override = outputOverride();
+  if (override) {
+    rmSync(override, { recursive: true, force: true });
+    mkdirSync(override, { recursive: true });
+    outputDir = override;
+  } else {
+    outputDir = createRun();
+    linkLatest(outputDir);
+  }
+  shots.length = 0;
 }
 
 export function beginSection(name: string) {
@@ -73,7 +89,7 @@ export async function shot(persona: Persona, title: string, caption: string) {
     .isVisible()
     .catch(() => false);
   await page.screenshot({
-    path: path.join(OUTPUT_DIR, file),
+    path: path.join(runDir(), file),
     fullPage: !modalOpen,
     animations: "disabled"
   });
@@ -91,7 +107,7 @@ export async function shot(persona: Persona, title: string, caption: string) {
 
 export function writeManifest() {
   writeFileSync(
-    path.join(OUTPUT_DIR, "manifest.json"),
+    path.join(runDir(), "manifest.json"),
     JSON.stringify({ generated: new Date().toISOString(), shots }, null, 2)
   );
 }

@@ -7,7 +7,8 @@ not part of CI.
 ```bash
 pnpm --filter @fantasy-oscars/shared build   # once, as for the e2e suite
 pnpm run tour                                # needs Docker
-open tour-output/index.html
+open tests/tour/runs/latest/index.html       # the static gallery
+pnpm run tour:inspect                        # or step through it and take notes
 ```
 
 It reuses the e2e stack (a throwaway Postgres container, the API and a test build of the
@@ -15,9 +16,49 @@ web app) and takes about ten minutes, most of it waiting out pick clocks. Set
 `E2E_WEB_PORT` and `E2E_API_PORT` to run it next to the e2e suite. If either port (4173 and
 4174 by default) is already in use, the run stops at once with a message naming the port;
 free it (`lsof -nP -iTCP:<port> -sTCP:LISTEN`) or pick other ports. The stack's servers stop
-with the run, even when it is killed. Output goes to
-`tour-output/` (ignored by git; `TOUR_OUTPUT_DIR` overrides): numbered PNGs, a
-`manifest.json`, `skipped.txt` and the `index.html` gallery.
+with the run, even when it is killed.
+
+## Runs
+
+Each run writes to `tests/tour/runs/<YYYY-MM-DD-HHmm>/` (local time; a `-2` suffix if that
+minute is taken): numbered PNGs, a `manifest.json`, `skipped.txt` and the `index.html`
+gallery. `tests/tour/runs/latest` is a symlink to the newest run. The images stay out of
+Source Control: `tests/tour/runs/.gitignore` ignores everything but itself, which is what
+keeps the directory in the repo.
+
+After a run, the newest three runs are kept and older ones are deleted, except any run
+with notes (a `notes.json` with text in it), which is never deleted. That leaves the
+previous run beside the new one to check a fix against. `TOUR_OUTPUT_DIR` writes one run to
+that directory instead (emptied first, not pruned, no `latest` link). To rebuild a gallery:
+`node tests/tour/gallery.mjs [run]`.
+
+## Inspector
+
+```bash
+pnpm run tour:inspect [run]    # default: latest; http://localhost:4400
+```
+
+A small page for going through a run and taking notes: the shot large, with its number,
+title, caption, persona, path and day; a note box under it; a list of every shot by section
+with a dot on those that have notes. No dependencies and no build step (`inspect.mjs`, the
+page in `inspector/`). `TOUR_INSPECT_PORT` changes the port. It listens on localhost only.
+
+| Key                  | Does                                               |
+| -------------------- | -------------------------------------------------- |
+| `→` / `j`, `←` / `k` | next, previous shot                                |
+| `n`                  | focus the note box                                 |
+| `Esc`                | leave the note box (keys move shots again)         |
+| `c`                  | show the same shot from the previous run, and back |
+
+`c` matches by file name without its number (`042-hub.png` and `045-hub.png` are the same
+shot), so it still works when steps were added. It does nothing for a shot the previous run
+did not have, and is unavailable with `TOUR_OUTPUT_DIR`.
+
+Notes save by themselves a moment after typing, to `<run>/notes.json` (`{ "<shot file>":
+"<text>" }`), so closing the tab or the server loses nothing, and a run with notes is never
+pruned. **Finish** writes `<run>/notes.md` and shows it with a Copy button: one entry per
+noted shot in tour order, `### <number> · <title>` then path, persona, day and the note. The
+number is the one to cite ("tour 089"). Finish again after more notes to rewrite it.
 
 ## What it covers
 

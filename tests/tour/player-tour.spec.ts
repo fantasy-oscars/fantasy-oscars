@@ -4,11 +4,11 @@ import { test, expect } from "@playwright/test";
 import { E2E_API_ORIGIN } from "../e2e/support/stack";
 import { advanceDays, closeDb, runWaivers } from "./support/clock";
 import {
-  OUTPUT_DIR,
   beginSection,
   captureToken,
   persona,
-  resetOutput,
+  runDir,
+  startRun,
   setDay,
   shot,
   signInThroughForm,
@@ -87,7 +87,7 @@ function selectionValueOrder(): Array<{ category: Category; film: Film; id: numb
 
 test("a player's season, screen by screen", async ({ browser }) => {
   test.setTimeout(30 * 60_000);
-  resetOutput();
+  startRun();
   const admin = await apiLogin(ADMIN_USERNAME);
   const adminPost = (path: string, body: unknown = {}) =>
     tourApi("POST", path, body, admin);
@@ -939,7 +939,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(you, "Home, after the season", "Cora's home once everything has finished.");
 
   writeManifest();
-  writeFileSync(path.join(OUTPUT_DIR, "skipped.txt"), misses.join("\n"));
+  writeFileSync(path.join(runDir(), "skipped.txt"), misses.join("\n"));
   if (misses.length)
     console.warn(`tour: ${misses.length} step(s) skipped:\n- ${misses.join("\n- ")}`);
   await closeDb();

@@ -1,12 +1,19 @@
 #!/usr/bin/env node
-// Builds tour-output/index.html from the tour's manifest: one section per stage of
-// the season, each screenshot with its title, caption, persona, path and day.
+// Builds index.html in a tour run (default: latest) from its manifest: one section per
+// stage of the season, each screenshot with its title, caption, persona, path and day.
+// Then prunes old runs. Usage: node tests/tour/gallery.mjs [run]
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { outputOverride, pruneRuns, resolveRun } from "./support/run-dirs.mjs";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const outDir = process.env.TOUR_OUTPUT_DIR ?? path.join(repoRoot, "tour-output");
+const runName = process.argv[2];
+let outDir;
+try {
+  outDir = resolveRun(runName);
+} catch {
+  console.error(`No tour run${runName ? ` named ${runName}` : ""}; run the tour first.`);
+  process.exit(1);
+}
 const manifestPath = path.join(outDir, "manifest.json");
 if (!existsSync(manifestPath)) {
   console.error(`No manifest at ${manifestPath}; run the tour first.`);
@@ -75,3 +82,8 @@ ${sections
 `;
 writeFileSync(path.join(outDir, "index.html"), html);
 console.log(`Gallery: ${path.join(outDir, "index.html")} (${shots.length} screens)`);
+if (!outputOverride()) {
+  const removed = pruneRuns();
+  if (removed.length)
+    console.log(`Pruned ${removed.length} old run(s): ${removed.join(", ")}`);
+}
