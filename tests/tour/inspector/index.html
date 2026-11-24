@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tour inspector</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <strong id="run">Tour inspector</strong>
+      <span id="position" class="muted"></span>
+      <span id="save-state" class="muted" aria-live="polite"></span>
+      <span class="spacer"></span>
+      <span class="muted keys"
+        >← → j k move · n note · c previous run · Esc leave note</span
+      >
+      <button type="button" id="finish">Finish</button>
+    </header>
+    <div class="layout">
+      <main>
+        <div class="meta">
+          <h1 id="title"></h1>
+          <p id="caption"></p>
+          <p class="muted" id="details"></p>
+        </div>
+        <p id="compare-banner" class="banner" hidden></p>
+        <div class="frame"><img id="image" alt="" /></div>
+        <label class="note">
+          <span>Note</span>
+          <textarea
+            id="note"
+            rows="4"
+            placeholder="Press n to write a note on this screen"
+          ></textarea>
+        </label>
+      </main>
+      <nav id="list" aria-label="Screens"></nav>
+    </div>
+    <dialog id="done">
+      <h2>Notes</h2>
+      <p class="muted" id="done-path"></p>
+      <textarea id="markdown" readonly rows="18"></textarea>
+      <div class="actions">
+        <button type="button" id="copy">Copy</button>
+        <button type="button" id="close">Close</button>
+        <span id="copy-state" class="muted" aria-live="polite"></span>
+      </div>
+    </dialog>
+    <script src="/app.js"></script>
+  </body>
+</html>

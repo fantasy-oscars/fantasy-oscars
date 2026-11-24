@@ -29,6 +29,7 @@
     "test:visual": "node tests/visual/run.mjs",
     "test:visual:update": "node tests/visual/run.mjs --update",
     "tour": "pnpm exec playwright test -c playwright.tour.config.ts && node tests/tour/gallery.mjs",
+    "tour:inspect": "node tests/tour/inspect.mjs",
     "test:e2e:install": "pnpm exec playwright install chromium",
     "test:format": "pnpm run format:check && pnpm run format:e2e:check",
     "test:lint": "pnpm run lint && pnpm run lint:e2e && pnpm run tokens:check",
@@ -65,9 +66,9 @@
     "dev:local": "pnpm run db:up && pnpm run db:migrate && concurrently -k -n api,web \"pnpm -C apps/api run dev\" \"pnpm -C apps/web run dev\"",
     "dev:local:reset": "pnpm run db:down && pnpm run dev:local",
     "test:scripts": "node --test tests/unit/tooling/*.test.mjs",
-    "lint:e2e": "pnpm exec eslint playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour",
-    "format:e2e": "pnpm exec prettier -w playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour",
-    "format:e2e:check": "pnpm exec prettier -c playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour",
+    "lint:e2e": "pnpm exec eslint playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour tests/unit/tooling/tour-runs.test.mjs tests/unit/tooling/tour-run-dirs.test.mjs tests/unit/tooling/tour-inspector.test.mjs",
+    "format:e2e": "pnpm exec prettier -w playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour tests/unit/tooling/tour-runs.test.mjs tests/unit/tooling/tour-run-dirs.test.mjs tests/unit/tooling/tour-inspector.test.mjs",
+    "format:e2e:check": "pnpm exec prettier -c playwright.config.ts playwright.visual.config.ts playwright.tour.config.ts tests/e2e tests/visual tests/tour tests/unit/tooling/tour-runs.test.mjs tests/unit/tooling/tour-run-dirs.test.mjs tests/unit/tooling/tour-inspector.test.mjs",
     "lint:scripts": "pnpm exec eslint .github/scripts",
     "format:check": "pnpm -r --if-present format:check"
   }

@@ -1,0 +1,182 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f5f2;
+  --panel: #fff;
+  --line: #ddd8cc;
+  --text: #1d1b17;
+  --muted: #6b6457;
+  --accent: #8a6a12;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17160f;
+    --panel: #221f17;
+    --line: #3a3628;
+    --text: #efece3;
+    --muted: #a39c8a;
+    --accent: #e0b84a;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.spacer {
+  flex: 1;
+}
+button {
+  font: inherit;
+  padding: 4px 14px;
+  border: 1px solid var(--text);
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+}
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+}
+main {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 24px 32px;
+}
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+.meta p {
+  margin: 2px 0;
+}
+.banner {
+  margin: 8px 0;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.frame {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.note {
+  display: block;
+}
+.note span {
+  font-weight: 600;
+}
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+}
+nav {
+  overflow-y: auto;
+  padding: 8px 0 24px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+nav h2 {
+  margin: 12px 12px 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+nav button {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+}
+nav button[aria-current="true"] {
+  background: var(--line);
+  font-weight: 600;
+}
+nav .num {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+nav .mark {
+  margin-left: auto;
+  color: var(--accent);
+}
+dialog {
+  width: min(760px, 92vw);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+dialog textarea {
+  font:
+    13px/1.5 ui-monospace,
+    monospace;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  nav {
+    display: none;
+  }
+  .keys {
+    display: none;
+  }
+}
