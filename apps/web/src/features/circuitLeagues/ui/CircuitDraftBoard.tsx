@@ -1,104 +1,122 @@
-import { Box, Divider, Group, SegmentedControl, Stack, Text, Title } from "@ui";
-import { StandardCard } from "@/primitives";
+import { useMemo, useRef } from "react";
+import { Box, Group, SegmentedControl, Stack, Text, Title } from "@ui";
+import { StandardCard } from "@/primitives/cards/StandardCard";
+import { railMetaCh } from "@/decisions/draft/railMeta";
 import type {
-  CircuitBoardCategory,
-  CircuitBoardCell,
-  CircuitBoardSeat
+  CircuitBoardCategoryCard,
+  CircuitBoardPick,
+  CircuitBoardRoster
 } from "@/decisions/circuitDraft";
+import type { ContenderPillView } from "@/decisions/contenderPill";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { useCssVars } from "@/shared/dom/useCssVars";
+import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
+import { ContenderPill } from "@/features/circuitLeagues/ui/ContenderPill";
+import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
+import { SeasonRosterCard } from "@/features/circuitLeagues/ui/SeasonRosterCard";
 
 export type CircuitBoardMode = "player" | "category";
 
-function cellMeta(cell: CircuitBoardCell, show: "category" | "player"): string {
-  const parts = [cell.slotLabel];
-  if (show === "category" && cell.categoryName) parts.push(cell.categoryName);
-  if (show === "player") parts.push(cell.username);
-  if (cell.auto) parts.push("From queue");
-  return parts.join(" · ");
-}
-
-function Cell(props: { cell: CircuitBoardCell; show: "category" | "player" }) {
-  const { cell } = props;
+function BoardPill(props: {
+  pick: CircuitBoardPick;
+  viewOf: (pick: CircuitBoardPick) => ContenderPillView;
+  withOwner: boolean;
+  onOpenCard?: (pick: CircuitBoardPick) => void;
+}) {
+  const { pick, onOpenCard } = props;
+  const view = props.viewOf(pick);
   return (
-    <Box
-      component="li"
-      className={`circuit-boardCell${cell.missed ? " is-missed" : ""}${
-        cell.supplemental ? " is-supplemental" : ""
-      }`}
-    >
-      <Text
-        className="baseline-textBody baseline-wrapAnywhere"
-        fw="var(--fo-font-weight-bold)"
-      >
-        {cell.label}
-      </Text>
-      <Text variant="helper" className="baseline-textBody baseline-wrapAnywhere">
-        {cellMeta(cell, props.show)}
-      </Text>
-      {cell.note ? (
-        <Text variant="helper" className="baseline-textBody baseline-wrapAnywhere">
-          {cell.note}
-        </Text>
-      ) : null}
-    </Box>
+    <ContenderPill
+      label={view.label}
+      categoryName={view.categoryName}
+      iconCode={view.iconCode}
+      iconVariant={view.iconVariant}
+      stateSuffix={props.withOwner ? `drafted by ${pick.username}` : null}
+      tooltip={
+        <ContenderNomineeCard
+          tooltip={view.tooltip}
+          drafted={{
+            userId: pick.userId,
+            username: pick.username,
+            avatarKey: pick.avatarKey,
+            roundPick: pick.roundPick
+          }}
+        />
+      }
+      onOpenCard={onOpenCard ? () => onOpenCard(pick) : undefined}
+    />
   );
 }
 
-function Column(props: {
-  id: string;
-  title: string;
-  meta: string;
-  highlight: string | null;
-  cells: CircuitBoardCell[];
-  show: "category" | "player";
-  empty: string;
+/** A category card: icon and name like the ceremony category card, then ledger rows. */
+function CategoryCard(props: {
+  card: CircuitBoardCategoryCard;
+  viewOf: (pick: CircuitBoardPick) => ContenderPillView;
+  onOpenCard?: (pick: CircuitBoardPick) => void;
 }) {
+  const { card } = props;
+  const listRef = useRef<HTMLDivElement>(null);
+  const metaCh = railMetaCh(card.picks.map((p) => p.roundPick));
+  const vars = useMemo(() => ({ "--dr-meta-ch": metaCh }), [metaCh]);
+  useCssVars(listRef, vars);
+  const titleId = `circuit-board-category-${card.id}`;
   return (
     <StandardCard
       component="section"
-      aria-labelledby={props.id}
-      className="circuit-boardColumn"
+      aria-labelledby={titleId}
+      className="fo-pillScope fo-seasonRosterCard"
     >
-      <Stack gap="xs">
-        <Group justify="space-between" align="baseline" wrap="wrap" gap="xs">
-          <Title
-            order={4}
-            variant="section"
-            id={props.id}
-            className="baseline-wrapAnywhere"
-          >
-            {props.title}
-          </Title>
-          <Text variant="meta">{props.meta}</Text>
-        </Group>
-        {props.highlight ? (
-          <Text variant="helper" className="circuit-boardHighlight">
-            {props.highlight}
-          </Text>
-        ) : null}
-        <Divider />
-        {props.cells.length === 0 ? (
-          <Text variant="helper">{props.empty}</Text>
+      <Box className="fo-seasonRosterCard-head">
+        <DraftCategoryIcon
+          icon={card.iconCode ?? ""}
+          variant={card.iconVariant === "inverted" ? "inverted" : "default"}
+        />
+        <Text className="fo-seasonRosterCard-name" id={titleId} title={card.name}>
+          {card.name}
+        </Text>
+        <Text className="fo-seasonRosterCard-score">{card.picks.length}</Text>
+      </Box>
+      <Box className="fo-seasonRosterCard-rows" ref={listRef}>
+        {card.picks.length === 0 ? (
+          <Text className="fo-seasonRosterCard-note">None drafted.</Text>
         ) : (
-          <Stack component="ol" gap="var(--fo-space-0)" className="fo-listReset">
-            {props.cells.map((cell) => (
-              <Cell key={cell.pickNumber} cell={cell} show={props.show} />
-            ))}
-          </Stack>
+          card.picks.map((pick) => (
+            <Box
+              key={pick.originalPickNumber}
+              className={["fo-seasonRosterCard-row", "circuit-boardLedgerRow"].join(" ")}
+            >
+              <Text className="dr-railMeta">{pick.roundPick}</Text>
+              <Box className="dr-railAvatar">
+                <AnimalAvatarIcon avatarKey={pick.avatarKey} />
+              </Box>
+              <BoardPill
+                pick={pick}
+                viewOf={props.viewOf}
+                withOwner
+                onOpenCard={props.onOpenCard}
+              />
+            </Box>
+          ))
         )}
-      </Stack>
+      </Box>
     </StandardCard>
   );
 }
 
 /**
- * The draft board as of the snapshot, by player (seats in draft order) or by
- * category. Missed and supplemental picks are labelled as such.
+ * The draft board as roster cards (one per seat, in draft order) or category
+ * cards of pills. A supplemental pick sits in the slot it filled, with that
+ * slot's round-pick, like every other pick; a slot never filled is absent.
+ * The board is the draft, not today's rosters, so it shows no points.
  */
 export function CircuitDraftBoard(props: {
   mode: CircuitBoardMode;
   onModeChange: (mode: CircuitBoardMode) => void;
-  seats: CircuitBoardSeat[];
-  categories: CircuitBoardCategory[];
+  rosters: CircuitBoardRoster[];
+  categories: CircuitBoardCategoryCard[];
+  viewOf: (pick: CircuitBoardPick) => ContenderPillView;
+  /** Phone or coarse pointer: open the nominee card on a tap. */
+  onOpenCard?: (pick: CircuitBoardPick) => void;
 }) {
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-board-title">
@@ -121,28 +139,43 @@ export function CircuitDraftBoard(props: {
       </Group>
       <Box className="circuit-board">
         {props.mode === "player"
-          ? props.seats.map((seat) => (
-              <Column
-                key={seat.seatNumber}
-                id={`circuit-board-seat-${seat.seatNumber}`}
-                title={seat.isViewer ? `${seat.username} (you)` : seat.username}
-                meta={seat.countLabel}
-                highlight={seat.onTheClock ? "On the clock" : null}
-                cells={seat.cells}
-                show="category"
-                empty="No picks yet."
-              />
+          ? props.rosters.map((roster) => (
+              <Box
+                key={roster.seatNumber}
+                component="section"
+                aria-label={
+                  roster.isViewer ? `${roster.username} (you)` : roster.username
+                }
+                className="circuit-boardCard"
+              >
+                <SeasonRosterCard
+                  title={roster.username}
+                  avatarKey={roster.avatarKey}
+                  isViewer={roster.isViewer}
+                  score={roster.countLabel}
+                  scoreLabel={`${roster.countLabel} picks`}
+                  rows={roster.picks.map((pick) => ({
+                    key: String(pick.originalPickNumber),
+                    meta: pick.roundPick,
+                    content: (
+                      <BoardPill
+                        pick={pick}
+                        viewOf={props.viewOf}
+                        withOwner={false}
+                        onOpenCard={props.onOpenCard}
+                      />
+                    )
+                  }))}
+                  emptyText="No picks yet."
+                />
+              </Box>
             ))
-          : props.categories.map((category) => (
-              <Column
-                key={category.id}
-                id={`circuit-board-category-${category.id}`}
-                title={category.name}
-                meta={String(category.cells.length)}
-                highlight={null}
-                cells={category.cells}
-                show="player"
-                empty="None drafted yet."
+          : props.categories.map((card) => (
+              <CategoryCard
+                key={card.id}
+                card={card}
+                viewOf={props.viewOf}
+                onOpenCard={props.onOpenCard}
               />
             ))}
       </Box>

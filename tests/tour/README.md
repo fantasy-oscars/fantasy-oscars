@@ -19,7 +19,9 @@ web app) and takes about ten minutes, most of it waiting out pick clocks. Set
 ## What it covers
 
 Theme Refined Gold, light mode, 1440 × 900, full-page captures. Admin screens are left
-out; admin work (results, finalising, score rebuilds) goes through the API.
+out; admin work (results, finalising, score rebuilds) goes through the API. The
+commissioner, cora, is a super admin because only super admins may start a full awards
+season, so her screens show the admin entry.
 
 1. A first visit while signed out: Home, the static pages, sign-in, registration, password
    reset and the 404.

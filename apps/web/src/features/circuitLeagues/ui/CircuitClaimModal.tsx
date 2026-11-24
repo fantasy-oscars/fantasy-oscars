@@ -7,20 +7,42 @@ import {
   type CircuitRosterEntry
 } from "@/decisions/circuitRoster";
 import { circuitChipLabel } from "@/decisions/circuitWaivers";
-import type { ApiResult, CircuitClaims } from "@/lib/types";
+import { contenderPillView, type ContenderPillView } from "@/decisions/contenderPill";
+import type { ApiResult, CircuitClaims, CircuitLeagueCategory } from "@/lib/types";
 import type { CircuitClaimDraft } from "@/orchestration/circuitWaivers";
+import { ContenderPill } from "./ContenderPill";
+import { ContenderNomineeCard } from "./ContenderCardModal";
 
 const CHIP_HELP_ID = "circuit-claim-chip-help";
 const NO_DROP = "none";
 const DROP_HELP_ID = "circuit-claim-drop-help";
 
+function ModalPill(props: { view: ContenderPillView; dropped?: boolean }) {
+  const { view, dropped } = props;
+  return (
+    <Box className={["fo-pillScope", "circuit-previewPill"].join(" ")}>
+      <ContenderPill
+        label={view.label}
+        categoryName={view.categoryName}
+        iconCode={view.iconCode}
+        iconVariant={view.iconVariant}
+        state={dropped ? "dropped" : "default"}
+        stateSuffix={dropped ? "dropped if the claim wins" : null}
+        tooltip={<ContenderNomineeCard tooltip={view.tooltip} />}
+      />
+    </Box>
+  );
+}
+
 /**
  * A claim's options: the conditional drop and the chip. Opens for a new claim
- * once a contender is picked, and from a claim's Edit action. Centred on
- * desktop, full screen on phone.
+ * once a contender is picked, and from a claim's Edit action or its pill.
+ * The body starts with the claim pill; the chosen drop is echoed under its
+ * select as a dashed pill. Centred on desktop, full screen on phone.
  */
 export function CircuitClaimModal(props: {
   draft: CircuitClaimDraft | null;
+  categories: readonly CircuitLeagueCategory[];
   phone: boolean;
   dropOptions: CircuitRosterEntry[];
   chipOptions: CircuitClaims["chips"];
@@ -45,6 +67,10 @@ export function CircuitClaimModal(props: {
     setTried(false);
     props.onClose();
   };
+  const dropEntry =
+    draft && draft.dropSelectionId !== null
+      ? (props.dropOptions.find((e) => e.selection.id === draft.dropSelectionId) ?? null)
+      : null;
   const dropValue = !draft
     ? null
     : draft.dropSelectionId !== null
@@ -79,6 +105,7 @@ export function CircuitClaimModal(props: {
             props.onSave();
           }}
         >
+          <ModalPill view={contenderPillView(draft.selection, props.categories)} />
           <Stack gap="xs">
             <Select
               label="Drop if this claim wins"
@@ -104,6 +131,12 @@ export function CircuitClaimModal(props: {
               clearable
               aria-describedby={DROP_HELP_ID}
             />
+            {dropEntry ? (
+              <ModalPill
+                view={contenderPillView(dropEntry.selection, props.categories)}
+                dropped
+              />
+            ) : null}
             <Text id={DROP_HELP_ID} variant="helper">
               The drop happens only if the claim wins, at the same moment.
             </Text>

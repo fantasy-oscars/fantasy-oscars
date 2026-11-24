@@ -20,6 +20,8 @@ export type ReadinessInput = {
     missing_dates: Array<Named & { missing: Array<"nominations_on" | "results_on"> }>;
     ceremonies_without_mappings: Named[];
     categories_without_ceremony: Array<{ id: number; name: string }>;
+    categories_without_icon: Array<{ id: number; name: string }>;
+    shared_icons: Array<{ icon_code: string; categories: Array<{ name: string }> }>;
   };
   coverage: {
     ceremonies: Array<
@@ -53,6 +55,24 @@ export function readinessTodos(report: ReadinessInput): ReadinessTodo[] {
     ...gaps.categories_without_ceremony.map((c) => ({
       key: `category-${c.id}`,
       text: `No ceremony supplies ${c.name}`
+    }))
+  ];
+}
+
+/**
+ * Category icon flags, one line each. They never block readiness: a season
+ * pill shows its category only by icon, so these pills look alike.
+ */
+export function readinessIconFlags(report: ReadinessInput): ReadinessTodo[] {
+  const { gaps } = report;
+  return [
+    ...gaps.categories_without_icon.map((c) => ({
+      key: `no-icon-${c.id}`,
+      text: `${c.name} has no icon, so its pills show the neutral trophy`
+    })),
+    ...gaps.shared_icons.map((s) => ({
+      key: `shared-icon-${s.icon_code}`,
+      text: `${s.categories.map((c) => c.name).join(", ")} share the icon ${s.icon_code}`
     }))
   ];
 }

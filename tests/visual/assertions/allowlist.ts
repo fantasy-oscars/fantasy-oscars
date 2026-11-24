@@ -29,6 +29,29 @@ const DRAFT_ROOM_SCREENS = [
 
 const DRAFT_POOL_PILL_SCREENS = [...DRAFT_ROOM_SCREENS, "draft-completed"] as const;
 
+/** Season draft cells whose pills open the phone nominee card on a tap. */
+const SEASON_DRAFT_PILL_SCREENS = [
+  "circuit-draft-board",
+  "circuit-draft-board-category",
+  "circuit-draft-staging",
+  "circuit-draft-card"
+] as const;
+
+/** Season pages whose pills open the phone nominee card (or a claim's edit modal) on a tap. */
+const SEASON_PAGE_PILL_SCREENS = [
+  "circuit-roster-own",
+  "circuit-roster-window",
+  "circuit-roster-other",
+  "circuit-transactions",
+  "circuit-waivers",
+  "circuit-waivers-window",
+  "circuit-waivers-processing",
+  "circuit-points-player",
+  "circuit-points-category",
+  "circuit-standings-final",
+  "circuit-standings-final-rosters"
+] as const;
+
 export const ALLOWLIST: readonly AllowlistEntry[] = [
   {
     check: "touch-target",
@@ -66,11 +89,16 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: [...DRAFT_POOL_PILL_SCREENS, "specimen"],
+    screen: [
+      ...DRAFT_POOL_PILL_SCREENS,
+      ...SEASON_DRAFT_PILL_SCREENS,
+      ...SEASON_PAGE_PILL_SCREENS,
+      "specimen"
+    ],
     viewport: "mobile",
     match: "dr-pill",
     reason:
-      "22px plus 6px gaps meets WCAG 2.5.8 by spacing; a tap only opens the sheet, whose Draft button is 44px. The completed-draft roster board opens the same sheet.",
+      "22px plus 6px gaps meets WCAG 2.5.8 by spacing; a tap only opens the sheet, whose Draft button is 44px. The completed-draft roster board opens the same sheet, and so do the season room's staging rows (44px tall) and board, and the season roster, transaction, waiver result, points and final results pills (rows 44px tall on a phone, or a tap opens the card). A claim pill opens its edit modal instead, on a 44px claim row.",
     date: "2026-11-09"
   },
   {
@@ -117,7 +145,7 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: "specimen",
+    screen: ["specimen", "circuit-draft-card"],
     viewport: "mobile",
     match: "fo-tip-tmdbLink",
     reason:

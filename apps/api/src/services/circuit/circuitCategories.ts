@@ -2,13 +2,15 @@ import type { Pool } from "pg";
 import { type DbClient, runInTransaction } from "../../data/db.js";
 import {
   deleteCircuitCategory,
+  findIconIdByCode,
   getCategoryTemplate,
   getCircuitCategory,
   insertCircuitCategory,
   listCircuitCategories,
   listCircuitCodes,
   renameCircuitCategory,
-  reorderCircuitRows
+  reorderCircuitRows,
+  setCircuitCategoryIcon
 } from "../../data/repositories/circuitRepository.js";
 import {
   circuitCategoryKindForUnitKind,
@@ -97,6 +99,50 @@ export async function renameCategory(
       circuit_category_id: input.categoryId,
       name: input.name,
       previous_name: result.before.name,
+      circuit_status: result.circuit.status
+    }
+  });
+  return { category: result.category };
+}
+
+/**
+ * Sets a category's icon from the template icons. Categories of one Circuit
+ * never share an icon, since the icon is a season pill's only category cue.
+ */
+export async function setCategoryIcon(
+  pool: Pool,
+  actor: Actor,
+  input: { circuitId: number; categoryId: number; icon: string }
+) {
+  const result = await runInTransaction(pool, async (tx) => {
+    const circuit = await lockEditableCircuit(tx, input.circuitId);
+    const before = await requireCategory(tx, input.circuitId, input.categoryId);
+    const iconId = await findIconIdByCode(tx, input.icon);
+    if (iconId === null) throw validationError("Choose one of the icons", ["icon"]);
+    const holder = (await listCircuitCategories(tx, input.circuitId)).find(
+      (c) => c.id !== input.categoryId && c.icon_id === iconId
+    );
+    if (holder) {
+      throw new AppError(
+        "CIRCUIT_CATEGORY_ICON_TAKEN",
+        409,
+        `${holder.name} already uses this icon; choose another`
+      );
+    }
+    await setCircuitCategoryIcon(tx, { ...input, iconId });
+    return {
+      circuit,
+      before,
+      category: await requireCategory(tx, input.circuitId, input.categoryId)
+    };
+  });
+  await audit(pool, actor, {
+    action: "set_circuit_category_icon",
+    target_id: input.circuitId,
+    meta: {
+      circuit_category_id: input.categoryId,
+      icon: input.icon,
+      previous_icon: result.before.icon_code,
       circuit_status: result.circuit.status
     }
   });

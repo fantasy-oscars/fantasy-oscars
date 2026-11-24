@@ -39,14 +39,15 @@ export const FIXED_NOW = "2035-02-10T18:00:00.000Z";
 export type VisualSeed = {
   tokens: Record<PersonaKey, string>;
   ceremonies: { completed: number; upcoming: number; draft: number };
-  leagues: { main: number; second: number; third: number };
+  leagues: { main: number; second: number; third: number; fourth: number };
   seasons: { completed: number; live: number; pending: number };
   /**
    * Competitions in the seeded Circuit (seasons to players): the main league's
    * in setup; the second league's in season with free agency open; the third
-   * league's in season inside a waiver window.
+   * league's in season inside a waiver window; the fourth league's complete,
+   * with a scoring ledger.
    */
-  circuitLeagues: { main: number; inSeason: number; inWindow: number };
+  circuitLeagues: { main: number; inSeason: number; inWindow: number; complete: number };
   /**
    * A league avery commissions that plays no full season, so Create season
    * offers both open awards seasons.
@@ -396,16 +397,18 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
       [circuit.id, e.ceremony, event.id, i]
     );
   }
-  const circuitCategories: Array<[string, string, "FILM" | "ACTING"]> = [
-    ["best-picture", "Best Picture", "FILM"],
-    ["best-director", "Best Director", "FILM"],
-    ["best-actress", "Best Actress", "ACTING"]
+  // Each category has its own icon (copied from its template, as an admin add
+  // does): a season pill shows its category only by icon.
+  const circuitCategories: Array<[string, string, "FILM" | "ACTING", string]> = [
+    ["best-picture", "Best Picture", "FILM", "emoji_events"],
+    ["best-director", "Best Director", "FILM", "movie"],
+    ["best-actress", "Best Actress", "ACTING", "face"]
   ];
-  for (const [i, [code, name, kind]] of circuitCategories.entries()) {
+  for (const [i, [code, name, kind, icon]] of circuitCategories.entries()) {
     await pool.query(
-      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [circuit.id, code, name, kind, i]
+      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index, icon_id)
+       VALUES ($1, $2, $3, $4, $5, (SELECT id FROM icon WHERE code = $6))`,
+      [circuit.id, code, name, kind, i, icon]
     );
   }
   const circuitLeague = await one<{ id: number }>(
@@ -468,15 +471,15 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
       }
     }
   }
-  for (const [i, [code, name, kind]] of [
-    ["best-picture", "Best Picture", "FILM"],
-    ["best-international-feature", "Best International Feature Film", "FILM"],
-    ["best-actor", "Best Actor", "ACTING"]
+  for (const [i, [code, name, kind, icon]] of [
+    ["best-picture", "Best Picture", "FILM", "emoji_events"],
+    ["best-international-feature", "Best International Feature Film", "FILM", "videocam"],
+    ["best-actor", "Best Actor", "ACTING", "person"]
   ].entries()) {
     await pool.query(
-      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [nextCircuit.id, code, name, kind, i]
+      `INSERT INTO circuit_category (circuit_id, code, name, kind, sort_index, icon_id)
+       VALUES ($1, $2, $3, $4, $5, (SELECT id FROM icon WHERE code = $6))`,
+      [nextCircuit.id, code, name, kind, i, icon]
     );
   }
   const mainNext = await one<{ id: number }>(
@@ -671,9 +674,10 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     let pickNumber = 0;
     const record = async (
       key: PersonaKey,
-      kind: "DRAFT" | "FREE_AGENT" | "DROP",
+      kind: "DRAFT" | "FREE_AGENT" | "DROP" | "WAIVER",
       add: number | null,
-      drop: number | null
+      drop: number | null,
+      claimId: number | null = null
     ) => {
       step += 1;
       const at = historyAt(input.at + 10 + step);
@@ -705,9 +709,9 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
         pool,
         `INSERT INTO circuit_transaction
            (circuit_league_id, member_id, kind, add_selection_id, drop_selection_id,
-            draft_pick_id, occurred_at, actor_user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id::int`,
-        [row.id, memberIds[key], kind, add, drop, draftPickId, at, userIds[key]]
+            draft_pick_id, claim_id, occurred_at, actor_user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id::int`,
+        [row.id, memberIds[key], kind, add, drop, draftPickId, claimId, at, userIds[key]]
       );
       if (drop !== null) {
         await pool.query(
@@ -752,6 +756,67 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   await openLeague.record("casey", "DRAFT", sel.actress[0]!, null);
   await openLeague.record("jo", "DROP", null, sel.picture[2]!);
   await openLeague.record("jo", "FREE_AGENT", sel.picture[3]!, null);
+  // One processed window, for the waiver results: jo (first in priority) wins
+  // a claim with a drop, and casey's claim for the same contender loses. The
+  // run rotates jo to the back of the priority list.
+  const runAt = historyAt(539);
+  const priorityBefore = [
+    { member_id: openLeague.memberIds.jo, waiver_priority: 1 },
+    { member_id: openLeague.memberIds.casey, waiver_priority: 2 }
+  ];
+  const priorityAfter = [
+    { member_id: openLeague.memberIds.casey, waiver_priority: 1 },
+    { member_id: openLeague.memberIds.jo, waiver_priority: 2 }
+  ];
+  const run = await one<{ id: number }>(
+    pool,
+    `INSERT INTO circuit_waiver_run
+       (circuit_league_id, window_starts_on, window_ends_on, status, started_at,
+        completed_at, priority_before, priority_after)
+     VALUES ($1, $2::date, $2::date, 'COMPLETED', $3, $3, $4::jsonb, $5::jsonb)
+     RETURNING id::int`,
+    [
+      openLeague.id,
+      runAt.slice(0, 10),
+      runAt,
+      JSON.stringify(priorityBefore),
+      JSON.stringify(priorityAfter)
+    ]
+  );
+  const claimIds = {} as Record<PersonaKey, number>;
+  for (const claim of [
+    { key: "jo", drop: sel.picture[1]!, status: "WON", reason: null },
+    { key: "casey", drop: sel.director[0]!, status: "LOST", reason: "SELECTION_OWNED" }
+  ] as const) {
+    claimIds[claim.key] = (
+      await one<{ id: number }>(
+        pool,
+        `INSERT INTO circuit_waiver_claim
+           (circuit_league_id, member_id, window_starts_on, selection_id, drop_selection_id,
+            rank, status, failure_reason, run_id, created_at, updated_at)
+         VALUES ($1, $2, $3::date, $4, $5, 1, $6, $7, $8, $9, $9) RETURNING id::int`,
+        [
+          openLeague.id,
+          openLeague.memberIds[claim.key],
+          runAt.slice(0, 10),
+          sel.picture[4]!,
+          claim.drop,
+          claim.status,
+          claim.reason,
+          run.id,
+          historyAt(535)
+        ]
+      )
+    ).id;
+  }
+  await openLeague.record("jo", "WAIVER", sel.picture[4]!, sel.picture[1]!, claimIds.jo);
+  // One statement, so the deferred unique check sees the finished swap.
+  await pool.query(
+    `UPDATE circuit_league_member m SET waiver_priority = p.waiver_priority
+     FROM jsonb_to_recordset($1::jsonb) AS p(member_id int, waiver_priority int)
+     WHERE m.id = p.member_id`,
+    [JSON.stringify(priorityAfter)]
+  );
   // casey's queue and staged contenders here, for the live draft room cells
   // (which rewind the draft to pick 4): undrafted and drafted rows in each.
   for (const [i, selectionId] of [
@@ -814,6 +879,116 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     );
   }
 
+  // A finished season in drew's league (both events), with the scoring ledger
+  // written as the rebuild writes it: one row per (member, selection,
+  // ceremony, kind), pointing at the interval that held it. jo's third pick is
+  // nominated at the Guild Awards, then jo drops it and long adds it before
+  // the win, so the nomination stays on jo's side and the win goes to long.
+  const fourth = await one<{ id: number }>(
+    pool,
+    `INSERT INTO league (code, name, max_members, roster_size, is_public, created_by_user_id, created_at)
+     VALUES ('golden-hour-guild', 'Golden Hour Guild', 12, 6, FALSE, $1, $2) RETURNING id::int`,
+    [userIds.drew, minutes(314)]
+  );
+  for (const [i, key] of (["drew", "jo", "long"] as PersonaKey[]).entries()) {
+    await pool.query(
+      `INSERT INTO league_member (league_id, user_id, role, joined_at)
+       VALUES ($1, $2, $3, $4)`,
+      [fourth.id, userIds[key], key === "drew" ? "OWNER" : "MEMBER", minutes(370 + i)]
+    );
+  }
+  const finishedLeague = await inSeasonLeague({
+    leagueId: fourth.id,
+    rosterSize: 3,
+    eventCodes: ["golden-reel", "guild-awards"],
+    members: ["drew", "jo", "long"],
+    at: 600
+  });
+  for (const [key, selectionId] of [
+    ["drew", sel.picture[0]!],
+    ["jo", sel.picture[1]!],
+    ["long", sel.picture[3]!],
+    ["long", sel.director[1]!],
+    ["jo", sel.actress[1]!],
+    ["drew", sel.director[0]!],
+    ["drew", sel.actress[0]!],
+    ["jo", sel.picture[2]!],
+    ["long", sel.picture[4]!]
+  ] as const) {
+    await finishedLeague.record(key, "DRAFT", selectionId, null);
+  }
+  await finishedLeague.record("jo", "DROP", null, sel.picture[2]!);
+  await finishedLeague.record("long", "FREE_AGENT", sel.picture[2]!, sel.picture[4]!);
+  const score = async (
+    key: PersonaKey,
+    selectionId: number,
+    ceremonyId: number,
+    kind: "NOMINATION" | "WIN",
+    occasionDate: string
+  ) => {
+    const ownership = await one<{ id: number }>(
+      pool,
+      `SELECT id::int FROM circuit_ownership
+       WHERE circuit_league_id = $1 AND member_id = $2 AND selection_id = $3
+       ORDER BY acquired_at DESC LIMIT 1`,
+      [finishedLeague.id, finishedLeague.memberIds[key], selectionId]
+    );
+    await pool.query(
+      `INSERT INTO circuit_score_entry
+         (circuit_league_id, member_id, selection_id, ceremony_id, kind, occasion_date,
+          points, ownership_id)
+       VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8)`,
+      [
+        finishedLeague.id,
+        finishedLeague.memberIds[key],
+        selectionId,
+        ceremonyId,
+        kind,
+        occasionDate,
+        kind === "WIN" ? 2 : 1,
+        ownership.id
+      ]
+    );
+  };
+  // Guild Awards (ceremony 1, winners entered): drew 5, jo 5, long 3.
+  for (const [key, selectionId] of [
+    ["drew", sel.picture[0]!],
+    ["drew", sel.director[0]!],
+    ["drew", sel.actress[0]!],
+    ["jo", sel.picture[1]!],
+    ["jo", sel.picture[2]!],
+    ["jo", sel.actress[1]!],
+    ["long", sel.picture[3]!]
+  ] as const) {
+    await score(key, selectionId, 1, "NOMINATION", "2034-01-23");
+  }
+  for (const [key, selectionId] of [
+    ["drew", sel.director[0]!],
+    ["jo", sel.actress[1]!],
+    ["long", sel.picture[2]!]
+  ] as const) {
+    await score(key, selectionId, 1, "WIN", "2034-03-05");
+  }
+  // Golden Reel Awards (ceremony 2): drew 4, jo 1, long 4.
+  for (const [key, selectionId] of [
+    ["drew", sel.picture[0]!],
+    ["drew", sel.actress[0]!],
+    ["jo", sel.picture[1]!],
+    ["long", sel.picture[2]!],
+    ["long", sel.director[1]!]
+  ] as const) {
+    await score(key, selectionId, 2, "NOMINATION", "2035-01-22");
+  }
+  for (const [key, selectionId] of [
+    ["drew", sel.picture[0]!],
+    ["long", sel.director[1]!]
+  ] as const) {
+    await score(key, selectionId, 2, "WIN", "2035-03-04");
+  }
+  await pool.query(`UPDATE circuit_league SET status = 'COMPLETE' WHERE id = $1`, [
+    finishedLeague.id
+  ]);
+
   // A saved draft plan for the commissioner, in the live ceremony.
   const plan = await one<{ id: number }>(
     pool,
@@ -841,7 +1016,7 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
   return {
     tokens,
     ceremonies: { completed: 1, upcoming: 2, draft: 3 },
-    leagues: { main: main.id, second: second.id, third: third.id },
+    leagues: { main: main.id, second: second.id, third: third.id, fourth: fourth.id },
     seasons: {
       completed: completed.seasonId,
       live: live.seasonId,
@@ -850,7 +1025,8 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
     circuitLeagues: {
       main: circuitLeague.id,
       inSeason: openLeague.id,
-      inWindow: windowLeague.id
+      inWindow: windowLeague.id,
+      complete: finishedLeague.id
     },
     matineeLeague: matinee.id,
     drafts: { completed: completed.draftId, live: live.draftId },

@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { MantineProvider } from "@ui";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 
 afterEach(cleanup);
 

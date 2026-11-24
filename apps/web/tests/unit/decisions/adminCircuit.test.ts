@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canActivateCircuit,
   chooseMappingRow,
+  circuitCategoryIconOptions,
   circuitCategoryKindLabel,
   circuitTemplateOptions,
   dateOnlyLabel,
@@ -194,5 +195,29 @@ describe("structural edit confirmation", () => {
     ).toEqual(leagues);
     expect(parseAffectedLeagues(undefined)).toEqual([]);
     expect(parseAffectedLeagues({ affected_leagues: "x" })).toEqual([]);
+  });
+});
+
+describe("circuitCategoryIconOptions", () => {
+  const categories = [
+    { id: 1, name: "Picture", icon_code: "theaters" },
+    { id: 2, name: "Director", icon_code: "movie" },
+    { id: 3, name: "Actress", icon_code: null }
+  ];
+
+  it("disables and names icons other categories use, keeping the category's own", () => {
+    expect(
+      circuitCategoryIconOptions(["face", "movie", "theaters"], categories, 2)
+    ).toEqual([
+      { value: "face", label: "face", disabled: false },
+      { value: "movie", label: "movie", disabled: false },
+      { value: "theaters", label: "theaters (used by Picture)", disabled: true }
+    ]);
+  });
+
+  it("offers every unused icon to a category without one", () => {
+    expect(
+      circuitCategoryIconOptions(["face", "movie"], categories, 3).map((o) => o.disabled)
+    ).toEqual([false, true]);
   });
 });

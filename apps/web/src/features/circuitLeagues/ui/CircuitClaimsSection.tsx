@@ -1,12 +1,16 @@
 import { Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { circuitClaimsNote } from "@/decisions/circuitWaivers";
+import { circuitClaimsNote, type CircuitClaimRow } from "@/decisions/circuitWaivers";
+import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { ApiResult, CircuitClaim, CircuitClaims } from "@/lib/types";
 import {
   ContenderPicker,
   type ContenderPickerProps
 } from "@/features/contenders/ui/ContenderPicker";
 import { CircuitClaimList } from "./CircuitClaimList";
+
+/** The heading the season page's Add/drop deep-links to (`#claim`). */
+export const CIRCUIT_CLAIM_HEADING_ID = "circuit-claims-add";
 
 const NOTE_ID = "circuit-claims-note";
 
@@ -16,8 +20,9 @@ const NOTE_ID = "circuit-claims-note";
  */
 export function CircuitClaimsSection(props: {
   claims: CircuitClaims;
-  categoryNames: ReadonlyMap<number, string>;
-  pending: CircuitClaim[];
+  /** The pending claims, first choice first, as rows of pills. */
+  rows: CircuitClaimRow[];
+  phone: boolean;
   canClaim: boolean;
   busy: boolean;
   status: ApiResult | null;
@@ -25,8 +30,9 @@ export function CircuitClaimsSection(props: {
   onReorder: (claimIds: number[]) => void;
   onEdit: (claim: CircuitClaim) => void;
   onWithdraw: (claim: CircuitClaim) => void;
+  onOpenCard?: (view: ContenderPillView) => void;
 }) {
-  const { claims, pending } = props;
+  const { claims, rows } = props;
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-claims-title">
       <Group justify="space-between" align="flex-end" wrap="wrap">
@@ -35,7 +41,7 @@ export function CircuitClaimsSection(props: {
         </Title>
         {claims.window ? (
           <Text variant="meta">
-            {pending.length === 1 ? "1 claim" : `${pending.length} claims`}
+            {rows.length === 1 ? "1 claim" : `${rows.length} claims`}
           </Text>
         ) : null}
       </Group>
@@ -45,26 +51,27 @@ export function CircuitClaimsSection(props: {
       </Text>
       <FormStatus loading={false} result={props.status} />
       {claims.window ? (
-        pending.length === 0 ? (
+        rows.length === 0 ? (
           <Text className="baseline-textBody">
             You have no claims. Pick a contender below to claim it.
           </Text>
         ) : (
           <CircuitClaimList
-            claims={pending}
-            categoryNames={props.categoryNames}
+            rows={rows}
             editable={props.canClaim}
             busy={props.busy}
+            phone={props.phone}
             describedBy={NOTE_ID}
             onReorder={props.onReorder}
             onEdit={props.onEdit}
             onWithdraw={props.onWithdraw}
+            onOpenCard={props.onOpenCard}
           />
         )
       ) : null}
       {props.canClaim && props.picker ? (
-        <Stack gap="xs" component="section" aria-labelledby="circuit-claims-add">
-          <Title order={4} variant="section" id="circuit-claims-add">
+        <Stack gap="xs" component="section" aria-labelledby={CIRCUIT_CLAIM_HEADING_ID}>
+          <Title order={4} variant="section" id={CIRCUIT_CLAIM_HEADING_ID} tabIndex={-1}>
             Claim a contender
           </Title>
           <ContenderPicker {...props.picker} />

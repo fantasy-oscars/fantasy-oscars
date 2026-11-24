@@ -1,6 +1,7 @@
 import { Box, Text } from "@ui";
 import { circuitPointsLabel } from "@/decisions/circuitStandings";
 import type { CircuitStandingRow } from "@/lib/types";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 
 /** Members by points, highest first; tied members share a rank. */
 export function CircuitStandingsList(props: {
@@ -19,6 +20,7 @@ export function CircuitStandingsList(props: {
           <Text component="span" variant="meta" className="circuit-queueRank">
             {row.rank}
           </Text>
+          <AnimalAvatarIcon avatarKey={row.member.avatar_key} size="sm" />
           <Box className="circuit-rowMain">
             <Text className="baseline-wrapAnywhere" fw="var(--fo-font-weight-bold)">
               {row.member.user_id === props.viewerUserId

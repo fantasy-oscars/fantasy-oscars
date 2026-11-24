@@ -625,7 +625,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(
     you,
     "Season draft, complete (by player)",
-    "The finished board by player, with From queue and the supplemental marks."
+    "The finished board by player: roster cards of pills, each pick in the slot it filled."
   );
   await attempt("board by category", async () => {
     await you.page.getByText("By category", { exact: true }).click({ timeout: 3000 });
@@ -656,7 +656,8 @@ test("a player's season, screen by screen", async ({ browser }) => {
     await panel.scrollIntoViewIfNeeded({ timeout: 3000 });
     const drop = you.page.getByRole("textbox", { name: /Drop to make room/i });
     await drop.click({ timeout: 3000 });
-    await you.page.getByRole("option").first().click();
+    // The first option is "Don't drop anyone"; the next is a pick.
+    await you.page.getByRole("option").nth(1).click();
     const target = selectionValueOrder().find(
       (s) => !drafted.has(s.id) && s.category === "Best Screenplay"
     )!;
@@ -680,7 +681,9 @@ test("a player's season, screen by screen", async ({ browser }) => {
       "Free agency, contender chosen",
       "The chosen free agent, with the drop that makes room."
     );
-    await you.page.getByRole("button", { name: `Pick ${target.film}` }).click();
+    await you.page
+      .getByRole("button", { name: `Add ${target.category}: ${target.film}` })
+      .click();
     drafted.add(target.id);
     await you.page.waitForTimeout(1500);
     await shot(
@@ -766,7 +769,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
       .getByRole("button", { name: target.film })
       .click();
     await you.page
-      .getByRole("button", { name: new RegExp(`^(Pick|Claim) ${target.film}`) })
+      .getByRole("button", { name: `Claim ${target.category}: ${target.film}` })
       .click({ timeout: 5000 });
     await you.page.getByRole("dialog").waitFor({ timeout: 8000 });
     await shot(you, "Claim modal", "Filing a claim: conditional drop and chip.");
@@ -871,6 +874,12 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(you, "Standings, after first winners", "Win points added.");
   await visit(you, `${fullUrl}/standings/${northlight.id}`);
   await shot(you, "Ceremony points, winners", "The first ceremony's full breakdown.");
+  await visit(you, `${fullUrl}/standings/${northlight.id}?view=category`);
+  await shot(
+    you,
+    "Ceremony points, by category",
+    "The same ceremony by category: nominations and wins per category."
+  );
   await visit(you, `/ceremonies/${northlight.id}`);
   await shot(you, "Ceremony with winners", `${northlight.name} with winners marked.`);
   await visit(you, `${fullUrl}/waivers`);
@@ -895,6 +904,17 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await rebuildScores();
   await visit(you, `${fullUrl}/standings`);
   await shot(you, "Standings, final", "Final standings across both ceremonies.");
+  await attempt("final rosters", async () => {
+    await visit(you, `${fullUrl}/standings?results=rosters`);
+    await you.page
+      .getByRole("list", { name: "Final rosters" })
+      .waitFor({ timeout: 5000 });
+    await shot(
+      you,
+      "Standings, final rosters",
+      "Final results by roster: each player's picks as the season ended."
+    );
+  });
   await visit(you, `${fullUrl}/standings/${grand.id}`);
   await shot(you, "Ceremony points, final ceremony", `${grand.name} breakdown.`);
   await visit(you, fullUrl);

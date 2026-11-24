@@ -11,11 +11,14 @@ import {
   type ContenderFilm,
   type ContenderPerson
 } from "../decisions/contenders";
+import type { CircuitSelectionOwner } from "../lib/types";
 
 /*
  * Contender picker workflow: load a Circuit's categories, search TMDB films,
  * load a film's credits for acting categories and upsert the selection.
- * Reusable by any screen that lets a player pick a contender.
+ * Reusable by any screen that lets a player pick a contender. A season
+ * screen passes its `circuitLeagueId`: the contender's owner is then read as
+ * soon as it is fully chosen, and an owned contender is never picked.
  */
 
 export type ContenderSelection = {
@@ -38,9 +41,12 @@ export const CONTENDER_SEARCH_DEBOUNCE_MS = 300;
 
 export function useContenderPickerOrchestration(args: {
   circuitId: number | null;
+  /** The season the pick is for; its owner read and guard apply only with it. */
+  circuitLeagueId?: number | null;
   onPicked?: (selection: ContenderSelection) => void;
 }) {
   const { circuitId, onPicked } = args;
+  const circuitLeagueId = args.circuitLeagueId ?? null;
 
   const [categoriesState, setCategoriesState] = useState<LoadState>("loading");
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -66,6 +72,11 @@ export function useContenderPickerOrchestration(args: {
   const [picking, setPicking] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [picked, setPicked] = useState<ContenderSelection | null>(null);
+  const [resolved, setResolved] = useState<{
+    key: string;
+    owner: CircuitSelectionOwner;
+  } | null>(null);
+  const resolveSeq = useRef(0);
 
   const { term, hint: searchHint } = contenderSearchTerm(query);
 
@@ -210,11 +221,15 @@ export function useContenderPickerOrchestration(args: {
     if (filmTmdbId !== null) void loadCredits(filmTmdbId);
   }, [filmTmdbId, loadCredits]);
 
-  const pick = useCallback(async () => {
-    if (!category || !film) return;
-    setPicking(true);
-    setPickError(null);
-    const res = await fetchJson<{ selection: ContenderSelection }>(
+  const step = contenderPickerStep({ category, film, person });
+  const contenderKey =
+    step === "confirm" && category && film
+      ? `${category.id}:${film.tmdb_id}:${category.kind === "ACTING" ? (person?.tmdb_id ?? "") : ""}`
+      : null;
+
+  const upsert = useCallback(async () => {
+    if (!category || !film) return null;
+    return fetchJson<{ selection: ContenderSelection; owner?: CircuitSelectionOwner }>(
       "/contenders/selections",
       {
         method: "POST",
@@ -222,18 +237,43 @@ export function useContenderPickerOrchestration(args: {
         body: JSON.stringify({
           circuit_category_id: category.id,
           film_tmdb_id: film.tmdb_id,
-          person_tmdb_id: category.kind === "ACTING" ? (person?.tmdb_id ?? null) : null
+          person_tmdb_id: category.kind === "ACTING" ? (person?.tmdb_id ?? null) : null,
+          ...(circuitLeagueId === null ? {} : { circuit_league_id: circuitLeagueId })
         })
       }
     );
+  }, [category, film, person, circuitLeagueId]);
+
+  // In a season, read who holds the contender once it is fully chosen.
+  useEffect(() => {
+    if (circuitLeagueId === null || contenderKey === null) return;
+    const seq = ++resolveSeq.current;
+    void upsert().then((res) => {
+      if (seq !== resolveSeq.current || !res?.ok || !res.data) return;
+      setResolved({ key: contenderKey, owner: res.data.owner ?? null });
+    });
+  }, [circuitLeagueId, contenderKey, upsert]);
+
+  const pick = useCallback(async () => {
+    if (!category || !film) return;
+    resolveSeq.current += 1;
+    setPicking(true);
+    setPickError(null);
+    const res = await upsert();
     setPicking(false);
-    if (!res.ok || !res.data) {
-      setPickError(contenderErrorMessage(res));
+    if (!res?.ok || !res.data) {
+      setPickError(contenderErrorMessage(res ?? {}));
       return;
+    }
+    if (circuitLeagueId !== null) {
+      const owner = res.data.owner ?? null;
+      if (contenderKey !== null) setResolved({ key: contenderKey, owner });
+      // Someone holds it (perhaps the viewer): the preview says so; nothing is picked.
+      if (owner) return;
     }
     setPicked(res.data.selection);
     onPicked?.(res.data.selection);
-  }, [category, film, person, onPicked]);
+  }, [category, film, upsert, circuitLeagueId, contenderKey, onPicked]);
 
   const startOver = useCallback(() => {
     setFilm(null);
@@ -247,7 +287,7 @@ export function useContenderPickerOrchestration(args: {
     categoriesState,
     categoriesError,
     categories,
-    step: contenderPickerStep({ category, film, person }),
+    step,
     category,
     film,
     person,
@@ -262,6 +302,8 @@ export function useContenderPickerOrchestration(args: {
     picking,
     pickError,
     picked,
+    /** The chosen contender's owner in the season; undefined until it is read. */
+    owner: resolved && resolved.key === contenderKey ? resolved.owner : undefined,
     actions: {
       selectCategory,
       setQuery,

@@ -7,6 +7,18 @@
         "var(--brand-page)",
         "var(--brand-page)",
         "var(--brand-raised)",
+        "var(--brand-raised)"
+      ],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-draft-armed"]
+    },
+    {
+      "fg": "rgba(var(--brand-text-rgb), 0.65)",
+      "layers": [
+        "var(--brand-page)",
+        "var(--brand-page)",
+        "var(--brand-raised)",
         "var(--brand-raised)",
         "var(--brand-raised)"
       ],
@@ -19,7 +31,14 @@
       "layers": ["var(--brand-page)", "var(--brand-raised)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["specimen"]
+      "screens": ["circuit-roster-tooltip", "specimen"]
+    },
+    {
+      "fg": "rgba(var(--brand-text-rgb), 0.65)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-roster-tooltip"]
     },
     {
       "fg": "var(--brand-home-aside-heading-color)",
@@ -114,7 +133,11 @@
       "layers": ["var(--brand-page)", "var(--brand-raised)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["forgot-password"]
+      "screens": [
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
+        "forgot-password"
+      ]
     },
     {
       "fg": "var(--brand-muted)",
@@ -130,14 +153,23 @@
         "ceremonies-index",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-logged-out",
@@ -189,7 +221,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "draft-completed",
@@ -223,7 +257,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "draft-live-armed",
@@ -247,7 +283,7 @@
       ],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["circuit-draft-lobby", "circuit-draft-room"]
+      "screens": ["circuit-draft-armed"]
     },
     {
       "fg": "var(--brand-muted)",
@@ -273,6 +309,7 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-room",
         "draft-live-armed",
         "draft-live-countdown",
@@ -288,7 +325,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "draft-live-armed",
@@ -308,7 +347,7 @@
       "layers": ["var(--brand-page)", "var(--brand-page)", "var(--brand-sunken)"],
       "bucket": "placeholder",
       "modes": ["dark", "light"],
-      "screens": ["circuit-draft-lobby", "circuit-draft-room"]
+      "screens": ["circuit-draft-armed", "circuit-draft-lobby", "circuit-draft-room"]
     },
     {
       "fg": "var(--brand-muted)",
@@ -321,6 +360,7 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-room",
         "draft-live-armed",
         "draft-live-countdown",
@@ -343,11 +383,19 @@
         "account-appearance-open",
         "admin-ceremony-nominees",
         "admin-home",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-tooltip",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
         "forgot-password",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-with-circuit",
@@ -392,6 +440,13 @@
     },
     {
       "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-points-player", "circuit-standings-final-rosters"]
+    },
+    {
+      "fg": "var(--brand-muted)",
       "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-sunken)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
@@ -426,6 +481,11 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
+        "circuit-waivers",
         "full-season-member",
         "full-season-member-view-open",
         "full-season-setup",
@@ -444,6 +504,7 @@
       "screens": [
         "admin-films",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-waivers-window",
         "specimen"
       ]
@@ -500,25 +561,13 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-room",
         "draft-live-armed",
         "draft-live-your-turn",
         "draft-live-your-turn (stress data)",
         "specimen"
       ]
-    },
-    {
-      "fg": "var(--brand-on-primary)",
-      "layers": [
-        "var(--brand-page)",
-        "var(--brand-page)",
-        "var(--brand-raised)",
-        "var(--brand-raised)",
-        "var(--brand-primary)"
-      ],
-      "bucket": "normal",
-      "modes": ["dark", "light"],
-      "screens": ["circuit-draft-room"]
     },
     {
       "fg": "var(--brand-on-primary)",
@@ -540,6 +589,8 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "full-season-in-season",
+        "full-season-processing",
         "league-detail",
         "season-completed",
         "season-live",
@@ -603,7 +654,7 @@
       ],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["draft-live-armed", "specimen"]
+      "screens": ["circuit-draft-armed", "draft-live-armed", "specimen"]
     },
     {
       "fg": "var(--brand-text)",
@@ -619,15 +670,24 @@
         "ceremonies-index",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
         "forgot-password",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-logged-out",
@@ -665,13 +725,22 @@
         "admin-films",
         "admin-home",
         "ceremonies-index",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "league-detail",
         "league-detail-member",
@@ -804,7 +873,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "draft-completed",
@@ -886,7 +957,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "draft-completed",
@@ -962,7 +1035,9 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
-        "circuit-draft-lobby",
+        "circuit-draft-armed",
+        "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-room",
         "draft-completed",
         "draft-completed (stress data)",
@@ -1037,6 +1112,7 @@
       "modes": ["dark", "light"],
       "screens": [
         "circuit-draft-board",
+        "circuit-draft-board-category",
         "circuit-draft-lobby",
         "draft-live-focus-disabled",
         "draft-live-hover-match",
@@ -1055,7 +1131,7 @@
       ],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["circuit-draft-board"]
+      "screens": ["circuit-draft-board", "circuit-draft-board-category"]
     },
     {
       "fg": "var(--brand-text)",
@@ -1087,14 +1163,23 @@
         "ceremonies-index",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-logged-out",
@@ -1166,9 +1251,15 @@
         "account-appearance-open",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-player",
+        "circuit-standings-final-rosters",
+        "circuit-waivers-processing",
+        "circuit-waivers-window",
         "draft-plans",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-out",
         "not-found",
@@ -1215,8 +1306,11 @@
       "bucket": "normal",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-roster-other",
         "circuit-roster-own",
         "circuit-roster-window",
+        "full-season-in-season",
+        "full-season-processing",
         "login",
         "register",
         "season-completed",
@@ -1229,7 +1323,15 @@
       "layers": ["var(--brand-page)", "var(--brand-sunken)", "var(--brand-raised)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["login", "register"]
+      "screens": [
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-tooltip",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
+        "login",
+        "register"
+      ]
     },
     {
       "fg": "var(--brand-text)",
@@ -1260,15 +1362,24 @@
         "ceremonies-index",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
         "forgot-password",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-logged-out",
@@ -1452,14 +1563,23 @@
       "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--fo-win-gold)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["ceremony-detail-results"]
+      "screens": [
+        "ceremony-detail-results",
+        "circuit-points-player",
+        "circuit-standings-final-rosters"
+      ]
     },
     {
       "fg": "var(--fo-win-gold-on)",
       "layers": ["var(--brand-page)", "var(--fo-win-gold)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["specimen"]
+      "screens": [
+        "circuit-points-category",
+        "circuit-roster-tooltip",
+        "circuit-standings-final",
+        "specimen"
+      ]
     }
   ],
   "unchecked": [
@@ -1478,13 +1598,18 @@
       "fg": "var(--brand-muted)",
       "reason": "bgOverlap",
       "modes": ["dark", "light"],
-      "screens": ["account-appearance-open", "draft-live-armed"]
+      "screens": [
+        "account-appearance-open",
+        "circuit-draft-armed",
+        "circuit-roster-tooltip",
+        "draft-live-armed"
+      ]
     },
     {
       "fg": "var(--brand-muted)",
       "reason": "elmPartiallyObscuring",
       "modes": ["dark", "light"],
-      "screens": ["season-create-full-scoring-open"]
+      "screens": ["circuit-draft-armed", "season-create-full-scoring-open"]
     },
     {
       "fg": "var(--brand-muted)",
@@ -1503,11 +1628,17 @@
       "reason": "shortTextContent",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-lobby",
         "circuit-draft-room",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans"
       ]
@@ -1523,14 +1654,23 @@
         "ceremonies-index",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-roster-other",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings-final",
+        "circuit-standings-final-rosters",
         "circuit-transactions",
         "circuit-waivers",
+        "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans",
+        "full-season-in-season",
         "full-season-member",
         "full-season-member-view-open",
+        "full-season-processing",
         "full-season-setup",
         "home-logged-in",
         "home-logged-out",
@@ -1575,6 +1715,7 @@
       "reason": "shortTextContent",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-armed",
         "circuit-draft-room",
         "draft-live-armed",
         "draft-live-your-turn",
@@ -1586,7 +1727,12 @@
       "fg": "var(--brand-text)",
       "reason": "bgOverlap",
       "modes": ["dark", "light"],
-      "screens": ["draft-live-armed", "draft-live-focus-disabled"]
+      "screens": [
+        "circuit-draft-armed",
+        "circuit-roster-tooltip",
+        "draft-live-armed",
+        "draft-live-focus-disabled"
+      ]
     },
     {
       "fg": "var(--brand-text)",
@@ -1597,9 +1743,11 @@
         "account-appearance-open",
         "admin-ceremony-nominees",
         "admin-films",
+        "circuit-draft-armed",
         "circuit-draft-lobby",
         "circuit-draft-room",
         "circuit-roster-own",
+        "circuit-roster-tooltip",
         "circuit-waivers-window",
         "forgot-password",
         "login",
@@ -1615,6 +1763,9 @@
       "reason": "shortTextContent",
       "modes": ["dark", "light"],
       "screens": [
+        "circuit-draft-board-category",
+        "circuit-points-player",
+        "circuit-standings-final-rosters",
         "draft-completed",
         "draft-completed (stress data)",
         "draft-live-focus-disabled",

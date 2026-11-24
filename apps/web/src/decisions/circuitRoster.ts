@@ -1,5 +1,4 @@
 import type {
-  CircuitLeagueCategory,
   CircuitLeagueStatus,
   CircuitRoster,
   CircuitSelectionSummary,
@@ -21,27 +20,6 @@ export type CircuitRosterCategory = CircuitRoster["categories"][number];
 export function circuitSelectionLabel(selection: CircuitSelectionSummary): string {
   const film = contenderFilmLabel(selection.film);
   return selection.person ? `${selection.person.name}, ${film}` : film;
-}
-
-/** Category names by category id, for labelling contenders. */
-export function circuitCategoryNames(
-  categories: readonly Pick<CircuitLeagueCategory, "id" | "name">[]
-): ReadonlyMap<number, string> {
-  return new Map(categories.map((c) => [c.id, c.name]));
-}
-
-/**
- * The contender label followed by its category: "Static (2026) in Best Sound".
- * A film is a separate contender in each category, so a bare title is
- * ambiguous wherever two contenders of one film can appear together.
- */
-export function circuitSelectionCategoryLabel(
-  selection: CircuitSelectionSummary,
-  categoryNames: ReadonlyMap<number, string>
-): string {
-  const label = circuitSelectionLabel(selection);
-  const category = categoryNames.get(selection.circuit_category_id);
-  return category ? `${label} in ${category}` : label;
 }
 
 /** Rosters exist from the first draft pick onwards. */
@@ -154,6 +132,27 @@ export function circuitAddNeedsDrop(
   if (categoryFull(roster, selection)) return "category";
   if (roster.entries.length >= roster.roster_size) return "any";
   return "none";
+}
+
+/** The drop select's explicit "no drop" option, listed first. */
+export const CIRCUIT_NO_DROP_LABEL = "Don't drop anyone";
+
+/**
+ * The drop select's placeholder: ask for a drop when the roster or the
+ * chosen category is full, so an add is not sent without one.
+ */
+export function circuitDropPlaceholder(
+  roster: Pick<CircuitRoster, "entries" | "roster_size" | "categories">,
+  categoryId: number | null
+): string {
+  const category = roster.categories.find((c) => c.id === categoryId) ?? null;
+  const categoryFull =
+    category !== null &&
+    category.max_owned !== null &&
+    category.owned >= category.max_owned;
+  return categoryFull || roster.entries.length >= roster.roster_size
+    ? "Select a pick to drop"
+    : CIRCUIT_NO_DROP_LABEL;
 }
 
 /** Entries that may be dropped to make room for `selection` (all when none is pending). */

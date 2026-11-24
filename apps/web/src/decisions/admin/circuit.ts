@@ -132,6 +132,28 @@ export function circuitCategoryKindLabel(kind: string): string {
 }
 
 /**
+ * The icons a Circuit category can take: every template icon, with those
+ * another category of the Circuit already uses disabled and named, since a
+ * season pill's icon is its only category cue. The current icon stays enabled.
+ */
+export function circuitCategoryIconOptions(
+  iconCodes: readonly string[],
+  categories: ReadonlyArray<{ id: number; name: string; icon_code: string | null }>,
+  categoryId: number
+): Array<{ value: string; label: string; disabled: boolean }> {
+  const usedBy = new Map<string, string>();
+  for (const c of categories) {
+    if (c.id !== categoryId && c.icon_code) usedBy.set(c.icon_code, c.name);
+  }
+  return iconCodes.map((code) => {
+    const holder = usedBy.get(code);
+    return holder
+      ? { value: code, label: `${code} (used by ${holder})`, disabled: true }
+      : { value: code, label: code, disabled: false };
+  });
+}
+
+/**
  * The category templates a Circuit category can be built from. Song
  * templates are left out: a Circuit selection is a film or a performance.
  */

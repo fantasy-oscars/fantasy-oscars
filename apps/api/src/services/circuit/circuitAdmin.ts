@@ -28,6 +28,7 @@ import {
   withResultsDate
 } from "../../domain/circuit.js";
 import {
+  categoryIconGaps,
   circuitCoverage,
   isCircuitReady,
   readinessGaps
@@ -141,7 +142,7 @@ export async function getCircuitReadiness(client: DbClient, id: number) {
       status: circuit.status
     },
     ready: isCircuitReady(ceremonies.length, gaps),
-    gaps,
+    gaps: { ...gaps, ...categoryIconGaps(categories) },
     coverage,
     occasions,
     waiver_windows: waiverWindows(

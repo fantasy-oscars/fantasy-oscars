@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   coverageRows,
+  readinessIconFlags,
   readinessTodos,
   type ReadinessInput
 } from "@/decisions/admin/circuitReadiness";
@@ -13,7 +14,11 @@ const report: ReadinessInput = {
   gaps: {
     missing_dates: [{ ...wga, missing: ["nominations_on", "results_on"] }],
     ceremonies_without_mappings: [wga],
-    categories_without_ceremony: [{ id: 9, name: "Animated" }]
+    categories_without_ceremony: [{ id: 9, name: "Animated" }],
+    categories_without_icon: [{ id: 9, name: "Animated" }],
+    shared_icons: [
+      { icon_code: "movie", categories: [{ name: "Picture" }, { name: "Director" }] }
+    ]
   },
   coverage: {
     ceremonies: [
@@ -67,5 +72,20 @@ describe("Circuit readiness decisions", () => {
       },
       { ceremonyId: 2, label: "wga", supplies: [], unmapped: [] }
     ]);
+  });
+});
+
+describe("readinessIconFlags", () => {
+  it("names categories without an icon and those sharing one, apart from the to-do list", () => {
+    expect(readinessIconFlags(report)).toEqual([
+      {
+        key: "no-icon-9",
+        text: "Animated has no icon, so its pills show the neutral trophy"
+      },
+      { key: "shared-icon-movie", text: "Picture, Director share the icon movie" }
+    ]);
+    expect(readinessTodos(report).map((t) => t.text)).not.toContain(
+      "Animated has no icon, so its pills show the neutral trophy"
+    );
   });
 });

@@ -13,6 +13,7 @@ import {
   TmdbLogo,
   UnstyledButton
 } from "@ui";
+import type { ReactNode } from "react";
 import { AlertIcon } from "@/shared/AlertIcon";
 import {
   contenderFilmLabel,
@@ -61,10 +62,16 @@ export type ContenderPickerProps = {
   /**
    * Several confirm buttons in place of the one, as in "Draft …", "Queue …"
    * and "Stage …". Each runs its own action; the first is the primary one.
+   * An empty list leaves the action to the preview (free agency's add icon).
    */
   confirmActions?: ContenderConfirmAction[];
   pickError: string | null;
   picked: ContenderSelection | null;
+  /**
+   * The contender as a pill above the confirm buttons, where a season screen
+   * passes one (with its owned state). Admin passes none.
+   */
+  previewPill?: ReactNode;
   actions: {
     selectCategory: (id: number | null) => void;
     setQuery: (q: string) => void;
@@ -289,10 +296,14 @@ function ConfirmStep(props: ContenderPickerProps) {
     );
   }
   const name = person ? person.name : film.title;
+  const preview = props.previewPill ? (
+    <Box className="contender-picker-preview">{props.previewPill}</Box>
+  ) : null;
   const firstEnabled = props.confirmActions?.findIndex((a) => !a.disabled) ?? -1;
   return (
     <Stack gap="xs">
-      {props.confirmActions ? (
+      {preview}
+      {props.confirmActions?.length === 0 ? null : props.confirmActions ? (
         <Group gap="xs" wrap="wrap">
           {props.confirmActions.map((action, idx) => (
             <Button

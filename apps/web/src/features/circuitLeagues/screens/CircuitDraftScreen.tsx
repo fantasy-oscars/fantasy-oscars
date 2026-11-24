@@ -1,22 +1,27 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Box, Text, VisuallyHidden } from "@ui";
 import { useMediaQuery } from "@ui/hooks";
 import type { ContenderPickerProps } from "@/features/contenders/ui/ContenderPicker";
 import type { CircuitDraftView } from "@/orchestration/circuitDraft";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import {
-  circuitBoardByCategory,
-  circuitBoardBySeat,
+  circuitBoardCategoryCards,
+  circuitBoardRosters,
   circuitDraftLobbyFacts,
   circuitDraftRoundNote,
   circuitDraftStartNote,
-  type CircuitDraftClockView
+  type CircuitDraftClockView,
+  type CircuitQueueRow
 } from "@/decisions/circuitDraft";
 import {
+  circuitDraftedBy,
+  circuitDraftPreview,
   circuitHistoryRows,
   circuitMyRosterRows,
-  circuitRoomHeader
+  circuitRoomHeader,
+  circuitStagingNote
 } from "@/decisions/circuitDraftRoom";
+import { contenderPillView } from "@/decisions/contenderPill";
 import type {
   DraftConnectionState,
   DraftConnectionView
@@ -44,12 +49,23 @@ import { CircuitDraftLobby } from "@/features/circuitLeagues/ui/CircuitDraftLobb
 import { CircuitDraftPickPanel } from "@/features/circuitLeagues/ui/CircuitDraftPickPanel";
 import {
   CircuitHistoryList,
-  CircuitRosterList
+  CircuitRosterList,
+  type CircuitRailPick
 } from "@/features/circuitLeagues/ui/CircuitDraftRailLists";
 import {
   CircuitStagingPanel,
-  type CircuitStagingDraft
+  type CircuitStagingDraft,
+  type CircuitStagingList
 } from "@/features/circuitLeagues/ui/CircuitStagingPanel";
+import {
+  ContenderCardModal,
+  type ContenderCardContent
+} from "@/features/circuitLeagues/ui/ContenderCardModal";
+import {
+  ContenderPill,
+  ContenderPillCaption
+} from "@/features/circuitLeagues/ui/ContenderPill";
+import { useStagingGesture } from "@/features/circuitLeagues/screens/useStagingGesture";
 import { DraftBoardHeader } from "@/features/draft/screens/DraftBoardHeader";
 import { MobileDraftHeader } from "@/features/draft/screens/mobile/MobileDraftHeader";
 import { useDraftAudioUnlock } from "@/features/draft/screens/useDraftAudioUnlock";
@@ -108,6 +124,7 @@ export type CircuitDraftScreenProps = {
 export function CircuitDraftScreen(props: CircuitDraftScreenProps) {
   const { view } = props;
   const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
+  const coarse = useMediaQuery("(pointer: coarse)");
   if (view.state === "loading") return <CircuitPageSkeleton label="Loading draft" />;
   if (view.state === "error") {
     return (
@@ -119,13 +136,22 @@ export function CircuitDraftScreen(props: CircuitDraftScreenProps) {
       />
     );
   }
-  return <CircuitDraftRoom {...props} view={view} isMobile={Boolean(isMobile)} />;
+  return (
+    <CircuitDraftRoom
+      {...props}
+      view={view}
+      isMobile={Boolean(isMobile)}
+      phoneCard={Boolean(isMobile || coarse)}
+    />
+  );
 }
 
 function CircuitDraftRoom(
   props: CircuitDraftScreenProps & {
     view: Extract<CircuitDraftView, { state: "ready" }>;
     isMobile: boolean;
+    /** Below 500 px or a coarse pointer: a tap on a pill opens the nominee card. */
+    phoneCard: boolean;
   }
 ) {
   const { view } = props;
@@ -182,15 +208,93 @@ function CircuitDraftRoom(
     [snapshot, detail.categories, props.viewerUserId]
   );
 
+  const categories = detail.categories;
+  const viewOf = useCallback(
+    (selection: CircuitSelectionSummary) => contenderPillView(selection, categories),
+    [categories]
+  );
+  const draftedBy = useMemo(
+    () => (snapshot ? circuitDraftedBy(snapshot, categories, detail.members) : new Map()),
+    [snapshot, categories, detail.members]
+  );
+  const pickOf = useCallback(
+    (row: { selection: CircuitSelectionSummary | null }): CircuitRailPick | null => {
+      if (!row.selection) return null;
+      const drafted = draftedBy.get(row.selection.id);
+      return drafted ? { view: viewOf(row.selection), drafted } : null;
+    },
+    [draftedBy, viewOf]
+  );
+
+  const gesture = useStagingGesture({
+    canPick: live && Boolean(view.gate?.canPick),
+    picking: props.picking,
+    draftedIds: draftedBy,
+    onDraft: props.onDraft
+  });
+  const [card, setCard] = useState<ContenderCardContent | null>(null);
+  const openPickCard = (pick: CircuitRailPick) =>
+    setCard({ tooltip: pick.view.tooltip, drafted: pick.drafted, actions: [] });
+  const openStagingCard = (row: CircuitQueueRow, list: CircuitStagingList) => {
+    const close = (run: () => void) => () => {
+      setCard(null);
+      run();
+    };
+    const undrafted = !row.drafted;
+    setCard({
+      tooltip: viewOf(row.selection).tooltip,
+      drafted: draftedBy.get(row.selection.id) ?? null,
+      actions: [
+        ...(gesture.canDraft && undrafted
+          ? [
+              {
+                key: "draft",
+                label: "Draft",
+                primary: true,
+                onClick: close(() => gesture.draft(row))
+              }
+            ]
+          : []),
+        ...(undrafted
+          ? [
+              list === "queue"
+                ? {
+                    key: "move",
+                    label: "Move to staged",
+                    onClick: close(() => props.onStage(row.selection))
+                  }
+                : {
+                    key: "move",
+                    label: "Add to queue",
+                    onClick: close(() => props.onQueue(row.selection))
+                  }
+            ]
+          : []),
+        {
+          key: "remove",
+          label: "Remove",
+          onClick: close(() =>
+            list === "queue"
+              ? props.onRemoveFromQueue(row.selection.id)
+              : props.onUnstage(row.selection.id)
+          )
+        }
+      ]
+    });
+  };
+
+  const railCard = props.phoneCard ? openPickCard : undefined;
+
   const stagingDraft: CircuitStagingDraft | null =
     live && view.gate
       ? {
-          canDraft: view.gate.canPick,
-          note: view.gate.canPick
-            ? "You're on the clock: draft from here or from the form."
-            : `${view.gate.reason} You can draft from here when you're on the clock.`,
-          picking: props.picking,
-          onDraft: props.onDraft
+          canDraft: gesture.canDraft,
+          note: circuitStagingNote({ gate: view.gate, phone: props.phoneCard }),
+          armedId: gesture.armedId,
+          pendingId: gesture.pendingId,
+          onArm: gesture.arm,
+          onDisarm: gesture.disarm,
+          onDraft: gesture.draft
         }
       : null;
 
@@ -204,6 +308,10 @@ function CircuitDraftRoom(
         removingSelectionId={props.removingSelectionId}
         status={props.queueStatus}
         draft={stagingDraft}
+        viewOf={viewOf}
+        draftedBy={draftedBy}
+        phone={props.phoneCard}
+        onOpenCard={openStagingCard}
         onRemove={props.onRemoveFromQueue}
         onReorder={props.onReorderQueue}
         onStage={props.onStage}
@@ -223,6 +331,38 @@ function CircuitDraftRoom(
       : null
   ].filter((n): n is string => n !== null);
 
+  const preview = props.picker
+    ? circuitDraftPreview({
+        category: props.picker.category,
+        film: props.picker.film,
+        person: props.picker.person,
+        categories,
+        snapshot,
+        viewerUserId: props.viewerUserId
+      })
+    : null;
+  const picker: ContenderPickerProps | null =
+    props.picker && preview
+      ? {
+          ...props.picker,
+          previewPill: (
+            <Box className={["fo-pillScope", "circuit-previewPill"].join(" ")}>
+              <ContenderPill
+                label={preview.label}
+                categoryName={preview.categoryName}
+                iconCode={preview.iconCode}
+                iconVariant={preview.iconVariant}
+                state={preview.owned ? "muted" : "default"}
+                stateSuffix={preview.stateSuffix}
+              />
+              {preview.caption ? (
+                <ContenderPillCaption>{preview.caption}</ContenderPillCaption>
+              ) : null}
+            </Box>
+          )
+        }
+      : props.picker;
+
   const middle = (
     <CircuitDraftPickPanel
       title={isPre ? "Prepare your picks" : "Your pick"}
@@ -237,7 +377,7 @@ function CircuitDraftRoom(
       ready={view.gate?.canPick ?? false}
       notes={notes}
       statuses={isPre ? [] : [props.pickStatus, props.pauseStatus]}
-      picker={props.picker}
+      picker={picker}
     >
       {isPre ? (
         <CircuitDraftLobby
@@ -282,8 +422,19 @@ function CircuitDraftRoom(
         <CircuitDraftBoard
           mode={boardMode}
           onModeChange={setBoardMode}
-          seats={circuitBoardBySeat(snapshot, detail.categories, props.viewerUserId)}
-          categories={circuitBoardByCategory(snapshot, detail.categories)}
+          rosters={circuitBoardRosters(snapshot, detail.members, props.viewerUserId)}
+          categories={circuitBoardCategoryCards(snapshot, categories, detail.members)}
+          viewOf={(pick) => viewOf(pick.selection)}
+          onOpenCard={
+            props.phoneCard
+              ? (pick) =>
+                  setCard({
+                    tooltip: viewOf(pick.selection).tooltip,
+                    drafted: draftedBy.get(pick.selection.id) ?? null,
+                    actions: []
+                  })
+              : undefined
+          }
         />
       </Box>
     </Box>
@@ -333,6 +484,9 @@ function CircuitDraftRoom(
         message={view.announcement}
         connectionState={props.connectionState}
       />
+      <VisuallyHidden role="status" aria-live="polite" aria-atomic="true">
+        {gesture.clearedNote ?? ""}
+      </VisuallyHidden>
       <DraftConnectionIndicator connection={props.connection} />
     </>
   );
@@ -355,6 +509,7 @@ function CircuitDraftRoom(
       <Box component="footer" className="dr-footer">
         <SiteFooterFineprintOnly />
       </Box>
+      <ContenderCardModal card={card} onClose={() => setCard(null)} />
     </Box>
   );
 
@@ -368,9 +523,16 @@ function CircuitDraftRoom(
         board={board}
         middle={middle}
         history={
-          <CircuitHistoryList rows={historyRows} avatarKeyBySeat={avatarKeyBySeat} />
+          <CircuitHistoryList
+            rows={historyRows}
+            avatarKeyBySeat={avatarKeyBySeat}
+            pickOf={pickOf}
+            onOpenCard={railCard}
+          />
         }
-        roster={<CircuitRosterList rows={rosterRows} />}
+        roster={
+          <CircuitRosterList rows={rosterRows} pickOf={pickOf} onOpenCard={railCard} />
+        }
         staging={staging}
       />
     );
@@ -397,9 +559,16 @@ function CircuitDraftRoom(
         railPreferences={props.railPreferences}
         onRailOpenChange={props.onRailOpenChange}
         history={
-          <CircuitHistoryList rows={historyRows} avatarKeyBySeat={avatarKeyBySeat} />
+          <CircuitHistoryList
+            rows={historyRows}
+            avatarKeyBySeat={avatarKeyBySeat}
+            pickOf={pickOf}
+            onOpenCard={railCard}
+          />
         }
-        roster={<CircuitRosterList rows={rosterRows} />}
+        roster={
+          <CircuitRosterList rows={rosterRows} pickOf={pickOf} onOpenCard={railCard} />
+        }
         staging={staging}
         middle={middle}
       />

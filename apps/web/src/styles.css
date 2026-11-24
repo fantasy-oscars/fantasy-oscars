@@ -2030,8 +2030,13 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
   border-style: dashed;
 }
 
-/* "My turn" pill interaction (draft board only). Tooltip remains unchanged. */
-.dr-frame[data-turn="mine"] .dr-card-pills .dr-pill-btn {
+/* A pick that has left the roster it is listed under: dashed rule, fill and ink unchanged. */
+.dr-pill.is-dropped {
+  border: var(--fo-border-width) dashed var(--brand-rule-strong);
+}
+
+/* "My turn" pill interaction (draft board and season staging lists). Tooltip remains unchanged. */
+.dr-frame[data-turn="mine"] :is(.dr-card-pills, .circuit-stageList) .dr-pill-btn {
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
@@ -2042,7 +2047,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 /* :where keeps the hover rule below every later state rule in specificity. */
 :where(
   .dr-frame[data-turn="mine"]
-    .dr-card-pills
+    :is(.dr-card-pills, .circuit-stageList)
     .dr-pill-btn:not(.is-muted):not([aria-disabled="true"])
 ) {
   cursor: pointer;
@@ -2050,7 +2055,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 :where(
   .dr-frame[data-turn="mine"]
-    .dr-card-pills
+    :is(.dr-card-pills, .circuit-stageList)
     .dr-pill-btn:not(.is-muted):not([aria-disabled="true"])
 ):is(:hover, :active) {
   border-color: var(--brand-rule-strong);
@@ -2060,7 +2065,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 :where(
     .dr-frame[data-turn="mine"]
-      .dr-card-pills
+      :is(.dr-card-pills, .circuit-stageList)
       .dr-pill-btn:not(.is-muted):not([aria-disabled="true"])
   ):is(:hover, :active)
   .dr-pill-text {
@@ -2070,7 +2075,7 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 :where(
   .dr-frame[data-turn="mine"]
-    .dr-card-pills
+    :is(.dr-card-pills, .circuit-stageList)
     .dr-pill-btn:not(.is-muted):not([aria-disabled="true"])
 ):active {
   transform: none;
@@ -2135,6 +2140,48 @@ body[data-mantine-color-scheme="dark"] .dr-middle:focus-visible {
 
 .dr-pill.is-winner.is-armed .dr-pill-text {
   font-weight: var(--fo-font-weight-bold);
+}
+
+.dr-pill.is-winner.is-dropped {
+  border-color: var(--fo-win-gold-on);
+}
+
+/*
+  Pills outside the draft frame (season pages): the ink and ground a room card
+  gives them, the frame's pill geometry, and the room's icon and type.
+*/
+.fo-pillScope {
+  --dr-ink: var(--brand-text);
+  --dr-ground: var(--brand-raised);
+  --dr-pill-height: calc(
+    var(--fo-db-pill-rowHeight) + var(--fo-space-dense-1) + var(--fo-space-hairline)
+  );
+  --dr-pill-radius: min(var(--brand-radius-sm), calc(var(--dr-pill-height) / 2));
+}
+
+.fo-pillScope .dr-pill {
+  font-family: var(--brand-room-font-work);
+  --mi-fill: 0;
+  --mi-wght: 400;
+  --mi-opsz: 20;
+}
+
+.fo-pillScope .dr-pill .mi-icon.mi-icon-tiny {
+  width: var(--fo-icon-size-sm);
+  height: var(--fo-icon-size-sm);
+  padding: 0;
+  color: var(--dr-ink);
+}
+
+/* A muted one-line caption beside a pill: "Dropped", "Owned by pia". */
+.dr-pill-caption {
+  font-size: var(--fo-db-pill-font);
+  font-weight: var(--fo-font-weight-regular);
+  color: var(--brand-muted);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dr-pill-btn:focus-visible,
@@ -3508,6 +3555,82 @@ body[data-mantine-color-scheme="dark"] .results-sticky-header {
   padding: var(--fo-space-dense-2) var(--fo-space-xs);
   border-top: var(--fo-border-width) solid
     rgba(var(--fo-text-primary-rgb), var(--fo-alpha-12));
+}
+
+/* A season pill's points breakdown, between the card body and the TMDB footer. */
+.fo-tip-points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
+  padding: var(--fo-tip-bar-paddingY) var(--fo-tip-bar-paddingX);
+  border-top: var(--fo-border-width) solid
+    rgba(var(--fo-text-primary-rgb), var(--fo-alpha-12));
+}
+
+.fo-tip-pointsHeading {
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-medium);
+  color: rgba(var(--fo-text-primary-rgb), var(--fo-alpha-65));
+  letter-spacing: var(--fo-letterSpacing-meta);
+  text-transform: var(--brand-label-case);
+}
+
+.fo-tip-pointsList {
+  list-style: none;
+  margin: var(--fo-space-0);
+  padding: var(--fo-space-0);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
+}
+
+.fo-tip-pointsLine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--fo-space-8);
+  align-items: baseline;
+}
+
+.fo-tip-pointsLine.is-total {
+  padding-top: var(--fo-space-4);
+  border-top: var(--fo-border-width) solid
+    rgba(var(--fo-text-primary-rgb), var(--fo-alpha-12));
+}
+
+.fo-tip-pointsText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fo-tip-pointsLabel,
+.fo-tip-pointsDetail,
+.fo-tip-pointsTotal,
+.fo-tip-pointsEmpty {
+  font-size: var(--fo-font-size-xs);
+  line-height: 1.3;
+  margin: var(--fo-space-0);
+}
+
+.fo-tip-pointsLabel {
+  color: var(--fo-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.fo-tip-pointsLine.is-total .fo-tip-pointsLabel {
+  font-weight: var(--fo-font-weight-semibold);
+}
+
+.fo-tip-pointsDetail,
+.fo-tip-pointsEmpty {
+  color: var(--fo-text-deemphasized);
+}
+
+.fo-tip-pointsTotal {
+  color: var(--fo-text-primary);
+  font-weight: var(--fo-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .fo-tip-barText {
@@ -5967,7 +6090,7 @@ select {
 
 /* Phone: the grip is a 44 px target like the row's icon buttons. */
 @media (max-width: 499.98px) {
-  .circuit-queue .nomination-drag-handle-button,
+  .circuit-claimList .nomination-drag-handle-button,
   .circuit-stageList .nomination-drag-handle-button {
     min-width: var(--fo-touch-target);
     min-height: var(--fo-touch-target);
@@ -5977,14 +6100,6 @@ select {
 .circuit-queueRank {
   min-width: 2ch;
   text-align: right;
-}
-
-.circuit-row.is-drafted .circuit-rowMain {
-  color: var(--muted);
-}
-
-.circuit-row.is-drafted .circuit-rowMain > :first-child {
-  text-decoration: line-through;
 }
 
 .circuit-lobbyFacts {
@@ -5998,32 +6113,25 @@ select {
   margin: 0;
 }
 
+/* The board's roster and category cards: 12 px down, 10 px across, as the room's cards. */
 .circuit-board {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
-  gap: var(--fo-space-sm);
+  gap: var(--fo-space-xs) var(--fo-space-dense-2);
   align-items: start;
 }
 
-.circuit-boardCell {
-  padding: var(--fo-space-xs) 0;
+.circuit-boardCard {
+  min-width: 0;
 }
 
-.circuit-boardCell + .circuit-boardCell {
-  border-top: var(--fo-border-width) solid var(--border);
-}
-
-.circuit-boardCell.is-missed {
-  color: var(--muted);
-}
-
-.circuit-boardCell.is-supplemental {
-  border-left: var(--fo-border-width-strong) solid var(--border);
-  padding-left: var(--fo-space-xs);
-}
-
-.circuit-boardHighlight {
-  font-weight: var(--fo-font-weight-bold);
+/* A category card's ledger row: round-pick, avatar, pill. */
+.fo-seasonRosterCard-row.circuit-boardLedgerRow {
+  display: grid;
+  grid-template-columns:
+    calc(var(--dr-meta-ch, 3) * 1ch) var(--fo-hit-size-sm)
+    minmax(0, 1fr);
+  column-gap: var(--fo-space-2);
 }
 
 /*
@@ -6052,6 +6160,479 @@ select {
   font-weight: var(--fo-font-weight-bold);
 }
 
+/* The season phone nominee card: Close and the actions are 44 px touch targets. */
+.mantine-ActionIcon-root.fo-cardClose {
+  --ai-size: var(--fo-touch-target);
+  width: var(--fo-touch-target);
+  height: var(--fo-touch-target);
+}
+
+.fo-cardActions .mantine-Button-root {
+  --button-height: var(--fo-touch-target);
+  min-height: var(--fo-touch-target);
+}
+
+/* The form's preview: the contender pill, with its owned caption beside it. */
+.circuit-previewPill {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-previewPill > .dr-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Free agency's preview row: the pill, its caption and the add icon at the end. */
+.circuit-freeAgentPreview > .circuit-rowIcon {
+  margin-left: auto;
+}
+
+/* A season row's icon action (drop, add): 32 px, 44 px on a phone. */
+.mantine-ActionIcon-root.circuit-rowIcon {
+  --ai-size: var(--fo-control-height);
+  flex: 0 0 auto;
+}
+
+.circuit-rowIcon .gicon {
+  font-size: var(--fo-icon-size-md);
+}
+
+/* Roster page: compact category headings and one 32 px line per pick. */
+.circuit-rosterGroupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-height: calc(var(--fo-control-height) - var(--fo-space-4));
+  min-width: 0;
+}
+
+.circuit-rosterGroupHead .mi-icon.mi-icon-tiny,
+.circuit-pointsCategory .mi-icon.mi-icon-tiny {
+  --mi-fill: 0;
+  --mi-wght: 400;
+  --mi-opsz: 20;
+  width: var(--fo-icon-size-sm);
+  height: var(--fo-icon-size-sm);
+  padding: 0;
+  color: var(--brand-text);
+}
+
+.circuit-rosterGroupName {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--brand-font-label);
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
+  text-transform: var(--brand-label-case);
+  color: var(--brand-text);
+}
+
+.circuit-rosterNone {
+  margin: 0;
+}
+
+.circuit-rosterRows {
+  display: flex;
+  flex-direction: column;
+}
+
+.circuit-rosterRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--fo-space-4);
+  min-height: var(--fo-control-height);
+}
+
+.circuit-rosterRow > .dr-pill {
+  min-width: 0;
+}
+
+.circuit-rosterDroppedNote {
+  margin: 0;
+}
+
+@media (max-width: 500px) {
+  .mantine-ActionIcon-root.circuit-rowIcon {
+    --ai-size: var(--fo-touch-target);
+    min-width: var(--fo-touch-target);
+    min-height: var(--fo-touch-target);
+  }
+
+  .circuit-rosterRow {
+    min-height: var(--fo-touch-target);
+  }
+}
+
+/* Transactions: who, the moves as pills, then the kind and time. */
+.circuit-txRow {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--fo-space-sm);
+  row-gap: var(--fo-space-4);
+  min-height: calc(var(--fo-control-height) + var(--fo-space-8));
+  padding-block: var(--fo-space-4);
+}
+
+.circuit-txList > li + li {
+  border-top: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.circuit-txWho {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-txName {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--brand-text);
+}
+
+.circuit-txMoves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fo-space-4) var(--fo-space-sm);
+  min-width: 0;
+}
+
+.circuit-txMove {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.circuit-txMove > .dr-pill {
+  min-width: 0;
+}
+
+.circuit-txMove > .dr-pill-caption {
+  flex: 0 0 auto;
+}
+
+.circuit-txWhen {
+  justify-self: end;
+  text-align: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 500px) {
+  .circuit-txRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .circuit-txMoves {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/*
+ * Your claims, one line each: grip, rank, then the claim pill with its drop
+ * pill (or "No drop") and chip, and the four icon actions. On a phone the
+ * pills stack and the icons fold into one 44 px menu.
+ */
+.circuit-claimList > li + li {
+  border-top: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.circuit-claimRow {
+  display: grid;
+  grid-template-columns: var(--fo-control-height) 2ch minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--fo-space-8);
+  min-height: calc(var(--fo-control-height) + var(--fo-space-8));
+  padding-block: var(--fo-space-4);
+  background: var(--brand-raised);
+}
+
+.circuit-claimRow.is-dragging {
+  opacity: var(--fo-alpha-60);
+}
+
+.circuit-claimMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fo-space-4) var(--fo-space-sm);
+  min-width: 0;
+}
+
+.circuit-claimMain > .dr-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.circuit-claimCaption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.circuit-claimCaption > .dr-pill {
+  min-width: 0;
+}
+
+.circuit-claimCaption > .dr-pill-caption {
+  flex: 0 0 auto;
+}
+
+.circuit-claimActions {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-2);
+}
+
+@media (max-width: 499.98px) {
+  .circuit-claimRow {
+    grid-template-columns: var(--fo-touch-target) 2ch minmax(0, 1fr) var(
+        --fo-touch-target
+      );
+  }
+
+  .circuit-claimMain {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .circuit-claimMain > .dr-pill {
+    max-width: 100%;
+  }
+}
+
+/* Waiver results: the claimant with the outcome beside them, then the pills. */
+.circuit-resultList > li + li {
+  border-top: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.circuit-resultRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
+  padding-block: var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-resultWho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fo-space-4) var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-resultOrder {
+  min-width: 2ch;
+  text-align: right;
+}
+
+.circuit-resultWho > .circuit-txName {
+  flex: 0 1 auto;
+}
+
+/* Ceremony points by category: category, Nominations, Wins. */
+.circuit-pointsHead,
+.circuit-pointsRow {
+  display: grid;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--fo-space-sm);
+}
+
+.circuit-pointsHead {
+  padding-bottom: var(--fo-space-4);
+}
+
+.circuit-pointsLabel {
+  font-family: var(--brand-font-label);
+  font-size: var(--fo-font-size-xs);
+  font-weight: var(--fo-font-weight-semibold);
+  letter-spacing: var(--brand-label-letter-spacing);
+  text-transform: var(--brand-label-case);
+  color: var(--brand-muted);
+}
+
+.circuit-pointsRow {
+  align-items: start;
+  padding-block: var(--fo-space-8);
+  border-top: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.circuit-pointsCategory {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+  min-height: var(--dr-pill-height);
+}
+
+.circuit-pointsCategoryName {
+  min-width: 0;
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--brand-text);
+  overflow-wrap: anywhere;
+}
+
+.circuit-pointsCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--fo-space-4);
+  min-width: 0;
+  min-height: var(--dr-pill-height);
+}
+
+.circuit-pointsCellLabel {
+  display: none;
+}
+
+.circuit-pointsEntries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
+  min-width: 0;
+}
+
+.circuit-pointsEntry {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-pointsEntry > .dr-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The pill yields first: the player keeps its width up to 45 %, never less. */
+.circuit-pointsEntry > .circuit-pointsPlayer {
+  flex: 0 0 auto;
+  max-width: 45%;
+}
+
+.circuit-pointsPlayer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fo-space-4);
+  min-width: 0;
+}
+
+.circuit-pointsPlayerName {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--fo-db-pill-font);
+  color: var(--brand-text);
+}
+
+.circuit-pointsPlayerPoints {
+  flex: none;
+  font-size: var(--fo-db-pill-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-text);
+}
+
+@media (max-width: 499.98px) {
+  .circuit-pointsHead {
+    display: none;
+  }
+
+  .circuit-pointsRow {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--fo-space-8);
+  }
+
+  .circuit-pointsCellLabel {
+    display: block;
+  }
+}
+
+/* All scoring contenders: rank, the pill with its season total, the players. */
+.circuit-contenderList > li + li {
+  border-top: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.circuit-contenderRow {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 20rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--fo-space-sm);
+  row-gap: var(--fo-space-4);
+  padding-block: var(--fo-space-4);
+  min-height: calc(var(--fo-control-height) + var(--fo-space-8));
+}
+
+.circuit-contenderRank {
+  text-align: right;
+}
+
+.circuit-contenderPill {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+}
+
+.circuit-contenderPill > .dr-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.circuit-contenderPlayers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fo-space-4) var(--fo-space-sm);
+  min-width: 0;
+}
+
+@media (max-width: 499.98px) {
+  .circuit-contenderRow {
+    grid-template-columns: 2ch minmax(0, 1fr);
+  }
+
+  .circuit-contenderPlayers {
+    grid-column: 2;
+  }
+}
+
+/* Season page: Add/drop leads the header group; full width, 44 px, on a phone. */
+.full-season-actions {
+  min-width: 0;
+}
+
+@media (max-width: 500px) {
+  .full-season-actions {
+    width: 100%;
+  }
+
+  .mantine-Button-root.full-season-addDrop {
+    --button-height: var(--fo-touch-target);
+    flex: 1 0 100%;
+    min-height: var(--fo-touch-target);
+  }
+}
+
 .circuit-pickFieldset {
   min-width: 0;
   margin: 0;
@@ -6059,27 +6640,80 @@ select {
   border: 0;
 }
 
-/* A rail pill with the contender's category under it. */
-.circuit-railPick {
+/* SeasonRosterCard: the ceremony roster card on a season page, inside .fo-pillScope. */
+.fo-seasonRosterCard {
   display: flex;
   flex-direction: column;
-  gap: var(--fo-space-2);
+  gap: var(--fo-space-8);
+  min-width: 0;
+  padding: var(--fo-space-xs);
+}
+
+.fo-seasonRosterCard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
+  padding-bottom: var(--fo-space-8);
+  border-bottom: var(--fo-border-width) solid var(--brand-rule);
+}
+
+.fo-seasonRosterCard-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--fo-font-weight-semibold);
+  color: var(--brand-text);
+}
+
+.fo-seasonRosterCard-score {
+  flex: 0 0 auto;
+  min-width: 3ch;
+  text-align: end;
+  font-family: var(--brand-font-numeral);
+  font-size: var(--fo-space-sm);
+  font-weight: var(--fo-font-weight-bold);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-text);
+}
+
+.fo-seasonRosterCard-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
   min-width: 0;
 }
 
-.circuit-railSub {
-  font-size: var(--fo-db-pill-font);
-  color: var(--fo-text-deemphasized);
-  overflow-wrap: anywhere;
+.fo-seasonRosterCard-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-space-8);
+  min-width: 0;
 }
 
-/* A roster row with a category line: the round-pick label stays level with the pill. */
-.dr-rosterRow:has(> .circuit-railPick) {
-  align-items: start;
+.fo-seasonRosterCard-row > .dr-pill {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.dr-rosterRow:has(> .circuit-railPick) > .dr-railMeta {
-  line-height: var(--dr-pill-height);
+.fo-seasonRosterCard-row.has-meta {
+  display: grid;
+  grid-template-columns: calc(var(--dr-meta-ch, 3) * 1ch) minmax(0, 1fr);
+  column-gap: var(--fo-space-2);
+}
+
+.fo-seasonRosterCard-note {
+  font-size: var(--fo-font-size-xs);
+  color: var(--brand-muted);
+  margin: var(--fo-space-0);
+}
+
+/* A pill that opens the phone nominee card on a tap. */
+.dr-pill-static.is-cardOpener {
+  cursor: pointer;
 }
 
 /* The staging rail reads at the rails' dense sizes. */
@@ -6093,39 +6727,35 @@ select {
   text-align: start;
 }
 
-.circuit-stageLabel {
-  font-size: var(--fo-db-pill-font);
-  font-weight: var(--fo-font-weight-bold);
-  overflow-wrap: anywhere;
+/*
+ * Staging rows, one line each: grip, rank, pill, menu. Staged rows leave the
+ * grip and rank cells empty so every pill's left edge aligns. The staging rail
+ * is narrow, so the cells sit 4 px apart and the rank takes 2ch (a queue is
+ * at most the roster size); on a phone the row has room for 8 px gaps.
+ */
+.circuit-stageList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fo-space-4);
 }
 
-/* Staging rows are narrow: the contender spans the row, the grip, rank and actions share a line under it. */
 .circuit-stageRow {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  grid-template-areas:
-    "main main main"
-    "grip rank actions";
+  grid-template-columns:
+    var(--fo-control-height) 2ch minmax(0, 1fr)
+    var(--fo-control-height);
   align-items: center;
-  column-gap: var(--fo-space-xs);
-  row-gap: var(--fo-space-4);
+  column-gap: var(--fo-space-4);
+  min-height: var(--fo-control-height);
 }
 
-.circuit-stageRow > .circuit-rowMain {
-  grid-area: main;
+.circuit-stageRow.is-dragging {
+  opacity: var(--fo-alpha-60);
 }
 
-.circuit-stageRow > .circuit-stageGrip {
-  grid-area: grip;
-}
-
-.circuit-stageRow > .circuit-queueRank {
-  grid-area: rank;
-}
-
-.circuit-stageRow > .circuit-rowActions {
-  grid-area: actions;
-  justify-self: end;
+.circuit-stageGrip {
+  display: flex;
+  justify-content: center;
 }
 
 .circuit-stageList .mantine-ActionIcon-root .gicon {
@@ -6138,8 +6768,7 @@ select {
  * rules, so its form and staging controls take them here.
  */
 @media (max-width: 499.98px) {
-  .circuit-roomMiddle .mantine-Button-root,
-  .circuit-stageList .mantine-Button-root {
+  .circuit-roomMiddle .mantine-Button-root {
     --button-height-xs: var(--fo-touch-target) !important;
     --button-height-sm: var(--fo-touch-target) !important;
     --button-height-md: var(--fo-touch-target) !important;
@@ -6148,6 +6777,13 @@ select {
   .circuit-stageList .mantine-ActionIcon-root {
     min-width: var(--fo-touch-target);
     min-height: var(--fo-touch-target);
+  }
+
+  .circuit-stageRow {
+    grid-template-columns:
+      var(--fo-touch-target) 2ch minmax(0, 1fr)
+      var(--fo-touch-target);
+    column-gap: var(--fo-space-8);
   }
 }
 
@@ -6158,36 +6794,5 @@ select {
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  /*
-   * Phone queue rows: the contender spans the row, and the grip, rank and
-   * actions share one compact line under it.
-   */
-  .circuit-queue > .circuit-row {
-    display: grid;
-    grid-template-columns: auto auto 1fr;
-    grid-template-areas:
-      "main main main"
-      "grip rank actions";
-    row-gap: var(--fo-space-4);
-  }
-
-  .circuit-queue > .circuit-row > :first-child {
-    grid-area: grip;
-  }
-
-  .circuit-queue > .circuit-row > .circuit-queueRank {
-    grid-area: rank;
-    align-self: center;
-  }
-
-  .circuit-queue > .circuit-row > .circuit-rowMain {
-    grid-area: main;
-  }
-
-  .circuit-queue > .circuit-row > .circuit-rowActions {
-    grid-area: actions;
-    justify-self: end;
   }
 }

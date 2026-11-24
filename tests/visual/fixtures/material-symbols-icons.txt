@@ -1,4 +1,5 @@
 add
+add_circle
 add_link
 arrow_back
 arrow_downward
@@ -36,6 +37,7 @@ mail
 menu
 mic
 military_tech
+more_horiz
 movie
 music_note
 notifications
@@ -47,6 +49,7 @@ person
 person_remove
 piano
 play_arrow
+remove_circle
 search
 settings
 smart_toy

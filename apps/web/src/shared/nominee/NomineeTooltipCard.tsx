@@ -1,4 +1,5 @@
 import { Box, Text, TmdbLogo } from "@ui";
+import type { CircuitPointsSection } from "@/decisions/circuitPoints";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 
 export function NomineeTooltipCard(props: {
@@ -23,6 +24,8 @@ export function NomineeTooltipCard(props: {
   draftedByLabel?: string | null;
   draftedByAvatarKey?: string | null;
   draftedRoundPick?: string | null;
+  /** A season's points breakdown, between the body and the TMDB footer. */
+  pointsSection?: CircuitPointsSection | null;
   action?: React.ReactNode;
 }) {
   const {
@@ -41,6 +44,7 @@ export function NomineeTooltipCard(props: {
     draftedByLabel,
     draftedByAvatarKey,
     draftedRoundPick,
+    pointsSection,
     action
   } = props;
 
@@ -262,6 +266,8 @@ export function NomineeTooltipCard(props: {
         )}
       </Box>
 
+      {pointsSection ? <NomineePointsSection section={pointsSection} /> : null}
+
       <Box className="fo-tip-bar fo-tip-footer">
         <a
           className="fo-tip-tmdbLink"
@@ -298,6 +304,48 @@ export function NomineeTooltipCard(props: {
       </Box>
 
       {action ? <Box className="fo-tip-action">{action}</Box> : null}
+    </Box>
+  );
+}
+
+function NomineePointsSection(props: { section: CircuitPointsSection }) {
+  const { section } = props;
+  return (
+    <Box className="fo-tip-points">
+      <Text component="span" className="fo-tip-pointsHeading">
+        {section.heading}
+      </Text>
+      {section.lines.length === 0 ? (
+        <Text className="fo-tip-pointsEmpty">{section.emptyText}</Text>
+      ) : (
+        <Box component="ul" className="fo-tip-pointsList">
+          {section.lines.map((line) => (
+            <Box component="li" key={line.key} className="fo-tip-pointsLine">
+              <Box className="fo-tip-pointsText">
+                <Text component="span" className="fo-tip-pointsLabel">
+                  {line.label}
+                </Text>
+                <Text component="span" className="fo-tip-pointsDetail">
+                  {line.detail}
+                </Text>
+              </Box>
+              <Text component="span" className="fo-tip-pointsTotal">
+                {line.total}
+              </Text>
+            </Box>
+          ))}
+          {section.total ? (
+            <Box component="li" className="fo-tip-pointsLine is-total">
+              <Text component="span" className="fo-tip-pointsLabel">
+                Total
+              </Text>
+              <Text component="span" className="fo-tip-pointsTotal">
+                {section.total}
+              </Text>
+            </Box>
+          ) : null}
+        </Box>
+      )}
     </Box>
   );
 }

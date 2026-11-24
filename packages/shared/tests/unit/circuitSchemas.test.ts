@@ -3,6 +3,7 @@ import {
   adminCeremonyDatesBody,
   adminCircuitAssociationBody,
   adminCircuitCategoryCreateBody,
+  adminCircuitCategoryIconBody,
   adminCircuitCategoryOrderBody,
   adminCircuitCeremonyPositionBody,
   adminCircuitCreateBody,
@@ -95,6 +96,15 @@ describe("circuit schemas", () => {
     });
     expect(adminCircuitCategoryCreateBody.safeParse({}).error?.issues[0]?.message).toBe(
       "Choose a category template"
+    );
+  });
+
+  it("takes a category icon by code and requires one", () => {
+    expect(adminCircuitCategoryIconBody.parse({ icon: " movie " })).toEqual({
+      icon: "movie"
+    });
+    expect(adminCircuitCategoryIconBody.safeParse({}).error?.issues[0]?.message).toBe(
+      "Choose an icon"
     );
   });
 

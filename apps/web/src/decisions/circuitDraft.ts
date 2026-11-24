@@ -4,12 +4,14 @@ import type {
   CircuitDraftSnapshot,
   CircuitDraftStatus,
   CircuitLeagueCategory,
+  CircuitLeagueMember,
   CircuitLeagueSettings,
   CircuitLeagueStatus,
   CircuitQueue,
   CircuitSelectionSummary
 } from "../lib/types";
 import { circuitSelectionLabel } from "./circuitRoster";
+import { computeRoundPickLabel } from "./draft";
 import { durationLabel } from "./fullSeasonSummary";
 
 /*
@@ -90,23 +92,6 @@ export type CircuitBoardCell = {
   note: string | null;
 };
 
-export type CircuitBoardSeat = {
-  seatNumber: number;
-  userId: number;
-  username: string;
-  isViewer: boolean;
-  onTheClock: boolean;
-  cells: CircuitBoardCell[];
-  /** "3 of 16": drafted contenders against the roster size. */
-  countLabel: string;
-};
-
-export type CircuitBoardCategory = {
-  id: number;
-  name: string;
-  cells: CircuitBoardCell[];
-};
-
 function missedNote(
   pick: CircuitDraftPick,
   supplemental: boolean,
@@ -171,43 +156,126 @@ export function circuitBoardCells(
     });
 }
 
-/** The board by player: seats in draft order, each with its picks in order. */
-export function circuitBoardBySeat(
+/** A drafted contender on the completed board, in the slot it filled. */
+export type CircuitBoardPick = {
+  /** The original slot: a supplemental pick fills the slot that was missed. */
+  originalPickNumber: number;
+  /** "2-3", the original slot's round-pick. */
+  roundPick: string;
+  selection: CircuitSelectionSummary;
+  label: string;
+  userId: number;
+  username: string;
+  avatarKey: string | null;
+};
+
+export type CircuitBoardRoster = {
+  seatNumber: number;
+  userId: number;
+  username: string;
+  avatarKey: string | null;
+  isViewer: boolean;
+  picks: CircuitBoardPick[];
+  /** "3 of 4": drafted contenders against the rounds. */
+  countLabel: string;
+};
+
+export type CircuitBoardCategoryCard = {
+  id: number;
+  name: string;
+  iconCode: string | null;
+  iconVariant: string;
+  picks: CircuitBoardPick[];
+};
+
+/**
+ * The draft's drafted contenders as roster picks: a supplemental pick takes
+ * the round-pick of the slot it made up, and a slot never filled (missed
+ * twice, so a chip) is left out. Ordered by original slot.
+ */
+function circuitBoardPicks(
   snapshot: CircuitDraftSnapshot,
-  categories: readonly Pick<CircuitLeagueCategory, "id" | "name">[],
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[]
+): Array<{ seatNumber: number; pick: CircuitBoardPick }> {
+  const seatCount = snapshot.seats.length;
+  const selections = new Map(snapshot.selections.map((s) => [s.id, s]));
+  const seats = new Map(snapshot.seats.map((s) => [s.seat_number, s]));
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
+  return [...snapshot.picks]
+    .sort((a, b) => a.original_pick_number - b.original_pick_number)
+    .flatMap((pick) => {
+      const selection =
+        pick.outcome === "PICKED" && pick.selection_id !== null
+          ? selections.get(pick.selection_id)
+          : undefined;
+      const seat = seats.get(pick.seat_number);
+      if (!selection || !seat) return [];
+      return [
+        {
+          seatNumber: seat.seat_number,
+          pick: {
+            originalPickNumber: pick.original_pick_number,
+            roundPick: computeRoundPickLabel({
+              pickNumber: pick.original_pick_number,
+              seatCount
+            }),
+            selection,
+            label: circuitSelectionLabel(selection),
+            userId: seat.user_id,
+            username: seat.username,
+            avatarKey: avatars.get(seat.user_id) ?? null
+          }
+        }
+      ];
+    });
+}
+
+/** The completed board by player: one roster per seat, in draft order. */
+export function circuitBoardRosters(
+  snapshot: CircuitDraftSnapshot,
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[],
   viewerUserId: number | null
-): CircuitBoardSeat[] {
-  const cells = circuitBoardCells(snapshot, categories);
-  const pickSeat = new Map(snapshot.picks.map((p) => [p.pick_number, p.seat_number]));
+): CircuitBoardRoster[] {
+  const picks = circuitBoardPicks(snapshot, members);
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
   return [...snapshot.seats]
     .sort((a, b) => a.seat_number - b.seat_number)
     .map((seat) => {
-      const own = cells.filter((c) => pickSeat.get(c.pickNumber) === seat.seat_number);
-      const drafted = own.filter((c) => !c.missed).length;
+      const own = picks
+        .filter((p) => p.seatNumber === seat.seat_number)
+        .map((p) => p.pick);
       return {
         seatNumber: seat.seat_number,
         userId: seat.user_id,
         username: seat.username,
+        avatarKey: avatars.get(seat.user_id) ?? null,
         isViewer: seat.user_id === viewerUserId,
-        onTheClock: snapshot.on_the_clock?.seat_number === seat.seat_number,
-        cells: own,
-        countLabel: `${drafted} of ${snapshot.draft.rounds}`
+        picks: own,
+        countLabel: `${own.length} of ${snapshot.draft.rounds}`
       };
     });
 }
 
-/** The board by category: the league's categories in order, each with its picks. */
-export function circuitBoardByCategory(
+/** The completed board by category: the league's categories in order. */
+export function circuitBoardCategoryCards(
   snapshot: CircuitDraftSnapshot,
-  categories: readonly Pick<CircuitLeagueCategory, "id" | "name" | "sort_index">[]
-): CircuitBoardCategory[] {
-  const cells = circuitBoardCells(snapshot, categories);
+  categories: readonly Pick<
+    CircuitLeagueCategory,
+    "id" | "name" | "sort_index" | "icon_code" | "icon_variant"
+  >[],
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[]
+): CircuitBoardCategoryCard[] {
+  const picks = circuitBoardPicks(snapshot, members);
   return [...categories]
     .sort((a, b) => a.sort_index - b.sort_index)
     .map((category) => ({
       id: category.id,
       name: category.name,
-      cells: cells.filter((c) => c.categoryId === category.id)
+      iconCode: category.icon_code,
+      iconVariant: category.icon_variant,
+      picks: picks
+        .map((p) => p.pick)
+        .filter((p) => p.selection.circuit_category_id === category.id)
     }));
 }
 

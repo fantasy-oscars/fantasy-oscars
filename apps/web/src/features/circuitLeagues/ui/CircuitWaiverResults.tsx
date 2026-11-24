@@ -1,69 +1,105 @@
 import { Box, Divider, Group, Stack, Text, Title } from "@ui";
+import { circuitInstantLabel } from "@/decisions/circuitRoster";
 import {
-  circuitInstantLabel,
-  circuitSelectionCategoryLabel
-} from "@/decisions/circuitRoster";
-import {
-  circuitChipLabel,
-  circuitClaimOutcomeLabel,
-  circuitWindowLabel
+  circuitWindowLabel,
+  type CircuitWaiverResultRow
 } from "@/decisions/circuitWaivers";
+import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitWaiverRun } from "@/lib/types";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { ContenderPill } from "@/features/circuitLeagues/ui/ContenderPill";
+import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
+
+type OpenCard = ((view: ContenderPillView) => void) | undefined;
+
+function ResultPill(props: {
+  view: ContenderPillView;
+  state: "default" | "muted" | "dropped";
+  stateSuffix: string | null;
+  onOpenCard: OpenCard;
+}) {
+  const { view, onOpenCard } = props;
+  return (
+    <ContenderPill
+      label={view.label}
+      categoryName={view.categoryName}
+      iconCode={view.iconCode}
+      iconVariant={view.iconVariant}
+      state={props.state}
+      stateSuffix={props.stateSuffix}
+      tooltip={<ContenderNomineeCard tooltip={view.tooltip} />}
+      onOpenCard={onOpenCard ? () => onOpenCard(view) : undefined}
+    />
+  );
+}
 
 function RunClaims(props: {
-  run: CircuitWaiverRun;
-  categoryNames: ReadonlyMap<number, string>;
+  window: CircuitWaiverRun["window"];
+  rows: CircuitWaiverResultRow[];
+  onOpenCard: OpenCard;
 }) {
-  const { run, categoryNames } = props;
-  if (run.claims.length === 0) {
+  const { rows } = props;
+  if (rows.length === 0) {
     return <Text className="baseline-textBody">Nobody made a claim.</Text>;
   }
   return (
-    <Stack
+    <Box
       component="ol"
-      gap="var(--fo-space-0)"
-      className="fo-listReset"
-      aria-label={`Claims for ${circuitWindowLabel(run.window)}, in the order they ran`}
+      className={["fo-listReset", "fo-pillScope", "circuit-resultList"].join(" ")}
+      aria-label={`Claims for ${circuitWindowLabel(props.window)}, in the order they ran`}
     >
-      {run.claims.map((claim, idx) => (
-        <Box key={claim.id} component="li">
-          <Stack gap="var(--fo-space-dense-2)" py="sm">
-            <Group justify="space-between" align="baseline" wrap="wrap" gap="sm">
-              <Text fw="var(--fo-font-weight-semibold)" className="baseline-wrapAnywhere">
-                {claim.order}. {claim.member.username}
-              </Text>
-              <Text variant="meta">
-                {[
-                  circuitClaimOutcomeLabel(claim),
-                  claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
-            </Group>
-            <Text className="baseline-textBody baseline-wrapAnywhere">
-              Claimed {circuitSelectionCategoryLabel(claim.selection, categoryNames)}
-              {claim.drop
-                ? `, dropping ${circuitSelectionCategoryLabel(claim.drop, categoryNames)}`
-                : ""}
+      {rows.map((row) => (
+        <Box key={row.key} component="li" className="circuit-resultRow">
+          <Box className="circuit-resultWho">
+            <Text component="span" variant="meta" className="circuit-resultOrder">
+              {row.order}.
             </Text>
-          </Stack>
-          {idx === run.claims.length - 1 ? null : <Divider />}
+            <AnimalAvatarIcon avatarKey={row.avatarKey} size="sm" />
+            <Text component="span" className="circuit-txName" title={row.username}>
+              {row.username}
+            </Text>
+            <Text component="span" variant="meta" className="circuit-resultOutcome">
+              {row.outcome}
+            </Text>
+          </Box>
+          <Box className="circuit-txMoves">
+            <ResultPill
+              view={row.pill}
+              state={row.won ? "default" : "muted"}
+              stateSuffix={row.won ? null : "lost"}
+              onOpenCard={props.onOpenCard}
+            />
+            {row.drop ? (
+              <Box component="span" className="circuit-txMove">
+                <Text component="span" className="dr-pill-caption">
+                  dropping
+                </Text>
+                <ResultPill
+                  view={row.drop}
+                  state="dropped"
+                  stateSuffix="dropped"
+                  onOpenCard={props.onOpenCard}
+                />
+              </Box>
+            ) : null}
+          </Box>
         </Box>
       ))}
-    </Stack>
+    </Box>
   );
 }
 
 /**
- * Each completed run, newest first: every claim in the order it ran, who won
- * and why the rest lost, and priority after the run.
+ * Each completed run, newest first: every claim in the order it ran, who
+ * made it with the outcome beside them, the claimed and dropped contenders
+ * as pills, and priority after the run.
  */
 export function CircuitWaiverResults(props: {
-  runs: CircuitWaiverRun[];
-  categoryNames: ReadonlyMap<number, string>;
+  runs: Array<{ run: CircuitWaiverRun; rows: CircuitWaiverResultRow[] }>;
+  /** Phone or coarse pointer: a tap on a pill opens its nominee card. */
+  onOpenCard?: (view: ContenderPillView) => void;
 }) {
-  const { runs, categoryNames } = props;
+  const { runs } = props;
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-results-title">
       <Title order={3} variant="section" id="circuit-results-title">
@@ -75,7 +111,7 @@ export function CircuitWaiverResults(props: {
           No claims have run yet. Results appear here after each window.
         </Text>
       ) : (
-        runs.map((run) => (
+        runs.map(({ run, rows }) => (
           <Stack
             key={run.id}
             gap="xs"
@@ -93,7 +129,7 @@ export function CircuitWaiverResults(props: {
                 </time>
               </Text>
             </Group>
-            <RunClaims run={run} categoryNames={categoryNames} />
+            <RunClaims window={run.window} rows={rows} onOpenCard={props.onOpenCard} />
             {run.priority_after.length > 0 ? (
               <Text variant="helper">
                 Priority after: {run.priority_after.map((p) => p.username).join(", ")}

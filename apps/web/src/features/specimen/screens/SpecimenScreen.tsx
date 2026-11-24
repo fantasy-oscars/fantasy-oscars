@@ -25,7 +25,7 @@ import { deriveAppearanceView, type AppearanceState } from "@/decisions/appearan
 import { ShellHeader } from "@/app/chrome/ui/ShellHeader";
 import { ShellPrimaryNav } from "@/app/chrome/ui/ShellPrimaryNav";
 import { Wordmark } from "@/app/chrome/ui/Wordmark";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { DraftHeaderTab } from "@/features/draft/ui/DraftHeaderTab";
 import { computeHeaderStatus } from "@/decisions/draft/headerStatus";

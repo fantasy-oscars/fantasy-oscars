@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  categoryIconGaps,
   circuitCoverage,
   isCircuitReady,
   readinessGaps
@@ -98,5 +99,33 @@ describe("isCircuitReady", () => {
       [edition(1, 1, 5)]
     );
     expect(isCircuitReady(1, readinessGaps(orphan, []))).toBe(false);
+  });
+});
+
+describe("categoryIconGaps", () => {
+  const withIcon = (id: number, icon_code: string | null) => ({
+    ...category(id),
+    icon_code
+  });
+
+  it("lists categories without an icon and icons more than one category uses", () => {
+    expect(
+      categoryIconGaps([
+        withIcon(1, "movie"),
+        withIcon(2, null),
+        withIcon(3, "face"),
+        withIcon(4, "movie")
+      ])
+    ).toEqual({
+      categories_without_icon: [category(2)],
+      shared_icons: [{ icon_code: "movie", categories: [category(1), category(4)] }]
+    });
+  });
+
+  it("is empty when every category has its own icon", () => {
+    expect(categoryIconGaps([withIcon(1, "movie"), withIcon(2, "face")])).toEqual({
+      categories_without_icon: [],
+      shared_icons: []
+    });
   });
 });

@@ -819,6 +819,285 @@ describe("circuit scoring ledger", () => {
       }
     });
 
+    describe("points views", () => {
+      type CeremonyLine = {
+        ceremony_id: number;
+        ceremony_name: string | null;
+        nomination: number;
+        win: number;
+      };
+      type Roster = {
+        member: { user_id: number; username: string };
+        entries: Array<{
+          selection: { id: number };
+          points: { total: number; by_ceremony: CeremonyLine[] };
+        }>;
+        points_total: number;
+        dropped_points: number;
+      };
+      let heldId: number;
+      let ceremonyName: string;
+
+      /**
+       * The split league: Alice scores the nomination of selection 1 and drops
+       * it before the win, which Bob scores; Bob holds selection 2 throughout.
+       * Alice also holds a pick that never scored.
+       */
+      beforeEach(async () => {
+        heldId = await insertSelection(pictureId, (await insertFilm(db.pool)).id, 5003);
+        await own(alice, heldId, DRAFTED);
+        await scoreSplit();
+        const { rows } = await db.pool.query<{ name: string }>(
+          `SELECT name FROM ceremony WHERE id = $1`,
+          [ceremonyId]
+        );
+        ceremonyName = rows[0]!.name;
+      });
+
+      async function ledgerTotal(user: User) {
+        const entries = await listScoreEntries(db.pool, circuitLeagueId);
+        return entries
+          .filter((e) => e.member_id === member(user))
+          .reduce((sum, e) => sum + Math.round(e.points * 100), 0);
+      }
+
+      it("give each roster pick the ledger points it scored for its holder, with dropped points apart", async () => {
+        const mine = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/roster`)
+          .set(as(alice));
+        const bobs = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/members/${bob.id}/roster`)
+          .set(as(alice));
+        expect(mine.status).toBe(200);
+        expect(bobs.status).toBe(200);
+        const aliceRoster = mine.body as Roster;
+        const bobRoster = bobs.body as Roster;
+
+        expect(aliceRoster.entries.map((e) => [e.selection.id, e.points])).toEqual([
+          [heldId, { total: 0, by_ceremony: [] }]
+        ]);
+        expect([aliceRoster.points_total, aliceRoster.dropped_points]).toEqual([1, 1]);
+        expect(bobRoster.entries.map((e) => [e.selection.id, e.points])).toEqual([
+          [
+            otherSelectionId,
+            {
+              total: 3,
+              by_ceremony: [
+                {
+                  ceremony_id: ceremonyId,
+                  ceremony_name: ceremonyName,
+                  nomination: 1,
+                  win: 2
+                }
+              ]
+            }
+          ],
+          [
+            selectionId,
+            {
+              total: 2,
+              by_ceremony: [
+                {
+                  ceremony_id: ceremonyId,
+                  ceremony_name: ceremonyName,
+                  nomination: 0,
+                  win: 2
+                }
+              ]
+            }
+          ]
+        ]);
+        expect([bobRoster.points_total, bobRoster.dropped_points]).toEqual([5, 0]);
+
+        const standings = (
+          await api.get(`/circuit-leagues/${circuitLeagueId}/standings`).set(as(alice))
+        ).body as { standings: Array<{ member: { user_id: number }; points: number }> };
+        for (const [user, roster] of [
+          [alice, aliceRoster],
+          [bob, bobRoster]
+        ] as const) {
+          const pills = roster.entries.reduce(
+            (sum, e) => sum + Math.round(e.points.total * 100),
+            0
+          );
+          for (const e of roster.entries) {
+            const lines = e.points.by_ceremony.reduce(
+              (sum, c) => sum + Math.round((c.nomination + c.win) * 100),
+              0
+            );
+            expect(lines).toBe(Math.round(e.points.total * 100));
+          }
+          const total = await ledgerTotal(user);
+          expect(pills + Math.round(roster.dropped_points * 100)).toBe(total);
+          expect(Math.round(roster.points_total * 100)).toBe(total);
+          expect(
+            standings.standings.find((s) => s.member.user_id === user.id)?.points
+          ).toBe(roster.points_total);
+        }
+      });
+
+      it("read every member's roster at once, as each roster reads alone", async () => {
+        const res = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/rosters`)
+          .set(as(bob));
+        expect(res.status).toBe(200);
+        const { rosters } = res.body as { rosters: Roster[] };
+        expect(rosters.map((r) => r.member.username)).toEqual(["alice", "bob"]);
+        for (const roster of rosters) {
+          const alone = await api
+            .get(
+              `/circuit-leagues/${circuitLeagueId}/members/${roster.member.user_id}/roster`
+            )
+            .set(as(bob));
+          expect(roster).toEqual(alone.body);
+        }
+        const outsider = await insertUser(db.pool, { username: "outsider" });
+        const hidden = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/rosters`)
+          .set(as(outsider));
+        expect(hidden.status).toBe(404);
+      });
+
+      it("mark a ceremony's points for picks dropped since, and still count them", async () => {
+        const res = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/standings/ceremonies/${ceremonyId}`)
+          .set(as(alice));
+        const body = res.body as {
+          standings: Array<{
+            member: { username: string };
+            points: number;
+            entries: Array<{
+              selection: { id: number };
+              kind: string;
+              points: number;
+              owned_now: boolean;
+            }>;
+          }>;
+        };
+        expect(
+          body.standings.map((s) => [
+            s.member.username,
+            s.entries.map((e) => [e.selection.id, e.kind, e.owned_now])
+          ])
+        ).toEqual([
+          [
+            "bob",
+            [
+              [otherSelectionId, "NOMINATION", true],
+              [selectionId, "WIN", true],
+              [otherSelectionId, "WIN", true]
+            ]
+          ],
+          ["alice", [[selectionId, "NOMINATION", false]]]
+        ]);
+        for (const s of body.standings) {
+          const byKind = { NOMINATION: 0, WIN: 0 } as Record<string, number>;
+          for (const e of s.entries) byKind[e.kind]! += Math.round(e.points * 100);
+          expect(byKind.NOMINATION! + byKind.WIN!).toBe(Math.round(s.points * 100));
+        }
+      });
+
+      it("list every scoring contender with its points per player, adding up to the standings", async () => {
+        const res = await api
+          .get(`/circuit-leagues/${circuitLeagueId}/standings/contenders`)
+          .set(as(alice));
+        expect(res.status).toBe(200);
+        const body = res.body as {
+          contenders: Array<{
+            selection: { id: number };
+            total: number;
+            members: Array<{ user_id: number; username: string; points: number }>;
+            lines: Array<{
+              ceremony_id: number;
+              ceremony_name: string | null;
+              user_id: number;
+              nomination: number;
+              win: number;
+            }>;
+          }>;
+        };
+        expect(
+          body.contenders.map((c) => [
+            c.selection.id,
+            c.total,
+            c.members.map((m) => [m.username, m.points]),
+            c.lines
+          ])
+        ).toEqual([
+          [
+            selectionId,
+            3,
+            [
+              ["bob", 2],
+              ["alice", 1]
+            ],
+            [
+              {
+                ceremony_id: ceremonyId,
+                ceremony_name: ceremonyName,
+                user_id: alice.id,
+                nomination: 1,
+                win: 0
+              },
+              {
+                ceremony_id: ceremonyId,
+                ceremony_name: ceremonyName,
+                user_id: bob.id,
+                nomination: 0,
+                win: 2
+              }
+            ]
+          ],
+          [
+            otherSelectionId,
+            3,
+            [["bob", 3]],
+            [
+              {
+                ceremony_id: ceremonyId,
+                ceremony_name: ceremonyName,
+                user_id: bob.id,
+                nomination: 1,
+                win: 2
+              }
+            ]
+          ]
+        ]);
+        const contenders = body.contenders.reduce(
+          (sum, c) => sum + Math.round(c.total * 100),
+          0
+        );
+        expect(contenders).toBe((await ledgerTotal(alice)) + (await ledgerTotal(bob)));
+      });
+
+      it("report who holds a contender in the season when the picker names it", async () => {
+        const freeId = await insertSelection(
+          pictureId,
+          (await insertFilm(db.pool)).id,
+          5004
+        );
+        const pick = (filmTmdbId: number, extra: Record<string, unknown> = {}) =>
+          api
+            .post("/contenders/selections")
+            .set(as(alice))
+            .set("content-type", "application/json")
+            .send({ circuit_category_id: pictureId, film_tmdb_id: filmTmdbId, ...extra });
+
+        const owned = await pick(5002, { circuit_league_id: circuitLeagueId });
+        expect(owned.status).toBe(200);
+        expect(owned.body).toMatchObject({
+          selection: { id: otherSelectionId },
+          owner: { user_id: bob.id, username: "bob" }
+        });
+        const free = await pick(5004, { circuit_league_id: circuitLeagueId });
+        expect(free.body).toMatchObject({ selection: { id: freeId }, owner: null });
+        const plain = await pick(5002);
+        expect(plain.body).not.toHaveProperty("owner");
+        const unknown = await pick(5002, { circuit_league_id: circuitLeagueId + 999 });
+        expect(unknown.status).toBe(404);
+      });
+    });
+
     it("tell the league when a rebuild changes its rows, and only then", async () => {
       const heard: CircuitScoreUpdateMessage[] = [];
       registerCircuitScoreEventEmitter((message) => heard.push(message));

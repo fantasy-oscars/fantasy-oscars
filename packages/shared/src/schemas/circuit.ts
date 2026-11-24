@@ -204,6 +204,11 @@ export const adminCircuitCategoryUpdateBody = z.object({
   name: requiredText("Name is required")
 });
 
+/** A Circuit category's icon, by icon code (one of the template icons). */
+export const adminCircuitCategoryIconBody = z.object({
+  icon: requiredText("Choose an icon")
+});
+
 export const adminCircuitCategoryOrderBody = z.object({
   category_ids: idOrder("List every category of this Circuit once")
 });

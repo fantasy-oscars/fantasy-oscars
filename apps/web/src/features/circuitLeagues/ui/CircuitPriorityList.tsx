@@ -4,6 +4,7 @@ import {
   circuitChipStatusLabel,
   type CircuitPriorityEntry
 } from "@/decisions/circuitWaivers";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
 
 /**
  * Rolling waiver priority, first in line first, with each member's chips.
@@ -40,6 +41,7 @@ export function CircuitPriorityList(props: {
               <Text component="span" variant="meta" className="circuit-queueRank">
                 {entry.waiver_priority ?? "–"}
               </Text>
+              <AnimalAvatarIcon avatarKey={entry.avatarKey} size="sm" />
               <Box className="circuit-rowMain">
                 <Text className="baseline-wrapAnywhere" fw="var(--fo-font-weight-bold)">
                   {entry.user_id === props.viewerUserId

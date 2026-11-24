@@ -6,10 +6,12 @@ import {
   addCategory,
   removeCategory,
   renameCategory,
-  reorderCategories
+  reorderCategories,
+  setCategoryIcon
 } from "../../services/circuit/circuitCategories.js";
 import {
   adminCircuitCategoryCreateBody,
+  adminCircuitCategoryIconBody,
   adminCircuitCategoryOrderBody,
   adminCircuitCategoryParams,
   adminCircuitCategoryUpdateBody,
@@ -67,6 +69,24 @@ export function registerAdminCircuitCategoryRoutes(router: Router, pool: Pool) {
           circuitId: id,
           categoryId,
           name
+        });
+        return res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.put(
+    "/circuits/:id/categories/:categoryId/icon",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id, categoryId } = parseParams(adminCircuitCategoryParams, req.params);
+        const { icon } = parseBody(adminCircuitCategoryIconBody, req.body);
+        const result = await setCategoryIcon(pool, actorOf(req), {
+          circuitId: id,
+          categoryId,
+          icon
         });
         return res.status(200).json(result);
       } catch (err) {

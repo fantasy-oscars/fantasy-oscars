@@ -8,9 +8,11 @@ import {
   listCircuitCeremonies,
   type CircuitCeremonyRow
 } from "../../data/repositories/circuitRepository.js";
+import { listOpenOwnershipsForLeague } from "../../data/repositories/circuitOwnershipRepository.js";
 import { listScoreEntries } from "../../data/repositories/circuitScoreRepository.js";
 import { listCircuitSelectionsByIds } from "../../data/repositories/circuitSelectionRepository.js";
 import { listScoringOccasions, resultsDateOf } from "../../domain/circuit.js";
+import { ceremonyOrderOf, scoringContenders } from "../../domain/circuitPoints.js";
 import { rankStandings, roundPoints } from "../../domain/circuitScoring.js";
 import { AppError } from "../../errors.js";
 import { requireVisibleCircuitLeague, type Viewer } from "./circuitLeagues.js";
@@ -20,7 +22,8 @@ import { toPublicCircuitSelection } from "./circuitSelections.js";
  * Standings read the scoring ledger (circuit_score_entry) and nothing else:
  * a member's total is the sum of their ledger rows, so the standings always
  * equal the ledger. The per-ceremony breakdown lists the rows behind each
- * member's points for one ceremony.
+ * member's points for one ceremony; the contenders read lists every
+ * selection that scored, with its points per member and ceremony.
  */
 
 const publicMember = (m: CircuitLeagueMemberRow) => ({
@@ -105,6 +108,11 @@ export async function getCircuitCeremonyBreakdown(
 
   const members = await listCircuitLeagueMembers(client, circuitLeague.id);
   const entries = await listScoreEntries(client, circuitLeague.id, ceremonyId);
+  const held = new Set(
+    (await listOpenOwnershipsForLeague(client, circuitLeague.id)).map(
+      (o) => `${o.member_id}:${o.selection_id}`
+    )
+  );
   const selections = new Map(
     (
       await listCircuitSelectionsByIds(client, [
@@ -123,8 +131,61 @@ export async function getCircuitCeremonyBreakdown(
           selection: selections.get(e.selection_id)!,
           kind: e.kind,
           occasion_date: e.occasion_date,
-          points: e.points
+          points: e.points,
+          owned_now: held.has(`${e.member_id}:${e.selection_id}`)
         }))
     }))
+  };
+}
+
+/**
+ * Every selection that scored in the league: its season total, the members
+ * it scored for and one line per ceremony and member. The totals add up to
+ * the sum of the standings.
+ */
+export async function getCircuitScoringContenders(
+  client: DbClient,
+  circuitLeagueId: number,
+  viewer: Viewer
+) {
+  const { circuitLeague } = await requireVisibleCircuitLeague(
+    client,
+    circuitLeagueId,
+    viewer
+  );
+  const [members, entries, ceremonies] = await Promise.all([
+    listCircuitLeagueMembers(client, circuitLeague.id),
+    listScoreEntries(client, circuitLeague.id),
+    listCircuitCeremonies(client, circuitLeague.circuit_id)
+  ]);
+  const memberById = new Map(members.map((m) => [m.id, m]));
+  const names = new Map(ceremonies.map((c) => [c.ceremony_id, c.ceremony_name]));
+  const contenders = scoringContenders(entries, ceremonyOrderOf(ceremonies));
+  const selections = new Map(
+    (
+      await listCircuitSelectionsByIds(
+        client,
+        contenders.map((c) => c.selection_id)
+      )
+    ).map((s) => [s.id, toPublicCircuitSelection(s)])
+  );
+  return {
+    contenders: contenders
+      .filter((c) => selections.has(c.selection_id))
+      .map((c) => ({
+        selection: selections.get(c.selection_id)!,
+        total: c.total,
+        members: c.members.map((m) => ({
+          ...publicMember(memberById.get(m.member_id)!),
+          points: m.points
+        })),
+        lines: c.lines.map((l) => ({
+          ceremony_id: l.ceremony_id,
+          ceremony_name: names.get(l.ceremony_id) ?? null,
+          user_id: memberById.get(l.member_id)!.user_id,
+          nomination: l.nomination,
+          win: l.win
+        }))
+      }))
   };
 }

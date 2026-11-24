@@ -228,6 +228,8 @@ type Readiness = {
     ceremonies_without_mappings: Array<{ ceremony_id: number }>;
     categories_without_ceremony: Array<{ id: number }>;
     unmapped_edition_count: number;
+    categories_without_icon: Array<{ id: number }>;
+    shared_icons: Array<{ icon_code: string; categories: Array<{ id: number }> }>;
   };
   coverage: {
     ceremonies: Array<{
@@ -854,6 +856,65 @@ describe("circuit admin and public routes", () => {
       expect(detail.categories.map((c) => c.id)).toEqual([second.id]);
       expect(detail.category_editions[0]!.circuit_category_id).toBeNull();
     });
+
+    it("sets a category's icon, refusing an unknown icon or one another category uses", async () => {
+      const circuitId = await createCircuit();
+      const picture = await addCategory(circuitId, (await template("FILM")).id);
+      const acting = await addCategory(circuitId, (await template("PERFORMANCE")).id);
+      await insertIcon(db.pool, { code: "theaters" });
+
+      const set = await send<{ category: CategoryRow }>(
+        "put",
+        `/admin/circuits/${circuitId}/categories/${picture.id}/icon`,
+        { icon: "theaters" }
+      );
+      expect(set.status).toBe(200);
+      expect(set.json.category).toMatchObject({ id: picture.id, icon_code: "theaters" });
+      // Setting the icon a category already has is not a clash with itself.
+      expect(
+        (
+          await send(
+            "put",
+            `/admin/circuits/${circuitId}/categories/${picture.id}/icon`,
+            {
+              icon: "theaters"
+            }
+          )
+        ).status
+      ).toBe(200);
+
+      const taken = await send<ErrorBody>(
+        "put",
+        `/admin/circuits/${circuitId}/categories/${acting.id}/icon`,
+        { icon: "theaters" }
+      );
+      expect(taken.status).toBe(409);
+      expect(taken.json.error.code).toBe("CIRCUIT_CATEGORY_ICON_TAKEN");
+
+      const unknown = await send<ErrorBody>(
+        "put",
+        `/admin/circuits/${circuitId}/categories/${acting.id}/icon`,
+        { icon: "no-such-icon" }
+      );
+      expect(unknown.status).toBe(400);
+      expect(unknown.json.error.code).toBe("VALIDATION_ERROR");
+      expect((await detailOf(circuitId)).categories[1]!.icon_code).toBe(acting.icon_code);
+
+      // Another Circuit may use the same icon.
+      const other = await createCircuit("circuit-other");
+      const otherPicture = await addCategory(other, (await template("FILM")).id);
+      expect(
+        (
+          await send(
+            "put",
+            `/admin/circuits/${other}/categories/${otherPicture.id}/icon`,
+            {
+              icon: "theaters"
+            }
+          )
+        ).status
+      ).toBe(200);
+    });
   });
 
   describe("mappings", () => {
@@ -1189,6 +1250,32 @@ describe("circuit admin and public routes", () => {
       expect(report.ready).toBe(false);
     });
 
+    it("flags categories without an icon and icons that categories share, without blocking", async () => {
+      const circuitId = await createCircuit();
+      const film = await template("FILM");
+      const picture = await addCategory(circuitId, film.id);
+      // The same template twice copies the same icon.
+      const again = await addCategory(circuitId, film.id);
+      const bare = await addCategory(circuitId, (await template("PERFORMANCE")).id);
+      await db.pool.query(`UPDATE circuit_category SET icon_id = NULL WHERE id = $1`, [
+        bare.id
+      ]);
+
+      const report = await readinessOf(circuitId);
+      expect(report.gaps.categories_without_icon).toEqual([
+        expect.objectContaining({ id: bare.id })
+      ]);
+      expect(report.gaps.shared_icons).toEqual([
+        {
+          icon_code: picture.icon_code,
+          categories: [
+            expect.objectContaining({ id: picture.id }),
+            expect.objectContaining({ id: again.id })
+          ]
+        }
+      ]);
+    });
+
     it("is ready once every date, ceremony and category is covered", async () => {
       const circuitId = await createCircuit();
       expect((await readinessOf(circuitId)).ready).toBe(false);
@@ -1409,6 +1496,7 @@ describe("circuit admin and public routes", () => {
       categoryId: number;
       otherCategoryId: number;
       filmTemplateId: number;
+      iconCode: string;
     };
 
     async function arrange(): Promise<Ctx> {
@@ -1428,6 +1516,7 @@ describe("circuit admin and public routes", () => {
         circuit_category_id: category.id
       });
       const group = await addGroup(circuitId, "Guilds", [other.id]);
+      const icon = await insertIcon(db.pool, { code: "audit-icon" });
       await db.pool.query(`DELETE FROM admin_audit_log`);
       return {
         circuitId,
@@ -1438,7 +1527,8 @@ describe("circuit admin and public routes", () => {
         groupId: group.id,
         categoryId: category.id,
         otherCategoryId: otherCategory.id,
-        filmTemplateId: film.id
+        filmTemplateId: film.id,
+        iconCode: icon.code
       };
     }
 
@@ -1558,6 +1648,15 @@ describe("circuit admin and public routes", () => {
         run: (c) =>
           send("patch", `/admin/circuits/${c.circuitId}/categories/${c.categoryId}`, {
             name: "Renamed"
+          })
+      },
+      {
+        name: "PUT /admin/circuits/:id/categories/:categoryId/icon",
+        action: "set_circuit_category_icon",
+        target: (c) => ["circuit", c.circuitId],
+        run: (c) =>
+          send("put", `/admin/circuits/${c.circuitId}/categories/${c.categoryId}/icon`, {
+            icon: c.iconCode
           })
       },
       {

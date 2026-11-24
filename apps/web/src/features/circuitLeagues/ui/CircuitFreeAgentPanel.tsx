@@ -5,12 +5,16 @@ import {
   type ContenderPickerProps
 } from "@/features/contenders/ui/ContenderPicker";
 import {
+  CIRCUIT_NO_DROP_LABEL,
   circuitSelectionLabel,
   type CircuitRosterEntry
 } from "@/decisions/circuitRoster";
 import type { ApiResult, CircuitSelectionSummary } from "@/lib/types";
 
 const DROP_NOTE_ID = "circuit-free-agent-drop-note";
+const NO_DROP = "none";
+/** The section heading the season page's Add/drop deep-links to (`#add`). */
+export const CIRCUIT_FREE_AGENCY_HEADING_ID = "circuit-free-agency";
 
 /**
  * Free agency on the viewer's own roster: an optional pick to drop, then the
@@ -21,6 +25,8 @@ export function CircuitFreeAgentPanel(props: {
   picker: ContenderPickerProps;
   dropOptions: CircuitRosterEntry[];
   dropSelectionId: number | null;
+  /** "Select a pick to drop" when the roster or category is full. */
+  dropPlaceholder: string;
   pending: CircuitSelectionSummary | null;
   adding: boolean;
   status: ApiResult | null;
@@ -30,8 +36,13 @@ export function CircuitFreeAgentPanel(props: {
 }) {
   const { closedNote, dropOptions, pending, adding, status } = props;
   return (
-    <Stack gap="sm" component="section" aria-labelledby="circuit-free-agency">
-      <Title order={3} variant="section" id="circuit-free-agency">
+    <Stack gap="sm" component="section" aria-labelledby={CIRCUIT_FREE_AGENCY_HEADING_ID}>
+      <Title
+        order={3}
+        variant="section"
+        id={CIRCUIT_FREE_AGENCY_HEADING_ID}
+        tabIndex={-1}
+      >
         Add a free agent
       </Title>
       <Divider />
@@ -44,15 +55,18 @@ export function CircuitFreeAgentPanel(props: {
           {dropOptions.length > 0 ? (
             <Select
               label="Drop to make room"
-              placeholder="Don't drop anyone"
-              data={dropOptions.map((e) => ({
-                value: String(e.selection.id),
-                label: circuitSelectionLabel(e.selection)
-              }))}
+              placeholder={props.dropPlaceholder}
+              data={[
+                { value: NO_DROP, label: CIRCUIT_NO_DROP_LABEL },
+                ...dropOptions.map((e) => ({
+                  value: String(e.selection.id),
+                  label: circuitSelectionLabel(e.selection)
+                }))
+              ]}
               value={
                 props.dropSelectionId === null ? null : String(props.dropSelectionId)
               }
-              onChange={(v) => props.onChooseDrop(v ? Number(v) : null)}
+              onChange={(v) => props.onChooseDrop(v && v !== NO_DROP ? Number(v) : null)}
               clearable
               aria-describedby={DROP_NOTE_ID}
             />

@@ -1,13 +1,20 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Box, Button, Text } from "@ui";
-import type { ContenderPickerProps } from "@/features/contenders/ui/ContenderPicker";
+import { useMediaQuery } from "@ui/hooks";
 import type {
   CircuitClaimDraft,
   CircuitWaiversView
 } from "@/orchestration/circuitWaivers";
-import { circuitCategoryNames, type CircuitRosterEntry } from "@/decisions/circuitRoster";
-import { circuitPriorityEntries } from "@/decisions/circuitWaivers";
+import type { CircuitRosterEntry } from "@/decisions/circuitRoster";
+import {
+  circuitClaimRows,
+  circuitPriorityEntries,
+  circuitWaiverResultRows
+} from "@/decisions/circuitWaivers";
+import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { ApiResult, CircuitClaim, CircuitClaims } from "@/lib/types";
+import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import {
   circuitLeaguePath,
   circuitRosterPath,
@@ -18,16 +25,25 @@ import {
   CircuitPageFrame,
   CircuitPageSkeleton
 } from "@/features/circuitLeagues/ui/CircuitPageFrame";
-import { CircuitClaimsSection } from "@/features/circuitLeagues/ui/CircuitClaimsSection";
+import {
+  CIRCUIT_CLAIM_HEADING_ID,
+  CircuitClaimsSection
+} from "@/features/circuitLeagues/ui/CircuitClaimsSection";
+import { useHashFocus } from "./useHashFocus";
 import { CircuitClaimModal } from "@/features/circuitLeagues/ui/CircuitClaimModal";
 import { CircuitPriorityList } from "@/features/circuitLeagues/ui/CircuitPriorityList";
 import { CircuitWaiverResults } from "@/features/circuitLeagues/ui/CircuitWaiverResults";
+import { ContenderCardModal } from "@/features/circuitLeagues/ui/ContenderCardModal";
+import {
+  withContenderPreview,
+  type CircuitSeasonPicker
+} from "@/features/circuitLeagues/ui/ContenderPreviewRow";
 
 export function CircuitWaiversScreen(props: {
   view: CircuitWaiversView;
   viewerUserId: number | null;
-  /** The contender picker, once the viewer can claim. */
-  picker: ContenderPickerProps | null;
+  /** The contender picker, once the viewer can claim, with the chosen contender's owner. */
+  picker: CircuitSeasonPicker | null;
   phone: boolean;
   draft: CircuitClaimDraft | null;
   dropOptions: CircuitRosterEntry[];
@@ -50,6 +66,15 @@ export function CircuitWaiversScreen(props: {
   onSaveClaim: () => void;
 }) {
   const { view } = props;
+  const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const [card, setCard] = useState<ContenderPillView | null>(null);
+  const openCard = isMobile || coarse ? setCard : undefined;
+  useHashFocus(
+    "claim",
+    CIRCUIT_CLAIM_HEADING_ID,
+    view.state === "ready" && view.canClaim && props.picker !== null
+  );
   if (view.state === "loading") return <CircuitPageSkeleton label="Loading waivers" />;
   if (view.state === "error") {
     return (
@@ -63,7 +88,7 @@ export function CircuitWaiversScreen(props: {
   }
 
   const { detail, waivers, runs, claims } = view;
-  const categoryNames = circuitCategoryNames(detail.categories);
+  const { categories, members } = detail;
   const link = {
     leagueId: detail.league.id,
     leagueName: detail.league.name,
@@ -91,15 +116,27 @@ export function CircuitWaiversScreen(props: {
         {claims ? (
           <CircuitClaimsSection
             claims={claims}
-            categoryNames={categoryNames}
-            pending={view.pending}
+            rows={circuitClaimRows(view.pending, categories)}
+            phone={props.phone}
             canClaim={view.canClaim}
             busy={props.busy}
             status={props.listStatus}
-            picker={props.picker}
+            picker={
+              props.picker
+                ? withContenderPreview({
+                    picker: props.picker,
+                    categories,
+                    viewerUserId: props.viewerUserId,
+                    drop: null,
+                    busy: props.busy,
+                    verb: "Claim"
+                  })
+                : null
+            }
             onReorder={props.onReorder}
             onEdit={props.onEdit}
             onWithdraw={props.onWithdraw}
+            onOpenCard={openCard}
           />
         ) : detail.viewer.is_member ? null : (
           <Text className="baseline-textBody">
@@ -107,13 +144,24 @@ export function CircuitWaiversScreen(props: {
           </Text>
         )}
         <CircuitPriorityList
-          entries={circuitPriorityEntries(waivers)}
+          entries={circuitPriorityEntries(waivers, members)}
           viewerUserId={props.viewerUserId}
         />
       </Box>
-      <CircuitWaiverResults runs={runs} categoryNames={categoryNames} />
+      <CircuitWaiverResults
+        runs={runs.map((run) => ({
+          run,
+          rows: circuitWaiverResultRows(run, categories, members)
+        }))}
+        onOpenCard={openCard}
+      />
+      <ContenderCardModal
+        card={card ? { tooltip: card.tooltip, actions: [] } : null}
+        onClose={() => setCard(null)}
+      />
       <CircuitClaimModal
         draft={props.draft}
+        categories={categories}
         phone={props.phone}
         dropOptions={props.dropOptions}
         chipOptions={props.chipOptions}

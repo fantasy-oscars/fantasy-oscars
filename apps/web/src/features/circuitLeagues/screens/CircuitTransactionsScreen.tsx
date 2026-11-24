@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@ui";
-import { circuitCategoryNames } from "@/decisions/circuitRoster";
+import { useMediaQuery } from "@ui/hooks";
+import { circuitTransactionRows } from "@/decisions/circuitTransactions";
+import type { ContenderPillView } from "@/decisions/contenderPill";
+import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
 import type { CircuitTransactionsView } from "@/orchestration/circuitRoster";
 import { circuitLeaguePath, circuitRosterPath } from "@/lib/routes";
 import {
@@ -9,9 +13,13 @@ import {
   CircuitPageSkeleton
 } from "@/features/circuitLeagues/ui/CircuitPageFrame";
 import { CircuitTransactionList } from "@/features/circuitLeagues/ui/CircuitTransactionList";
+import { ContenderCardModal } from "@/features/circuitLeagues/ui/ContenderCardModal";
 
 export function CircuitTransactionsScreen(props: { view: CircuitTransactionsView }) {
   const { view } = props;
+  const isMobile = useMediaQuery(`(max-width: ${FO_BP_MOBILE_MAX_PX}px)`);
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const [card, setCard] = useState<ContenderPillView | null>(null);
   if (view.state === "loading")
     return <CircuitPageSkeleton label="Loading transactions" />;
   if (view.state === "error") {
@@ -46,8 +54,12 @@ export function CircuitTransactionsScreen(props: { view: CircuitTransactionsView
       }
     >
       <CircuitTransactionList
-        transactions={transactions}
-        categoryNames={circuitCategoryNames(detail.categories)}
+        rows={circuitTransactionRows(transactions, detail.categories, detail.members)}
+        onOpenCard={isMobile || coarse ? setCard : undefined}
+      />
+      <ContenderCardModal
+        card={card ? { tooltip: card.tooltip, actions: [] } : null}
+        onClose={() => setCard(null)}
       />
     </CircuitPageFrame>
   );

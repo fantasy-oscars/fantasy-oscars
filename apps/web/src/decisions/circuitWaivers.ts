@@ -1,16 +1,21 @@
 import type {
   CircuitClaim,
   CircuitClaims,
+  CircuitLeagueCategory,
+  CircuitLeagueMember,
   CircuitLeagueStatus,
   CircuitRoster,
   CircuitSelectionSummary,
+  CircuitWaiverRun,
   CircuitWaivers
 } from "../lib/types";
 import {
   circuitAddNeedsDrop,
   circuitDayLabel,
-  circuitRosterErrorMessage
+  circuitRosterErrorMessage,
+  circuitSelectionLabel
 } from "./circuitRoster";
+import { contenderPillView, type ContenderPillView } from "./contenderPill";
 
 /*
  * Waiver claims, rolling priority, chips and run results of a league's
@@ -153,12 +158,18 @@ export function circuitPendingClaims(claims: CircuitClaims): CircuitClaim[] {
 export type CircuitPriorityEntry = {
   user_id: number;
   username: string;
+  /** From the league's members; null when the member has none. */
+  avatarKey: string | null;
   waiver_priority: number | null;
   chips: CircuitWaivers["chips"];
 };
 
 /** Members in rolling priority order (1 first), each with their chips by pick. */
-export function circuitPriorityEntries(waivers: CircuitWaivers): CircuitPriorityEntry[] {
+export function circuitPriorityEntries(
+  waivers: CircuitWaivers,
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[] = []
+): CircuitPriorityEntry[] {
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
   return [...waivers.priority]
     .sort(
       (a, b) =>
@@ -168,6 +179,7 @@ export function circuitPriorityEntries(waivers: CircuitWaivers): CircuitPriority
     )
     .map((p) => ({
       ...p,
+      avatarKey: avatars.get(p.user_id) ?? null,
       chips: waivers.chips
         .filter((c) => c.member.user_id === p.user_id)
         .sort((a, b) => a.original_pick_number - b.original_pick_number)
@@ -197,4 +209,92 @@ export function circuitClaimErrorMessage(
     default:
       return circuitRosterErrorMessage(err, fallback);
   }
+}
+
+type PillCategories = readonly Pick<
+  CircuitLeagueCategory,
+  "id" | "name" | "kind" | "icon_code" | "icon_variant"
+>[];
+
+/** One of the viewer's pending claims as a row of pills. */
+export type CircuitClaimRow = {
+  claim: CircuitClaim;
+  /** "Night Train (2026)": the action icons and menu name the pick with it. */
+  label: string;
+  pill: ContenderPillView;
+  /** The pick dropped if the claim wins, drawn dashed; null is "No drop". */
+  drop: ContenderPillView | null;
+  /** "Pick 7 chip", or null without a chip. */
+  chipLabel: string | null;
+};
+
+/** The viewer's claims as rows: the claim pill, the drop pill and the chip. */
+export function circuitClaimRows(
+  claims: readonly CircuitClaim[],
+  categories: PillCategories
+): CircuitClaimRow[] {
+  return claims.map((claim) => ({
+    claim,
+    label: circuitSelectionLabel(claim.selection),
+    pill: contenderPillView(claim.selection, categories),
+    drop: claim.drop ? contenderPillView(claim.drop, categories) : null,
+    chipLabel: claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
+  }));
+}
+
+export type CircuitClaimMenuKey = "up" | "down" | "edit" | "withdraw";
+
+/** A claim row's phone menu: the four desktop icon actions, in their order. */
+export function circuitClaimMenu(input: {
+  idx: number;
+  count: number;
+  disabled: boolean;
+}): Array<{ key: CircuitClaimMenuKey; label: string; disabled: boolean }> {
+  const { idx, count, disabled } = input;
+  return [
+    { key: "up", label: "Move up", disabled: disabled || idx === 0 },
+    { key: "down", label: "Move down", disabled: disabled || idx === count - 1 },
+    { key: "edit", label: "Edit claim", disabled },
+    { key: "withdraw", label: "Withdraw", disabled }
+  ];
+}
+
+/** A claim in a run's results: who, the outcome beside them, then the pills. */
+export type CircuitWaiverResultRow = {
+  key: number;
+  order: number;
+  username: string;
+  avatarKey: string | null;
+  /** "Won · Pick 7 chip", "Lost: Already owned". */
+  outcome: string;
+  won: boolean;
+  pill: ContenderPillView;
+  drop: ContenderPillView | null;
+};
+
+/**
+ * A run's claims in the order they ran. A won claim's pill is the default
+ * one, a lost claim's is muted; the chip goes in the outcome.
+ */
+export function circuitWaiverResultRows(
+  run: Pick<CircuitWaiverRun, "claims">,
+  categories: PillCategories,
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[]
+): CircuitWaiverResultRow[] {
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
+  return run.claims.map((claim) => ({
+    key: claim.id,
+    order: claim.order,
+    username: claim.member.username,
+    avatarKey: avatars.get(claim.member.user_id) ?? null,
+    outcome: [
+      circuitClaimOutcomeLabel(claim),
+      claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    won: claim.status === "WON",
+    pill: contenderPillView(claim.selection, categories),
+    drop: claim.drop ? contenderPillView(claim.drop, categories) : null
+  }));
 }

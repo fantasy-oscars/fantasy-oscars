@@ -2,9 +2,10 @@ import express from "express";
 import type { NextFunction, Response, Router } from "express";
 import type { Pool } from "pg";
 import { requireAuth, type AuthedRequest } from "../auth/middleware.js";
-import { hasOperatorAccess } from "../auth/roles.js";
+import { hasOperatorAccess, hasSuperAdminAccess } from "../auth/roles.js";
 import { isMemberOfAnyLeague } from "../data/repositories/leagueRepository.js";
 import { AppError } from "../errors.js";
+import { getCircuitSelectionOwner } from "../services/circuit/circuitOwnership.js";
 import { upsertCircuitSelection } from "../services/circuit/circuitSelections.js";
 import {
   getContenderFilmCredits,
@@ -38,7 +39,8 @@ function limitPair() {
 }
 
 // Player TMDB search for picking contenders, and the selection upsert:
-// signed-in users who belong to a league, or operators.
+// signed-in users who belong to a league, or operators. An upsert that names
+// a season also reports who holds the selection there.
 export function createContendersRouter(client: Pool, authSecret: string): Router {
   const router = express.Router();
 
@@ -104,9 +106,21 @@ export function createContendersRouter(client: Pool, authSecret: string): Router
     requireContenderAccess,
     async (req: AuthedRequest, res, next) => {
       try {
-        const identity = parseBody(contenderSelectionBody, req.body);
+        const { circuit_league_id, ...identity } = parseBody(
+          contenderSelectionBody,
+          req.body
+        );
         const { selection, created } = await upsertCircuitSelection(client, identity);
-        return res.status(created ? 201 : 200).json({ selection });
+        if (circuit_league_id === undefined) {
+          return res.status(created ? 201 : 200).json({ selection });
+        }
+        const owner = await getCircuitSelectionOwner(
+          client,
+          circuit_league_id,
+          { userId: Number(req.auth?.sub), isSuperAdmin: hasSuperAdminAccess(req.auth) },
+          selection.id
+        );
+        return res.status(created ? 201 : 200).json({ selection, owner });
       } catch (err) {
         next(err);
       }

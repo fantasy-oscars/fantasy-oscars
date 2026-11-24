@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { DraftRoomOrchestration } from "@/orchestration/draft";
 import { RuntimeBannerStack } from "@/notifications";
 import { SiteFooterFineprintOnly } from "@/app/layouts/SiteFooter";
-import { NomineeTooltipCard } from "@/features/draft/components/NomineeTooltipCard";
+import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { useCategoryKeyboardFocus } from "./useCategoryKeyboardFocus";
 import { MobileDraftHeader } from "./MobileDraftHeader";

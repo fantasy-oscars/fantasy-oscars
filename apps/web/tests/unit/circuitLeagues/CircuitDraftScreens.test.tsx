@@ -1,8 +1,10 @@
+import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MantineProvider } from "@ui";
+import { Notifications } from "@ui/notifications";
 import { CircuitDraftScreen } from "@/features/circuitLeagues/screens/CircuitDraftScreen";
 import { CircuitLeagueScreen } from "@/features/circuitLeagues/screens/CircuitLeagueScreen";
 import {
@@ -44,7 +46,7 @@ const queue = circuitQueue(
   [rebecca]
 );
 
-function renderDraft(input: {
+type DraftInput = {
   detail?: CircuitLeagueDetail;
   snapshot?: CircuitDraftSnapshot | null;
   queue?: boolean;
@@ -53,9 +55,9 @@ function renderDraft(input: {
   canPause?: boolean;
   picker?: ContenderPickerProps | null;
   connectionState?: DraftConnectionState;
-}) {
-  const detail = input.detail ?? circuitLeagueDetail({ status: "INITIALIZED" });
-  const snapshot = input.snapshot ?? null;
+};
+
+function renderDraft(input: DraftInput) {
   const handlers = {
     onRemoveFromQueue: vi.fn(),
     onReorderQueue: vi.fn(),
@@ -68,8 +70,43 @@ function renderDraft(input: {
     onToggleSound: vi.fn(),
     onRailOpenChange: vi.fn()
   };
-  render(
+  const view = render(draftRoom(input, handlers));
+  return {
+    ...handlers,
+    /** The same room with a newer snapshot or gate, keeping its state. */
+    rerender: (next: DraftInput) =>
+      view.rerender(draftRoom({ ...input, ...next }, handlers))
+  };
+}
+
+function draftRoom(
+  input: DraftInput,
+  handlers: Omit<
+    ComponentProps<typeof CircuitDraftScreen>,
+    | "view"
+    | "viewerUserId"
+    | "viewerLabel"
+    | "viewerAvatarKey"
+    | "picker"
+    | "connection"
+    | "connectionState"
+    | "clock"
+    | "pickStatus"
+    | "picking"
+    | "pauseStatus"
+    | "queueBusy"
+    | "removingSelectionId"
+    | "queueStatus"
+    | "startStatus"
+    | "soundEnabled"
+    | "railPreferences"
+  >
+) {
+  const detail = input.detail ?? circuitLeagueDetail({ status: "INITIALIZED" });
+  const snapshot = input.snapshot ?? null;
+  return (
     <MantineProvider>
+      <Notifications />
       <MemoryRouter>
         <CircuitDraftScreen
           view={{
@@ -111,7 +148,6 @@ function renderDraft(input: {
       </MemoryRouter>
     </MantineProvider>
   );
-  return handlers;
 }
 
 /** jsdom has no layout: give each queue row a box so the keyboard finds its neighbour. */
@@ -239,35 +275,124 @@ describe("circuit draft staging", () => {
     expect(handlers.onUnstage).toHaveBeenCalledWith(35);
   });
 
-  it("drafts straight from the queue or staged list for the player on the clock", async () => {
-    const handlers = renderDraft({
-      detail: circuitLeagueDetail({ status: "DRAFTING" }),
-      snapshot: circuitDraftSnapshot({ picks: 3 }),
-      gate: { onTheClock: true, canPick: true, reason: "You're on the clock." }
+  const onTheClock = {
+    detail: circuitLeagueDetail({ status: "DRAFTING" }),
+    snapshot: circuitDraftSnapshot({ picks: 3 }),
+    gate: { onTheClock: true, canPick: true, reason: "You're on the clock." }
+  };
+  const pill = (name: string) =>
+    within(screen.getByRole("region", { name: "Staging" })).getByRole("button", {
+      name
     });
+
+  it("lays each contender on one line as a pill, with no Draft buttons", () => {
+    renderDraft(onTheClock);
     const staging = screen.getByRole("region", { name: "Staging" });
-    expect(within(staging).getByTestId("circuit-staging-note").textContent).toMatch(
-      /^You're on the clock: draft from here/
+    expect(within(staging).getByTestId("circuit-staging-note").textContent).toBe(
+      "You're on the clock. Double-click a contender to draft it, or select it and confirm."
     );
-    // Drafted contenders stay listed, struck through, with no Draft button.
-    expect(within(staging).getByText(/Best Picture · Drafted/)).toBeTruthy();
-    expect(
-      within(staging).queryByRole("button", { name: "Draft Sunset Boulevard (2026)" })
-    ).toBeNull();
-    await userEvent.click(
-      within(staging).getByRole("button", { name: "Draft Laura (2026)" })
+    expect(within(staging).queryByRole("button", { name: /^Draft / })).toBeNull();
+    const laura = pill("Best Picture: Laura (2026)");
+    expect(laura.classList.contains("dr-pill")).toBe(true);
+    expect(laura.querySelector(".dr-pill-icon")).not.toBeNull();
+    expect(laura.getAttribute("aria-keyshortcuts")).toBe(
+      "Enter Space Shift+Enter Escape"
     );
-    expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 34 }));
-    await userEvent.click(
-      within(staging).getByRole("button", { name: "Draft Rebecca (2026)" })
-    );
-    expect(handlers.onDraft).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: 35 })
-    );
+    expect(laura.getAttribute("aria-describedby")).toBe("circuit-staging-help");
+    // A drafted contender stays listed, muted, named with who drafted it.
+    const drafted = pill("Best Picture: Sunset Boulevard (2026), drafted by avery");
+    expect(drafted.classList.contains("is-muted")).toBe(true);
+    expect(drafted.getAttribute("aria-disabled")).toBe("true");
   });
 
-  it("keeps the Draft buttons off, with the reason, for everyone else", () => {
-    renderDraft({
+  it("arms a pill on click and drafts it on double-click", async () => {
+    const handlers = renderDraft(onTheClock);
+    const laura = pill("Best Picture: Laura (2026)");
+    fireEvent.click(laura);
+    expect(laura.getAttribute("aria-pressed")).toBe("true");
+    expect(laura.classList.contains("is-armed")).toBe(true);
+    // A second click disarms.
+    fireEvent.click(laura);
+    expect(laura.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.doubleClick(pill("Best Picture: Rebecca (2026)"));
+    expect(handlers.onDraft).toHaveBeenCalledTimes(1);
+    expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 35 }));
+  });
+
+  it("raises the confirm toast for an armed pill, which drafts it", async () => {
+    const handlers = renderDraft(onTheClock);
+    fireEvent.click(pill("Best Picture: Laura (2026)"));
+    const toast = await screen.findByText("Confirm draft pick");
+    expect(screen.getByText("Draft “Laura (2026)”")).toBeTruthy();
+    fireEvent.click(toast);
+    expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 34 }));
+  });
+
+  it("arms with Enter, cancels with Escape and drafts with Shift+Enter", async () => {
+    const user = userEvent.setup();
+    const handlers = renderDraft(onTheClock);
+    const laura = pill("Best Picture: Laura (2026)");
+    laura.focus();
+    await user.keyboard("{Enter}");
+    expect(laura.getAttribute("aria-pressed")).toBe("true");
+    expect(laura.getAttribute("aria-describedby")).toBe("circuit-stage-hint-34");
+    expect(screen.getByText(/^Selected\. Press Shift\+Enter to draft/)).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(laura.getAttribute("aria-pressed")).toBe("false");
+    await user.keyboard(" ");
+    expect(laura.getAttribute("aria-pressed")).toBe("true");
+    expect(handlers.onDraft).not.toHaveBeenCalled();
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 34 }));
+  });
+
+  it("clears the selection, and says so, when the armed contender is drafted", () => {
+    const room = renderDraft(onTheClock);
+    fireEvent.click(pill("Best Picture: Laura (2026)"));
+    expect(pill("Best Picture: Laura (2026)").getAttribute("aria-pressed")).toBe("true");
+    // Laura goes to pick 4 (from the queue, when the clock ran out).
+    const base = circuitDraftSnapshot({ picks: 4 });
+    const drafted: CircuitDraftSnapshot = {
+      ...base,
+      picks: base.picks.map((p) =>
+        p.pick_number === 4 ? { ...p, selection_id: 34 } : p
+      ),
+      selections: [
+        ...base.selections.filter((x) => x.id !== 33),
+        circuitSelection(34, "Laura")
+      ]
+    };
+    room.rerender({
+      snapshot: drafted,
+      gate: { onTheClock: false, canPick: false, reason: "Waiting for blake to pick." }
+    });
+    expect(
+      screen.getByText("Selection cleared: Laura (2026) is no longer available")
+    ).toBeTruthy();
+    expect(
+      pill("Best Picture: Laura (2026), drafted by avery").getAttribute("aria-pressed")
+    ).toBe("false");
+  });
+
+  it("offers Draft first in the row menu while the viewer is on the clock", async () => {
+    const handlers = renderDraft(onTheClock);
+    await openRowMenu("Laura (2026)");
+    const items = screen.getAllByRole("menuitem", { hidden: true });
+    expect(items[0]!.textContent).toBe("Draft");
+    fireEvent.click(menuItem("Draft"));
+    expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 34 }));
+  });
+
+  it("offers only Remove for a drafted contender", async () => {
+    renderDraft(onTheClock);
+    await openRowMenu("Sunset Boulevard (2026)");
+    expect(
+      screen.getAllByRole("menuitem", { hidden: true }).map((i) => i.textContent)
+    ).toEqual(["Remove from queue"]);
+  });
+
+  it("keeps the pills from drafting, with the reason, for everyone else", async () => {
+    const handlers = renderDraft({
       detail: circuitLeagueDetail({ status: "DRAFTING" }),
       snapshot: circuitDraftSnapshot({ picks: 1 }),
       gate: { onTheClock: false, canPick: false, reason: "Waiting for blake to pick." }
@@ -276,9 +401,46 @@ describe("circuit draft staging", () => {
     expect(within(staging).getByTestId("circuit-staging-note").textContent).toBe(
       "Waiting for blake to pick. You can draft from here when you're on the clock."
     );
-    const draft = within(staging).getByRole("button", { name: "Draft Laura (2026)" });
-    expect((draft as HTMLButtonElement).disabled).toBe(true);
-    expect(draft.getAttribute("aria-describedby")).toBe("circuit-staging-help");
+    const laura = pill("Best Picture: Laura (2026)");
+    expect(laura.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(laura);
+    fireEvent.doubleClick(laura);
+    expect(laura.getAttribute("aria-pressed")).toBe("false");
+    expect(handlers.onDraft).not.toHaveBeenCalled();
+    await openRowMenu("Laura (2026)");
+    expect(screen.queryByRole("menuitem", { name: "Draft", hidden: true })).toBeNull();
+  });
+
+  it("opens the nominee card with Draft, Move and Remove on a phone", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(pointer: coarse)",
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false
+    }));
+    try {
+      const handlers = renderDraft(onTheClock);
+      expect(screen.getByTestId("circuit-staging-note").textContent).toBe(
+        "You're on the clock. Tap a contender, then Draft."
+      );
+      const laura = pill("Best Picture: Laura (2026)");
+      expect(laura.getAttribute("aria-haspopup")).toBe("dialog");
+      fireEvent.click(laura);
+      const card = await screen.findByRole("dialog", { name: "Nominee details" });
+      expect(
+        within(card)
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label") ?? b.textContent)
+      ).toEqual(["Close", "Draft", "Move to staged", "Remove"]);
+      fireEvent.click(within(card).getByRole("button", { name: "Draft" }));
+      expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 34 }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -347,6 +509,41 @@ describe("circuit draft room", () => {
     expect(actions.stage).toHaveBeenCalledTimes(1);
   });
 
+  it("previews the contender as a pill, muted with its owner once drafted", () => {
+    const picker = confirmPicker([{ verb: "Draft", onConfirm: vi.fn() }]);
+    renderDraft({
+      detail: circuitLeagueDetail({ status: "DRAFTING" }),
+      snapshot: circuitDraftSnapshot({ picks: 2 }),
+      gate: { onTheClock: false, canPick: false, reason: "Waiting for blake to pick." },
+      picker: {
+        ...picker,
+        film: {
+          tmdb_id: 1032,
+          title: "All About Eve",
+          release_year: 2026,
+          poster_url: null
+        }
+      }
+    });
+    const form = screen.getByRole("group", { name: "Choose a contender" });
+    const preview = within(form).getByRole("group", {
+      name: "Best Picture: All About Eve (2026), owned by blake"
+    });
+    expect(preview.classList.contains("is-muted")).toBe(true);
+    expect(within(form).getByText("Owned by blake")).toBeTruthy();
+    cleanup();
+
+    renderDraft({
+      detail: circuitLeagueDetail({ status: "DRAFTING" }),
+      snapshot: live,
+      gate: { onTheClock: true, canPick: true, reason: "You're on the clock." },
+      picker
+    });
+    const free = screen.getByRole("group", { name: "Best Picture: Laura (1944)" });
+    expect(free.classList.contains("is-muted")).toBe(false);
+    expect(free.querySelector(".dr-pill-icon")).not.toBeNull();
+  });
+
   it("keeps Draft off but the form usable for everyone else", () => {
     renderDraft({
       detail: circuitLeagueDetail({ status: "DRAFTING" }),
@@ -390,15 +587,23 @@ describe("circuit draft room", () => {
     const history = screen.getByRole("region", { name: "Draft history" });
     const rows = within(history).getAllByRole("listitem");
     expect(rows.map((r) => r.textContent)).toEqual([
-      "1-1avery: Sunset Boulevard (2026)",
+      "1-1movieSunset Boulevard (2026)",
       "1-2blake: — (on the clock)",
       "2-1blake: —",
       "2-2avery: —"
     ]);
     expect(rows[1]!.getAttribute("data-active")).toBe("true");
+    // A drafted slot's pill carries the category icon and names who drafted it.
+    const drafted = within(rows[0]!).getByRole("group", {
+      name: "Best Picture: Sunset Boulevard (2026), drafted by avery"
+    });
+    expect(drafted.querySelector(".dr-pill-icon")).not.toBeNull();
     const roster = screen.getByRole("region", { name: "My roster" });
-    expect(within(roster).getByText("Sunset Boulevard (2026)")).toBeTruthy();
-    expect(within(roster).getByText("Best Picture")).toBeTruthy();
+    expect(
+      within(roster).getByRole("group", { name: "Best Picture: Sunset Boulevard (2026)" })
+    ).toBeTruthy();
+    // The icon names the category: no category line under the pill.
+    expect(within(roster).queryByText("Best Picture")).toBeNull();
     expect(document.querySelector(".dr-header")?.textContent).toContain("0:42");
     expect(screen.getByTestId("draft-connection-indicator").textContent).toMatch(
       /Reconnecting/
@@ -430,14 +635,25 @@ describe("circuit draft room", () => {
     expect(screen.getByText(/^The draft is complete/)).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Staging" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Pause draft" })).toBeNull();
+    // blake missed pick 3 twice: the slot is simply absent, with no notes.
     const blake = screen.getByRole("region", { name: "blake" });
-    expect(within(blake).getByText("Missed again, so a chip for pick 3")).toBeTruthy();
-    expect(within(blake).getByText(/^Supplemental, for pick 3/)).toBeTruthy();
+    expect(blake.textContent).toContain("1 of 2");
+    expect(
+      within(blake).getByRole("group", { name: "Best Picture: All About Eve (2026)" })
+    ).toBeTruthy();
+    expect(within(blake).queryByText(/Missed|Supplemental|From queue/)).toBeNull();
+    const avery = screen.getByRole("region", { name: "avery (you)" });
+    expect(avery.textContent).toContain("2 of 2");
 
     fireEvent.click(screen.getByRole("radio", { name: "By category" }));
     const acting = screen.getByRole("region", { name: "Best Actress" });
-    expect(within(acting).getByText("Ingrid Bergman, Gaslight (2026)")).toBeTruthy();
-    expect(within(acting).getByText(/avery · From queue/)).toBeTruthy();
+    expect(
+      within(acting).getByRole("group", {
+        name: "Best Actress: Ingrid Bergman, Gaslight (2026), drafted by avery"
+      })
+    ).toBeTruthy();
+    expect(within(acting).getByText("2-2")).toBeTruthy();
+    expect(within(acting).queryByText(/From queue/)).toBeNull();
   });
 });
 

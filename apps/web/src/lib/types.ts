@@ -291,6 +291,9 @@ export type CircuitLeagueCategory = {
   sort_index: number;
   weight: number;
   max_owned: number | null;
+  /** The category's icon; null when none is set (pills then show the fallback glyph). */
+  icon_code: string | null;
+  icon_variant: "default" | "inverted" | string;
 };
 
 export type CircuitLeagueMember = {
@@ -326,12 +329,32 @@ export type CircuitSelectionSummary = {
   person: { id: number; name: string; profile_url: string | null } | null;
 };
 
+/**
+ * Who holds a contender in a season: the `owner` of a selection upsert that
+ * names the season (`circuit_league_id`); null when it is a free agent.
+ */
+export type CircuitSelectionOwner = { user_id: number; username: string } | null;
+
 /** A waiver window: free agency is closed from `starts_on` until `resolves_on`. */
 export type CircuitWaiverWindow = {
   starts_on: string;
   ends_on: string;
   resolves_on: string;
   scoring_days: string[];
+};
+
+/** One ceremony's part of a contender's points: its nomination and win points. */
+export type CircuitCeremonyPoints = {
+  ceremony_id: number;
+  ceremony_name: string | null;
+  nomination: number;
+  win: number;
+};
+
+/** The ledger points a contender scored for one member while they owned it. */
+export type CircuitSelectionPoints = {
+  total: number;
+  by_ceremony: CircuitCeremonyPoints[];
 };
 
 /** `GET /circuit-leagues/:id/roster`, also returned by drops and free-agent adds. */
@@ -353,8 +376,16 @@ export type CircuitRoster = {
     acquired_at: string;
     acquired_transaction_id: number;
     selection: CircuitSelectionSummary;
+    points: CircuitSelectionPoints;
   }>;
+  /** The member's standings total: the entries' points plus `dropped_points`. */
+  points_total: number;
+  /** Points from contenders the member no longer holds. */
+  dropped_points: number;
 };
+
+/** `GET /circuit-leagues/:id/rosters`: every member's roster, in join order. */
+export type CircuitRosters = { rosters: CircuitRoster[] };
 
 export type CircuitTransactionKind =
   "DRAFT" | "SUPPLEMENTAL" | "WAIVER" | "FREE_AGENT" | "DROP";
@@ -498,10 +529,36 @@ export type CircuitCeremonyBreakdown = {
         kind: CircuitScoreKind | string;
         occasion_date: string;
         points: number;
+        /** The member still holds the contender; false for a pick dropped since. */
+        owned_now: boolean;
       }>;
     }
   >;
 };
+
+/** A contender that scored in the season, in `GET /circuit-leagues/:id/standings/contenders`. */
+export type CircuitScoringContender = {
+  selection: CircuitSelectionSummary;
+  total: number;
+  /** Every member it scored for, most points first. */
+  members: Array<{
+    user_id: number;
+    username: string;
+    avatar_key: string | null;
+    points: number;
+  }>;
+  /** One line per ceremony and member it scored for. */
+  lines: Array<{
+    ceremony_id: number;
+    ceremony_name: string | null;
+    user_id: number;
+    nomination: number;
+    win: number;
+  }>;
+};
+
+/** `GET /circuit-leagues/:id/standings/contenders`: total descending, then selection id. */
+export type CircuitScoringContenders = { contenders: CircuitScoringContender[] };
 
 /** A `score:update` message on the league's room: its standings changed. */
 export type CircuitScoreUpdateMessage = {

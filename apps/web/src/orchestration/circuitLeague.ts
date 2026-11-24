@@ -5,6 +5,11 @@ import { confirm, notify } from "../notifications";
 import type { ApiResult, CircuitLeagueDetail } from "../lib/types";
 import { circuitLeagueEditable } from "../decisions/circuitLeague";
 import {
+  circuitAddDropTarget,
+  circuitAddDropVisible,
+  type CircuitAddDropTarget
+} from "../decisions/circuitAddDrop";
+import {
   fullSeasonSettingsFrom,
   fullSeasonWrites,
   type FullSeasonSettings,
@@ -12,12 +17,18 @@ import {
 } from "../decisions/fullSeasonSettings";
 import { errorCode, errorMessage, errorRequestId, unwrap } from "./query/errors";
 import { queryKeys } from "./query/keys";
-import { circuitLeagueQuery } from "./query/queries";
+import {
+  circuitClaimsQuery,
+  circuitLeagueQuery,
+  circuitRosterQuery
+} from "./query/queries";
 
 /*
  * One league's competition in a Circuit (a "season" to players): its settings,
  * saved one area at a time, members, join and leave, and initialisation. Every
- * write returns the full detail, which replaces the cached read.
+ * write returns the full detail, which replaces the cached read. While the
+ * season is in progress a member's Add/drop entry reads their roster's free
+ * agency and, while it is closed, their claims, to choose where it leads.
  */
 
 export type CircuitLeagueView =
@@ -70,6 +81,29 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
   const valid = Number.isInteger(circuitLeagueId) && circuitLeagueId > 0;
   const query = useQuery({ ...circuitLeagueQuery(circuitLeagueId), enabled: valid });
   const data = query.data;
+  const addDropShown = data
+    ? circuitAddDropVisible({
+        status: data.circuit_league.status,
+        isMember: data.viewer.is_member
+      })
+    : false;
+  const rosterQuery = useQuery({
+    ...circuitRosterQuery(circuitLeagueId, null),
+    enabled: valid && addDropShown
+  });
+  const freeAgency = rosterQuery.data?.free_agency;
+  const claimsQuery = useQuery({
+    ...circuitClaimsQuery(circuitLeagueId),
+    enabled: valid && addDropShown && freeAgency !== undefined && !freeAgency.open
+  });
+  const claims = claimsQuery.data;
+  const claimsSettled = claims !== undefined || claimsQuery.isError;
+  const addDrop = useMemo<CircuitAddDropTarget | null>(() => {
+    // Shown once its destination is known; the claims read decides only while free agency is closed.
+    if (!addDropShown || !freeAgency) return null;
+    if (!freeAgency.open && !claimsSettled) return null;
+    return circuitAddDropTarget({ freeAgency, claims: claims ?? null });
+  }, [addDropShown, freeAgency, claims, claimsSettled]);
 
   // Join and leave report under the header; locking reports beside its button.
   const [memberStatus, setMemberStatus] = useState<ApiResult | null>(null);
@@ -240,6 +274,8 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
 
   return {
     view,
+    /** Where Add/drop leads; null while it is hidden or its reads are loading. */
+    addDrop,
     acting: actionMutation.isPending,
     memberStatus,
     lockStatus,

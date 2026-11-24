@@ -59,4 +59,26 @@ describe("contender schemas", () => {
       message({ circuit_category_id: 4, film_tmdb_id: 238, person_tmdb_id: -1 })
     ).toBe("Choose a person");
   });
+
+  it("selection body takes an optional season to report the owner in", () => {
+    expect(
+      contenderSelectionBody.parse({
+        circuit_category_id: 4,
+        film_tmdb_id: 238,
+        circuit_league_id: "12"
+      })
+    ).toEqual({
+      circuit_category_id: 4,
+      film_tmdb_id: 238,
+      person_tmdb_id: null,
+      circuit_league_id: 12
+    });
+    expect(
+      contenderSelectionBody.safeParse({
+        circuit_category_id: 4,
+        film_tmdb_id: 238,
+        circuit_league_id: 0
+      }).error?.issues[0]?.message
+    ).toBe("Choose a season");
+  });
 });

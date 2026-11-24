@@ -52,6 +52,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
   const [readiness, setReadiness] = useState<CircuitReadiness | null>(null);
   const [ceremonies, setCeremonies] = useState<CeremonyOption[]>([]);
   const [templates, setTemplates] = useState<CircuitCategoryTemplate[]>([]);
+  const [iconCodes, setIconCodes] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState<ApiResult | null>(null);
   // Set by a successful activation; the response lists ceremonies lacking a date.
@@ -65,7 +66,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       setState("error");
       return;
     }
-    const [res, readinessRes, ceremoniesRes, templatesRes] = await Promise.all([
+    const [res, readinessRes, ceremoniesRes, templatesRes, iconsRes] = await Promise.all([
       fetchJson<CircuitDetail>(`/admin/circuits/${circuitId}`, { method: "GET" }),
       fetchJson<CircuitReadiness>(`/admin/circuits/${circuitId}/readiness`, {
         method: "GET"
@@ -73,7 +74,8 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       fetchAdminCeremonies(),
       fetchJson<{ families: CircuitCategoryTemplate[] }>("/admin/category-families", {
         method: "GET"
-      })
+      }),
+      fetchJson<{ icons: Array<{ code: string }> }>("/admin/icons", { method: "GET" })
     ]);
     if (!res.ok || !res.data) {
       setError(res.error ?? "Unable to load the Circuit");
@@ -85,6 +87,8 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     setReadiness(readinessRes.ok ? (readinessRes.data ?? null) : null);
     setCeremonies(sortCeremonies(ceremoniesRes.data?.ceremonies ?? []));
     setTemplates(circuitTemplateOptions(templatesRes.data?.families ?? []));
+    // Without the icon list the picker offers nothing; the rest still works.
+    setIconCodes((iconsRes.data?.icons ?? []).map((i) => i.code));
     setError(null);
     setState("ready");
   }, [circuitId]);
@@ -292,6 +296,22 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     [detail, write]
   );
 
+  /** An icon is not scoring, so like a rename it needs no confirmation. */
+  const setCategoryIcon = useCallback(
+    (categoryId: number, icon: string) => {
+      if (!detail) return Promise.resolve(false);
+      return write(
+        () =>
+          fetchJson(
+            `/admin/circuits/${detail.circuit.id}/categories/${categoryId}/icon`,
+            jsonInit("PUT", { icon })
+          ),
+        { id: "admin.circuit.category.icon.success", message: "Category icon changed." }
+      );
+    },
+    [detail, write]
+  );
+
   const reorderCategories = useCallback(
     (categoryIds: number[]) =>
       structural(
@@ -402,6 +422,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     readiness,
     ceremonies,
     templates,
+    iconCodes,
     working,
     status,
     activationMissing,
@@ -414,6 +435,7 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       applyLayout,
       addCategory,
       renameCategory,
+      setCategoryIcon,
       reorderCategories,
       removeCategory,
       saveMappings,
