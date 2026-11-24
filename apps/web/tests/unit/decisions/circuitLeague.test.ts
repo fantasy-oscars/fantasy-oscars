@@ -16,7 +16,7 @@ import { circuitLeagueDetail } from "../circuitLeagues/fixtures";
 
 describe("circuit league labels and editability", () => {
   it("labels every status with a pill text statusTone knows", () => {
-    expect(circuitLeagueStatusLabel("SETUP")).toBe("Open");
+    expect(circuitLeagueStatusLabel("SETUP")).toBe("Pre-draft");
     expect(circuitLeagueStatusLabel("INITIALIZED")).toBe("Pre-draft");
     expect(statusTone(circuitLeagueStatusLabel("DRAFTING")).tone).toBe("drafting");
     expect(statusTone(circuitLeagueStatusLabel("IN_SEASON")).tone).toBe("live");

@@ -198,6 +198,7 @@ export async function listSeasonsForLeague(
 	       s.created_at,
 	       c.starts_at AS ceremony_starts_at,
 	       c.status AS ceremony_status,
+	       c.results_finalized_at AS ceremony_results_finalized_at,
 	       d.id::int AS draft_id,
 	       d.status AS draft_status
      FROM season s

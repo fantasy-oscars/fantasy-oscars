@@ -1,8 +1,10 @@
 import type { Pool } from "pg";
 import { runInTransaction } from "../../data/db.js";
 import {
+  getCircuitLeagueById,
   listCircuitLeagueCategories,
-  listCircuitLeagueEvents
+  listCircuitLeagueEvents,
+  moveCircuitLeagueStatus
 } from "../../data/repositories/circuitLeagueRepository.js";
 import { listCircuitOwnershipHistory } from "../../data/repositories/circuitOwnershipRepository.js";
 import {
@@ -12,6 +14,7 @@ import {
   getScoringCeremony,
   getScoringLeague,
   insertScoreEntries,
+  listLeagueCompletionCeremonies,
   listScoringCeremonyIds,
   listScoringLeaguesForCeremony,
   listScoringLeaguesForCircuit,
@@ -23,6 +26,7 @@ import {
 } from "../../data/repositories/circuitScoreRepository.js";
 import { resultsDateOf, type ScoringOccasionKind } from "../../domain/circuit.js";
 import { matchOccasion } from "../../domain/circuitMatching.js";
+import { circuitLeagueStatusAfterScoring } from "../../domain/circuitLeague.js";
 import { scoreOccasion } from "../../domain/circuitScoring.js";
 import { log } from "../../logger.js";
 import { type Actor, audit, requireCircuit } from "./circuitGuards.js";
@@ -39,7 +43,8 @@ import { emitCircuitScoreUpdates } from "./circuitScoreEvents.js";
  * and scoring settings, the admin rebuild action, and the waiver scheduler
  * when an occasion's day begins (for scoring data entered ahead of its day).
  * Every rebuild then tells the leagues whose rows changed (`score:update`),
- * including for the occasions it committed before a failure.
+ * including for the occasions it committed before a failure, and settles the
+ * status of every league it covered (IN_SEASON or COMPLETE, below).
  */
 
 export const SCORING_OCCASION_KINDS: readonly ScoringOccasionKind[] = [
@@ -64,6 +69,85 @@ export type ScoreRebuildScope = {
 
 /** A rebuild that removed and inserted nothing left the ledger as it was. */
 const changed = (r: OccasionRebuild) => r.removed > 0 || r.inserted > 0;
+
+/**
+ * Settles a season in play as IN_SEASON or COMPLETE from stored history
+ * (`circuitLeagueStatusAfterScoring`): the league row is locked, so two
+ * callers cannot disagree, and running it again changes nothing. Returns the
+ * status the league now has, or null when the league no longer exists.
+ */
+export async function syncCircuitLeagueCompletion(
+  pool: Pool,
+  circuitLeagueId: number,
+  now: Date = new Date()
+): Promise<string | null> {
+  return runInTransaction(pool, async (tx) => {
+    const league = await getCircuitLeagueById(tx, circuitLeagueId, { forUpdate: true });
+    if (!league) return null;
+    if (league.status !== "IN_SEASON" && league.status !== "COMPLETE") {
+      return league.status;
+    }
+    const events = await listCircuitLeagueEvents(tx, league.id);
+    const ceremonies = await listLeagueCompletionCeremonies(tx, league.id);
+    const next = circuitLeagueStatusAfterScoring(
+      league.status,
+      events.map((e) => e.circuit_event_id),
+      ceremonies,
+      now
+    );
+    if (next === league.status) return league.status;
+    await moveCircuitLeagueStatus(
+      tx,
+      league.id,
+      league.status,
+      next as "IN_SEASON" | "COMPLETE"
+    );
+    return next;
+  });
+}
+
+/** Settles each league once; a failure is logged, the ledger is already written. */
+async function syncCompletionOf(
+  pool: Pool,
+  leagueIds: Iterable<number>,
+  now: Date
+): Promise<void> {
+  for (const id of new Set(leagueIds)) {
+    try {
+      await syncCircuitLeagueCompletion(pool, id, now);
+    } catch (err) {
+      log({
+        level: "error",
+        msg: "circuit_league_completion_failed",
+        circuit_league_id: id,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
+  }
+}
+
+/** Settles the leagues of every Circuit the ceremony belongs to; never throws. */
+export async function syncCircuitCompletionForCeremony(
+  pool: Pool,
+  ceremonyId: number,
+  now: Date = new Date()
+): Promise<void> {
+  try {
+    const leagues = await listScoringLeaguesForCeremony(pool, ceremonyId);
+    await syncCompletionOf(
+      pool,
+      leagues.map((l) => l.id),
+      now
+    );
+  } catch (err) {
+    log({
+      level: "error",
+      msg: "circuit_league_completion_failed",
+      ceremony_id: ceremonyId,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+}
 
 /** Rebuilds one occasion of one league in one transaction. */
 export async function rebuildCircuitLeagueOccasion(
@@ -163,8 +247,10 @@ export async function rebuildCircuitScores(
   const results: OccasionRebuild[] = [];
   // Ceremonies that left the Circuit: their rows go, with nothing to rebuild.
   const detached: { circuit_league_id: number; ceremony_id: number }[] = [];
+  const covered: number[] = [];
   try {
     for (const league of await leaguesInScope(pool, scope)) {
+      covered.push(league.id);
       let ceremonyIds: number[];
       if (scope.ceremonyId !== undefined) {
         ceremonyIds = [scope.ceremonyId];
@@ -187,6 +273,7 @@ export async function rebuildCircuitScores(
     }
   } finally {
     emitCircuitScoreUpdates([...detached, ...results.filter(changed)]);
+    await syncCompletionOf(pool, covered, now);
   }
   return results;
 }
@@ -243,6 +330,11 @@ export async function rebuildCircuitScoresForDay(
     }
   } finally {
     emitCircuitScoreUpdates(results.filter(changed));
+    await syncCompletionOf(
+      pool,
+      results.map((r) => r.circuit_league_id),
+      now
+    );
   }
   return results;
 }

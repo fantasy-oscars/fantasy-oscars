@@ -1,5 +1,6 @@
 import { type DbClient, query } from "../db.js";
 import type { ScoringOccasionKind } from "../../domain/circuit.js";
+import type { CircuitLeagueCeremonyProgress } from "../../domain/circuitLeague.js";
 import type {
   MatchFilm,
   MatchMapping,
@@ -119,6 +120,27 @@ export async function listScoringCeremonyIds(
     [circuitId]
   );
   return rows.map((r) => r.ceremony_id);
+}
+
+/** The live ceremonies of the league's Circuit, with what the completion rule reads. */
+export async function listLeagueCompletionCeremonies(
+  client: DbClient,
+  circuitLeagueId: number
+): Promise<CircuitLeagueCeremonyProgress[]> {
+  const { rows } = await query<CircuitLeagueCeremonyProgress>(
+    client,
+    `SELECT cc.circuit_event_id::int,
+            c.results_finalized_at,
+            c.nominations_on::text AS nominations_on,
+            c.starts_at
+     FROM circuit_league cl
+     JOIN circuit_ceremony cc ON cc.circuit_id = cl.circuit_id
+     JOIN ceremony c ON c.id = cc.ceremony_id AND c.deleted_at IS NULL
+     WHERE cl.id = $1
+     ORDER BY cc.ceremony_id`,
+    [circuitLeagueId]
+  );
+  return rows;
 }
 
 /** The ceremony's event and dates in the Circuit, or null when it is not a live member. */

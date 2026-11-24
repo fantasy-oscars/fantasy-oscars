@@ -43,10 +43,8 @@ export function seasonListStatusRank(statusLabel: string): number {
     case "Paused":
       return 0;
     case "In progress":
-    case "Draft complete":
       return 1;
     case "Pre-draft":
-    case "Open":
       return 2;
     default:
       return 3;
@@ -80,7 +78,8 @@ export function buildSeasonList(input: {
     statusLabel: computeSeasonLifecycleLabelFromRow({
       seasonStatus: s.status,
       draftStatus: s.draft_status,
-      isActiveCeremony: s.is_active_ceremony
+      isActiveCeremony: s.is_active_ceremony,
+      resultsFinalizedAt: s.ceremony_results_finalized_at
     }),
     createdAt: s.created_at,
     ceremonyId: s.ceremony_id,

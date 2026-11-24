@@ -5,20 +5,14 @@ import {
   computeSeasonProgression
 } from "../../../src/decisions/season";
 import { buildSeasonIndexCards } from "../../../src/decisions/seasons/seasonIndexCards";
-import { computeLandingSeasonStatus, titleCase } from "../../../src/decisions/landing";
+import { circuitLeagueStatusLabel } from "../../../src/decisions/circuitLeague";
 
 describe("statusTone", () => {
   it.each([
     ["Pre-draft", "neutral", null],
     ["Closed", "neutral", null],
-    ["Open", "neutral", null],
-    ["Draft Not Started", "neutral", null],
     ["Drafting", "drafting", "dot"],
-    ["Draft Live", "drafting", "dot"],
     ["Paused", "drafting", "pause"],
-    ["Draft Paused", "drafting", "pause"],
-    ["Draft complete", "complete", "check"],
-    ["Draft Complete", "complete", "check"],
     ["Complete", "complete", "check"],
     ["In progress", "live", "dot"]
   ] as const)("%s reads %s with mark %s", (label, tone, mark) => {
@@ -26,7 +20,7 @@ describe("statusTone", () => {
   });
 
   it("ignores case and surrounding space, and treats unknown labels as neutral", () => {
-    expect(statusTone("  draft live ")).toEqual({ tone: "drafting", mark: "dot" });
+    expect(statusTone("  drafting ")).toEqual({ tone: "drafting", mark: "dot" });
     expect(statusTone("Something else")).toEqual({ tone: "neutral", mark: null });
   });
 
@@ -36,7 +30,15 @@ describe("statusTone", () => {
       [{ isArchived: false, draftStatus: "PENDING" }, "neutral"],
       [{ isArchived: false, draftStatus: "LIVE" }, "drafting"],
       [{ isArchived: false, draftStatus: "PAUSED" }, "drafting"],
-      [{ isArchived: false, draftStatus: "COMPLETED" }, "complete"]
+      [{ isArchived: false, draftStatus: "COMPLETED" }, "live"],
+      [
+        {
+          isArchived: false,
+          draftStatus: "COMPLETED",
+          resultsFinalizedAt: "2027-03-01T00:00:00Z"
+        },
+        "complete"
+      ]
     ];
     for (const [args, tone] of cases) {
       expect(statusTone(computeSeasonProgression(args)).tone).toBe(tone);
@@ -66,11 +68,73 @@ describe("statusTone", () => {
       ceremonyById: new Map()
     });
     expect(cards[0].status_label).toBe("Paused");
+    expect(statusTone("Paused")).toEqual({ tone: "drafting", mark: "pause" });
+  });
+
+  it("uses the same four words for a single ceremony and a full season", () => {
+    const finalized = "2027-03-01T00:00:00Z";
+    const single = (draftStatus: string, resultsFinalizedAt: string | null = null) =>
+      computeSeasonProgression({ isArchived: false, draftStatus, resultsFinalizedAt });
+    const indexCard = (draftStatus: string, resultsFinalizedAt: string | null = null) =>
+      buildSeasonIndexCards({
+        seasonResults: [
+          {
+            league: { id: 1, name: "L" } as never,
+            seasons: [
+              {
+                id: 1,
+                ceremony_id: 1,
+                status: "EXTANT",
+                is_active_ceremony: true,
+                draft_status: draftStatus,
+                ceremony_results_finalized_at: resultsFinalizedAt
+              } as never
+            ]
+          }
+        ],
+        ceremonyById: new Map()
+      })[0].status_label;
+
+    // Pre-draft, Drafting, In progress (draft done, ceremony not final), Complete.
+    for (const label of [single, indexCard]) {
+      expect(["PENDING", "LIVE", "COMPLETED"].map((d) => label(d))).toEqual([
+        "Pre-draft",
+        "Drafting",
+        "In progress"
+      ]);
+      expect(label("COMPLETED", finalized)).toBe("Complete");
+    }
     expect(
-      statusTone(
-        titleCase(computeLandingSeasonStatus({ draftStatus: "PAUSED", draftId: 1 }).label)
+      computeSeasonLifecycleLabelFromRow({
+        seasonStatus: "EXTANT",
+        draftStatus: "COMPLETED",
+        isActiveCeremony: true,
+        resultsFinalizedAt: finalized
+      })
+    ).toBe("Complete");
+
+    expect(
+      ["SETUP", "INITIALIZED", "DRAFTING", "IN_SEASON", "COMPLETE"].map(
+        circuitLeagueStatusLabel
       )
-    ).toEqual({ tone: "drafting", mark: "pause" });
+    ).toEqual(["Pre-draft", "Pre-draft", "Drafting", "In progress", "Complete"]);
+  });
+
+  it("keeps Closed first for an archived or inactive season, even once final", () => {
+    expect(
+      computeSeasonProgression({
+        isArchived: true,
+        draftStatus: "COMPLETED",
+        resultsFinalizedAt: "2027-03-01T00:00:00Z"
+      })
+    ).toBe("Closed");
+    expect(
+      computeSeasonLifecycleLabelFromRow({
+        seasonStatus: "COMPLETE",
+        draftStatus: "COMPLETED",
+        isActiveCeremony: false
+      })
+    ).toBe("Closed");
   });
 
   it("maps the league row labels", () => {
@@ -84,7 +148,7 @@ describe("statusTone", () => {
       );
     expect(row("EXTANT", "PENDING").tone).toBe("neutral");
     expect(row("EXTANT", "LIVE")).toEqual({ tone: "drafting", mark: "dot" });
-    expect(row("EXTANT", "COMPLETED").tone).toBe("complete");
+    expect(row("EXTANT", "COMPLETED").tone).toBe("live");
     expect(row("COMPLETE", "COMPLETED").tone).toBe("complete");
     expect(row("IN_PROGRESS", "COMPLETED").tone).toBe("live");
     expect(row("EXTANT", "PENDING", false).tone).toBe("neutral");

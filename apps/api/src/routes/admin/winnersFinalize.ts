@@ -6,6 +6,7 @@ import { query, runInTransaction, type DbClient } from "../../data/db.js";
 import { insertAdminAudit } from "../../data/repositories/adminAuditRepository.js";
 import { AppError } from "../../errors.js";
 import { emitCeremonyFinalized } from "../../realtime/ceremonyEvents.js";
+import { syncCircuitCompletionForCeremony } from "../../services/circuit/circuitScoring.js";
 import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
 import { parseParams } from "../../utils/validate.js";
 
@@ -107,6 +108,10 @@ export function registerAdminWinnersFinalizeRoute(args: {
           ceremonyId,
           resultsFinalizedAt: result.results_finalized_at
         });
+
+        // Finalising can finish a full season; the winners were scored as they
+        // were entered, so only its status needs settling.
+        await syncCircuitCompletionForCeremony(client as Pool, ceremonyId);
 
         return res.status(200).json({ ceremony: result });
       } catch (err) {

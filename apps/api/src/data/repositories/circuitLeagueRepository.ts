@@ -179,13 +179,14 @@ export async function markCircuitLeagueInitialized(
 
 /**
  * Moves the league along its lifecycle after initialisation (the draft:
- * INITIALIZED → DRAFTING → IN_SEASON). Returns null when it was not in `from`.
+ * INITIALIZED → DRAFTING → IN_SEASON; scoring: IN_SEASON ⇄ COMPLETE). Returns
+ * null when it was not in `from`.
  */
 export async function moveCircuitLeagueStatus(
   client: DbClient,
   id: number,
-  from: "INITIALIZED" | "DRAFTING",
-  to: "DRAFTING" | "IN_SEASON"
+  from: "INITIALIZED" | "DRAFTING" | "IN_SEASON" | "COMPLETE",
+  to: "DRAFTING" | "IN_SEASON" | "COMPLETE"
 ): Promise<CircuitLeagueRow | null> {
   const { rows } = await query<CircuitLeagueRow>(
     client,

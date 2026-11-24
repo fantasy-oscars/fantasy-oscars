@@ -1,4 +1,5 @@
 import { AppError, validationError } from "../errors.js";
+import { instantOfDay, resultsDateOf } from "./circuit.js";
 
 /*
  * Circuit leagues (ADR 0005, section 4, under the ADR 0006 names). Pure: no IO.
@@ -108,4 +109,47 @@ export function assertIdsInCircuit(
 ): void {
   const allowed = new Set(known);
   if (!ids.every((id) => allowed.has(id))) throw validationError(message, [field]);
+}
+
+/** A live ceremony of the league's Circuit, with what the completion rule reads. */
+export type CircuitLeagueCeremonyProgress = {
+  circuit_event_id: number;
+  results_finalized_at: Date | string | null;
+  nominations_on: string | null;
+  starts_at: Date | string | null;
+};
+
+/** True once the occasion's day has begun, which is when its rows can score. */
+function hasDayBegun(day: string | null, now: Date): boolean {
+  return day !== null && instantOfDay(day).getTime() <= now.getTime();
+}
+
+/**
+ * The status of a season in play, once scoring has caught up: COMPLETE when
+ * every ceremony of an enabled event has finalised winners and both its
+ * occasions (nominations and win) have begun and so have scored, otherwise
+ * IN_SEASON. Ceremonies of events the league has not enabled are ignored, and
+ * a league with no ceremony to wait for is not complete. A league outside
+ * IN_SEASON and COMPLETE keeps its status. Pure and idempotent: the same
+ * stored history always gives the same answer, so a score rebuild can call it
+ * freely, and a later unfinished ceremony moves a COMPLETE league back.
+ */
+export function circuitLeagueStatusAfterScoring(
+  status: string,
+  enabledEventIds: readonly number[],
+  ceremonies: readonly CircuitLeagueCeremonyProgress[],
+  now: Date
+): string {
+  if (status !== "IN_SEASON" && status !== "COMPLETE") return status;
+  const enabled = new Set(enabledEventIds);
+  const counted = ceremonies.filter((c) => enabled.has(c.circuit_event_id));
+  const finished =
+    counted.length > 0 &&
+    counted.every(
+      (c) =>
+        c.results_finalized_at !== null &&
+        hasDayBegun(c.nominations_on, now) &&
+        hasDayBegun(resultsDateOf(c.starts_at), now)
+    );
+  return finished ? "COMPLETE" : "IN_SEASON";
 }
