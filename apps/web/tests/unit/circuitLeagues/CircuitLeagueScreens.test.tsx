@@ -291,7 +291,7 @@ describe("league seasons list", () => {
       kind: "full",
       id: 4,
       title: "Awards Season 2027",
-      statusLabel: "Open",
+      statusLabel: "Pre-draft",
       createdAt: "2026-11-02T00:00:00Z",
       memberCount: 2
     },
@@ -416,7 +416,7 @@ describe("Home active seasons", () => {
     );
     const circuit = screen.getByRole("link", { name: /Awards Season 2027/ });
     expect(circuit.getAttribute("href")).toBe("/leagues/3/film-club/seasons/full/4");
-    expect(within(circuit).getByText("Open")).toBeTruthy();
+    expect(within(circuit).getByText("Pre-draft")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Golden Reel 2027/ })).toBeTruthy();
   });
 });

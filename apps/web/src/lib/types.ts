@@ -36,6 +36,7 @@ export type SeasonSummary = {
   status: string;
   created_at: string;
   ceremony_starts_at?: string | null;
+  ceremony_results_finalized_at?: string | null;
   draft_id?: number | null;
   draft_status?: string | null;
   scoring_strategy_name?: string;

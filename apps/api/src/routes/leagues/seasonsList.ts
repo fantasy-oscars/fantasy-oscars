@@ -60,6 +60,7 @@ export function registerLeagueSeasonsListRoute(args: {
           auto_pick_strategy: s.auto_pick_strategy ?? null,
           created_at: s.created_at,
           ceremony_starts_at: s.ceremony_starts_at ?? null,
+          ceremony_results_finalized_at: s.ceremony_results_finalized_at ?? null,
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
           is_active_ceremony: s.ceremony_status

@@ -12,11 +12,10 @@ import type {
 /** Pick clock the form offers when a timer is switched on. */
 export const DEFAULT_PICK_TIMER_SECONDS = 90;
 
-/** Status pill text; matches the labels `statusTone` already knows. */
+/** Status pill text: the same four words a single-ceremony season uses (`SeasonStatusLabel`). */
 export function circuitLeagueStatusLabel(status: CircuitLeagueStatus | string): string {
   switch (status) {
     case "SETUP":
-      return "Open";
     case "INITIALIZED":
       return "Pre-draft";
     case "DRAFTING":

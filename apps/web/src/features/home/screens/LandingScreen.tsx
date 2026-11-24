@@ -13,10 +13,9 @@ import {
 import {
   HERO_TAGLINE,
   computeLandingSeasonCeremonyLabel,
-  computeLandingSeasonStatus,
-  formatUpdateDate,
-  titleCase
+  formatUpdateDate
 } from "@/decisions/landing";
+import { computeSeasonLifecycleLabelFromRow } from "@/decisions/season";
 import { circuitLeaguePath, seasonPath } from "@/lib/routes";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
 import { statusTone } from "@/decisions/statusTone";
@@ -223,9 +222,11 @@ export function LandingScreen(props: {
               );
             })}
             {view.seasons.seasons.map((s) => {
-              const status = computeLandingSeasonStatus({
+              const statusLabel = computeSeasonLifecycleLabelFromRow({
+                seasonStatus: s.status,
                 draftStatus: s.draft_status,
-                draftId: s.draft_id
+                isActiveCeremony: s.is_active_ceremony,
+                resultsFinalizedAt: s.ceremony_results_finalized_at
               });
               const ceremonyLabel = computeLandingSeasonCeremonyLabel({
                 ceremonyName: s.ceremony_name,
@@ -251,9 +252,7 @@ export function LandingScreen(props: {
                       <Text variant="meta" className="baseline-wrapAnywhere">
                         {s.league_name}
                       </Text>
-                      <StatusPill {...statusTone(status.label)}>
-                        {titleCase(status.label)}
-                      </StatusPill>
+                      <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
                     </Group>
                   </Stack>
                 </StandardCard>

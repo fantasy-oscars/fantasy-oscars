@@ -610,6 +610,55 @@ describe("circuit scoring ledger", () => {
     ]);
   });
 
+  async function leagueStatus() {
+    const { rows } = await db.pool.query<{ status: string }>(
+      `SELECT status FROM circuit_league WHERE id = $1`,
+      [circuitLeagueId]
+    );
+    return rows[0]!.status;
+  }
+
+  it("moves a season in play from IN_SEASON to COMPLETE when its winners are finalised", async () => {
+    await own(alice, selectionId, DRAFTED);
+    const nominationId = await nominate(filmId);
+    expect(await leagueStatus()).toBe("IN_SEASON");
+
+    const won = await send("post", "/admin/winners", {
+      category_edition_id: editionId,
+      nomination_ids: [nominationId]
+    });
+    expect(won.status).toBe(200);
+    // Entering winners alone does not finish the season.
+    expect(await leagueStatus()).toBe("IN_SEASON");
+
+    const finalised = await send(
+      "post",
+      `/admin/ceremonies/${ceremonyId}/finalize-winners`
+    );
+    expect(finalised.status).toBe(200);
+    expect(await leagueStatus()).toBe("COMPLETE");
+
+    // A rebuild keeps it complete.
+    const rebuilt = await send("post", `/admin/circuits/${circuitId}/scores/rebuild`);
+    expect(rebuilt.status).toBe(200);
+    expect(await leagueStatus()).toBe("COMPLETE");
+
+    // A ceremony added later that has not finished moves the season back.
+    const later = await insertCeremony(db.pool, {}, false);
+    await db.pool.query(
+      `UPDATE ceremony SET status = 'PUBLISHED', nominations_on = $2::date, starts_at = $3
+       WHERE id = $1`,
+      [later.id, NOMINATIONS_ON, STARTS_AT]
+    );
+    await db.pool.query(
+      `INSERT INTO circuit_ceremony (circuit_id, ceremony_id, circuit_event_id, sort_index)
+       VALUES ($1, $2, $3, 1)`,
+      [circuitId, later.id, eventId]
+    );
+    await send("post", `/admin/circuits/${circuitId}/scores/rebuild`);
+    expect(await leagueStatus()).toBe("IN_SEASON");
+  });
+
   describe("standings", () => {
     const as = (user: User) => ({
       Authorization: `Bearer ${signTestToken({ sub: String(user.id), username: user.username }, AUTH_SECRET)}`

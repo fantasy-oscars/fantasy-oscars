@@ -1,3 +1,4 @@
+import { computeSeasonLifecycleLabelFromRow, type SeasonStatusLabel } from "../season";
 import type { CeremonySummary, LeagueSummary, SeasonSummary } from "../../lib/types";
 
 export type SeasonIndexCard = {
@@ -8,7 +9,7 @@ export type SeasonIndexCard = {
   ceremony_code: string | null;
   ceremony_name: string;
   ceremony_sort_ts: number;
-  status_label: "Open" | "Drafting" | "Paused" | "Complete" | "Closed";
+  status_label: SeasonStatusLabel;
   is_navigable: boolean;
 };
 
@@ -19,19 +20,14 @@ function ceremonySortTs(ceremony: CeremonySummary): number {
   return Number.isFinite(year) ? Date.UTC(year, 0, 1) : 0;
 }
 
-function statusLabel(season: SeasonSummary): SeasonIndexCard["status_label"] {
-  const draft = (season.draft_status ?? "").toUpperCase();
-  if (draft === "LIVE" || draft === "IN_PROGRESS") return "Drafting";
-  if (draft === "PAUSED") return "Paused";
-  if (draft === "COMPLETED") return "Complete";
-  if (draft === "CANCELLED") return "Closed";
-
-  // Season "archive" concept is a mix of ceremony activity and season status in this app.
-  // Keep user-facing vocabulary constrained to the spec.
-  if (season.status !== "EXTANT") return "Closed";
-  if (season.is_active_ceremony === false) return "Closed";
-  if (!season.draft_id) return "Open";
-  return "Open";
+function statusLabel(season: SeasonSummary): SeasonStatusLabel {
+  return computeSeasonLifecycleLabelFromRow({
+    seasonStatus: season.status,
+    draftStatus: season.draft_status,
+    // A cancelled season reads as Closed, like one whose ceremony is no longer active.
+    isActiveCeremony: season.status === "EXTANT" ? season.is_active_ceremony : false,
+    resultsFinalizedAt: season.ceremony_results_finalized_at
+  });
 }
 
 export function buildSeasonIndexCards(args: {

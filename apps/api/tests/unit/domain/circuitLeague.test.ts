@@ -4,7 +4,9 @@ import {
   assertCircuitLeagueOpen,
   assertCircuitLeagueSettingsEditable,
   assertIdsInCircuit,
-  isCircuitLeagueOpen
+  circuitLeagueStatusAfterScoring,
+  isCircuitLeagueOpen,
+  type CircuitLeagueCeremonyProgress
 } from "../../../src/domain/circuitLeague.js";
 
 const setup = { status: "SETUP", initialized_at: null };
@@ -98,5 +100,71 @@ describe("circuit league domain", () => {
     expect(codeOf(() => assertIdsInCircuit([3], [1, 2], "m", "events"))).toBe(
       "VALIDATION_ERROR"
     );
+  });
+});
+
+describe("circuit league completion", () => {
+  const now = new Date("2026-03-20T12:00:00Z");
+  const finished: CircuitLeagueCeremonyProgress = {
+    circuit_event_id: 1,
+    results_finalized_at: new Date("2026-03-15T08:00:00Z"),
+    nominations_on: "2026-01-21",
+    starts_at: "2026-03-15T00:00:00.000Z"
+  };
+  const unfinished: CircuitLeagueCeremonyProgress = {
+    ...finished,
+    results_finalized_at: null
+  };
+  const after = (
+    status: string,
+    enabled: number[],
+    ceremonies: CircuitLeagueCeremonyProgress[],
+    at = now
+  ) => circuitLeagueStatusAfterScoring(status, enabled, ceremonies, at);
+
+  it("completes when the last ceremony has finalised winners and both occasions have scored", () => {
+    expect(after("IN_SEASON", [1], [finished])).toBe("COMPLETE");
+    expect(
+      after("IN_SEASON", [1, 2], [finished, { ...finished, circuit_event_id: 2 }])
+    ).toBe("COMPLETE");
+  });
+
+  it("stays in season while a ceremony has no finalised winners", () => {
+    expect(after("IN_SEASON", [1], [unfinished])).toBe("IN_SEASON");
+    expect(after("IN_SEASON", [1], [finished, unfinished])).toBe("IN_SEASON");
+  });
+
+  it("waits for both occasions to begin", () => {
+    const early = new Date("2026-03-13T12:00:00Z");
+    expect(after("IN_SEASON", [1], [finished], early)).toBe("IN_SEASON");
+    expect(after("IN_SEASON", [1], [{ ...finished, nominations_on: "2026-12-01" }])).toBe(
+      "IN_SEASON"
+    );
+    expect(after("IN_SEASON", [1], [{ ...finished, nominations_on: null }])).toBe(
+      "IN_SEASON"
+    );
+    expect(after("IN_SEASON", [1], [{ ...finished, starts_at: null }])).toBe("IN_SEASON");
+  });
+
+  it("ignores ceremonies of events the league has not enabled", () => {
+    const disabled = { ...unfinished, circuit_event_id: 2 };
+    expect(after("IN_SEASON", [1], [finished, disabled])).toBe("COMPLETE");
+    expect(after("IN_SEASON", [1], [disabled])).toBe("IN_SEASON");
+  });
+
+  it("is not complete with nothing to wait for", () => {
+    expect(after("IN_SEASON", [], [finished])).toBe("IN_SEASON");
+    expect(after("IN_SEASON", [1], [])).toBe("IN_SEASON");
+  });
+
+  it("is idempotent and moves a complete league back when an unfinished ceremony appears", () => {
+    expect(after("COMPLETE", [1], [finished])).toBe("COMPLETE");
+    expect(after("COMPLETE", [1], [finished, unfinished])).toBe("IN_SEASON");
+  });
+
+  it("leaves a league that is not yet in play alone", () => {
+    for (const status of ["SETUP", "INITIALIZED", "DRAFTING"]) {
+      expect(after(status, [1], [finished])).toBe(status);
+    }
   });
 });

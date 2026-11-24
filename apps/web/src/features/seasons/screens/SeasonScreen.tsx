@@ -89,8 +89,12 @@ export function SeasonScreen(props: {
 
   const progression = useMemo(
     () =>
-      computeSeasonProgression({ isArchived: s.isArchived, draftStatus: s.draftStatus }),
-    [s.draftStatus, s.isArchived]
+      computeSeasonProgression({
+        isArchived: s.isArchived,
+        draftStatus: s.draftStatus,
+        resultsFinalizedAt: s.ceremonyResultsFinalizedAt
+      }),
+    [s.draftStatus, s.isArchived, s.ceremonyResultsFinalizedAt]
   );
 
   const isLocked = useMemo(

@@ -43,10 +43,10 @@ function full(
 describe("season list kind labels", () => {
   it("names each kind in plain words, never as a Circuit", () => {
     expect(seasonListKindLabel(ceremony(1, "Pre-draft"))).toBe("Single ceremony");
-    expect(seasonListKindLabel({ ...full(2, "Open"), memberCount: 1 })).toBe(
+    expect(seasonListKindLabel({ ...full(2, "Pre-draft"), memberCount: 1 })).toBe(
       "Full awards season · 1 member"
     );
-    expect(seasonListKindLabel({ ...full(2, "Open"), memberCount: 4 })).toBe(
+    expect(seasonListKindLabel({ ...full(2, "Pre-draft"), memberCount: 4 })).toBe(
       "Full awards season · 4 members"
     );
   });
@@ -55,10 +55,8 @@ describe("season list kind labels", () => {
 describe("season list order", () => {
   it("ranks live, then running, then upcoming, then finished", () => {
     expect(
-      ["Drafting", "Paused", "In progress", "Draft complete", "Pre-draft", "Open"].map(
-        seasonListStatusRank
-      )
-    ).toEqual([0, 0, 1, 1, 2, 2]);
+      ["Drafting", "Paused", "In progress", "Pre-draft"].map(seasonListStatusRank)
+    ).toEqual([0, 0, 1, 2]);
     expect(seasonListStatusRank("Complete")).toBe(3);
     expect(seasonListStatusRank("Closed")).toBe(3);
   });
@@ -67,7 +65,7 @@ describe("season list order", () => {
     const ordered = orderSeasonList([
       ceremony(1, "Complete"),
       ceremony(2, "Pre-draft", "2026-10-01T00:00:00Z"),
-      full(3, "Open", "2026-11-05T00:00:00Z"),
+      full(3, "Pre-draft", "2026-11-05T00:00:00Z"),
       ceremony(4, "Drafting"),
       full(5, "In progress"),
       ceremony(6, "Pre-draft", "2026-11-05T00:00:00Z"),
@@ -114,7 +112,7 @@ describe("building the season list", () => {
         kind: "full",
         id: 4,
         title: "Awards Season 2027",
-        statusLabel: "Open",
+        statusLabel: "Pre-draft",
         createdAt: "2026-11-01T00:00:00Z",
         memberCount: 2
       },

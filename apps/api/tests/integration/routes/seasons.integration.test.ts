@@ -120,16 +120,34 @@ describe("seasons integration", () => {
     expect(createSeasonRes.status).toBe(201);
     expect(createSeasonRes.json.season.ceremony_id).toBe(ceremony2.id);
 
+    await db.pool.query(
+      "UPDATE ceremony SET results_finalized_at = now() WHERE id = $1",
+      [ceremony1.id]
+    );
+
     const listRes = await getJson<{
       seasons: Array<{
         id: number;
         league_id: number;
         ceremony_id: number;
         is_active_ceremony: boolean;
+        ceremony_results_finalized_at: string | null;
       }>;
     }>(`/seasons/leagues/${leagueRes.json.league.id}/seasons`, token);
     expect(listRes.status).toBe(200);
     expect(listRes.json.seasons.length).toBe(2);
+    // The list carries when each ceremony's results were finalised, for the Complete status.
+    expect(
+      listRes.json.seasons.map((s) => [
+        s.ceremony_id,
+        s.ceremony_results_finalized_at !== null
+      ])
+    ).toEqual(
+      expect.arrayContaining([
+        [ceremony1.id, true],
+        [ceremony2.id, false]
+      ])
+    );
     expect(
       listRes.json.seasons.every((s) => s.league_id === leagueRes.json.league.id)
     ).toBe(true);

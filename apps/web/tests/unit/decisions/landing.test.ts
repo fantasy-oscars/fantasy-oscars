@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  HERO_TAGLINE,
-  formatUpdateDate,
-  titleCase
-} from "../../../src/decisions/landing";
-
-describe("titleCase", () => {
-  it("capitalises every word", () => {
-    expect(titleCase("draft not started")).toBe("Draft Not Started");
-    expect(titleCase("DRAFT   LIVE")).toBe("Draft Live");
-  });
-});
+import { HERO_TAGLINE, formatUpdateDate } from "../../../src/decisions/landing";
 
 describe("formatUpdateDate", () => {
   it("formats an ISO date in the medium style", () => {
