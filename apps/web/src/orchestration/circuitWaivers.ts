@@ -18,6 +18,7 @@ import {
 } from "../decisions/circuitRoster";
 import {
   circuitClaimCapacityWarning,
+  circuitClaimDropError,
   circuitClaimChipOptions,
   circuitClaimErrorMessage,
   circuitPendingClaims,
@@ -69,6 +70,8 @@ export type CircuitClaimDraft = {
   claimId: number | null;
   selection: CircuitSelectionSummary;
   dropSelectionId: number | null;
+  /** "Don't drop anyone" was chosen (or the saved claim has no drop). */
+  noDrop: boolean;
   chipId: number | null;
 };
 
@@ -293,7 +296,13 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
         return false;
       }
       setModalStatus(null);
-      setDraft({ claimId: null, selection, dropSelectionId: null, chipId: null });
+      setDraft({
+        claimId: null,
+        selection,
+        dropSelectionId: null,
+        noDrop: false,
+        chipId: null
+      });
       return true;
     },
     [claims]
@@ -306,6 +315,7 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
       claimId: claim.id,
       selection: claim.selection,
       dropSelectionId: claim.drop?.id ?? null,
+      noDrop: claim.drop === null,
       chipId: claim.chip?.id ?? null
     });
   }, []);
@@ -316,7 +326,9 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
   }, []);
 
   const changeDraft = useCallback(
-    (patch: Partial<Pick<CircuitClaimDraft, "dropSelectionId" | "chipId">>) => {
+    (
+      patch: Partial<Pick<CircuitClaimDraft, "dropSelectionId" | "noDrop" | "chipId">>
+    ) => {
       setDraft((d) => (d ? { ...d, ...patch } : d));
       setModalStatus(null);
     },
@@ -326,6 +338,11 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
   /** Files or saves the claim in the modal; true once saved. */
   const saveClaim = useCallback(async (): Promise<boolean> => {
     if (!draft) return false;
+    if (
+      roster &&
+      circuitClaimDropError(roster, draft.selection, draft.dropSelectionId, draft.noDrop)
+    )
+      return false;
     setModalStatus(null);
     try {
       await saveMutation.mutateAsync(draft);
@@ -340,7 +357,7 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
     );
     setDraft(null);
     return true;
-  }, [draft, saveMutation, claimWriteFailed]);
+  }, [draft, roster, saveMutation, claimWriteFailed]);
 
   const withdraw = useCallback(
     async (claim: CircuitClaim) => {
@@ -382,8 +399,17 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
   const dropOptions: CircuitRosterEntry[] = roster?.entries ?? [];
   const chipOptions =
     claims && draft ? circuitClaimChipOptions(claims.chips, draft.claimId) : [];
-  const warning =
+  const dropError =
     roster && draft
+      ? circuitClaimDropError(
+          roster,
+          draft.selection,
+          draft.dropSelectionId,
+          draft.noDrop
+        )
+      : null;
+  const warning =
+    roster && draft && !dropError
       ? circuitClaimCapacityWarning(roster, draft.selection, draft.dropSelectionId)
       : null;
 
@@ -393,6 +419,7 @@ export function useCircuitWaiversOrchestration(input: { circuitLeagueId: number 
     dropOptions,
     chipOptions,
     warning,
+    dropError,
     saving: saveMutation.isPending,
     busy: withdrawMutation.isPending || reorderMutation.isPending,
     modalStatus,

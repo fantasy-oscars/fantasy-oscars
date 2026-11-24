@@ -5,7 +5,7 @@ import type {
   CircuitClaimDraft,
   CircuitWaiversView
 } from "@/orchestration/circuitWaivers";
-import type { CircuitRosterEntry } from "@/decisions/circuitRoster";
+import { circuitCategoryNames, type CircuitRosterEntry } from "@/decisions/circuitRoster";
 import { circuitPriorityEntries } from "@/decisions/circuitWaivers";
 import type { ApiResult, CircuitClaim, CircuitClaims } from "@/lib/types";
 import {
@@ -33,6 +33,7 @@ export function CircuitWaiversScreen(props: {
   dropOptions: CircuitRosterEntry[];
   chipOptions: CircuitClaims["chips"];
   warning: string | null;
+  dropError: string | null;
   saving: boolean;
   busy: boolean;
   modalStatus: ApiResult | null;
@@ -42,6 +43,7 @@ export function CircuitWaiversScreen(props: {
   onWithdraw: (claim: CircuitClaim) => void;
   onChangeDraft: (patch: {
     dropSelectionId?: number | null;
+    noDrop?: boolean;
     chipId?: number | null;
   }) => void;
   onCloseClaim: () => void;
@@ -61,6 +63,7 @@ export function CircuitWaiversScreen(props: {
   }
 
   const { detail, waivers, runs, claims } = view;
+  const categoryNames = circuitCategoryNames(detail.categories);
   const link = {
     leagueId: detail.league.id,
     leagueName: detail.league.name,
@@ -88,6 +91,7 @@ export function CircuitWaiversScreen(props: {
         {claims ? (
           <CircuitClaimsSection
             claims={claims}
+            categoryNames={categoryNames}
             pending={view.pending}
             canClaim={view.canClaim}
             busy={props.busy}
@@ -107,13 +111,14 @@ export function CircuitWaiversScreen(props: {
           viewerUserId={props.viewerUserId}
         />
       </Box>
-      <CircuitWaiverResults runs={runs} />
+      <CircuitWaiverResults runs={runs} categoryNames={categoryNames} />
       <CircuitClaimModal
         draft={props.draft}
         phone={props.phone}
         dropOptions={props.dropOptions}
         chipOptions={props.chipOptions}
         warning={props.warning}
+        dropError={props.dropError}
         saving={props.saving}
         status={props.modalStatus}
         onChange={props.onChangeDraft}

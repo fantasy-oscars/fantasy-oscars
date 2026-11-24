@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Alert, Box, Button, Group, Modal, Select, Stack, Text } from "@ui";
 import { FormStatus } from "@/shared/forms";
 import { AlertIcon } from "@/shared/AlertIcon";
@@ -10,6 +11,7 @@ import type { ApiResult, CircuitClaims } from "@/lib/types";
 import type { CircuitClaimDraft } from "@/orchestration/circuitWaivers";
 
 const CHIP_HELP_ID = "circuit-claim-chip-help";
+const NO_DROP = "none";
 const DROP_HELP_ID = "circuit-claim-drop-help";
 
 /**
@@ -23,19 +25,37 @@ export function CircuitClaimModal(props: {
   dropOptions: CircuitRosterEntry[];
   chipOptions: CircuitClaims["chips"];
   warning: string | null;
+  /** Why the claim cannot be filed yet: shown once filing was tried. */
+  dropError: string | null;
   saving: boolean;
   status: ApiResult | null;
-  onChange: (patch: { dropSelectionId?: number | null; chipId?: number | null }) => void;
+  onChange: (patch: {
+    dropSelectionId?: number | null;
+    noDrop?: boolean;
+    chipId?: number | null;
+  }) => void;
   onClose: () => void;
   onSave: () => void;
 }) {
   const { draft, phone, saving } = props;
   const label = draft ? circuitSelectionLabel(draft.selection) : "";
   const isNew = draft?.claimId === null;
+  const [tried, setTried] = useState(false);
+  const close = () => {
+    setTried(false);
+    props.onClose();
+  };
+  const dropValue = !draft
+    ? null
+    : draft.dropSelectionId !== null
+      ? String(draft.dropSelectionId)
+      : draft.noDrop
+        ? NO_DROP
+        : null;
   return (
     <Modal
       opened={draft !== null}
-      onClose={props.onClose}
+      onClose={close}
       title={isNew ? `Claim ${label}` : `Your claim for ${label}`}
       size="lg"
       centered
@@ -51,21 +71,36 @@ export function CircuitClaimModal(props: {
             // The modal is in a portal: keep its submit from reaching a page form.
             e.preventDefault();
             e.stopPropagation();
+            if (props.dropError) {
+              setTried(true);
+              return;
+            }
+            setTried(false);
             props.onSave();
           }}
         >
           <Stack gap="xs">
             <Select
               label="Drop if this claim wins"
-              placeholder="Don't drop anyone"
-              data={props.dropOptions.map((e) => ({
-                value: String(e.selection.id),
-                label: circuitSelectionLabel(e.selection)
-              }))}
-              value={
-                draft.dropSelectionId === null ? null : String(draft.dropSelectionId)
+              placeholder="Select a pick to drop"
+              data={[
+                { value: NO_DROP, label: "Don't drop anyone" },
+                ...props.dropOptions.map((e) => ({
+                  value: String(e.selection.id),
+                  label: circuitSelectionLabel(e.selection)
+                }))
+              ]}
+              value={dropValue}
+              onChange={(v) =>
+                props.onChange(
+                  v === null
+                    ? { dropSelectionId: null, noDrop: false }
+                    : v === NO_DROP
+                      ? { dropSelectionId: null, noDrop: true }
+                      : { dropSelectionId: Number(v), noDrop: false }
+                )
               }
-              onChange={(v) => props.onChange({ dropSelectionId: v ? Number(v) : null })}
+              error={tried ? props.dropError : null}
               clearable
               aria-describedby={DROP_HELP_ID}
             />
@@ -108,12 +143,7 @@ export function CircuitClaimModal(props: {
             </Box>
           ) : null}
           <Group justify="flex-end" gap="sm" wrap="wrap">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={props.onClose}
-              disabled={saving}
-            >
+            <Button type="button" variant="ghost" onClick={close} disabled={saving}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={saving}>

@@ -16,6 +16,7 @@ const NOTE_ID = "circuit-claims-note";
  */
 export function CircuitClaimsSection(props: {
   claims: CircuitClaims;
+  categoryNames: ReadonlyMap<number, string>;
   pending: CircuitClaim[];
   canClaim: boolean;
   busy: boolean;
@@ -51,6 +52,7 @@ export function CircuitClaimsSection(props: {
         ) : (
           <CircuitClaimList
             claims={pending}
+            categoryNames={props.categoryNames}
             editable={props.canClaim}
             busy={props.busy}
             describedBy={NOTE_ID}

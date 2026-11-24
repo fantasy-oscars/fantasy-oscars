@@ -76,6 +76,7 @@ function WaiversScreen(
       dropOptions={o.dropOptions}
       chipOptions={o.chipOptions}
       warning={o.warning}
+      dropError={o.dropError}
       saving={o.saving}
       busy={o.busy}
       modalStatus={o.modalStatus}

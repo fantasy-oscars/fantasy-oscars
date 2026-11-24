@@ -121,6 +121,11 @@ describe("circuit waivers", () => {
     act(() => {
       result.current.startClaim(harbor);
     });
+    expect(result.current.dropError).toBe(
+      "Your roster is full. Choose a pick to drop, or Don't drop anyone."
+    );
+    act(() => result.current.changeDraft({ noDrop: true }));
+    expect(result.current.dropError).toBeNull();
     expect(result.current.warning).toBe(
       "Your roster is full. Without a drop, this claim fails."
     );
@@ -158,6 +163,7 @@ describe("circuit waivers", () => {
     act(() => {
       result.current.startClaim(harbor);
     });
+    act(() => result.current.changeDraft({ noDrop: true }));
     act(() => result.current.saveClaim());
     await waitFor(() => expect(result.current.modalStatus).not.toBeNull());
     expect(result.current.modalStatus?.message).toBe(

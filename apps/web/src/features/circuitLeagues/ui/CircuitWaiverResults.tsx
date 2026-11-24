@@ -1,5 +1,8 @@
 import { Box, Divider, Group, Stack, Text, Title } from "@ui";
-import { circuitInstantLabel, circuitSelectionLabel } from "@/decisions/circuitRoster";
+import {
+  circuitInstantLabel,
+  circuitSelectionCategoryLabel
+} from "@/decisions/circuitRoster";
 import {
   circuitChipLabel,
   circuitClaimOutcomeLabel,
@@ -7,8 +10,11 @@ import {
 } from "@/decisions/circuitWaivers";
 import type { CircuitWaiverRun } from "@/lib/types";
 
-function RunClaims(props: { run: CircuitWaiverRun }) {
-  const { run } = props;
+function RunClaims(props: {
+  run: CircuitWaiverRun;
+  categoryNames: ReadonlyMap<number, string>;
+}) {
+  const { run, categoryNames } = props;
   if (run.claims.length === 0) {
     return <Text className="baseline-textBody">Nobody made a claim.</Text>;
   }
@@ -36,8 +42,10 @@ function RunClaims(props: { run: CircuitWaiverRun }) {
               </Text>
             </Group>
             <Text className="baseline-textBody baseline-wrapAnywhere">
-              Claimed {circuitSelectionLabel(claim.selection)}
-              {claim.drop ? `, dropping ${circuitSelectionLabel(claim.drop)}` : ""}
+              Claimed {circuitSelectionCategoryLabel(claim.selection, categoryNames)}
+              {claim.drop
+                ? `, dropping ${circuitSelectionCategoryLabel(claim.drop, categoryNames)}`
+                : ""}
             </Text>
           </Stack>
           {idx === run.claims.length - 1 ? null : <Divider />}
@@ -51,8 +59,11 @@ function RunClaims(props: { run: CircuitWaiverRun }) {
  * Each completed run, newest first: every claim in the order it ran, who won
  * and why the rest lost, and priority after the run.
  */
-export function CircuitWaiverResults(props: { runs: CircuitWaiverRun[] }) {
-  const { runs } = props;
+export function CircuitWaiverResults(props: {
+  runs: CircuitWaiverRun[];
+  categoryNames: ReadonlyMap<number, string>;
+}) {
+  const { runs, categoryNames } = props;
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-results-title">
       <Title order={3} variant="section" id="circuit-results-title">
@@ -82,7 +93,7 @@ export function CircuitWaiverResults(props: { runs: CircuitWaiverRun[] }) {
                 </time>
               </Text>
             </Group>
-            <RunClaims run={run} />
+            <RunClaims run={run} categoryNames={categoryNames} />
             {run.priority_after.length > 0 ? (
               <Text variant="helper">
                 Priority after: {run.priority_after.map((p) => p.username).join(", ")}

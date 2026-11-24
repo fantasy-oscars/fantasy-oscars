@@ -108,6 +108,7 @@ function renderWaivers(
     isMember?: boolean;
     draft?: CircuitClaimDraft | null;
     warning?: string | null;
+    dropError?: string | null;
     runs?: CircuitWaiverRun[];
   } = {}
 ) {
@@ -143,6 +144,7 @@ function renderWaivers(
           dropOptions={circuitRoster().entries}
           chipOptions={[]}
           warning={input.warning ?? null}
+          dropError={input.dropError ?? null}
           saving={false}
           busy={false}
           modalStatus={null}
@@ -161,8 +163,10 @@ describe("CircuitWaiversScreen", () => {
     const list = screen.getByRole("list", { name: "Your claims" });
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent("Harbor (2026)");
-    expect(rows[0]).toHaveTextContent("Drop Night Train (2026) · Pick 3 chip");
+    expect(rows[0]).toHaveTextContent("Harbor (2026) in Best Picture");
+    expect(rows[0]).toHaveTextContent(
+      "Drop Night Train (2026) in Best Picture · Pick 3 chip"
+    );
     expect(rows[1]).toHaveTextContent("No drop");
 
     fireEvent.click(screen.getByRole("button", { name: "Move Harbor (2026) down" }));
@@ -217,7 +221,7 @@ describe("CircuitWaiversScreen", () => {
     expect(results[0]).toHaveTextContent("Won · Pick 2 chip");
     expect(results[1]).toHaveTextContent("Lost: Someone ahead of them got it");
     expect(results[1]).toHaveTextContent(
-      "Claimed Ada Lane, Paper Moon (2026), dropping Night Train (2026)"
+      "Claimed Ada Lane, Paper Moon (2026) in Best Actress, dropping Night Train (2026) in Best Picture"
     );
     expect(screen.getByText("Priority after: blake, avery")).toBeInTheDocument();
   });
@@ -229,15 +233,66 @@ describe("CircuitWaiversScreen", () => {
 
   it("opens the claim modal with the drop, the capacity warning and the chip", () => {
     const handlers = renderWaivers({
-      draft: { claimId: null, selection: harbor, dropSelectionId: null, chipId: null },
+      draft: {
+        claimId: null,
+        selection: harbor,
+        dropSelectionId: null,
+        noDrop: false,
+        chipId: null
+      },
       warning: "Your roster is full. Without a drop, this claim fails."
     });
     const dialog = screen.getByRole("dialog", { name: "Claim Harbor (2026)" });
     expect(within(dialog).getByText(/Your roster is full/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("textbox", { name: "Drop if this claim wins" })
+    ).toHaveAttribute("placeholder", "Select a pick to drop");
     expect(within(dialog).getByRole("textbox", { name: "Chip" })).toBeDisabled();
     fireEvent.click(within(dialog).getByRole("button", { name: "File claim" }));
     expect(handlers.onSaveClaim).toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(handlers.onCloseClaim).toHaveBeenCalled();
+  });
+
+  it("keeps a full roster's claim unfiled until a drop or no drop is chosen", () => {
+    const handlers = renderWaivers({
+      draft: {
+        claimId: null,
+        selection: harbor,
+        dropSelectionId: null,
+        noDrop: false,
+        chipId: null
+      },
+      dropError: "Your roster is full. Choose a pick to drop, or Don't drop anyone."
+    });
+    const dialog = screen.getByRole("dialog", { name: "Claim Harbor (2026)" });
+    expect(within(dialog).queryByText(/Choose a pick to drop/)).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "File claim" }));
+    expect(within(dialog).getByText(/Choose a pick to drop/)).toBeInTheDocument();
+    expect(handlers.onSaveClaim).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(dialog).getByRole("textbox", { name: "Drop if this claim wins" })
+    );
+    fireEvent.click(screen.getByRole("option", { name: "Don't drop anyone" }));
+    expect(handlers.onChangeDraft).toHaveBeenCalledWith({
+      dropSelectionId: null,
+      noDrop: true
+    });
+  });
+
+  it("shows a saved no-drop choice when editing, not the placeholder", () => {
+    renderWaivers({
+      draft: {
+        claimId: 9,
+        selection: harbor,
+        dropSelectionId: null,
+        noDrop: true,
+        chipId: null
+      }
+    });
+    const dialog = screen.getByRole("dialog", { name: "Your claim for Harbor (2026)" });
+    expect(
+      within(dialog).getByRole("textbox", { name: "Drop if this claim wins" })
+    ).toHaveValue("Don't drop anyone");
   });
 });

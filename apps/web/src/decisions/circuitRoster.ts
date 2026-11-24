@@ -1,4 +1,5 @@
 import type {
+  CircuitLeagueCategory,
   CircuitLeagueStatus,
   CircuitRoster,
   CircuitSelectionSummary,
@@ -20,6 +21,27 @@ export type CircuitRosterCategory = CircuitRoster["categories"][number];
 export function circuitSelectionLabel(selection: CircuitSelectionSummary): string {
   const film = contenderFilmLabel(selection.film);
   return selection.person ? `${selection.person.name}, ${film}` : film;
+}
+
+/** Category names by category id, for labelling contenders. */
+export function circuitCategoryNames(
+  categories: readonly Pick<CircuitLeagueCategory, "id" | "name">[]
+): ReadonlyMap<number, string> {
+  return new Map(categories.map((c) => [c.id, c.name]));
+}
+
+/**
+ * The contender label followed by its category: "Static (2026) in Best Sound".
+ * A film is a separate contender in each category, so a bare title is
+ * ambiguous wherever two contenders of one film can appear together.
+ */
+export function circuitSelectionCategoryLabel(
+  selection: CircuitSelectionSummary,
+  categoryNames: ReadonlyMap<number, string>
+): string {
+  const label = circuitSelectionLabel(selection);
+  const category = categoryNames.get(selection.circuit_category_id);
+  return category ? `${label} in ${category}` : label;
 }
 
 /** Rosters exist from the first draft pick onwards. */
