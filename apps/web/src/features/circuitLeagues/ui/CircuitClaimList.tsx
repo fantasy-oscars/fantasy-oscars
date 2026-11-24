@@ -4,7 +4,10 @@ import { Box, Group, Text } from "@ui";
 import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
 import { moveInOrder } from "@/decisions/admin/circuit";
 import { circuitQueueMoved } from "@/decisions/circuitDraft";
-import { circuitSelectionLabel } from "@/decisions/circuitRoster";
+import {
+  circuitSelectionCategoryLabel,
+  circuitSelectionLabel
+} from "@/decisions/circuitRoster";
 import { circuitChipLabel } from "@/decisions/circuitWaivers";
 import type { CircuitClaim } from "@/lib/types";
 import {
@@ -18,6 +21,7 @@ const idOf = (raw: unknown) => Number(String(raw ?? "").split(":")[1]);
 
 function ClaimRow(props: {
   claim: CircuitClaim;
+  categoryNames: ReadonlyMap<number, string>;
   idx: number;
   count: number;
   disabled: boolean;
@@ -27,9 +31,12 @@ function ClaimRow(props: {
 }) {
   const { claim, idx, count, disabled } = props;
   const label = circuitSelectionLabel(claim.selection);
+  const named = circuitSelectionCategoryLabel(claim.selection, props.categoryNames);
   const { setRef, handle, isDragging } = useSortableNode(dragId(claim.id), disabled);
   const meta = [
-    claim.drop ? `Drop ${circuitSelectionLabel(claim.drop)}` : "No drop",
+    claim.drop
+      ? `Drop ${circuitSelectionCategoryLabel(claim.drop, props.categoryNames)}`
+      : "No drop",
     claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
   ].filter(Boolean);
   return (
@@ -44,7 +51,7 @@ function ClaimRow(props: {
       </Text>
       <Box className="circuit-rowMain">
         <Text className="baseline-wrapAnywhere" fw="var(--fo-font-weight-bold)">
-          {label}
+          {named}
         </Text>
         <Text variant="helper" className="baseline-textBody baseline-wrapAnywhere">
           {meta.join(" · ")}
@@ -87,6 +94,7 @@ function ClaimRow(props: {
  */
 export function CircuitClaimList(props: {
   claims: CircuitClaim[];
+  categoryNames: ReadonlyMap<number, string>;
   editable: boolean;
   busy: boolean;
   describedBy: string;
@@ -115,6 +123,7 @@ export function CircuitClaimList(props: {
         >
           {claims.map((claim, idx) => (
             <ClaimRow
+              categoryNames={props.categoryNames}
               key={claim.id}
               claim={claim}
               idx={idx}

@@ -3,6 +3,7 @@ import {
   circuitChipLabel,
   circuitChipStatusLabel,
   circuitClaimCapacityWarning,
+  circuitClaimDropError,
   circuitClaimChipOptions,
   circuitClaimErrorMessage,
   circuitClaimOutcomeLabel,
@@ -87,6 +88,29 @@ describe("circuit claim capacity warning", () => {
       "You hold the most Best Actress picks allowed. Without dropping one of them, this claim fails."
     );
     expect(circuitClaimCapacityWarning(roster, quietSea, paperMoon.id)).toBeNull();
+  });
+});
+
+describe("circuit claim drop error", () => {
+  it("needs a choice when the roster is full", () => {
+    const roster = circuitRoster({ rosterSize: 2 });
+    expect(circuitClaimDropError(roster, harbor, null, false)).toBe(
+      "Your roster is full. Choose a pick to drop, or Don't drop anyone."
+    );
+    expect(circuitClaimDropError(roster, harbor, paperMoon.id, false)).toBeNull();
+    expect(circuitClaimDropError(roster, harbor, null, true)).toBeNull();
+  });
+
+  it("needs a choice when the category is full", () => {
+    const roster = circuitRoster({ maxActing: 1 });
+    expect(circuitClaimDropError(roster, quietSea, null, false)).toBe(
+      "You hold the most Best Actress picks allowed. Choose a pick to drop, or Don't drop anyone."
+    );
+    expect(circuitClaimDropError(roster, quietSea, null, true)).toBeNull();
+  });
+
+  it("allows an empty field when there is room", () => {
+    expect(circuitClaimDropError(circuitRoster(), harbor, null, false)).toBeNull();
   });
 });
 

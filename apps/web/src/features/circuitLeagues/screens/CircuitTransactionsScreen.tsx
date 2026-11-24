@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@ui";
+import { circuitCategoryNames } from "@/decisions/circuitRoster";
 import type { CircuitTransactionsView } from "@/orchestration/circuitRoster";
 import { circuitLeaguePath, circuitRosterPath } from "@/lib/routes";
 import {
@@ -44,7 +45,10 @@ export function CircuitTransactionsScreen(props: { view: CircuitTransactionsView
         </>
       }
     >
-      <CircuitTransactionList transactions={transactions} />
+      <CircuitTransactionList
+        transactions={transactions}
+        categoryNames={circuitCategoryNames(detail.categories)}
+      />
     </CircuitPageFrame>
   );
 }

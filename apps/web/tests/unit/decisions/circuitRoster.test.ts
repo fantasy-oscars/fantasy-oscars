@@ -3,6 +3,7 @@ import {
   circuitAddBlockedReason,
   circuitAddNeedsDrop,
   circuitCategoryCountLabel,
+  circuitCategoryNames,
   circuitDayLabel,
   circuitDropOptions,
   circuitFreeAgencyNote,
@@ -11,6 +12,7 @@ import {
   circuitRosterErrorMessage,
   circuitRostersVisible,
   circuitRosterWritable,
+  circuitSelectionCategoryLabel,
   circuitSelectionLabel,
   circuitTransactionKindLabel
 } from "@/decisions/circuitRoster";
@@ -23,6 +25,22 @@ describe("circuit roster labels", () => {
     );
     expect(circuitSelectionLabel(circuitSelection(2, "Paper Moon", "Ada Lane"))).toBe(
       "Ada Lane, Paper Moon (2026)"
+    );
+  });
+
+  it("names the category after a contender, so one film in two categories differs", () => {
+    const names = circuitCategoryNames([
+      { id: 20, name: "Best Picture" },
+      { id: 21, name: "Best Actress" }
+    ]);
+    expect(circuitSelectionCategoryLabel(circuitSelection(1, "Static"), names)).toBe(
+      "Static (2026) in Best Picture"
+    );
+    expect(
+      circuitSelectionCategoryLabel(circuitSelection(2, "Static", "Ada Lane"), names)
+    ).toBe("Ada Lane, Static (2026) in Best Actress");
+    expect(circuitSelectionCategoryLabel(circuitSelection(1, "Static"), new Map())).toBe(
+      "Static (2026)"
     );
   });
 

@@ -207,8 +207,8 @@ describe("circuit transaction log screen", () => {
     expect(items).toHaveLength(2);
     expect(items[0]!.textContent).toContain("avery");
     expect(items[0]!.textContent).toContain("Free agent");
-    expect(items[0]!.textContent).toContain("Added New Film (2026)");
-    expect(items[0]!.textContent).toContain("Dropped Night Train (2026)");
+    expect(items[0]!.textContent).toContain("Added New Film (2026) in Best Picture");
+    expect(items[0]!.textContent).toContain("Dropped Night Train (2026) in Best Picture");
     expect(items[1]!.textContent).toContain("Drop");
     expect(items[1]!.textContent).not.toContain("Added");
   });

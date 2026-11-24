@@ -111,6 +111,28 @@ export function circuitClaimCapacityWarning(
   return "Without a drop, this claim fails if your roster is full when claims run, for example after an earlier claim of yours wins.";
 }
 
+/**
+ * Why a claim cannot be filed yet, or null when it can. With a full roster or
+ * category the drop must be chosen: a pick, or an explicit "Don't drop anyone".
+ * With room, an empty field means no drop.
+ */
+export function circuitClaimDropError(
+  roster: CircuitRoster,
+  selection: CircuitSelectionSummary,
+  dropSelectionId: number | null,
+  noDrop: boolean
+): string | null {
+  const need = circuitAddNeedsDrop(roster, selection);
+  if (need === "none" || noDrop || dropSelectionId !== null) return null;
+  if (need === "category") {
+    const name =
+      roster.categories.find((c) => c.id === selection.circuit_category_id)?.name ??
+      "this category";
+    return `You hold the most ${name} picks allowed. Choose a pick to drop, or Don't drop anyone.`;
+  }
+  return "Your roster is full. Choose a pick to drop, or Don't drop anyone.";
+}
+
 /** Chips the viewer can put on a claim: available and on no other claim. */
 export function circuitClaimChipOptions(
   chips: CircuitClaims["chips"],

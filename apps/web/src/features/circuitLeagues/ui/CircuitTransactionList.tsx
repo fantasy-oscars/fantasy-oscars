@@ -1,14 +1,17 @@
 import { Box, Divider, Group, Stack, Text } from "@ui";
 import {
   circuitInstantLabel,
-  circuitSelectionLabel,
+  circuitSelectionCategoryLabel,
   circuitTransactionKindLabel
 } from "@/decisions/circuitRoster";
 import type { CircuitTransaction } from "@/lib/types";
 
 /** The league's transactions, newest first: who, what kind, what was added and dropped. */
-export function CircuitTransactionList(props: { transactions: CircuitTransaction[] }) {
-  const { transactions } = props;
+export function CircuitTransactionList(props: {
+  transactions: CircuitTransaction[];
+  categoryNames: ReadonlyMap<number, string>;
+}) {
+  const { transactions, categoryNames } = props;
   if (transactions.length === 0) {
     return <Text className="baseline-textBody">No transactions yet.</Text>;
   }
@@ -33,12 +36,12 @@ export function CircuitTransactionList(props: { transactions: CircuitTransaction
             </Group>
             {t.add ? (
               <Text className="baseline-textBody baseline-wrapAnywhere">
-                Added {circuitSelectionLabel(t.add)}
+                Added {circuitSelectionCategoryLabel(t.add, categoryNames)}
               </Text>
             ) : null}
             {t.drop ? (
               <Text className="baseline-textBody baseline-wrapAnywhere">
-                Dropped {circuitSelectionLabel(t.drop)}
+                Dropped {circuitSelectionCategoryLabel(t.drop, categoryNames)}
               </Text>
             ) : null}
           </Stack>
