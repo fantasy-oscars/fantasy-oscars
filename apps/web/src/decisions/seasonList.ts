@@ -2,6 +2,7 @@ import type { CircuitLeagueSummary, SeasonSummary } from "../lib/types";
 import { computeSeasonCeremonyLabel } from "./league";
 import { computeSeasonLifecycleLabelFromRow } from "./season";
 import { circuitLeagueMemberCountLabel, circuitLeagueStatusLabel } from "./circuitLeague";
+import { comingSoonNote } from "./goLive";
 
 /*
  * A league's Seasons list: ceremony seasons and Circuit competitions in one
@@ -19,6 +20,8 @@ export type SeasonListItem =
       ceremonyCode: string | null;
       /** Cancelled seasons stay in the list but do not link anywhere. */
       isNavigable: boolean;
+      /** "Coming soon" while the ceremony is not live yet. */
+      note: string | null;
     }
   | {
       kind: "full";
@@ -27,6 +30,8 @@ export type SeasonListItem =
       statusLabel: string;
       createdAt: string;
       memberCount: number;
+      /** "Coming soon" while the awards season is not live yet. */
+      note: string | null;
     };
 
 /** The meta line under a card's title. */
@@ -84,7 +89,8 @@ export function buildSeasonList(input: {
     createdAt: s.created_at,
     ceremonyId: s.ceremony_id,
     ceremonyCode: s.ceremony_code ?? null,
-    isNavigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED"
+    isNavigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED",
+    note: comingSoonNote({ status: s.ceremony_status, startsAt: s.ceremony_starts_at })
   }));
   const fullSeasons = input.circuitLeagues.map((c): SeasonListItem => ({
     kind: "full",
@@ -92,7 +98,8 @@ export function buildSeasonList(input: {
     title: c.circuit_name,
     statusLabel: circuitLeagueStatusLabel(c.status),
     createdAt: c.created_at,
-    memberCount: c.member_count
+    memberCount: c.member_count,
+    note: comingSoonNote({ status: c.circuit_status })
   }));
   return orderSeasonList([...ceremonySeasons, ...fullSeasons]);
 }

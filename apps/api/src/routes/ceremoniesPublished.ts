@@ -9,14 +9,15 @@ export function registerCeremoniesPublishedRoute({
   router: Router;
   client: DbClient;
 }): void {
-  // Ceremonies that commissioners can create seasons for.
+  // Ceremonies that commissioners can create seasons for: PUBLISHED ones are
+  // coming soon (drafts wait for ACTIVE), so each row carries its status.
   router.get("/published", async (_req, res, next) => {
     try {
       const { rows } = await query(
         client,
         `SELECT id::int, code, name, year, starts_at, status
          FROM ceremony
-         WHERE status = 'ACTIVE'
+         WHERE status IN ('PUBLISHED', 'ACTIVE')
            AND deleted_at IS NULL
          ORDER BY year DESC, id DESC`
       );

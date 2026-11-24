@@ -64,7 +64,8 @@ export const SEASONS: SeasonListItem[] = [
     createdAt: "2035-01-10T00:00:00Z",
     ceremonyId: 1,
     ceremonyCode: "golden-reel-2035",
-    isNavigable: true
+    isNavigable: true,
+    note: null
   },
   {
     kind: "ceremony",
@@ -74,7 +75,8 @@ export const SEASONS: SeasonListItem[] = [
     createdAt: "2034-01-10T00:00:00Z",
     ceremonyId: 2,
     ceremonyCode: "golden-reel-2034",
-    isNavigable: false
+    isNavigable: false,
+    note: null
   }
 ];
 

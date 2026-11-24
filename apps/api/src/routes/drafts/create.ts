@@ -1,6 +1,6 @@
 import express from "express";
 import { AppError } from "../../errors.js";
-import { assertCeremonyOpenForLeagues } from "../../domain/ceremonyLifecycle.js";
+import { assertCeremonyOpenForSeasons } from "../../domain/ceremonyLifecycle.js";
 import { parseBody } from "../../utils/validate.js";
 import {
   draftCreateBodySchema,
@@ -65,7 +65,7 @@ export function buildCreateDraftHandler(client: DbClient) {
       if (isLocked) {
         throw new AppError("CEREMONY_LOCKED", 409, "Ceremony is locked");
       }
-      assertCeremonyOpenForLeagues(String(ceremony.status).toUpperCase());
+      assertCeremonyOpenForSeasons(String(ceremony.status).toUpperCase());
 
       const userId = Number((req as AuthedRequest).auth?.sub);
       const leagueMember = await getLeagueMember(client, leagueIdNum, userId);

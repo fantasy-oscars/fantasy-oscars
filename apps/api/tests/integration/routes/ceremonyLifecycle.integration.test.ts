@@ -5,6 +5,7 @@ import {
   insertCategoryEdition,
   insertCeremony,
   insertCeremonyWinner,
+  insertDraft,
   insertLeague,
   insertNomination,
   insertSeason,
@@ -19,7 +20,9 @@ let api: ApiAgent;
 let token: string;
 
 const AUTH_SECRET = "test-secret";
-const OTHER_STATUSES = ["DRAFT", "PUBLISHED", "LOCKED", "ARCHIVED"] as const;
+// Seasons can be set up once the ceremony is visible to players.
+const OPEN_FOR_SEASONS = ["PUBLISHED", "ACTIVE"] as const;
+const CLOSED_FOR_SEASONS = ["DRAFT", "LOCKED", "ARCHIVED"] as const;
 
 type ErrorBody = { error: { code: string; details?: { status?: string } } };
 
@@ -80,23 +83,25 @@ describe("ceremony lifecycle guards", () => {
       return res.json.league.id;
     }
 
-    it.each([["/seasons/leagues/:id/seasons"], ["/leagues/:id/seasons"]])(
-      "%s succeeds for an ACTIVE ceremony",
-      async (route) => {
-        const ceremony = await ceremonyWithStatus("ACTIVE");
-        const leagueId = await createLeague();
-        const res = await send<{ season: { ceremony_id: number } }>(
-          "post",
-          route.replace(":id", String(leagueId)),
-          { ceremony_id: ceremony.id }
-        );
-        expect(res.status).toBe(201);
-        expect(res.json.season.ceremony_id).toBe(ceremony.id);
-      }
-    );
+    it.each(
+      OPEN_FOR_SEASONS.flatMap((status) => [
+        ["/seasons/leagues/:id/seasons", status],
+        ["/leagues/:id/seasons", status]
+      ])
+    )("%s succeeds for a %s ceremony", async (route, status) => {
+      const ceremony = await ceremonyWithStatus(status);
+      const leagueId = await createLeague();
+      const res = await send<{ season: { ceremony_id: number } }>(
+        "post",
+        route.replace(":id", String(leagueId)),
+        { ceremony_id: ceremony.id }
+      );
+      expect(res.status).toBe(201);
+      expect(res.json.season.ceremony_id).toBe(ceremony.id);
+    });
 
     it.each(
-      OTHER_STATUSES.flatMap((status) => [
+      CLOSED_FOR_SEASONS.flatMap((status) => [
         ["/seasons/leagues/:id/seasons", status],
         ["/leagues/:id/seasons", status]
       ])
@@ -121,8 +126,8 @@ describe("ceremony lifecycle guards", () => {
       return insertSeason(db.pool, { league_id: league.id, ceremony_id: ceremony.id });
     }
 
-    it("succeeds for an ACTIVE ceremony", async () => {
-      const season = await seasonOn("ACTIVE");
+    it.each(OPEN_FOR_SEASONS)("succeeds for a %s ceremony", async (status) => {
+      const season = await seasonOn(status);
       const res = await send<{ draft: { status: string } }>("post", "/drafts", {
         league_id: season.league_id,
         season_id: season.id,
@@ -132,7 +137,7 @@ describe("ceremony lifecycle guards", () => {
       expect(res.json.draft.status).toBe("PENDING");
     });
 
-    it.each(OTHER_STATUSES)("is refused for a %s ceremony", async (status) => {
+    it.each(CLOSED_FOR_SEASONS)("is refused for a %s ceremony", async (status) => {
       const season = await seasonOn(status);
       const res = await send<ErrorBody>("post", "/drafts", {
         league_id: season.league_id,
@@ -286,6 +291,122 @@ describe("ceremony lifecycle guards", () => {
         expect(res.json.error.details?.status).toBe(status);
       }
     );
+  });
+
+  describe("withdraw", () => {
+    async function auditActions(ceremonyId: number) {
+      const { rows } = await db.pool.query<{ action: string }>(
+        `SELECT action FROM admin_audit_log WHERE target_id = $1 ORDER BY id`,
+        [ceremonyId]
+      );
+      return rows.map((r) => r.action);
+    }
+
+    it("returns a published ceremony with no seasons to DRAFT", async () => {
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      const res = await send<{ ceremony: { status: string; published_at: null } }>(
+        "post",
+        `/admin/ceremonies/${ceremony.id}/unpublish`
+      );
+      expect(res.status).toBe(200);
+      expect(res.json.ceremony).toMatchObject({ status: "DRAFT", published_at: null });
+      expect(await auditActions(ceremony.id)).toEqual(["unpublish_ceremony"]);
+    });
+
+    it("is refused while a season is set up, ignoring cancelled ones", async () => {
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      const league = await insertLeague(db.pool, {
+        ceremony_id: ceremony.id,
+        created_by_user_id: 1
+      });
+      await insertSeason(db.pool, { league_id: league.id, ceremony_id: ceremony.id });
+      await insertSeason(db.pool, {
+        league_id: league.id,
+        ceremony_id: ceremony.id,
+        status: "CANCELLED"
+      });
+
+      const res = await send<{ error: { code: string; message: string } }>(
+        "post",
+        `/admin/ceremonies/${ceremony.id}/unpublish`
+      );
+      expect(res.status).toBe(409);
+      expect(res.json.error).toMatchObject({
+        code: "CEREMONY_HAS_SEASONS",
+        message: "Remove the 1 season set up for this first"
+      });
+      const { rows } = await db.pool.query(`SELECT status FROM ceremony WHERE id = $1`, [
+        ceremony.id
+      ]);
+      expect(rows[0].status).toBe("PUBLISHED");
+      expect(await auditActions(ceremony.id)).toEqual([]);
+    });
+
+    it.each(["DRAFT", "ACTIVE", "LOCKED", "ARCHIVED"])(
+      "refuses to withdraw a %s ceremony",
+      async (status) => {
+        const ceremony = await ceremonyWithStatus(status);
+        const res = await send<ErrorBody>(
+          "post",
+          `/admin/ceremonies/${ceremony.id}/unpublish`
+        );
+        expect(res.status).toBe(409);
+        expect(res.json.error.code).toBe("CEREMONY_NOT_PUBLISHED");
+        expect(res.json.error.details?.status).toBe(status);
+      }
+    );
+  });
+
+  describe("draft start", () => {
+    it("waits for a published ceremony to open for leagues", async () => {
+      const ceremony = await ceremonyWithStatus("PUBLISHED");
+      const league = await insertLeague(db.pool, {
+        ceremony_id: ceremony.id,
+        created_by_user_id: 1
+      });
+      const season = await insertSeason(db.pool, {
+        league_id: league.id,
+        ceremony_id: ceremony.id
+      });
+      const draft = await insertDraft(db.pool, {
+        league_id: league.id,
+        season_id: season.id,
+        status: "PENDING"
+      });
+
+      const res = await send<{ error: { code: string; message: string } }>(
+        "post",
+        `/drafts/${draft.id}/start`
+      );
+      expect(res.status).toBe(409);
+      expect(res.json.error).toMatchObject({
+        code: "CEREMONY_NOT_ACTIVE",
+        message: "This ceremony isn't open yet. You can start the draft once it is."
+      });
+      const { rows } = await db.pool.query(`SELECT status FROM draft WHERE id = $1`, [
+        draft.id
+      ]);
+      expect(rows[0].status).toBe("PENDING");
+    });
+  });
+
+  describe("ceremonies offered for seasons", () => {
+    it("lists published and active ceremonies with their status", async () => {
+      const byStatus = new Map<string, number>();
+      for (const status of ["DRAFT", "PUBLISHED", "ACTIVE", "LOCKED", "ARCHIVED"]) {
+        byStatus.set(status, (await ceremonyWithStatus(status)).id);
+      }
+      const res = await api.get("/ceremonies/published");
+      expect(res.status).toBe(200);
+      const rows = (res.body as { ceremonies: Array<{ id: number; status: string }> })
+        .ceremonies;
+      expect(rows.map((c) => [c.id, c.status]).sort()).toEqual(
+        [
+          [byStatus.get("PUBLISHED"), "PUBLISHED"],
+          [byStatus.get("ACTIVE"), "ACTIVE"]
+        ].sort()
+      );
+    });
   });
 
   describe("finalize and archive", () => {

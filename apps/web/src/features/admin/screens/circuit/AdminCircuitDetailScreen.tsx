@@ -11,6 +11,8 @@ import type {
 } from "@/orchestration/adminCircuit";
 import {
   canActivateCircuit,
+  canPublishCircuit,
+  canWithdrawCircuit,
   circuitStatusLabel,
   describeMissingDates,
   isCircuitEditable,
@@ -71,6 +73,8 @@ export function AdminCircuitDetailScreen(props: {
   categoryActions: CircuitCategoryActions;
   tab: CircuitEditorTab;
   onTabChange: (tab: CircuitEditorTab) => void;
+  onPublish: () => void;
+  onWithdraw: () => void;
   onActivate: () => void;
 }) {
   const { state, error, detail, working, activationMissing } = props;
@@ -128,20 +132,49 @@ export function AdminCircuitDetailScreen(props: {
       ) : null}
 
       {canActivateCircuit(circuit.status) ? (
-        <StandardCard component="section" aria-labelledby="circuit-activate-title">
+        <StandardCard component="section" aria-labelledby="circuit-golive-title">
           <Group justify="space-between" align="center" wrap="wrap" gap="md">
             <Box flex={1} miw="var(--fo-layout-fieldMin-md)">
-              <Title order={3} variant="section" id="circuit-activate-title">
-                Activate
+              <Title order={3} variant="section" id="circuit-golive-title">
+                {canWithdrawCircuit(circuit.status)
+                  ? "Published"
+                  : "Publish and activate"}
               </Title>
+              <Text className="muted">
+                {canWithdrawCircuit(circuit.status)
+                  ? "Players see this Circuit as coming soon and can set up seasons. Their drafts start once you activate it. Withdrawing hides it again, and is refused while any season is set up for it."
+                  : "Publishing lets players see this Circuit as coming soon and set up seasons; their drafts start once you activate it. You can also activate it straight away."}
+              </Text>
               <Text className="muted">
                 Activation does not wait for dates. Ceremonies, groups, categories and
                 mappings stay editable afterwards, with a confirmation step.
               </Text>
             </Box>
-            <Button type="button" onClick={props.onActivate} disabled={working}>
-              Activate Circuit
-            </Button>
+            <Group gap="sm" wrap="wrap">
+              {canPublishCircuit(circuit.status) ? (
+                <Button type="button" onClick={props.onPublish} disabled={working}>
+                  Publish Circuit
+                </Button>
+              ) : null}
+              {canWithdrawCircuit(circuit.status) ? (
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={props.onWithdraw}
+                  disabled={working}
+                >
+                  Withdraw
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant={canPublishCircuit(circuit.status) ? "default" : "filled"}
+                onClick={props.onActivate}
+                disabled={working}
+              >
+                Activate Circuit
+              </Button>
+            </Group>
           </Group>
         </StandardCard>
       ) : null}

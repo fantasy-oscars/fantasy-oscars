@@ -65,6 +65,7 @@ export function LeagueSeasonsSection(props: {
                         {s.title}
                       </Text>
                       <Text variant="meta">{seasonListKindLabel(s)}</Text>
+                      {s.note ? <Text variant="helper">{s.note}</Text> : null}
                     </Box>
                     <StatusPill {...statusTone(s.statusLabel)}>
                       {s.statusLabel}

@@ -71,6 +71,42 @@ read -rs NEWPW && printf '%s' "$NEWPW" | pnpm run admin:reset-password -- --user
 - Set active ceremony: `POST /admin/ceremony/active` with `{ "ceremony_id": <id> }`.
 - Read active ceremony: `GET /ceremony/active` (public).
 
+### Publishing, withdrawing and going live
+
+Ceremonies and Circuits both have a visible-but-not-live state, so leagues can
+set up seasons (invite, join, settings, queues, staging, Lock season) before
+anything can be drafted. Drafts start only once the ceremony or Circuit is live.
+Players see the in-between state as "Coming soon".
+
+| Step     | Ceremony (Admin → ceremony wizard)                             | Circuit (Admin → Circuit detail)                      |
+| -------- | -------------------------------------------------------------- | ----------------------------------------------------- |
+| Publish  | Publish step: `POST /admin/ceremonies/:id/publish`             | Publish Circuit: `POST /admin/circuits/:id/publish`   |
+| Withdraw | Publish step, Withdraw: `POST /admin/ceremonies/:id/unpublish` | Withdraw: `POST /admin/circuits/:id/unpublish`        |
+| Go live  | Open for leagues: `POST /admin/ceremonies/:id/open`            | Activate Circuit: `POST /admin/circuits/:id/activate` |
+
+1. **Publish** (`DRAFT → PUBLISHED`). A ceremony needs a name and code; its
+   categories and nominees stay editable. A Circuit needs nothing and sets
+   `published_at`; its events, categories and selections stay editable as
+   always. Commissioners can now create seasons against it, but starting their
+   drafts is refused (ceremony: 409 `CEREMONY_NOT_ACTIVE`; Circuit: 409
+   `CIRCUIT_NOT_LIVE`) and the draft rooms show Start draft disabled with
+   "Opens when the ceremony goes live" or "Opens when the season goes live".
+2. **Withdraw** (`PUBLISHED → DRAFT`, optional). Both screens ask for
+   confirmation first. Withdrawing is refused while any season exists against
+   the ceremony (cancelled ones excepted) or the Circuit: 409
+   `CEREMONY_HAS_SEASONS` or `CIRCUIT_HAS_SEASONS`, "Remove the N season(s) set
+   up for this first", with `details.season_count`; the screen shows that
+   message. Seasons are never removed for you. From any other status it is 409
+   `CEREMONY_NOT_PUBLISHED` or `CIRCUIT_NOT_PUBLISHED`. Audited as
+   `unpublish_ceremony` or `unpublish_circuit`; it clears `published_at`.
+3. **Go live** (`PUBLISHED → ACTIVE`). Open for leagues is refused (409
+   `CEREMONY_INCOMPLETE`) while any category has no nominee, and freezes
+   ceremony content. A Circuit can be activated from `PUBLISHED` or straight
+   from `DRAFT`. Seasons set up earlier need no action: their commissioners can
+   start the draft (an open draft room picks this up on reload). No
+   notification is sent. Nothing leaves `ACTIVE` except the existing lock and
+   archive paths.
+
 ### Circuit admin routes
 
 See [architecture/circuit.md](../architecture/circuit.md). Every write appends to
@@ -98,8 +134,15 @@ edits stay allowed after activation; only an archived Circuit is read-only
   ceremony, the Circuit categories it `supplies` (with the edition ids feeding
   each), its `unmapped_editions` and its `edition_count`. `occasions` and
   `waiver_windows` are the same as in the detail.
-- `POST /admin/circuits/:id/activate`: `DRAFT → ACTIVE`. Always succeeds from
-  `DRAFT` and returns `readiness.missing_dates`; otherwise 409 `CIRCUIT_NOT_DRAFT`.
+- `POST /admin/circuits/:id/publish`: `DRAFT → PUBLISHED`, sets
+  `published_at`; otherwise 409 `CIRCUIT_NOT_DRAFT`. Audited as `publish_circuit`.
+- `POST /admin/circuits/:id/unpublish`: `PUBLISHED → DRAFT`, clears
+  `published_at`; 409 `CIRCUIT_HAS_SEASONS` while any season exists, otherwise
+  409 `CIRCUIT_NOT_PUBLISHED` from any other status. Audited as
+  `unpublish_circuit`.
+- `POST /admin/circuits/:id/activate`: `DRAFT` or `PUBLISHED → ACTIVE`. Always
+  succeeds from those and returns `readiness.missing_dates`; otherwise 409
+  `CIRCUIT_NOT_DRAFT` ("Only a draft or published Circuit can be activated").
 - `PUT /admin/circuits/:id/ceremonies/:ceremonyId` with `{ circuit_event_id? }`,
   and `DELETE` on the same path: add any ceremony or move it into a group;
   without one (omitted or `null`) it keeps or gets its own one-ceremony event.

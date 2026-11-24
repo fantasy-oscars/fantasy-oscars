@@ -36,6 +36,7 @@ import {
   listOpenOwnershipsForMember
 } from "../../data/repositories/circuitOwnershipRepository.js";
 import { listCircuitQueueForAutoPick } from "../../data/repositories/circuitQueueRepository.js";
+import { getCircuitById } from "../../data/repositories/circuitRepository.js";
 import { setCircuitWaiverPriorities } from "../../data/repositories/circuitWaiverRepository.js";
 import {
   assertCircuitDraftPausable,
@@ -54,6 +55,7 @@ import {
   type CircuitDraftSlot,
   type MissedRegularPick
 } from "../../domain/circuitDraft.js";
+import { assertCircuitLive } from "../../domain/circuit.js";
 import { initialWaiverPriorities } from "../../domain/circuitWaivers.js";
 import { computeDeadline } from "../../domain/draftPickRules.js";
 import { AppError } from "../../errors.js";
@@ -221,6 +223,9 @@ export async function startCircuitDraft(
       { forUpdate: true }
     );
     requireCommissioner(league, member, viewer.userId);
+    // Seasons can be set up while the Circuit is published; the draft waits
+    // until it is live.
+    assertCircuitLive((await getCircuitById(tx, circuitLeague.circuit_id))?.status ?? "");
     const members = await listCircuitLeagueMembers(tx, circuitLeague.id);
     assertCircuitDraftStartable(circuitLeague, members.length);
 

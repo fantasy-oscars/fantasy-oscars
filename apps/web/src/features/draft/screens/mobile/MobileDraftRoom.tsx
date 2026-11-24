@@ -7,6 +7,7 @@ import { NomineeTooltipCard } from "@/shared/nominee/NomineeTooltipCard";
 import { CategoryCard } from "@/features/draft/ui/CategoryCard";
 import { useCategoryKeyboardFocus } from "./useCategoryKeyboardFocus";
 import { MobileDraftHeader } from "./MobileDraftHeader";
+import { DraftStartBlockedNote } from "@/features/draft/ui/DraftStartBlockedNote";
 import { MobileRail } from "@/features/draft/ui/mobile/MobileRail";
 import { DraftMobileRailBar } from "@/features/draft/ui/mobile/DraftMobileRailBar";
 import { MobileRosterBoard } from "./MobileRosterBoard";
@@ -162,6 +163,7 @@ export function MobileDraftRoom(props: {
         showDraftControls={!isCompleted}
         canManageDraft={props.isPreview ? true : o.header.canManageDraft}
         onStartDraft={o.header.onStartDraft}
+        startBlockedLine={o.header.startBlockedLine}
         onPauseDraft={o.header.onPauseDraft}
         onResumeDraft={o.header.onResumeDraft}
         isFinalResults={props.isFinalResults}
@@ -176,6 +178,7 @@ export function MobileDraftRoom(props: {
         userAvatarKey={props.previewUser.avatarKey}
       />
 
+      <DraftStartBlockedNote line={o.header.startBlockedLine} />
       <RuntimeBannerStack />
 
       <Box component="main" id="main-content" tabIndex={-1} className="dr-body">

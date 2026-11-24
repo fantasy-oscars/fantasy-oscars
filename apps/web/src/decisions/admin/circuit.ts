@@ -25,8 +25,23 @@ export function isCircuitEditable(status: string | null | undefined): boolean {
   return circuitStatusLabel(status) !== "ARCHIVED";
 }
 
-export function canActivateCircuit(status: string | null | undefined): boolean {
+/** DRAFT → PUBLISHED: players see the Circuit as coming soon and can set up seasons. */
+export function canPublishCircuit(status: string | null | undefined): boolean {
   return circuitStatusLabel(status) === "DRAFT";
+}
+
+/**
+ * PUBLISHED → DRAFT. The server still refuses while any season is set up
+ * against the Circuit, so the screen shows its message when it does.
+ */
+export function canWithdrawCircuit(status: string | null | undefined): boolean {
+  return circuitStatusLabel(status) === "PUBLISHED";
+}
+
+/** DRAFT or PUBLISHED → ACTIVE: drafts can start once the Circuit is live. */
+export function canActivateCircuit(status: string | null | undefined): boolean {
+  const label = circuitStatusLabel(status);
+  return label === "DRAFT" || label === "PUBLISHED";
 }
 
 /** An initialised league of the Circuit: a structural edit changes what it scores. */

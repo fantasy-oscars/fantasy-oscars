@@ -98,7 +98,7 @@ function detail(status: string, leagues: unknown[] = []) {
 
 function stubFetch(
   circuitStatus: string,
-  opts: { leagues?: unknown[]; refuseUnconfirmed?: boolean } = {}
+  opts: { leagues?: unknown[]; refuseUnconfirmed?: boolean; seasonCount?: number } = {}
 ) {
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   vi.stubGlobal(
@@ -132,6 +132,21 @@ function stubFetch(
             { id: 42, code: "song", name: "Song", default_unit_kind: "SONG" }
           ]
         });
+      if (url.endsWith("/admin/circuits/3/publish"))
+        return json({ circuit: detail("PUBLISHED").circuit });
+      if (url.endsWith("/admin/circuits/3/unpublish"))
+        return opts.seasonCount
+          ? json(
+              {
+                error: {
+                  code: "CIRCUIT_HAS_SEASONS",
+                  message: `Remove the ${opts.seasonCount} seasons set up for this first`,
+                  details: { season_count: opts.seasonCount }
+                }
+              },
+              409
+            )
+          : json({ circuit: detail("DRAFT").circuit });
       if (url.endsWith("/admin/circuits/3/activate"))
         return json({
           circuit: detail("ACTIVE").circuit,
@@ -340,6 +355,59 @@ describe("Circuit admin orchestration", () => {
     expect(result.current.activationMissing).toEqual([
       expect.objectContaining({ ceremony_id: 7, missing: ["results_on"] })
     ]);
+  });
+
+  it("publishes without asking", async () => {
+    const calls = stubFetch("DRAFT");
+    const { result } = await renderDetail();
+    await act(async () => {
+      expect(await result.current.actions.publish()).toBe(true);
+    });
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({
+        url: expect.stringMatching(/\/admin\/circuits\/3\/publish$/),
+        method: "POST"
+      })
+    ]);
+  });
+
+  it("withdraws only after the admin confirms", async () => {
+    const calls = stubFetch("PUBLISHED");
+    confirmMock.mockResolvedValue(false);
+    const { result } = await renderDetail();
+    await act(async () => {
+      expect(await result.current.actions.withdraw()).toBe(false);
+    });
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmLabel: "Withdraw", danger: true })
+    );
+    expect(writes(calls)).toEqual([]);
+
+    confirmMock.mockResolvedValue(true);
+    await act(async () => {
+      expect(await result.current.actions.withdraw()).toBe(true);
+    });
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({
+        url: expect.stringMatching(/\/admin\/circuits\/3\/unpublish$/),
+        method: "POST"
+      })
+    ]);
+    expect(result.current.status).toBeNull();
+  });
+
+  it("shows the server's refusal when seasons are set up", async () => {
+    stubFetch("PUBLISHED", { seasonCount: 2 });
+    confirmMock.mockResolvedValue(true);
+    const { result } = await renderDetail();
+    await act(async () => {
+      expect(await result.current.actions.withdraw()).toBe(false);
+    });
+    expect(result.current.status).toEqual({
+      ok: false,
+      message: "Remove the 2 seasons set up for this first"
+    });
   });
 
   it("attaches from the ceremony side, with no event to choose", async () => {

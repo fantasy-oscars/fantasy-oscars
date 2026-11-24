@@ -18,6 +18,7 @@ import {
 import { computeSeasonLifecycleLabelFromRow } from "@/decisions/season";
 import { circuitLeaguePath, seasonPath } from "@/lib/routes";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
+import { comingSoonNote } from "@/decisions/goLive";
 import { statusTone } from "@/decisions/statusTone";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
@@ -196,6 +197,7 @@ export function LandingScreen(props: {
           <Stack gap="sm">
             {view.seasons.circuits.map((c) => {
               const statusLabel = circuitLeagueStatusLabel(c.status);
+              const note = comingSoonNote({ status: c.circuit_status });
               return (
                 <StandardCard
                   key={`circuit-${c.id}`}
@@ -217,6 +219,7 @@ export function LandingScreen(props: {
                       </Text>
                       <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
                     </Group>
+                    {note ? <Text variant="helper">{note}</Text> : null}
                   </Stack>
                 </StandardCard>
               );
@@ -227,6 +230,10 @@ export function LandingScreen(props: {
                 draftStatus: s.draft_status,
                 isActiveCeremony: s.is_active_ceremony,
                 resultsFinalizedAt: s.ceremony_results_finalized_at
+              });
+              const note = comingSoonNote({
+                status: s.ceremony_status,
+                startsAt: s.ceremony_starts_at
               });
               const ceremonyLabel = computeLandingSeasonCeremonyLabel({
                 ceremonyName: s.ceremony_name,
@@ -254,6 +261,7 @@ export function LandingScreen(props: {
                       </Text>
                       <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
                     </Group>
+                    {note ? <Text variant="helper">{note}</Text> : null}
                   </Stack>
                 </StandardCard>
               );

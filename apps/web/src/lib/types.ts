@@ -36,6 +36,7 @@ export type SeasonSummary = {
   status: string;
   created_at: string;
   ceremony_starts_at?: string | null;
+  ceremony_status?: string | null;
   ceremony_results_finalized_at?: string | null;
   draft_id?: number | null;
   draft_status?: string | null;
@@ -83,6 +84,7 @@ export type SeasonMeta = {
   is_active_ceremony?: boolean;
   created_at?: string;
   ceremony_starts_at?: string | null;
+  ceremony_status?: string | null;
   draft_id?: number | null;
   draft_status?: string | null;
   remainder_strategy?: string;

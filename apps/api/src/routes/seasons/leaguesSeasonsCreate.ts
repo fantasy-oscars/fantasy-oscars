@@ -1,7 +1,7 @@
 import type express from "express";
 import type { Pool } from "pg";
 import { AppError } from "../../errors.js";
-import { assertCeremonyOpenForLeagues } from "../../domain/ceremonyLifecycle.js";
+import { assertCeremonyOpenForSeasons } from "../../domain/ceremonyLifecycle.js";
 import { idParam, seasonCreateLegacyBodySchema } from "@fantasy-oscars/shared/schemas";
 import { parseBody, parseParams } from "../../utils/validate.js";
 import type { AuthedRequest } from "../../auth/middleware.js";
@@ -65,7 +65,7 @@ export function registerSeasonsLeaguesSeasonsCreateRoute(args: {
         if (ceremonyStatus === "LOCKED") {
           throw new AppError("CEREMONY_LOCKED", 409, "Ceremony is locked");
         }
-        assertCeremonyOpenForLeagues(ceremonyStatus);
+        assertCeremonyOpenForSeasons(ceremonyStatus);
 
         const result = await runInTransaction(client as Pool, async (tx) => {
           const league = await getLeagueById(tx, leagueId);

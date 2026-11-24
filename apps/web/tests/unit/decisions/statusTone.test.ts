@@ -71,6 +71,50 @@ describe("statusTone", () => {
     expect(statusTone("Paused")).toEqual({ tone: "drafting", mark: "pause" });
   });
 
+  it("reads a season set up before its ceremony goes live as Pre-draft, coming soon", () => {
+    const cards = buildSeasonIndexCards({
+      seasonResults: [
+        {
+          league: { id: 1, name: "L" } as never,
+          seasons: [
+            {
+              id: 1,
+              ceremony_id: 1,
+              draft_status: "PENDING",
+              status: "EXTANT",
+              ceremony_status: "PUBLISHED",
+              is_active_ceremony: true
+            } as never,
+            {
+              id: 2,
+              ceremony_id: 2,
+              draft_status: "PENDING",
+              status: "EXTANT",
+              ceremony_status: "ACTIVE",
+              is_active_ceremony: true
+            } as never
+          ]
+        }
+      ],
+      ceremonyById: new Map([
+        [
+          1,
+          {
+            id: 1,
+            code: "a",
+            name: "A",
+            status: "PUBLISHED",
+            starts_at: "2028-03-05T12:00:00Z"
+          }
+        ]
+      ])
+    });
+    expect(cards.map((c) => [c.status_label, c.note])).toEqual([
+      ["Pre-draft", "Coming soon · Mar 5, 2028"],
+      ["Pre-draft", null]
+    ]);
+  });
+
   it("uses the same four words for a single ceremony and a full season", () => {
     const finalized = "2027-03-01T00:00:00Z";
     const single = (draftStatus: string, resultsFinalizedAt: string | null = null) =>

@@ -205,6 +205,8 @@ function renderDetail(
       reorder: vi.fn(() => Promise.resolve(true)),
       remove: vi.fn()
     },
+    onPublish: vi.fn(),
+    onWithdraw: vi.fn(),
     onActivate: vi.fn(),
     ...overrides
   };
@@ -566,6 +568,54 @@ describe("<AdminCircuitDetailScreen />", () => {
     expect(screen.getByText("Golden Globes 2027: ceremony date")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Activate Circuit" }));
     expect(props.onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["DRAFT", ["Publish Circuit", "Activate Circuit"]],
+    ["PUBLISHED", ["Withdraw", "Activate Circuit"]],
+    ["ACTIVE", []],
+    ["ARCHIVED", []]
+  ])("%s offers %j", (status, offered) => {
+    renderDetail({ detail: { ...DETAIL, circuit: { ...DETAIL.circuit, status } } });
+    const all = ["Publish Circuit", "Withdraw", "Activate Circuit"];
+    for (const name of all) {
+      const button = screen.queryByRole("button", { name });
+      if (offered.includes(name)) expect(button).toBeInTheDocument();
+      else expect(button).toBeNull();
+    }
+  });
+
+  it("publishes, withdraws and activates through the matching handler", async () => {
+    const user = userEvent.setup();
+    const draft = renderDetail();
+    await user.click(screen.getByRole("button", { name: "Publish Circuit" }));
+    expect(draft.onPublish).toHaveBeenCalledTimes(1);
+    cleanup();
+
+    const published = renderDetail({
+      detail: { ...DETAIL, circuit: { ...DETAIL.circuit, status: "PUBLISHED" } }
+    });
+    expect(screen.getByRole("heading", { name: "Published" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    expect(published.onWithdraw).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Activate Circuit" }));
+    expect(published.onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the withdraw refusal, and disables the buttons while working", () => {
+    const published = { ...DETAIL, circuit: { ...DETAIL.circuit, status: "PUBLISHED" } };
+    renderDetail({
+      detail: published,
+      status: { ok: false, message: "Remove the 2 seasons set up for this first" }
+    });
+    expect(
+      screen.getByText("Remove the 2 seasons set up for this first")
+    ).toBeInTheDocument();
+    cleanup();
+
+    renderDetail({ detail: published, working: true });
+    expect(screen.getByRole("button", { name: "Withdraw" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Activate Circuit" })).toBeDisabled();
   });
 
   it("reports the activation result and hides the activate action once active", () => {

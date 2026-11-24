@@ -63,8 +63,12 @@ export function registerLeagueSeasonsListRoute(args: {
           ceremony_results_finalized_at: s.ceremony_results_finalized_at ?? null,
           draft_id: s.draft_id ?? null,
           draft_status: s.draft_status ?? null,
+          ceremony_status: s.ceremony_status ?? null,
+          // A season set up while its ceremony is PUBLISHED is upcoming, not closed.
           is_active_ceremony: s.ceremony_status
-            ? ["ACTIVE", "LOCKED"].includes(String(s.ceremony_status).toUpperCase())
+            ? ["PUBLISHED", "ACTIVE", "LOCKED"].includes(
+                String(s.ceremony_status).toUpperCase()
+              )
             : false
         }));
 

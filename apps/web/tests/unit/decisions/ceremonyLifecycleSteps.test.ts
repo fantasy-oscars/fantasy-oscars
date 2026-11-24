@@ -5,7 +5,11 @@ import {
   inferStepFromPathname
 } from "@/decisions/admin/ceremonyWizard";
 import { isCeremonyWorkflowStepAllowed } from "@/decisions/admin/ceremonyWorkflowNav";
-import { canArchiveCeremony, type CeremonyStatus } from "@/decisions/ceremonyLifecycle";
+import {
+  canArchiveCeremony,
+  canWithdrawCeremony,
+  type CeremonyStatus
+} from "@/decisions/ceremonyLifecycle";
 import {
   ceremonyStatusLabel,
   getCeremonyWorkflowSteps,
@@ -184,6 +188,18 @@ describe("canArchiveCeremony", () => {
     expect(
       canArchiveCeremony({ status: "ARCHIVED", resultsFinalizedAt: FINALIZED_AT })
     ).toBe(false);
+  });
+});
+
+describe("canWithdrawCeremony", () => {
+  it.each<[CeremonyStatus, boolean]>([
+    ["DRAFT", false],
+    ["PUBLISHED", true],
+    ["ACTIVE", false],
+    ["LOCKED", false],
+    ["ARCHIVED", false]
+  ])("%s: %s", (status, withdrawable) => {
+    expect(canWithdrawCeremony(status)).toBe(withdrawable);
   });
 });
 

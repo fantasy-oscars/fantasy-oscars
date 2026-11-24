@@ -18,12 +18,16 @@ import {
   getLeagueMember
 } from "../../data/repositories/leagueRepository.js";
 import { getSeasonById } from "../../data/repositories/seasonRepository.js";
-import { getCeremonyDraftLockedAt } from "../../data/repositories/ceremonyRepository.js";
+import {
+  getCeremonyDraftLockedAt,
+  getCeremonyStatus
+} from "../../data/repositories/ceremonyRepository.js";
 import {
   getSeasonMember,
   listSeasonMembers
 } from "../../data/repositories/seasonMemberRepository.js";
 import { revokePendingInvitesForSeason } from "../../data/repositories/seasonInviteRepository.js";
+import { assertCeremonyOpenForLeagues } from "../../domain/ceremonyLifecycle.js";
 import { computeDeadline } from "../../domain/draftPickRules.js";
 import { transitionDraftState } from "../../domain/draftState.js";
 import { emitDraftEvent } from "../../realtime/draftEvents.js";
@@ -85,6 +89,12 @@ export function buildStartDraftHandler(pool: Pool) {
         if (draft.status !== "PENDING") {
           throw new AppError("DRAFT_ALREADY_STARTED", 409, "Draft already started");
         }
+
+        // A season can be set up while its ceremony is published; the draft
+        // waits until the ceremony opens for leagues.
+        assertCeremonyOpenForLeagues(
+          (await getCeremonyStatus(tx, season.ceremony_id)) ?? ""
+        );
 
         // Revoke any pending invites so seat creation reflects actual participants.
         await revokePendingInvitesForSeason(tx, season.id);

@@ -27,6 +27,18 @@ export async function getCeremonyDraftLockedAt(
   return rows[0]?.draft_locked_at ?? null;
 }
 
+export async function getCeremonyStatus(
+  client: DbClient,
+  ceremonyId: number
+): Promise<string | null> {
+  const { rows } = await query<{ status: string }>(
+    client,
+    `SELECT status FROM ceremony WHERE id = $1`,
+    [ceremonyId]
+  );
+  return rows[0]?.status ?? null;
+}
+
 export type CeremonyDates = {
   id: number;
   status: string;

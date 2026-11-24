@@ -1,5 +1,5 @@
 import type { CircuitLeagueSummary, CircuitSummary } from "../lib/types";
-import { startableCircuits } from "./circuitLeague";
+import { isCircuitOpenForSeasons, startableCircuits } from "./circuitLeague";
 
 /*
  * The kinds of season Create season offers. A Circuit competition is the
@@ -52,8 +52,8 @@ export function ceremonyKindAvailability(ceremonyCount: number): SeasonKindAvail
 }
 
 /**
- * Full awards season: at least one active Circuit not yet running in this
- * league. `null` lists mean they failed to load.
+ * Full awards season: at least one live or coming-soon Circuit not yet running
+ * in this league. `null` lists mean they failed to load.
  */
 export function fullKindAvailability(input: {
   circuits: CircuitSummary[] | null;
@@ -66,7 +66,7 @@ export function fullKindAvailability(input: {
       retry: true
     };
   }
-  const active = input.circuits.filter((c) => c.status === "ACTIVE");
+  const active = input.circuits.filter((c) => isCircuitOpenForSeasons(c.status));
   if (active.length === 0) {
     return {
       available: false,

@@ -41,8 +41,8 @@ export type LandingCircuitPreview = CircuitLeagueSummary & {
 
 /**
  * The viewer's own Circuit competitions (players see each as a season) whose
- * Circuit is still running, newest first. Ones the viewer has not joined stay
- * on the league page.
+ * Circuit is coming soon or still running, newest first. Ones the viewer has
+ * not joined stay on the league page.
  */
 export function computeLandingCircuitPreviews(
   results: Array<{ league: LeagueSummary; circuitLeagues: CircuitLeagueSummary[] }>
@@ -51,7 +51,10 @@ export function computeLandingCircuitPreviews(
     .flatMap(({ league, circuitLeagues }) =>
       circuitLeagues.map((c) => ({ ...c, league_name: league.name }))
     )
-    .filter((c) => c.is_member && c.circuit_status === "ACTIVE")
+    .filter(
+      (c) =>
+        c.is_member && (c.circuit_status === "ACTIVE" || c.circuit_status === "PUBLISHED")
+    )
     .sort((a, b) => {
       const at = Date.parse(a.created_at) || 0;
       const bt = Date.parse(b.created_at) || 0;

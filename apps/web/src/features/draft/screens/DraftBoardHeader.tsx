@@ -42,6 +42,8 @@ export function DraftBoardHeader(props: {
   showDraftControls: boolean;
   canManageDraft: boolean;
   onStartDraft: () => void;
+  /** Start draft shows but is disabled, with this line, until the draft can start. */
+  startBlockedLine?: string | null;
   onPauseDraft: () => void;
   onResumeDraft: () => void;
   audioController: ReturnType<typeof createDraftAudioController>;
@@ -169,6 +171,7 @@ export function DraftBoardHeader(props: {
               showDraftedVisible={props.showDraftedVisible}
               showDraftedFilter={props.showDraftedFilter}
               onStartDraft={props.onStartDraft}
+              startBlockedLine={props.startBlockedLine}
               onPauseDraft={props.onPauseDraft}
               onResumeDraft={props.onResumeDraft}
               soundEnabled={props.soundEnabled}

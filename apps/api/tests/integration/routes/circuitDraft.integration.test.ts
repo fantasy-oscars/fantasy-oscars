@@ -216,6 +216,28 @@ describe("circuit draft", () => {
       expect(await leagueStatus()).toBe("INITIALIZED");
     });
 
+    it("waits for a published Circuit to go live, then starts", async () => {
+      await db.pool.query(
+        `UPDATE circuit SET status = 'PUBLISHED', activated_at = NULL WHERE id = $1`,
+        [circuitId]
+      );
+      const res = await start(alice);
+      expect(res.status).toBe(409);
+      expect(res.body.error).toMatchObject({
+        code: "CIRCUIT_NOT_LIVE",
+        message: "This season isn't open yet. You can start the draft once it is.",
+        details: { status: "PUBLISHED" }
+      });
+      expect(await count(`SELECT COUNT(*)::int AS n FROM circuit_draft`)).toBe(0);
+      expect(await leagueStatus()).toBe("INITIALIZED");
+
+      await db.pool.query(
+        `UPDATE circuit SET status = 'ACTIVE', activated_at = now() WHERE id = $1`,
+        [circuitId]
+      );
+      await started();
+    });
+
     it("refuses a league that has not been initialised", async () => {
       await db.pool.query(
         `UPDATE circuit_league SET status = 'SETUP', initialized_at = NULL WHERE id = $1`,

@@ -53,7 +53,7 @@ export type VisualSeed = {
    * offers both open awards seasons.
    */
   matineeLeague: number;
-  drafts: { completed: number; live: number };
+  drafts: { completed: number; live: number; pending: number };
   /** An unused id for the 404 and missing-entity screens. */
   missingId: number;
 };
@@ -1029,7 +1029,11 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
       complete: finishedLeague.id
     },
     matineeLeague: matinee.id,
-    drafts: { completed: completed.draftId, live: live.draftId },
+    drafts: {
+      completed: completed.draftId,
+      live: live.draftId,
+      pending: pending.draftId
+    },
     missingId: 99999
   };
 }

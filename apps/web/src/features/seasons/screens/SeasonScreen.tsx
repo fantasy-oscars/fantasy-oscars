@@ -18,6 +18,7 @@ import { DeleteSeasonModal } from "@/features/seasons/ui/modals/DeleteSeasonModa
 import { useSeasonCategoryWeightsModal } from "./useSeasonCategoryWeightsModal";
 import { useSeasonDraftSettingsModal } from "./useSeasonDraftSettingsModal";
 import { PageError } from "@/shared/page-state";
+import { comingSoonNote } from "@/decisions/goLive";
 import "@/primitives/baseline.css";
 
 function SeasonScreenSkeleton() {
@@ -185,6 +186,10 @@ export function SeasonScreen(props: {
             title={ceremonyName}
             subtitle={leagueName ?? "—"}
             statusLabel={progression}
+            note={comingSoonNote({
+              status: s.ceremonyStatus,
+              startsAt: s.ceremonyStartsAt
+            })}
           />
 
           {/* Three-column functional layout */}

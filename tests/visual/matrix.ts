@@ -103,6 +103,31 @@ export function asSuperAdmin(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Rewrites a JSON response the page loads (GET only). For screens whose state
+ * the seed does not hold, such as a ceremony or awards season that is coming soon.
+ */
+export function rewriteJson(
+  page: Page,
+  url: string,
+  edit: (body: Record<string, unknown>) => void
+): Promise<void> {
+  return page.route(url, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const response = await route.fetch();
+    const body = (await response.json()) as Record<string, unknown>;
+    edit(body);
+    await route.fulfill({ response, json: body });
+  });
+}
+
+type Row = Record<string, unknown>;
+
+/** Every row of a list response, e.g. `ceremonies` or `circuit_leagues`. */
+function rowsOf(body: Record<string, unknown>, key: string): Row[] {
+  return (body[key] as Row[] | undefined) ?? [];
+}
+
 /** The countdown screen's edit: a 90 s timer with 4 s left. */
 export function countdownSnapshot(draft: Record<string, unknown>) {
   draft.pick_timer_seconds = 90;
@@ -270,6 +295,34 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // Seasons set up before go-live: the full season reads Pre-draft with a
+    // coming-soon note.
+    id: "league-detail-coming-soon",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.main}`,
+    beforeNavigate: (page) =>
+      rewriteJson(page, "**/leagues/*/circuits", (body) => {
+        for (const c of rowsOf(body, "circuit_leagues")) c.circuit_status = "PUBLISHED";
+      }),
+    ready: { text: "Coming soon" },
+    fullPage: true
+  },
+  {
+    // The pending single-ceremony season before its ceremony goes live: Pre-draft,
+    // with a coming-soon note and the ceremony's date.
+    id: "league-detail-ceremony-coming-soon",
+    persona: "avery",
+    path: (s) => `/leagues/${s.leagues.second}`,
+    beforeNavigate: (page) =>
+      rewriteJson(page, "**/leagues/*/seasons", (body) => {
+        for (const season of rowsOf(body, "seasons")) {
+          if (season.draft_status === "PENDING") season.ceremony_status = "PUBLISHED";
+        }
+      }),
+    ready: { text: "Coming soon ·" },
+    fullPage: true
+  },
+  {
     id: "league-detail-member",
     persona: "casey",
     path: (s) => `/leagues/${s.leagues.main}`,
@@ -303,6 +356,28 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // The open ceremony is not live yet: offered as coming soon, chosen, with the
+    // note that the draft waits.
+    id: "season-create-ceremony-coming-soon",
+    persona: "avery",
+    path: (s) =>
+      `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=ceremony`,
+    beforeNavigate: (page) =>
+      rewriteJson(page, "**/ceremonies/published", (body) => {
+        for (const c of rowsOf(body, "ceremonies")) c.status = "PUBLISHED";
+      }),
+    ready: { text: "Seconds per pick" },
+    prepare: async (page) => {
+      await page.getByRole("textbox", { name: "Ceremony" }).click();
+      await page.getByRole("option", { name: /Coming soon/ }).click();
+      await expect(
+        page.getByText(/The draft opens when the ceremony goes live/)
+      ).toBeVisible();
+      await waitForAnimationsIdle(page);
+    },
+    fullPage: true
+  },
+  {
     // One open awards season: a static row, then the four settings summaries.
     id: "season-create-full",
     persona: "avery",
@@ -318,6 +393,31 @@ export const SCREENS: ScreenDef[] = [
     beforeNavigate: asSuperAdmin,
     path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=full`,
     ready: { text: "1 point per nomination, 2 per win." },
+    fullPage: true
+  },
+  {
+    // The newer awards season is not live yet: listed after the live one as coming
+    // soon, chosen, with the note that the draft waits.
+    id: "season-create-full-coming-soon",
+    persona: "avery",
+    beforeNavigate: async (page) => {
+      await asSuperAdmin(page);
+      await rewriteJson(page, "**/circuits", (body) => {
+        for (const c of rowsOf(body, "circuits")) {
+          if (c.code === "awards-season-2036") c.status = "PUBLISHED";
+        }
+      });
+    },
+    path: (s) => `/leagues/${s.matineeLeague}/sunday-matinee-club/seasons/new?kind=full`,
+    ready: { text: "1 point per nomination, 2 per win." },
+    prepare: async (page) => {
+      await page.getByRole("textbox", { name: "Awards season" }).click();
+      await page.getByRole("option", { name: /Coming soon/ }).click();
+      await expect(
+        page.getByText(/The draft opens when the season goes live/)
+      ).toBeVisible();
+      await waitForAnimationsIdle(page);
+    },
     fullPage: true
   },
   {
@@ -450,6 +550,21 @@ export const SCREENS: ScreenDef[] = [
     path: (s) =>
       `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}/draft`,
     ready: { text: "Prepare your picks" },
+    fullPage: true
+  },
+  {
+    // Locked but not live yet: the commissioner's Start draft is disabled and the
+    // lobby says the draft opens when the season goes live.
+    id: "circuit-draft-lobby-not-live",
+    persona: "avery",
+    path: (s) =>
+      `/leagues/${s.leagues.main}/friday-night-film-club/seasons/full/${s.circuitLeagues.main}/draft`,
+    beforeNavigate: (page) =>
+      rewriteJson(page, "**/circuit-leagues/*", (body) => {
+        (body.circuit as Row).status = "PUBLISHED";
+        (body.circuit_league as Row).status = "INITIALIZED";
+      }),
+    ready: { text: "Opens when the season goes live" },
     fullPage: true
   },
   {
@@ -640,6 +755,18 @@ export const SCREENS: ScreenDef[] = [
     path: (s) => `/seasons/${s.seasons.pending}`,
     ready: { text: "Participants" },
     fullPage: true
+  },
+  {
+    // A pending draft whose ceremony is not live yet: Start draft disabled for the
+    // commissioner, and the line under the header.
+    id: "draft-pending-not-live",
+    persona: "avery",
+    path: (s) => `/drafts/${s.drafts.pending}`,
+    beforeNavigate: (page) =>
+      rewriteDraftSnapshot(page, (_draft, snapshot) => {
+        snapshot.ceremony_status = "PUBLISHED";
+      }),
+    ready: { text: "Opens when the ceremony goes live" }
   },
   {
     id: "draft-live-your-turn",

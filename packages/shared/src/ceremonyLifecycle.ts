@@ -19,7 +19,16 @@ export function isCeremonyContentEditable(status: string): boolean {
 }
 
 /**
- * Seasons and drafts can be created only while the ceremony is open for leagues.
+ * Seasons can be set up once the ceremony is visible to players: while it is
+ * published and still being finished, and after it opens for leagues.
+ */
+export function isCeremonyOpenForSeasons(status: string): boolean {
+  return status === "PUBLISHED" || status === "ACTIVE";
+}
+
+/**
+ * Drafts start only once the ceremony is open for leagues, when its content is
+ * frozen.
  */
 export function isCeremonyOpenForLeagues(status: string): boolean {
   return status === "ACTIVE";

@@ -2,6 +2,7 @@ import { Button, Group, NumberInput, Select, Stack, Switch, Text } from "@ui";
 import type { LeagueSeasonCreateView } from "@/orchestration/seasons";
 import { FormStatus } from "@/shared/forms";
 import { StandardCard } from "@/primitives";
+import { comingSoonSetupNote, goLiveOptionLabel, isComingSoon } from "@/decisions/goLive";
 
 type ReadyView = Extract<LeagueSeasonCreateView, { state: "ready" }>;
 
@@ -19,6 +20,7 @@ export function CeremonySeasonForm(props: {
   };
 }) {
   const { view, actions } = props;
+  const chosen = view.ceremonies.find((c) => c.id === view.ceremonyId) ?? null;
   return (
     <StandardCard
       component="form"
@@ -38,9 +40,12 @@ export function CeremonySeasonForm(props: {
           disabled={view.working}
           data={view.ceremonies.map((c) => ({
             value: String(c.id),
-            label: c.name
+            label: goLiveOptionLabel(c)
           }))}
         />
+        {chosen && isComingSoon(chosen.status) ? (
+          <Text variant="helper">{comingSoonSetupNote("ceremony")}</Text>
+        ) : null}
         {view.ceremonies.length === 0 && (
           <Text className="baseline-textMeta">
             No ceremonies are open for leagues yet.

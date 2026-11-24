@@ -33,6 +33,10 @@ function makeOrchestration(
     onSelect?: (id: number) => void;
     onSubmit?: (id: number) => void;
     onClear?: () => void;
+    status?: string;
+    startBlockedLine?: string | null;
+    canManageDraft?: boolean;
+    onStartDraft?: () => void;
   } = {}
 ): DraftRoomOrchestration {
   const selectedId = overrides.selectedId ?? null;
@@ -57,7 +61,7 @@ function makeOrchestration(
           userId: 2
         }
       ],
-      status: "IN_PROGRESS",
+      status: overrides.status ?? "IN_PROGRESS",
       roundNumber: 1,
       pickNumber: 1,
       direction: "FORWARD",
@@ -72,8 +76,9 @@ function makeOrchestration(
       canStartDraft: false,
       startLoading: false,
       startResult: null,
-      onStartDraft: () => {},
-      canManageDraft: true,
+      onStartDraft: () => overrides.onStartDraft?.(),
+      startBlockedLine: overrides.startBlockedLine ?? null,
+      canManageDraft: overrides.canManageDraft ?? true,
       pauseLoading: false,
       pauseResult: null,
       onPauseDraft: () => {},
@@ -491,5 +496,67 @@ describe("draft room accessibility", () => {
   it("hides the connection indicator while connected", () => {
     renderScreen(makeOrchestration());
     expect(screen.queryByTestId("draft-connection-indicator")).toBeNull();
+  });
+
+  describe("before the ceremony goes live", () => {
+    const LINE = "Opens when the ceremony goes live";
+
+    it("shows the commissioner a disabled Start draft and the line", () => {
+      const onStartDraft = vi.fn();
+      renderScreen(
+        makeOrchestration({ status: "PENDING", startBlockedLine: LINE, onStartDraft })
+      );
+      const start = screen.getByRole("button", { name: "Start draft" });
+      expect(start).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(start);
+      expect(onStartDraft).not.toHaveBeenCalled();
+      expect(screen.getByRole("note")).toHaveTextContent(LINE);
+    });
+
+    it("shows a player the same line and no Start draft", () => {
+      renderScreen(
+        makeOrchestration({
+          status: "PENDING",
+          startBlockedLine: LINE,
+          canManageDraft: false
+        })
+      );
+      expect(screen.queryByRole("button", { name: "Start draft" })).toBeNull();
+      expect(screen.getByRole("note")).toHaveTextContent(LINE);
+    });
+
+    it("shows the line on a phone, with Start draft disabled in the menu", async () => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false
+      }));
+      try {
+        const user = userEvent.setup();
+        renderScreen(makeOrchestration({ status: "PENDING", startBlockedLine: LINE }));
+        expect(screen.getByRole("note")).toHaveTextContent(LINE);
+        await user.click(screen.getByRole("button", { name: "Settings" }));
+        const item = await screen.findByRole("menuitem", { name: /Start draft/ });
+        expect(item).toHaveTextContent(LINE);
+        expect(item).toBeDisabled();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("enables Start draft once the ceremony is live", () => {
+      const onStartDraft = vi.fn();
+      renderScreen(makeOrchestration({ status: "PENDING", onStartDraft }));
+      const start = screen.getByRole("button", { name: "Start draft" });
+      expect(start).not.toHaveAttribute("aria-disabled");
+      fireEvent.click(start);
+      expect(onStartDraft).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("note")).toBeNull();
+    });
   });
 });

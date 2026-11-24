@@ -6,8 +6,10 @@ export function SeasonDashboardHeader(props: {
   title: string;
   subtitle: string;
   statusLabel: string;
+  /** "Coming soon" while the ceremony is not live yet. */
+  note?: string | null;
 }) {
-  const { title, subtitle, statusLabel } = props;
+  const { title, subtitle, statusLabel, note } = props;
   return (
     <Group component="header" justify="space-between" align="flex-start" wrap="wrap">
       <Box>
@@ -15,6 +17,7 @@ export function SeasonDashboardHeader(props: {
           {title}
         </Title>
         <Text className="baseline-textBody">{subtitle}</Text>
+        {note ? <Text variant="helper">{note}</Text> : null}
       </Box>
       <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
     </Group>

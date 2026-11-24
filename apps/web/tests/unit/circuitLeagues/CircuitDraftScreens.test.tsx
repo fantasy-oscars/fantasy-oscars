@@ -51,6 +51,7 @@ type DraftInput = {
   snapshot?: CircuitDraftSnapshot | null;
   queue?: boolean;
   canStart?: boolean;
+  startBlockedLine?: string | null;
   gate?: CircuitPickGate | null;
   canPause?: boolean;
   picker?: ContenderPickerProps | null;
@@ -123,6 +124,7 @@ function draftRoom(
                 ? null
                 : circuitStagedRows(queue, detail.categories, snapshot),
             canStart: input.canStart ?? snapshot === null,
+            startBlockedLine: input.startBlockedLine ?? null,
             gate: input.gate ?? null,
             canPause: input.canPause ?? false,
             announcement: ""
@@ -230,6 +232,34 @@ describe("circuit draft lobby", () => {
     expect(screen.getByText(/The commissioner starts the draft/)).toBeTruthy();
     expect(screen.getByText(/you have no draft queue/)).toBeTruthy();
     expect(screen.getByText(/you have no queue\./)).toBeTruthy();
+  });
+});
+
+describe("circuit draft lobby before the season goes live", () => {
+  const LINE = "Opens when the season goes live";
+
+  it("shows the commissioner a disabled Start draft and the line, with the queue usable", () => {
+    const handlers = renderDraft({ startBlockedLine: LINE });
+    const start = screen.getByRole("button", { name: "Start draft" });
+    expect(start.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(start);
+    expect(handlers.onStart).not.toHaveBeenCalled();
+    expect(screen.getByRole("note").textContent).toBe(LINE);
+    const staging = screen.getByRole("region", { name: "Staging" });
+    expect(within(staging).getByRole("list", { name: "Your queue" })).toBeTruthy();
+  });
+
+  it("shows a player the same line and no Start draft", () => {
+    renderDraft({
+      detail: circuitLeagueDetail({
+        status: "INITIALIZED",
+        viewer: { can_manage: false }
+      }),
+      canStart: false,
+      startBlockedLine: LINE
+    });
+    expect(screen.queryByRole("button", { name: "Start draft" })).toBeNull();
+    expect(screen.getByRole("note").textContent).toBe(LINE);
   });
 });
 

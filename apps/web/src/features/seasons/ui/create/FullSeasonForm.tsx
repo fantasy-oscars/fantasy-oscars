@@ -3,6 +3,7 @@ import type { ApiResult, CircuitSummary } from "@/lib/types";
 import type { SettingsArea } from "@/decisions/fullSeasonSettings";
 import { FormStatus } from "@/shared/forms";
 import { StandardCard } from "@/primitives";
+import { comingSoonSetupNote, goLiveOptionLabel, isComingSoon } from "@/decisions/goLive";
 import { SettingsHeading } from "@/features/circuitLeagues/ui/settings/SettingsHeading";
 import {
   SettingsSummaryRows,
@@ -34,6 +35,7 @@ export function FullSeasonForm(props: {
 }) {
   const { openCircuits, circuitId, working, status } = props;
   const only = openCircuits.length === 1 ? openCircuits[0]! : null;
+  const chosen = openCircuits.find((c) => c.id === circuitId) ?? null;
   return (
     <StandardCard
       component="form"
@@ -55,7 +57,7 @@ export function FullSeasonForm(props: {
             <Text
               className={`baseline-textBody baseline-wrapAnywhere ${classes.awardsValue}`}
             >
-              {only.name}
+              {goLiveOptionLabel(only)}
             </Text>
           </Box>
         ) : (
@@ -66,7 +68,10 @@ export function FullSeasonForm(props: {
               onChange={(v) => props.onChooseCircuit(v ? Number(v) : null)}
               allowDeselect={false}
               disabled={working}
-              data={openCircuits.map((c) => ({ value: String(c.id), label: c.name }))}
+              data={openCircuits.map((c) => ({
+                value: String(c.id),
+                label: goLiveOptionLabel(c)
+              }))}
             />
             <Text variant="meta" role="status" aria-live="polite">
               {props.discarded
@@ -75,6 +80,10 @@ export function FullSeasonForm(props: {
             </Text>
           </Stack>
         )}
+
+        {chosen && isComingSoon(chosen.status) ? (
+          <Text variant="helper">{comingSoonSetupNote("season")}</Text>
+        ) : null}
 
         <Divider />
 

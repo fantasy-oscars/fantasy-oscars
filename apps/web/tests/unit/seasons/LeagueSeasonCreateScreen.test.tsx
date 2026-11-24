@@ -211,6 +211,69 @@ describe("Create season kind choice", () => {
     expect(within(form).getByDisplayValue("2026–27 Awards Season")).toBeTruthy();
   });
 
+  it("labels a ceremony that is not live yet as coming soon, and says the draft waits", () => {
+    renderScreen(
+      readyView({
+        ceremonies: [
+          { id: 11, code: "oscars-2036", name: "Oscars 2036", status: "ACTIVE" },
+          { id: 12, code: "oscars-2037", name: "Oscars 2037", status: "PUBLISHED" }
+        ] as never,
+        ceremonyId: 12
+      }),
+      "ceremony"
+    );
+    const form = screen.getByRole("form", { name: "Single ceremony season" });
+    expect(within(form).getByDisplayValue("Oscars 2037 · Coming soon")).toBeTruthy();
+    expect(
+      within(form).getByText(
+        "You can set up the season and invite players now. The draft opens when the ceremony goes live."
+      )
+    ).toBeTruthy();
+    fireEvent.click(within(form).getAllByLabelText("Ceremony")[0]!);
+    expect(screen.getByRole("option", { name: "Oscars 2036" })).toBeTruthy();
+    expect(
+      screen.getByRole("option", { name: "Oscars 2037 · Coming soon" })
+    ).toBeTruthy();
+  });
+
+  it("says nothing about going live when the chosen ceremony is live", () => {
+    renderScreen(
+      readyView({
+        ceremonies: [
+          { id: 11, code: "oscars-2036", name: "Oscars 2036", status: "ACTIVE" }
+        ] as never,
+        ceremonyId: 11
+      }),
+      "ceremony"
+    );
+    expect(screen.getByDisplayValue("Oscars 2036")).toBeTruthy();
+    expect(screen.queryByText(/goes live/)).toBeNull();
+  });
+
+  it("labels an awards season that is not live yet as coming soon, in the picker and alone", () => {
+    const comingSoon = { ...circuit(7, "Awards Season 2037"), status: "PUBLISHED" };
+    renderScreen(
+      readyView({
+        openCircuits: [circuit(5, "Awards Season 2036"), comingSoon],
+        fullCircuitId: 7
+      }),
+      "full"
+    );
+    const form = screen.getByRole("form", { name: "Full awards season" });
+    expect(
+      within(form).getByDisplayValue("Awards Season 2037 · Coming soon")
+    ).toBeTruthy();
+    expect(
+      within(form).getByText(
+        "You can set up the season and invite players now. The draft opens when the season goes live."
+      )
+    ).toBeTruthy();
+    cleanup();
+
+    renderScreen(readyView({ openCircuits: [comingSoon], fullCircuitId: 7 }), "full");
+    expect(screen.getByText("Awards Season 2037 · Coming soon")).toBeTruthy();
+  });
+
   it("disables an unavailable kind, says why, and preselects the other", () => {
     renderScreen(
       readyView({

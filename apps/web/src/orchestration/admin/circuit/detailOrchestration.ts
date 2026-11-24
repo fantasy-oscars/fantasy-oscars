@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { notify } from "../../../notifications";
+import { confirm, notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import {
@@ -415,6 +415,53 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
     return true;
   }, [detail, load]);
 
+  /** DRAFT → PUBLISHED: players see it as coming soon and can set up seasons. */
+  const publish = useCallback(async () => {
+    if (!detail) return false;
+    setWorking(true);
+    setStatus(null);
+    const res = await fetchJson(`/admin/circuits/${detail.circuit.id}/publish`, {
+      method: "POST"
+    });
+    setWorking(false);
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Could not publish the Circuit" });
+      return false;
+    }
+    notifySuccess("admin.circuit.publish.success", "Circuit published.");
+    await load();
+    return true;
+  }, [detail, load]);
+
+  /**
+   * PUBLISHED → DRAFT, after the admin confirms. The server refuses while any
+   * season is set up against the Circuit; its message says how many.
+   */
+  const withdraw = useCallback(async () => {
+    if (!detail) return false;
+    const ok = await confirm({
+      title: `Withdraw ${detail.circuit.name}?`,
+      message:
+        "It goes back to draft and players stop seeing it. This is refused while any season is set up for it.",
+      confirmLabel: "Withdraw",
+      danger: true
+    });
+    if (!ok) return false;
+    setWorking(true);
+    setStatus(null);
+    const res = await fetchJson(`/admin/circuits/${detail.circuit.id}/unpublish`, {
+      method: "POST"
+    });
+    setWorking(false);
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Could not withdraw the Circuit" });
+      return false;
+    }
+    notifySuccess("admin.circuit.withdraw.success", "Circuit withdrawn.");
+    await load();
+    return true;
+  }, [detail, load]);
+
   return {
     state,
     error,
@@ -439,6 +486,8 @@ export function useAdminCircuitDetailOrchestration(args: { circuitId: number | n
       reorderCategories,
       removeCategory,
       saveMappings,
+      publish,
+      withdraw,
       activate
     }
   };

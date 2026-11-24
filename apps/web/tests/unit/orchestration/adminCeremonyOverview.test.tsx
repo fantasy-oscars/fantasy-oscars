@@ -1,5 +1,12 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const confirmMock = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
+vi.mock("@/notifications", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/notifications")>()),
+  confirm: confirmMock
+}));
+
 import { useAdminCeremonyOverviewOrchestration } from "@/orchestration/adminCeremonies";
 
 function json(body: unknown, status = 200) {
@@ -20,7 +27,7 @@ const CEREMONY = {
   results_finalized_at: null
 };
 
-function stubFetch(datesStatus = 200) {
+function stubFetch(datesStatus = 200, seasonCount = 0) {
   const calls: Array<{ url: string; method: string; body?: string }> = [];
   vi.stubGlobal(
     "fetch",
@@ -41,6 +48,19 @@ function stubFetch(datesStatus = 200) {
               },
           datesStatus
         );
+      if (url.endsWith("/admin/ceremonies/7/unpublish"))
+        return seasonCount
+          ? json(
+              {
+                error: {
+                  code: "CEREMONY_HAS_SEASONS",
+                  message: `Remove the ${seasonCount} season set up for this first`,
+                  details: { season_count: seasonCount }
+                }
+              },
+              409
+            )
+          : json({ ceremony: { ...CEREMONY, status: "DRAFT" } });
       return json({
         ceremony: CEREMONY,
         stats: {
@@ -68,6 +88,43 @@ describe("ceremony details orchestration", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    confirmMock.mockReset();
+  });
+
+  it("withdraws only after the admin confirms", async () => {
+    const calls = stubFetch();
+    confirmMock.mockResolvedValue(false);
+    const { result } = await renderOverview();
+    await act(async () => {
+      await result.current.actions.withdraw();
+    });
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmLabel: "Withdraw", danger: true })
+    );
+    expect(writes(calls)).toEqual([]);
+
+    confirmMock.mockResolvedValue(true);
+    await act(async () => {
+      await result.current.actions.withdraw();
+    });
+    expect(writes(calls).map((c) => [c.method, c.url.replace(/^.*\/admin/, "")])).toEqual(
+      [["POST", "/ceremonies/7/unpublish"]]
+    );
+    expect(result.current.status).toBeNull();
+    expect(result.current.withdrawing).toBe(false);
+  });
+
+  it("shows the server's refusal when a season is set up", async () => {
+    stubFetch(200, 1);
+    confirmMock.mockResolvedValue(true);
+    const { result } = await renderOverview();
+    await act(async () => {
+      await result.current.actions.withdraw();
+    });
+    expect(result.current.status).toEqual({
+      ok: false,
+      message: "Remove the 1 season set up for this first"
+    });
   });
 
   it("loads the nominations date into the one date section", async () => {

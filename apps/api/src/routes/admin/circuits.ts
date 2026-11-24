@@ -8,7 +8,9 @@ import {
   createCircuit,
   getCircuitDetail,
   getCircuitReadiness,
-  listCircuitsForAdmin
+  listCircuitsForAdmin,
+  publish,
+  unpublish
 } from "../../services/circuit/circuitAdmin.js";
 import { rebuildCircuitScoresAsAdmin } from "../../services/circuit/circuitScoring.js";
 import {
@@ -67,6 +69,32 @@ export function registerAdminCircuitRoutes(router: Router, client: DbClient) {
       try {
         const { id } = parseParams(adminCircuitIdParam, req.params);
         return res.status(200).json(await getCircuitReadiness(client, id));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // DRAFT → PUBLISHED: players can set up seasons; drafts wait for activate.
+  router.post(
+    "/circuits/:id/publish",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id } = parseParams(adminCircuitIdParam, req.params);
+        return res.status(200).json(await publish(pool, actorOf(req), id));
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // PUBLISHED → DRAFT, refused while any season is set up against the Circuit.
+  router.post(
+    "/circuits/:id/unpublish",
+    async (req: AuthedRequest, res: express.Response, next: express.NextFunction) => {
+      try {
+        const { id } = parseParams(adminCircuitIdParam, req.params);
+        return res.status(200).json(await unpublish(pool, actorOf(req), id));
       } catch (err) {
         next(err);
       }

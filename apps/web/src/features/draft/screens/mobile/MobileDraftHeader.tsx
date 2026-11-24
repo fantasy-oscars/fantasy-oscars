@@ -35,6 +35,8 @@ export function MobileDraftHeader(props: {
   showDraftControls: boolean;
   canManageDraft: boolean;
   onStartDraft: () => void;
+  /** Start draft shows but is disabled, with this line, until the draft can start. */
+  startBlockedLine?: string | null;
   onPauseDraft: () => void;
   onResumeDraft: () => void;
   isFinalResults: boolean;
@@ -133,7 +135,16 @@ export function MobileDraftHeader(props: {
               ) : null}
 
               {props.showDraftControls && props.canManageDraft ? (
-                isPre ? (
+                isPre && props.startBlockedLine ? (
+                  <Menu.Item disabled>
+                    <Text component="span" display="block">
+                      Start draft
+                    </Text>
+                    <Text component="span" display="block" variant="helper">
+                      {props.startBlockedLine}
+                    </Text>
+                  </Menu.Item>
+                ) : isPre ? (
                   <Menu.Item onClick={props.onStartDraft}>Start draft</Menu.Item>
                 ) : isPaused ? (
                   <Menu.Item onClick={props.onResumeDraft}>Resume draft</Menu.Item>

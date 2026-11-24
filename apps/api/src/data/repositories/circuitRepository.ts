@@ -10,6 +10,7 @@ export type CircuitRow = {
   name: string;
   status: string;
   opens_on: string | null;
+  published_at: Date | null;
   activated_at: Date | null;
   archived_at: Date | null;
   created_at: Date;
@@ -77,7 +78,7 @@ export type CategoryTemplateRow = {
 };
 
 const CIRCUIT_COLUMNS = `c.id::int, c.code, c.name, c.status, c.opens_on::text AS opens_on,
-  c.activated_at, c.archived_at, c.created_at`;
+  c.published_at, c.activated_at, c.archived_at, c.created_at`;
 
 const EVENT_COLUMNS = `id::int, circuit_id::int, code, name, sort_index, is_group`;
 
@@ -111,12 +112,12 @@ export async function listCircuits(
 export async function getCircuitById(
   client: DbClient,
   id: number,
-  opts: { forUpdate?: boolean } = {}
+  opts: { forUpdate?: boolean; forShare?: boolean } = {}
 ): Promise<CircuitRow | null> {
+  const lock = opts.forUpdate ? "FOR UPDATE" : opts.forShare ? "FOR SHARE" : "";
   const { rows } = await query<CircuitRow>(
     client,
-    `SELECT ${CIRCUIT_COLUMNS} FROM circuit c WHERE c.id = $1
-     ${opts.forUpdate ? "FOR UPDATE" : ""}`,
+    `SELECT ${CIRCUIT_COLUMNS} FROM circuit c WHERE c.id = $1 ${lock}`,
     [id]
   );
   return rows[0] ?? null;
@@ -137,7 +138,58 @@ export async function insertCircuit(
   return rows[0]!;
 }
 
-/** DRAFT → ACTIVE. Returns null when the Circuit is not in DRAFT. */
+/**
+ * DRAFT → PUBLISHED: players see the Circuit and can set up seasons, but no
+ * draft starts until it is ACTIVE. Returns null unless the Circuit is DRAFT.
+ */
+export async function publishCircuit(
+  client: DbClient,
+  id: number
+): Promise<CircuitRow | null> {
+  const { rows } = await query<CircuitRow>(
+    client,
+    `UPDATE circuit AS c
+     SET status = 'PUBLISHED', published_at = now()
+     WHERE c.id = $1 AND c.status = 'DRAFT'
+     RETURNING ${CIRCUIT_COLUMNS}`,
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+/** PUBLISHED → DRAFT. Returns null unless the Circuit is PUBLISHED. */
+export async function unpublishCircuit(
+  client: DbClient,
+  id: number
+): Promise<CircuitRow | null> {
+  const { rows } = await query<CircuitRow>(
+    client,
+    `UPDATE circuit AS c
+     SET status = 'DRAFT', published_at = NULL
+     WHERE c.id = $1 AND c.status = 'PUBLISHED'
+     RETURNING ${CIRCUIT_COLUMNS}`,
+    [id]
+  );
+  return rows[0] ?? null;
+}
+
+/** Every season set up against the Circuit, whatever its status. */
+export async function countCircuitLeagues(
+  client: DbClient,
+  circuitId: number
+): Promise<number> {
+  const { rows } = await query<{ count: number }>(
+    client,
+    `SELECT COUNT(*)::int AS count FROM circuit_league WHERE circuit_id = $1`,
+    [circuitId]
+  );
+  return rows[0]?.count ?? 0;
+}
+
+/**
+ * DRAFT or PUBLISHED → ACTIVE. Returns null when the Circuit is in neither:
+ * nothing leaves ACTIVE except archiving.
+ */
 export async function activateCircuit(
   client: DbClient,
   id: number
@@ -146,7 +198,7 @@ export async function activateCircuit(
     client,
     `UPDATE circuit AS c
      SET status = 'ACTIVE', activated_at = now()
-     WHERE c.id = $1 AND c.status = 'DRAFT'
+     WHERE c.id = $1 AND c.status IN ('DRAFT', 'PUBLISHED')
      RETURNING ${CIRCUIT_COLUMNS}`,
     [id]
   );

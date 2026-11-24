@@ -74,6 +74,7 @@ function setView(phase: "lobby" | "live", canPick: boolean) {
     queue: [],
     staged: [],
     canStart: false,
+    startBlockedLine: null,
     gate: phase === "live" ? { onTheClock: canPick, canPick, reason: "" } : null,
     canPause: false,
     announcement: ""

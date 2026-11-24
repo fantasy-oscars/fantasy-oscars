@@ -55,6 +55,8 @@ export function AdminCircuitDetailPage() {
         reorder: a.reorderCategories,
         remove: (categoryId) => void a.removeCategory(categoryId)
       }}
+      onPublish={() => void a.publish()}
+      onWithdraw={() => void a.withdraw()}
       onActivate={() => void a.activate()}
     />
   );

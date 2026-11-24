@@ -118,6 +118,21 @@ export async function createExtantSeason(
   return rows[0];
 }
 
+/** Seasons set up against the ceremony that have not been cancelled. */
+export async function countExtantSeasonsForCeremony(
+  client: DbClient,
+  ceremonyId: number
+): Promise<number> {
+  const { rows } = await query<{ count: number }>(
+    client,
+    `SELECT COUNT(*)::int AS count
+     FROM season
+     WHERE ceremony_id = $1 AND status = 'EXTANT'`,
+    [ceremonyId]
+  );
+  return rows[0]?.count ?? 0;
+}
+
 export async function getSeasonById(
   client: DbClient,
   id: number

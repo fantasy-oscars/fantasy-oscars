@@ -15,6 +15,8 @@ export function CircuitDraftLobby(props: {
   summaries: CircuitLobbySummary[];
   members: Array<{ userId: number; username: string; isViewer: boolean }>;
   startStatus: ApiResult | null;
+  /** Why the draft cannot start yet (the season is not live); null once it can. */
+  blockedLine?: string | null;
 }) {
   return (
     <Stack gap="lg">
@@ -23,6 +25,15 @@ export function CircuitDraftLobby(props: {
           Draft
         </Title>
         <Divider />
+        {props.blockedLine ? (
+          <Text
+            className="baseline-textBody"
+            fw="var(--fo-font-weight-semibold)"
+            role="note"
+          >
+            {props.blockedLine}
+          </Text>
+        ) : null}
         <Text className="baseline-textBody">{props.startNote}</Text>
         <Box component="dl" className="circuit-lobbyFacts">
           {props.facts.map((fact) => (

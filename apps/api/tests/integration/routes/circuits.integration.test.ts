@@ -1038,6 +1038,110 @@ describe("circuit admin and public routes", () => {
       expect(again.json.error.code).toBe("CIRCUIT_NOT_DRAFT");
     });
 
+    type CircuitBody = {
+      circuit: {
+        status: string;
+        published_at: string | null;
+        activated_at: string | null;
+      };
+    };
+
+    it("publishes a draft Circuit, shows it to players and activates it from PUBLISHED", async () => {
+      const circuitId = await createCircuit();
+      const published = await send<CircuitBody>(
+        "post",
+        `/admin/circuits/${circuitId}/publish`
+      );
+      expect(published.status).toBe(200);
+      expect(published.json.circuit.status).toBe("PUBLISHED");
+      expect(published.json.circuit.published_at).not.toBeNull();
+      expect((await getPublic(`/circuits/${circuitId}`)).status).toBe(200);
+
+      const again = await send<ErrorBody>("post", `/admin/circuits/${circuitId}/publish`);
+      expect(again.status).toBe(409);
+      expect(again.json.error.code).toBe("CIRCUIT_NOT_DRAFT");
+      expect(again.json.error.details).toEqual({ status: "PUBLISHED" });
+
+      const active = await send<CircuitBody>(
+        "post",
+        `/admin/circuits/${circuitId}/activate`
+      );
+      expect(active.status).toBe(200);
+      expect(active.json.circuit.status).toBe("ACTIVE");
+      expect(active.json.circuit.activated_at).not.toBeNull();
+      expect((await auditActions()).map((r) => r.action)).toEqual([
+        "create_circuit",
+        "publish_circuit",
+        "activate_circuit"
+      ]);
+    });
+
+    it("withdraws a published Circuit with no seasons back to DRAFT", async () => {
+      const circuitId = await createCircuit();
+      await send("post", `/admin/circuits/${circuitId}/publish`);
+
+      const res = await send<CircuitBody>(
+        "post",
+        `/admin/circuits/${circuitId}/unpublish`
+      );
+      expect(res.status).toBe(200);
+      expect(res.json.circuit).toMatchObject({ status: "DRAFT", published_at: null });
+      expect((await getPublic(`/circuits/${circuitId}`)).status).toBe(404);
+      expect((await auditActions()).at(-1)).toMatchObject({
+        action: "unpublish_circuit",
+        target_type: "circuit",
+        target_id: circuitId
+      });
+    });
+
+    it("refuses to withdraw a published Circuit while seasons are set up against it", async () => {
+      const circuitId = await createCircuit();
+      await send("post", `/admin/circuits/${circuitId}/publish`);
+      for (let i = 0; i < 2; i += 1) {
+        const league = await insertLeague(db.pool, { created_by_user_id: 1 });
+        await db.pool.query(
+          `INSERT INTO circuit_league (circuit_id, league_id, status, created_by_user_id)
+           VALUES ($1, $2, 'SETUP', 1)`,
+          [circuitId, league.id]
+        );
+      }
+
+      const res = await send<{ error: { code: string; message: string } }>(
+        "post",
+        `/admin/circuits/${circuitId}/unpublish`
+      );
+      expect(res.status).toBe(409);
+      expect(res.json.error).toMatchObject({
+        code: "CIRCUIT_HAS_SEASONS",
+        message: "Remove the 2 seasons set up for this first"
+      });
+      expect((await detailOf(circuitId)).circuit.status).toBe("PUBLISHED");
+      expect((await auditActions()).map((r) => r.action)).not.toContain(
+        "unpublish_circuit"
+      );
+    });
+
+    it.each(["DRAFT", "ACTIVE", "ARCHIVED"])(
+      "refuses to withdraw a %s Circuit",
+      async (status) => {
+        const circuitId = await createCircuit();
+        await db.pool.query(
+          `UPDATE circuit
+           SET status = $2::text,
+               activated_at = CASE WHEN $2::text = 'DRAFT' THEN NULL ELSE now() END
+           WHERE id = $1`,
+          [circuitId, status]
+        );
+        const res = await send<ErrorBody>(
+          "post",
+          `/admin/circuits/${circuitId}/unpublish`
+        );
+        expect(res.status).toBe(409);
+        expect(res.json.error.code).toBe("CIRCUIT_NOT_PUBLISHED");
+        expect(res.json.error.details).toEqual({ status });
+      }
+    );
+
     it("editing a date after activation leaves the Circuit ACTIVE", async () => {
       const circuitId = await createCircuit();
       const ceremony = await ceremonyWithStatus();
@@ -1690,6 +1794,23 @@ describe("circuit admin and public routes", () => {
         target: (c) => ["circuit", c.circuitId],
         run: (c) =>
           send("delete", `/admin/circuits/${c.circuitId}/mappings/${c.editionId}`)
+      },
+      {
+        name: "POST /admin/circuits/:id/publish",
+        action: "publish_circuit",
+        target: (c) => ["circuit", c.circuitId],
+        run: (c) => send("post", `/admin/circuits/${c.circuitId}/publish`)
+      },
+      {
+        name: "POST /admin/circuits/:id/unpublish",
+        action: "unpublish_circuit",
+        target: (c) => ["circuit", c.circuitId],
+        run: async (c) => {
+          await db.pool.query(`UPDATE circuit SET status = 'PUBLISHED' WHERE id = $1`, [
+            c.circuitId
+          ]);
+          return send("post", `/admin/circuits/${c.circuitId}/unpublish`);
+        }
       },
       {
         name: "POST /admin/circuits/:id/activate",
