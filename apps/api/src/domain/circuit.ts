@@ -5,8 +5,34 @@
  * (built from category templates); nothing here fixes either list.
  */
 
-export const circuitStatuses = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
+import { AppError } from "../errors.js";
+
+export const circuitStatuses = ["DRAFT", "PUBLISHED", "ACTIVE", "ARCHIVED"] as const;
 export type CircuitStatus = (typeof circuitStatuses)[number];
+
+/**
+ * Seasons can be set up once the Circuit is visible to players: while it is
+ * published and after it goes live. A DRAFT Circuit is admin-only.
+ */
+export function isCircuitOpenForSeasons(status: string): boolean {
+  return status === "PUBLISHED" || status === "ACTIVE";
+}
+
+/** Drafts start only once the Circuit is live. */
+export function isCircuitLive(status: string): boolean {
+  return status === "ACTIVE";
+}
+
+export function assertCircuitLive(status: string) {
+  if (!isCircuitLive(status)) {
+    throw new AppError(
+      "CIRCUIT_NOT_LIVE",
+      409,
+      "This season isn't open yet. You can start the draft once it is.",
+      { status }
+    );
+  }
+}
 
 export type CircuitCategoryKind = "FILM" | "ACTING";
 

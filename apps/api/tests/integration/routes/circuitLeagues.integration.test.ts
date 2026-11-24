@@ -59,11 +59,13 @@ function auth(user: User) {
   return { Authorization: `Bearer ${token}` };
 }
 
-async function insertCircuit(status: "DRAFT" | "ACTIVE" | "ARCHIVED" = "ACTIVE") {
+async function insertCircuit(
+  status: "DRAFT" | "PUBLISHED" | "ACTIVE" | "ARCHIVED" = "ACTIVE"
+) {
   const { rows } = await db.pool.query<{ id: number }>(
     `INSERT INTO circuit (code, name, status, activated_at)
      VALUES ('c-' || floor(random() * 1e9)::text, 'Circuit', $1,
-       CASE WHEN $1 = 'DRAFT' THEN NULL ELSE now() END)
+       CASE WHEN $1 IN ('DRAFT', 'PUBLISHED') THEN NULL ELSE now() END)
      RETURNING id::int`,
     [status]
   );
@@ -277,6 +279,12 @@ describe("circuit leagues", () => {
       expect(res.body.error.code).toBe("FORBIDDEN");
       const listed = await api.get(`/leagues/${leagueId}/circuits`).set(auth(owner));
       expect(listed.body.circuit_leagues).toEqual([]);
+    });
+
+    it("sets up a season against a published Circuit before it goes live", async () => {
+      const published = await insertCircuit("PUBLISHED");
+      const res = await create(owner, { circuit_id: published });
+      expect(res.status).toBe(201);
     });
 
     it("refuses a second competition for the same Circuit, a draft Circuit and an unknown one", async () => {

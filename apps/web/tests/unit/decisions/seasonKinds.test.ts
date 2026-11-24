@@ -50,6 +50,15 @@ describe("full awards season availability", () => {
     ).toEqual({ available: true });
   });
 
+  it("is available when the only open Circuit is coming soon", () => {
+    expect(
+      fullKindAvailability({ circuits: [circuit(1, "PUBLISHED")], started: [] })
+    ).toEqual({ available: true });
+    expect(
+      fullKindAvailability({ circuits: [circuit(1, "DRAFT")], started: [] })
+    ).toMatchObject({ available: false });
+  });
+
   it("says none is open when no Circuit is active", () => {
     expect(
       fullKindAvailability({ circuits: [circuit(1, "ARCHIVED")], started: [] })

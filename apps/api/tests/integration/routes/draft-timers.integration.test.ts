@@ -26,6 +26,11 @@ async function setActiveCeremony(id: number) {
   );
 }
 
+// Drafts start only once the ceremony is open for leagues (ACTIVE).
+async function openCeremony(id: number) {
+  await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [id]);
+}
+
 async function postJson<T>(
   path: string,
   body: unknown,
@@ -106,6 +111,7 @@ describe("draft timers + auto-pick", () => {
     await insertNomination(db.pool, { ceremony_id: 1 });
     await insertNomination(db.pool, { ceremony_id: 1 });
 
+    await openCeremony(1);
     const startRes = await postJson<{
       draft: { id: number; pick_deadline_at: string | null };
     }>(`/drafts/${draft.id}/start`, {}, token);
@@ -171,6 +177,7 @@ describe("draft timers + auto-pick", () => {
     await insertNomination(db.pool, { ceremony_id: 1 });
     await insertNomination(db.pool, { ceremony_id: 1 });
 
+    await openCeremony(1);
     const startRes = await postJson<{ draft: { pick_deadline_at: string | null } }>(
       `/drafts/${draft.id}/start`,
       {},

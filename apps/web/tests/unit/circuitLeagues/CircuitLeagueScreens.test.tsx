@@ -293,7 +293,8 @@ describe("league seasons list", () => {
       title: "Awards Season 2027",
       statusLabel: "Pre-draft",
       createdAt: "2026-11-02T00:00:00Z",
-      memberCount: 2
+      memberCount: 2,
+      note: "Coming soon"
     },
     {
       kind: "ceremony",
@@ -303,7 +304,8 @@ describe("league seasons list", () => {
       createdAt: "2026-11-01T00:00:00Z",
       ceremonyId: 1,
       ceremonyCode: "golden-2027",
-      isNavigable: true
+      isNavigable: true,
+      note: null
     }
   ];
 
@@ -328,6 +330,9 @@ describe("league seasons list", () => {
       "/leagues/3/film-club/golden-2027"
     );
     expect(within(items[1]!).getByText("Single ceremony")).toBeTruthy();
+    // A season set up before its awards season goes live says so; a live one does not.
+    expect(within(items[0]!).getByText("Coming soon")).toBeTruthy();
+    expect(within(items[1]!).queryByText("Coming soon")).toBeNull();
     expect(
       items.map((li) => li.querySelector(".baseline-standardCard")?.className)
     ).toEqual([

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { AppError } from "../../../src/errors.js";
 import {
+  assertCircuitLive,
   circuitCategoryKindForUnitKind,
+  circuitStatuses,
   codeFromLabel,
   findCeremoniesMissingDates,
   instantOfDay,
+  isCircuitLive,
+  isCircuitOpenForSeasons,
   isFullOrdering,
   listScoringOccasions,
   moveToIndex,
@@ -38,6 +43,37 @@ function ceremony(
     starts_at: dates.results_on ? evening(dates.results_on) : null
   };
 }
+
+describe("circuit status", () => {
+  it("lists the lifecycle statuses in order", () => {
+    expect(circuitStatuses).toEqual(["DRAFT", "PUBLISHED", "ACTIVE", "ARCHIVED"]);
+  });
+
+  it.each([
+    ["DRAFT", false, false],
+    ["PUBLISHED", true, false],
+    ["ACTIVE", true, true],
+    ["ARCHIVED", false, false],
+    ["UNKNOWN", false, false]
+  ])("%s: open for seasons %s, live %s", (status, openForSeasons, live) => {
+    expect(isCircuitOpenForSeasons(status)).toBe(openForSeasons);
+    expect(isCircuitLive(status)).toBe(live);
+  });
+
+  it("refuses a draft start until the Circuit is live", () => {
+    expect(() => assertCircuitLive("ACTIVE")).not.toThrow();
+    for (const status of ["DRAFT", "PUBLISHED", "ARCHIVED"]) {
+      expect(() => assertCircuitLive(status)).toThrow(AppError);
+      expect(() => assertCircuitLive(status)).toThrow(
+        expect.objectContaining({
+          code: "CIRCUIT_NOT_LIVE",
+          status: 409,
+          details: { status }
+        })
+      );
+    }
+  });
+});
 
 describe("resultsDateOf", () => {
   it("is the ceremony datetime's date in America/Los_Angeles", () => {

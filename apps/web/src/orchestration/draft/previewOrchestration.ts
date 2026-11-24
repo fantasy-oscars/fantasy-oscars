@@ -228,6 +228,7 @@ export function useDraftPreviewOrchestration(args: {
       startLoading: false,
       startResult: status,
       onStartDraft: () => {},
+      startBlockedLine: null,
       canManageDraft: true,
       pauseLoading: false,
       pauseResult: null,

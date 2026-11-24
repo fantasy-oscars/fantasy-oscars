@@ -21,7 +21,8 @@ function ceremony(
     createdAt,
     ceremonyId: id,
     ceremonyCode: null,
-    isNavigable: true
+    isNavigable: true,
+    note: null
   };
 }
 
@@ -36,7 +37,8 @@ function full(
     title: `Awards ${id}`,
     statusLabel,
     createdAt,
-    memberCount: 1
+    memberCount: 1,
+    note: null
   };
 }
 
@@ -114,7 +116,8 @@ describe("building the season list", () => {
         title: "Awards Season 2027",
         statusLabel: "Pre-draft",
         createdAt: "2026-11-01T00:00:00Z",
-        memberCount: 2
+        memberCount: 2,
+        note: null
       },
       {
         kind: "ceremony",
@@ -124,8 +127,42 @@ describe("building the season list", () => {
         createdAt: "2026-10-01T00:00:00Z",
         ceremonyId: 1,
         ceremonyCode: "golden-2027",
-        isNavigable: false
+        isNavigable: false,
+        note: null
       }
+    ]);
+  });
+
+  it("keeps seasons set up before go-live as Pre-draft, with a coming-soon note", () => {
+    const seasons = [
+      {
+        id: 8,
+        league_id: 3,
+        ceremony_id: 2,
+        ceremony_name: "Golden Reel 2028",
+        ceremony_code: "golden-2028",
+        status: "EXTANT",
+        created_at: "2026-11-03T00:00:00Z",
+        ceremony_starts_at: "2028-03-05T12:00:00Z",
+        ceremony_status: "PUBLISHED",
+        draft_status: "PENDING",
+        is_active_ceremony: true
+      }
+    ] as SeasonSummary[];
+    const circuitLeagues = [
+      {
+        id: 5,
+        circuit_name: "Awards Season 2028",
+        circuit_status: "PUBLISHED",
+        status: "INITIALIZED",
+        created_at: "2026-11-02T00:00:00Z",
+        member_count: 1
+      }
+    ] as CircuitLeagueSummary[];
+    const list = buildSeasonList({ seasons, circuitLeagues });
+    expect(list.map((s) => [s.kind, s.statusLabel, s.note])).toEqual([
+      ["ceremony", "Pre-draft", "Coming soon · Mar 5, 2028"],
+      ["full", "Pre-draft", "Coming soon"]
     ]);
   });
 });

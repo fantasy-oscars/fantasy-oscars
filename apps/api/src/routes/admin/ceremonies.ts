@@ -8,6 +8,7 @@ import { registerAdminCeremonyDraftLockStatusRoute } from "./ceremonyDraftLockSt
 import { registerAdminCeremonyLockRoute } from "./ceremonyLock.js";
 import { registerAdminCeremonyOpenRoute } from "./ceremonyOpen.js";
 import { registerAdminCeremonyPublishRoute } from "./ceremonyPublish.js";
+import { registerAdminCeremonyUnpublishRoute } from "./ceremonyUnpublish.js";
 import { registerAdminCeremoniesCreateRoute } from "./ceremoniesCreate.js";
 import { registerAdminCeremoniesDraftCreateRoute } from "./ceremoniesDraftCreate.js";
 import { registerAdminCeremonyGetRoute } from "./ceremoniesGet.js";
@@ -21,6 +22,7 @@ export function registerAdminCeremonyRoutes(router: Router, client: DbClient) {
   registerAdminCeremonyDraftLockStatusRoute({ router, client });
   registerAdminCeremonyDeleteRoute({ router, client });
   registerAdminCeremonyPublishRoute({ router, client });
+  registerAdminCeremonyUnpublishRoute({ router, client });
   registerAdminCeremonyOpenRoute({ router, client });
   registerAdminCeremonyLockRoute({ router, client });
   registerAdminCeremonyArchiveRoute({ router, client });

@@ -14,6 +14,7 @@ import {
 
 let db: Awaited<ReturnType<typeof startTestDatabase>>;
 let api: ApiAgent;
+// Drafts start only once the ceremony is open for leagues (ACTIVE).
 async function setActiveCeremony(id: number) {
   await db.pool.query(
     `INSERT INTO app_config (id, active_ceremony_id)
@@ -21,6 +22,7 @@ async function setActiveCeremony(id: number) {
      ON CONFLICT (id) DO UPDATE SET active_ceremony_id = EXCLUDED.active_ceremony_id`,
     [id]
   );
+  await db.pool.query(`UPDATE ceremony SET status = 'ACTIVE' WHERE id = $1`, [id]);
 }
 
 async function requestJson<T>(

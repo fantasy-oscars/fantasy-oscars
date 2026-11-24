@@ -3,6 +3,7 @@ import {
   ceremonyStatuses,
   isCeremonyContentEditable,
   isCeremonyOpenForLeagues,
+  isCeremonyOpenForSeasons,
   isCeremonyStatus
 } from "../../src/ceremonyLifecycle.js";
 
@@ -43,5 +44,16 @@ describe("ceremonyLifecycle", () => {
     ["UNKNOWN", false]
   ])("open for leagues in %s: %s", (status, expected) => {
     expect(isCeremonyOpenForLeagues(status)).toBe(expected);
+  });
+
+  it.each([
+    ["DRAFT", false],
+    ["PUBLISHED", true],
+    ["ACTIVE", true],
+    ["LOCKED", false],
+    ["ARCHIVED", false],
+    ["UNKNOWN", false]
+  ])("open for seasons in %s: %s", (status, expected) => {
+    expect(isCeremonyOpenForSeasons(status)).toBe(expected);
   });
 });

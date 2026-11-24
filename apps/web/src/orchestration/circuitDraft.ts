@@ -24,6 +24,7 @@ import {
   type CircuitQueueRow
 } from "../decisions/circuitDraft";
 import { circuitStagedRows } from "../decisions/circuitDraftRoom";
+import { draftStartGate } from "../decisions/goLive";
 import { describeConnection, nextConnectionState } from "../decisions/draft/connection";
 import { estimateServerOffsetMs } from "../decisions/draft/clockSkew";
 import { makeRequestId } from "./draft/helpers";
@@ -60,7 +61,10 @@ export type CircuitDraftView =
       queue: CircuitQueueRow[] | null;
       /** The viewer's staged contenders; null when they have not joined the season. */
       staged: CircuitQueueRow[] | null;
+      /** The commissioner is shown Start draft (disabled while `startBlockedLine` is set). */
       canStart: boolean;
+      /** Why the draft cannot start yet (the season is not live); everyone sees it. */
+      startBlockedLine: string | null;
       /** Whether the viewer may pick now, and why not; null for non-members or no draft. */
       gate: CircuitPickGate | null;
       /** The commissioner may pause or resume. */
@@ -428,6 +432,11 @@ export function useCircuitDraftOrchestration(input: {
       });
     }
     const phase = circuitDraftPhase(snapshot);
+    const startGate = draftStartGate({
+      room: "season",
+      status: detail.circuit?.status,
+      canManage: detail.viewer.can_manage
+    });
     return {
       state: "ready",
       detail,
@@ -437,8 +446,9 @@ export function useCircuitDraftOrchestration(input: {
       staged: queue ? circuitStagedRows(queue, detail.categories, snapshot) : null,
       canStart:
         snapshot === null &&
-        detail.viewer.can_manage &&
+        startGate.showStart &&
         detail.circuit_league.status === "INITIALIZED",
+      startBlockedLine: snapshot === null ? startGate.blockedLine : null,
       gate:
         snapshot && isMember
           ? circuitPickGate({

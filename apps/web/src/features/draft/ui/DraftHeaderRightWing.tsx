@@ -32,6 +32,8 @@ export function DraftHeaderRightWing(props: {
   cursorSpyUserEnabled: boolean;
   onToggleCursorSpy: () => void;
   onStartDraft: () => void;
+  /** Start draft shows but is disabled, with this line, until the draft can start. */
+  startBlockedLine?: string | null;
   onPauseDraft: () => void;
   onResumeDraft: () => void;
   userLabel: string;
@@ -43,6 +45,7 @@ export function DraftHeaderRightWing(props: {
     : props.isPaused
       ? "Resume draft"
       : "Pause draft";
+  const startBlocked = props.isPre && Boolean(props.startBlockedLine);
   const soundState = props.soundEnabled ? "on" : "off";
   const cursorSpyState = props.cursorSpyUserEnabled ? "on" : "off";
 
@@ -50,12 +53,18 @@ export function DraftHeaderRightWing(props: {
     <>
       {props.showDraftControls && props.canManageDraft ? (
         <Box className="drh-pauseWrap">
-          <Tooltip label={draftControlLabel} position="bottom" withArrow>
+          <Tooltip
+            label={startBlocked ? props.startBlockedLine : draftControlLabel}
+            position="bottom"
+            withArrow
+          >
             <UnstyledButton
               type="button"
               className="drh-pause"
               aria-label={draftControlLabel}
+              aria-disabled={startBlocked || undefined}
               onClick={() => {
+                if (startBlocked) return;
                 if (props.isPre) props.onStartDraft();
                 else if (props.isPaused) props.onResumeDraft();
                 else props.onPauseDraft();

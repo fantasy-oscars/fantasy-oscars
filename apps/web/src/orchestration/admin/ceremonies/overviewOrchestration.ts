@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { notify } from "../../../notifications";
+import { confirm, notify } from "../../../notifications";
 import { fetchJson } from "../../../lib/api";
 import type { ApiResult } from "../../../lib/types";
 import { useFieldErrors } from "../../useFieldErrors";
@@ -28,6 +28,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [opening, setOpening] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<ApiResult | null>(null);
@@ -183,6 +184,44 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     await load();
   }, [ceremony, load]);
 
+  /**
+   * PUBLISHED → DRAFT, after the admin confirms. The server refuses while any
+   * season is set up for the ceremony; its message says how many.
+   */
+  const withdraw = useCallback(async () => {
+    if (!ceremony) return;
+    const ok = await confirm({
+      title: "Withdraw this ceremony?",
+      message:
+        "It goes back to draft and players stop seeing it. This is refused while any season is set up for it.",
+      confirmLabel: "Withdraw",
+      danger: true
+    });
+    if (!ok) return;
+    setWithdrawing(true);
+    setStatus(null);
+    const res = await fetchJson<{ ceremony: CeremonyDetail }>(
+      `/admin/ceremonies/${ceremony.id}/unpublish`,
+      { method: "POST" }
+    );
+    setWithdrawing(false);
+    if (!res.ok) {
+      setStatus({ ok: false, message: res.error ?? "Could not withdraw the ceremony" });
+      return;
+    }
+    notify({
+      id: "admin.ceremony.withdraw.success",
+      severity: "success",
+      trigger_type: "user_action",
+      scope: "local",
+      durability: "ephemeral",
+      requires_decision: false,
+      message: "Ceremony withdrawn."
+    });
+    setStatus(null);
+    await load();
+  }, [ceremony, load]);
+
   const openForLeagues = useCallback(async () => {
     if (!ceremony) return;
     setOpening(true);
@@ -216,6 +255,7 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     loading,
     saving,
     publishing,
+    withdrawing,
     opening,
     loadError,
     status,
@@ -227,6 +267,6 @@ export function useAdminCeremonyOverviewOrchestration(args: {
     clearFieldError: fieldErrors.clear,
     completeness,
     readOnly,
-    actions: { save, publish, openForLeagues }
+    actions: { save, publish, withdraw, openForLeagues }
   };
 }

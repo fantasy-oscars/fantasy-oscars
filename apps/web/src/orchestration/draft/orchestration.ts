@@ -30,6 +30,7 @@ import {
   type DraftConnectionState
 } from "../../decisions/draft/connection";
 import { applyPendingPick } from "../../decisions/draft/optimisticPick";
+import { draftStartGate } from "../../decisions/goLive";
 import {
   buildRosterBoardSeats,
   computeTimerRemainingMs
@@ -323,7 +324,13 @@ export function useDraftRoomOrchestration(args: {
   // This keeps the UI consistent across PRE/IN_PROGRESS/POST states without affecting the websocket.
   const canToggleView =
     Boolean(snapshot) && draftStatus !== "PENDING" && draftStatus !== "COMPLETED";
-  const canStartDraft = draftStatus === "PENDING";
+  const startGate = draftStartGate({
+    room: "ceremony",
+    status: ceremonyStatus,
+    canManage: canManageDraft
+  });
+  const canStartDraft = draftStatus === "PENDING" && startGate.canStart;
+  const startBlockedLine = draftStatus === "PENDING" ? startGate.blockedLine : null;
 
   // When the draft completes (including via auto-pick), move to roster view with a toast.
   useEffect(() => {
@@ -372,6 +379,7 @@ export function useDraftRoomOrchestration(args: {
       canToggleView,
       canStartDraft,
       ...actions.header,
+      startBlockedLine,
       canManageDraft,
       ceremonyStatus,
       isFinalResults,

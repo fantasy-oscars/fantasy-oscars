@@ -4,6 +4,7 @@ import type { AreaSaveResult, CircuitLeagueView } from "@/orchestration/circuitL
 import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSettings";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
 import { circuitDraftLinkLabel } from "@/decisions/circuitDraft";
+import { comingSoonNote } from "@/decisions/goLive";
 import { circuitRostersVisible } from "@/decisions/circuitRoster";
 import { circuitStandingsVisible } from "@/decisions/circuitStandings";
 import { circuitWaiversVisible } from "@/decisions/circuitWaivers";
@@ -94,6 +95,7 @@ export function CircuitLeagueScreen(props: {
   const { detail, settings, editable } = view;
   const { league, viewer } = detail;
   const statusLabel = circuitLeagueStatusLabel(detail.circuit_league.status);
+  const comingSoon = comingSoonNote({ status: detail.circuit?.status });
   const link = {
     leagueId: league.id,
     leagueName: league.name,
@@ -126,6 +128,7 @@ export function CircuitLeagueScreen(props: {
                 </Text>
                 <StatusPill {...statusTone(statusLabel)}>{statusLabel}</StatusPill>
               </Group>
+              {comingSoon ? <Text variant="helper">{comingSoon}</Text> : null}
             </Stack>
             <Stack gap="xs" className="full-season-actions">
               <Group gap="sm" wrap="wrap">

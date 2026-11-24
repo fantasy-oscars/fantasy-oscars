@@ -15,3 +15,11 @@ export function canArchiveCeremony(args: {
 }): boolean {
   return args.status === "LOCKED" && Boolean(args.resultsFinalizedAt);
 }
+
+/**
+ * Withdraw returns a published ceremony to draft. The API refuses it while
+ * any season is set up for the ceremony.
+ */
+export function canWithdrawCeremony(status: string | null | undefined): boolean {
+  return status === "PUBLISHED";
+}

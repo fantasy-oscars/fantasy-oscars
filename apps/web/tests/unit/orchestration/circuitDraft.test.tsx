@@ -108,7 +108,25 @@ describe("circuit draft orchestration", () => {
     expect(view.phase).toBe("lobby");
     expect(view.snapshot).toBeNull();
     expect(view.canStart).toBe(true);
+    expect(view.startBlockedLine).toBeNull();
     expect(view.queue?.map((r) => r.selection.id)).toEqual([33, 31]);
+  });
+
+  it("keeps Start draft shown but blocked, with the line, until the season goes live", async () => {
+    const detail = circuitLeagueDetail({ status: "INITIALIZED" });
+    stubApi(
+      {
+        "GET /draft": NOT_STARTED,
+        "GET /queue": { status: 200, body: circuitQueue([gaslight]) }
+      },
+      { ...detail, circuit: { ...detail.circuit!, status: "PUBLISHED" } }
+    );
+    const { result } = renderDraft();
+    const view = await ready(result);
+    expect(view.phase).toBe("lobby");
+    expect(view.canStart).toBe(true);
+    expect(view.startBlockedLine).toBe("Opens when the season goes live");
+    expect(view.queue?.map((r) => r.selection.id)).toEqual([33]);
   });
 
   it("shows the board from the snapshot once the draft has started", async () => {

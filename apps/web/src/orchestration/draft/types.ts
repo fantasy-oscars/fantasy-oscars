@@ -37,6 +37,8 @@ export type DraftRoomOrchestration = {
     startLoading: boolean;
     startResult: ApiResult | null;
     onStartDraft: () => void;
+    /** Why the draft cannot start yet (the ceremony is not live); everyone sees it. */
+    startBlockedLine: string | null;
     canManageDraft: boolean;
     pauseLoading: boolean;
     pauseResult: ApiResult | null;

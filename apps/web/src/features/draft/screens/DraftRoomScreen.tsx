@@ -8,6 +8,7 @@ import { useAuthContext } from "@/auth/context";
 import { RuntimeBannerStack } from "@/notifications";
 import { DraftConnectionIndicator } from "@/features/draft/ui/DraftConnectionIndicator";
 import { DraftLiveRegion } from "@/features/draft/ui/DraftLiveRegion";
+import { DraftStartBlockedNote } from "@/features/draft/ui/DraftStartBlockedNote";
 import { DraftBoardHeader } from "./DraftBoardHeader";
 import { DraftRoomScaffold } from "./DraftRoomScaffold";
 import { RosterBoardScaffold } from "./RosterBoardScaffold";
@@ -429,6 +430,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         showDraftControls={!isCompleted}
         canManageDraft={isPreview ? true : props.o.header.canManageDraft}
         onStartDraft={props.o.header.onStartDraft}
+        startBlockedLine={props.o.header.startBlockedLine}
         onPauseDraft={props.o.header.onPauseDraft}
         onResumeDraft={props.o.header.onResumeDraft}
         audioController={audioControllerRef.current}
@@ -445,6 +447,7 @@ export function DraftRoomScreen(props: { o: DraftRoomOrchestration }) {
         userAvatarKey={previewUser.avatarKey}
         onParticipantHoverSeat={setHoveredSeatNumber}
       />
+      <DraftStartBlockedNote line={props.o.header.startBlockedLine} />
       <RuntimeBannerStack />
       <Box component="main" id="main-content" tabIndex={-1} className="dr-body">
         {isCompleted || props.o.header.view === "roster" ? (

@@ -3,8 +3,10 @@ import { type DbClient, runInTransaction } from "../../data/db.js";
 import { updateCeremonyDates } from "../../data/repositories/ceremonyRepository.js";
 import {
   activateCircuit,
+  countCircuitLeagues,
   deleteCircuitMapping,
   getCategoryEditionCeremonyId,
+  getCircuitById,
   getCeremonySummary,
   getCircuitCategory,
   insertCircuit,
@@ -17,6 +19,8 @@ import {
   listCircuitEventsForCircuits,
   listCircuits,
   listInitializedCircuitLeagues,
+  publishCircuit,
+  unpublishCircuit,
   upsertCircuitMapping,
   type CircuitRow
 } from "../../data/repositories/circuitRepository.js";
@@ -34,6 +38,7 @@ import {
   readinessGaps
 } from "../../domain/circuitReadiness.js";
 import { waiverWindows } from "../../domain/waiverWindows.js";
+import { assertNoSeasonsToWithdraw } from "../../domain/withdrawal.js";
 import { AppError, validationError } from "../../errors.js";
 import {
   type Actor,
@@ -287,8 +292,65 @@ export async function removeMapping(
 }
 
 /**
- * DRAFT → ACTIVE. The readiness check is soft: activation always proceeds and
- * the response lists the associated ceremonies that still lack a date.
+ * DRAFT → PUBLISHED. Players see the Circuit and can set up seasons; drafts
+ * wait until it is activated.
+ */
+export async function publish(pool: Pool, actor: Actor, circuitId: number) {
+  const current = await requireCircuit(pool, circuitId);
+  const circuit = await publishCircuit(pool, circuitId);
+  if (!circuit) {
+    throw new AppError(
+      "CIRCUIT_NOT_DRAFT",
+      409,
+      "Only a draft Circuit can be published",
+      {
+        status: current.status
+      }
+    );
+  }
+  await audit(pool, actor, {
+    action: "publish_circuit",
+    target_id: circuitId,
+    meta: {}
+  });
+  return { circuit };
+}
+
+/**
+ * PUBLISHED → DRAFT, hiding the Circuit from players again. Refused while any
+ * season is set up against it. The row lock orders this against season
+ * creation, which reads the Circuit with a share lock.
+ */
+export async function unpublish(pool: Pool, actor: Actor, circuitId: number) {
+  const circuit = await runInTransaction(pool, async (tx) => {
+    const current = await getCircuitById(tx, circuitId, { forUpdate: true });
+    if (!current) throw new AppError("NOT_FOUND", 404, "Circuit not found");
+    if (current.status !== "PUBLISHED") {
+      throw new AppError(
+        "CIRCUIT_NOT_PUBLISHED",
+        409,
+        "Only a published Circuit can be withdrawn",
+        { status: current.status }
+      );
+    }
+    assertNoSeasonsToWithdraw(
+      "CIRCUIT_HAS_SEASONS",
+      await countCircuitLeagues(tx, circuitId)
+    );
+    return (await unpublishCircuit(tx, circuitId))!;
+  });
+  await audit(pool, actor, {
+    action: "unpublish_circuit",
+    target_id: circuitId,
+    meta: {}
+  });
+  return { circuit };
+}
+
+/**
+ * DRAFT or PUBLISHED → ACTIVE: the Circuit goes live and drafts can start.
+ * The readiness check is soft: activation always proceeds and the response
+ * lists the associated ceremonies that still lack a date.
  */
 export async function activate(pool: Pool, actor: Actor, circuitId: number) {
   const current = await requireCircuit(pool, circuitId);
@@ -297,7 +359,7 @@ export async function activate(pool: Pool, actor: Actor, circuitId: number) {
     throw new AppError(
       "CIRCUIT_NOT_DRAFT",
       409,
-      "Only a draft Circuit can be activated",
+      "Only a draft or published Circuit can be activated",
       { status: current.status }
     );
   }

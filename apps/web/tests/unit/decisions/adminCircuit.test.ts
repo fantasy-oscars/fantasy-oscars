@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   canActivateCircuit,
+  canPublishCircuit,
+  canWithdrawCircuit,
   chooseMappingRow,
   circuitCategoryIconOptions,
   circuitCategoryKindLabel,
@@ -33,6 +35,7 @@ const edition = (
 describe("Circuit admin decisions", () => {
   it.each([
     ["DRAFT", true, true, false],
+    ["PUBLISHED", true, true, false],
     ["ACTIVE", true, false, true],
     ["ARCHIVED", false, false, false]
   ])(
@@ -43,6 +46,23 @@ describe("Circuit admin decisions", () => {
       expect(needsStructuralEditConfirm(status)).toBe(confirms);
     }
   );
+
+  it.each([
+    ["DRAFT", true, false],
+    ["PUBLISHED", false, true],
+    ["ACTIVE", false, false],
+    ["ARCHIVED", false, false],
+    [null, true, false]
+  ])("%s: can publish %s, can withdraw %s", (status, publishable, withdrawable) => {
+    expect(canPublishCircuit(status)).toBe(publishable);
+    expect(canWithdrawCircuit(status)).toBe(withdrawable);
+  });
+
+  it("reads a lower-case status the same way", () => {
+    expect(canWithdrawCircuit("published")).toBe(true);
+    expect(canActivateCircuit("published")).toBe(true);
+    expect(canPublishCircuit("published")).toBe(false);
+  });
 
   it("describes each ceremony that lacks a date", () => {
     expect(

@@ -8,8 +8,9 @@ import { AppError } from "../../errors.js";
 import { adminCeremonyIdParam } from "@fantasy-oscars/shared/schemas";
 import { parseParams } from "../../utils/validate.js";
 
-// Moves a published ceremony to ACTIVE so leagues can create seasons and drafts.
-// Every category must have at least one active nominee first.
+// Moves a published ceremony to ACTIVE, freezing its content so drafts can
+// start (seasons can already be set up while it is PUBLISHED). Every category
+// must have at least one active nominee first.
 export function registerAdminCeremonyOpenRoute(args: {
   router: Router;
   client: DbClient;

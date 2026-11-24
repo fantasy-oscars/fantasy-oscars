@@ -24,7 +24,8 @@ const DRAFT_ROOM_SCREENS = [
   "draft-live-countdown",
   "draft-live-not-your-turn",
   "draft-live-your-turn",
-  "draft-paused"
+  "draft-paused",
+  "draft-pending-not-live"
 ] as const;
 
 const DRAFT_POOL_PILL_SCREENS = [...DRAFT_ROOM_SCREENS, "draft-completed"] as const;
@@ -115,7 +116,9 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
       "season-create-choice",
       "season-create-full-unavailable",
       "season-create-ceremony",
+      "season-create-ceremony-coming-soon",
       "season-create-full",
+      "season-create-full-coming-soon",
       "season-create-full-select",
       "season-create-full-scoring-open",
       "season-create-full-events-open"
@@ -128,7 +131,11 @@ export const ALLOWLIST: readonly AllowlistEntry[] = [
   },
   {
     check: "touch-target",
-    screen: ["season-create-full-unavailable", "season-create-ceremony"],
+    screen: [
+      "season-create-full-unavailable",
+      "season-create-ceremony",
+      "season-create-ceremony-coming-soon"
+    ],
     viewport: "mobile",
     match: "mantine-NumberInput-control",
     reason:

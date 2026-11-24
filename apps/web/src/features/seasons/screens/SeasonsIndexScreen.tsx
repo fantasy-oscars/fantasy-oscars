@@ -108,6 +108,7 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                                 {s.status_label}
                               </StatusPill>
                             </Group>
+                            {s.note ? <Text variant="helper">{s.note}</Text> : null}
                           </Stack>
                         </StandardCard>
                       ))}

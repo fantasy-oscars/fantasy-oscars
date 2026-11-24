@@ -66,7 +66,22 @@ describe("circuit lists", () => {
     ]);
   });
 
-  it("shows on Home only the viewer's own competitions in running Circuits, newest first", () => {
+  it("offers coming-soon Circuits after live ones, and never draft or archived ones", () => {
+    const statuses = ["PUBLISHED", "DRAFT", "ACTIVE", "ARCHIVED", "PUBLISHED", "ACTIVE"];
+    const circuits = statuses.map((status, i): CircuitSummary => ({
+      id: i + 1,
+      code: `c${i + 1}`,
+      name: `C${i + 1}`,
+      status,
+      opens_on: null,
+      activated_at: null
+    }));
+    expect(startableCircuits(circuits, [{ circuit_id: 6 }]).map((c) => c.id)).toEqual([
+      3, 1, 5
+    ]);
+  });
+
+  it("shows on Home only the viewer's own competitions in running or coming-soon Circuits, newest first", () => {
     const league = { id: 3, code: "club", name: "Film Club", ceremony_id: null };
     const previews = computeLandingCircuitPreviews([
       {
@@ -75,11 +90,18 @@ describe("circuit lists", () => {
           summary({ id: 1, created_at: "2026-11-01T00:00:00Z" }),
           summary({ id: 2, created_at: "2026-11-05T00:00:00Z" }),
           summary({ id: 3, is_member: false }),
-          summary({ id: 4, circuit_status: "ARCHIVED" })
+          summary({ id: 4, circuit_status: "ARCHIVED" }),
+          summary({
+            id: 5,
+            circuit_status: "PUBLISHED",
+            created_at: "2026-11-03T00:00:00Z"
+          }),
+          summary({ id: 6, circuit_status: "DRAFT" })
         ]
       }
     ]);
-    expect(previews.map((p) => p.id)).toEqual([2, 1]);
+    // A Circuit that is coming soon is listed as upcoming, not hidden.
+    expect(previews.map((p) => p.id)).toEqual([2, 5, 1]);
     expect(previews[0]!.league_name).toBe("Film Club");
   });
 });

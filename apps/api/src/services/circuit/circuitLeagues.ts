@@ -278,7 +278,9 @@ export async function createCircuitLeague(
     );
     requireCommissioner(league, member, input.viewer.userId);
 
-    const circuit = await getCircuitById(tx, input.circuitId);
+    // The share lock waits for a withdraw in progress, so a season is never
+    // set up against a Circuit that has just gone back to DRAFT.
+    const circuit = await getCircuitById(tx, input.circuitId, { forShare: true });
     if (!circuit || circuit.status === "DRAFT") throw NOT_FOUND();
     if (circuit.status === "ARCHIVED") {
       throw new AppError("CIRCUIT_ARCHIVED", 409, "This season has finished");

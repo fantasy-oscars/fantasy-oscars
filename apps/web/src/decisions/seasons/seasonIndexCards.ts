@@ -1,4 +1,5 @@
 import { computeSeasonLifecycleLabelFromRow, type SeasonStatusLabel } from "../season";
+import { comingSoonNote } from "../goLive";
 import type { CeremonySummary, LeagueSummary, SeasonSummary } from "../../lib/types";
 
 export type SeasonIndexCard = {
@@ -11,6 +12,8 @@ export type SeasonIndexCard = {
   ceremony_sort_ts: number;
   status_label: SeasonStatusLabel;
   is_navigable: boolean;
+  /** "Coming soon" while the ceremony is not live yet. */
+  note: string | null;
 };
 
 function ceremonySortTs(ceremony: CeremonySummary): number {
@@ -47,7 +50,14 @@ export function buildSeasonIndexCards(args: {
         ceremony_name: ceremony?.name ?? `Ceremony ${s.ceremony_id}`,
         ceremony_sort_ts: ceremony ? ceremonySortTs(ceremony) : 0,
         status_label: statusLabel(s),
-        is_navigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED"
+        is_navigable: String(s.draft_status ?? "").toUpperCase() !== "CANCELLED",
+        note:
+          s.status === "EXTANT"
+            ? comingSoonNote({
+                status: s.ceremony_status ?? ceremony?.status,
+                startsAt: ceremony?.starts_at ?? s.ceremony_starts_at
+              })
+            : null
       };
     })
   );

@@ -401,6 +401,7 @@ function CircuitDraftRoom(
             isViewer: m.user_id === props.viewerUserId
           }))}
           startStatus={props.startStatus}
+          blockedLine={view.startBlockedLine}
         />
       ) : null}
     </CircuitDraftPickPanel>
@@ -466,6 +467,7 @@ function CircuitDraftRoom(
     showDraftControls: !isCompleted,
     canManageDraft,
     onStartDraft: props.onStart,
+    startBlockedLine: view.startBlockedLine,
     onPauseDraft: props.onTogglePause,
     onResumeDraft: props.onTogglePause,
     audioController: audioControllerRef.current,

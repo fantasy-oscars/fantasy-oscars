@@ -58,13 +58,27 @@ export function circuitLeagueEventDescription(event: {
   return event.ceremonies.map((c) => c.name).join(", ");
 }
 
-/** Circuits a commissioner can still start in this league: public, not archived, not started. */
+/** Seasons can be set up once a Circuit is published, before it goes live. */
+export function isCircuitOpenForSeasons(status: string): boolean {
+  return status === "ACTIVE" || status === "PUBLISHED";
+}
+
+/**
+ * Circuits a commissioner can still start in this league: live or coming soon,
+ * not archived, not started. Live ones first, so the default pick is live.
+ */
 export function startableCircuits(
   circuits: CircuitSummary[],
   started: Array<Pick<CircuitLeagueSummary, "circuit_id">>
 ): CircuitSummary[] {
   const taken = new Set(started.map((c) => c.circuit_id));
-  return circuits.filter((c) => c.status === "ACTIVE" && !taken.has(c.id));
+  const open = circuits.filter(
+    (c) => isCircuitOpenForSeasons(c.status) && !taken.has(c.id)
+  );
+  return [
+    ...open.filter((c) => c.status === "ACTIVE"),
+    ...open.filter((c) => c.status !== "ACTIVE")
+  ];
 }
 
 /*
