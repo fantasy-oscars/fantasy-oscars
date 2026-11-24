@@ -41,6 +41,11 @@ test("tests/e2e selects checks and e2e", () => {
   assert.deepEqual(selectGroups(["playwright.config.ts"]), ["checks", "e2e"]);
 });
 
+test("the player tour selects only checks", () => {
+  assert.deepEqual(selectGroups(["tests/tour/player-tour.spec.ts"]), ["checks"]);
+  assert.deepEqual(selectGroups(["playwright.tour.config.ts"]), ["checks"]);
+});
+
 test("tooling unit tests select checks", () => {
   assert.deepEqual(selectGroups(["tests/unit/tooling/affected.test.mjs"]), ["checks"]);
 });

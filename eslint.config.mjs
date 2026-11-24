@@ -192,7 +192,8 @@ export default [
       "apps/web/src/notifications/**/*.{ts,tsx}",
       "apps/web/src/vitest.setup.ts",
       "e2e/**/*.{ts,tsx}",
-      "tests/visual/**/*.{mjs,ts}"
+      "tests/visual/**/*.{mjs,ts}",
+      "tests/tour/**/*.{mjs,ts}"
     ],
     rules: {
       "no-console": "off"
