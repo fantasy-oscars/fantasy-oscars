@@ -40,6 +40,10 @@ const DisclaimerPage = lazyPage(() => import("./pages/DisclaimerPage"), "Disclai
 const FeedbackPage = lazyPage(() => import("./pages/FeedbackPage"), "FeedbackPage");
 const FaqPage = lazyPage(() => import("./pages/FaqPage"), "FaqPage");
 const HowItWorksPage = lazyPage(() => import("./pages/HowItWorksPage"), "HowItWorksPage");
+const FullSeasonsPage = lazyPage(
+  () => import("./pages/FullSeasonsPage"),
+  "FullSeasonsPage"
+);
 const PrivacyPage = lazyPage(() => import("./pages/PrivacyPage"), "PrivacyPage");
 const TermsPage = lazyPage(() => import("./pages/TermsPage"), "TermsPage");
 const LeaguesPage = lazyPage(() => import("./pages/LeaguesPage"), "LeaguesPage");
@@ -222,6 +226,14 @@ function RoutesConfig() {
           element={
             <LazyRoute>
               <HowItWorksPage />
+            </LazyRoute>
+          }
+        />
+        <Route
+          path="/how-it-works/full-seasons"
+          element={
+            <LazyRoute>
+              <FullSeasonsPage />
             </LazyRoute>
           }
         />

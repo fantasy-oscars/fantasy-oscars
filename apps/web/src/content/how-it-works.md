@@ -12,6 +12,10 @@ Ceremonies are just what they sound like --- awards events, like this year's Osc
 
 Seasons are games built around a ceremony (e.g., 98th Academy Awards) within a league. Seasons are a unique combination of League and Ceremony. This is where rules are set about how that game should be played. The season is also where participants are invited by the commissioner.
 
+## Two Kinds of Season
+
+A season can be built around a single ceremony, which is what most of this page describes: draft once, then score on the night. A full awards season is a bigger game. You draft once, and your roster keeps scoring across the whole awards season, with free agency along the way. [Read how full seasons work](/how-it-works/full-seasons).
+
 ## Drafts
 
 Once you've enrolled in a Season for your League, the way you assemble your team is through a Draft. Drafts involve taking turns selecting individual nominees until everyone has a complete roster. Nominees are unique to a category --- that means you can pick Parasite for Best Picture _and_ Parasite for Best International Feature (if someone hasn't already gotten it!).
