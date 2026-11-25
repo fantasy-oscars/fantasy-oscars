@@ -10,7 +10,6 @@ import {
   ADMIN_PASSWORD,
   DRAFT_CIRCUIT_NAME,
   DRAFT_PLAYERS,
-  grantSuperAdmin,
   type DraftContender
 } from "./support/seed";
 import { E2E_API_ORIGIN, E2E_WEB_ORIGIN } from "./support/stack";
@@ -180,7 +179,6 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
 
   // Four players: the commissioner and Pia pick by hand, Theo lets his clock
   // run out (auto-draft takes from his queue) and Emmy has an empty queue.
-  await grantSuperAdmin(DRAFT_PLAYERS[0]);
   const [commish, pia, theo, emmy] = await Promise.all(
     DRAFT_PLAYERS.map((name) => signIn(browser, name))
   );
@@ -391,7 +389,6 @@ test("drafting from the queue by double-click, keyboard, phone card and confirm 
 }) => {
   test.setTimeout(120_000);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  await grantSuperAdmin(DRAFT_PLAYERS[0]);
   const [commish, pia] = await Promise.all(
     [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
   );
@@ -557,7 +554,6 @@ test("Add/drop goes to free agency outside a window, to claims inside one, and w
 }) => {
   test.setTimeout(120_000);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  await grantSuperAdmin(DRAFT_PLAYERS[0]);
   const [commish, pia] = await Promise.all(
     [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
   );
@@ -735,7 +731,6 @@ test("claims reorder by dragging a row, by Alt+Arrow on the claim pill, and say 
 }) => {
   test.setTimeout(120_000);
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
-  await grantSuperAdmin(DRAFT_PLAYERS[0]);
   const [commish, pia] = await Promise.all(
     [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
   );

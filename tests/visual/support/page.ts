@@ -57,9 +57,6 @@ export async function signIn(context: BrowserContext, token: string) {
   await context.addCookies([{ name: "auth_token", value: token, url: E2E_API_ORIGIN }]);
 }
 
-/** Set by a screen's own `/auth/me` route to have the viewer reported as a super admin. */
-export const SUPER_ADMIN_HEADER = "x-visual-super-admin";
-
 const TEST_APPEARANCE_KEY = "fo:test-appearance";
 
 /**
@@ -90,12 +87,6 @@ export async function selectAppearance(
     }
     const body = (await response.json()) as { user?: Record<string, unknown> };
     if (body.user) {
-      // Full awards seasons are gated to super admins; a screen that needs the
-      // gate open marks its `/auth/me` request (see `asSuperAdmin` in matrix.ts).
-      if (route.request().headers()[SUPER_ADMIN_HEADER]) {
-        body.user.is_admin = true;
-        body.user.admin_role = "SUPER_ADMIN";
-      }
       body.user.brand_preference = null;
       body.user.appearance = {
         mode_preference: null,

@@ -67,7 +67,7 @@ function stubApi(role = "OWNER") {
   return calls;
 }
 
-function render(fullSeasonEnabled = true) {
+function render() {
   const client = createQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -76,8 +76,7 @@ function render(fullSeasonEnabled = true) {
     () =>
       useLeagueSeasonCreateOrchestration({
         leagueId: 3,
-        userSub: "7",
-        fullSeasonEnabled
+        userSub: "7"
       }),
     {
       wrapper
@@ -103,15 +102,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("the full awards season gate", () => {
-  it("offers single ceremony alone, and never loads awards seasons, without the gate", async () => {
+describe("offered season kinds", () => {
+  it("offers both kinds, and loads awards seasons, to any commissioner", async () => {
     const calls = stubApi();
-    const { result } = render(false);
+    const { result } = render();
     await waitFor(() => expect(result.current.view.state).toBe("ready"));
     const view = result.current.view;
     if (view.state !== "ready") throw new Error("not ready");
-    expect(view.kindOrder).toEqual(["ceremony"]);
-    expect(calls.some((c) => c.path === "/circuits")).toBe(false);
+    expect(view.kindOrder).toEqual(["ceremony", "full"]);
+    expect(calls.some((c) => c.path === "/circuits")).toBe(true);
   });
 });
 

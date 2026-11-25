@@ -266,10 +266,6 @@ export async function createCircuitLeague(
     }>;
   }
 ) {
-  // Full awards seasons are gated: only a super admin may start one.
-  if (!input.viewer.isSuperAdmin) {
-    throw new AppError("FORBIDDEN", 403, "Full awards seasons are not available yet");
-  }
   const id = await runInTransaction(pool, async (tx) => {
     const { league, member } = await requireVisibleLeague(
       tx,

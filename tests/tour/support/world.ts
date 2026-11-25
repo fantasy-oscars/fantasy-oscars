@@ -218,12 +218,6 @@ export async function seedWorld(stack: E2eStack): Promise<World> {
       [ADMIN_USERNAME, username]
     );
   }
-  // Starting a full awards season is gated to super admins (as in the e2e
-  // suite's `grantSuperAdmin`), so the commissioner needs the role.
-  await pool.query(
-    `UPDATE app_user SET is_admin = TRUE, admin_role = 'SUPER_ADMIN' WHERE username = $1`,
-    [YOU]
-  );
   const token = await apiLogin(ADMIN_USERNAME);
   const today = pacificToday();
 
