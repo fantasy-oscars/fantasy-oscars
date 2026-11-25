@@ -197,21 +197,8 @@ describe("circuit leagues", () => {
     actor = await insertCategory(circuitId, "actor", "ACTING");
   });
 
-  async function setSuperAdmin(user: User, on: boolean) {
-    await db.pool.query(
-      `UPDATE app_user SET is_admin = $2, admin_role = $3 WHERE id = $1`,
-      [user.id, on, on ? "SUPER_ADMIN" : null]
-    );
-  }
-
-  // Creating is gated to super admins, so the user is one only for the request.
   async function create(user: User = owner, body: object = { circuit_id: circuitId }) {
-    await setSuperAdmin(user, true);
-    try {
-      return await api.post(`/leagues/${leagueId}/circuits`).set(auth(user)).send(body);
-    } finally {
-      await setSuperAdmin(user, false);
-    }
+    return api.post(`/leagues/${leagueId}/circuits`).set(auth(user)).send(body);
   }
 
   async function createId() {
@@ -266,19 +253,22 @@ describe("circuit leagues", () => {
 
     it("lets a co-owner create, but not a plain member or someone outside the league", async () => {
       expect((await create(member)).status).toBe(403);
-      expect((await create(outsider)).status).toBe(403);
+      // A league's existence is not revealed to someone outside it.
+      expect((await create(outsider)).status).toBe(404);
       expect((await create(coOwner)).status).toBe(201);
     });
 
-    it("is gated to super admins, even for the league's owner", async () => {
-      const res = await api
-        .post(`/leagues/${leagueId}/circuits`)
-        .set(auth(owner))
-        .send({ circuit_id: circuitId });
-      expect(res.status).toBe(403);
-      expect(res.body.error.code).toBe("FORBIDDEN");
+    it("lets the league's owner create without any admin role, and refuses a non-commissioner", async () => {
+      const { rows } = await db.pool.query<{ is_admin: boolean }>(
+        `SELECT is_admin FROM app_user WHERE id = $1`,
+        [owner.id]
+      );
+      expect(rows[0]?.is_admin).toBe(false);
+      const refused = await create(member);
+      expect(refused.status).toBe(403);
       const listed = await api.get(`/leagues/${leagueId}/circuits`).set(auth(owner));
       expect(listed.body.circuit_leagues).toEqual([]);
+      expect((await create(owner)).status).toBe(201);
     });
 
     it("sets up a season against a published Circuit before it goes live", async () => {

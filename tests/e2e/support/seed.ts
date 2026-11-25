@@ -148,34 +148,6 @@ export type DraftContender = {
   tmdbId: number;
 };
 
-/**
- * Makes a user a super admin through the admin API. Starting a full awards
- * season is gated to super admins, so a spec's commissioner needs this first.
- */
-export async function grantSuperAdmin(username: string): Promise<void> {
-  const token = await adminLogin();
-  const headers = {
-    "content-type": "application/json",
-    authorization: `Bearer ${token}`
-  };
-  const found = await fetch(
-    `${E2E_API_ORIGIN}/admin/users?q=${encodeURIComponent(username)}`,
-    { headers }
-  );
-  if (!found.ok) throw new Error(`GET /admin/users -> ${found.status}`);
-  const { users } = (await found.json()) as {
-    users: Array<{ id: number; username: string }>;
-  };
-  const user = users.find((u) => u.username === username);
-  if (!user) throw new Error(`no user ${username}`);
-  const res = await fetch(`${E2E_API_ORIGIN}/admin/users/${user.id}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ admin_role: "SUPER_ADMIN" })
-  });
-  if (!res.ok) throw new Error(`PATCH /admin/users/${user.id} -> ${res.status}`);
-}
-
 /** The season draft spec's four players; they sign in with the admin's password. */
 export const DRAFT_PLAYERS = [
   "draft-cora",

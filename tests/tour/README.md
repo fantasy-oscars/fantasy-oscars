@@ -74,8 +74,7 @@ number is the one to cite ("tour 089"). Finish again after more notes to rewrite
 
 Theme Refined Gold, light mode, 1440 × 900, full-page captures. Admin screens are left
 out; admin work (results, finalising, score rebuilds) goes through the API. The
-commissioner, cora, is a super admin because only super admins may start a full awards
-season, so her screens show the admin entry.
+commissioner, cora, is an ordinary player.
 
 1. A first visit while signed out: Home, the static pages, sign-in, registration, password
    reset and the 404.

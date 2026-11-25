@@ -5,7 +5,6 @@ import {
   fullKindAvailability,
   parseSeasonKind,
   selectedSeasonKind,
-  visibleSeasonKinds,
   SEASON_KIND_COPY,
   type SeasonKindAvailability
 } from "@/decisions/seasonKinds";
@@ -111,12 +110,7 @@ describe("full awards season availability", () => {
   });
 });
 
-describe("gated kinds", () => {
-  it("offers the full awards season only when enabled", () => {
-    expect(visibleSeasonKinds(true)).toEqual(["ceremony", "full"]);
-    expect(visibleSeasonKinds(false)).toEqual(["ceremony"]);
-  });
-
+describe("offered kinds", () => {
   it("ignores a request for a kind that is not offered", () => {
     expect(
       selectedSeasonKind({

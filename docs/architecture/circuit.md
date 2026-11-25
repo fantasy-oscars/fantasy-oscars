@@ -133,7 +133,7 @@ It returns at most one match per selection per occasion, listing every matching 
 
 ## Leagues and membership
 
-**Feature gate.** Starting a Circuit competition in a league (`POST /leagues/:id/circuits`) is for super admins only; anyone else gets `403 FORBIDDEN`. Create season on the web offers the full awards season only to a super admin. Competitions that already exist stay readable and playable for their members.
+**Who may start one.** Any commissioner of a league (owner or co-owner) can start a Circuit competition (`POST /leagues/:id/circuits`) against a `PUBLISHED` or `ACTIVE` Circuit, and Create season on the web offers the full awards season to every commissioner. There is no admin gate; creating and editing Circuits stays admin-only. A non-member gets 404 and a member who is not a commissioner gets 403.
 
 A league can hold a Season and a Circuit league at once; the two never share members (`circuit_league_member` is separate from `season_member`, and an integration test changes one and checks the other). Code is `domain/circuitLeague.ts` (pure), `data/repositories/circuitLeagueRepository.ts`, `services/circuit/circuitLeagues.ts`, `routes/circuitLeagues.ts` and `routes/leagues/circuitLeagues.ts`.
 

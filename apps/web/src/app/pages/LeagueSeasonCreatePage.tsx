@@ -1,7 +1,6 @@
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect } from "react";
 import { useAuthContext } from "@/auth/context";
-import { hasSuperAdminAccess } from "@/auth/roles";
 import { useLeagueSeasonCreateOrchestration } from "@/orchestration/seasons";
 import { LeagueSeasonCreateScreen } from "@/features/seasons/screens/LeagueSeasonCreateScreen";
 import { parseSeasonKind, type SeasonKind } from "@/decisions/seasonKinds";
@@ -16,8 +15,7 @@ export function LeagueSeasonCreatePage() {
   const { user } = useAuthContext();
   const orchestrator = useLeagueSeasonCreateOrchestration({
     leagueId,
-    userSub: user?.sub,
-    fullSeasonEnabled: hasSuperAdminAccess(user)
+    userSub: user?.sub
   });
 
   // The chosen kind lives in the URL, replaced in place, so reload and Back keep it.

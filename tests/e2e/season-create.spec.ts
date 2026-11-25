@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { adminLogin, CEREMONY_NAME, grantSuperAdmin } from "./support/seed";
+import { adminLogin, CEREMONY_NAME } from "./support/seed";
 import { E2E_API_ORIGIN } from "./support/stack";
 
 const PASSWORD = "secret123";
@@ -41,10 +41,6 @@ test("a commissioner creates a full awards season and a single ceremony with the
   const seasonName = `Awards Season ${suffix}`;
   await openAwardsSeason(seasonName, `awards-${suffix}`);
   await registerAndSignIn(page, `commish-${suffix}`);
-  // Full awards seasons are gated to super admins.
-  await grantSuperAdmin(`commish-${suffix}`);
-  await page.reload();
-
   await page.goto("/leagues/new");
   await page.getByLabel("Name").fill(`League ${suffix}`);
   await page.getByRole("button", { name: "Create league" }).click();

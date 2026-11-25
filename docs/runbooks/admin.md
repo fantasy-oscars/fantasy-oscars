@@ -87,7 +87,7 @@ Players see the in-between state as "Coming soon".
 1. **Publish** (`DRAFT → PUBLISHED`). A ceremony needs a name and code; its
    categories and nominees stay editable. A Circuit needs nothing and sets
    `published_at`; its events, categories and selections stay editable as
-   always. Commissioners can now create seasons against it, but starting their
+   always. Commissioners (any league owner or co-owner, not only admins) can now create seasons against it, including full awards seasons, but starting their
    drafts is refused (ceremony: 409 `CEREMONY_NOT_ACTIVE`; Circuit: 409
    `CIRCUIT_NOT_LIVE`) and the draft rooms show Start draft disabled with
    "Opens when the ceremony goes live" or "Opens when the season goes live".

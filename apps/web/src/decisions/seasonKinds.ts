@@ -10,14 +10,6 @@ export type SeasonKind = "ceremony" | "full";
 
 export const SEASON_KIND_ORDER: readonly SeasonKind[] = ["ceremony", "full"];
 
-/**
- * Full awards seasons are behind a gate: only a super admin is offered them.
- * Everyone else sees single ceremony alone.
- */
-export function visibleSeasonKinds(fullSeasonEnabled: boolean): readonly SeasonKind[] {
-  return fullSeasonEnabled ? SEASON_KIND_ORDER : ["ceremony"];
-}
-
 export const SEASON_KIND_COPY: Record<SeasonKind, { name: string; description: string }> =
   {
     ceremony: {
