@@ -574,6 +574,21 @@ describe("circuit draft staging", () => {
     expect(screen.queryByRole("menuitem", { name: "Draft", hidden: true })).toBeNull();
   });
 
+  it("reaches each row's menu from the keyboard, with no rank column", async () => {
+    const user = userEvent.setup();
+    renderDraft({});
+    const staging = screen.getByRole("region", { name: "Staging" });
+    expect(staging.querySelector(".circuit-queueRank")).toBeNull();
+    const laura = pill("Best Picture: Laura (2026)");
+    laura.focus();
+    await user.tab();
+    const menu = screen.getByRole("button", { name: "Actions for Laura (2026)" });
+    expect(document.activeElement).toBe(menu);
+    await user.keyboard("{Enter}");
+    await screen.findAllByRole("menuitem", { hidden: true });
+    expect(menuItem("Remove from queue")).toBeTruthy();
+  });
+
   it("opens the nominee card with Draft, Move and Remove on a phone", async () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: query === "(pointer: coarse)",
@@ -592,6 +607,7 @@ describe("circuit draft staging", () => {
       );
       const laura = pill("Best Picture: Laura (2026)");
       expect(laura.getAttribute("aria-haspopup")).toBe("dialog");
+      expect(screen.queryByRole("button", { name: /^Actions for / })).toBeNull();
       fireEvent.click(laura);
       const card = await screen.findByRole("dialog", { name: "Nominee details" });
       expect(

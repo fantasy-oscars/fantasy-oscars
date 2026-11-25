@@ -50,6 +50,7 @@ export function ContenderPill(props: {
       className={[
         "dr-pill",
         "dr-pill-static",
+        "dr-pill-standard",
         state === "default" ? "" : `is-${state}`,
         props.winner && state !== "muted" ? "is-winner" : "",
         open ? "is-cardOpener" : "",
@@ -121,7 +122,7 @@ export function ContenderPill(props: {
   );
 }
 
-/** The muted one-line caption beside a pill: "Dropped", "Owned by pia". */
+/** The muted one-line caption beside a pill: "Owned by pia". */
 export function ContenderPillCaption(props: { children: string }) {
   return (
     <Text component="span" className="dr-pill-caption" title={props.children}>

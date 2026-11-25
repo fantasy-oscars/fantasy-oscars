@@ -971,6 +971,7 @@ describe("circuit scoring ledger", () => {
               kind: string;
               points: number;
               owned_now: boolean;
+              dropped_at: string | null;
             }>;
           }>;
         };
@@ -989,6 +990,15 @@ describe("circuit scoring ledger", () => {
             ]
           ],
           ["alice", [[selectionId, "NOMINATION", false]]]
+        ]);
+        // The dropped pick says when it left; held picks carry no date.
+        expect(
+          body.standings.flatMap((s) => s.entries.map((e) => [e.owned_now, e.dropped_at]))
+        ).toEqual([
+          [true, null],
+          [true, null],
+          [true, null],
+          [false, "2026-02-01T18:00:00.000Z"]
         ]);
         for (const s of body.standings) {
           const byKind = { NOMINATION: 0, WIN: 0 } as Record<string, number>;

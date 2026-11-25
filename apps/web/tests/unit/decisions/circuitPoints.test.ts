@@ -3,6 +3,7 @@ import {
   circuitCeremonyPointsByCategory,
   circuitCeremonyPointsByPlayer,
   circuitDroppedPointsNote,
+  circuitDroppedSinceNote,
   circuitFinalRosterCards,
   circuitPointsDetail,
   circuitPointsSection,
@@ -178,6 +179,20 @@ describe("circuit ceremony points by player", () => {
       expect(sum(card.pills.map((p) => p.points))).toBe(card.total);
     }
   });
+
+  it("says since when on a dropped pick's card, and nothing on a held one", () => {
+    const [night, held] = cards[1]!.pills;
+    expect(night!.pointsSection.droppedNote).toBe("Dropped since Feb 14, 2027");
+    expect(held!.pointsSection.droppedNote).toBeNull();
+  });
+
+  it("falls back to a bare note when the drop's date is not known", () => {
+    expect(circuitDroppedSinceNote(null)).toBe("Dropped");
+    expect(circuitDroppedSinceNote(undefined)).toBe("Dropped");
+    expect(circuitDroppedSinceNote("2027-02-14T12:00:00.000Z")).toBe(
+      "Dropped since Feb 14, 2027"
+    );
+  });
 });
 
 describe("circuit ceremony points by category", () => {
@@ -208,6 +223,11 @@ describe("circuit ceremony points by category", () => {
     // bob's nomination and win for Paper Moon are one gold pill.
     expect(rows(actress)).toEqual([
       ["Ada Lane, Paper Moon (2026)", "bob", "+3", true, false]
+    ]);
+    expect(picture!.entries.map((e) => e.pointsSection.droppedNote)).toEqual([
+      null,
+      "Dropped since Feb 14, 2027",
+      null
     ]);
     const paperMoon = actress!.entries[0]!;
     expect([paperMoon.nomination, paperMoon.win]).toEqual([1, 2]);

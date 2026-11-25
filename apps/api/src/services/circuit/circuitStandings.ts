@@ -8,7 +8,10 @@ import {
   listCircuitCeremonies,
   type CircuitCeremonyRow
 } from "../../data/repositories/circuitRepository.js";
-import { listOpenOwnershipsForLeague } from "../../data/repositories/circuitOwnershipRepository.js";
+import {
+  listCircuitOwnershipHistory,
+  listOpenOwnershipsForLeague
+} from "../../data/repositories/circuitOwnershipRepository.js";
 import { listScoreEntries } from "../../data/repositories/circuitScoreRepository.js";
 import { listCircuitSelectionsByIds } from "../../data/repositories/circuitSelectionRepository.js";
 import { listScoringOccasions, resultsDateOf } from "../../domain/circuit.js";
@@ -113,6 +116,14 @@ export async function getCircuitCeremonyBreakdown(
       (o) => `${o.member_id}:${o.selection_id}`
     )
   );
+  // When a pick left the roster: the member's latest release of the selection.
+  const droppedOn = new Map<string, Date>();
+  for (const o of await listCircuitOwnershipHistory(client, circuitLeague.id)) {
+    if (!o.released_at) continue;
+    const key = `${o.member_id}:${o.selection_id}`;
+    const seen = droppedOn.get(key);
+    if (!seen || seen < o.released_at) droppedOn.set(key, o.released_at);
+  }
   const selections = new Map(
     (
       await listCircuitSelectionsByIds(client, [
@@ -127,13 +138,18 @@ export async function getCircuitCeremonyBreakdown(
       member: publicMember(member),
       entries: entries
         .filter((e) => e.member_id === member.id && selections.has(e.selection_id))
-        .map((e) => ({
-          selection: selections.get(e.selection_id)!,
-          kind: e.kind,
-          occasion_date: e.occasion_date,
-          points: e.points,
-          owned_now: held.has(`${e.member_id}:${e.selection_id}`)
-        }))
+        .map((e) => {
+          const key = `${e.member_id}:${e.selection_id}`;
+          const ownedNow = held.has(key);
+          return {
+            selection: selections.get(e.selection_id)!,
+            kind: e.kind,
+            occasion_date: e.occasion_date,
+            points: e.points,
+            owned_now: ownedNow,
+            dropped_at: ownedNow ? null : (droppedOn.get(key) ?? null)
+          };
+        })
     }))
   };
 }

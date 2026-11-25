@@ -32,7 +32,7 @@ describe("ContenderPill", () => {
     const pill = screen.getByRole("group", {
       name: "Best Picture: Night Train (2026), 3 points"
     });
-    expect(pill.className).toContain("dr-pill dr-pill-static is-winner");
+    expect(pill.className).toContain("dr-pill dr-pill-static dr-pill-standard is-winner");
     expect(pill.getAttribute("tabindex")).toBe("0");
     expect(pill.querySelector(".dr-pill-icon")?.textContent).toBe("movie");
     expect(pill.querySelector(".dr-pill-text")?.getAttribute("title")).toBe(

@@ -154,6 +154,7 @@ function StagingPill(props: {
       className={[
         "dr-pill",
         "dr-pill-btn",
+        "dr-pill-standard",
         "circuit-stagePill",
         pill.state === "default" ? "" : `is-${pill.state}`
       ]
@@ -301,13 +302,13 @@ type RowProps = {
 };
 
 /**
- * A queue row: rank, pill and menu. A mouse drags it by the pill after 6 px;
+ * A queue row: the pill and its hover menu. A mouse drags it by the pill after 6 px;
  * a finger after a 250 ms hold anywhere on the row but the menu.
  */
 function QueueRow(
-  props: RowProps & { idx: number; disabled: boolean; onMove: (delta: -1 | 1) => void }
+  props: RowProps & { disabled: boolean; onMove: (delta: -1 | 1) => void }
 ) {
-  const { row, idx, disabled } = props;
+  const { row, disabled } = props;
   const { setRef, isDragging, onPointerDown, onTouchStart } = useRowSortable(
     dragId(row.selection.id),
     disabled
@@ -324,9 +325,6 @@ function QueueRow(
         onTouchStart(e);
       }}
     >
-      <Text component="span" className={["dr-railMeta", "circuit-queueRank"].join(" ")}>
-        {idx + 1}
-      </Text>
       <StagingPill
         row={row}
         view={props.view}
@@ -338,26 +336,26 @@ function QueueRow(
         onDragPointerDown={onPointerDown}
         swallowsClick={props.swallowsClick}
       />
-      <RowMenu label={row.label} items={props.menu} onSelect={props.onMenu} />
+      {props.phone ? null : (
+        <RowMenu label={row.label} items={props.menu} onSelect={props.onMenu} />
+      )}
     </Box>
   );
 }
 
 /** The lifted copy of a queue row that follows the pointer during a drag. */
-function QueueRowCopy(props: {
-  row: CircuitQueueRow;
-  view: ContenderPillView;
-  idx: number;
-}) {
+function QueueRowCopy(props: { row: CircuitQueueRow; view: ContenderPillView }) {
   const { view } = props;
   return (
     <Box className={["circuit-stageRow", "is-dragOverlay"].join(" ")} aria-hidden="true">
-      <Text component="span" className={["dr-railMeta", "circuit-queueRank"].join(" ")}>
-        {props.idx + 1}
-      </Text>
       <Box
         component="span"
-        className={["dr-pill", "dr-pill-btn", "circuit-stagePill"].join(" ")}
+        className={[
+          "dr-pill",
+          "dr-pill-btn",
+          "dr-pill-standard",
+          "circuit-stagePill"
+        ].join(" ")}
       >
         <DraftCategoryIcon
           icon={view.iconCode ?? ""}
@@ -368,7 +366,6 @@ function QueueRowCopy(props: {
           {view.label}
         </Text>
       </Box>
-      <span />
     </Box>
   );
 }
@@ -376,11 +373,6 @@ function QueueRowCopy(props: {
 function StagedRow(props: RowProps) {
   return (
     <Box component="li" className="circuit-stageRow">
-      <Text
-        component="span"
-        className={["dr-railMeta", "circuit-queueRank"].join(" ")}
-        aria-hidden="true"
-      />
       <StagingPill
         row={props.row}
         view={props.view}
@@ -390,7 +382,9 @@ function StagedRow(props: RowProps) {
         onOpenCard={props.onOpenCard}
         swallowsClick={props.swallowsClick}
       />
-      <RowMenu label={props.row.label} items={props.menu} onSelect={props.onMenu} />
+      {props.phone ? null : (
+        <RowMenu label={props.row.label} items={props.menu} onSelect={props.onMenu} />
+      )}
     </Box>
   );
 }
@@ -398,7 +392,7 @@ function StagedRow(props: RowProps) {
 /**
  * The viewer's staging area: the ranked queue (the only source of an
  * auto-pick) and the staged contenders (set aside to draft by hand), one
- * line per contender: rank, pill and a menu. While the viewer is on the
+ * line per contender: the pill, and a menu that appears on hover and focus. While the viewer is on the
  * clock a pill drafts by double-click, by select and confirm, or from the
  * keyboard; the menu's Draft does the same. The queue reorders by dragging
  * the pill (a held finger on a phone), by Alt+ArrowUp and Alt+ArrowDown on
@@ -598,7 +592,6 @@ export function CircuitStagingPanel(props: {
                   <QueueRow
                     key={row.selection.id}
                     {...rowProps(row, "queue", idx)}
-                    idx={idx}
                     disabled={busy}
                     onMove={(delta) => move(row.selection.id, delta, true)}
                   />
@@ -607,11 +600,7 @@ export function CircuitStagingPanel(props: {
             </SortableContext>
             <DragOverlay>
               {activeRow ? (
-                <QueueRowCopy
-                  row={activeRow}
-                  view={props.viewOf(activeRow.selection)}
-                  idx={activeIdx}
-                />
+                <QueueRowCopy row={activeRow} view={props.viewOf(activeRow.selection)} />
               ) : null}
             </DragOverlay>
           </DndContext>

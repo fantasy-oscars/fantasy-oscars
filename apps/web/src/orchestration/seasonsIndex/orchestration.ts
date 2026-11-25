@@ -9,6 +9,7 @@ import { errorMessage, errorRequestId } from "../query/errors";
 import { queryKeys } from "../query/keys";
 import {
   ceremoniesListQuery,
+  leagueCircuitsQuery,
   leagueSeasonsQuery,
   leaguesListQuery
 } from "../query/queries";
@@ -32,16 +33,26 @@ export function useSeasonsIndexOrchestration() {
       const ceremonyById = new Map<number, CeremonySummary>();
       for (const c of ceremonies) ceremonyById.set(c.id, c);
 
-      const seasonResults = await Promise.all(
-        leagues.map(async (league) => ({
-          league,
-          seasons: await queryClient
-            .fetchQuery(leagueSeasonsQuery(league.id))
-            .catch(() => [])
-        }))
-      );
+      const [seasonResults, circuitResults] = await Promise.all([
+        Promise.all(
+          leagues.map(async (league) => ({
+            league,
+            seasons: await queryClient
+              .fetchQuery(leagueSeasonsQuery(league.id))
+              .catch(() => [])
+          }))
+        ),
+        Promise.all(
+          leagues.map(async (league) => ({
+            league,
+            circuitLeagues: await queryClient
+              .fetchQuery(leagueCircuitsQuery(league.id))
+              .catch(() => [])
+          }))
+        )
+      ]);
 
-      return buildSeasonIndexCards({ seasonResults, ceremonyById });
+      return buildSeasonIndexCards({ seasonResults, circuitResults, ceremonyById });
     }
   });
 

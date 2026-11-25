@@ -21,7 +21,7 @@ type ViewOf = (selection: CircuitSelectionSummary) => ContenderPillView;
 /**
  * Points by player: every member's roster card in rank order, with the
  * ceremony total and one pill per pick that scored here. A pick dropped
- * since is dashed with "Dropped" and still counts, so the pills add up to
+ * since is dashed and still counts, so the pills add up to
  * the card's total. Final rosters draws its cards the same way, with the
  * dropped-picks remainder under the pills.
  */
@@ -108,14 +108,9 @@ function CategoryEntry(props: {
             : undefined
         }
       />
-      {/* The pill's name already says who; this is the visible cue. */}
+      {/* The pill's name already says who (and "dropped"); this is the visible cue. */}
       <Box component="span" className="circuit-pointsPlayer" aria-hidden="true">
         <PlayerName name={entry.username} avatarKey={entry.avatarKey} density="dense" />
-        {entry.dropped ? (
-          <Text component="span" variant="meta" className="circuit-pointsDropped">
-            · dropped
-          </Text>
-        ) : null}
       </Box>
     </Box>
   );

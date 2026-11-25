@@ -131,6 +131,13 @@ export function circuitInstantLabel(iso: string): string {
   }).format(date);
 }
 
+/** "Feb 12, 2035" for an instant's day, in the viewer's zone. */
+export function circuitInstantDayLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+}
+
 /** Why free agency is closed, and when it reopens; null while it is open. */
 export function circuitFreeAgencyNote(freeAgency: {
   open: boolean;

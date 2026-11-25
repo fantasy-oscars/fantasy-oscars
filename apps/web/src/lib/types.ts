@@ -535,6 +535,8 @@ export type CircuitCeremonyBreakdown = {
         points: number;
         /** The member still holds the contender; false for a pick dropped since. */
         owned_now: boolean;
+        /** When the member dropped the pick (ISO instant); null while held or unknown. */
+        dropped_at?: string | null;
       }>;
     }
   >;
