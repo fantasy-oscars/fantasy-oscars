@@ -8,6 +8,7 @@ import { AboutPage } from "@/app/pages/AboutPage";
 import { CodeOfConductPage } from "@/app/pages/CodeOfConductPage";
 import { DisclaimerPage } from "@/app/pages/DisclaimerPage";
 import { FaqPage } from "@/app/pages/FaqPage";
+import { FullSeasonsPage } from "@/app/pages/FullSeasonsPage";
 import { HowItWorksPage } from "@/app/pages/HowItWorksPage";
 import { PrivacyPage } from "@/app/pages/PrivacyPage";
 import { TermsPage } from "@/app/pages/TermsPage";
@@ -33,6 +34,12 @@ const cases: Array<{
   { key: "about", Page: AboutPage, title: "About", section: "" },
   { key: "faq", Page: FaqPage, title: "FAQ", section: "What is this?" },
   { key: "howItWorks", Page: HowItWorksPage, title: "How It Works", section: "Leagues" },
+  {
+    key: "fullSeasons",
+    Page: FullSeasonsPage,
+    title: "Full Awards Seasons",
+    section: "Scoring"
+  },
   {
     key: "codeOfConduct",
     Page: CodeOfConductPage,
@@ -87,6 +94,15 @@ describe("site pages", () => {
     // Sections keep the page size and subsections the section size.
     expect(section.getAttribute("data-fo-typo")).toBe("page");
     expect(subsection.getAttribute("data-fo-typo")).toBe("section");
+  });
+
+  it("introduces the two kinds of season on How It Works and links to the full seasons page", () => {
+    renderPage(HowItWorksPage);
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Two Kinds of Season" })
+    ).toBeTruthy();
+    const link = screen.getByRole("link", { name: "Read how full seasons work" });
+    expect(link.getAttribute("href")).toBe("/how-it-works/full-seasons");
   });
 
   it("keeps the owner's heading levels: sections at ##, no level skipped", () => {
