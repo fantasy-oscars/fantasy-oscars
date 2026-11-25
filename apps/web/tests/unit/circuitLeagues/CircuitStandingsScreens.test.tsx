@@ -208,13 +208,17 @@ describe("circuit ceremony points screen", () => {
       const score = Number(card.querySelector(".fo-seasonRosterCard-score")?.textContent);
       expect(total(pills.map(figure))).toBe(score);
     }
-    // The ledger: alice's dropped Night Train still counts, dashed with "Dropped".
+    // The ledger: alice's dropped Night Train still counts, dashed, with no caption.
     const alice = within(cards[1]!);
     const dropped = alice.getByRole("group", {
       name: "Best Picture: Night Train (2026), 1 point, dropped"
     });
     expect(dropped.className).toContain("is-dropped");
-    expect(alice.getByText("Dropped")).toBeTruthy();
+    expect(alice.queryByText("Dropped")).toBeNull();
+    expect(alice.queryByText(/dropped/i)).toBeNull();
+    // Its card says since when.
+    fireEvent.focus(dropped);
+    expect(await screen.findByText("Dropped since Feb 14, 2027")).toBeTruthy();
     expect(alice.getByText("Nominations 2 pts · Wins 0 pts")).toBeTruthy();
     // bob's wins here are gold, and the card's breakdown names him.
     const won = within(cards[0]!).getByRole("group", {
@@ -259,7 +263,9 @@ describe("circuit ceremony points screen", () => {
     expect(pills[0]!.className).toContain("is-winner");
     expect(pills[1]!.className).toContain("is-dropped");
     expect(pills[1]!.className).not.toContain("is-winner");
-    expect(picture.textContent).toContain("alice· dropped");
+    expect(picture.textContent).not.toMatch(/dropped/i);
+    fireEvent.focus(pills[1]!);
+    expect(await screen.findByText("Dropped since Feb 14, 2027")).toBeTruthy();
     expect(picture.querySelectorAll(".fo-playerName .fo-animalAvatar")).toHaveLength(3);
 
     // bob's nomination and win for Paper Moon are one gold pill; its card splits them.

@@ -315,6 +315,9 @@ function NomineePointsSection(props: { section: CircuitPointsSection }) {
       <Text component="span" className="fo-tip-pointsHeading">
         {section.heading}
       </Text>
+      {section.droppedNote ? (
+        <Text className="fo-tip-pointsDropped">{section.droppedNote}</Text>
+      ) : null}
       {section.lines.length === 0 ? (
         <Text className="fo-tip-pointsEmpty">{section.emptyText}</Text>
       ) : (

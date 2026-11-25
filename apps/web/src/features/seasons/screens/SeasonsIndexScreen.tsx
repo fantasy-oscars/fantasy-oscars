@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Box, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui";
 import { Link } from "react-router-dom";
 import { EmptyState, StandardCard } from "@/primitives";
-import { seasonPath } from "@/lib/routes";
+import { circuitLeaguePath, seasonPath } from "@/lib/routes";
 import { PageError } from "@/shared/page-state";
 import { StatusPill } from "@/shared/pills";
 import { statusTone } from "@/decisions/statusTone";
@@ -13,6 +13,17 @@ import {
   type SeasonsIndexGroupMode
 } from "@/decisions/seasonsIndex";
 
+function seasonCardPath(s: SeasonIndexCard): string {
+  const league = { leagueId: s.league_id, leagueName: s.league_name };
+  if (s.kind === "full")
+    return circuitLeaguePath({ ...league, circuitLeagueId: s.season_id });
+  return seasonPath({
+    ...league,
+    ceremonyCode: s.ceremony_code,
+    ceremonyId: s.ceremony_id
+  });
+}
+
 export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
   const { view } = props;
   const [mode, setMode] = useState<SeasonsIndexGroupMode>("ceremony");
@@ -21,8 +32,8 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
     if (view.state !== "ready") {
       return {
         seasons: [] as SeasonIndexCard[],
-        grouped: new Map<number, SeasonIndexCard[]>(),
-        groupOrder: [] as Array<{ id: number; label: string; sort: number }>
+        grouped: new Map<string, SeasonIndexCard[]>(),
+        groupOrder: [] as Array<{ id: string; label: string; sort: number }>
       };
     }
     return computeSeasonsIndexGrouping({ mode, seasons: view.seasons });
@@ -82,17 +93,12 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                     <Stack gap="sm">
                       {list.map((s) => (
                         <StandardCard
-                          key={s.season_id}
+                          key={`${s.kind}-${s.season_id}`}
                           {...(s.is_navigable
                             ? {
                                 interactive: true,
                                 component: Link,
-                                to: seasonPath({
-                                  leagueId: s.league_id,
-                                  leagueName: s.league_name,
-                                  ceremonyCode: s.ceremony_code,
-                                  ceremonyId: s.ceremony_id
-                                })
+                                to: seasonCardPath(s)
                               }
                             : {})}
                         >
@@ -108,6 +114,7 @@ export function SeasonsIndexScreen(props: { view: SeasonsIndexView }) {
                                 {s.status_label}
                               </StatusPill>
                             </Group>
+                            <Text variant="meta">{s.kind_label}</Text>
                             {s.note ? <Text variant="helper">{s.note}</Text> : null}
                           </Stack>
                         </StandardCard>

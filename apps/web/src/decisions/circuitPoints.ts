@@ -6,7 +6,7 @@ import type {
   CircuitSelectionSummary,
   CircuitStandingRow
 } from "../lib/types";
-import { circuitSelectionLabel } from "./circuitRoster";
+import { circuitInstantDayLabel, circuitSelectionLabel } from "./circuitRoster";
 import { circuitPointsLabel } from "./circuitStandings";
 import { contenderPillView, type ContenderPillView } from "./contenderPill";
 
@@ -53,7 +53,14 @@ export type CircuitPointsSection = {
   total: string | null;
   /** "No points yet." when there are no lines. */
   emptyText: string | null;
+  /** "Dropped since Feb 12, 2035" for a pick the player no longer holds; else null. */
+  droppedNote: string | null;
 };
+
+/** "Dropped since Feb 12, 2035", or "Dropped" when the drop's date is not known. */
+export function circuitDroppedSinceNote(droppedAt: string | null | undefined): string {
+  return droppedAt ? `Dropped since ${circuitInstantDayLabel(droppedAt)}` : "Dropped";
+}
 
 export type CircuitPointsLine = {
   ceremony_id: number;
@@ -72,6 +79,8 @@ export type CircuitPointsLine = {
 export function circuitPointsSection(input: {
   playerName: string | null;
   lines: readonly CircuitPointsLine[];
+  /** Set for a pick dropped since: the card says when. */
+  droppedNote?: string | null;
 }): CircuitPointsSection {
   const lines = input.lines.map((l) => ({
     key: `${l.ceremony_id}-${l.playerId ?? ""}`,
@@ -86,7 +95,8 @@ export function circuitPointsSection(input: {
     heading: input.playerName ? `Points for ${input.playerName}` : "Points",
     lines,
     total: lines.length >= 2 ? circuitSignedPoints(total / 100) : null,
-    emptyText: lines.length === 0 ? "No points yet." : null
+    emptyText: lines.length === 0 ? "No points yet." : null,
+    droppedNote: input.droppedNote ?? null
   };
 }
 
@@ -208,6 +218,7 @@ export function circuitCeremonyPointsByPlayer(
         nomination: number;
         win: number;
         held: boolean;
+        droppedAt: string | null;
       }
     >();
     for (const e of row.entries) {
@@ -215,10 +226,12 @@ export function circuitCeremonyPointsByPlayer(
         selection: e.selection,
         nomination: 0,
         win: 0,
-        held: e.owned_now
+        held: e.owned_now,
+        droppedAt: null
       };
       if (e.kind === "WIN") tally.win += cents(e.points);
       else tally.nomination += cents(e.points);
+      if (!e.owned_now) tally.droppedAt = tally.droppedAt ?? e.dropped_at ?? null;
       bySelection.set(e.selection.id, tally);
     }
     const pills = [...bySelection.values()]
@@ -234,6 +247,7 @@ export function circuitCeremonyPointsByPlayer(
           dropped: !t.held,
           pointsSection: circuitPointsSection({
             playerName: row.member.username,
+            droppedNote: t.held ? null : circuitDroppedSinceNote(t.droppedAt),
             lines: [
               {
                 ceremony_id: breakdown.ceremony.id,
@@ -321,7 +335,9 @@ export function circuitCeremonyPointsByCategory(
 ): CircuitCategoryPointsCard[] {
   const merged = new Map<
     string,
-    Omit<CircuitCategoryPointsEntry, "points" | "pointsLabel" | "pointsSection">
+    Omit<CircuitCategoryPointsEntry, "points" | "pointsLabel" | "pointsSection"> & {
+      droppedAt: string | null;
+    }
   >();
   for (const row of breakdown.standings) {
     for (const e of row.entries) {
@@ -336,7 +352,8 @@ export function circuitCeremonyPointsByCategory(
         nomination: 0,
         win: 0,
         won: false,
-        dropped: false
+        dropped: false,
+        droppedAt: null
       };
       if (e.kind === "WIN") {
         entry.win = (cents(entry.win) + cents(e.points)) / 100;
@@ -344,7 +361,10 @@ export function circuitCeremonyPointsByCategory(
       } else {
         entry.nomination = (cents(entry.nomination) + cents(e.points)) / 100;
       }
-      if (!e.owned_now) entry.dropped = true;
+      if (!e.owned_now) {
+        entry.dropped = true;
+        entry.droppedAt = entry.droppedAt ?? e.dropped_at ?? null;
+      }
       merged.set(key, entry);
     }
   }
@@ -352,7 +372,8 @@ export function circuitCeremonyPointsByCategory(
     ceremony_id: breakdown.ceremony.id,
     ceremony_name: breakdown.ceremony.name ?? breakdown.ceremony.code ?? null
   };
-  const entries: CircuitCategoryPointsEntry[] = [...merged.values()].map((e) => {
+  const entries: CircuitCategoryPointsEntry[] = [...merged.values()].map((m) => {
+    const { droppedAt, ...e } = m;
     const points = (cents(e.nomination) + cents(e.win)) / 100;
     return {
       ...e,
@@ -360,6 +381,7 @@ export function circuitCeremonyPointsByCategory(
       pointsLabel: circuitSignedPoints(points),
       pointsSection: circuitPointsSection({
         playerName: e.username,
+        droppedNote: e.dropped ? circuitDroppedSinceNote(droppedAt) : null,
         lines: [{ ...ceremony, nomination: e.nomination, win: e.win }]
       })
     };

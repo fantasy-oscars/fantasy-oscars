@@ -155,6 +155,7 @@ export const foTokens = {
   "--fo-opacity-muted-2": `0.85`,
   "--fo-pill-padding-x": `6px`,
   "--fo-pill-padding-y": `var(--fo-space-hairline)`,
+  "--fo-pill-width": `10.5rem`,
   "--fo-press-offset": `0.5px`,
   "--fo-radius-large": `var(--brand-radius-lg)`,
   "--fo-radius-medium": `var(--brand-radius-md)`,

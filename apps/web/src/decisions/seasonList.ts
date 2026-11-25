@@ -34,11 +34,18 @@ export type SeasonListItem =
       note: string | null;
     };
 
+/** The kind line on a season card: the league page and My seasons share it. */
+export function seasonKindLabel(
+  input: { kind: "ceremony" } | { kind: "full"; memberCount: number }
+): string {
+  return input.kind === "ceremony"
+    ? "Single ceremony"
+    : `Full awards season · ${circuitLeagueMemberCountLabel(input.memberCount)}`;
+}
+
 /** The meta line under a card's title. */
 export function seasonListKindLabel(item: SeasonListItem): string {
-  return item.kind === "ceremony"
-    ? "Single ceremony"
-    : `Full awards season · ${circuitLeagueMemberCountLabel(item.memberCount)}`;
+  return seasonKindLabel(item);
 }
 
 /** Live seasons first, then running, then upcoming, then finished ones. */

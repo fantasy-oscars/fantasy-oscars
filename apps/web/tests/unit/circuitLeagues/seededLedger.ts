@@ -59,6 +59,8 @@ export const HELD: Record<number, CircuitSelectionSummary[]> = {
   6: [NIGHT_TRAIN, PAPER_MOON],
   7: [MOONRISE]
 };
+/** When alice dropped Night Train (noon UTC, so every zone shows the same day). */
+export const DROPPED_AT = "2027-02-14T12:00:00.000Z";
 export const holds = (userId: number, selectionId: number) =>
   HELD[userId]!.some((s) => s.id === selectionId);
 
@@ -103,7 +105,8 @@ export function breakdownFor(ceremonyId: number): CircuitCeremonyBreakdown {
           kind: r.kind,
           occasion_date: "2027-01-10",
           points: r.points,
-          owned_now: holds(r.userId, r.selection.id)
+          owned_now: holds(r.userId, r.selection.id),
+          dropped_at: holds(r.userId, r.selection.id) ? null : DROPPED_AT
         }))
     }))
   };
