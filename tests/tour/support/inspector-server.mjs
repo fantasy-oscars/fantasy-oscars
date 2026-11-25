@@ -4,7 +4,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { matchPreviousShots, notesToMarkdown } from "./runs.mjs";
+import { listRuns, RUNS_DIR, runHasNotes } from "./run-dirs.mjs";
+import {
+  chooseInitialRun,
+  matchPreviousShots,
+  notesToMarkdown,
+  previousRun,
+  runOptions
+} from "./runs.mjs";
 
 const PAGE_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -47,16 +54,37 @@ export function saveNote(runDir, file, text) {
 }
 
 /**
- * Starts the inspector for a run. `previous` is `{ name, dir }` of the run before it, or
- * null. Resolves to `{ server, port, close }`; port 0 picks a free one.
+ * Starts the inspector over the runs in `runsDir`, or over the single run in `outputDir`
+ * (TOUR_OUTPUT_DIR). Every route takes `?run=<name>`; a name that is not a run is a 404,
+ * and without one the route serves `initialRun` (default: the newest run). Each run's
+ * previous run and notes are its own. Resolves to `{ server, port, close }`; port 0
+ * picks a free one.
  */
-export function startInspector({ runName, runDir, previous = null, port = 4400 }) {
-  const shots = readShots(runDir);
-  const files = new Set(shots.map((s) => s.file));
-  const previousShots = previous ? readShots(previous.dir) : [];
-  const previousFiles = new Set(previousShots.map((s) => s.file));
-  const matches = Object.fromEntries(matchPreviousShots(shots, previousShots));
-  const manifest = readJson(path.join(runDir, "manifest.json"), {});
+export function startInspector({
+  runsDir = RUNS_DIR,
+  outputDir = null,
+  initialRun,
+  port = 4400
+}) {
+  const names = () => (outputDir ? [path.basename(outputDir)] : listRuns(runsDir));
+  const dirOf = (name) => (outputDir ? outputDir : path.join(runsDir, name));
+  const fallback = () =>
+    outputDir ? path.basename(outputDir) : chooseInitialRun(names(), initialRun);
+
+  /** The run a request asks for, with its previous run, or null when there is none. */
+  function select(url) {
+    const asked = url.searchParams.get("run");
+    const name = asked === null ? fallback() : names().includes(asked) ? asked : null;
+    if (name === null) return null;
+    const before = outputDir ? null : previousRun(names(), name);
+    const dir = dirOf(name);
+    return {
+      name,
+      dir,
+      previous: before ? { name: before, dir: dirOf(before) } : null,
+      shots: readShots(dir)
+    };
+  }
 
   function send(res, status, type, body) {
     res.writeHead(status, { "content-type": type, "cache-control": "no-store" });
@@ -89,21 +117,35 @@ export function startInspector({ runName, runDir, previous = null, port = 4400 }
       const [name, type] = PAGES[route];
       return send(res, 200, type, readFileSync(path.join(PAGE_DIR, name)));
     }
+    const chosen = select(url);
+    if (!chosen) return send(res, 404, "text/plain", "No such run");
+    const { dir: runDir, shots, previous } = chosen;
+    const files = new Set(shots.map((s) => s.file));
     if (req.method === "GET" && route === "/api/state") {
+      const previousShots = previous ? readShots(previous.dir) : [];
+      const all = names();
       return sendJson(res, 200, {
-        run: runName,
-        generated: manifest.generated ?? null,
+        run: chosen.name,
+        initialRun: fallback(),
+        runs: runOptions(
+          all,
+          all.filter((n) => runHasNotes(dirOf(n)))
+        ),
+        generated: readJson(path.join(runDir, "manifest.json"), {}).generated ?? null,
         previousRun: previous?.name ?? null,
         shots,
         notes: readNotes(runDir),
-        previousFiles: matches
+        previousFiles: Object.fromEntries(matchPreviousShots(shots, previousShots))
       });
     }
     const image = /^\/img\/(current|previous)\/([^/]+)$/.exec(route);
     if (req.method === "GET" && image) {
       const [, which, encoded] = image;
       const file = decodeURIComponent(encoded);
-      const known = which === "current" ? files : previousFiles;
+      const known =
+        which === "current"
+          ? files
+          : new Set((previous ? readShots(previous.dir) : []).map((s) => s.file));
       const dir = which === "current" ? runDir : previous?.dir;
       const full = dir ? path.join(dir, file) : "";
       if (!known.has(file) || !existsSync(full))
@@ -128,7 +170,7 @@ export function startInspector({ runName, runDir, previous = null, port = 4400 }
     }
     if (req.method === "POST" && route === "/api/finish") {
       if (!isJson) return sendJson(res, 415, { error: "JSON only" });
-      const markdown = notesToMarkdown(shots, readNotes(runDir), runName);
+      const markdown = notesToMarkdown(shots, readNotes(runDir), chosen.name);
       writeFileSync(path.join(runDir, "notes.md"), markdown);
       return sendJson(res, 200, { markdown });
     }

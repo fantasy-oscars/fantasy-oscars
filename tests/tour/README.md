@@ -47,8 +47,18 @@ page in `inspector/`). `TOUR_INSPECT_PORT` changes the port. It listens on local
 | -------------------- | -------------------------------------------------- |
 | `→` / `j`, `←` / `k` | next, previous shot                                |
 | `n`                  | focus the note box                                 |
+| `Tab`                | reach the **Run** dropdown (shot keys pause there) |
 | `Esc`                | leave the note box (keys move shots again)         |
 | `c`                  | show the same shot from the previous run, and back |
+
+The header has a **Run** dropdown listing every run newest first, the newest marked
+"(latest)" and runs with notes marked "notes". Choosing one loads it in place at its first
+shot, with its own notes and its own previous run for `c`; unsaved note text is saved first.
+The URL follows the choice (`?run=<name>`, plus `#<shot file>`), so reload and back/forward
+keep it; a reload with no `run` parameter opens the run the server started on (the latest, or the
+`[run]` argument), and an unknown name shows the
+load error. With
+`TOUR_OUTPUT_DIR` there is one run.
 
 `c` matches by file name without its number (`042-hub.png` and `045-hub.png` are the same
 shot), so it still works when steps were added. It does nothing for a shot the previous run

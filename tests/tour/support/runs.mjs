@@ -114,3 +114,34 @@ export function notesToMarkdown(shots, notes, run) {
   if (entries.length === 0) return `${heading}\n\nNo notes.\n`;
   return `${heading}\n\n${entries.join("\n\n")}\n`;
 }
+
+/**
+ * The run the inspector opens on: `wanted` when it names a run, the newest run when it
+ * is empty or "latest", else null (no such run). `names` are run names, any order.
+ */
+export function chooseInitialRun(names, wanted) {
+  const runs = sortRuns(names);
+  if (wanted === undefined || wanted === null || wanted === "" || wanted === "latest") {
+    return runs.length ? runs[runs.length - 1] : null;
+  }
+  return runs.includes(wanted) ? wanted : null;
+}
+
+/**
+ * The inspector's run choices, newest first: `{ name, latest, noted, label }`. The label
+ * marks the newest "(latest)" and runs with notes "· notes". `noted` is names with notes.
+ */
+export function runOptions(names, noted = []) {
+  const runs = sortRuns(names).reverse();
+  const withNotes = new Set(noted);
+  return runs.map((name, i) => {
+    const latest = i === 0;
+    const hasNote = withNotes.has(name);
+    return {
+      name,
+      latest,
+      noted: hasNote,
+      label: `${name}${latest ? " (latest)" : ""}${hasNote ? " · notes" : ""}`
+    };
+  });
+}
