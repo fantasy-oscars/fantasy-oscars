@@ -43,6 +43,20 @@ body {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
+.run-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.run-picker select {
+  font: inherit;
+  max-width: 24ch;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
 .spacer {
   flex: 1;
 }

@@ -3,7 +3,7 @@
 const SAVE_DELAY_MS = 600;
 const $ = (id) => document.getElementById(id);
 const els = {
-  run: $("run"),
+  runSelect: $("run-select"),
   position: $("position"),
   saveState: $("save-state"),
   title: $("title"),
@@ -22,16 +22,22 @@ const els = {
 let state = null;
 let index = 0;
 let comparing = false;
-let pending = null; // { file, text } waiting to be saved
+let initialRun = null; // the run the server was started on (the latest without an argument)
+let runs = []; // [{ name, latest, noted, label }] newest first
+let pending = null; // { run, file, text } waiting to be saved
 let timer = null;
 const rows = new Map(); // shot file -> list button
 
-const imageUrl = (which, file) => `/img/${which}/${encodeURIComponent(file)}`;
+const runQuery = (run) => `run=${encodeURIComponent(run)}`;
+const imageUrl = (which, file) =>
+  `/img/${which}/${encodeURIComponent(file)}?${runQuery(state.run)}`;
+const pageUrl = (run, file) =>
+  `?${runQuery(run)}${file ? `#${encodeURIComponent(file)}` : ""}`;
 const numberOf = (shot) => /^(\d+)-/.exec(shot.file)?.[1] ?? shot.file;
 const hasNote = (file) => (state.notes[file] ?? "").trim() !== "";
 
-async function putNote(file, text, keepalive = false) {
-  const res = await fetch("/api/note", {
+async function putNote(run, file, text, keepalive = false) {
+  const res = await fetch(`/api/note?${runQuery(run)}`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ file, text }),
@@ -44,10 +50,10 @@ async function flush(keepalive = false) {
   clearTimeout(timer);
   timer = null;
   if (!pending) return;
-  const { file, text } = pending;
+  const { run, file, text } = pending;
   pending = null;
   try {
-    await putNote(file, text, keepalive);
+    await putNote(run, file, text, keepalive);
     if (!pending) els.saveState.textContent = "Saved";
   } catch (error) {
     els.saveState.textContent = String(error.message);
@@ -57,7 +63,7 @@ async function flush(keepalive = false) {
 function onNoteInput() {
   const shot = state.shots[index];
   state.notes[shot.file] = els.note.value;
-  pending = { file: shot.file, text: els.note.value };
+  pending = { run: state.run, file: shot.file, text: els.note.value };
   els.saveState.textContent = "Saving…";
   clearTimeout(timer);
   timer = setTimeout(flush, SAVE_DELAY_MS);
@@ -67,10 +73,34 @@ function onNoteInput() {
 function markRow(file) {
   const row = rows.get(file);
   if (row) row.querySelector(".mark").textContent = hasNote(file) ? "●" : "";
+  markRun();
+}
+
+function markRun() {
+  const option = [...els.runSelect.options].find((o) => o.value === state.run);
+  const entry = runs.find((r) => r.name === state.run);
+  if (!option || !entry) return;
+  const noted = Object.values(state.notes).some((text) => text.trim() !== "");
+  const suffix = " · notes";
+  const base = entry.label.endsWith(suffix)
+    ? entry.label.slice(0, -suffix.length)
+    : entry.label;
+  option.textContent = noted ? `${base}${suffix}` : base;
+}
+
+function renderRuns() {
+  els.runSelect.replaceChildren();
+  for (const run of runs) {
+    const option = document.createElement("option");
+    option.value = run.name;
+    option.textContent = run.label;
+    els.runSelect.append(option);
+  }
 }
 
 function renderList() {
   els.list.replaceChildren();
+  rows.clear();
   let section = null;
   state.shots.forEach((shot, i) => {
     if (shot.section !== section) {
@@ -123,7 +153,7 @@ function show() {
       row.scrollIntoView({ block: "nearest" });
     } else row.removeAttribute("aria-current");
   }
-  history.replaceState(null, "", `#${encodeURIComponent(shot.file)}`);
+  history.replaceState(null, "", pageUrl(state.run, shot.file));
 }
 
 function go(next) {
@@ -151,7 +181,7 @@ function toggleCompare() {
 
 async function finish() {
   await flush();
-  const res = await fetch("/api/finish", {
+  const res = await fetch(`/api/finish?${runQuery(state.run)}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: "{}"
@@ -185,6 +215,7 @@ function onKey(event) {
     if (event.key === "Escape") els.note.blur();
     return;
   }
+  if (event.target === els.runSelect) return; // keys belong to the select while it has focus
   switch (event.key) {
     case "ArrowRight":
     case "j":
@@ -207,20 +238,68 @@ function onKey(event) {
   event.preventDefault();
 }
 
-async function start() {
-  state = await (await fetch("/api/state")).json();
-  els.run.textContent = `Tour ${state.run}`;
+async function fetchState(run) {
+  const res = await fetch(run ? `/api/state?${runQuery(run)}` : "/api/state");
+  if (!res.ok) throw new Error(`${(await res.text()).trim()} (${res.status})`);
+  return res.json();
+}
+
+// Load a run in place, starting at its first shot (or the hash's shot on first load).
+async function loadRun(run, { wantedFile = null, mode = "push" } = {}) {
+  await flush();
+  state = await fetchState(run);
+  index = 0;
+  comparing = false;
+  els.runSelect.value = state.run;
+  els.saveState.textContent = "";
+  renderList();
+  markRun();
+  if (mode === "push") history.pushState(null, "", pageUrl(state.run));
+  else if (mode === "replace") history.replaceState(null, "", pageUrl(state.run));
   if (state.shots.length === 0) {
     els.title.textContent = "This run has no screenshots";
+    els.caption.textContent = "";
+    els.details.textContent = "";
+    els.position.textContent = "";
+    els.banner.hidden = true;
+    els.image.removeAttribute("src");
+    els.note.value = "";
     return;
   }
-  const wanted = decodeURIComponent(location.hash.slice(1));
-  index = Math.max(
-    0,
-    state.shots.findIndex((s) => s.file === wanted)
-  );
-  renderList();
+  if (wantedFile) {
+    index = Math.max(
+      0,
+      state.shots.findIndex((s) => s.file === wantedFile)
+    );
+  }
   show();
+  document.querySelector("main").scrollTop = 0;
+}
+
+const requestedRun = () => new URLSearchParams(location.search).get("run");
+
+async function start() {
+  const overview = await fetchState();
+  runs = overview.runs;
+  initialRun = overview.initialRun;
+  renderRuns();
+  const hash = decodeURIComponent(location.hash.slice(1));
+  await loadRun(requestedRun() ?? initialRun, {
+    wantedFile: hash || null,
+    mode: "replace"
+  });
+  els.runSelect.addEventListener("change", () => {
+    const chosen = els.runSelect.value;
+    loadRun(chosen).catch((error) => {
+      els.runSelect.value = state.run;
+      els.saveState.textContent = `Could not load ${chosen}: ${error.message}`;
+    });
+  });
+  window.addEventListener("popstate", () => {
+    loadRun(requestedRun() ?? initialRun, { mode: "none" }).catch((error) => {
+      els.title.textContent = `Could not load the run: ${error.message}`;
+    });
+  });
   els.note.addEventListener("input", onNoteInput);
   els.note.addEventListener("blur", () => flush());
   document.addEventListener("keydown", onKey);
