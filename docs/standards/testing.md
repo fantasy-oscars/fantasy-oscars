@@ -140,6 +140,8 @@ Locally, `pnpm run ci:affected` runs the same selection against `origin/main` an
 
 The web unit config sets `testTimeout` to 15 s: jsdom-heavy files (`App.test.tsx`, the admin screens) take about 5 s normally and 30 s or more when the cores are contended. `pnpm -r test:unit` runs the workspaces in parallel, so the web and API unit configs cap `maxWorkers` at `"50%"` of the cores each; the integration config keeps its cap of 3 (one Postgres container per file). A test that needs more than 15 s is slow on its own and should be fixed, not given a longer timeout.
 
+The web setup file sets Testing Library's async wait (`findBy*`, `waitFor`) to 5 s, because lazy routes and the admin editor preview render on first load and can take seconds under a parallel run. Per-file or per-call waits are not added for this; a wait that needs more than 5 s is a slow test and should be fixed.
+
 ## Isolation Rules
 
 - Each integration test suite: fresh DB via Testcontainers.

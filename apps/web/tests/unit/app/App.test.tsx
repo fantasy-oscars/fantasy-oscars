@@ -1,19 +1,8 @@
-import {
-  cleanup,
-  configure,
-  render,
-  screen,
-  waitFor,
-  within
-} from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@ui";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/app/App";
-
-// The routes load lazily; under a parallel full run the first render of a route can take
-// longer than Testing Library's default one-second wait.
-configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("socket.io-client", () => ({
   io: vi.fn(() => ({
@@ -380,17 +369,15 @@ describe("<App /> shell + routing", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    // Both pages load lazily; on a contended runner the first load can take
-    // longer than the default second (as at the inbox test below).
     renderApp();
-    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
 
     cleanup();
     window.history.pushState({}, "", "/invites/token123");
     renderApp();
-    await screen.findByRole("heading", { name: /Claim invitation/i }, { timeout: 3000 });
+    await screen.findByRole("heading", { name: /Claim invitation/i });
     await userEvent.click(screen.getByRole("button", { name: /Accept invite/i }));
-    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) =>
@@ -517,7 +504,7 @@ describe("<App /> shell + routing", () => {
     await screen.findByRole("heading", { name: /Invites/i });
     const accept = await screen.findByRole("button", { name: /Accept/i });
     await userEvent.click(accept);
-    await screen.findByRole("heading", { name: /Oscars 2026/i }, { timeout: 3000 });
+    await screen.findByRole("heading", { name: /Oscars 2026/i });
   });
 
   it("declines an invite and removes it from inbox", async () => {
@@ -718,6 +705,7 @@ describe("<App /> shell + routing", () => {
 
     renderApp();
 
+    // The admin route mounts several screens before this heading; it keeps a wider window.
     await screen.findByRole(
       "heading",
       { name: /Initialize ceremony/i },
