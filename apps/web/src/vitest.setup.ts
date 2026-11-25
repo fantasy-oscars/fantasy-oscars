@@ -1,4 +1,8 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/dom";
+
+// Lazy chunks render on first load, and a contended run can delay them by seconds.
+configure({ asyncUtilTimeout: 5000 });
 
 // Node-environment test files (for example ones that run the bundler) have no DOM to stub.
 if (typeof window !== "undefined") {
