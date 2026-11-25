@@ -183,36 +183,70 @@ describe("circuit ceremony points by player", () => {
 describe("circuit ceremony points by category", () => {
   const detail = circuitLeagueDetail({ status: "IN_SEASON" });
 
-  it("splits each category's entries into nominations and wins, per player", () => {
-    const rows = circuitCeremonyPointsByCategory(breakdownFor(1), detail.categories);
-    expect(rows.map((r) => [r.name, r.iconCode])).toEqual([
+  it("gives every season category a card, in category order", () => {
+    const cards = circuitCeremonyPointsByCategory(breakdownFor(1), detail.categories);
+    expect(cards.map((c) => [c.name, c.iconCode])).toEqual([
       ["Best Picture", "movie"],
       ["Best Actress", "person"]
     ]);
-    const picture = rows[0]!;
-    expect(
-      picture.nominations.map((e) => [e.label, e.username, e.pointsLabel, e.dropped])
-    ).toEqual([
-      ["Night Train (2026)", "alice", "+1", true],
-      ["Static (2026)", "alice", "+1", false]
+  });
+
+  it("merges a contender's nomination and win per player, winners first", () => {
+    const [picture, actress] = circuitCeremonyPointsByCategory(
+      breakdownFor(1),
+      detail.categories
+    );
+    const rows = (card: typeof picture) =>
+      card!.entries.map((e) => [e.label, e.username, e.pointsLabel, e.won, e.dropped]);
+    expect(rows(picture)).toEqual([
+      // The same contender appears once per player who scored with it.
+      ["Night Train (2026)", "bob", "+2", true, false],
+      ["Night Train (2026)", "alice", "+1", false, true],
+      ["Static (2026)", "alice", "+1", false, false]
     ]);
-    // The same contender appears once per player who scored with it.
-    expect(picture.wins.map((e) => [e.label, e.username, e.pointsLabel])).toEqual([
-      ["Night Train (2026)", "bob", "+2"]
+    expect(picture!.pointsLabel).toBe("4");
+    // bob's nomination and win for Paper Moon are one gold pill.
+    expect(rows(actress)).toEqual([
+      ["Ada Lane, Paper Moon (2026)", "bob", "+3", true, false]
+    ]);
+    const paperMoon = actress!.entries[0]!;
+    expect([paperMoon.nomination, paperMoon.win]).toEqual([1, 2]);
+    expect(paperMoon.pointsSection.heading).toBe("Points for bob");
+    expect(paperMoon.pointsSection.lines.map((l) => [l.label, l.detail])).toEqual([
+      ["Golden Reel 2027", "Nomination +1 · Win +2"]
     ]);
   });
 
-  it("keeps a category without entries, and adds up to the ceremony's points", () => {
-    const breakdown = breakdownFor(2);
-    const rows = circuitCeremonyPointsByCategory(breakdown, detail.categories);
-    expect(rows[1]!.wins).toEqual([]);
+  it("keeps a category without points, scored 0", () => {
+    const score = {
+      ...detail.categories[0]!,
+      id: 99,
+      name: "Best Score",
+      sort_index: 99
+    };
+    const cards = circuitCeremonyPointsByCategory(breakdownFor(2), [
+      ...detail.categories,
+      score
+    ]);
+    const last = cards[cards.length - 1]!;
+    expect([last.name, last.entries, last.points, last.pointsLabel]).toEqual([
+      "Best Score",
+      [],
+      0,
+      "0"
+    ]);
+  });
+
+  it("matches the ledger: cards sum to the ceremony's points, entries to their card", () => {
     for (const ceremonyId of [1, 2]) {
       const b = breakdownFor(ceremonyId);
-      const entries = circuitCeremonyPointsByCategory(b, detail.categories).flatMap(
-        (r) => [...r.nominations, ...r.wins]
-      );
-      expect(sum(entries.map((e) => e.points))).toBe(
-        sum(b.standings.map((s) => s.points))
+      const cards = circuitCeremonyPointsByCategory(b, detail.categories);
+      for (const card of cards) {
+        expect(sum(card.entries.map((e) => e.points))).toBe(card.points);
+      }
+      expect(sum(cards.map((c) => c.points))).toBe(sum(b.standings.map((s) => s.points)));
+      expect(sum(cards.map((c) => c.points))).toBe(
+        sum(LEDGER.filter((r) => r.ceremonyId === ceremonyId).map((r) => r.points))
       );
     }
   });

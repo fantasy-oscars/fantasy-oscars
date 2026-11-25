@@ -43,3 +43,33 @@ export function circuitCeremonyDatesLabel(ceremony: CircuitScoredCeremony): stri
   ].filter((p): p is string => p !== null);
   return parts.length > 0 ? parts.join(" · ") : "Dates to be announced";
 }
+
+/** The standings screen's views, kept in `?view=`. */
+export type CircuitStandingsViewKey = "leaderboard" | "results" | "ceremonies";
+
+/**
+ * The view switch's segments: Final results only once the season is
+ * complete, between Leaderboard and By ceremony.
+ */
+export function circuitStandingsViews(
+  complete: boolean
+): Array<{ value: CircuitStandingsViewKey; label: string }> {
+  return [
+    { value: "leaderboard", label: "Leaderboard" },
+    ...(complete ? [{ value: "results" as const, label: "Final results" }] : []),
+    { value: "ceremonies", label: "By ceremony" }
+  ];
+}
+
+/**
+ * The view a `?view=` value asks for. Missing or unknown values, and
+ * `results` before the season is complete, fall back to the leaderboard.
+ */
+export function parseCircuitStandingsView(
+  raw: string | null | undefined,
+  complete: boolean
+): CircuitStandingsViewKey {
+  if (raw === "ceremonies") return "ceremonies";
+  if (raw === "results" && complete) return "results";
+  return "leaderboard";
+}

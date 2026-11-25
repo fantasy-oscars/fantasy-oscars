@@ -153,8 +153,10 @@ export function CircuitClaimModal(props: {
           ) : null}
           <Stack gap="xs">
             <Select
-              label="Chip"
-              placeholder={props.chipOptions.length > 0 ? "No chip" : "You have no chips"}
+              label="Priority pass"
+              placeholder={
+                props.chipOptions.length > 0 ? "No pass" : "You have no priority passes"
+              }
               data={props.chipOptions.map((c) => ({
                 value: String(c.id),
                 label: circuitChipLabel(c.original_pick_number)
@@ -166,8 +168,10 @@ export function CircuitClaimModal(props: {
               aria-describedby={CHIP_HELP_ID}
             />
             <Text id={CHIP_HELP_ID} variant="helper">
-              Chips come from missed draft picks. A chipped claim runs before every claim
-              without one, earliest pick first. The chip is used only if the claim wins.
+              You get a priority pass when a missed draft pick can&apos;t be made up. A
+              claim with one runs before claims without, earliest pick first. It is used
+              only if the claim wins, and expires when the first waiver window&apos;s
+              claims run.
             </Text>
           </Stack>
           {props.status ? (

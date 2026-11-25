@@ -15,12 +15,14 @@ import {
   circuitRosterErrorMessage,
   circuitSelectionLabel
 } from "./circuitRoster";
+import type { CircuitMoveKind } from "./circuitMoves";
 import { contenderPillView, type ContenderPillView } from "./contenderPill";
 
 /*
  * Waiver claims, rolling priority, chips and run results of a league's
  * season (pure). Claims are private to their owner until their window runs;
  * the server enforces every rule, and these functions only explain them.
+ * Players call a chip a "priority pass"; the API and these types keep "chip".
  */
 
 /** Waivers exist once the draft has finished. */
@@ -33,9 +35,33 @@ export function circuitWindowLabel(window: { starts_on: string; ends_on: string 
   return `${circuitDayLabel(window.starts_on)} to ${circuitDayLabel(window.ends_on)}`;
 }
 
-/** "Pick 4 chip": a chip is named by the pick that was missed. */
+/** "Pick 4 priority pass": a pass is named by the pick that was missed. */
 export function circuitChipLabel(originalPickNumber: number): string {
-  return `Pick ${originalPickNumber} chip`;
+  return `Pick ${originalPickNumber} priority pass`;
+}
+
+/** "Pass for pick 4": the short name where space is tight (claim rows, results). */
+export function circuitChipShortLabel(originalPickNumber: number): string {
+  return `Pass for pick ${originalPickNumber}`;
+}
+
+/**
+ * The Your claims note while the viewer holds passes they can still put on
+ * a claim (`circuitAvailablePassPicks`), or null without one.
+ */
+export function circuitClaimsPassNote(
+  passPicks: readonly number[],
+  windowOpen: boolean
+): string | null {
+  if (passPicks.length === 0) return null;
+  const when = windowOpen
+    ? "this window's claims run"
+    : "the first waiver window's claims run";
+  if (passPicks.length === 1) {
+    return `You have a priority pass for pick ${passPicks[0]}. Add it to a claim when you file it. It expires when ${when}.`;
+  }
+  const picks = `${passPicks.slice(0, -1).join(", ")} and ${passPicks[passPicks.length - 1]}`;
+  return `You have priority passes for picks ${picks}. Add one to a claim when you file it. They expire when ${when}.`;
 }
 
 export function circuitChipStatusLabel(status: string): string {
@@ -201,9 +227,9 @@ export function circuitClaimErrorMessage(
     case "CIRCUIT_WAIVER_CLAIMS_CHANGED":
       return "Your claims changed elsewhere. They have been reloaded; try again.";
     case "CIRCUIT_CHIP_IN_USE":
-      return "That chip is already on another claim.";
+      return "That pass is already on another claim.";
     case "CIRCUIT_CHIP_UNAVAILABLE":
-      return "That chip has been used up.";
+      return "That pass has been used.";
     case "CIRCUIT_MEMBERSHIP_REQUIRED":
       return "Join this season to make waiver claims.";
     default:
@@ -222,9 +248,9 @@ export type CircuitClaimRow = {
   /** "Night Train (2026)": the action icons and menu name the pick with it. */
   label: string;
   pill: ContenderPillView;
-  /** The pick dropped if the claim wins, drawn dashed; null is "No drop". */
+  /** The pick dropped if the claim wins, drawn dashed; null without a drop. */
   drop: ContenderPillView | null;
-  /** "Pick 7 chip", or null without a chip. */
+  /** "Pass for pick 7", or null without a pass. */
   chipLabel: string | null;
 };
 
@@ -238,7 +264,7 @@ export function circuitClaimRows(
     label: circuitSelectionLabel(claim.selection),
     pill: contenderPillView(claim.selection, categories),
     drop: claim.drop ? contenderPillView(claim.drop, categories) : null,
-    chipLabel: claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
+    chipLabel: claim.chip ? circuitChipShortLabel(claim.chip.original_pick_number) : null
   }));
 }
 
@@ -259,22 +285,41 @@ export function circuitClaimMenu(input: {
   ];
 }
 
-/** A claim in a run's results: who, the outcome beside them, then the pills. */
+/** The claims note's second sentence, with two or more claims that can still change. */
+export function circuitClaimsDragHint(count: number, editable: boolean): string | null {
+  return editable && count >= 2 ? "Drag a claim to change its rank." : null;
+}
+
+/** The polite note after a claims reorder by any input. */
+export function circuitClaimMovedNote(
+  label: string,
+  rank: number,
+  count: number
+): string {
+  return `Moved claim for ${label} to rank ${rank} of ${count}.`;
+}
+
+/** A claim in a run's results: who, the outcome beside them, then the moves. */
 export type CircuitWaiverResultRow = {
   key: number;
   order: number;
   username: string;
   avatarKey: string | null;
-  /** "Won · Pick 7 chip", "Lost: Already owned". */
+  /** "Won · Pass for pick 7", "Lost: Already owned". */
   outcome: string;
   won: boolean;
   pill: ContenderPillView;
+  /** Added when won, "Claimed, lost" (muted) when lost. */
+  pillMove: CircuitMoveKind;
   drop: ContenderPillView | null;
+  /** Dropped (dashed) when won, "Would have dropped" (muted) when lost. */
+  dropMove: CircuitMoveKind;
 };
 
 /**
- * A run's claims in the order they ran. A won claim's pill is the default
- * one, a lost claim's is muted; the chip goes in the outcome.
+ * A run's claims in the order they ran, each as its moves: a won claim adds
+ * its pick and drops its drop; a lost claim's lines are muted, since nothing
+ * changed hands. The pass goes in the outcome.
  */
 export function circuitWaiverResultRows(
   run: Pick<CircuitWaiverRun, "claims">,
@@ -289,12 +334,39 @@ export function circuitWaiverResultRows(
     avatarKey: avatars.get(claim.member.user_id) ?? null,
     outcome: [
       circuitClaimOutcomeLabel(claim),
-      claim.chip ? circuitChipLabel(claim.chip.original_pick_number) : null
+      claim.chip ? circuitChipShortLabel(claim.chip.original_pick_number) : null
     ]
       .filter(Boolean)
       .join(" · "),
     won: claim.status === "WON",
     pill: contenderPillView(claim.selection, categories),
-    drop: claim.drop ? contenderPillView(claim.drop, categories) : null
+    pillMove: claim.status === "WON" ? "added" : "lostClaim",
+    drop: claim.drop ? contenderPillView(claim.drop, categories) : null,
+    dropMove: claim.status === "WON" ? "dropped" : "lostDrop"
   }));
+}
+
+export type CircuitPriorityAfterEntry = {
+  user_id: number;
+  username: string;
+  avatarKey: string | null;
+};
+
+/** Priority after a run, first in line first, with each member's avatar. */
+export function circuitPriorityAfter(
+  run: Pick<CircuitWaiverRun, "priority_after">,
+  members: readonly Pick<CircuitLeagueMember, "user_id" | "avatar_key">[]
+): CircuitPriorityAfterEntry[] {
+  const avatars = new Map(members.map((m) => [m.user_id, m.avatar_key]));
+  return [...run.priority_after]
+    .sort(
+      (a, b) =>
+        (a.waiver_priority ?? Number.MAX_SAFE_INTEGER) -
+        (b.waiver_priority ?? Number.MAX_SAFE_INTEGER)
+    )
+    .map((p) => ({
+      user_id: p.user_id,
+      username: p.username,
+      avatarKey: avatars.get(p.user_id) ?? null
+    }));
 }

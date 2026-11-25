@@ -5,11 +5,14 @@ import {
   circuitDraftPreview,
   circuitHistoryRows,
   circuitMyRosterRows,
+  circuitQueueDragHint,
+  circuitQueueMovedNote,
   circuitRoomHeader,
   circuitRoomStatus,
   circuitSelectionClearedNote,
   circuitStagedRows,
   circuitStagingMenu,
+  circuitStagingMenuTooltip,
   circuitStagingNote,
   circuitStagingPill
 } from "@/decisions/circuitDraftRoom";
@@ -398,5 +401,35 @@ describe("circuit draft preview", () => {
       })
     ).toMatchObject({ label: "Ingrid Bergman, Gaslight (2026)", iconCode: "person" });
     expect(circuitDraftPreview({ ...input, category: picture, film: null })).toBeNull();
+  });
+});
+
+describe("staging drag and menu copy", () => {
+  const menu = (canDraft: boolean) =>
+    circuitStagingMenu({
+      list: "queue",
+      drafted: false,
+      canDraft,
+      busy: false,
+      removing: false,
+      index: 0,
+      count: 2
+    });
+
+  it("names what the row menu holds", () => {
+    expect(circuitStagingMenuTooltip(menu(true))).toBe("Draft, move or remove");
+    expect(circuitStagingMenuTooltip(menu(false))).toBe("Move or remove");
+  });
+
+  it("hints at dragging only with two or more queued, by pointer kind", () => {
+    expect(circuitQueueDragHint(1, false)).toBeNull();
+    expect(circuitQueueDragHint(2, false)).toBe("Drag to reorder.");
+    expect(circuitQueueDragHint(3, true)).toBe("Press and hold to reorder.");
+  });
+
+  it("announces a move by position", () => {
+    expect(circuitQueueMovedNote("Static", 2, 3)).toBe(
+      "Moved Static to position 2 of 3."
+    );
   });
 });

@@ -8,6 +8,7 @@ export type SeasonMemberRecord = {
   role: "OWNER" | "CO_OWNER" | "MEMBER";
   joined_at: Date;
   username?: string;
+  avatar_key?: string;
 };
 
 export async function listSeasonMembers(
@@ -23,7 +24,8 @@ export async function listSeasonMembers(
        sm.league_member_id::int,
        sm.role,
        sm.joined_at,
-       u.username
+       u.username,
+       u.avatar_key
      FROM season_member sm
      JOIN app_user u ON u.id = sm.user_id
      WHERE season_id = $1

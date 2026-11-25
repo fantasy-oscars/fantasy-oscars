@@ -34,13 +34,6 @@
       "screens": ["circuit-roster-tooltip", "specimen"]
     },
     {
-      "fg": "rgba(var(--brand-text-rgb), 0.65)",
-      "layers": ["var(--brand-page)", "var(--brand-sunken)", "var(--brand-raised)"],
-      "bucket": "normal",
-      "modes": ["dark", "light"],
-      "screens": ["circuit-roster-tooltip"]
-    },
-    {
       "fg": "var(--brand-home-aside-heading-color)",
       "inherit": "var(--brand-text)",
       "layers": ["var(--brand-page)"],
@@ -116,7 +109,7 @@
       "layers": ["var(--brand-page)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["specimen"]
+      "screens": ["circuit-standings-ceremonies", "specimen"]
     },
     {
       "fg": "var(--brand-link)",
@@ -133,11 +126,7 @@
       "layers": ["var(--brand-page)", "var(--brand-raised)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": [
-        "circuit-standings-final",
-        "circuit-standings-final-rosters",
-        "forgot-password"
-      ]
+      "screens": ["forgot-password"]
     },
     {
       "fg": "var(--brand-muted)",
@@ -159,6 +148,9 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -398,8 +390,6 @@
         "circuit-roster-tooltip",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
-        "circuit-waivers-processing",
-        "circuit-waivers-window",
         "draft-plans",
         "forgot-password",
         "full-season-in-season",
@@ -457,7 +447,11 @@
       "layers": ["var(--brand-page)", "var(--brand-raised)", "var(--brand-raised)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": ["circuit-points-player", "circuit-standings-final-rosters"]
+      "screens": [
+        "circuit-points-category",
+        "circuit-points-player",
+        "circuit-standings-final-rosters"
+      ]
     },
     {
       "fg": "var(--brand-muted)",
@@ -499,6 +493,8 @@
       "screens": [
         "circuit-points-category",
         "circuit-points-player",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-waivers",
@@ -526,6 +522,13 @@
         "circuit-waivers-window",
         "specimen"
       ]
+    },
+    {
+      "fg": "var(--brand-muted)",
+      "layers": ["var(--brand-page)", "var(--brand-sunken)", "var(--brand-raised)"],
+      "bucket": "normal",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-roster-tooltip"]
     },
     {
       "fg": "var(--brand-muted)",
@@ -698,6 +701,9 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -757,6 +763,9 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -1209,6 +1218,9 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -1295,10 +1307,9 @@
         "account-appearance-open",
         "ceremony-detail",
         "ceremony-detail-results",
+        "circuit-points-category",
         "circuit-points-player",
         "circuit-standings-final-rosters",
-        "circuit-waivers-processing",
-        "circuit-waivers-window",
         "draft-plans",
         "full-season-in-season",
         "full-season-member",
@@ -1377,6 +1388,8 @@
         "circuit-points-category",
         "circuit-points-player",
         "circuit-roster-tooltip",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "login",
@@ -1418,6 +1431,9 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -1626,6 +1642,7 @@
       "modes": ["dark", "light"],
       "screens": [
         "ceremony-detail-results",
+        "circuit-points-category",
         "circuit-points-player",
         "circuit-standings-final-rosters"
       ]
@@ -1635,12 +1652,7 @@
       "layers": ["var(--brand-page)", "var(--fo-win-gold)"],
       "bucket": "normal",
       "modes": ["dark", "light"],
-      "screens": [
-        "circuit-points-category",
-        "circuit-roster-tooltip",
-        "circuit-standings-final",
-        "specimen"
-      ]
+      "screens": ["circuit-roster-tooltip", "circuit-standings-final", "specimen"]
     }
   ],
   "unchecked": [
@@ -1697,13 +1709,19 @@
         "circuit-roster-own",
         "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-standings",
         "circuit-standings-final",
-        "circuit-standings-final-rosters",
         "circuit-waivers",
         "circuit-waivers-processing",
         "circuit-waivers-window",
         "draft-plans"
       ]
+    },
+    {
+      "fg": "var(--brand-nav-active-fg)",
+      "reason": "bgOverlap",
+      "modes": ["dark", "light"],
+      "screens": ["circuit-roster-tooltip"]
     },
     {
       "fg": "var(--brand-nav-active-fg)",
@@ -1720,8 +1738,10 @@
         "circuit-points-player",
         "circuit-roster-other",
         "circuit-roster-own",
-        "circuit-roster-tooltip",
         "circuit-roster-window",
+        "circuit-rules",
+        "circuit-standings",
+        "circuit-standings-ceremonies",
         "circuit-standings-final",
         "circuit-standings-final-rosters",
         "circuit-transactions",
@@ -1830,6 +1850,7 @@
       "modes": ["dark", "light"],
       "screens": [
         "circuit-draft-board-category",
+        "circuit-points-category",
         "circuit-points-player",
         "circuit-standings-final-rosters",
         "draft-completed",

@@ -10,6 +10,8 @@ import {
 import type { CircuitRosterPick } from "@/decisions/circuitPoints";
 import type { ApiResult, CircuitSelectionSummary } from "@/lib/types";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
+import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { PlayerName } from "@/shared/PlayerName";
 import {
   circuitLeaguePath,
   circuitTransactionsPath,
@@ -90,6 +92,7 @@ export function CircuitRosterScreen(props: {
   const chosenDrop =
     roster?.entries.find((e) => e.selection.id === props.dropSelectionId)?.selection ??
     null;
+  const chosenMember = detail.members.find((m) => m.user_id === selectedMember) ?? null;
   const title = own ? "Your roster" : `${roster?.member.username ?? "Player"}'s roster`;
 
   return (
@@ -118,8 +121,25 @@ export function CircuitRosterScreen(props: {
             label="Player"
             data={detail.members.map((m) => ({
               value: String(m.user_id),
-              label: m.user_id === props.viewerUserId ? `${m.username} (you)` : m.username
+              label: m.username
             }))}
+            renderOption={({ option }) => {
+              const member = detail.members.find(
+                (m) => String(m.user_id) === option.value
+              );
+              return (
+                <PlayerName
+                  name={option.label}
+                  avatarKey={member?.avatar_key ?? null}
+                  isViewer={member?.user_id === props.viewerUserId}
+                />
+              );
+            }}
+            leftSection={
+              chosenMember ? (
+                <AnimalAvatarIcon avatarKey={chosenMember.avatar_key} size="sm" />
+              ) : null
+            }
             value={selectedMember === null ? null : String(selectedMember)}
             placeholder="Choose a player"
             onChange={(v) => {

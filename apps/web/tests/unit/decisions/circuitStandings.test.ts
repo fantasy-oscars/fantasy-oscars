@@ -4,7 +4,9 @@ import {
   circuitCeremonyName,
   circuitPointsLabel,
   circuitScoreKindLabel,
-  circuitStandingsVisible
+  circuitStandingsViews,
+  circuitStandingsVisible,
+  parseCircuitStandingsView
 } from "../../../src/decisions/circuitStandings";
 
 const ceremony = {
@@ -48,5 +50,26 @@ describe("circuit standings decisions", () => {
     expect(
       circuitCeremonyDatesLabel({ ...ceremony, nominations_on: null, results_on: null })
     ).toBe("Dates to be announced");
+  });
+
+  it("offers Final results as a view only once the season is complete", () => {
+    expect(circuitStandingsViews(false).map((v) => v.label)).toEqual([
+      "Leaderboard",
+      "By ceremony"
+    ]);
+    expect(circuitStandingsViews(true).map((v) => v.label)).toEqual([
+      "Leaderboard",
+      "Final results",
+      "By ceremony"
+    ]);
+  });
+
+  it("parses the standings view from the URL, falling back to the leaderboard", () => {
+    expect(parseCircuitStandingsView(null, false)).toBe("leaderboard");
+    expect(parseCircuitStandingsView("leaderboard", true)).toBe("leaderboard");
+    expect(parseCircuitStandingsView("ceremonies", false)).toBe("ceremonies");
+    expect(parseCircuitStandingsView("results", true)).toBe("results");
+    expect(parseCircuitStandingsView("results", false)).toBe("leaderboard");
+    expect(parseCircuitStandingsView("rosters", true)).toBe("leaderboard");
   });
 });

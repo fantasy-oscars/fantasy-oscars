@@ -1,40 +1,14 @@
 import { Box, Text } from "@ui";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitTransactionRow } from "@/decisions/circuitTransactions";
-import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { ContenderPill } from "@/features/circuitLeagues/ui/ContenderPill";
-import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
-
-function Move(props: {
-  verb: "Added" | "Dropped";
-  view: ContenderPillView;
-  onOpenCard?: (view: ContenderPillView) => void;
-}) {
-  const { view, onOpenCard } = props;
-  const dropped = props.verb === "Dropped";
-  return (
-    <Box component="span" className="circuit-txMove">
-      <Text component="span" className="dr-pill-caption">
-        {props.verb}
-      </Text>
-      <ContenderPill
-        label={view.label}
-        categoryName={view.categoryName}
-        iconCode={view.iconCode}
-        iconVariant={view.iconVariant}
-        state={dropped ? "dropped" : "default"}
-        stateSuffix={dropped ? "dropped" : null}
-        tooltip={<ContenderNomineeCard tooltip={view.tooltip} />}
-        onOpenCard={onOpenCard ? () => onOpenCard(view) : undefined}
-      />
-    </Box>
-  );
-}
+import { PlayerName } from "@/shared/PlayerName";
+import { MovesStack, contenderMoves } from "@/features/circuitLeagues/ui/MovesStack";
 
 /**
- * The league's transactions, newest first, one row each: who, the moves as
- * pills ("Added", then "Dropped" with a dashed pill) and the kind and time.
- * On a phone the name and the kind and time share the first line.
+ * The league's transactions, newest first, one row each: who, the moves
+ * stacked (a plus line for what came in, then a minus line with a dashed
+ * pill for what went out) and the kind and time. On a phone the name and
+ * the kind and time share the first line, with the moves below.
  */
 export function CircuitTransactionList(props: {
   rows: CircuitTransactionRow[];
@@ -48,24 +22,30 @@ export function CircuitTransactionList(props: {
   return (
     <Box
       component="ol"
-      className={["fo-listReset", "fo-pillScope", "circuit-txList"].join(" ")}
+      className={["season-list", "fo-listReset", "fo-pillScope", "circuit-txList"].join(
+        " "
+      )}
       aria-label="Transactions"
     >
       {rows.map((row) => (
-        <Box key={row.key} component="li" className="circuit-txRow">
+        <Box
+          key={row.key}
+          component="li"
+          className={["season-row", "circuit-txRow"].join(" ")}
+        >
           <Box className="circuit-txWho">
-            <AnimalAvatarIcon avatarKey={row.avatarKey} size="sm" />
-            <Text component="span" className="circuit-txName" title={row.username}>
-              {row.username}
-            </Text>
+            <PlayerName name={row.username} avatarKey={row.avatarKey} density="dense" />
           </Box>
           <Box className="circuit-txMoves">
-            {row.add ? (
-              <Move verb="Added" view={row.add} onOpenCard={props.onOpenCard} />
-            ) : null}
-            {row.drop ? (
-              <Move verb="Dropped" view={row.drop} onOpenCard={props.onOpenCard} />
-            ) : null}
+            <MovesStack
+              moves={contenderMoves(
+                [
+                  { kind: "added", view: row.add },
+                  { kind: "dropped", view: row.drop }
+                ],
+                props.onOpenCard
+              )}
+            />
           </Box>
           <Text component="span" variant="meta" className="circuit-txWhen">
             {row.kindLabel} ·{" "}

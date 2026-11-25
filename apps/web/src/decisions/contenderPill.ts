@@ -58,8 +58,11 @@ export function contenderPillName(input: {
   label: string;
   points?: number | null;
   stateSuffix?: string | null;
+  /** A log move that starts the name: "Added: Best Picture: Static". */
+  movePrefix?: string | null;
 }): string {
-  const parts = [`${input.categoryName}: ${input.label}`];
+  const name = `${input.categoryName}: ${input.label}`;
+  const parts = [input.movePrefix ? `${input.movePrefix}: ${name}` : name];
   if (input.points !== null && input.points !== undefined) {
     parts.push(pointsPhrase(input.points));
   }

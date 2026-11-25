@@ -67,6 +67,14 @@ describe("contender pill name", () => {
     expect(
       contenderPillName({
         categoryName: "Best Picture",
+        label: "The Long Field (2026)",
+        stateSuffix: "dropped",
+        movePrefix: "Dropped"
+      })
+    ).toBe("Dropped: Best Picture: The Long Field (2026), dropped");
+    expect(
+      contenderPillName({
+        categoryName: "Best Picture",
         label: "Static (2026)",
         stateSuffix: "owned by pia"
       })

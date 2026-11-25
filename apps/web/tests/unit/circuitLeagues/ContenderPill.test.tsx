@@ -113,7 +113,10 @@ describe("SeasonRosterCard", () => {
     );
     const card = container.querySelector(".fo-seasonRosterCard")!;
     expect(card.className).toContain("fo-pillScope");
-    expect(within(card as HTMLElement).getByText("1. pia (you)")).toBeTruthy();
+    // No visible "(you)": the viewer's ", you" is visually hidden text.
+    const name = card.querySelector(".fo-seasonRosterCard-name")!;
+    expect(name.textContent).toBe("1. pia, you");
+    expect(name.getAttribute("title")).toBe("1. pia");
     expect(card.querySelector(".fo-seasonRosterCard-score")?.textContent).toBe("12");
     const rows = card.querySelectorAll(".fo-seasonRosterCard-row.has-meta");
     expect([...rows].map((r) => r.querySelector(".dr-railMeta")?.textContent)).toEqual([

@@ -1,6 +1,12 @@
 import { Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { circuitClaimsNote, type CircuitClaimRow } from "@/decisions/circuitWaivers";
+import {
+  circuitClaimsDragHint,
+  circuitClaimsNote,
+  circuitClaimsPassNote,
+  type CircuitClaimRow
+} from "@/decisions/circuitWaivers";
+import { circuitAvailablePassPicks } from "@/decisions/circuitSeasonTiles";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { ApiResult, CircuitClaim, CircuitClaims } from "@/lib/types";
 import {
@@ -33,6 +39,11 @@ export function CircuitClaimsSection(props: {
   onOpenCard?: (view: ContenderPillView) => void;
 }) {
   const { claims, rows } = props;
+  const hint = circuitClaimsDragHint(rows.length, props.canClaim);
+  const passNote = circuitClaimsPassNote(
+    circuitAvailablePassPicks(claims.chips),
+    claims.window !== null
+  );
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-claims-title">
       <Group justify="space-between" align="flex-end" wrap="wrap">
@@ -46,8 +57,9 @@ export function CircuitClaimsSection(props: {
         ) : null}
       </Group>
       <Divider />
+      {passNote ? <Text variant="helper">{passNote}</Text> : null}
       <Text id={NOTE_ID} className="baseline-textBody" role="status">
-        {circuitClaimsNote(claims)}
+        {hint ? `${circuitClaimsNote(claims)} ${hint}` : circuitClaimsNote(claims)}
       </Text>
       <FormStatus loading={false} result={props.status} />
       {claims.window ? (

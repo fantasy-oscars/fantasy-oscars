@@ -10,7 +10,8 @@ import {
 } from "@/features/circuitLeagues/ui/CircuitPageFrame";
 
 // The list styling shared by the season pages.
-const LIST_CLASS = ["circuit-list", "fo-listReset"].join(" ");
+const LIST_CLASS = ["season-list", "fo-listReset"].join(" ");
+const ROW_CLASS = ["season-row", "season-ruleRow"].join(" ");
 
 function Section(props: { id: string; title: string; children: React.ReactNode }) {
   return (
@@ -67,8 +68,12 @@ export function CircuitRulesScreen(props: { view: CircuitRulesView }) {
         ) : (
           <Box component="ul" className={LIST_CLASS} aria-label="Events">
             {rules.events.map((event) => (
-              <Box key={event.id} component="li" className="circuit-row">
-                <Box className="circuit-rowMain">
+              <Box
+                key={event.id}
+                component="li"
+                className={[ROW_CLASS, "is-twoLine"].join(" ")}
+              >
+                <Box className="season-rowMain">
                   <Text fw="var(--fo-font-weight-bold)" className="baseline-wrapAnywhere">
                     {event.name}
                   </Text>
@@ -78,7 +83,7 @@ export function CircuitRulesScreen(props: { view: CircuitRulesView }) {
                     </Text>
                   ))}
                 </Box>
-                <Text component="span" variant="meta" className="circuit-rowActions">
+                <Text component="span" variant="meta" className="season-rowMeta">
                   Points {event.weight}
                 </Text>
               </Box>
@@ -105,9 +110,9 @@ export function CircuitRulesScreen(props: { view: CircuitRulesView }) {
         ) : null}
         <Box component="ul" className={LIST_CLASS} aria-label="Categories">
           {rules.categories.map((category) => (
-            <Box key={category.id} component="li" className="circuit-row">
+            <Box key={category.id} component="li" className={ROW_CLASS}>
               <Text className="baseline-wrapAnywhere">{category.name}</Text>
-              <Text component="span" variant="meta" className="circuit-rowActions">
+              <Text component="span" variant="meta" className="season-rowMeta">
                 {[category.weight ? `Points ${category.weight}` : null, category.limit]
                   .filter(Boolean)
                   .join(" · ")}

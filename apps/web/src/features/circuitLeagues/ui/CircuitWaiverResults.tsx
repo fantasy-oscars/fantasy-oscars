@@ -2,36 +2,15 @@ import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { circuitInstantLabel } from "@/decisions/circuitRoster";
 import {
   circuitWindowLabel,
+  type CircuitPriorityAfterEntry,
   type CircuitWaiverResultRow
 } from "@/decisions/circuitWaivers";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitWaiverRun } from "@/lib/types";
-import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
-import { ContenderPill } from "@/features/circuitLeagues/ui/ContenderPill";
-import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
+import { PlayerName } from "@/shared/PlayerName";
+import { MovesStack, contenderMoves } from "@/features/circuitLeagues/ui/MovesStack";
 
 type OpenCard = ((view: ContenderPillView) => void) | undefined;
-
-function ResultPill(props: {
-  view: ContenderPillView;
-  state: "default" | "muted" | "dropped";
-  stateSuffix: string | null;
-  onOpenCard: OpenCard;
-}) {
-  const { view, onOpenCard } = props;
-  return (
-    <ContenderPill
-      label={view.label}
-      categoryName={view.categoryName}
-      iconCode={view.iconCode}
-      iconVariant={view.iconVariant}
-      state={props.state}
-      stateSuffix={props.stateSuffix}
-      tooltip={<ContenderNomineeCard tooltip={view.tooltip} />}
-      onOpenCard={onOpenCard ? () => onOpenCard(view) : undefined}
-    />
-  );
-}
 
 function RunClaims(props: {
   window: CircuitWaiverRun["window"];
@@ -45,43 +24,39 @@ function RunClaims(props: {
   return (
     <Box
       component="ol"
-      className={["fo-listReset", "fo-pillScope", "circuit-resultList"].join(" ")}
+      className={[
+        "season-list",
+        "fo-listReset",
+        "fo-pillScope",
+        "circuit-resultList"
+      ].join(" ")}
       aria-label={`Claims for ${circuitWindowLabel(props.window)}, in the order they ran`}
     >
       {rows.map((row) => (
-        <Box key={row.key} component="li" className="circuit-resultRow">
+        <Box
+          key={row.key}
+          component="li"
+          className={["season-row", "circuit-resultRow"].join(" ")}
+        >
+          <Text component="span" variant="meta" className="circuit-resultOrder">
+            {row.order}.
+          </Text>
           <Box className="circuit-resultWho">
-            <Text component="span" variant="meta" className="circuit-resultOrder">
-              {row.order}.
-            </Text>
-            <AnimalAvatarIcon avatarKey={row.avatarKey} size="sm" />
-            <Text component="span" className="circuit-txName" title={row.username}>
-              {row.username}
-            </Text>
+            <PlayerName name={row.username} avatarKey={row.avatarKey} density="dense" />
             <Text component="span" variant="meta" className="circuit-resultOutcome">
               {row.outcome}
             </Text>
           </Box>
-          <Box className="circuit-txMoves">
-            <ResultPill
-              view={row.pill}
-              state={row.won ? "default" : "muted"}
-              stateSuffix={row.won ? null : "lost"}
-              onOpenCard={props.onOpenCard}
+          <Box className="circuit-resultMoves">
+            <MovesStack
+              moves={contenderMoves(
+                [
+                  { kind: row.pillMove, view: row.pill },
+                  { kind: row.dropMove, view: row.drop }
+                ],
+                props.onOpenCard
+              )}
             />
-            {row.drop ? (
-              <Box component="span" className="circuit-txMove">
-                <Text component="span" className="dr-pill-caption">
-                  dropping
-                </Text>
-                <ResultPill
-                  view={row.drop}
-                  state="dropped"
-                  stateSuffix="dropped"
-                  onOpenCard={props.onOpenCard}
-                />
-              </Box>
-            ) : null}
           </Box>
         </Box>
       ))}
@@ -89,13 +64,44 @@ function RunClaims(props: {
   );
 }
 
+/** "Priority after:" then the members in their new order, avatar and name each. */
+function PriorityAfter(props: { entries: CircuitPriorityAfterEntry[] }) {
+  if (props.entries.length === 0) return null;
+  return (
+    <Box className="circuit-priorityAfter">
+      <Text component="span" variant="meta">
+        Priority after:
+      </Text>
+      <Box
+        component="ol"
+        className={["fo-listReset", "circuit-priorityAfterList"].join(" ")}
+        aria-label="Priority after this run"
+      >
+        {props.entries.map((entry) => (
+          <li key={entry.user_id}>
+            <PlayerName
+              name={entry.username}
+              avatarKey={entry.avatarKey}
+              density="dense"
+            />
+          </li>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 /**
  * Each completed run, newest first: every claim in the order it ran, who
- * made it with the outcome beside them, the claimed and dropped contenders
- * as pills, and priority after the run.
+ * made it with the outcome beside them, its moves stacked below, and
+ * priority after the run as an ordered list of players.
  */
 export function CircuitWaiverResults(props: {
-  runs: Array<{ run: CircuitWaiverRun; rows: CircuitWaiverResultRow[] }>;
+  runs: Array<{
+    run: CircuitWaiverRun;
+    rows: CircuitWaiverResultRow[];
+    priorityAfter: CircuitPriorityAfterEntry[];
+  }>;
   /** Phone or coarse pointer: a tap on a pill opens its nominee card. */
   onOpenCard?: (view: ContenderPillView) => void;
 }) {
@@ -111,7 +117,7 @@ export function CircuitWaiverResults(props: {
           No claims have run yet. Results appear here after each window.
         </Text>
       ) : (
-        runs.map(({ run, rows }) => (
+        runs.map(({ run, rows, priorityAfter }) => (
           <Stack
             key={run.id}
             gap="xs"
@@ -130,11 +136,7 @@ export function CircuitWaiverResults(props: {
               </Text>
             </Group>
             <RunClaims window={run.window} rows={rows} onOpenCard={props.onOpenCard} />
-            {run.priority_after.length > 0 ? (
-              <Text variant="helper">
-                Priority after: {run.priority_after.map((p) => p.username).join(", ")}
-              </Text>
-            ) : null}
+            <PriorityAfter entries={priorityAfter} />
           </Stack>
         ))
       )}

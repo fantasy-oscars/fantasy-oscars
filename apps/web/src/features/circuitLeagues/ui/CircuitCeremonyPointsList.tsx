@@ -22,12 +22,16 @@ export function CircuitCeremonyPointsList(props: {
   return (
     <Box
       component="ul"
-      className={["circuit-list", "fo-listReset"].join(" ")}
+      className={["season-list", "fo-listReset"].join(" ")}
       aria-label="Points by ceremony"
     >
       {props.ceremonies.map((c) => (
-        <Box key={c.id} component="li" className="circuit-row">
-          <Box className="circuit-rowMain">
+        <Box
+          key={c.id}
+          component="li"
+          className={["season-row", "is-twoLine", "season-ceremonyRow"].join(" ")}
+        >
+          <Box className="season-rowMain">
             <Anchor
               component={Link}
               to={props.pathOf(c.id)}
@@ -40,7 +44,7 @@ export function CircuitCeremonyPointsList(props: {
               {c.event.name} · {circuitCeremonyDatesLabel(c)}
             </Text>
           </Box>
-          <Text component="span" variant="meta" className="circuit-rowActions">
+          <Text component="span" variant="meta" className="season-rowMeta">
             {circuitPointsLabel(c.points_awarded)} awarded
           </Text>
         </Box>

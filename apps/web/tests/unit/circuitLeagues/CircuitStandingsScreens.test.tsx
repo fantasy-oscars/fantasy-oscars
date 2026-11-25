@@ -9,7 +9,15 @@ import { circuitLeagueEditable } from "@/decisions/circuitLeague";
 import { fullSeasonSettingsFrom } from "@/decisions/fullSeasonSettings";
 import type { CircuitScoredCeremony, CircuitStandingRow } from "@/lib/types";
 import { circuitLeagueDetail } from "./fixtures";
-import { LEDGER, SEASON, breakdownFor, contenders, rosterFor, sum } from "./seededLedger";
+import {
+  CEREMONY_NAMES,
+  LEDGER,
+  SEASON,
+  breakdownFor,
+  contenders,
+  rosterFor,
+  sum
+} from "./seededLedger";
 
 afterEach(cleanup);
 
@@ -44,34 +52,70 @@ const row = (
   win_points
 });
 
+function renderStandings(input: {
+  view: React.ComponentProps<typeof CircuitStandingsScreen>["view"];
+  viewParam?: string | null;
+  viewerUserId?: number | null;
+  resultsMode?: "contenders" | "rosters";
+  onViewChange?: (view: string) => void;
+  onResultsModeChange?: (mode: "contenders" | "rosters") => void;
+}) {
+  const onViewChange = input.onViewChange ?? vi.fn();
+  const onResultsModeChange = input.onResultsModeChange ?? vi.fn();
+  wrap(
+    <CircuitStandingsScreen
+      viewerUserId={input.viewerUserId ?? null}
+      viewParam={input.viewParam ?? null}
+      onViewChange={onViewChange}
+      resultsMode={input.resultsMode ?? "contenders"}
+      onResultsModeChange={onResultsModeChange}
+      view={input.view}
+    />
+  );
+  return { onViewChange, onResultsModeChange };
+}
+
+const inSeason = {
+  state: "ready",
+  detail: circuitLeagueDetail({ status: "IN_SEASON" }),
+  standings: {
+    standings: [row(5, "avery", 1, 2, 4), row(6, "blake", 2, 1, 0)],
+    ceremonies: [{ ...ceremony, points_awarded: 7 }]
+  },
+  finalResults: null
+} as const;
+
 describe("circuit standings screen", () => {
-  it("ranks members with their points and links each ceremony to its breakdown", () => {
-    wrap(
-      <CircuitStandingsScreen
-        viewerUserId={6}
-        resultsMode="contenders"
-        onResultsModeChange={vi.fn()}
-        view={{
-          state: "ready",
-          detail: circuitLeagueDetail({ status: "IN_SEASON" }),
-          standings: {
-            standings: [row(5, "avery", 1, 2, 4), row(6, "blake", 2, 1, 0)],
-            ceremonies: [{ ...ceremony, points_awarded: 7 }]
-          },
-          finalResults: null
-        }}
-      />
-    );
+  it("opens on the leaderboard, ranking members with their points", () => {
+    const { onViewChange } = renderStandings({ view: inSeason, viewerUserId: 6 });
+    // In season the switch has two views; the leaderboard is the default.
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: "Leaderboard" })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Final results" })).toBeNull();
     const rows = within(screen.getByRole("list", { name: "Standings" })).getAllByRole(
       "listitem"
     );
     expect(rows.map((r) => r.textContent)).toEqual([
       "1averyNominations 2 pts · Wins 4 pts6 pts",
-      "2blake (you)Nominations 1 pt · Wins 0 pts1 pt"
+      // The viewer's ", you" is visually hidden; nothing visible marks them.
+      "2blake, youNominations 1 pt · Wins 0 pts1 pt"
     ]);
-    // The avatar comes before each name; no final results before the season is complete.
+    // The avatar comes before each name.
     expect(rows[0]!.querySelector(".fo-animalAvatar")).not.toBeNull();
-    expect(screen.queryByRole("heading", { name: "Final results" })).toBeNull();
+    expect(rows[1]!.querySelector(".fo-animalAvatar")).not.toBeNull();
+    // Only the current view shows; its heading is hidden but kept in the outline.
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)
+    ).toEqual(["Leaderboard"]);
+    expect(screen.queryByRole("list", { name: "Points by ceremony" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "By ceremony" }));
+    expect(onViewChange).toHaveBeenCalledWith("ceremonies");
+  });
+
+  it("shows By ceremony from the URL, linking each ceremony to its breakdown", () => {
+    renderStandings({ view: inSeason, viewParam: "ceremonies" });
+    expect(screen.getByRole("radio", { name: "By ceremony" })).toBeChecked();
+    expect(screen.queryByRole("list", { name: "Standings" })).toBeNull();
     const link = screen.getByRole("link", { name: "Critics Choice" });
     expect(link.getAttribute("href")).toBe(
       "/leagues/3/film-club/seasons/full/4/standings/11"
@@ -81,34 +125,35 @@ describe("circuit standings screen", () => {
     expect(ceremonies.getByText("7 pts awarded")).toBeTruthy();
   });
 
+  it("falls back to the leaderboard for Final results before the season is complete", () => {
+    renderStandings({ view: inSeason, viewParam: "results" });
+    expect(screen.getByRole("radio", { name: "Leaderboard" })).toBeChecked();
+    expect(screen.getByRole("list", { name: "Standings" })).toBeTruthy();
+  });
+
   it("says when standings have not started, and when no ceremony counts yet", () => {
-    wrap(
-      <CircuitStandingsScreen
-        viewerUserId={null}
-        resultsMode="contenders"
-        onResultsModeChange={vi.fn()}
-        view={{
-          state: "not-started",
-          detail: circuitLeagueDetail({ status: "DRAFTING" })
-        }}
-      />
-    );
+    renderStandings({
+      view: { state: "not-started", detail: circuitLeagueDetail({ status: "DRAFTING" }) }
+    });
     expect(screen.getByText("Standings start once the draft has finished.")).toBeTruthy();
+    expect(screen.queryByRole("radiogroup", { name: "Show standings" })).toBeNull();
     cleanup();
-    wrap(
-      <CircuitStandingsScreen
-        viewerUserId={null}
-        resultsMode="contenders"
-        onResultsModeChange={vi.fn()}
-        view={{
-          state: "ready",
-          detail: circuitLeagueDetail({ status: "IN_SEASON" }),
-          standings: { standings: [row(5, "avery", 1, 0, 0)], ceremonies: [] },
-          finalResults: null
-        }}
-      />
-    );
+    renderStandings({
+      viewParam: "ceremonies",
+      view: {
+        state: "ready",
+        detail: circuitLeagueDetail({ status: "IN_SEASON" }),
+        standings: { standings: [row(5, "avery", 1, 0, 0)], ceremonies: [] },
+        finalResults: null
+      }
+    });
     expect(screen.getByText("No ceremonies count toward this season yet.")).toBeTruthy();
+  });
+
+  it("draws the switch and five rows while loading", () => {
+    renderStandings({ view: { state: "loading" } });
+    const status = screen.getByRole("status", { name: "Loading standings" });
+    expect(status.querySelectorAll(".mantine-Skeleton-root")).toHaveLength(7);
   });
 });
 
@@ -157,7 +202,7 @@ describe("circuit ceremony points screen", () => {
       .filter((li) => li.querySelector(".fo-seasonRosterCard"));
     expect(
       cards.map((c) => c.querySelector(".fo-seasonRosterCard-name")?.textContent)
-    ).toEqual(["1. bob", "2. alice (you)", "3. cy"]);
+    ).toEqual(["1. bob", "2. alice, you", "3. cy"]);
     for (const card of cards) {
       const pills = [...card.querySelectorAll(".dr-pill")];
       const score = Number(card.querySelector(".fo-seasonRosterCard-score")?.textContent);
@@ -181,35 +226,50 @@ describe("circuit ceremony points screen", () => {
     expect(within(cards[2]!).getByText("No points at this ceremony.")).toBeTruthy();
   });
 
-  it("shows By category with Nominations and Wins that add up to the ceremony", () => {
+  it("shows By category as board cards that match the ledger", async () => {
     renderBreakdown({ mode: "category" });
-    const rows = within(
-      screen.getByRole("list", { name: "Points by category" })
-    ).getAllByRole("listitem", { name: /^Best / });
-    expect(rows.map((r) => r.getAttribute("aria-labelledby"))).toHaveLength(2);
-    const picture = rows[0]!;
-    const nominations = within(picture).getByRole("group", { name: "Nominations" });
-    const wins = within(picture).getByRole("group", { name: "Wins" });
-    expect(nominations.textContent).toContain("alice · dropped");
+    const board = screen.getByRole("list", { name: "Points by category" });
+    const cards = within(board).getAllByRole("region");
+    // Every season category gets a card, in category order.
     expect(
-      [...wins.querySelectorAll(".dr-pill")].every((p) =>
-        p.className.includes("is-winner")
-      )
-    ).toBe(true);
-    expect(nominations.querySelector(".is-winner")).toBeNull();
-    const all = [
-      ...screen
-        .getByRole("list", { name: "Points by category" })
-        .querySelectorAll(".dr-pill")
-    ];
+      cards.map((c) => c.querySelector(".fo-seasonRosterCard-name")?.textContent)
+    ).toEqual(["Best Picture", "Best Actress"]);
+    // Each card's score is the sum of its pills; the cards sum to the ceremony.
     const ceremonyTotal = sum(
       LEDGER.filter((r) => r.ceremonyId === 1).map((r) => r.points)
     );
-    expect(total(all.map(figure))).toBe(ceremonyTotal);
-    // A category with nothing in a column says so.
-    cleanup();
-    renderBreakdown({ ceremonyId: 2, mode: "category" });
-    expect(screen.getAllByLabelText("None").length).toBeGreaterThan(0);
+    const scores = cards.map((card) => {
+      const score = Number(card.querySelector(".fo-seasonRosterCard-score")?.textContent);
+      expect(total([...card.querySelectorAll(".dr-pill")].map(figure))).toBe(score);
+      return score;
+    });
+    expect(total(scores)).toBe(ceremonyTotal);
+    expect(total([...board.querySelectorAll(".dr-pill")].map(figure))).toBe(
+      ceremonyTotal
+    );
+
+    // Winners come first and are gold; a pick dropped since is dashed and says so.
+    const picture = cards[0]!;
+    const pills = [...picture.querySelectorAll(".dr-pill")];
+    expect(pills.map((p) => p.getAttribute("aria-label"))).toEqual([
+      "Best Picture: Night Train (2026), 2 points, bob",
+      "Best Picture: Night Train (2026), 1 point, alice, dropped",
+      "Best Picture: Static (2026), 1 point, alice"
+    ]);
+    expect(pills[0]!.className).toContain("is-winner");
+    expect(pills[1]!.className).toContain("is-dropped");
+    expect(pills[1]!.className).not.toContain("is-winner");
+    expect(picture.textContent).toContain("alice· dropped");
+    expect(picture.querySelectorAll(".fo-playerName .fo-animalAvatar")).toHaveLength(3);
+
+    // bob's nomination and win for Paper Moon are one gold pill; its card splits them.
+    const paperMoon = within(cards[1]!).getByRole("group", {
+      name: "Best Actress: Ada Lane, Paper Moon (2026), 3 points, bob"
+    });
+    expect(paperMoon.className).toContain("is-winner");
+    fireEvent.focus(paperMoon);
+    expect(await screen.findByText("Points for bob")).toBeTruthy();
+    expect(screen.getByText("Nomination +1 · Win +2")).toBeTruthy();
   });
 
   it("opens the nominee card with the points on a tap on a phone", async () => {
@@ -248,33 +308,75 @@ describe("circuit ceremony points screen", () => {
 });
 
 describe("circuit final results", () => {
+  const complete = {
+    state: "ready",
+    detail: circuitLeagueDetail({ status: "COMPLETE" }),
+    standings: {
+      standings: SEASON,
+      ceremonies: [1, 2].map((id) => ({
+        ...ceremony,
+        id,
+        name: CEREMONY_NAMES[id]!,
+        points_awarded: sum(
+          LEDGER.filter((r) => r.ceremonyId === id).map((r) => r.points)
+        )
+      }))
+    },
+    finalResults: {
+      state: "ready",
+      contenders: contenders(),
+      rosters: [5, 6, 7].map(rosterFor)
+    }
+  } as const;
+
   function renderFinal(mode: "contenders" | "rosters", onResultsModeChange = vi.fn()) {
-    wrap(
-      <CircuitStandingsScreen
-        viewerUserId={5}
-        resultsMode={mode}
-        onResultsModeChange={onResultsModeChange}
-        view={{
-          state: "ready",
-          detail: circuitLeagueDetail({ status: "COMPLETE" }),
-          standings: { standings: SEASON, ceremonies: [] },
-          finalResults: {
-            state: "ready",
-            contenders: contenders(),
-            rosters: [5, 6, 7].map(rosterFor)
-          }
-        }}
-      />
-    );
+    renderStandings({
+      view: complete,
+      viewParam: "results",
+      viewerUserId: 5,
+      resultsMode: mode,
+      onResultsModeChange
+    });
     return onResultsModeChange;
   }
 
+  it("reports the same numbers in every view for the seeded league", () => {
+    const seasonTotal = sum(SEASON.map((s) => s.points));
+    // Leaderboard: each member's total as the ledger sums it.
+    renderStandings({ view: complete });
+    const figures = [
+      ...screen
+        .getByRole("list", { name: "Standings" })
+        .querySelectorAll(".season-rowFigure")
+    ].map((f) => f.textContent);
+    expect(figures).toEqual(["6.5 pts", "2 pts", "1 pt"]);
+    cleanup();
+    // Final results: the scoring contenders add up to the leaderboard.
+    renderFinal("contenders");
+    const contenderPills = within(
+      screen.getByRole("list", { name: "All scoring contenders" })
+    )
+      .getAllByRole("listitem")
+      .filter((li) => li.querySelector(".circuit-contenderRank"))
+      .map((r) => r.querySelector(".dr-pill")!);
+    expect(total(contenderPills.map(figure))).toBe(seasonTotal);
+    cleanup();
+    // By ceremony: the points awarded add up to the leaderboard too.
+    renderStandings({ view: complete, viewParam: "ceremonies" });
+    const awarded = within(screen.getByRole("list", { name: "Points by ceremony" }))
+      .getAllByText(/pts? awarded$/)
+      .map((t) => Number(t.textContent!.split(" ")[0]));
+    expect(total(awarded)).toBe(seasonTotal);
+  });
+
   it("lists every scoring contender, adding up to the leaderboard", () => {
     const onChange = renderFinal("contenders");
-    const headings = screen
-      .getAllByRole("heading", { level: 3 })
-      .map((h) => h.textContent);
-    expect(headings).toEqual(["Leaderboard", "Final results", "By ceremony"]);
+    // Complete: three views, Final results chosen from the URL.
+    expect(screen.getAllByRole("radiogroup")[0]).toHaveAccessibleName("Show standings");
+    expect(screen.getByRole("radio", { name: "Final results" })).toBeChecked();
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)
+    ).toEqual(["Final results"]);
     const rows = within(screen.getByRole("list", { name: "All scoring contenders" }))
       .getAllByRole("listitem")
       .filter((li) => li.querySelector(".circuit-contenderRank"));
@@ -289,11 +391,11 @@ describe("circuit final results", () => {
     expect(nightTrain.textContent).toContain("bob +2");
     expect(nightTrain.textContent).toContain("alice +1");
     // The points sit outside the name, so a long name never truncates them.
-    const bob = within(nightTrain).getByTitle("bob +2");
+    const bob = within(nightTrain).getByTitle("bob");
     expect(bob.textContent).toBe("bob");
-    expect(
-      bob.parentElement!.querySelector(".circuit-pointsPlayerPoints")!.textContent
-    ).toBe("+2");
+    const chip = bob.closest(".circuit-pointsPlayer")!;
+    expect(chip.querySelector(".fo-animalAvatar")).not.toBeNull();
+    expect(chip.querySelector(".circuit-pointsPlayerPoints")!.textContent).toBe("+2");
     fireEvent.click(screen.getByRole("radio", { name: "Final rosters" }));
     expect(onChange).toHaveBeenCalledWith("rosters");
   });

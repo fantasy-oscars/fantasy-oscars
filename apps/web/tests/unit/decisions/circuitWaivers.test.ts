@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   circuitChipLabel,
+  circuitChipShortLabel,
   circuitChipStatusLabel,
   circuitClaimCapacityWarning,
   circuitClaimDropError,
   circuitClaimChipOptions,
   circuitClaimErrorMessage,
   circuitClaimMenu,
+  circuitClaimMovedNote,
   circuitClaimOutcomeLabel,
   circuitClaimRows,
+  circuitClaimsDragHint,
   circuitClaimsNote,
+  circuitClaimsPassNote,
   circuitPendingClaims,
+  circuitPriorityAfter,
   circuitPriorityEntries,
   circuitWaiverResultRows,
   circuitWaiversVisible,
@@ -36,9 +41,10 @@ describe("circuit waiver labels", () => {
     expect(circuitWaiversVisible("COMPLETE")).toBe(true);
   });
 
-  it("names windows, chips and outcomes", () => {
+  it("names windows, priority passes and outcomes", () => {
     expect(circuitWindowLabel(OPEN_WINDOW)).toBe("Jan 8, 2027 to Jan 10, 2027");
-    expect(circuitChipLabel(4)).toBe("Pick 4 chip");
+    expect(circuitChipLabel(4)).toBe("Pick 4 priority pass");
+    expect(circuitChipShortLabel(4)).toBe("Pass for pick 4");
     expect(circuitChipStatusLabel("CONSUMED")).toBe("Used");
     expect(circuitChipStatusLabel("EXPIRED")).toBe("Expired");
     expect(circuitClaimOutcomeLabel({ status: "WON", failure_reason: null })).toBe("Won");
@@ -251,7 +257,7 @@ describe("circuit claim and result rows", () => {
       label: "Night Train (2026)",
       iconCode: "movie"
     });
-    expect(withDrop!.chipLabel).toBe("Pick 7 chip");
+    expect(withDrop!.chipLabel).toBe("Pass for pick 7");
     expect(bare!.drop).toBeNull();
     expect(bare!.chipLabel).toBeNull();
   });
@@ -299,11 +305,72 @@ describe("circuit claim and result rows", () => {
     );
     expect(rows.map((r) => [r.order, r.username, r.avatarKey, r.outcome, r.won])).toEqual(
       [
-        [1, "avery", "owl", "Won · Pick 7 chip", true],
+        [1, "avery", "owl", "Won · Pass for pick 7", true],
         [2, "blake", null, "Lost: Someone ahead of them got it", false]
       ]
     );
     expect(rows[0]!.drop?.label).toBe("Night Train (2026)");
     expect(rows[1]!.drop).toBeNull();
+    // A won claim adds and drops; a lost one's lines are muted.
+    expect(rows.map((r) => [r.pillMove, r.dropMove])).toEqual([
+      ["added", "dropped"],
+      ["lostClaim", "lostDrop"]
+    ]);
+  });
+
+  it("lists priority after a run, first in line first, with avatars", () => {
+    const entries = circuitPriorityAfter(
+      {
+        priority_after: [
+          { user_id: 6, username: "blake", waiver_priority: 2 },
+          { user_id: 7, username: "cora", waiver_priority: null },
+          { user_id: 5, username: "avery", waiver_priority: 1 }
+        ]
+      },
+      [{ user_id: 5, avatar_key: "owl" }]
+    );
+    expect(entries).toEqual([
+      { user_id: 5, username: "avery", avatarKey: "owl" },
+      { user_id: 6, username: "blake", avatarKey: null },
+      { user_id: 7, username: "cora", avatarKey: null }
+    ]);
+  });
+});
+
+describe("priority pass copy", () => {
+  it("tells a holder about their passes in Your claims", () => {
+    expect(circuitClaimsPassNote([], true)).toBeNull();
+    expect(circuitClaimsPassNote([5], true)).toBe(
+      "You have a priority pass for pick 5. Add it to a claim when you file it. It expires when this window's claims run."
+    );
+    expect(circuitClaimsPassNote([5], false)).toBe(
+      "You have a priority pass for pick 5. Add it to a claim when you file it. It expires when the first waiver window's claims run."
+    );
+    expect(circuitClaimsPassNote([3, 5, 8], true)).toBe(
+      "You have priority passes for picks 3, 5 and 8. Add one to a claim when you file it. They expire when this window's claims run."
+    );
+  });
+
+  it("names a pass in claim errors, keeping the API codes", () => {
+    expect(circuitClaimErrorMessage({ errorCode: "CIRCUIT_CHIP_IN_USE" }, "x")).toBe(
+      "That pass is already on another claim."
+    );
+    expect(circuitClaimErrorMessage({ errorCode: "CIRCUIT_CHIP_UNAVAILABLE" }, "x")).toBe(
+      "That pass has been used."
+    );
+  });
+});
+
+describe("claims drag copy", () => {
+  it("hints at dragging with two or more claims that can still change", () => {
+    expect(circuitClaimsDragHint(2, true)).toBe("Drag a claim to change its rank.");
+    expect(circuitClaimsDragHint(1, true)).toBeNull();
+    expect(circuitClaimsDragHint(3, false)).toBeNull();
+  });
+
+  it("announces a move by rank", () => {
+    expect(circuitClaimMovedNote("Harbor (2026)", 2, 4)).toBe(
+      "Moved claim for Harbor (2026) to rank 2 of 4."
+    );
   });
 });

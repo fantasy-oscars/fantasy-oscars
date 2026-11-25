@@ -1,5 +1,6 @@
 import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
+import { PlayerName } from "@/shared/PlayerName";
 import { circuitLeagueMemberCountLabel } from "@/decisions/circuitLeague";
 import type { ApiResult, CircuitLeagueMember } from "@/lib/types";
 
@@ -30,9 +31,14 @@ export function CircuitLeagueMembersSection(props: {
         <Stack component="ul" gap="var(--fo-space-0)" className="fo-listReset">
           {members.map((m, idx) => (
             <Box key={m.user_id} component="li">
-              <Text className="baseline-textBody baseline-wrapAnywhere" py="sm">
-                {m.username}
-              </Text>
+              <Box py="var(--fo-space-dense-2)">
+                <PlayerName
+                  name={m.username}
+                  avatarKey={m.avatar_key}
+                  density="roomy"
+                  wrap="anywhere"
+                />
+              </Box>
               {idx === members.length - 1 ? null : <Divider />}
             </Box>
           ))}

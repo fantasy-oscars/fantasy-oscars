@@ -1,4 +1,13 @@
-import { Box, Divider, Group, SegmentedControl, Skeleton, Stack, Text, Title } from "@ui";
+import {
+  Box,
+  Group,
+  SegmentedControl,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+  VisuallyHidden
+} from "@ui";
 import type {
   CircuitPlayerPointsCard,
   CircuitScoringContenderRow
@@ -6,7 +15,7 @@ import type {
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitSelectionSummary } from "@/lib/types";
 import { FormStatus } from "@/shared/forms";
-import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { PlayerName } from "@/shared/PlayerName";
 import { CircuitPointsPill, type CircuitPointsCardOpener } from "./CircuitPointsPill";
 import { CircuitCeremonyPointsByPlayer } from "./CircuitScoreBreakdown";
 
@@ -30,11 +39,20 @@ function ScoringContenders(props: {
   return (
     <Box
       component="ol"
-      className={["fo-listReset", "fo-pillScope", "circuit-contenderList"].join(" ")}
+      className={[
+        "season-list",
+        "fo-listReset",
+        "fo-pillScope",
+        "circuit-contenderList"
+      ].join(" ")}
       aria-label="All scoring contenders"
     >
       {props.rows.map((row) => (
-        <Box key={row.pill.key} component="li" className="circuit-contenderRow">
+        <Box
+          key={row.pill.key}
+          component="li"
+          className={["season-row", "circuit-contenderRow"].join(" ")}
+        >
           <Text component="span" variant="meta" className="circuit-contenderRank">
             {row.rank}
           </Text>
@@ -51,15 +69,12 @@ function ScoringContenders(props: {
           >
             {row.players.map((player) => (
               <Box key={player.userId} component="li" className="circuit-pointsPlayer">
-                <AnimalAvatarIcon avatarKey={player.avatarKey} size="sm" />
                 {/* Only the name ellipsises; the points always show. */}
-                <Text
-                  component="span"
-                  className="circuit-pointsPlayerName"
-                  title={`${player.username} ${player.pointsLabel}`}
-                >
-                  {player.username}
-                </Text>{" "}
+                <PlayerName
+                  name={player.username}
+                  avatarKey={player.avatarKey}
+                  density="dense"
+                />{" "}
                 <Text component="span" className="circuit-pointsPlayerPoints">
                   {player.pointsLabel}
                 </Text>
@@ -74,7 +89,8 @@ function ScoringContenders(props: {
 
 /**
  * The season's final results, once it is complete: every contender that
- * scored, or every player's final roster, behind one switch.
+ * scored, or every player's final roster, behind one switch. The view's
+ * heading is hidden: the standings switch already names it.
  */
 export function CircuitFinalResults(props: {
   mode: CircuitFinalResultsMode;
@@ -90,17 +106,22 @@ export function CircuitFinalResults(props: {
   viewerUserId: number | null;
   viewOf: ViewOf;
   onOpenCard?: CircuitPointsCardOpener;
+  /** Phone: the sub-switch is full width. */
+  phone?: boolean;
 }) {
   const { state } = props;
   return (
     <Stack gap="sm" component="section" aria-labelledby="circuit-final-title">
-      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-        <Title order={3} variant="section" id="circuit-final-title">
+      <VisuallyHidden>
+        <Title order={3} id="circuit-final-title">
           Final results
         </Title>
+      </VisuallyHidden>
+      <Group justify="flex-end" wrap="wrap" gap="sm" grow={props.phone}>
         <SegmentedControl
           aria-label="Show final results"
           className="circuit-boardToggle"
+          fullWidth={props.phone}
           value={props.mode}
           onChange={(v: string) =>
             props.onModeChange(v === "rosters" ? "rosters" : "contenders")
@@ -111,7 +132,6 @@ export function CircuitFinalResults(props: {
           ]}
         />
       </Group>
-      <Divider />
       {state.state === "loading" ? (
         <Stack gap="sm" role="status" aria-label="Loading results">
           {Array.from({ length: 4 }).map((_, idx) => (

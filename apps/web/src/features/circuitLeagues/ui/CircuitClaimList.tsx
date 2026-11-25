@@ -1,25 +1,116 @@
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent, TouchEvent } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent
+} from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ActionIcon, Box, Menu, Text, Tooltip } from "@ui";
-import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
+import { ActionIcon, Box, Menu, Text, Tooltip, VisuallyHidden } from "@ui";
+import { useRowReorderSensors } from "@/shared/dnd/useRowReorderSensors";
+import {
+  ROW_DRAG_ACCESSIBILITY,
+  useDragClickGuard,
+  useRowSortable
+} from "@/shared/dnd/useRowSortable";
 import { moveInOrder } from "@/decisions/admin/circuit";
 import { circuitQueueMoved } from "@/decisions/circuitDraft";
 import {
   circuitClaimMenu,
+  circuitClaimMovedNote,
   type CircuitClaimMenuKey,
   type CircuitClaimRow
 } from "@/decisions/circuitWaivers";
+import type { CircuitMoveLine } from "@/decisions/circuitMoves";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitClaim } from "@/lib/types";
-import {
-  CircuitDragHandle,
-  useSortableNode
-} from "@/features/admin/ui/circuit/CircuitDragHandle";
 import { ContenderPill } from "@/features/circuitLeagues/ui/ContenderPill";
 import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
+import { MovesStack } from "@/features/circuitLeagues/ui/MovesStack";
 
 const dragId = (id: number) => `claim:${id}`;
 const idOf = (raw: unknown) => Number(String(raw ?? "").split(":")[1]);
+const CLAIM_PILL = "circuit-claimPill";
+
+/**
+ * A drag starts on any part of the row that is not a control, or on the
+ * claim pill (a click on it below the drag distance still edits).
+ */
+function startsDrag(target: EventTarget) {
+  const control = (target as Element).closest(
+    "button, a, input, [role='button'], [role='menuitem']"
+  );
+  return !control || control.classList.contains(CLAIM_PILL);
+}
+
+/**
+ * The claim and its drop as stacked moves (the claim's plus line, then the
+ * minus line of the drop if the claim wins), shared by the row and its
+ * lifted copy. A claim without a drop has one line.
+ */
+function ClaimPills(props: {
+  row: CircuitClaimRow;
+  phone: boolean;
+  disabled: boolean;
+  lifted: boolean;
+  onEdit?: () => void;
+  onMoveKey?: (e: React.KeyboardEvent) => void;
+  onOpenCard?: (view: ContenderPillView) => void;
+}) {
+  const { pill, drop } = props.row;
+  const live = !props.lifted;
+  const claimLine = {
+    key: "claim",
+    kind: "claim" as const,
+    pill: (line: CircuitMoveLine) => (
+      <ContenderPill
+        label={pill.label}
+        categoryName={pill.categoryName}
+        iconCode={pill.iconCode}
+        iconVariant={pill.iconVariant}
+        state={line.pillState}
+        movePrefix={line.label}
+        className={live ? CLAIM_PILL : undefined}
+        tooltip={
+          live && !props.phone ? (
+            <ContenderNomineeCard tooltip={pill.tooltip} />
+          ) : undefined
+        }
+        onActivate={live && !props.disabled ? props.onEdit : undefined}
+        onKeyDown={live && !props.disabled ? props.onMoveKey : undefined}
+        keyShortcuts={live && !props.disabled ? "Alt+ArrowUp Alt+ArrowDown" : undefined}
+      />
+    )
+  };
+  const dropLine = drop
+    ? [
+        {
+          key: "drop",
+          kind: "claimDrop" as const,
+          pill: (line: CircuitMoveLine) => (
+            <ContenderPill
+              label={drop.label}
+              categoryName={drop.categoryName}
+              iconCode={drop.iconCode}
+              iconVariant={drop.iconVariant}
+              state={line.pillState}
+              movePrefix={line.label}
+              tooltip={live ? <ContenderNomineeCard tooltip={drop.tooltip} /> : undefined}
+              onOpenCard={
+                live && props.onOpenCard ? () => props.onOpenCard?.(drop) : undefined
+              }
+            />
+          )
+        }
+      ]
+    : [];
+  return (
+    <Box className="circuit-claimMain">
+      <MovesStack moves={[claimLine, ...dropLine]} />
+    </Box>
+  );
+}
 
 /** A row's icon action: 32 px (44 px on a phone), with a visible tooltip. */
 function ClaimIcon(props: {
@@ -92,17 +183,21 @@ function ClaimRow(props: {
   count: number;
   disabled: boolean;
   phone: boolean;
-  onMove: (delta: -1 | 1) => void;
+  onMove: (delta: -1 | 1, fromKeyboard: boolean) => void;
   onEdit: () => void;
   onWithdraw: () => void;
+  swallowsClick: () => boolean;
   onOpenCard?: (view: ContenderPillView) => void;
 }) {
   const { row, idx, count, disabled, phone } = props;
-  const { label, pill, drop } = row;
-  const { setRef, handle, isDragging } = useSortableNode(dragId(row.claim.id), disabled);
+  const { label } = row;
+  const { setRef, isDragging, onPointerDown, onTouchStart } = useRowSortable(
+    dragId(row.claim.id),
+    disabled
+  );
   const onMenu = (key: CircuitClaimMenuKey) => {
-    if (key === "up") props.onMove(-1);
-    else if (key === "down") props.onMove(1);
+    if (key === "up") props.onMove(-1, false);
+    else if (key === "down") props.onMove(1, false);
     else if (key === "edit") props.onEdit();
     else props.onWithdraw();
   };
@@ -110,52 +205,50 @@ function ClaimRow(props: {
     <Box
       ref={setRef}
       component="li"
-      className={["circuit-claimRow", isDragging ? "is-dragging" : ""]
+      className={[
+        "season-row",
+        "circuit-claimRow",
+        row.chipLabel ? "has-pass" : "",
+        disabled ? "" : "is-sortable",
+        isDragging ? "is-dragging" : ""
+      ]
         .filter(Boolean)
         .join(" ")}
+      data-claim-id={row.claim.id}
+      onPointerDown={(e: PointerEvent) => {
+        if (startsDrag(e.target)) onPointerDown(e);
+      }}
+      onTouchStart={(e: TouchEvent) => {
+        if (startsDrag(e.target)) onTouchStart(e);
+      }}
     >
-      <CircuitDragHandle label={`Reorder ${label}`} disabled={disabled} handle={handle} />
-      <Text component="span" variant="meta" className="circuit-queueRank">
+      <Text component="span" variant="meta" className="season-rowRank">
         {idx + 1}
       </Text>
-      <Box className="circuit-claimMain">
-        <ContenderPill
-          label={pill.label}
-          categoryName={pill.categoryName}
-          iconCode={pill.iconCode}
-          iconVariant={pill.iconVariant}
-          tooltip={phone ? undefined : <ContenderNomineeCard tooltip={pill.tooltip} />}
-          onActivate={disabled ? undefined : props.onEdit}
-        />
-        <Box component="span" className="circuit-claimCaption">
-          {drop ? (
-            <>
-              <Text component="span" className="dr-pill-caption">
-                dropping
-              </Text>
-              <ContenderPill
-                label={drop.label}
-                categoryName={drop.categoryName}
-                iconCode={drop.iconCode}
-                iconVariant={drop.iconVariant}
-                state="dropped"
-                stateSuffix="dropped if the claim wins"
-                tooltip={<ContenderNomineeCard tooltip={drop.tooltip} />}
-                onOpenCard={props.onOpenCard ? () => props.onOpenCard?.(drop) : undefined}
-              />
-            </>
-          ) : (
-            <Text component="span" className="dr-pill-caption">
-              No drop
-            </Text>
-          )}
-          {row.chipLabel ? (
-            <Text component="span" className="dr-pill-caption">
-              · {row.chipLabel}
-            </Text>
-          ) : null}
-        </Box>
-      </Box>
+      <ClaimPills
+        row={row}
+        phone={phone}
+        disabled={disabled}
+        lifted={false}
+        onEdit={() => {
+          if (!props.swallowsClick()) props.onEdit();
+        }}
+        onMoveKey={(e) => {
+          if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+          e.preventDefault();
+          if (!e.repeat) props.onMove(e.key === "ArrowUp" ? -1 : 1, true);
+        }}
+        onOpenCard={props.onOpenCard}
+      />
+      {row.chipLabel ? (
+        <Text
+          component="span"
+          variant="meta"
+          className={["season-rowMeta", "circuit-claimPass"].join(" ")}
+        >
+          {row.chipLabel}
+        </Text>
+      ) : null}
       <Box className="circuit-claimActions">
         {phone ? (
           <ClaimMenu
@@ -170,14 +263,14 @@ function ClaimRow(props: {
               tooltip="Move up"
               label={`Move ${label} up`}
               disabled={disabled || idx === 0}
-              onClick={() => props.onMove(-1)}
+              onClick={() => props.onMove(-1, false)}
             />
             <ClaimIcon
               icon="arrow_downward"
               tooltip="Move down"
               label={`Move ${label} down`}
               disabled={disabled || idx === count - 1}
-              onClick={() => props.onMove(1)}
+              onClick={() => props.onMove(1, false)}
             />
             <ClaimIcon
               icon="edit"
@@ -200,13 +293,46 @@ function ClaimRow(props: {
   );
 }
 
+/** The lifted copy of a claim row that follows the pointer during a drag. */
+function ClaimRowCopy(props: { row: CircuitClaimRow; idx: number; phone: boolean }) {
+  return (
+    <Box
+      className={[
+        "season-row",
+        "circuit-claimRow",
+        props.row.chipLabel ? "has-pass" : "",
+        "is-dragOverlay"
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden="true"
+    >
+      <Text component="span" variant="meta" className="season-rowRank">
+        {props.idx + 1}
+      </Text>
+      <ClaimPills row={props.row} phone={props.phone} disabled lifted />
+      {props.row.chipLabel ? (
+        <Text
+          component="span"
+          variant="meta"
+          className={["season-rowMeta", "circuit-claimPass"].join(" ")}
+        >
+          {props.row.chipLabel}
+        </Text>
+      ) : null}
+      <span />
+    </Box>
+  );
+}
+
 /**
- * The viewer's pending claims, first choice first, one line each: grip,
- * rank, the claim pill, then the drop pill (or "No drop") and the chip.
- * Reordered by drag and drop (Space, the arrow keys and Space again on a
- * grip) or the move icons; a click on the claim pill edits it. On a phone
- * the four icons fold into one menu. Read-only once the window is being
- * processed.
+ * The viewer's pending claims, first choice first, one line each: rank, the
+ * claim and its drop as stacked moves, the pass and the actions.
+ * Reordered by dragging the row (a held finger on a phone), by Alt+ArrowUp
+ * and Alt+ArrowDown on the claim pill, or by the move icons; each move is
+ * announced. A click on the claim pill edits it, unless it ends a drag. On a
+ * phone the four icons fold into one menu. Read-only, and not draggable,
+ * once the window is being processed.
  */
 export function CircuitClaimList(props: {
   rows: CircuitClaimRow[];
@@ -222,20 +348,75 @@ export function CircuitClaimList(props: {
 }) {
   const { rows } = props;
   const disabled = props.busy || !props.editable;
-  const sensors = useReorderSensors(4);
+  const sensors = useRowReorderSensors();
+  const guard = useDragClickGuard();
   const ids = rows.map((r) => r.claim.id);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [movedNote, setMovedNote] = useState("");
+  const listRef = useRef<HTMLOListElement | null>(null);
+  // The claim pill moved from the keyboard keeps focus once the list has re-ordered.
+  const refocusId = useRef<number | null>(null);
+  const order = ids.join(",");
 
-  function onDragEnd(e: DragEndEvent) {
-    const next = circuitQueueMoved(ids, idOf(e.active.id), idOf(e.over?.id));
-    if (next) props.onReorder(next);
+  useEffect(() => {
+    const id = refocusId.current;
+    if (id === null) return;
+    refocusId.current = null;
+    const pill = listRef.current?.querySelector<HTMLElement>(
+      `[data-claim-id="${id}"] .${CLAIM_PILL}`
+    );
+    if (pill && document.activeElement !== pill) pill.focus();
+  }, [order]);
+
+  function reorder(next: number[], movedId: number) {
+    const row = rows.find((r) => r.claim.id === movedId);
+    props.onReorder(next);
+    if (row) {
+      setMovedNote(
+        circuitClaimMovedNote(row.label, next.indexOf(movedId) + 1, next.length)
+      );
+    }
   }
 
+  function onDragStart(e: DragStartEvent) {
+    guard.start();
+    setActiveId(idOf(e.active.id));
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    guard.end();
+    setActiveId(null);
+    const movedId = idOf(e.active.id);
+    const next = circuitQueueMoved(ids, movedId, idOf(e.over?.id));
+    if (next) reorder(next, movedId);
+  }
+
+  function onDragCancel() {
+    guard.end();
+    setActiveId(null);
+  }
+
+  const activeIdx = activeId === null ? -1 : ids.indexOf(activeId);
+  const activeRow = activeIdx < 0 ? null : rows[activeIdx]!;
+
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext
+      sensors={sensors}
+      accessibility={ROW_DRAG_ACCESSIBILITY}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
+    >
       <SortableContext items={ids.map(dragId)} strategy={verticalListSortingStrategy}>
         <Box
+          ref={listRef}
           component="ol"
-          className={["circuit-claimList", "fo-pillScope", "fo-listReset"].join(" ")}
+          className={[
+            "season-list",
+            "circuit-claimList",
+            "fo-pillScope",
+            "fo-listReset"
+          ].join(" ")}
           aria-label="Your claims"
           aria-describedby={props.describedBy}
         >
@@ -247,17 +428,27 @@ export function CircuitClaimList(props: {
               count={rows.length}
               disabled={disabled}
               phone={props.phone}
-              onMove={(delta) => {
+              onMove={(delta, fromKeyboard) => {
+                if (disabled) return;
                 const next = moveInOrder(ids, row.claim.id, delta);
-                if (next) props.onReorder(next);
+                if (!next) return;
+                if (fromKeyboard) refocusId.current = row.claim.id;
+                reorder(next, row.claim.id);
               }}
               onEdit={() => props.onEdit(row.claim)}
               onWithdraw={() => props.onWithdraw(row.claim)}
+              swallowsClick={guard.swallows}
               onOpenCard={props.onOpenCard}
             />
           ))}
         </Box>
       </SortableContext>
+      <DragOverlay className="fo-pillScope">
+        {activeRow ? (
+          <ClaimRowCopy row={activeRow} idx={activeIdx} phone={props.phone} />
+        ) : null}
+      </DragOverlay>
+      <VisuallyHidden role="status">{movedNote}</VisuallyHidden>
     </DndContext>
   );
 }

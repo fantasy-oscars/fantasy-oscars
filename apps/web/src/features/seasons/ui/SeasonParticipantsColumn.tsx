@@ -1,5 +1,6 @@
 import { Box, Button, Divider, Group, Stack, Text, Title } from "@ui";
 import { CommissionerPill } from "@/shared/pills";
+import { PlayerName } from "@/shared/PlayerName";
 import { useConfirm } from "@/notifications/confirm";
 
 export function SeasonParticipantsColumn(props: {
@@ -7,6 +8,7 @@ export function SeasonParticipantsColumn(props: {
     id: number;
     user_id: number;
     username?: string | null;
+    avatar_key?: string | null;
     role: string;
   }>;
   canLeave?: boolean;
@@ -24,13 +26,16 @@ export function SeasonParticipantsColumn(props: {
       {members.length === 0 ? (
         <Text className="muted">No participants.</Text>
       ) : (
-        <Stack component="ul" gap="xs" className="fo-listReset">
+        <Stack component="ul" gap="var(--fo-space-4)" className="fo-listReset">
           {members.map((m) => (
             <Box key={m.id} component="li">
               <Group justify="space-between" align="center" wrap="wrap">
-                <Text className="baseline-wrapAnywhere">
-                  {m.username ?? `User ${m.user_id}`}
-                </Text>
+                <PlayerName
+                  name={m.username ?? `User ${m.user_id}`}
+                  avatarKey={m.avatar_key}
+                  density="roomy"
+                  wrap="anywhere"
+                />
                 {m.role === "OWNER" ? <CommissionerPill /> : null}
               </Group>
             </Box>

@@ -1,12 +1,13 @@
 import { Box, Text } from "@ui";
 import type {
+  CircuitCategoryPointsCard,
   CircuitCategoryPointsEntry,
-  CircuitCategoryPointsRow,
   CircuitPlayerPointsCard
 } from "@/decisions/circuitPoints";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { CircuitSelectionSummary } from "@/lib/types";
-import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
+import { StandardCard } from "@/primitives/cards/StandardCard";
+import { PlayerName } from "@/shared/PlayerName";
 import { DraftCategoryIcon } from "@/shared/nominee/DraftCategoryIcon";
 import { ContenderPill } from "./ContenderPill";
 import { ContenderNomineeCard } from "./ContenderCardModal";
@@ -67,136 +68,118 @@ export function CircuitCeremonyPointsByPlayer(props: {
   );
 }
 
-function CategoryEntries(props: {
-  entries: CircuitCategoryPointsEntry[];
-  winner: boolean;
+/** A card's entry: the pill (gold if it won here) and the player it scored for. */
+function CategoryEntry(props: {
+  entry: CircuitCategoryPointsEntry;
   viewOf: ViewOf;
   onOpenCard?: CircuitPointsCardOpener;
 }) {
-  const { entries, onOpenCard } = props;
-  if (entries.length === 0) {
-    return (
-      <Text component="span" className="dr-pill-caption" aria-label="None">
-        —
-      </Text>
-    );
-  }
+  const { entry, onOpenCard } = props;
+  const view = props.viewOf(entry.selection);
   return (
-    <Box component="ul" className={["fo-listReset", "circuit-pointsEntries"].join(" ")}>
-      {entries.map((entry) => {
-        const view = props.viewOf(entry.selection);
-        return (
-          <Box key={entry.key} component="li" className="circuit-pointsEntry">
-            <ContenderPill
-              label={view.label}
-              categoryName={view.categoryName}
-              iconCode={view.iconCode}
-              iconVariant={view.iconVariant}
-              points={entry.points}
-              pointsLabel={entry.pointsLabel}
-              winner={props.winner}
-              state={entry.dropped ? "dropped" : "default"}
-              stateSuffix={entry.dropped ? `${entry.username}, dropped` : entry.username}
-              tooltip={<ContenderNomineeCard tooltip={view.tooltip} />}
-              onOpenCard={
-                onOpenCard
-                  ? () => onOpenCard({ tooltip: view.tooltip, actions: [] })
-                  : undefined
-              }
-            />
-            <Box component="span" className="circuit-pointsPlayer" aria-hidden="true">
-              <AnimalAvatarIcon avatarKey={entry.avatarKey} size="sm" />
-              <Text
-                component="span"
-                className="circuit-pointsPlayerName"
-                title={entry.username}
-              >
-                {entry.dropped ? `${entry.username} · dropped` : entry.username}
-              </Text>
-            </Box>
-          </Box>
-        );
-      })}
+    <Box
+      component="li"
+      className={["fo-seasonRosterCard-row", "circuit-pointsEntry"].join(" ")}
+    >
+      <ContenderPill
+        label={view.label}
+        categoryName={view.categoryName}
+        iconCode={view.iconCode}
+        iconVariant={view.iconVariant}
+        points={entry.points}
+        pointsLabel={entry.pointsLabel}
+        winner={entry.won}
+        state={entry.dropped ? "dropped" : "default"}
+        stateSuffix={entry.dropped ? `${entry.username}, dropped` : entry.username}
+        tooltip={
+          <ContenderNomineeCard
+            tooltip={view.tooltip}
+            pointsSection={entry.pointsSection}
+          />
+        }
+        onOpenCard={
+          onOpenCard
+            ? () =>
+                onOpenCard({
+                  tooltip: view.tooltip,
+                  pointsSection: entry.pointsSection,
+                  actions: []
+                })
+            : undefined
+        }
+      />
+      {/* The pill's name already says who; this is the visible cue. */}
+      <Box component="span" className="circuit-pointsPlayer" aria-hidden="true">
+        <PlayerName name={entry.username} avatarKey={entry.avatarKey} density="dense" />
+        {entry.dropped ? (
+          <Text component="span" variant="meta" className="circuit-pointsDropped">
+            · dropped
+          </Text>
+        ) : null}
+      </Box>
     </Box>
   );
 }
 
 /**
- * Points by category: every season category in order, with the
- * nominations and the wins scored in it here. Each entry is the pill (gold
- * in Wins) and the player it scored for; an empty cell reads "—".
+ * Points by category, laid out like the draft board's category cards: every
+ * season category in order, with the points awarded in it here and one pill
+ * per contender and player, winners first and gold. A category without
+ * points keeps its card.
  */
 export function CircuitCeremonyPointsByCategory(props: {
-  rows: CircuitCategoryPointsRow[];
+  cards: CircuitCategoryPointsCard[];
   viewOf: ViewOf;
   onOpenCard?: CircuitPointsCardOpener;
 }) {
   return (
-    <Box className={["fo-pillScope", "circuit-pointsTable"].join(" ")}>
-      <Box className="circuit-pointsHead" aria-hidden="true">
-        <span />
-        <Text component="span" className="circuit-pointsLabel">
-          Nominations
-        </Text>
-        <Text component="span" className="circuit-pointsLabel">
-          Wins
-        </Text>
-      </Box>
-      <Box component="ul" className="fo-listReset" aria-label="Points by category">
-        {props.rows.map((row) => {
-          const titleId = `circuit-points-category-${row.id}`;
-          return (
-            <Box
-              key={row.id}
-              component="li"
-              className="circuit-pointsRow"
+    <Box
+      component="ul"
+      className={["fo-listReset", "circuit-board", "circuit-pointsBoard"].join(" ")}
+      aria-label="Points by category"
+    >
+      {props.cards.map((card) => {
+        const titleId = `circuit-points-category-${card.id}`;
+        return (
+          <Box key={card.id} component="li" className="circuit-boardCard">
+            <StandardCard
+              component="section"
               aria-labelledby={titleId}
+              className="fo-pillScope fo-seasonRosterCard"
             >
-              <Box className="circuit-pointsCategory">
+              <Box className="fo-seasonRosterCard-head">
                 <DraftCategoryIcon
-                  icon={row.iconCode ?? ""}
-                  variant={row.iconVariant === "inverted" ? "inverted" : "default"}
+                  icon={card.iconCode ?? ""}
+                  variant={card.iconVariant === "inverted" ? "inverted" : "default"}
                 />
-                <Text
-                  component="span"
-                  id={titleId}
-                  className="circuit-pointsCategoryName"
-                >
-                  {row.name}
+                <Text className="fo-seasonRosterCard-name" id={titleId} title={card.name}>
+                  {card.name}
                 </Text>
+                <Text className="fo-seasonRosterCard-score">{card.pointsLabel}</Text>
               </Box>
-              <Box className="circuit-pointsCell" role="group" aria-label="Nominations">
-                <Text
-                  component="span"
-                  className={["circuit-pointsLabel", "circuit-pointsCellLabel"].join(" ")}
-                >
-                  Nominations
+              {card.entries.length === 0 ? (
+                <Text className="fo-seasonRosterCard-note">
+                  No points in this category.
                 </Text>
-                <CategoryEntries
-                  entries={row.nominations}
-                  winner={false}
-                  viewOf={props.viewOf}
-                  onOpenCard={props.onOpenCard}
-                />
-              </Box>
-              <Box className="circuit-pointsCell" role="group" aria-label="Wins">
-                <Text
-                  component="span"
-                  className={["circuit-pointsLabel", "circuit-pointsCellLabel"].join(" ")}
+              ) : (
+                <Box
+                  component="ul"
+                  className={["fo-listReset", "fo-seasonRosterCard-rows"].join(" ")}
                 >
-                  Wins
-                </Text>
-                <CategoryEntries
-                  entries={row.wins}
-                  winner
-                  viewOf={props.viewOf}
-                  onOpenCard={props.onOpenCard}
-                />
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
+                  {card.entries.map((entry) => (
+                    <CategoryEntry
+                      key={entry.key}
+                      entry={entry}
+                      viewOf={props.viewOf}
+                      onOpenCard={props.onOpenCard}
+                    />
+                  ))}
+                </Box>
+              )}
+            </StandardCard>
+          </Box>
+        );
+      })}
     </Box>
   );
 }

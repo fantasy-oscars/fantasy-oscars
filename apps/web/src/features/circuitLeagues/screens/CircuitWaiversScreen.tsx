@@ -10,7 +10,8 @@ import type { CircuitRosterEntry } from "@/decisions/circuitRoster";
 import {
   circuitClaimRows,
   circuitPriorityEntries,
-  circuitWaiverResultRows
+  circuitWaiverResultRows,
+  circuitPriorityAfter
 } from "@/decisions/circuitWaivers";
 import type { ContenderPillView } from "@/decisions/contenderPill";
 import type { ApiResult, CircuitClaim, CircuitClaims } from "@/lib/types";
@@ -151,7 +152,8 @@ export function CircuitWaiversScreen(props: {
       <CircuitWaiverResults
         runs={runs.map((run) => ({
           run,
-          rows: circuitWaiverResultRows(run, categories, members)
+          rows: circuitWaiverResultRows(run, categories, members),
+          priorityAfter: circuitPriorityAfter(run, members)
         }))}
         onOpenCard={openCard}
       />

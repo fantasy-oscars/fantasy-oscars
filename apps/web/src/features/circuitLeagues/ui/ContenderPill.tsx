@@ -29,11 +29,17 @@ export function ContenderPill(props: {
   winner?: boolean;
   /** The state's words for the accessible name: "dropped", "owned by pia". */
   stateSuffix?: string | null;
+  /** A log move that starts the accessible name: "Added", "Dropped". */
+  movePrefix?: string | null;
   tooltip?: React.ReactNode;
   /** Phone or coarse pointer: a tap (or Enter or Space) opens the nominee card. */
   onOpenCard?: () => void;
   /** A click (or Enter or Space) opens the context's dialog; the tooltip stays. */
   onActivate?: () => void;
+  /** Runs before the pill's own keys; a handled key calls `preventDefault`. */
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  /** `aria-keyshortcuts` for keys the context adds through `onKeyDown`. */
+  keyShortcuts?: string;
   className?: string;
 }) {
   const state = props.state ?? "default";
@@ -55,9 +61,12 @@ export function ContenderPill(props: {
       tabIndex={props.tooltip || open ? 0 : undefined}
       aria-haspopup={open ? "dialog" : undefined}
       onClick={open}
+      aria-keyshortcuts={props.keyShortcuts}
       onKeyDown={
-        open
+        open || props.onKeyDown
           ? (e: React.KeyboardEvent) => {
+              props.onKeyDown?.(e);
+              if (e.defaultPrevented || !open) return;
               if (e.key !== "Enter" && e.key !== " ") return;
               e.preventDefault();
               open();
@@ -68,7 +77,8 @@ export function ContenderPill(props: {
         categoryName: props.categoryName,
         label: props.label,
         points: withPoints ? (props.points ?? null) : null,
-        stateSuffix: props.stateSuffix
+        stateSuffix: props.stateSuffix,
+        movePrefix: props.movePrefix
       })}
     >
       {state === "armed" ? (

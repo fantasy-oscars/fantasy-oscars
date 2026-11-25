@@ -261,7 +261,10 @@ export function circuitCeremonyPointsByPlayer(
   });
 }
 
-/** One scoring of a contender for one player, in the By category view. */
+/**
+ * One contender for one player in the By category view: the nomination and
+ * the win it scored them at this ceremony, merged into one pill.
+ */
 export type CircuitCategoryPointsEntry = {
   key: string;
   selection: CircuitSelectionSummary;
@@ -269,22 +272,33 @@ export type CircuitCategoryPointsEntry = {
   userId: number;
   username: string;
   avatarKey: string | null;
+  nomination: number;
+  win: number;
   points: number;
   pointsLabel: string;
+  /** It won here: the pill is gold. */
+  won: boolean;
   dropped: boolean;
+  /** The nominee card's points section: "Nomination +1 · Win +2". */
+  pointsSection: CircuitPointsSection;
 };
 
-export type CircuitCategoryPointsRow = {
+/** A category card: the category's points awarded here and its entries. */
+export type CircuitCategoryPointsCard = {
   id: number;
   name: string;
   iconCode: string | null;
   iconVariant: string;
-  nominations: CircuitCategoryPointsEntry[];
-  wins: CircuitCategoryPointsEntry[];
+  points: number;
+  /** The card's score cell: "7". */
+  pointsLabel: string;
+  entries: CircuitCategoryPointsEntry[];
 };
 
-function byEntryPoints(a: CircuitCategoryPointsEntry, b: CircuitCategoryPointsEntry) {
+/** Winners first, then points, then label (and player, for the same contender). */
+function byWinThenPoints(a: CircuitCategoryPointsEntry, b: CircuitCategoryPointsEntry) {
   return (
+    Number(b.won) - Number(a.won) ||
     cents(b.points) - cents(a.points) ||
     a.label.localeCompare(b.label) ||
     a.username.localeCompare(b.username)
@@ -292,9 +306,11 @@ function byEntryPoints(a: CircuitCategoryPointsEntry, b: CircuitCategoryPointsEn
 }
 
 /**
- * Ceremony points by category: every season category in order, with the
- * nominations and wins scored in it here, one entry per contender and
- * player. A category without entries stays, so the list is complete.
+ * Ceremony points by category, as the draft board's category cards: every
+ * season category in order, each with the points awarded in it here and one
+ * entry per (contender, player) that scored, nomination and win merged. A
+ * category without entries keeps its card, so the board is complete, and the
+ * cards add up to the ceremony's total.
  */
 export function circuitCeremonyPointsByCategory(
   breakdown: CircuitCeremonyBreakdown,
@@ -302,42 +318,67 @@ export function circuitCeremonyPointsByCategory(
     CircuitLeagueCategory,
     "id" | "name" | "sort_index" | "icon_code" | "icon_variant"
   >[]
-): CircuitCategoryPointsRow[] {
-  const cells = new Map<string, CircuitCategoryPointsEntry>();
-  const wins = new Set<string>();
+): CircuitCategoryPointsCard[] {
+  const merged = new Map<
+    string,
+    Omit<CircuitCategoryPointsEntry, "points" | "pointsLabel" | "pointsSection">
+  >();
   for (const row of breakdown.standings) {
     for (const e of row.entries) {
-      const kind = e.kind === "WIN" ? "WIN" : "NOMINATION";
-      const key = `${kind}-${row.member.user_id}-${e.selection.id}`;
-      if (kind === "WIN") wins.add(key);
-      const cell = cells.get(key) ?? {
+      const key = `${row.member.user_id}-${e.selection.id}`;
+      const entry = merged.get(key) ?? {
         key,
         selection: e.selection,
         label: circuitSelectionLabel(e.selection),
         userId: row.member.user_id,
         username: row.member.username,
         avatarKey: row.member.avatar_key,
-        points: 0,
-        pointsLabel: "",
-        dropped: !e.owned_now
+        nomination: 0,
+        win: 0,
+        won: false,
+        dropped: false
       };
-      cell.points = (cents(cell.points) + cents(e.points)) / 100;
-      cell.pointsLabel = circuitSignedPoints(cell.points);
-      cells.set(key, cell);
+      if (e.kind === "WIN") {
+        entry.win = (cents(entry.win) + cents(e.points)) / 100;
+        entry.won = true;
+      } else {
+        entry.nomination = (cents(entry.nomination) + cents(e.points)) / 100;
+      }
+      if (!e.owned_now) entry.dropped = true;
+      merged.set(key, entry);
     }
   }
-  const entries = [...cells.values()];
+  const ceremony = {
+    ceremony_id: breakdown.ceremony.id,
+    ceremony_name: breakdown.ceremony.name ?? breakdown.ceremony.code ?? null
+  };
+  const entries: CircuitCategoryPointsEntry[] = [...merged.values()].map((e) => {
+    const points = (cents(e.nomination) + cents(e.win)) / 100;
+    return {
+      ...e,
+      points,
+      pointsLabel: circuitSignedPoints(points),
+      pointsSection: circuitPointsSection({
+        playerName: e.username,
+        lines: [{ ...ceremony, nomination: e.nomination, win: e.win }]
+      })
+    };
+  });
   return [...categories]
     .sort((a, b) => a.sort_index - b.sort_index)
     .map((category) => {
-      const own = entries.filter((e) => e.selection.circuit_category_id === category.id);
+      const own = entries
+        .filter((e) => e.selection.circuit_category_id === category.id)
+        .sort(byWinThenPoints);
+      const points = own.reduce((total, e) => total + cents(e.points), 0) / 100;
       return {
         id: category.id,
         name: category.name,
         iconCode: category.icon_code,
         iconVariant: category.icon_variant,
-        nominations: own.filter((e) => !wins.has(e.key)).sort(byEntryPoints),
-        wins: own.filter((e) => wins.has(e.key)).sort(byEntryPoints)
+        points,
+        pointsLabel: plainPoints(points),
+        entries: own
       };
     });
 }

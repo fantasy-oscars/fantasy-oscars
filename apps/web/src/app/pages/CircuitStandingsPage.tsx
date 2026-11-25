@@ -15,12 +15,25 @@ export function CircuitStandingsPage() {
   const o = useCircuitStandingsOrchestration({
     circuitLeagueId: Number(circuitLeagueId)
   });
-  // The final results view is kept in the URL (`?results=rosters`).
+  // The view (`?view=`) and the final results sub-view (`?results=rosters`)
+  // are kept in the URL.
   const resultsMode = search.get("results") === "rosters" ? "rosters" : "contenders";
   return (
     <CircuitStandingsScreen
       view={o.view}
       viewerUserId={positiveInt(user?.sub)}
+      viewParam={search.get("view")}
+      onViewChange={(next) =>
+        setSearch(
+          (prev) => {
+            const params = new URLSearchParams(prev);
+            if (next === "leaderboard") params.delete("view");
+            else params.set("view", next);
+            return params;
+          },
+          { replace: true }
+        )
+      }
       resultsMode={resultsMode}
       onResultsModeChange={(next) =>
         setSearch(

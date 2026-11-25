@@ -46,23 +46,21 @@ export function withContenderPreview(input: {
     confirmActions: [],
     previewPill: (
       <Box
-        className={[
-          "fo-pillScope",
-          "circuit-previewPill",
-          "circuit-freeAgentPreview"
-        ].join(" ")}
+        className={["fo-pillScope", "season-row", "circuit-freeAgentPreview"].join(" ")}
       >
-        <ContenderPill
-          label={preview.label}
-          categoryName={preview.categoryName}
-          iconCode={preview.iconCode}
-          iconVariant={preview.iconVariant}
-          state={preview.owned ? "muted" : "default"}
-          stateSuffix={preview.stateSuffix}
-        />
-        {preview.caption ? (
-          <ContenderPillCaption>{preview.caption}</ContenderPillCaption>
-        ) : null}
+        <Box className="circuit-previewPill">
+          <ContenderPill
+            label={preview.label}
+            categoryName={preview.categoryName}
+            iconCode={preview.iconCode}
+            iconVariant={preview.iconVariant}
+            state={preview.owned ? "muted" : "default"}
+            stateSuffix={preview.stateSuffix}
+          />
+          {preview.caption ? (
+            <ContenderPillCaption>{preview.caption}</ContenderPillCaption>
+          ) : null}
+        </Box>
         <Tooltip label={preview.addTooltip}>
           <ActionIcon
             type="button"
