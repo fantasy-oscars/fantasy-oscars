@@ -4,19 +4,24 @@ import {
   circuitDropPlaceholder,
   circuitAddBlockedReason,
   circuitAddNeedsDrop,
-  circuitCategoryCountLabel,
   circuitDayLabel,
   circuitDropOptions,
   circuitFreeAgencyNote,
-  circuitRosterByCategory,
   circuitRosterCountLabel,
+  circuitRosterFlatEntries,
+  circuitRosterLimitItems,
   circuitRosterErrorMessage,
   circuitRostersVisible,
   circuitRosterWritable,
   circuitSelectionLabel,
   circuitTransactionKindLabel
 } from "@/decisions/circuitRoster";
-import { circuitRoster, circuitSelection, OPEN_WINDOW } from "../circuitLeagues/fixtures";
+import {
+  circuitLeagueDetail,
+  circuitRoster,
+  circuitSelection,
+  OPEN_WINDOW
+} from "../circuitLeagues/fixtures";
 
 describe("circuit roster labels", () => {
   it("names a film pick by film and an acting pick by person and film", () => {
@@ -28,7 +33,7 @@ describe("circuit roster labels", () => {
     );
   });
 
-  it("labels every transaction kind and counts against the limits", () => {
+  it("labels every transaction kind and counts the roster", () => {
     expect(
       ["DRAFT", "SUPPLEMENTAL", "WAIVER", "FREE_AGENT", "DROP", "OTHER"].map(
         circuitTransactionKindLabel
@@ -41,18 +46,55 @@ describe("circuit roster labels", () => {
       "Drop",
       "Transaction"
     ]);
-    const roster = circuitRoster({ maxActing: 3 });
-    expect(circuitRosterCountLabel(roster)).toBe("2 of 16");
-    expect(roster.categories.map(circuitCategoryCountLabel)).toEqual(["1", "1 of 3"]);
+    expect(circuitRosterCountLabel(circuitRoster())).toBe("2 of 16");
   });
 
-  it("groups entries under their categories in category order", () => {
-    const groups = circuitRosterByCategory(circuitRoster());
-    expect(
-      groups.map((g) => [g.category.name, g.entries.map((e) => e.selection.id)])
-    ).toEqual([
-      ["Best Picture", [1]],
-      ["Best Actress", [2]]
+  it("lists picks flat in category order, then pick order", () => {
+    const roster = circuitRoster({
+      entries: [
+        circuitSelection(1, "Paper Moon", "Ada Lane"),
+        circuitSelection(2, "Night Train"),
+        circuitSelection(3, "Static"),
+        circuitSelection(4, "Lark", "Bea Stone")
+      ]
+    });
+    // The free agent (3) came after the draft; the second film pick (2) shares
+    // its time with the first but was a later transaction.
+    roster.entries[2].acquired_at = "2027-01-05T08:00:00Z";
+    roster.entries[1].acquired_transaction_id = 99;
+    roster.entries[3].acquired_at = "2026-11-30T08:00:00Z";
+    expect(circuitRosterFlatEntries(roster).map((e) => e.selection.id)).toEqual([
+      2, 3, 4, 1
+    ]);
+    expect(roster.entries.map((e) => e.selection.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("puts a pick from a category the season no longer lists last", () => {
+    const roster = circuitRoster({
+      entries: [
+        { ...circuitSelection(1, "Night Train"), circuit_category_id: 99 },
+        circuitSelection(2, "Paper Moon", "Ada Lane")
+      ]
+    });
+    expect(circuitRosterFlatEntries(roster).map((e) => e.selection.id)).toEqual([2, 1]);
+  });
+
+  it("lists only limited categories on the limits line, with the full ones marked", () => {
+    const categories = circuitLeagueDetail().categories;
+    expect(circuitRosterLimitItems(circuitRoster(), categories)).toEqual([]);
+    expect(circuitRosterLimitItems(circuitRoster({ maxActing: 1 }), categories)).toEqual([
+      {
+        categoryId: 21,
+        name: "Best Actress",
+        iconCode: "person",
+        iconVariant: "default",
+        label: "1 of 1",
+        full: true
+      }
+    ]);
+    const empty = circuitRoster({ maxActing: 2, entries: [] });
+    expect(circuitRosterLimitItems(empty, categories)).toEqual([
+      expect.objectContaining({ label: "0 of 2", full: false })
     ]);
   });
 

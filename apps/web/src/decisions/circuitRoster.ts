@@ -1,4 +1,5 @@
 import type {
+  CircuitLeagueCategory,
   CircuitLeagueStatus,
   CircuitRoster,
   CircuitSelectionSummary,
@@ -58,21 +59,56 @@ export function circuitRosterCountLabel(
   return `${roster.entries.length} of ${roster.roster_size}`;
 }
 
-/** "2 of 3" with a limit, or the plain count without one. */
-export function circuitCategoryCountLabel(category: CircuitRosterCategory): string {
-  return category.max_owned === null
-    ? String(category.owned)
-    : `${category.owned} of ${category.max_owned}`;
+/**
+ * The roster page's one flat list: season category order, then pick order
+ * (the draft slot, then acquisition time). The pill's icon names the category.
+ */
+export function circuitRosterFlatEntries(
+  roster: Pick<CircuitRoster, "categories" | "entries">
+): CircuitRosterEntry[] {
+  const rank = new Map(roster.categories.map((c, idx) => [c.id, idx]));
+  const rankOf = (e: CircuitRosterEntry) =>
+    rank.get(e.selection.circuit_category_id) ?? roster.categories.length;
+  return [...roster.entries].sort(
+    (a, b) =>
+      rankOf(a) - rankOf(b) ||
+      a.acquired_at.localeCompare(b.acquired_at) ||
+      a.acquired_transaction_id - b.acquired_transaction_id
+  );
 }
 
-/** Each category in order with the entries held in it. */
-export function circuitRosterByCategory(
-  roster: Pick<CircuitRoster, "categories" | "entries">
-): Array<{ category: CircuitRosterCategory; entries: CircuitRosterEntry[] }> {
-  return roster.categories.map((category) => ({
-    category,
-    entries: roster.entries.filter((e) => e.selection.circuit_category_id === category.id)
-  }));
+/** One item of the roster's limits line: "3 of 3" beside the category's icon. */
+export type CircuitRosterLimitItem = {
+  categoryId: number;
+  name: string;
+  iconCode: string;
+  iconVariant: "default" | "inverted";
+  label: string;
+  full: boolean;
+};
+
+/**
+ * The limits line under the roster: each category with a limit, in season
+ * order. Empty when the season sets no per-category limits.
+ */
+export function circuitRosterLimitItems(
+  roster: Pick<CircuitRoster, "categories">,
+  categories: readonly Pick<CircuitLeagueCategory, "id" | "icon_code" | "icon_variant">[]
+): CircuitRosterLimitItem[] {
+  return roster.categories.flatMap((category) => {
+    if (category.max_owned === null) return [];
+    const league = categories.find((c) => c.id === category.id);
+    return [
+      {
+        categoryId: category.id,
+        name: category.name,
+        iconCode: league?.icon_code ?? "",
+        iconVariant: league?.icon_variant === "inverted" ? "inverted" : "default",
+        label: `${category.owned} of ${category.max_owned}`,
+        full: category.owned >= category.max_owned
+      }
+    ];
+  });
 }
 
 /** "Feb 12, 2035" for a `YYYY-MM-DD` day, without any time-zone shift. */

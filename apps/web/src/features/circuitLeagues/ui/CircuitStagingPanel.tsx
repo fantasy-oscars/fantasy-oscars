@@ -1,5 +1,11 @@
-import type { KeyboardEvent } from "react";
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent, PointerEvent, TouchEvent } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent
+} from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
   ActionIcon,
@@ -13,11 +19,19 @@ import {
   VisuallyHidden
 } from "@ui";
 import { FormStatus } from "@/shared/forms";
-import { useReorderSensors } from "@/shared/dnd/useReorderSensors";
+import { useRowReorderSensors } from "@/shared/dnd/useRowReorderSensors";
+import {
+  ROW_DRAG_ACCESSIBILITY,
+  useDragClickGuard,
+  useRowSortable
+} from "@/shared/dnd/useRowSortable";
 import { moveInOrder } from "@/decisions/admin/circuit";
 import { circuitQueueMoved, type CircuitQueueRow } from "@/decisions/circuitDraft";
 import {
+  circuitQueueDragHint,
+  circuitQueueMovedNote,
   circuitStagingMenu,
+  circuitStagingMenuTooltip,
   circuitStagingPill,
   type CircuitDraftedBy,
   type CircuitStagingMenuItem,
@@ -31,16 +45,14 @@ import {
   NOMINEE_TOOLTIP_EVENTS,
   NOMINEE_TOOLTIP_OFFSET_PX
 } from "@/shared/nominee/nomineeTooltip";
-import {
-  CircuitDragHandle,
-  useSortableNode
-} from "@/features/admin/ui/circuit/CircuitDragHandle";
 import { ContenderNomineeCard } from "@/features/circuitLeagues/ui/ContenderCardModal";
 
 const dragId = (id: number) => `queue:${id}`;
 const idOf = (raw: unknown) => Number(String(raw ?? "").split(":")[1]);
 const HELP_ID = "circuit-staging-help";
 const hintId = (selectionId: number) => `circuit-stage-hint-${selectionId}`;
+const DRAFT_KEYS = "Enter Space Shift+Enter Escape";
+const MOVE_KEYS = "Alt+ArrowUp Alt+ArrowDown";
 
 export type CircuitStagingList = "queue" | "staged";
 
@@ -66,6 +78,8 @@ export type CircuitStagingDraft = {
  * click arms it and a double-click drafts it; from the keyboard Enter or
  * Space (on keyup) arms or disarms, Shift+Enter drafts and Escape disarms,
  * and held keys never act. On a phone a tap opens the nominee card instead.
+ * A queue pill is also where a mouse drag starts, and Alt+ArrowUp or
+ * Alt+ArrowDown moves it one place; the click that ends a drag does nothing.
  */
 function StagingPill(props: {
   row: CircuitQueueRow;
@@ -74,6 +88,12 @@ function StagingPill(props: {
   draft: CircuitStagingDraft | null;
   phone: boolean;
   onOpenCard: () => void;
+  /** Queue rows: move one place (Alt+Arrow); null while the queue cannot change. */
+  onMove?: ((delta: -1 | 1) => void) | null;
+  /** Queue rows: the row's pointer activator, so a mouse drag starts on the pill. */
+  onDragPointerDown?: (e: PointerEvent) => void;
+  /** True when a click belongs to a drag that just ended. */
+  swallowsClick: () => boolean;
 }) {
   const { row, view, draft, phone } = props;
   const pill = circuitStagingPill({
@@ -92,6 +112,16 @@ function StagingPill(props: {
   });
 
   function onKeyDown(e: KeyboardEvent) {
+    if (
+      e.altKey &&
+      (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+      props.onMove !== undefined
+    ) {
+      // One place per press: a held key does not keep moving it.
+      e.preventDefault();
+      if (!e.repeat) props.onMove?.(e.key === "ArrowUp" ? -1 : 1);
+      return;
+    }
     if (phone) return;
     if (e.repeat) {
       if (["Enter", " ", "Escape"].includes(e.key)) e.preventDefault();
@@ -133,10 +163,23 @@ function StagingPill(props: {
       aria-disabled={phone ? undefined : pill.disabled}
       aria-pressed={phone ? undefined : armed}
       aria-haspopup={phone ? "dialog" : undefined}
-      aria-keyshortcuts={phone ? undefined : "Enter Space Shift+Enter Escape"}
+      aria-keyshortcuts={
+        props.onMove !== undefined
+          ? phone
+            ? MOVE_KEYS
+            : `${DRAFT_KEYS} ${MOVE_KEYS}`
+          : phone
+            ? undefined
+            : DRAFT_KEYS
+      }
+      data-selection-id={row.selection.id}
       aria-describedby={armed ? hintId(row.selection.id) : HELP_ID}
       onClick={(e) => {
         e.preventDefault();
+        if (props.swallowsClick()) {
+          e.stopPropagation();
+          return;
+        }
         if (phone) {
           props.onOpenCard();
           return;
@@ -146,6 +189,7 @@ function StagingPill(props: {
       }}
       // A click on a pill is not a click elsewhere: it arms or disarms, not the toast's dismiss.
       onPointerDown={(e) => {
+        props.onDragPointerDown?.(e);
         if (!phone) e.stopPropagation();
       }}
       onDoubleClick={(e) => {
@@ -201,7 +245,10 @@ function StagingPill(props: {
   );
 }
 
-/** The row's overflow menu: Draft while it can be drafted, then the list's moves. */
+/**
+ * The row's overflow menu: Draft while it can be drafted, then the list's
+ * moves. Its tooltip says what it holds and it opens with the contender's name.
+ */
 function RowMenu(props: {
   label: string;
   items: CircuitStagingMenuItem[];
@@ -209,13 +256,13 @@ function RowMenu(props: {
 }) {
   return (
     <Menu withinPortal position="bottom-end" shadow="md">
-      <Tooltip label="More actions">
+      <Tooltip label={circuitStagingMenuTooltip(props.items)}>
         <Menu.Target>
           <ActionIcon
             type="button"
             variant="subtle"
             className="circuit-stageMenu"
-            aria-label={`More actions for ${props.label}`}
+            aria-label={`Actions for ${props.label}`}
           >
             <Text component="span" className="gicon" aria-hidden="true">
               more_horiz
@@ -224,6 +271,9 @@ function RowMenu(props: {
         </Menu.Target>
       </Tooltip>
       <Menu.Dropdown>
+        <Menu.Label className="circuit-stageMenuLabel" title={props.label}>
+          {props.label}
+        </Menu.Label>
         {props.items.map((item) => (
           <Menu.Item
             key={item.key}
@@ -247,11 +297,18 @@ type RowProps = {
   menu: CircuitStagingMenuItem[];
   onMenu: (key: CircuitStagingMenuKey) => void;
   onOpenCard: () => void;
+  swallowsClick: () => boolean;
 };
 
-function QueueRow(props: RowProps & { idx: number; disabled: boolean }) {
+/**
+ * A queue row: rank, pill and menu. A mouse drags it by the pill after 6 px;
+ * a finger after a 250 ms hold anywhere on the row but the menu.
+ */
+function QueueRow(
+  props: RowProps & { idx: number; disabled: boolean; onMove: (delta: -1 | 1) => void }
+) {
   const { row, idx, disabled } = props;
-  const { setRef, handle, isDragging } = useSortableNode(
+  const { setRef, isDragging, onPointerDown, onTouchStart } = useRowSortable(
     dragId(row.selection.id),
     disabled
   );
@@ -259,17 +316,14 @@ function QueueRow(props: RowProps & { idx: number; disabled: boolean }) {
     <Box
       ref={setRef}
       component="li"
-      className={["circuit-stageRow", isDragging ? "is-dragging" : ""]
+      className={["circuit-stageRow", "is-queued", isDragging ? "is-dragging" : ""]
         .filter(Boolean)
         .join(" ")}
+      onTouchStart={(e: TouchEvent) => {
+        if ((e.target as Element).closest(".circuit-stageMenu")) return;
+        onTouchStart(e);
+      }}
     >
-      <Box className="circuit-stageGrip">
-        <CircuitDragHandle
-          label={`Reorder ${row.label}`}
-          disabled={disabled}
-          handle={handle}
-        />
-      </Box>
       <Text component="span" className={["dr-railMeta", "circuit-queueRank"].join(" ")}>
         {idx + 1}
       </Text>
@@ -280,8 +334,41 @@ function QueueRow(props: RowProps & { idx: number; disabled: boolean }) {
         draft={props.draft}
         phone={props.phone}
         onOpenCard={props.onOpenCard}
+        onMove={disabled ? null : props.onMove}
+        onDragPointerDown={onPointerDown}
+        swallowsClick={props.swallowsClick}
       />
       <RowMenu label={row.label} items={props.menu} onSelect={props.onMenu} />
+    </Box>
+  );
+}
+
+/** The lifted copy of a queue row that follows the pointer during a drag. */
+function QueueRowCopy(props: {
+  row: CircuitQueueRow;
+  view: ContenderPillView;
+  idx: number;
+}) {
+  const { view } = props;
+  return (
+    <Box className={["circuit-stageRow", "is-dragOverlay"].join(" ")} aria-hidden="true">
+      <Text component="span" className={["dr-railMeta", "circuit-queueRank"].join(" ")}>
+        {props.idx + 1}
+      </Text>
+      <Box
+        component="span"
+        className={["dr-pill", "dr-pill-btn", "circuit-stagePill"].join(" ")}
+      >
+        <DraftCategoryIcon
+          icon={view.iconCode ?? ""}
+          variant={view.iconVariant === "inverted" ? "inverted" : "default"}
+          className="dr-pill-icon"
+        />
+        <Text component="span" className="dr-pill-text">
+          {view.label}
+        </Text>
+      </Box>
+      <span />
     </Box>
   );
 }
@@ -289,7 +376,6 @@ function QueueRow(props: RowProps & { idx: number; disabled: boolean }) {
 function StagedRow(props: RowProps) {
   return (
     <Box component="li" className="circuit-stageRow">
-      <Box className="circuit-stageGrip" aria-hidden="true" />
       <Text
         component="span"
         className={["dr-railMeta", "circuit-queueRank"].join(" ")}
@@ -302,6 +388,7 @@ function StagedRow(props: RowProps) {
         draft={props.draft}
         phone={props.phone}
         onOpenCard={props.onOpenCard}
+        swallowsClick={props.swallowsClick}
       />
       <RowMenu label={props.row.label} items={props.menu} onSelect={props.onMenu} />
     </Box>
@@ -311,12 +398,14 @@ function StagedRow(props: RowProps) {
 /**
  * The viewer's staging area: the ranked queue (the only source of an
  * auto-pick) and the staged contenders (set aside to draft by hand), one
- * line per contender: grip, rank, pill and a menu. While the viewer is on
- * the clock a pill drafts by double-click, by select and confirm, or from
- * the keyboard; the menu's Draft does the same. The queue reorders by drag
- * and drop on the grip (Space, the arrow keys and Space again) or the menu,
- * which also moves a contender between the lists or removes it. On a phone a
- * tap on a pill opens the nominee card with the same actions.
+ * line per contender: rank, pill and a menu. While the viewer is on the
+ * clock a pill drafts by double-click, by select and confirm, or from the
+ * keyboard; the menu's Draft does the same. The queue reorders by dragging
+ * the pill (a held finger on a phone), by Alt+ArrowUp and Alt+ArrowDown on
+ * the pill, or by the menu, which also moves a contender between the lists
+ * or removes it; each move is announced. A drag never drafts: it disarms an
+ * armed pill and its closing click is swallowed. On a phone a tap on a pill
+ * opens the nominee card with the same actions.
  */
 export function CircuitStagingPanel(props: {
   queue: CircuitQueueRow[];
@@ -339,12 +428,60 @@ export function CircuitStagingPanel(props: {
   onUnstage: (selectionId: number) => void;
 }) {
   const { queue, staged, busy, draft } = props;
-  const sensors = useReorderSensors(4);
+  const sensors = useRowReorderSensors();
+  const guard = useDragClickGuard();
   const ids = queue.map((r) => r.selection.id);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [movedNote, setMovedNote] = useState("");
+  const listRef = useRef<HTMLOListElement | null>(null);
+  // The pill moved from the keyboard keeps focus once the list has re-ordered.
+  const refocusId = useRef<number | null>(null);
+  const order = ids.join(",");
+
+  useEffect(() => {
+    const id = refocusId.current;
+    if (id === null) return;
+    refocusId.current = null;
+    const pill = listRef.current?.querySelector<HTMLElement>(
+      `.circuit-stagePill[data-selection-id="${id}"]`
+    );
+    if (pill && document.activeElement !== pill) pill.focus();
+  }, [order]);
+
+  function reorder(next: number[], movedId: number) {
+    const row = queue.find((r) => r.selection.id === movedId);
+    props.onReorder(next);
+    if (row) {
+      setMovedNote(
+        circuitQueueMovedNote(row.label, next.indexOf(movedId) + 1, next.length)
+      );
+    }
+  }
+
+  function move(id: number, delta: -1 | 1, refocus: boolean) {
+    const next = moveInOrder(ids, id, delta);
+    if (!next) return;
+    if (refocus) refocusId.current = id;
+    reorder(next, id);
+  }
+
+  function onDragStart(e: DragStartEvent) {
+    guard.start();
+    setActiveId(idOf(e.active.id));
+    if (draft && draft.armedId !== null) draft.onDisarm();
+  }
 
   function onDragEnd(e: DragEndEvent) {
-    const next = circuitQueueMoved(ids, idOf(e.active.id), idOf(e.over?.id));
-    if (next) props.onReorder(next);
+    guard.end();
+    setActiveId(null);
+    const movedId = idOf(e.active.id);
+    const next = circuitQueueMoved(ids, movedId, idOf(e.over?.id));
+    if (next) reorder(next, movedId);
+  }
+
+  function onDragCancel() {
+    guard.end();
+    setActiveId(null);
   }
 
   function onMenu(row: CircuitQueueRow, key: CircuitStagingMenuKey) {
@@ -354,11 +491,9 @@ export function CircuitStagingPanel(props: {
         draft?.onDraft(row);
         return;
       case "up":
-      case "down": {
-        const next = moveInOrder(ids, id, key === "up" ? -1 : 1);
-        if (next) props.onReorder(next);
+      case "down":
+        move(id, key === "up" ? -1 : 1, false);
         return;
-      }
       case "stage":
         props.onStage(row.selection);
         return;
@@ -391,9 +526,14 @@ export function CircuitStagingPanel(props: {
         count: list === "queue" ? queue.length : staged.length
       }),
       onMenu: (key: CircuitStagingMenuKey) => onMenu(row, key),
-      onOpenCard: () => props.onOpenCard(row, list)
+      onOpenCard: () => props.onOpenCard(row, list),
+      swallowsClick: guard.swallows
     };
   }
+
+  const hint = circuitQueueDragHint(queue.length, props.phone);
+  const activeIdx = activeId === null ? -1 : ids.indexOf(activeId);
+  const activeRow = activeIdx < 0 ? null : queue[activeIdx]!;
 
   return (
     <Stack gap="sm" className="circuit-staging">
@@ -421,6 +561,7 @@ export function CircuitStagingPanel(props: {
           </Text>
           <Text className="dr-railMeta">{queue.length}</Text>
         </Group>
+        {hint ? <Text className="circuit-stageNote">{hint}</Text> : null}
         {queue.length === 0 ? (
           <Text className="circuit-stageNote">
             {props.autoDraft
@@ -428,14 +569,29 @@ export function CircuitStagingPanel(props: {
               : "Nothing queued."}
           </Text>
         ) : (
-          <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+          <DndContext
+            sensors={sensors}
+            accessibility={ROW_DRAG_ACCESSIBILITY}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
+          >
             <SortableContext
               items={ids.map(dragId)}
               strategy={verticalListSortingStrategy}
             >
               <Box
+                ref={listRef}
                 component="ol"
-                className={["circuit-stageList", "fo-listReset"].join(" ")}
+                className={[
+                  "circuit-stageList",
+                  "circuit-queueList",
+                  busy ? "" : "is-sortable",
+                  draft?.canDraft ? "is-onClock" : "",
+                  "fo-listReset"
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 aria-label="Your queue"
               >
                 {queue.map((row, idx) => (
@@ -444,12 +600,23 @@ export function CircuitStagingPanel(props: {
                     {...rowProps(row, "queue", idx)}
                     idx={idx}
                     disabled={busy}
+                    onMove={(delta) => move(row.selection.id, delta, true)}
                   />
                 ))}
               </Box>
             </SortableContext>
+            <DragOverlay>
+              {activeRow ? (
+                <QueueRowCopy
+                  row={activeRow}
+                  view={props.viewOf(activeRow.selection)}
+                  idx={activeIdx}
+                />
+              ) : null}
+            </DragOverlay>
           </DndContext>
         )}
+        <VisuallyHidden role="status">{movedNote}</VisuallyHidden>
       </Stack>
 
       <Stack

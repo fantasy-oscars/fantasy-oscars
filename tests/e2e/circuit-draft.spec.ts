@@ -2,6 +2,7 @@ import {
   test,
   expect,
   type Browser,
+  type Locator,
   type Page,
   type WebSocketRoute
 } from "@playwright/test";
@@ -134,6 +135,28 @@ function contender(category: string, title: string) {
   return found!;
 }
 
+/**
+ * Drags `source` by the mouse onto `target`'s place: hover until its nominee
+ * card shows (the row is settled), press, move past the 6 px threshold, then
+ * on in steps so the list follows, and drop.
+ */
+async function mouseDrag(page: Page, source: Locator, target: Locator) {
+  await source.hover();
+  const label = (await source.locator(".dr-pill-text").textContent()) ?? "";
+  await expect(
+    page.getByRole("tooltip").filter({ hasText: label }).first()
+  ).toBeVisible();
+  const from = (await source.boundingBox())!;
+  const to = (await target.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 10, {
+    steps: 4
+  });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 4, { steps: 12 });
+  await page.mouse.up();
+}
+
 /** The player on the clock drafts through the contender form in the middle of the room. */
 async function draftThroughPicker(page: Page, category: string, title: string) {
   const panel = page.getByRole("region", { name: "Your pick" });
@@ -242,30 +265,36 @@ test("four players run a season draft, with a timeout, an empty queue and a reco
     ).toContainText("1-1");
   }
 
-  // Pia reorders her queue by keyboard during the draft.
+  // Pia reorders her queue during the draft without a grip: Alt+Arrow on a
+  // pill, the row menu and a mouse drag of the pill, each one announced.
   await pia.page.evaluate(() => {
     (window as unknown as { roomMarker: string }).roomMarker = "still here";
   });
   const filmF = contender("Best Director", "Film F").selectionId;
   const filmE = contender("Best Director", "Film E").selectionId;
-  const grip = pia.page.getByRole("button", { name: /^Reorder Film E/ });
-  await grip.focus();
-  await expect(grip).toBeFocused();
-  // Each step waits for the screen reader announcement it causes.
-  const announced = (text: string | RegExp) =>
-    expect(pia.page.getByText(text)).toBeAttached();
-  await pia.page.keyboard.press("Space");
-  await announced(
-    new RegExp(`(Picked up draggable item|moved over droppable area) queue:${filmE}\\b`)
-  );
-  // dnd-kit listens for the arrow keys from a zero-delay timer after the lift;
-  // a timer queued now runs after it, so the next key is not lost.
-  await pia.page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
-  await pia.page.keyboard.press("ArrowDown");
-  await announced(`moved over droppable area queue:${filmF}`);
-  await pia.page.keyboard.press("Space");
-  await announced(`dropped over droppable area queue:${filmF}`);
+  const piaQueue = pia.page.getByRole("list", { name: "Your queue" });
+  const piaPill = (title: string) =>
+    piaQueue.getByRole("button", { name: `Best Director: ${title}`, exact: true });
+  await expect(piaQueue.getByRole("button", { name: /^Reorder / })).toHaveCount(0);
+  await expect(pia.page.getByText("Drag to reorder.")).toBeVisible();
+  const announced = (text: string) =>
+    expect(pia.page.getByRole("status").filter({ hasText: text })).toBeAttached();
+
+  await piaPill("Film E").focus();
+  await pia.page.keyboard.press("Alt+ArrowDown");
+  await announced("Moved Film E to position 2 of 2.");
   await expect.poll(() => queueOf(pia)).toEqual([filmF, filmE]);
+  await expect(piaPill("Film E")).toBeFocused();
+
+  await pia.page.getByRole("button", { name: "Actions for Film E" }).click();
+  await pia.page.getByRole("menuitem", { name: "Move up" }).click();
+  await announced("Moved Film E to position 1 of 2.");
+  await expect.poll(() => queueOf(pia)).toEqual([filmE, filmF]);
+
+  await mouseDrag(pia.page, piaPill("Film E"), piaPill("Film F"));
+  await announced("Moved Film E to position 2 of 2.");
+  await expect.poll(() => queueOf(pia)).toEqual([filmF, filmE]);
+  await expect(piaPill("Film E")).toHaveAttribute("aria-pressed", "false");
 
   const snapshot = () =>
     api<Snapshot>(commish, "GET", `/circuit-leagues/${seasonId}/draft`);
@@ -440,12 +469,35 @@ test("drafting from the queue by double-click, keyboard, phone card and confirm 
       .getByRole("list", { name: "Your queue" })
       .getByRole("button", { name: `Best Picture: ${title}`, exact: true });
 
-  // Pick 1: a double-click on the first queued contender drafts it.
+  // Pick 1: on the clock, a mouse drag reorders the queue and never arms;
+  // then a double-click on the queue's new first contender drafts it.
   const first = await onTheClock();
-  const firstTitles = queued.get(first.player)!;
+  const [dragged, other] = queued.get(first.player)!;
   await expect(first.player.page.getByTestId("circuit-staging-note")).toHaveText(
     "You're on the clock. Double-click a contender to draft it, or select it and confirm."
   );
+  const firstQueue = () =>
+    api<{ items: Array<{ selection: { id: number } }> }>(
+      first.player,
+      "GET",
+      `/circuit-leagues/${seasonId}/queue`
+    ).then((q) => q.items.map((i) => i.selection.id));
+  await mouseDrag(
+    first.player.page,
+    queuePill(first.player, dragged!),
+    queuePill(first.player, other!)
+  );
+  await expect
+    .poll(firstQueue)
+    .toEqual([
+      contender("Best Picture", other!).selectionId,
+      contender("Best Picture", dragged!).selectionId
+    ]);
+  for (const title of [dragged!, other!]) {
+    await expect(queuePill(first.player, title)).toHaveAttribute("aria-pressed", "false");
+  }
+  await expect(first.player.page.getByText("Confirm draft pick")).toHaveCount(0);
+  const firstTitles = [other!, dragged!];
   await queuePill(first.player, firstTitles[0]!).dblclick();
   await pickLands(first.pickNumber);
 
@@ -676,4 +728,137 @@ test("Add/drop goes to free agency outside a window, to claims inside one, and w
   );
   await processing.click();
   await expect(page).toHaveURL(new RegExp(`${seasonPath}/waivers$`));
+});
+
+test("claims reorder by dragging a row, by Alt+Arrow on the claim pill, and say so", async ({
+  browser
+}) => {
+  test.setTimeout(120_000);
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  await grantSuperAdmin(DRAFT_PLAYERS[0]);
+  const [commish, pia] = await Promise.all(
+    [DRAFT_PLAYERS[0], DRAFT_PLAYERS[1]].map((name) => signIn(browser, name))
+  );
+  const byName = new Map([commish, pia].map((p) => [p.name, p]));
+
+  // An in-season league: two players, one pick each.
+  const leagueName = `Claims League ${suffix}`;
+  const { league } = await api<{ league: { id: number } }>(commish, "POST", "/leagues", {
+    name: leagueName
+  });
+  const { season } = await api<{ season: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/seasons`,
+    { ceremony_id: Number(process.env.E2E_CEREMONY_ID), pick_timer_seconds: null }
+  );
+  await api(commish, "POST", `/seasons/${season.id}/members`, { username: pia.name });
+  const created = await api<{ circuit_league: { id: number } }>(
+    commish,
+    "POST",
+    `/leagues/${league.id}/circuits`,
+    {
+      circuit_id: draftCircuit.circuitId,
+      settings: { roster_size: 1, pick_timer_seconds: 600, auto_draft_enabled: false }
+    }
+  );
+  const seasonId = created.circuit_league.id;
+  await api(pia, "POST", `/circuit-leagues/${seasonId}/join`);
+  await api(commish, "POST", `/circuit-leagues/${seasonId}/initialize`);
+  await api(commish, "POST", `/circuit-leagues/${seasonId}/draft`);
+  for (const title of ["Film A", "Film B"]) {
+    const snap = await api<Snapshot & { draft: { id: number } }>(
+      commish,
+      "GET",
+      `/circuit-leagues/${seasonId}/draft`
+    );
+    const seat = snap.seats.find((s) => s.seat_number === snap.on_the_clock?.seat_number);
+    const player = byName.get(seat?.username ?? "");
+    expect(player, "player on the clock").toBeDefined();
+    await api(player!, "POST", `/circuit-drafts/${snap.draft.id}/picks`, {
+      selection_id: contender("Best Picture", title).selectionId,
+      request_id: `${suffix}-${title}`
+    });
+  }
+
+  // The stack has no open waiver window, so the claims read is served with
+  // two pending claims (for the two drafted contenders), and a reorder
+  // answers with the new ranks.
+  const { transactions } = await api<{
+    transactions: Array<{ add: { id: number; film: { title: string } } | null }>;
+  }>(commish, "GET", `/circuit-leagues/${seasonId}/transactions`);
+  const selections = transactions
+    .map((t) => t.add!)
+    .sort((a, b) => a.film.title.localeCompare(b.film.title));
+  const at = new Date().toISOString();
+  let claims = selections.map((selection, i) => ({
+    id: 9001 + i,
+    rank: i + 1,
+    status: "PENDING",
+    failure_reason: null,
+    selection,
+    drop: null,
+    chip: null,
+    created_at: at,
+    updated_at: at
+  }));
+  const reorders: number[][] = [];
+  const window = {
+    starts_on: "2035-02-08",
+    ends_on: "2035-02-12",
+    resolves_on: "2035-02-13"
+  };
+  const { page } = commish;
+  await page.route(
+    `${E2E_API_ORIGIN}/circuit-leagues/${seasonId}/claims`,
+    async (route) => {
+      const method = route.request().method();
+      if (method === "PUT") {
+        const ids = (route.request().postDataJSON() as { claim_ids: number[] }).claim_ids;
+        reorders.push(ids);
+        claims = ids.map((id, i) => ({
+          ...claims.find((c) => c.id === id)!,
+          rank: i + 1
+        }));
+      } else if (method !== "GET") {
+        return route.fallback();
+      }
+      return route.fulfill({
+        status: 200,
+        headers: {
+          "access-control-allow-origin": E2E_WEB_ORIGIN,
+          "access-control-allow-credentials": "true"
+        },
+        json: { window, locked: false, claims, chips: [] }
+      });
+    }
+  );
+
+  const slug = leagueName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  await page.goto(`/leagues/${league.id}/${slug}/seasons/full/${seasonId}/waivers`);
+  const list = page.getByRole("list", { name: "Your claims" });
+  const claimPill = (title: string) =>
+    list.getByRole("button", { name: `Claim: Best Picture: ${title}`, exact: true });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(list.getByRole("button", { name: /^Reorder / })).toHaveCount(0);
+  await expect(page.getByText(/Drag a claim to change its rank\.$/)).toBeVisible();
+  const rows = () => list.getByRole("listitem").allTextContents();
+  const announced = (text: string) =>
+    expect(page.getByRole("status").filter({ hasText: text })).toBeAttached();
+
+  // Drag the first claim's row by its pill below the second.
+  await mouseDrag(page, claimPill("Film A"), claimPill("Film B"));
+  await expect.poll(() => reorders.at(-1)).toEqual([9002, 9001]);
+  await announced("Moved claim for Film A to rank 2 of 2.");
+  await expect.poll(async () => (await rows())[0]).toContain("Film B");
+  // The drop did not open the claim's edit modal.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // Alt+ArrowUp on the claim pill moves it back, and focus stays on it.
+  await claimPill("Film A").focus();
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect.poll(() => reorders.at(-1)).toEqual([9001, 9002]);
+  await announced("Moved claim for Film A to rank 1 of 2.");
+  await expect(claimPill("Film A")).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

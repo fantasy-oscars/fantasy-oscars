@@ -711,8 +711,10 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(
     you,
     "Waivers, no window open",
-    "Priority and chips (Emmy holds one) while no window is open."
+    "Waiver priority (Emmy holds a priority pass) while no window is open."
   );
+  await visit(you, `${fullUrl}/rules`);
+  await shot(you, "Season rules", "Events, points, roster size and category limits.");
   await visit(you, `${fullUrl}/standings`);
   await shot(
     you,
@@ -756,6 +758,19 @@ test("a player's season, screen by screen", async ({ browser }) => {
     "Waivers, window open, no claims",
     "An open window before Cora files claims."
   );
+  // The season page reads claims (and so passes) only while free agency is closed.
+  await visit(emmy, fullUrl);
+  await shot(
+    emmy,
+    "Full season, holding a priority pass",
+    "Emmy's season page: the Waivers tile tells her about her pass."
+  );
+  await visit(emmy, `${fullUrl}/waivers`);
+  await shot(
+    emmy,
+    "Waivers, holding a priority pass",
+    "Emmy's claims before she files one: the note about her pass."
+  );
   await attempt("claim through picker", async () => {
     const target = free[0]!;
     await you.page.getByRole("textbox", { name: "Category" }).click({ timeout: 3000 });
@@ -772,7 +787,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
       .getByRole("button", { name: `Claim ${target.category}: ${target.film}` })
       .click({ timeout: 5000 });
     await you.page.getByRole("dialog").waitFor({ timeout: 8000 });
-    await shot(you, "Claim modal", "Filing a claim: conditional drop and chip.");
+    await shot(you, "Claim modal", "Filing a claim: conditional drop and priority pass.");
     await you.page
       .getByRole("dialog")
       .getByRole("button", { name: /Claim|File|Save|Submit/ })
@@ -825,7 +840,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
     "Cora's two claims, ranked, with Edit and Withdraw."
   );
   await visit(emmy, `${fullUrl}/waivers`);
-  await shot(emmy, "Waivers, a chipped claim", "Emmy's claim riding on her chip.");
+  await shot(emmy, "Waivers, a chipped claim", "Emmy's claim using her priority pass.");
   await visit(you, "/");
   await shot(you, "Home, waiver window open", "Home while a window is open.");
 
@@ -845,7 +860,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(
     emmy,
     "Waivers, results (chip used)",
-    "Emmy's view after her chipped claim."
+    "Emmy's view after her claim with a priority pass."
   );
   await visit(you, `${fullUrl}/transactions`);
   await shot(you, "Transactions, after waivers", "Waiver wins in the log.");
@@ -878,7 +893,7 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await shot(
     you,
     "Ceremony points, by category",
-    "The same ceremony by category: nominations and wins per category."
+    "The same ceremony by category: one card per category, winners gold."
   );
   await visit(you, `/ceremonies/${northlight.id}`);
   await shot(you, "Ceremony with winners", `${northlight.name} with winners marked.`);
@@ -904,8 +919,16 @@ test("a player's season, screen by screen", async ({ browser }) => {
   await rebuildScores();
   await visit(you, `${fullUrl}/standings`);
   await shot(you, "Standings, final", "Final standings across both ceremonies.");
+  await visit(you, `${fullUrl}/standings?view=results`);
+  await shot(
+    you,
+    "Standings, final results",
+    "Final results: every contender that scored, with the players it scored for."
+  );
+  await visit(you, `${fullUrl}/standings?view=ceremonies`);
+  await shot(you, "Standings, by ceremony", "Points awarded at each ceremony.");
   await attempt("final rosters", async () => {
-    await visit(you, `${fullUrl}/standings?results=rosters`);
+    await visit(you, `${fullUrl}/standings?view=results&results=rosters`);
     await you.page
       .getByRole("list", { name: "Final rosters" })
       .waitFor({ timeout: 5000 });

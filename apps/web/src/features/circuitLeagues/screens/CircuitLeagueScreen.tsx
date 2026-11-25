@@ -3,11 +3,11 @@ import { Box, Button, Group, Skeleton, Stack, Text, Title } from "@ui";
 import type { AreaSaveResult, CircuitLeagueView } from "@/orchestration/circuitLeague";
 import type { FullSeasonSettings, SettingsArea } from "@/decisions/fullSeasonSettings";
 import { circuitLeagueStatusLabel } from "@/decisions/circuitLeague";
-import { circuitDraftLinkLabel } from "@/decisions/circuitDraft";
 import { comingSoonNote } from "@/decisions/goLive";
-import { circuitRostersVisible } from "@/decisions/circuitRoster";
-import { circuitStandingsVisible } from "@/decisions/circuitStandings";
-import { circuitWaiversVisible } from "@/decisions/circuitWaivers";
+import {
+  circuitSeasonTiles,
+  type CircuitSeasonTileKey
+} from "@/decisions/circuitSeasonTiles";
 import type { CircuitAddDropTarget } from "@/decisions/circuitAddDrop";
 import { statusTone } from "@/decisions/statusTone";
 import type { ApiResult } from "@/lib/types";
@@ -25,6 +25,10 @@ import { StatusPill } from "@/shared/pills";
 import { StandardCard } from "@/primitives";
 import { CircuitLeagueMembersSection } from "@/features/circuitLeagues/ui/CircuitLeagueMembersSection";
 import { CircuitLeagueMembershipBar } from "@/features/circuitLeagues/ui/CircuitLeagueMembershipBar";
+import {
+  SeasonTiles,
+  SeasonTilesSkeleton
+} from "@/features/circuitLeagues/ui/SeasonTiles";
 import { FullSeasonSettingsSection } from "./FullSeasonSettingsSection";
 import "@/primitives/baseline.css";
 
@@ -36,6 +40,7 @@ function CircuitLeagueSkeleton() {
       <Box className="baseline-pageInner">
         <Stack component="section" gap="md">
           <Skeleton height="var(--fo-font-size-hero-title)" width="44%" />
+          <SeasonTilesSkeleton />
           <Box className="baseline-grid2Wide">
             <StandardCard>
               <Stack gap="sm">
@@ -61,6 +66,8 @@ export function CircuitLeagueScreen(props: {
   view: CircuitLeagueView;
   /** Where Add/drop leads; null hides it (not in season, not a member, or loading). */
   addDrop?: CircuitAddDropTarget | null;
+  /** The viewer's unused priority passes by pick, for the Waivers tile. */
+  passPicks?: number[];
   acting: boolean;
   memberStatus: ApiResult | null;
   lockStatus: ApiResult | null;
@@ -107,6 +114,19 @@ export function CircuitLeagueScreen(props: {
         addDrop.hash ? `#${addDrop.hash}` : ""
       }`
     : null;
+  const tilePaths: Record<CircuitSeasonTileKey, string> = {
+    draft: circuitDraftPath(link),
+    roster: circuitRosterPath(link),
+    transactions: circuitTransactionsPath(link),
+    waivers: circuitWaiversPath(link),
+    standings: circuitStandingsPath(link),
+    rules: circuitRulesPath(link)
+  };
+  const tiles = circuitSeasonTiles({
+    status: detail.circuit_league.status,
+    isMember: viewer.is_member,
+    passPicks: props.passPicks ?? []
+  }).map((tile) => ({ ...tile, to: tilePaths[tile.key] }));
 
   return (
     <Box className="baseline-page">
@@ -143,52 +163,11 @@ export function CircuitLeagueScreen(props: {
                     Add/drop
                   </Button>
                 ) : null}
-                <Button component={Link} to={circuitDraftPath(link)} variant="outline">
-                  {circuitDraftLinkLabel(detail.circuit_league.status)}
-                </Button>
-                {circuitRostersVisible(detail.circuit_league.status) ? (
-                  <>
-                    <Button
-                      component={Link}
-                      to={circuitRosterPath(link)}
-                      variant="outline"
-                    >
-                      {viewer.is_member ? "Your roster" : "Rosters"}
-                    </Button>
-                    <Button
-                      component={Link}
-                      to={circuitTransactionsPath(link)}
-                      variant="outline"
-                    >
-                      Transactions
-                    </Button>
-                    {circuitWaiversVisible(detail.circuit_league.status) ? (
-                      <Button
-                        component={Link}
-                        to={circuitWaiversPath(link)}
-                        variant="outline"
-                      >
-                        Waivers
-                      </Button>
-                    ) : null}
-                    {circuitStandingsVisible(detail.circuit_league.status) ? (
-                      <Button
-                        component={Link}
-                        to={circuitStandingsPath(link)}
-                        variant="outline"
-                      >
-                        Standings
-                      </Button>
-                    ) : null}
-                  </>
-                ) : null}
-                <Button component={Link} to={circuitRulesPath(link)} variant="outline">
-                  Rules
-                </Button>
                 <Button
                   component={Link}
                   to={leaguePath({ leagueId: league.id, leagueName: league.name })}
                   variant="outline"
+                  className="full-season-back"
                 >
                   Back to league
                 </Button>
@@ -215,6 +194,8 @@ export function CircuitLeagueScreen(props: {
             onJoin={props.onJoin}
             onLeave={props.onLeave}
           />
+
+          <SeasonTiles tiles={tiles} />
 
           <Box className="baseline-grid2Wide">
             <FullSeasonSettingsSection

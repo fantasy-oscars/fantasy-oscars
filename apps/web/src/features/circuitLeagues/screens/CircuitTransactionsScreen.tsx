@@ -45,7 +45,7 @@ export function CircuitTransactionsScreen(props: { view: CircuitTransactionsView
       actions={
         <>
           <Button component={Link} to={circuitRosterPath(link)} variant="outline">
-            Rosters
+            {detail.viewer.is_member ? "Your roster" : "Rosters"}
           </Button>
           <Button component={Link} to={circuitLeaguePath(link)} variant="outline">
             Back to season

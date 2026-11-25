@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -168,17 +169,35 @@ function renderWaivers(
 }
 
 describe("CircuitWaiversScreen", () => {
-  it("lists the viewer's claims as pills with their drop pill and chip", async () => {
+  it("lists the viewer's claims as stacked moves with their pass", async () => {
     const handlers = renderWaivers();
     const list = screen.getByRole("list", { name: "Your claims" });
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent("Harbor (2026)dropping");
-    expect(rows[0]).toHaveTextContent("Night Train (2026)· Pick 3 chip");
+    // The claim's plus line, then the minus line of the drop if it wins.
+    expect(
+      within(rows[0]!)
+        .getAllByRole("img")
+        .map((i) => i.getAttribute("aria-label"))
+    ).toEqual(["Claim", "Drop if the claim wins"]);
+    expect(rows[0]).not.toHaveTextContent("dropping");
+    expect(rows[0]!.querySelector(".circuit-claimPass")?.textContent).toBe(
+      "Pass for pick 3"
+    );
+    // No grip: the row itself drags, so it carries no handle.
+    expect(list.querySelector(".nomination-drag-handle-button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Reorder / })).toBeNull();
+    expect(rows.every((row) => row.classList.contains("is-sortable"))).toBe(true);
+    expect(screen.getByText(/Drag a claim to change its rank\.$/)).toBeInTheDocument();
     expect(rows[0]).not.toHaveTextContent("in Best Picture");
-    expect(rows[1]).toHaveTextContent("No drop");
+    // A claim without a drop has one line.
+    expect(
+      within(rows[1]!)
+        .getAllByRole("img")
+        .map((i) => i.getAttribute("aria-label"))
+    ).toEqual(["Claim"]);
     const drop = within(rows[0]).getByRole("group", {
-      name: "Best Picture: Night Train (2026), dropped if the claim wins"
+      name: "Drop if the claim wins: Best Picture: Night Train (2026)"
     });
     expect(drop.className).toContain("is-dropped");
     // The category is the icon: every pill draws one.
@@ -186,7 +205,7 @@ describe("CircuitWaiversScreen", () => {
 
     // A click on the claim pill edits it, as Edit does.
     fireEvent.click(
-      within(rows[0]).getByRole("button", { name: "Best Picture: Harbor (2026)" })
+      within(rows[0]).getByRole("button", { name: "Claim: Best Picture: Harbor (2026)" })
     );
     expect(handlers.onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 8 }));
 
@@ -230,18 +249,124 @@ describe("CircuitWaiversScreen", () => {
     expect(handlers.onReorder).toHaveBeenCalledWith([9, 8]);
   });
 
+  it("moves a claim one rank with Alt+Arrow on its pill, and announces it", async () => {
+    const handlers = renderWaivers();
+    const harbor = screen.getByRole("button", {
+      name: "Claim: Best Picture: Harbor (2026)"
+    });
+    expect(harbor.getAttribute("aria-keyshortcuts")).toBe("Alt+ArrowUp Alt+ArrowDown");
+    harbor.focus();
+    fireEvent.keyDown(harbor, { key: "ArrowDown", altKey: true });
+    expect(handlers.onReorder).toHaveBeenCalledWith([9, 8]);
+    expect(handlers.onEdit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Moved claim for Harbor (2026) to rank 2 of 2.")
+    ).toHaveAttribute("role", "status");
+  });
+
+  it("reorders claims by dragging a row, and a click that ends the drag does not edit", async () => {
+    const handlers = renderWaivers();
+    const rows = within(screen.getByRole("list", { name: "Your claims" })).getAllByRole(
+      "listitem"
+    );
+    const rect = (index: number) =>
+      ({
+        top: index * 48,
+        bottom: (index + 1) * 48,
+        left: 0,
+        right: 600,
+        width: 600,
+        height: 48,
+        x: 0,
+        y: index * 48,
+        toJSON: () => ({})
+      }) as DOMRect;
+    rows.forEach((row, index) => {
+      row.getBoundingClientRect = () => rect(index);
+    });
+    const harbor = screen.getByRole("button", {
+      name: "Claim: Best Picture: Harbor (2026)"
+    });
+    const pointer = (type: string, y: number) => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        clientX: 10,
+        clientY: y,
+        button: 0
+      });
+      Object.defineProperty(event, "isPrimary", { value: true });
+      return event;
+    };
+    const step = (target: EventTarget, type: string, y: number) =>
+      act(async () => {
+        target.dispatchEvent(pointer(type, y));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    // The lifted copy, which dnd-kit collides with the rows, starts on the first row.
+    const box = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue(rect(0));
+    try {
+      await step(harbor, "pointerdown", 24);
+      await step(document, "pointermove", 32);
+      await step(document, "pointermove", 72);
+      await step(document, "pointerup", 72);
+    } finally {
+      box.mockRestore();
+    }
+    expect(handlers.onReorder).toHaveBeenCalledWith([9, 8]);
+    fireEvent.click(harbor);
+    expect(handlers.onEdit).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Moved claim for Harbor (2026) to rank 2 of 2.")
+    ).toBeTruthy();
+    // dnd-kit swallows clicks on the document until a later tick after a drop.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  });
+
+  it("does not drag a claim from its icon actions", async () => {
+    const handlers = renderWaivers();
+    const up = screen.getByRole("button", { name: "Move Bea Moss, Quiet Sea (2026) up" });
+    const pointer = (type: string, y: number) => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        clientX: 10,
+        clientY: y,
+        button: 0
+      });
+      Object.defineProperty(event, "isPrimary", { value: true });
+      return event;
+    };
+    await act(async () => {
+      up.dispatchEvent(pointer("pointerdown", 60));
+      document.dispatchEvent(pointer("pointermove", 20));
+      document.dispatchEvent(pointer("pointerup", 20));
+    });
+    expect(handlers.onReorder).not.toHaveBeenCalled();
+    expect(up.closest("li")!.classList.contains("is-dragging")).toBe(false);
+  });
+
   it("freezes the claims while the window is processed", () => {
     renderWaivers({ claims: claimsFixture({ locked: true }) });
     expect(screen.getByText(/being processed/)).toBeInTheDocument();
+    // Locked: no row drags and the drag hint is gone.
+    expect(screen.queryByText(/Drag a claim to change its rank/)).toBeNull();
+    expect(
+      within(screen.getByRole("list", { name: "Your claims" }))
+        .getAllByRole("listitem")
+        .some((row) => row.classList.contains("is-sortable"))
+    ).toBe(false);
     expect(
       screen.getByRole("button", { name: "Edit your claim for Harbor (2026)" })
     ).toBeDisabled();
     // The claim pills stay, read-only: no longer a button that edits.
     expect(
-      screen.queryByRole("button", { name: "Best Picture: Harbor (2026)" })
+      screen.queryByRole("button", { name: "Claim: Best Picture: Harbor (2026)" })
     ).toBeNull();
     expect(
-      screen.getByRole("group", { name: "Best Picture: Harbor (2026)" })
+      screen.getByRole("group", { name: "Claim: Best Picture: Harbor (2026)" })
     ).toBeTruthy();
   });
 
@@ -263,14 +388,16 @@ describe("CircuitWaiversScreen", () => {
     expect(screen.getByText(/you have no claims/)).toBeInTheDocument();
   });
 
-  it("shows priority with chips, and each run's claims in order", () => {
+  it("shows priority with passes, and each run's claims as stacked moves", () => {
     renderWaivers();
     const priority = within(screen.getByRole("list", { name: "Waiver priority" }))
       .getAllByRole("listitem")
       .map((li) => li.textContent);
     expect(priority[0]).toContain("blake");
-    expect(priority[1]).toContain("avery (you)");
-    expect(priority[1]).toContain("Pick 3 chip: Available");
+    expect(priority[1]).toContain("avery, you");
+    expect(priority.join(" ")).not.toContain("(you)");
+    expect(priority[1]).toContain("Pick 3 priority pass: Available");
+    expect(screen.getByRole("heading", { name: "Waiver priority" })).toBeInTheDocument();
     expect(
       screen
         .getByRole("list", { name: "Waiver priority" })
@@ -282,24 +409,51 @@ describe("CircuitWaiversScreen", () => {
         name: "Claims for Jan 1, 2027 to Jan 3, 2027, in the order they ran"
       })
     ).getAllByRole("listitem");
-    // Line one: order, name and the outcome beside it; line two: the pills.
-    expect(results[0]).toHaveTextContent("1.averyWon · Pick 2 chip");
+    // Line one: order, name and the outcome beside it; below, the moves.
+    expect(results[0]).toHaveTextContent("1.averyWon · Pass for pick 2");
     expect(results[1]).toHaveTextContent("2.blakeLost: Someone ahead of them got it");
+    expect(results[0]!.querySelector(".fo-playerName .fo-animalAvatar")).not.toBeNull();
     const won = within(results[0]).getByRole("group", {
-      name: "Best Actress: Ada Lane, Paper Moon (2026)"
+      name: "Added: Best Actress: Ada Lane, Paper Moon (2026)"
     });
     expect(won.className).not.toContain("is-muted");
+    // Nothing changed hands on a lost claim: both lines are muted, neither dashed.
     const lost = within(results[1]).getByRole("group", {
-      name: "Best Actress: Ada Lane, Paper Moon (2026), lost"
+      name: "Claimed, lost: Best Actress: Ada Lane, Paper Moon (2026)"
     });
     expect(lost.className).toContain("is-muted");
-    expect(results[1]).toHaveTextContent("dropping");
+    const wouldDrop = within(results[1]).getByRole("group", {
+      name: "Would have dropped: Best Picture: Night Train (2026)"
+    });
+    expect(wouldDrop.className).toContain("is-muted");
+    expect(wouldDrop.className).not.toContain("is-dropped");
+    expect(results[1]).not.toHaveTextContent("dropping");
+
+    // Priority after: an ordered list of players with avatars.
+    const after = screen.getByRole("list", { name: "Priority after this run" });
     expect(
-      within(results[1]).getByRole("group", {
-        name: "Best Picture: Night Train (2026), dropped"
-      }).className
-    ).toContain("is-dropped");
-    expect(screen.getByText("Priority after: blake, avery")).toBeInTheDocument();
+      within(after)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent)
+    ).toEqual(["blake", "avery"]);
+    expect(after.querySelectorAll(".fo-animalAvatar")).toHaveLength(2);
+  });
+
+  it("tells a holder of an unused priority pass about it under Your claims", () => {
+    renderWaivers();
+    // The viewer's only pass already rides on a claim.
+    expect(screen.queryByText(/You have a priority pass/)).toBeNull();
+    cleanup();
+    renderWaivers({
+      claims: claimsFixture({
+        chips: [{ id: 32, original_pick_number: 5, status: "AVAILABLE", claim_id: null }]
+      })
+    });
+    expect(
+      screen.getByText(
+        "You have a priority pass for pick 5. Add it to a claim when you file it. It expires when this window's claims run."
+      )
+    ).toBeInTheDocument();
   });
 
   it("says when no claims have run yet", () => {
@@ -307,7 +461,7 @@ describe("CircuitWaiversScreen", () => {
     expect(screen.getByText(/No claims have run yet/)).toBeInTheDocument();
   });
 
-  it("opens the claim modal with the drop, the capacity warning and the chip", () => {
+  it("opens the claim modal with the drop, the capacity warning and the pass", () => {
     const handlers = renderWaivers({
       draft: {
         claimId: null,
@@ -326,7 +480,10 @@ describe("CircuitWaiversScreen", () => {
     expect(
       within(dialog).getByRole("textbox", { name: "Drop if this claim wins" })
     ).toHaveAttribute("placeholder", "Select a pick to drop");
-    expect(within(dialog).getByRole("textbox", { name: "Chip" })).toBeDisabled();
+    const pass = within(dialog).getByRole("textbox", { name: "Priority pass" });
+    expect(pass).toBeDisabled();
+    expect(pass).toHaveAttribute("placeholder", "You have no priority passes");
+    expect(within(dialog).getByText(/You get a priority pass when/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "File claim" }));
     expect(handlers.onSaveClaim).toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));

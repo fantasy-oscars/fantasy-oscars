@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Box, Text } from "@ui";
+import { Box, Text, VisuallyHidden } from "@ui";
 import { railMetaCh } from "@/decisions/draft/railMeta";
 import { StandardCard } from "@/primitives/cards/StandardCard";
 import { AnimalAvatarIcon } from "@/shared/animalAvatarIcon";
@@ -36,14 +36,16 @@ export function SeasonRosterCard(props: {
     [withMeta, metaCh]
   );
   useCssVars(listRef, listVars);
-  const name = props.isViewer ? `${props.title} (you)` : props.title;
 
   return (
     <StandardCard className="fo-pillScope fo-seasonRosterCard">
       <Box className="fo-seasonRosterCard-head">
         <AnimalAvatarIcon avatarKey={props.avatarKey} size="sm" />
-        <Text className="fo-seasonRosterCard-name" title={name}>
-          {name}
+        <Text className="fo-seasonRosterCard-name" title={props.title}>
+          {props.title}
+          {props.isViewer ? (
+            <VisuallyHidden component="span">, you</VisuallyHidden>
+          ) : null}
         </Text>
         <Text className="fo-seasonRosterCard-score" aria-label={props.scoreLabel}>
           {props.score}

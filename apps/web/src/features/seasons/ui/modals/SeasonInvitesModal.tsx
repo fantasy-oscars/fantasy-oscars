@@ -13,6 +13,7 @@ import {
 import type { SeasonInvite, SeasonMember } from "@/lib/types";
 import { UserSearchCombobox } from "@/shared/comboboxes/UserSearchCombobox";
 import { CommissionerPill } from "@/shared/pills";
+import { PlayerName } from "@/shared/PlayerName";
 import { useConfirm } from "@/notifications/confirm";
 import { EmptyState } from "@/primitives";
 
@@ -173,7 +174,12 @@ export function SeasonParticipantsModal(props: {
             {members.map((m) => (
               <Box key={m.id} className="list-row">
                 <Group gap="xs" align="center" wrap="nowrap">
-                  <Text size="sm">{m.username ?? `User ${m.user_id}`}</Text>
+                  <Text component="span" size="sm" miw="var(--fo-space-0)">
+                    <PlayerName
+                      name={m.username ?? `User ${m.user_id}`}
+                      avatarKey={m.avatar_key}
+                    />
+                  </Text>
                   {m.role === "OWNER" ? <CommissionerPill /> : null}
                 </Group>
                 <Group gap="xs" align="center" wrap="nowrap">

@@ -235,10 +235,15 @@ describe("leagues integration", () => {
     expect(res.json.error.code).toBe("INVITE_ONLY_MEMBERSHIP");
   });
 
-  it("returns roster for commissioners with roles and usernames", async () => {
+  it("returns roster for commissioners with roles, usernames and avatars", async () => {
     await createActiveCeremony();
     const owner = await insertUser(db.pool);
     const member = await insertUser(db.pool, { username: "member1" });
+    await db.pool.query(
+      `UPDATE app_user SET avatar_key = CASE WHEN id = $1 THEN 'owl' ELSE 'bear' END
+       WHERE id IN ($1, $2)`,
+      [owner.id, member.id]
+    );
     const ownerToken = signToken({ sub: String(owner.id), username: owner.username });
     const createRes = await post<{ league: { id: number } }>(
       "/leagues",
@@ -256,12 +261,17 @@ describe("leagues integration", () => {
         user_id: number;
         role: string;
         username: string;
+        avatar_key: string;
       }>;
     }>(`/leagues/${leagueId}/members`, ownerToken);
 
     expect(res.status).toBe(200);
     const usernames = res.json.members.map((m) => m.username).sort();
     expect(usernames).toEqual([member.username, owner.username].sort());
+    const avatars = Object.fromEntries(
+      res.json.members.map((m) => [m.user_id, m.avatar_key])
+    );
+    expect(avatars).toEqual({ [owner.id]: "owl", [member.id]: "bear" });
   });
 
   it("owner can transfer ownership to a member", async () => {

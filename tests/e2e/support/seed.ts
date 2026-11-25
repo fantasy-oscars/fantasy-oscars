@@ -29,8 +29,15 @@ async function postJson<T>(path: string, body: unknown, token?: string): Promise
  * Logs the seed admin in and returns the session token from the auth cookie
  * (the API no longer returns it in the body); it is used as a Bearer credential
  * for the seeding calls, which are not made from a browser.
+ *
+ * The admin logs in once per run: global setup's first call keeps the token in
+ * `E2E_ADMIN_TOKEN`, which the workers inherit. Every spec shares this one
+ * account and the loopback IP, and the API allows 8 logins per user and IP a
+ * minute, so a fresh login per spec would trip the limit as specs are added.
  */
 export async function adminLogin(): Promise<string> {
+  const cached = process.env.E2E_ADMIN_TOKEN;
+  if (cached) return cached;
   const res = await fetch(`${E2E_API_ORIGIN}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -39,7 +46,10 @@ export async function adminLogin(): Promise<string> {
   if (!res.ok) throw new Error(`POST /auth/login -> ${res.status}`);
   for (const cookie of res.headers.getSetCookie()) {
     const match = /^auth_token=([^;]+)/.exec(cookie);
-    if (match?.[1]) return match[1];
+    if (match?.[1]) {
+      process.env.E2E_ADMIN_TOKEN = match[1];
+      return match[1];
+    }
   }
   throw new Error("login did not set an auth_token cookie");
 }

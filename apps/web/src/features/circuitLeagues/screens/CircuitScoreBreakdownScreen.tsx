@@ -99,7 +99,7 @@ export function CircuitScoreBreakdownScreen(props: {
       </Stack>
       {props.mode === "category" ? (
         <CircuitCeremonyPointsByCategory
-          rows={circuitCeremonyPointsByCategory(view.breakdown, detail.categories)}
+          cards={circuitCeremonyPointsByCategory(view.breakdown, detail.categories)}
           viewOf={viewOf}
           onOpenCard={openCard}
         />

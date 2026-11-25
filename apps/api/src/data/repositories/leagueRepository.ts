@@ -23,6 +23,7 @@ export type LeagueMemberRecord = {
 
 export type LeagueMemberWithUser = LeagueMemberRecord & {
   username: string;
+  avatar_key: string;
 };
 
 export async function createLeague(
@@ -425,7 +426,8 @@ export async function listLeagueRoster(
        lm.user_id::int,
        lm.role,
        lm.joined_at,
-       u.username
+       u.username,
+       u.avatar_key
      FROM league_member lm
      JOIN app_user u ON u.id = lm.user_id
      WHERE lm.league_id = $1

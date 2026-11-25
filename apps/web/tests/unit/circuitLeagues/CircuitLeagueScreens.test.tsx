@@ -285,6 +285,84 @@ describe("full season page settings", () => {
   });
 });
 
+describe("full season page tiles", () => {
+  function renderTiles(
+    status: "SETUP" | "DRAFTING" | "IN_SEASON" | "COMPLETE",
+    passPicks: number[] = []
+  ) {
+    const detail = circuitLeagueDetail({ status });
+    wrap(
+      <ConfirmProvider>
+        <CircuitLeagueScreen
+          view={{
+            state: "ready",
+            detail,
+            settings: fullSeasonSettingsFrom(detail),
+            editable: circuitLeagueEditable(status)
+          }}
+          passPicks={passPicks}
+          acting={false}
+          memberStatus={null}
+          lockStatus={null}
+          onSaveArea={vi.fn()}
+          onJoin={vi.fn()}
+          onLeave={vi.fn()}
+          onInitialize={vi.fn()}
+        />
+      </ConfirmProvider>
+    );
+    return screen.getByRole("navigation", { name: "Season" });
+  }
+
+  it("leaves only Back to league in the header before the season", () => {
+    const nav = renderTiles("SETUP");
+    const header = screen.getByRole("banner");
+    expect(
+      within(header)
+        .getAllByRole("link")
+        .map((l) => l.textContent)
+    ).toEqual(["Back to league"]);
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((l) => l.getAttribute("href"))
+    ).toEqual([
+      "/leagues/3/film-club/seasons/full/4/draft",
+      "/leagues/3/film-club/seasons/full/4/rules"
+    ]);
+  });
+
+  it("offers six tiles in season, each named by its title and described by its line", () => {
+    const nav = renderTiles("IN_SEASON");
+    const links = within(nav).getAllByRole("link");
+    expect(links).toHaveLength(6);
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(6);
+    const waivers = within(nav).getByRole("link", { name: "Waivers" });
+    expect(waivers.getAttribute("href")).toBe(
+      "/leagues/3/film-club/seasons/full/4/waivers"
+    );
+    const desc = waivers.getAttribute("aria-describedby")!.split(" ");
+    expect(desc).toHaveLength(1);
+    expect(document.getElementById(desc[0]!)?.textContent).toBe(
+      "Claims, priority and results."
+    );
+    expect(within(nav).getByRole("link", { name: "Standings" })).toBeTruthy();
+    expect(
+      within(screen.getByRole("banner")).queryByRole("link", { name: "Standings" })
+    ).toBeNull();
+  });
+
+  it("adds the pass line to the Waivers tile and its description", () => {
+    const nav = renderTiles("IN_SEASON", [5]);
+    const waivers = within(nav).getByRole("link", { name: "Waivers" });
+    const ids = waivers.getAttribute("aria-describedby")!.split(" ");
+    expect(ids.map((id) => document.getElementById(id)?.textContent)).toEqual([
+      "Claims, priority and results.",
+      "You have a priority pass for pick 5. Use it on a claim in the first waiver window."
+    ]);
+  });
+});
+
 describe("league seasons list", () => {
   const seasons: SeasonListItem[] = [
     {

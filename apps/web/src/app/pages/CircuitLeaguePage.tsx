@@ -10,6 +10,7 @@ export function CircuitLeaguePage() {
     <CircuitLeagueScreen
       view={o.view}
       addDrop={o.addDrop}
+      passPicks={o.passPicks}
       acting={o.acting}
       memberStatus={o.memberStatus}
       lockStatus={o.lockStatus}

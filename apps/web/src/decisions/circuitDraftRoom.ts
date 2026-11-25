@@ -370,6 +370,28 @@ export function circuitStagingMenu(input: {
   ];
 }
 
+/** The row menu's tooltip names what it holds: "Draft, move or remove" or "Move or remove". */
+export function circuitStagingMenuTooltip(items: CircuitStagingMenuItem[]): string {
+  return items.some((item) => item.key === "draft")
+    ? "Draft, move or remove"
+    : "Move or remove";
+}
+
+/** The hint under Queue, with two or more queued: by mouse, or by a held finger. */
+export function circuitQueueDragHint(count: number, coarse: boolean): string | null {
+  if (count < 2) return null;
+  return coarse ? "Press and hold to reorder." : "Drag to reorder.";
+}
+
+/** The polite note after a queue reorder by any input: "Moved Static to position 2 of 3." */
+export function circuitQueueMovedNote(
+  label: string,
+  position: number,
+  count: number
+): string {
+  return `Moved ${label} to position ${position} of ${count}.`;
+}
+
 /** The polite note when an armed contender is drafted before the viewer confirms it. */
 export function circuitSelectionClearedNote(label: string): string {
   return `Selection cleared: ${label} is no longer available`;

@@ -857,6 +857,13 @@ export async function seedVisual(pool: Pool): Promise<VisualSeed> {
      VALUES ($1, $2, 3, $3) RETURNING id::int`,
     [windowLeague.id, windowLeague.memberIds.blake, historyAt(560)]
   );
+  // A second pass blake has not put on a claim: the season page's Waivers tile
+  // and the waivers page's Your claims tell him he holds it.
+  await pool.query(
+    `INSERT INTO circuit_chip (circuit_league_id, member_id, original_pick_number, created_at)
+     VALUES ($1, $2, 5, $3)`,
+    [windowLeague.id, windowLeague.memberIds.blake, historyAt(560)]
+  );
   for (const [i, claim] of [
     { selection: sel.picture[2]!, drop: null, chip: blakeChip.id },
     { selection: sel.actress[0]!, drop: sel.picture[0]!, chip: null }

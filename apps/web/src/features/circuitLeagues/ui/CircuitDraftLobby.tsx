@@ -1,5 +1,6 @@
 import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { FormStatus } from "@/shared/forms";
+import { PlayerName } from "@/shared/PlayerName";
 import type { ApiResult } from "@/lib/types";
 
 export type CircuitLobbySummary = { title: string; line1: string; line2: string | null };
@@ -13,7 +14,12 @@ export function CircuitDraftLobby(props: {
   startNote: string;
   facts: Array<{ label: string; value: string }>;
   summaries: CircuitLobbySummary[];
-  members: Array<{ userId: number; username: string; isViewer: boolean }>;
+  members: Array<{
+    userId: number;
+    username: string;
+    avatarKey: string | null;
+    isViewer: boolean;
+  }>;
   startStatus: ApiResult | null;
   /** Why the draft cannot start yet (the season is not live); null once it can. */
   blockedLine?: string | null;
@@ -61,15 +67,17 @@ export function CircuitDraftLobby(props: {
         {props.members.length === 0 ? (
           <Text className="baseline-textBody">Nobody has joined yet.</Text>
         ) : (
-          <Stack component="ul" gap="var(--fo-space-2)" className="fo-listReset">
+          <Stack component="ul" gap="var(--fo-space-4)" className="fo-listReset">
             {props.members.map((m) => (
-              <Text
-                key={m.userId}
-                component="li"
-                className="baseline-textBody baseline-wrapAnywhere"
-              >
-                {m.isViewer ? `${m.username} (you)` : m.username}
-              </Text>
+              <Box key={m.userId} component="li">
+                <PlayerName
+                  name={m.username}
+                  avatarKey={m.avatarKey}
+                  density="roomy"
+                  wrap="anywhere"
+                  isViewer={m.isViewer}
+                />
+              </Box>
             ))}
           </Stack>
         )}

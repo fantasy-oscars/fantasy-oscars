@@ -40,15 +40,23 @@ export function CircuitPageFrame(props: {
   );
 }
 
-export function CircuitPageSkeleton(props: { label: string }) {
+export function CircuitPageSkeleton(props: {
+  label: string;
+  /** A view switch's block above the card (screens with views). */
+  withSwitch?: boolean;
+  rows?: number;
+}) {
   return (
     <Box className="baseline-page" role="status" aria-label={props.label}>
       <Box className="baseline-pageInner">
         <Stack component="section" gap="md">
           <Skeleton height="var(--fo-font-size-hero-title)" width="44%" />
+          {props.withSwitch ? (
+            <Skeleton height="var(--fo-control-height)" width="18rem" maw="100%" />
+          ) : null}
           <StandardCard>
             <Stack gap="sm">
-              {Array.from({ length: 4 }).map((_, idx) => (
+              {Array.from({ length: props.rows ?? 4 }).map((_, idx) => (
                 <Skeleton key={idx} height="var(--fo-font-size-sm)" width="72%" />
               ))}
             </Stack>

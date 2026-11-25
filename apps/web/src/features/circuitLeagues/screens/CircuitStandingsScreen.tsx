@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button, Divider, Stack, Text, Title } from "@ui";
+import { Box, Button, SegmentedControl, Text, Title, VisuallyHidden } from "@ui";
 import { useMediaQuery } from "@ui/hooks";
 import type {
   CircuitFinalResultsView,
@@ -10,6 +10,11 @@ import {
   circuitFinalRosterCards,
   circuitScoringContenderRows
 } from "@/decisions/circuitPoints";
+import {
+  circuitStandingsViews,
+  parseCircuitStandingsView,
+  type CircuitStandingsViewKey
+} from "@/decisions/circuitStandings";
 import { contenderPillView } from "@/decisions/contenderPill";
 import type { CircuitSelectionSummary, CircuitStandingRow } from "@/lib/types";
 import { FO_BP_MOBILE_MAX_PX } from "@/tokens/breakpoints";
@@ -42,9 +47,28 @@ function finalResultsState(
   };
 }
 
+/** A view's heading: hidden, since the switch shows which view is on. */
+function ViewHeading(props: { id: string; children: string }) {
+  return (
+    <VisuallyHidden>
+      <Title order={3} id={props.id}>
+        {props.children}
+      </Title>
+    </VisuallyHidden>
+  );
+}
+
+/**
+ * Standings: the leaderboard, the final results (once the season is
+ * complete) and the points by ceremony, one view at a time behind a switch
+ * whose choice lives in the URL.
+ */
 export function CircuitStandingsScreen(props: {
   view: CircuitStandingsView;
   viewerUserId: number | null;
+  /** The raw `?view=` value. */
+  viewParam: string | null;
+  onViewChange: (view: CircuitStandingsViewKey) => void;
   resultsMode: CircuitFinalResultsMode;
   onResultsModeChange: (mode: CircuitFinalResultsMode) => void;
 }) {
@@ -58,7 +82,9 @@ export function CircuitStandingsScreen(props: {
       contenderPillView(selection, categories ?? []),
     [categories]
   );
-  if (view.state === "loading") return <CircuitPageSkeleton label="Loading standings" />;
+  if (view.state === "loading") {
+    return <CircuitPageSkeleton label="Loading standings" withSwitch rows={5} />;
+  }
   if (view.state === "error") {
     return (
       <CircuitPageError
@@ -70,6 +96,8 @@ export function CircuitStandingsScreen(props: {
     );
   }
   const { detail } = view;
+  const complete = detail.circuit_league.status === "COMPLETE";
+  const current = parseCircuitStandingsView(props.viewParam, complete);
   const link = {
     leagueId: detail.league.id,
     leagueName: detail.league.name,
@@ -91,18 +119,19 @@ export function CircuitStandingsScreen(props: {
         </Text>
       ) : (
         <>
-          <Stack gap="sm" component="section" aria-labelledby="circuit-standings-title">
-            <Title order={3} variant="section" id="circuit-standings-title">
-              Leaderboard
-            </Title>
-            <Divider />
-            <CircuitStandingsList
-              rows={view.standings.standings}
-              viewerUserId={props.viewerUserId}
-              label="Standings"
+          <Box>
+            <SegmentedControl
+              aria-label="Show standings"
+              className={["circuit-boardToggle", "circuit-viewSwitch"].join(" ")}
+              value={current}
+              fullWidth={isMobile}
+              onChange={(v: string) =>
+                props.onViewChange(parseCircuitStandingsView(v, complete))
+              }
+              data={circuitStandingsViews(complete)}
             />
-          </Stack>
-          {view.finalResults ? (
+          </Box>
+          {current === "results" && view.finalResults ? (
             <CircuitFinalResults
               mode={props.resultsMode}
               onModeChange={props.onResultsModeChange}
@@ -110,18 +139,28 @@ export function CircuitStandingsScreen(props: {
               viewerUserId={props.viewerUserId}
               viewOf={viewOf}
               onOpenCard={isMobile || coarse ? setCard : undefined}
+              phone={isMobile}
             />
-          ) : null}
-          <Stack gap="sm" component="section" aria-labelledby="circuit-ceremonies-title">
-            <Title order={3} variant="section" id="circuit-ceremonies-title">
-              By ceremony
-            </Title>
-            <Divider />
-            <CircuitCeremonyPointsList
-              ceremonies={view.standings.ceremonies}
-              pathOf={(ceremonyId) => circuitCeremonyPointsPath({ ...link, ceremonyId })}
-            />
-          </Stack>
+          ) : current === "ceremonies" ? (
+            <Box component="section" aria-labelledby="circuit-ceremonies-title">
+              <ViewHeading id="circuit-ceremonies-title">By ceremony</ViewHeading>
+              <CircuitCeremonyPointsList
+                ceremonies={view.standings.ceremonies}
+                pathOf={(ceremonyId) =>
+                  circuitCeremonyPointsPath({ ...link, ceremonyId })
+                }
+              />
+            </Box>
+          ) : (
+            <Box component="section" aria-labelledby="circuit-standings-title">
+              <ViewHeading id="circuit-standings-title">Leaderboard</ViewHeading>
+              <CircuitStandingsList
+                rows={view.standings.standings}
+                viewerUserId={props.viewerUserId}
+                label="Standings"
+              />
+            </Box>
+          )}
           <ContenderCardModal card={card} onClose={() => setCard(null)} />
         </>
       )}

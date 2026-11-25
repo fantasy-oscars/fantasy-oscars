@@ -1,8 +1,14 @@
 import { Box, Divider, Group, Stack, Text, Title } from "@ui";
 import { CommissionerPill } from "@/shared/pills";
+import { PlayerName } from "@/shared/PlayerName";
 
 export function LeagueMembersSection(props: {
-  members: Array<{ id: number; username: string; role: string }>;
+  members: Array<{
+    id: number;
+    username: string;
+    role: string;
+    avatar_key?: string | null;
+  }>;
 }) {
   const { members } = props;
   return (
@@ -18,10 +24,18 @@ export function LeagueMembersSection(props: {
         <Stack component="ul" gap="var(--fo-space-0)" className="fo-listReset">
           {members.map((m, idx) => (
             <Box key={m.id} component="li">
-              <Group justify="space-between" align="center" wrap="wrap" py="sm">
-                <Text className="baseline-textBody baseline-wrapAnywhere">
-                  {m.username}
-                </Text>
+              <Group
+                justify="space-between"
+                align="center"
+                wrap="wrap"
+                py="var(--fo-space-dense-2)"
+              >
+                <PlayerName
+                  name={m.username}
+                  avatarKey={m.avatar_key}
+                  density="roomy"
+                  wrap="anywhere"
+                />
                 {m.role === "OWNER" ? <CommissionerPill /> : null}
               </Group>
               {idx === members.length - 1 ? null : <Divider />}

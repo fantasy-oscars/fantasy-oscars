@@ -131,23 +131,25 @@ function renderRoster(input: {
 }
 
 describe("circuit roster screen", () => {
-  it("lists picks by category with a Drop button each, beside the picker", () => {
+  it("lists picks in one flat list with a Drop button each, beside the picker", () => {
     const handlers = renderRoster({ roster: circuitRoster() });
     expect(screen.getByRole("heading", { name: "Your roster" })).toBeTruthy();
-    const picture = screen.getByRole("region", { name: "Best Picture" });
-    expect(within(picture).getByText("Night Train (2026)")).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Picks" });
+    // No category headings: the pill's icon and name carry the category.
+    expect(screen.queryByRole("heading", { name: "Best Picture" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Best Actress" })).toBeNull();
+    expect(screen.queryByText("None")).toBeNull();
     expect(
-      within(screen.getByRole("region", { name: "Best Actress" })).getByText(
-        "Ada Lane, Paper Moon (2026)"
-      )
-    ).toBeTruthy();
+      within(list)
+        .getAllByRole("group")
+        .map((g) => g.getAttribute("aria-label"))
+    ).toEqual([
+      "Best Picture: Night Train (2026), 0 points",
+      "Best Actress: Ada Lane, Paper Moon (2026), 0 points"
+    ]);
     expect(screen.getByText("2 of 16 · 0 pts so far")).toBeTruthy();
-    // Every pick is a pill with its category and points in its name.
-    expect(
-      within(picture).getByRole("group", {
-        name: "Best Picture: Night Train (2026), 0 points"
-      })
-    ).toBeTruthy();
+    // Without category limits there is no limits line.
+    expect(screen.queryByRole("list", { name: "Category limits" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Drop Night Train (2026)" }));
     expect(handlers.onDrop).toHaveBeenCalledWith(
@@ -338,6 +340,43 @@ describe("circuit roster screen", () => {
     expect(screen.queryByRole("region", { name: "Add a free agent" })).toBeNull();
   });
 
+  it("lists players in the Player select with avatars and no visible (you)", () => {
+    renderRoster({ roster: circuitRoster() });
+    const select = screen.getByRole("textbox", { name: "Player" });
+    expect((select as HTMLInputElement).value).toBe("avery");
+    fireEvent.click(select);
+    const listbox = document.getElementById(select.getAttribute("aria-controls") ?? "")!;
+    const options = within(listbox).getAllByRole("option", { hidden: true });
+    // The viewer's ", you" is visually hidden text; every option has an avatar.
+    expect(options.map((o) => o.textContent)).toEqual(["avery, you"]);
+    expect(options.every((o) => o.querySelector(".fo-animalAvatar"))).toBe(true);
+    expect(listbox.textContent).not.toContain("(you)");
+  });
+
+  it("shows the limits line with each limited category's icon and count", () => {
+    renderRoster({ roster: circuitRoster({ maxActing: 1 }) });
+    const limits = screen.getByRole("list", { name: "Category limits" });
+    const items = within(limits).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(within(items[0]!).getByRole("img", { name: "Best Actress" })).toBeTruthy();
+    expect(within(items[0]!).getByText("1 of 1")).toBeTruthy();
+  });
+
+  it("keeps the limits line on an empty roster", () => {
+    renderRoster({ roster: circuitRoster({ maxActing: 2, entries: [] }) });
+    expect(screen.getByText("No picks yet.")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Picks" })).toBeNull();
+    const limits = screen.getByRole("list", { name: "Category limits" });
+    expect(within(limits).getByText("0 of 2")).toBeTruthy();
+  });
+
+  it("shows the chosen player's avatar in the Player field", () => {
+    renderRoster({ roster: circuitRoster() });
+    const select = screen.getByRole("textbox", { name: "Player" });
+    const field = select.closest(".mantine-Select-root") ?? select.parentElement!;
+    expect(field.querySelector(".fo-animalAvatar")).toBeTruthy();
+  });
+
   it("explains that a player who has not joined has no roster", () => {
     renderRoster({ roster: null });
     expect(screen.getByText(/You have not joined this season/)).toBeTruthy();
@@ -378,24 +417,27 @@ describe("circuit transaction log screen", () => {
     expect(items).toHaveLength(2);
     expect(items[0]!.textContent).toContain("avery");
     expect(items[0]!.textContent).toContain("Free agent");
-    // Moves are pills: "Added" then the pill, "Dropped" then a dashed pill.
-    expect(
-      within(items[0]!).getByRole("group", { name: "Best Picture: New Film (2026)" })
-    ).toBeTruthy();
-    const dropped = within(items[0]!).getByRole("group", {
-      name: "Best Picture: Night Train (2026), dropped"
-    });
-    expect(dropped.className).toContain("is-dropped");
-    expect(within(items[0]!).getByText("Added")).toBeTruthy();
-    expect(within(items[0]!).getByText("Dropped")).toBeTruthy();
+    // Moves stack: the plus line first, then the minus line with a dashed pill.
+    // Each icon is named, and each pill's name starts with its move.
+    const icons = within(items[0]!).getAllByRole("img");
+    expect(icons.map((i) => i.getAttribute("aria-label"))).toEqual(["Added", "Dropped"]);
+    expect(icons.every((i) => !i.hasAttribute("tabindex"))).toBe(true);
+    const pills = within(items[0]!).getAllByRole("group");
+    expect(pills.map((p) => p.getAttribute("aria-label"))).toEqual([
+      "Added: Best Picture: New Film (2026)",
+      "Dropped: Best Picture: Night Train (2026)"
+    ]);
+    expect(pills[1]!.className).toContain("is-dropped");
     const time = items[0]!.querySelector("time")!;
     expect(time.getAttribute("dateTime")).toBe("2026-12-03T08:00:00Z");
     expect(time.getAttribute("title")).toBeTruthy();
     expect(items[1]!.textContent).toContain("Drop");
-    expect(items[1]!.textContent).not.toContain("Added");
+    expect(within(items[1]!).queryByRole("img", { name: "Added" })).toBeNull();
+    // A member's link to the roster page says "Your roster", as on the season page.
+    expect(screen.getByRole("link", { name: "Your roster" })).toBeTruthy();
     expect(
       within(items[1]!).getByRole("group", {
-        name: "Best Actress: Ada Lane, Paper Moon (2026), dropped"
+        name: "Dropped: Best Actress: Ada Lane, Paper Moon (2026)"
       })
     ).toBeTruthy();
   });

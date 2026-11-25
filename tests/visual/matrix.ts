@@ -487,12 +487,18 @@ export const SCREENS: ScreenDef[] = [
   },
   {
     // The window's claims are being processed: the caption under the header group.
+    // blake holds a pass he has not put on a claim, so the Waivers tile says so.
     id: "full-season-processing",
     persona: "blake",
     path: (s) =>
       `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}`,
     beforeNavigate: (page) => lockCircuitClaims(page),
     ready: { text: "Claims are being processed." },
+    prepare: async (page) => {
+      await expect(
+        page.getByRole("link", { name: "Waivers", exact: true })
+      ).toHaveAccessibleDescription(/You have a priority pass for pick 5\./);
+    },
     fullPage: true
   },
   {
@@ -521,7 +527,12 @@ export const SCREENS: ScreenDef[] = [
     ready: { text: "Add a free agent" },
     prepare: async (page) => {
       await page.getByRole("textbox", { name: "Player" }).click();
-      await page.getByRole("option").filter({ hasNotText: "(you)" }).first().click();
+      // The viewer's option ends in a visually hidden ", you".
+      await page
+        .getByRole("option")
+        .filter({ hasNotText: /, you$/ })
+        .first()
+        .click();
       await expect(page.getByRole("heading", { name: /'s roster$/ })).toBeVisible();
       await waitForAnimationsIdle(page);
     },
@@ -673,12 +684,16 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    // Inside a window: blake's two ranked claims (one chipped, one with a drop) and the picker.
+    // Inside a window: blake's two ranked claims (one with a pass, one with a drop),
+    // the note about the pass he has not used yet, and the picker.
     id: "circuit-waivers-window",
     persona: "blake",
     path: (s) =>
       `/leagues/${s.leagues.third}/late-show-society/seasons/full/${s.circuitLeagues.inWindow}/waivers`,
     ready: { text: "Claim a contender" },
+    prepare: async (page) => {
+      await expect(page.getByText("You have a priority pass for pick 5.")).toBeVisible();
+    },
     fullPage: true
   },
   {
@@ -692,6 +707,33 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
+    // In season: the switch on Leaderboard, ranked rows with aligned totals.
+    id: "circuit-standings",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/standings`,
+    ready: { selector: '[aria-label="Standings"] .season-standingRow' },
+    fullPage: true
+  },
+  {
+    // The same switch on By ceremony: ceremony rows with links and points awarded.
+    id: "circuit-standings-ceremonies",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/standings?view=ceremonies`,
+    ready: { selector: '[aria-label="Points by ceremony"] .season-ceremonyRow' },
+    fullPage: true
+  },
+  {
+    // The season's rules: event and category rows, with the acting categories' limit.
+    id: "circuit-rules",
+    persona: "casey",
+    path: (s) =>
+      `/leagues/${s.leagues.second}/weekend-cinephiles/seasons/full/${s.circuitLeagues.inSeason}/rules`,
+    ready: { selector: '[aria-label="Categories"] .season-ruleRow' },
+    fullPage: true
+  },
+  {
     // A finished season's Guild Awards points by player: jo's dropped pick dashed.
     id: "circuit-points-player",
     persona: "drew",
@@ -701,7 +743,7 @@ export const SCREENS: ScreenDef[] = [
     fullPage: true
   },
   {
-    // The same points by category: Nominations and Wins columns, gold pills in Wins.
+    // The same points by category: one card per category, winners gold and first.
     id: "circuit-points-category",
     persona: "drew",
     path: (s) =>
@@ -714,7 +756,7 @@ export const SCREENS: ScreenDef[] = [
     id: "circuit-standings-final",
     persona: "drew",
     path: (s) =>
-      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings`,
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings?view=results`,
     ready: { selector: '[aria-label="All scoring contenders"] .dr-pill' },
     fullPage: true
   },
@@ -723,7 +765,7 @@ export const SCREENS: ScreenDef[] = [
     id: "circuit-standings-final-rosters",
     persona: "drew",
     path: (s) =>
-      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings?results=rosters`,
+      `/leagues/${s.leagues.fourth}/golden-hour-guild/seasons/full/${s.circuitLeagues.complete}/standings?view=results&results=rosters`,
     ready: { text: "from picks dropped during the season" },
     fullPage: true
   },

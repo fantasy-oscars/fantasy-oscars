@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -153,23 +153,57 @@ function draftRoom(
 }
 
 /** jsdom has no layout: give each queue row a box so the keyboard finds its neighbour. */
+function rowRect(index: number) {
+  return {
+    top: index * ROW_HEIGHT,
+    bottom: (index + 1) * ROW_HEIGHT,
+    left: 0,
+    right: 300,
+    width: 300,
+    height: ROW_HEIGHT,
+    x: 0,
+    y: index * ROW_HEIGHT,
+    toJSON: () => ({})
+  } as DOMRect;
+}
+
 function layOutQueue() {
   const rows = within(screen.getByRole("list", { name: "Your queue" })).getAllByRole(
     "listitem"
   );
   rows.forEach((row, index) => {
-    row.getBoundingClientRect = () =>
-      ({
-        top: index * ROW_HEIGHT,
-        bottom: (index + 1) * ROW_HEIGHT,
-        left: 0,
-        right: 300,
-        width: 300,
-        height: ROW_HEIGHT,
-        x: 0,
-        y: index * ROW_HEIGHT,
-        toJSON: () => ({})
-      }) as DOMRect;
+    row.getBoundingClientRect = () => rowRect(index);
+  });
+}
+
+/** A primary mouse button's pointer event at (x, y), as dnd-kit's sensor reads it. */
+function pointer(type: string, x: number, y: number) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    clientX: x,
+    clientY: y,
+    button: 0
+  });
+  Object.defineProperty(event, "isPrimary", { value: true });
+  return event;
+}
+
+/** Drags a queue pill by the mouse from its row's middle down by `dy`, and drops it. */
+async function dragPill(pill: HTMLElement, dy: number) {
+  const y = ROW_HEIGHT / 2;
+  // dnd-kit measures the rows after the lift: let each step settle.
+  const step = (target: EventTarget, type: string, at: number) =>
+    act(async () => {
+      target.dispatchEvent(pointer(type, 10, at));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  await step(pill, "pointerdown", y);
+  await step(document, "pointermove", y + Math.sign(dy) * 8);
+  await step(document, "pointermove", y + dy);
+  await step(document, "pointerup", y + dy);
+  // dnd-kit stops swallowing document clicks a tick after the drop; what is left is ours.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
   });
 }
 
@@ -178,7 +212,7 @@ function layOutQueue() {
  * so the items are found among hidden elements and clicked directly.
  */
 async function openRowMenu(row: string) {
-  await userEvent.click(screen.getByRole("button", { name: `More actions for ${row}` }));
+  await userEvent.click(screen.getByRole("button", { name: `Actions for ${row}` }));
   await screen.findAllByRole("menuitem", { hidden: true });
 }
 
@@ -199,7 +233,11 @@ describe("circuit draft lobby", () => {
     expect(screen.getByText("Snake, drawn at random")).toBeTruthy();
     expect(screen.getByText("90 seconds")).toBeTruthy();
     const players = screen.getByRole("region", { name: "Players" });
-    expect(within(players).getByText("avery (you)")).toBeTruthy();
+    // Each player has an avatar; the viewer has no visible "(you)", only ", you" for screen readers.
+    const playerRows = within(players).getAllByRole("listitem");
+    expect(playerRows.every((li) => li.querySelector(".fo-animalAvatar"))).toBe(true);
+    expect(players.textContent).not.toContain("(you)");
+    expect(within(players).getByText("avery").textContent).toBe("avery, you");
     expect(screen.getByRole("region", { name: "Settings" }).textContent).toMatch(
       /Scoring/
     );
@@ -284,15 +322,88 @@ describe("circuit draft staging", () => {
     expect(removing.onRemoveFromQueue).toHaveBeenCalledWith(34);
   });
 
-  it("reorders from the keyboard on a row's grip: Space, arrow, Space", async () => {
+  it("has no grip: the queue hints at dragging the pill and names the menu's contents", async () => {
+    renderDraft({});
+    const staging = screen.getByRole("region", { name: "Staging" });
+    expect(within(staging).queryByRole("button", { name: /^Reorder / })).toBeNull();
+    expect(staging.querySelector(".nomination-drag-handle-button")).toBeNull();
+    expect(within(staging).getByText("Drag to reorder.")).toBeTruthy();
+    const menu = screen.getByRole("button", { name: "Actions for Laura (2026)" });
+    fireEvent.mouseEnter(menu);
+    expect(await screen.findByText("Move or remove")).toBeTruthy();
+    await openRowMenu("Laura (2026)");
+    expect(document.querySelector(".circuit-stageMenuLabel")?.textContent).toBe(
+      "Laura (2026)"
+    );
+    expect(menuItem("Move down").matches(":disabled, [data-disabled]")).toBe(true);
+  });
+
+  it("says to press and hold on a coarse pointer", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(pointer: coarse)",
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false
+    }));
+    try {
+      renderDraft({});
+      expect(screen.getByText("Press and hold to reorder.")).toBeTruthy();
+      expect(screen.queryByText("Drag to reorder.")).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("moves a queue pill one place with Alt+Arrow, keeps its focus and announces it", async () => {
     const user = userEvent.setup();
     const handlers = renderDraft({});
+    const ingrid = within(screen.getByRole("list", { name: "Your queue" })).getByRole(
+      "button",
+      { name: /: Ingrid Bergman, Gaslight/ }
+    );
+    expect(ingrid.getAttribute("aria-keyshortcuts")).toBe(
+      "Enter Space Shift+Enter Escape Alt+ArrowUp Alt+ArrowDown"
+    );
+    ingrid.focus();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    expect(handlers.onReorderQueue).toHaveBeenLastCalledWith([31, 33, 34]);
+    expect(
+      screen
+        .getByText("Moved Ingrid Bergman, Gaslight (2026) to position 2 of 3.")
+        .getAttribute("role")
+    ).toBe("status");
+    expect(document.activeElement).toBe(ingrid);
+    // The first row cannot move up; Space alone never lifts or moves it.
+    await user.keyboard("{Alt>}{ArrowUp}{/Alt}");
+    expect(handlers.onReorderQueue).toHaveBeenCalledTimes(1);
+    await user.keyboard(" ");
+    expect(handlers.onReorderQueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("reorders by dragging a pill with the mouse", async () => {
+    const handlers = renderDraft({});
     layOutQueue();
-    screen.getByRole("button", { name: /Reorder Ingrid Bergman/ }).focus();
-    await user.keyboard(" ");
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard(" ");
+    const ingrid = within(screen.getByRole("list", { name: "Your queue" })).getByRole(
+      "button",
+      { name: /: Ingrid Bergman, Gaslight/ }
+    );
+    // The lifted copy, which dnd-kit collides with the rows, starts on the first row.
+    const box = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue(rowRect(0));
+    try {
+      await dragPill(ingrid, ROW_HEIGHT);
+    } finally {
+      box.mockRestore();
+    }
     expect(handlers.onReorderQueue).toHaveBeenCalledWith([31, 33, 34]);
+    expect(
+      screen.getByText("Moved Ingrid Bergman, Gaslight (2026) to position 2 of 3.")
+    ).toBeTruthy();
   });
 
   it("lists staged contenders, which move to the queue or come off the list", async () => {
@@ -326,7 +437,7 @@ describe("circuit draft staging", () => {
     expect(laura.classList.contains("dr-pill")).toBe(true);
     expect(laura.querySelector(".dr-pill-icon")).not.toBeNull();
     expect(laura.getAttribute("aria-keyshortcuts")).toBe(
-      "Enter Space Shift+Enter Escape"
+      "Enter Space Shift+Enter Escape Alt+ArrowUp Alt+ArrowDown"
     );
     expect(laura.getAttribute("aria-describedby")).toBe("circuit-staging-help");
     // A drafted contender stays listed, muted, named with who drafted it.
@@ -347,6 +458,28 @@ describe("circuit draft staging", () => {
     fireEvent.doubleClick(pill("Best Picture: Rebecca (2026)"));
     expect(handlers.onDraft).toHaveBeenCalledTimes(1);
     expect(handlers.onDraft).toHaveBeenCalledWith(expect.objectContaining({ id: 35 }));
+  });
+
+  it("never arms by dragging: a drag disarms the pill and its closing click is swallowed", async () => {
+    const handlers = renderDraft(onTheClock);
+    layOutQueue();
+    const laura = pill("Best Picture: Laura (2026)");
+    fireEvent.click(laura);
+    expect(laura.getAttribute("aria-pressed")).toBe("true");
+    // Laura is last in the queue: drag it up one row.
+    await dragPill(laura, -ROW_HEIGHT);
+    expect(laura.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(laura);
+    expect(laura.getAttribute("aria-pressed")).toBe("false");
+    expect(handlers.onDraft).not.toHaveBeenCalled();
+  });
+
+  it("offers Draft, move or remove on the clock", async () => {
+    renderDraft(onTheClock);
+    fireEvent.mouseEnter(
+      screen.getByRole("button", { name: "Actions for Laura (2026)" })
+    );
+    expect(await screen.findByText("Draft, move or remove")).toBeTruthy();
   });
 
   it("raises the confirm toast for an armed pill, which drafts it", async () => {
@@ -672,8 +805,9 @@ describe("circuit draft room", () => {
       within(blake).getByRole("group", { name: "Best Picture: All About Eve (2026)" })
     ).toBeTruthy();
     expect(within(blake).queryByText(/Missed|Supplemental|From queue/)).toBeNull();
-    const avery = screen.getByRole("region", { name: "avery (you)" });
+    const avery = screen.getByRole("region", { name: "avery, you" });
     expect(avery.textContent).toContain("2 of 2");
+    expect(avery.textContent).not.toContain("(you)");
 
     fireEvent.click(screen.getByRole("radio", { name: "By category" }));
     const acting = screen.getByRole("region", { name: "Best Actress" });

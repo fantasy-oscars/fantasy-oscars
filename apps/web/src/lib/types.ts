@@ -25,6 +25,7 @@ export type LeagueMember = {
   user_id: number;
   role: string;
   username: string;
+  avatar_key?: string | null;
 };
 
 export type SeasonSummary = {
@@ -54,6 +55,7 @@ export type SeasonMember = {
   role: string;
   joined_at: string;
   username?: string;
+  avatar_key?: string | null;
 };
 
 export type SeasonInvite = {

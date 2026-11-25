@@ -143,9 +143,7 @@ export function CircuitDraftBoard(props: {
               <Box
                 key={roster.seatNumber}
                 component="section"
-                aria-label={
-                  roster.isViewer ? `${roster.username} (you)` : roster.username
-                }
+                aria-label={roster.isViewer ? `${roster.username}, you` : roster.username}
                 className="circuit-boardCard"
               >
                 <SeasonRosterCard

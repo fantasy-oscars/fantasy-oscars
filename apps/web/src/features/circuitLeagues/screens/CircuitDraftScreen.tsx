@@ -398,6 +398,7 @@ function CircuitDraftRoom(
           members={detail.members.map((m) => ({
             userId: m.user_id,
             username: m.username,
+            avatarKey: m.avatar_key,
             isViewer: m.user_id === props.viewerUserId
           }))}
           startStatus={props.startStatus}

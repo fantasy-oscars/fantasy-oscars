@@ -9,6 +9,7 @@ import {
   circuitAddDropVisible,
   type CircuitAddDropTarget
 } from "../decisions/circuitAddDrop";
+import { circuitAvailablePassPicks } from "../decisions/circuitSeasonTiles";
 import {
   fullSeasonSettingsFrom,
   fullSeasonWrites,
@@ -29,6 +30,7 @@ import {
  * write returns the full detail, which replaces the cached read. While the
  * season is in progress a member's Add/drop entry reads their roster's free
  * agency and, while it is closed, their claims, to choose where it leads.
+ * The same claims read carries the priority passes the Waivers tile mentions.
  */
 
 export type CircuitLeagueView =
@@ -104,6 +106,7 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
     if (!freeAgency.open && !claimsSettled) return null;
     return circuitAddDropTarget({ freeAgency, claims: claims ?? null });
   }, [addDropShown, freeAgency, claims, claimsSettled]);
+  const passPicks = useMemo(() => circuitAvailablePassPicks(claims?.chips), [claims]);
 
   // Join and leave report under the header; locking reports beside its button.
   const [memberStatus, setMemberStatus] = useState<ApiResult | null>(null);
@@ -276,6 +279,8 @@ export function useCircuitLeagueOrchestration(input: { circuitLeagueId: number }
     view,
     /** Where Add/drop leads; null while it is hidden or its reads are loading. */
     addDrop,
+    /** The viewer's unused priority passes by pick; empty when their claims are not read. */
+    passPicks,
     acting: actionMutation.isPending,
     memberStatus,
     lockStatus,

@@ -193,6 +193,40 @@ describe("seasons integration", () => {
     expect(listRes.json.seasons.length).toBe(0);
   });
 
+  it("lists season members with each member's avatar", async () => {
+    const ceremony = await createActiveCeremony();
+    const user = await insertUser(db.pool);
+    await db.pool.query(`UPDATE app_user SET avatar_key = 'owl' WHERE id = $1`, [
+      user.id
+    ]);
+    const token = signToken({ sub: String(user.id), username: user.username });
+
+    const leagueRes = await post<{ league: { id: number } }>(
+      "/leagues",
+      { code: "avatars-1", name: "Avatar League", max_members: 3 },
+      token
+    );
+    expect(leagueRes.status).toBe(201);
+    const seasonRes = await post<{ season: { id: number } }>(
+      `/seasons/leagues/${leagueRes.json.league.id}/seasons`,
+      { ceremony_id: ceremony.id },
+      token
+    );
+    expect(seasonRes.status).toBe(201);
+
+    const res = await getJson<{
+      members: Array<{ user_id: number; username: string; avatar_key: string }>;
+    }>(`/seasons/${seasonRes.json.season.id}/members`, token);
+    expect(res.status).toBe(200);
+    expect(res.json.members).toEqual([
+      expect.objectContaining({
+        user_id: user.id,
+        username: user.username,
+        avatar_key: "owl"
+      })
+    ]);
+  });
+
   it("allows commissioner to set scoring strategy while draft pending", async () => {
     const ceremony = await createActiveCeremony();
     const user = await insertUser(db.pool);

@@ -595,7 +595,7 @@ export function circuitDraftRoundNote(
   snapshot: Pick<CircuitDraftSnapshot, "draft" | "on_the_clock">
 ): string | null {
   if (snapshot.on_the_clock?.supplemental) {
-    return "Supplemental round: each pick missed in the regular rounds gets one more chance, in pick order. A pick missed again becomes a chip.";
+    return "Supplemental round: each pick missed in the regular rounds gets one more chance, in pick order. A pick missed again becomes a priority pass.";
   }
   return null;
 }
